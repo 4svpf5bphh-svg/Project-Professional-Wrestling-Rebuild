@@ -34,3 +34,6 @@ The old repository remains an archival reference, not a deployment dependency.
 
 ## World advancement guard
 The server-only `advanceResolvedWorldWeek` operation requires all active promotions' submitted cards to have resolution receipts AND an explicit week certification from the future conflict/AI/staff resolver. This ensures the rebuild cannot silently skip another promotion, publish unresolved conflicts or award extra booking time when jobs run late. Certification production, fair conflict arbitration, staff fallbacks and automated scheduling are still unimplemented; the new operation is not connected to a production scheduler.
+
+## Current collision-inspection slice
+`inspectWeekConflicts` is a server-only, transaction-bound inspection of current-week submitted shows. It checks missing shows, show day/venue details and exact same-day wrestler/venue collisions, while permitting non-exclusive talent to work different days. It returns provisional blockers, not permission to finalize the World. Full conflict resolution, real venue catalog checks and service-capacity validation are still pending.

@@ -72,3 +72,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Move calendar (52→1), open next week and add precisely one day to next_lock_at in an atomic transaction with an append-only completion ledger entry and retry receipt.
 - If the canonical next deadline has already elapsed, fail closed for manual recovery rather than quietly creating an expired opening.
 - Historical ledger rows are not included in everyday Home data; player UI will query bounded projections later.
+
+## Week-only collision inspection (server-side)
+- The first inspection reads current-week submitted shows and their card slots in a bounded number of queries. It never reads old shows or the complete World.
+- Same wrestler can work across multiple promotions on **different PPW days**; an identical PPW day conflicts, as does double-booking one venue on one day. Do not award ties to the first submission.
+- Missing shows/schedules, empty/malformed cards and same-day conflicts block provisional readiness. No wrestler's booked finish can be rewritten by a conflict heuristic.
+- This provisional inspection is NOT weekly certification: it does not yet check contract coverage/service capacity, actual venue ownership, staff fallback, or every simulation consequence. No production scheduler or seal writer has been enabled.
