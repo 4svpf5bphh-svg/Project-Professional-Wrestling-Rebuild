@@ -248,15 +248,17 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           [input.worldId,input.promotionId,ids,Math.max(0,currentWeekIndex-7),currentWeekIndex],
         );
         if(history.length>4096)throw new Error("Alignment history exceeds bounded projection");
-        const alignments=evaluateArchivedShowAlignments(matches.map((slot,index)=>{
-          const match=projections[index]!;
+        const alignmentFor=(id:string):WrestlerAlignment=>{
+          const value=actual.get(id);
+          if(!value)throw new Error("Missing canonical match alignment");
+          return value;
+        };
+        const alignments=evaluateArchivedShowAlignments(matches.map(slot=>{
+          const [a,b]=readCardParticipants(slot.payload);
           return {matchId:slot.slot_id,position:slot.position,
-            aId:match.consequencesPreview?.performers[0]?.personId ??
-              readCardParticipants(slot.payload)[0]!.personId,
-            bId:match.consequencesPreview?.performers[1]?.personId ??
-              readCardParticipants(slot.payload)[1]!.personId,
-            aAlignment:actual.get(readCardParticipants(slot.payload)[0]!.personId)!,
-            bAlignment:actual.get(readCardParticipants(slot.payload)[1]!.personId)!};
+            aId:a!.personId,bId:b!.personId,
+            aAlignment:alignmentFor(a!.personId),
+            bAlignment:alignmentFor(b!.personId)};
         }),history.map(c=>({personId:c.person_id,weekIndex:(c.year-1)*52+c.week-1,
           method:c.method,changed:c.changed})),currentWeekIndex);
         showAlignmentPreview=combineArchivedPacingAndAlignments(showPacingPreview,alignments);
