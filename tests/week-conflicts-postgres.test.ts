@@ -60,6 +60,63 @@ test("one-day talent and venue collisions block provisional readiness; different
     result=await inspect();
     assert.deepEqual(result.blockers,[]);
     assert.equal(result.provisionalClear,true);
+    // A missing or closed venue must fail; provisional text is not a booking.
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_venues SET status='INACTIVE' WHERE world_id=$1 AND venue_id='different-arena'",[worldId],
+    ));
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>x.code),["VENUE_UNAVAILABLE"]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_venues SET status='ACTIVE' WHERE world_id=$1 AND venue_id='different-arena'",[worldId],
+    ));
+    // Two different days are legal if capacity allows both, but not if cap=1.
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_people SET weekly_service_capacity=1 WHERE world_id=$1 AND person_id=$2",[worldId,wrestler],
+    ));
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>x.code),["WRESTLER_WEEK_CAPACITY"]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_people SET weekly_service_capacity=2 WHERE world_id=$1 AND person_id=$2",[worldId,wrestler],
+    ));
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_contracts SET status='TERMINATED' WHERE world_id=$1 AND contract_id=$2",[worldId,contractB],
+    ));
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>x.code),["CONTRACT_UNAVAILABLE"]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_contracts SET status='SIGNED' WHERE world_id=$1 AND contract_id=$2",[worldId,contractB],
+    ));
+    // Cross-promotion exclusive rights cannot be bypassed by a second signed
+    // nonexclusive deal in an inconsistent imported fixture.
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      `INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+       VALUES($1,'exclusive-conflict',$2,$3,'EXCLUSIVE','SIGNED',NULL,20)`,
+      [worldId,wrestler,c],
+    ));
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>x.code).sort(),["CONTRACT_UNAVAILABLE","CONTRACT_UNAVAILABLE"]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "DELETE FROM ppw_contracts WHERE world_id=$1 AND contract_id='exclusive-conflict'",[worldId],
+    ));
+    // A legitimately consumed final date is no longer available for NEW shows,
+    // but week completion must accept the already resolved appearance.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("UPDATE ppw_contracts SET remaining_dates=0 WHERE world_id=$1 AND contract_id=$2",[worldId,contractA]);
+      await tx.query(
+        "INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged) VALUES($1,$2,$3,0,$4,1,1)",
+        [worldId,sa,a,"resolved-"+id],
+      );
+    });
+    result=await inspect();
+    assert.deepEqual(result.blockers,[]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "DELETE FROM ppw_show_resolutions WHERE world_id=$1 AND show_id=$2",[worldId,sa],
+    ));
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>x.code),["CONTRACT_UNAVAILABLE"]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_contracts SET remaining_dates=2 WHERE world_id=$1 AND contract_id=$2",[worldId,contractA],
+    ));
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_booking_drafts SET venue_id=NULL WHERE world_id=$1 AND draft_id=$2",[worldId,sb],
     ));
@@ -75,6 +132,7 @@ test("one-day talent and venue collisions block provisional readiness; different
     assert.deepEqual(result.blockers.map(x=>x.code),["INVALID_CARD"]);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);

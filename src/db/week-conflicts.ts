@@ -39,12 +39,15 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
-    promotion_id:string;draft_id:string|null;show_day:number|null;venue_id:string|null;
+    promotion_id:string;draft_id:string|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;
   }>(
-    `SELECT p.promotion_id,d.draft_id,d.show_day,d.venue_id
+    `SELECT p.promotion_id,d.draft_id,d.show_day,d.venue_id,
+            (r.show_id IS NOT NULL) AS already_resolved
        FROM ppw_promotions p LEFT JOIN ppw_booking_drafts d
          ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
            AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
+       LEFT JOIN ppw_show_resolutions r ON r.world_id=d.world_id
+         AND r.show_id=d.draft_id AND r.resolved_week_index=(($2::integer-1)*52+$3::integer-1)
       WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
       ORDER BY p.promotion_id LIMIT 129`,
     [worldId,year,week],
@@ -70,7 +73,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   // A booking may be submitted early. Arrival order never resolves a conflict.
   const venues=new Map<string,{promotionId:string;showId:string;day:number;venueId:string}>();
   const wrestlers=new Map<string,{promotionId:string;showId:string;day:number;personId:string}>();
-  const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string}>=[];
+  const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean}>=[];
   const venuesNeeded=new Set<string>();
   let submittedShows=0;
   for(const p of promotions){
@@ -106,7 +109,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     }
     if(p.show_day===null || p.show_day<1 || p.show_day>7)continue;
     for(const a of appearances) {
-      requested.push({promotionId:p.promotion_id,showId,day:p.show_day,personId:a.personId,contractId:a.contractId});
+      requested.push({promotionId:p.promotion_id,showId,day:p.show_day,personId:a.personId,
+        contractId:a.contractId,alreadyResolved:p.already_resolved});
       const key=p.show_day+"\u0000"+a.personId;
       const prev=wrestlers.get(key);
       if(prev && prev.promotionId!==p.promotion_id)blockers.push({
@@ -167,12 +171,16 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       if(r.person_status!=="ACTIVE")
         blockers.push({code:"WRESTLER_UNAVAILABLE",promotionIds:[a.promotionId],
           showIds:[a.showId],resourceId:a.personId,day:a.day});
+      // The durable show resolution receipt proves a charged appearance.
+      // A remaining balance of zero is then valid ONLY for that resolved show.
+      // It must still block an unresolved show seeking a fresh appearance.
+      const datesValid=r.remaining_dates!==null &&
+        (r.remaining_dates>0 || (a.alreadyResolved && r.remaining_dates===0));
       const valid=r.contract_status==="SIGNED" && !r.exclusive_elsewhere
         && r.expires_week_index!==null && r.expires_week_index>=weekIndex
         && (r.family==="EXCLUSIVE"
-          ? (r.remaining_dates===null || (r.remaining_dates!==null && r.remaining_dates>0))
-          : ((r.family==="ONE_OFF"||r.family==="LIMITED_NON_EXCLUSIVE")
-            && r.remaining_dates!==null && r.remaining_dates>0));
+          ? (r.remaining_dates===null || datesValid)
+          : ((r.family==="ONE_OFF"||r.family==="LIMITED_NON_EXCLUSIVE") && datesValid));
       if(!valid) blockers.push({code:"CONTRACT_UNAVAILABLE",promotionIds:[a.promotionId],
         showIds:[a.showId],resourceId:a.personId,day:a.day});
       const cap=r.weekly_service_capacity??7;

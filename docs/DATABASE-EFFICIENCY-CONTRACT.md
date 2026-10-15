@@ -89,3 +89,8 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Distinct show appearances count towards wrestler Service Capacity across the whole PPW week; a nullable per-person override of 1–7 is supported. Unconfigured capacity defaults to 7 until the old workload-calculation model is ported. Same-day collisions always remain illegal.
 - The maximum card limits (100 appearances/show, 128 active promotions) bound the batch. These are server-only weekly inspections, not per-user polling.
 - A contract's final legal/creative approvals and the venue's full rental/financial ledger remain future development gates; this inspector alone cannot certify a week.
+
+## Last-date resolution invariant
+- Resource inspection distinguishes a show that has a matching durable resolution receipt from a fresh unresolved booking. A remaining contract date balance of zero can be accepted for the *already resolved* show, because date consumption has already occurred.
+- A separate unresolved show with zero remaining dates is still forbidden. Never require remaining_dates>0 during end-of-week reinspection of completed shows, or the World could deadlock after a valid final contract appearance.
+- Regression tests cover already charged date, unsigned deal, conflicting exclusivity, weekly service capacity and inactive venues using disposable PostgreSQL.
