@@ -61,3 +61,6 @@ A player-controlled promotion can explicitly opt into staff handling unfinished 
 
 ## Confirmed prepared-show lock handoff
 Players can explicitly confirm a valid draft as ready for World Lock before the deadline. The server remembers a fingerprint of the original authored card and venue/day. After Lock and the continuity snapshot, `finalizePreparedWorldShows` auto-submits only unchanged owner-confirmed drafts, or flags edited/invalid drafts for review without touching scripted finishes. This is structural validation; full typed wrestling outcome schemas, venue economics, conflicts and simulation still remain gates before the show can actually run.
+
+## Delegated staff schedule salvage (first executable fallback)
+After the prepared-card lock handoff, the trusted World resolver may submit an **incomplete-schedule** human draft with an existing authored match card, but only where its same controlling player opted in before Lock. Staff fills only missing day/venue fields using server-seeded conflict-free choices, retaining all match and segment outcomes. The post-change World check and ledger are atomic. Missing or truly unfinished cards are not invented or silently completed; a later creative staff fallback system remains outstanding.
