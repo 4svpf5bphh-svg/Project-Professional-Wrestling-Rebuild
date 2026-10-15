@@ -10,6 +10,8 @@ import {readBookedInterference,previewArchivedInterference}
   from "../simulation/legacy/match-interference.js";
 import {previewArchivedMatchConsequences}
   from "../simulation/legacy/match-consequences.js";
+import {evaluateArchivedMatchPacing,type PacingMatch}
+  from "../simulation/legacy/show-pacing.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -197,8 +199,22 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
         plannedFinish:match.plannedFinish,readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
     });
+    // All match crowd reactions must exist before inferring the card's pacing.
+    // A missing injury ruleset, segment resolution or storyline context must
+    // never be mistaken for an official completed show score.
+    const pacingCard:PacingMatch[]=projections.map((match,index)=>{
+      const original=matches[index]!.payload as Record<string,unknown>;
+      const intent=original.intent===undefined?"COMPETITIVE":original.intent;
+      return {matchId:match.slotId,position:match.position,
+        intent:intent as PacingMatch["intent"],
+        style:original.style===undefined?undefined:
+          (original.style as PacingMatch["style"]),
+        crowdResponse:match.interferencePreview!.crowdResponse};
+    });
+    const showPacingPreview=projections.every(match=>match.interferencePreview!==null)?
+      evaluateArchivedMatchPacing(pacingCard):null;
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections};
+      projections,showPacingPreview};
   });
 }

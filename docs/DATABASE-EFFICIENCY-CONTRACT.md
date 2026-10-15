@@ -199,3 +199,8 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Existing smallint progression columns were incorrect for legacy 0.1/0.01 changes; migration 0018 promotes fatigue, wear, momentum, recognition and popularity to float8 with original [0,100] bounds still enforced. This matches original JS double arithmetic and avoids truncation.
 - Promotion media reach is a nullable input until legacy migration; NEVER fabricate a default. Read it on the existing show SELECT; no additional SQL. No medical or athlete changes are written by a preview, and injuries and interference still resolve prior to consequences.
 - Projection is per match, NOT multi-match/week globally applied simulation. Authoritative multi-show wrestler updates, injuries and narrative effects must use one consistent ordering under World Lock.
+
+## Pure original show pacing first slice
+- Pull pacing/style similarity, ranked signal selection and match weights directly from archived `packages/sim-core/src/show-flow.ts`. No snapshot WorldState read and no standalone SQL in the pure engine.
+- The existing four-batch match preview now derives an explicitly incomplete pacing projection from post-medical/post-interference match crowds. If injury rules have not been migrated, no pacing is inferred.
+- Do not present this as full `evaluateShowFlow` parity: historical programmes, alignment volatility, dirty finish familiarity, and resolved segment audience signals are not yet available. Its `PACING_ONLY_NOT_FINAL` phase and `NOT_PROJECTED` segments marker prevent confusing it with final show results.
