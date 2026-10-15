@@ -163,3 +163,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Player outcome is an immutable input. `adaptBookedSinglesMatch` requires an authored winner, validates planned finish and cheating side using the original rules, and evaluates style/skill readiness without choosing the result.
 - Computations are pure and use *zero* database round-trips. The persisted roster skill projection must be fetched in a bounded batch during a later trusted resolution command, never by loading a historical World snapshot or querying once per participant.
 - Full match simulation is not yet integrated: injuries, chemistry, pacing, finances, programme signals, and event resolutions will be adapted individually with old-to-new deterministic parity tests.
+
+## Original wrestler-attributes adapter (migration 0015)
+- Preserve the five exact original skill dimensions plus fatigue/wear in nullable numeric columns; missing historical imports remain NULL, never silently given fictitious 50/100 skills.
+- `previewLegacyShowMatchStyles` is read-only and server-only: first verify the World is RESOLVING, show SUBMITTED, promotion active and weekly resources cleared; then load <=100 current card slots and a single indexed World-scoped batch of <=100 wrestler rows.
+- No one-query-per-person, no historical WorldState, no uploaded whole-World aggregate, and no result writes. Enforce a measured <=6 statement target including transaction controls. Fail closed for missing skills, status, divisions, non-singles slots, absent authored winners and impossible cheating roles.
+- Player-selected finishes remain authored facts. Style readiness is assessment only, not permission to reroll winners, alter segments, spend dates, generate injuries or award popularity. Those require later fully certified resolution and parity tests.
