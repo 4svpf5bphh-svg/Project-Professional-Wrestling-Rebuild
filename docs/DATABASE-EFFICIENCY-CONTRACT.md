@@ -56,3 +56,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Transaction-start `now()` is unsafe for this scenario. The World scheduler lock uses `clock_timestamp()` too.
 - A retried, already-committed request replays its receipt after deadline, but a fresh edit cannot proceed, even if the scheduler is late.
 - This is a reusable command boundary, NOT yet a fully implemented card submission API; all new booking handlers must use the explicit guard.
+
+## Bounded batch appearance charges
+- A submitted show's unique wrestler list is extracted from persisted card slots; show resolution never accepts caller-provided appearance counts.
+- Fetch the show's contracts using one indexed join against small `unnest` arrays; validate **all** rows before charging. Update every finite contract in one set-based statement.
+- Show resolution now uses constant query count as card size grows (test fixture: 18 wrestlers, <=12 SQL statements INCLUDING BEGIN/COMMIT). The old loop made up to two additional SQL calls per performer.
+- An invalid/expired contract or unexpected update row count throws inside the transaction: no partial charges and no committed show receipt.
+- This is a database query budget, not evidence of real-world Neon billing; measure billed transfer after staged playtesting.

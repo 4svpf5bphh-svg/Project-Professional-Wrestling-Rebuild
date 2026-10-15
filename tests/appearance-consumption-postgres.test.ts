@@ -11,6 +11,8 @@ const url=process.env.PPW_NEON_TEST_URL;
 test("show date charges are atomic and idempotent, including failed mixed cards",{skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),id=randomUUID(),worldId="dates-"+id;
   const promotionId="promotion-"+id,p1="finite-"+id,p2="unlimited-"+id,c1="contract-f-"+id,c2="contract-u-"+id;
+  const extras=Array.from({length:16},(_,n)=>({personId:"extra-"+n+"-"+id,contractId:"extra-contract-"+n+"-"+id}));
+
   const read=async()=>withWorldTransaction(db.pool,async tx=>{
     const r=await tx.query<{remaining_dates:number|null}>("SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2",[worldId,c1]);
     return r[0]!.remaining_dates;
@@ -21,9 +23,15 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
       await tx.query("UPDATE ppw_worlds SET week=11 WHERE world_id=$1",[worldId]);
       await addPromotion(tx,worldId,{id:promotionId,name:"Date Promotion",tier:"LOCAL"});
       await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,11,'SUBMITTED'),($1,$4,$3,1,12,'SUBMITTED')",[worldId,"show-"+id,promotionId,"bad-show-"+id]);
-      await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb),($1,$5,$6,0,'MATCH',$7::jsonb)",[worldId,"show-"+id,"slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2}]}),"bad-show-"+id,"bad-slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]})]);
+      await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb),($1,$5,$6,0,'MATCH',$7::jsonb)",[worldId,"show-"+id,"slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2},...extras]}),"bad-show-"+id,"bad-slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]})]);
       await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,'Finite'),($1,$3,'Unlimited')",[worldId,p1,p2]);
       await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,20)",[worldId,c1,p1,promotionId,c2,p2]);
+      await tx.query("INSERT INTO ppw_people(world_id,person_id,name) SELECT $1,person_id,person_id FROM unnest($2::text[]) AS person(person_id)",[worldId,extras.map(x=>x.personId)]);
+      await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+        SELECT $1,joined.contract_id,joined.person_id,$2,'LIMITED_NON_EXCLUSIVE','SIGNED',1,20
+        FROM unnest($3::text[],$4::text[]) AS joined(contract_id,person_id)`,
+        [worldId,promotionId,extras.map(x=>x.contractId),extras.map(x=>x.personId)]);
+
     });
     const baseInput={worldId,playerId:"system",promotionId,showId:"show-"+id,requestId:"resolve-"+id};
     await assert.rejects(consumeShowAppearances(db.pool,{...baseInput,expectedRevision:0}),/World is not resolving/);
@@ -37,9 +45,31 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
     assert.equal((await beginWorldResolution(db.pool,start)).status,"REPLAYED");
     await assert.rejects(beginWorldResolution(db.pool,{...start,requestId:"second-begin-"+id,expectedRevision:1}),/World must be locked/);
     const input={...baseInput,expectedRevision:1};
-    const result=await consumeShowAppearances(db.pool,input);
+    const queries:string[]=[];
+    const meteredPool={
+      async connect(){
+        const connection=await db.pool.connect();
+        return {
+          async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+            queries.push(sql);
+            return connection.query<T>(sql,params);
+          },
+          release(){connection.release();},
+        };
+      },
+    };
+    const result=await consumeShowAppearances(meteredPool,input);
     assert.equal(result.status,"APPLIED");
-    assert.deepEqual(result.result,{performers:2,datesCharged:1});
+    assert.deepEqual(result.result,{performers:18,datesCharged:17});
+    // 18 wrestlers: constant 12 total statements including BEGIN/COMMIT.
+    assert.ok(queries.length<=12,"too many queries: "+queries.length);
+    assert.equal(queries.filter(sql=>sql.includes("FROM unnest(")).length,1);
+    assert.equal(queries.filter(sql=>sql.startsWith("UPDATE ppw_contracts")).length,1);
+    const fullyCharged=await withWorldTransaction(db.pool,tx=>tx.query<{count:string}>(
+      "SELECT count(*)::text AS count FROM ppw_contracts WHERE world_id=$1 AND person_id=ANY($2::text[]) AND remaining_dates=0",
+      [worldId,extras.map(x=>x.personId)],
+    ));
+    assert.equal(Number(fullyCharged[0]!.count),extras.length);
     assert.equal(await read(),1);
     assert.equal((await consumeShowAppearances(db.pool,input)).status,"REPLAYED");
     assert.equal(await read(),1);

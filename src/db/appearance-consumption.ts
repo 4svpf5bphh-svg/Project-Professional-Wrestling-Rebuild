@@ -28,16 +28,18 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
       if (!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52) throw new Error("Invalid World clock");
       const weekIndex=(year-1)*52+week-1;
       if (!Number.isSafeInteger(weekIndex)) throw new Error("Invalid World week");
-      const previous=await tx.query<{show_id:string}>(
-        "SELECT show_id FROM ppw_show_resolutions WHERE world_id=$1 AND show_id=$2",
-        [input.worldId,input.showId],
-      );
-      if(previous.length) throw new Error("Show already resolved");
-      const submitted=await tx.query<{draft_id:string}>(
-        "SELECT draft_id FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3 AND status='SUBMITTED' AND ((year-1)*52+week-1)=$4",
+      // Check submitted status, correct World week and prior resolution
+      // together, avoiding a separate existence round-trip.
+      const submitted=await tx.query<{draft_id:string;already_resolved:boolean}>(
+        `SELECT d.draft_id,(r.show_id IS NOT NULL) AS already_resolved
+           FROM ppw_booking_drafts d LEFT JOIN ppw_show_resolutions r
+             ON r.world_id=d.world_id AND r.show_id=d.draft_id
+          WHERE d.world_id=$1 AND d.draft_id=$2 AND d.promotion_id=$3
+            AND d.status='SUBMITTED' AND ((d.year-1)*52+d.week-1)=$4`,
         [input.worldId,input.showId,input.promotionId,weekIndex],
       );
       if(submitted.length!==1) throw new Error("Show is not a submitted booking for this World week");
+      if(submitted[0]!.already_resolved) throw new Error("Show already resolved");
       const slots=await tx.query<{payload:unknown}>(
         "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2 ORDER BY position",
         [input.worldId,input.showId],
@@ -45,24 +47,51 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
       if(slots.length===0) throw new Error("Submitted show has no card slots");
       const appearances=uniqueShowAppearances(appearancesFromSlots(slots.map(s=>s.payload)));
       if(appearances.length>100) throw new Error("Too many appearances");
+      // Batch-read at most 100 contracts using the composite World/contract key.
+      // Never run a pair of queries per wrestler (N+1) during a show.
+      const people=appearances.map(a=>a.personId);
+      const ids=appearances.map(a=>a.contractId);
       let charged=0;
-      for(const a of appearances) {
-        const rows=await tx.query<{contract_id:string}>(
-          `UPDATE ppw_contracts SET remaining_dates=remaining_dates-1
-           WHERE world_id=$1 AND promotion_id=$2 AND person_id=$3 AND contract_id=$4
-             AND status='SIGNED' AND family IN ('ONE_OFF','LIMITED_NON_EXCLUSIVE','EXCLUSIVE')
-             AND remaining_dates>0 AND expires_week_index>=$5
-           RETURNING contract_id`,
-          [input.worldId,input.promotionId,a.personId,a.contractId,weekIndex],
+      if(appearances.length>0) {
+        const contracts=await tx.query<{
+          person_id:string;contract_id:string;family:string|null;
+          status:string|null;remaining_dates:number|null;expires_week_index:number|null;
+        }>(
+          `SELECT booked.person_id,booked.contract_id,c.family,c.status,
+                  c.remaining_dates,c.expires_week_index
+             FROM unnest($3::text[],$4::text[]) AS booked(person_id,contract_id)
+             LEFT JOIN ppw_contracts c ON c.world_id=$1
+               AND c.promotion_id=$2 AND c.person_id=booked.person_id
+               AND c.contract_id=booked.contract_id`,
+          [input.worldId,input.promotionId,people,ids],
         );
-        if(rows.length===1) { charged++; continue; }
-        const unlimited=await tx.query<{contract_id:string}>(
-          `SELECT contract_id FROM ppw_contracts WHERE world_id=$1 AND promotion_id=$2
-           AND person_id=$3 AND contract_id=$4 AND family='EXCLUSIVE'
-           AND status='SIGNED' AND remaining_dates IS NULL AND expires_week_index>=$5`,
-          [input.worldId,input.promotionId,a.personId,a.contractId,weekIndex],
-        );
-        if(unlimited.length!==1) throw new Error("Contract unavailable for show: "+a.contractId);
+        if(contracts.length!==appearances.length) throw new Error("Invalid contract batch");
+        const finite:string[]=[];
+        for(const c of contracts) {
+          const valid= c.status==="SIGNED"
+            && typeof c.expires_week_index==="number" && c.expires_week_index>=weekIndex
+            && (c.family==="EXCLUSIVE"
+              ? (c.remaining_dates===null || (typeof c.remaining_dates==="number" && c.remaining_dates>0))
+              : ((c.family==="ONE_OFF" || c.family==="LIMITED_NON_EXCLUSIVE")
+                  && typeof c.remaining_dates==="number" && c.remaining_dates>0));
+          if(!valid) throw new Error("Contract unavailable for show: "+c.contract_id);
+          if(c.remaining_dates!==null) finite.push(c.contract_id);
+        }
+        if(finite.length>0) {
+          const updated=await tx.query<{contract_id:string}>(
+            `UPDATE ppw_contracts SET remaining_dates=remaining_dates-1
+              WHERE world_id=$1 AND promotion_id=$2
+                AND contract_id=ANY($3::text[]) AND status='SIGNED'
+                AND remaining_dates>0 AND expires_week_index>=$4
+                AND family IN ('ONE_OFF','LIMITED_NON_EXCLUSIVE','EXCLUSIVE')
+              RETURNING contract_id`,
+            [input.worldId,input.promotionId,finite,weekIndex],
+          );
+          // An unexpected concurrent contract change aborts the WHOLE
+          // World transaction, including every date decrement.
+          if(updated.length!==finite.length) throw new Error("Contract availability changed during resolution");
+          charged=updated.length;
+        }
       }
       await tx.query(
         "INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged) VALUES($1,$2,$3,$4,$5,$6,$7)",
