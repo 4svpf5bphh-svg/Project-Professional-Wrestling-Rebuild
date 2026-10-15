@@ -210,3 +210,8 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Promotion-specific alignment overrides are separate from a wrestler's base identity. Unknown values remain NULL; the World must explicitly certify `alignment_history_loaded` before a zero-history result is ever presumed.
 - The active show already has <=100 match participants; two added bounded SQL reads get promotion overrides and up to 4096 recent change records only for confirmed imported-history Worlds. Neither query occurs until medical/interference and pacing are available. No global historical ledger hydration or participant-by-participant query.
 - Incomplete show context returns NULL. The calculated crowd is labeled `PACING_AND_ALIGNMENT_NOT_FINAL` and cannot be recorded as final or award momentum until programmes, cheat familiarity and segment crowds are ported.
+
+## Character continuity across promotions
+- World-owned wrestler identity is the source of truth for both gimmick and base face/heel alignment. Promotion-specific presentation only exists as an explicitly justified, wrestler-approved, temporary **exception**, never as an independent default.
+- The exception row demands a defined storyline context, meaningful justification, consent receipt and <=26-week lifetime. Pending and expired exceptions have no gameplay effect; the preview falls back to wrestler core identity without extra SQL calls.
+- Future global turns/repackages must update wrestler-owned identity under authoritative World commands, with wrestler creative resistance and relationship consequences; a promotion cannot freely flip an identity by writing a local record.

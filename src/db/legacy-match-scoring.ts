@@ -230,8 +230,10 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
       const overrides=await tx.query<{person_id:string;alignment:WrestlerAlignment}>(
         `SELECT person_id,alignment FROM ppw_promotion_wrestler_alignments
            WHERE world_id=$1 AND promotion_id=$2
-             AND person_id=ANY($3::text[])`,
-        [input.worldId,input.promotionId,ids],
+             AND person_id=ANY($3::text[])
+             AND wrestler_approved=true AND approval_receipt_id IS NOT NULL
+             AND starts_week_index<=$4 AND expires_week_index>=$4`,
+        [input.worldId,input.promotionId,ids,(show.year-1)*52+show.week-1],
       );
       const actual=new Map(baseAlignments);
       for(const o of overrides)actual.set(o.person_id,o.alignment);

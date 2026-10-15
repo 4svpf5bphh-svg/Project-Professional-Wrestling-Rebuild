@@ -173,12 +173,32 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(volatile.showAlignmentPreview!.matches[0]!.modifier,1.1);
     await withWorldTransaction(db.pool,tx=>tx.query(
       `INSERT INTO ppw_promotion_wrestler_alignments
-       (world_id,promotion_id,person_id,alignment) VALUES($1,$2,$3,'FACE')`,
+       (world_id,promotion_id,person_id,alignment,exception_kind,
+        justification,starts_week_index,expires_week_index)
+       VALUES($1,$2,$3,'FACE','REGIONAL_STORYLINE',
+         'Exceptional regional story, not a new core wrestler alignment',0,10)`,
+      [worldId,promotionId,personIds[1]!],
+    ));
+    // Pending pitch MUST NOT override the portable wrestler identity.
+    const pending=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(pending.showAlignmentPreview!.matches[0]!.baseModifier,2.2);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      `UPDATE ppw_promotion_wrestler_alignments
+       SET wrestler_approved=true,approval_receipt_id='consent-fixture-0001'
+       WHERE world_id=$1 AND promotion_id=$2 AND person_id=$3`,
       [worldId,promotionId,personIds[1]!],
     ));
     const overridden=await previewArchivedShowMatchScores(db.pool,input);
     assert.equal(overridden.showAlignmentPreview!.matches[0]!.baseModifier,-0.3);
     assert.equal(overridden.showAlignmentPreview!.matches[0]!.modifier,-1.4);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      `UPDATE ppw_promotion_wrestler_alignments
+       SET starts_week_index=1,expires_week_index=2
+       WHERE world_id=$1 AND promotion_id=$2 AND person_id=$3`,
+      [worldId,promotionId,personIds[1]!],
+    ));
+    const futureException=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(futureException.showAlignmentPreview!.matches[0]!.baseModifier,2.2);
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET alignment_history_loaded=false WHERE world_id=$1",
       [worldId],
