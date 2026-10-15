@@ -26,7 +26,7 @@ test("verbatim original PPW engine algorithms match archived source Git blobs",(
     const local=readFileSync(path,"utf8");
     const archive=filename==="rng.ts"?local:local.replaceAll("./types.js","../../domain/src/types.js");
     const content=Buffer.from(archive,"utf8");
-    const digest=createHash("sha1").update(Buffer.from("blob "+content.length+"\\0"))
+    const digest=createHash("sha1").update(Buffer.from("blob "+content.length+"\0"))
       .update(content).digest("hex");
     assert.equal(digest,sha,"Original PPW calculation changed unexpectedly: "+filename);
   }
@@ -50,7 +50,7 @@ test("the original finish semantics and winner/cheater roles survive the port",(
     ["winner"],["loser","tagmate"]),/choose which wrestler cheats/);
   assert.equal(isRecordedMatchFinish("INJURY_STOPPAGE"),true);
   assert.equal(isBookableMatchFinish("INJURY_STOPPAGE"),false);
-  const match:{intent:"STORY";plannedFinish?:string;actualFinish?:string|null}={intent:"STORY"};
+  const match:import("../src/simulation/legacy/types.js").Match={intent:"STORY"};
   assert.equal(plannedMatchFinish(match),"PROTECTED_FINISH");
   setPlannedMatchFinish(match,"CLEAN_PIN");
   assert.equal(plannedMatchFinish(match),"CLEAN_PIN");
