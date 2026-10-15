@@ -44,11 +44,11 @@ test("a genuine post-main-event breather rewards thoughtful match ordering",()=>
 });
 test("explicit dimensional style controls intensity and style similarity, not intent labels",()=>{
   const style:MatchStyleProfile={
-    competitiveness:45,technical:58,story:40,intensity:52,risk:12,epic:30,
+    competitiveness:45,technical:58,story:40,intensity:75,risk:12,epic:30,
   };
   const repeated=evaluateArchivedMatchPacing([
     make("a",0,"COMPETITIVE",70,style),
-    make("b",1,"PROTECTIVE",70,{...style,intensity:53}),
+    make("b",1,"PROTECTIVE",70,{...style,intensity:76}),
   ]);
   assert.equal(repeated.matches[1]!.pacingReason,"REPEATED_STYLE");
   assert.ok(repeated.matches[1]!.pacingModifier<0);
