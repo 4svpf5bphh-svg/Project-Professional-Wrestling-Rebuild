@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { randomUUID } from "node:crypto";
+import { postgresPool } from "../src/db/postgres.js";
+import { withWorldTransaction } from "../src/db/transaction.js";
+import { createWorld, addPromotion } from "../src/db/world-operations.js";
+import { joinWorld } from "../src/db/membership-operations.js";
+import { submitPromotionClaim } from "../src/db/promotion-commands.js";
+import { readPlayerWorldOverview } from "../src/db/player-world-overview.js";
+import { listAvailablePromotions } from "../src/db/available-promotions.js";
+
+const url=process.env.PPW_NEON_TEST_URL;
+test("overview and promotion picker only expose relevant narrow records",{skip:!url?"No disposable PostgreSQL":false},async()=>{
+  const db=postgresPool(url!,3),id=randomUUID(),worldId="overview-"+id,playerId="viewer-"+id;
+  const first="a-"+id,second="b-"+id;
+  try {
+    await withWorldTransaction(db.pool,async tx=>{
+      await createWorld(tx,{id:worldId,name:"Overview World",seed:5,rulesetVersion:"test"});
+      await addPromotion(tx,worldId,{id:first,name:"First Promotion",tier:"LOCAL"});
+      await addPromotion(tx,worldId,{id:second,name:"Second Promotion",tier:"REGIONAL"});
+    });
+    const before=await readPlayerWorldOverview(db.pool,worldId,playerId);
+    assert.equal(before?.membership,"NONE");
+    assert.equal(before?.promotion,null);
+    assert.deepEqual((await listAvailablePromotions(db.pool,worldId,null,1)).map(p=>p.id),[first]);
+    assert.deepEqual((await listAvailablePromotions(db.pool,worldId,first,1)).map(p=>p.id),[second]);
+    await joinWorld(db.pool,{worldId,playerId,requestId:"join-"+id,expectedRevision:0});
+    await submitPromotionClaim(db.pool,{worldId,playerId,promotionId:first,requestId:"claim-"+id,expectedRevision:1});
+    const after=await readPlayerWorldOverview(db.pool,worldId,playerId);
+    assert.equal(after?.membership,"ACTIVE");
+    assert.equal(after?.world.revision,2);
+    assert.equal(after?.promotion?.id,first);
+    assert.deepEqual((await listAvailablePromotions(db.pool,worldId)).map(p=>p.id),[second]);
+    await assert.rejects(listAvailablePromotions(db.pool,worldId,null,51),/page size/);
+  } finally {
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+      await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+    }).finally(()=>db.close());
+  }
+});
