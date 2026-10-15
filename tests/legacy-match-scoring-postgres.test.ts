@@ -80,6 +80,8 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(first.score.styleResolver,"INTENT");
     // Until legacy World rulesets are imported, never fabricate an injury rate.
     assert.equal(first.injuryPreview,null);
+    assert.equal(result.showPacingPreview,null);
+    assert.equal(result.projections[0]!.consequencesPreview,null);
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET injury_rate_multiplier=10 WHERE world_id=$1",[worldId],
     ));
@@ -87,6 +89,14 @@ test("original match rating/crowd run from only current-week relational context"
     const originalInjury=injuryScored.projections[0]!.injuryPreview;
     assert.equal(injuryScored.projections[0]!.consequencesPreview,null);
     assert.ok(originalInjury!==null);
+    assert.ok(injuryScored.showPacingPreview!==null);
+    assert.equal(injuryScored.showPacingPreview!.phase,"PACING_ONLY_NOT_FINAL");
+    assert.equal(injuryScored.showPacingPreview!.segments,"NOT_PROJECTED");
+    assert.equal(injuryScored.showPacingPreview!.matches.length,1);
+    assert.equal(injuryScored.showPacingPreview!.matches[0]!.matchId,"opening");
+    assert.equal(injuryScored.showPacingPreview!.matches[0]!.originalCrowd,
+      injuryScored.projections[0]!.interferencePreview!.crowdResponse);
+    assert.equal(injuryScored.showPacingPreview!.matches[0]!.weight,1);
     assert.equal(originalInjury!.plannedWinnerId,personIds[1]);
     assert.equal(originalInjury!.plannedFinish,"SUBMISSION");
     assert.deepEqual(
