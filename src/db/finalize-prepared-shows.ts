@@ -40,13 +40,17 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
       const candidates=await tx.query<Candidate>(
         `SELECT d.draft_id,d.promotion_id,d.year,d.week,d.show_day,d.venue_id,
              d.lock_ready_fingerprint,d.lock_ready_by_player_id,
-             c.player_id AS controller_player_id,a.controller_player_id AS assessment_owner
+             m.player_id AS controller_player_id,a.controller_player_id AS assessment_owner
           FROM ppw_booking_drafts d
           JOIN ppw_week_continuity_assessments a
             ON a.world_id=d.world_id AND a.promotion_id=d.promotion_id
             AND a.year=d.year AND a.week=d.week AND a.show_id=d.draft_id
           LEFT JOIN ppw_promotion_controls c ON c.world_id=d.world_id
             AND c.promotion_id=d.promotion_id AND c.active
+          LEFT JOIN ppw_memberships m ON m.world_id=c.world_id
+            AND m.player_id=c.player_id AND m.status='ACTIVE'
+          JOIN ppw_promotions p ON p.world_id=d.world_id
+            AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
           WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
             AND d.status='DRAFT' AND d.lock_ready_fingerprint IS NOT NULL
             AND a.status='PREPARED_DRAFT'
@@ -79,7 +83,9 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
         const evidence:ReadyDraftEvidence={
           worldId:input.worldId,promotionId:d.promotion_id,showId:d.draft_id,
           year:d.year,week:d.week,day:d.show_day,venueId:d.venue_id,
-          slots:byShow.get(d.draft_id)??[],
+          slots:(byShow.get(d.draft_id)??[]).map(({slot_id,position,kind,payload})=>({
+            slot_id,position,kind,payload,
+          })),
         };
         const error=validatePreparedDraft(evidence);
         const permitted=d.controller_player_id!==null&&
