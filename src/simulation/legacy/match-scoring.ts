@@ -158,7 +158,6 @@ export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):Prelimina
     },match.plannedLengthMinutes);
   const bookedFinish=input.plannedFinish;
   const intentBonus = match.intent === "EPIC" ? 6 : match.intent === "TECHNICAL" ? 4 : match.intent === "HIGH_RISK" ? 3 : match.intent === "SHOWCASE" ? 2 : 0;
-  const bookedFinish = plannedMatchFinish(match);
   const finishExecution = styleEvaluation === null
     ? finishExecutionModifier(match.intent, bookedFinish)
     : styledFinishExecutionModifier(match, bookedFinish);
