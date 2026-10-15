@@ -76,6 +76,21 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(first.plannedFinish,"SUBMISSION");
     assert.equal(first.score.stage,"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW");
     assert.equal(first.score.styleResolver,"INTENT");
+    // Until legacy World rulesets are imported, never fabricate an injury rate.
+    assert.equal(first.injuryPreview,null);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET injury_rate_multiplier=10 WHERE world_id=$1",[worldId],
+    ));
+    const injuryScored=await previewArchivedShowMatchScores(db.pool,input);
+    const originalInjury=injuryScored.projections[0]!.injuryPreview;
+    assert.ok(originalInjury!==null);
+    assert.equal(originalInjury!.plannedWinnerId,personIds[1]);
+    assert.equal(originalInjury!.plannedFinish,"SUBMISSION");
+    assert.deepEqual(
+      (await previewArchivedShowMatchScores(db.pool,input)).projections[0]!.injuryPreview,
+      originalInjury);
+    assert.deepEqual(injuryScored.projections[0]!.score,first.score);
+    assert.equal(originalInjury!.preInjury.stage,"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW");
     const [a,b]=[...personIds].sort();
     const rng=new DeterministicRng(deterministicSeedFromText(
       `502:chemistry:SINGLES:${a}:${b}`));
