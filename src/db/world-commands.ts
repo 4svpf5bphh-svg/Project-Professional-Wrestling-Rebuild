@@ -7,6 +7,7 @@ export interface WorldCommand<T> {
   requestId: string;
   commandType: string;
   expectedRevision: number;
+  requiresOpenWeek?: boolean;
   execute(tx: SqlRows, revision: number): Promise<T>;
 }
 export type CommandResult<T> =
@@ -34,15 +35,29 @@ export async function applyWorldCommand<T>(pool: TransactionPool, command: World
     if (worlds.length !== 1) throw new Error("World not found");
     const revision = Number(worlds[0]!.revision);
     if (!Number.isSafeInteger(revision)) throw new Error("Invalid World revision");
-    const receipts = await tx.query<{ player_id: string; command_type: string; committed_revision: string | number; result: T }>(
-      "SELECT player_id,command_type,committed_revision,result FROM ppw_command_receipts WHERE world_id=$1 AND request_id=$2",
+    // This is the existing second read, after the World row was locked.
+    // A LEFT JOIN checks the deadline AND retry receipt in one SQL round-trip.
+    // clock_timestamp() is required: now() is fixed at transaction start and
+    // could incorrectly accept a command queued behind a lock at the cutoff.
+    const receipts = await tx.query<{
+      booking_open:boolean; player_id:string|null; command_type:string|null;
+      committed_revision:string|number|null; result:T|null;
+    }>(
+      `SELECT (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
+              r.player_id,r.command_type,r.committed_revision,r.result
+         FROM ppw_worlds w LEFT JOIN ppw_command_receipts r
+           ON r.world_id=w.world_id AND r.request_id=$2
+        WHERE w.world_id=$1`,
       [command.worldId,command.requestId],
     );
-    if (receipts.length) {
-      const prior = receipts[0]!;
-      if (prior.player_id !== command.playerId || prior.command_type !== command.commandType) throw new Error("Request ID collision");
-      return { status: "REPLAYED", revision: Number(prior.committed_revision), result: prior.result };
+    if (receipts.length!==1) throw new Error("World receipt lookup failed");
+    const prior=receipts[0]!;
+    if (prior.player_id!==null) {
+      if (prior.player_id!==command.playerId || prior.command_type!==command.commandType) throw new Error("Request ID collision");
+      return {status:"REPLAYED",revision:Number(prior.committed_revision),result:prior.result as T};
     }
+    // Replays are safe after lock: only NEW writes are blocked.
+    if (command.requiresOpenWeek && prior.booking_open!==true) throw new Error("World booking deadline passed");
     if (revision !== command.expectedRevision) return { status: "STALE", revision };
     const result = await command.execute(tx, revision);
     const next = revision + 1;

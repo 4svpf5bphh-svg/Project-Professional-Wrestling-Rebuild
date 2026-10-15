@@ -49,3 +49,10 @@ D. Measure; only then add weekly resolution and history.
 E. Continue feature parity in bounded slices with a cost regression suite.
 
 This contract is intentionally stricter than the previous PPW persistence approach. Do not reintroduce full-World JSONB checkpoints as the hot operational data model.
+
+## Precise booking cutoff, with no additional database round-trip
+- Every future player-authored card, talent or venue booking mutation must opt into `applyWorldCommand(requiresOpenWeek:true)` and obtain the existing serialized World row lock.
+- The existing receipt query is a LEFT JOIN with that locked World, so it also tests `phase='OPEN'` and `next_lock_at>clock_timestamp()`. The check is evaluated **after** the row lock, including when another request held it over the deadline.
+- Transaction-start `now()` is unsafe for this scenario. The World scheduler lock uses `clock_timestamp()` too.
+- A retried, already-committed request replays its receipt after deadline, but a fresh edit cannot proceed, even if the scheduler is late.
+- This is a reusable command boundary, NOT yet a fully implemented card submission API; all new booking handlers must use the explicit guard.

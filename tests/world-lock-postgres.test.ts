@@ -35,3 +35,39 @@ test("one weekly deadline: early denial, concurrent lock, retry, internal resolu
     }).finally(()=>db.close());
   }
 });
+
+test("server cutoff blocks a booking write even if scheduler is delayed",{skip:!url?"No disposable PostgreSQL":false},async()=>{
+  const db=postgresPool(url!,3),worldId="cutoff-"+randomUUID(),promotionId="promo-"+randomUUID();
+  const {applyWorldCommand}=await import("../src/db/world-commands.js");
+  try {
+    await withWorldTransaction(db.pool,async tx=>{
+      await createWorld(tx,{id:worldId,name:"Cutoff Test",seed:1,rulesetVersion:"test"});
+      await tx.query("INSERT INTO ppw_promotions(world_id,promotion_id,name,tier) VALUES($1,$2,'Fixture','LOCAL')",[worldId,promotionId]);
+    });
+    const save=(requestId:string,expectedRevision:number,draftId:string)=>({
+      worldId,playerId:"test-player",requestId,expectedRevision,
+      commandType:"TEST_SAVE_DRAFT",requiresOpenWeek:true,
+      async execute(tx:import("../src/db/world-operations.js").SqlRows){
+        await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,1)",[worldId,draftId,promotionId]);
+        return {draftId};
+      },
+    });
+    const first=save("save-first",0,"draft-early");
+    assert.equal((await applyWorldCommand(db.pool,first)).status,"APPLIED");
+    await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
+    assert.equal((await applyWorldCommand(db.pool,first)).status,"REPLAYED");
+    await assert.rejects(applyWorldCommand(db.pool,save("save-late",1,"draft-late")) ,/World booking deadline passed/);
+    const rows=await withWorldTransaction(db.pool,tx=>tx.query<{draft_id:string}>("SELECT draft_id FROM ppw_booking_drafts WHERE world_id=$1",[worldId]));
+    assert.deepEqual(rows.map(row=>row.draft_id),["draft-early"]);
+    const state=await withWorldTransaction(db.pool,tx=>tx.query<{phase:string;revision:string}>("SELECT phase,revision FROM ppw_worlds WHERE world_id=$1",[worldId]));
+    assert.equal(state[0]!.phase,"OPEN");
+    assert.equal(Number(state[0]!.revision),1);
+  } finally {
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+    }).finally(()=>db.close());
+  }
+});

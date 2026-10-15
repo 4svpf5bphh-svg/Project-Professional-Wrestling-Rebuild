@@ -3,7 +3,7 @@ import test from "node:test";
 import { applyWorldCommand } from "../src/db/world-commands.js";
 import type { TransactionPool } from "../src/db/transaction.js";
 
-function harness(initial = 0) {
+function harness(initial = 0, bookingOpen = true) {
   let revision = initial, receipt: {player_id:string;command_type:string;committed_revision:number;result:{ok:boolean}} | null = null;
   let executions = 0;
   const calls: string[] = [];
@@ -12,7 +12,7 @@ function harness(initial = 0) {
       async query<T extends Record<string,unknown>>(sql:string, params:readonly unknown[]) {
         calls.push(sql);
         if (sql.includes("SELECT revision")) return [{revision}] as unknown as T[];
-        if (sql.includes("FROM ppw_command_receipts")) return (receipt ? [receipt] : []) as unknown as T[];
+        if (sql.includes("LEFT JOIN ppw_command_receipts")) return [{booking_open:bookingOpen,player_id:receipt?.player_id??null,command_type:receipt?.command_type??null,committed_revision:receipt?.committed_revision??null,result:receipt?.result??null}] as unknown as T[];
         if (sql.startsWith("UPDATE ppw_worlds")) revision = Number(params[1]);
         if (sql.startsWith("INSERT INTO ppw_command_receipts")) receipt = {
           player_id:String(params[2]),command_type:String(params[3]),result:JSON.parse(String(params[4])),committed_revision:Number(params[5]),
@@ -51,4 +51,17 @@ test("same request ID from different player is rejected", async () => {
   const f=harness();
   await applyWorldCommand(f.pool,f.command(0));
   await assert.rejects(applyWorldCommand(f.pool,f.command(0,"req-1","player-2")),/collision/);
+});
+
+test("late player booking is denied without any writes or extra queries",async()=>{
+  const f=harness(0,false);
+  await assert.rejects(applyWorldCommand(f.pool,{...f.command(0),requiresOpenWeek:true}),/World booking deadline passed/);
+  assert.equal(f.executions(),0);
+  assert.equal(f.revision(),0);
+  assert.equal(f.calls.filter(q=>q.startsWith("SELECT")).length,2);
+});
+test("a booking submitted before lock retains constant two-query validation",async()=>{
+  const f=harness(0,true);
+  assert.equal((await applyWorldCommand(f.pool,{...f.command(0),requiresOpenWeek:true})).status,"APPLIED");
+  assert.equal(f.calls.filter(q=>q.startsWith("SELECT")).length,2);
 });

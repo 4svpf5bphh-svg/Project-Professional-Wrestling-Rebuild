@@ -15,7 +15,7 @@ export async function lockWorldWeek(pool:TransactionPool,input:LockWorldWeekInpu
     expectedRevision:input.expectedRevision,commandType:"LOCK_WORLD_WEEK",
     execute:async tx=>{
       const clocks=await tx.query<{year:number;week:number;phase:string;due:boolean}>(
-        "SELECT year,week,phase,(next_lock_at<=now()) AS due FROM ppw_worlds WHERE world_id=$1",
+        "SELECT year,week,phase,(next_lock_at<=clock_timestamp()) AS due FROM ppw_worlds WHERE world_id=$1",
         [input.worldId],
       );
       if(clocks.length!==1) throw new Error("World not found");
@@ -26,7 +26,7 @@ export async function lockWorldWeek(pool:TransactionPool,input:LockWorldWeekInpu
       const weekIndex=(year-1)*52+week-1;
       if(!Number.isSafeInteger(weekIndex)) throw new Error("Invalid World week");
       const locked=await tx.query<{world_id:string}>(
-        "UPDATE ppw_worlds SET phase='LOCKED' WHERE world_id=$1 AND phase='OPEN' AND next_lock_at<=now() RETURNING world_id",
+        "UPDATE ppw_worlds SET phase='LOCKED' WHERE world_id=$1 AND phase='OPEN' AND next_lock_at<=clock_timestamp() RETURNING world_id",
         [input.worldId],
       );
       if(locked.length!==1) throw new Error("World lock failed");
