@@ -5,7 +5,7 @@
 import type {MatchIntent,MatchStyleProfile} from "./types.js";
 import type {MatchFinish} from "./match-finishes.js";
 import {DeterministicRng,deterministicSeedFromText} from "./rng.js";
-import {evaluateMatchStyleExecution,type MatchStyleSkillProfile} from "./match-style.js";
+import {evaluateMatchStyleExecution,type MatchStyleExecutionEvaluation,type MatchStyleSkillProfile} from "./match-style.js";
 type ScoringMatch={intent:MatchIntent;style?:MatchStyleProfile};
 export interface ScoredWrestler {
   skills:MatchStyleSkillProfile;
@@ -117,7 +117,12 @@ function styledFinishCrowdModifier(match: ScoringMatch, finish: MatchFinish): nu
  * runtime also handles injuries, run-ins, physical wear, programme signals and
  * post-show consequences. Those must remain separate until ported atomically.
  */
-export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):PreliminaryMatchScore {
+/** Retain the exact RNG instance *after* the three legacy scoring draws so
+ * injury rolls consume the right continuation, not a fresh random seed. */
+export function scoreArchivedSinglesBeforeInjuriesWithRng(input:ScoringInput):{
+  score:PreliminaryMatchScore;rng:DeterministicRng;
+  styleEvaluation:MatchStyleExecutionEvaluation|null;
+} {
   if(!input.matchId||!String(input.worldSeed)||
      !Number.isSafeInteger(input.order)||input.order<1||input.order>100||
      !Number.isFinite(input.eventImportance)||input.eventImportance<0||input.eventImportance>100||
@@ -217,8 +222,12 @@ export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):Prelimina
   ) * 10) / 10;
   match.actualLengthMinutes = Math.max(3, Math.round(match.plannedLengthMinutes * rng.float(0.88, 1.1)));
 
-  return {stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW",
+  return {score:{stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW",
     executionQuality:match.executionQuality,criticalRatingStars:match.criticalRatingStars,
     crowdResponse:match.crowdResponse,actualLengthMinutes:match.actualLengthMinutes,
-    styleResolver:styleEvaluation?"DIMENSIONAL":"INTENT"};
+    styleResolver:styleEvaluation?"DIMENSIONAL":"INTENT"},rng,styleEvaluation};
+}
+/** Existing stable read-only scoring contract. */
+export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):PreliminaryMatchScore {
+  return scoreArchivedSinglesBeforeInjuriesWithRng(input).score;
 }

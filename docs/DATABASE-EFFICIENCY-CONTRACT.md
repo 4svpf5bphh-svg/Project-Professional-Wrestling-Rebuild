@@ -180,3 +180,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Single World-locked current-week preview uses four batched reads (show, <=100 slots, <=100 people, <=100 chemistry pairs) + BEGIN/COMMIT. No per-match or per-person queries, and zero writes. Later actual resolution needs its own transaction plus authoritative contract and injury accounting.
 - First-encounter chemistry compatibility is generated using exactly the old PPW World-seed/pair RNG, with no database mutation; repeat pairings within the show advance in-memory familiarity deterministically.
 - Score uses actual original execution/star/crowd calculations, returns clearly labeled PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW, and MUST NOT be displayed as a completed result.
+
+## Original match injury RNG and referee-stop parity
+- The original archived match scorer now internally retains its live RNG stream after the EXACT scoring execution, crowd and length draws; the existing public scoring function stays unchanged.
+- `previewArchivedInjuryStoppage` uses original intent-only or styled per-person risk calculations, capped [0.0002,0.035], draws chances in card participant order, and consumes deterministic extra severity/weeks-out draws only for actual injuries.
+- A MAJOR/SEVERE injury to the intended winner forces actual finish INJURY_STOPPAGE and the opposite winner, with crowd -4. MINOR/MODERATE or injury to loser alone does not change the winner. No other stochastic override is allowed.
+- Original World ruleset injury multiplier is nullable: projection returns null until populated; no default ruleset is guessed. DB projection adds zero SQL queries: world multiplier comes from existing current-show read.
+- NO medical state, contract dates, card scripts or official results are changed by this preview. The future authoritative command must apply injuries, interference, performance consequences and receipts atomically before advertising final results.
