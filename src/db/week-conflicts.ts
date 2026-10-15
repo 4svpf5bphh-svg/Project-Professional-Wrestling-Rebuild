@@ -1,6 +1,7 @@
 import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
+import type {ResourceClaim} from "../domain/resource-arbitration.js";
 
 export type WeekBlockerCode =
   | "MISSING_SHOW" | "MISSING_SCHEDULE" | "EMPTY_CARD" | "INVALID_CARD"
@@ -17,6 +18,8 @@ export interface WeekBlocker {
 export interface WeekConflictReport {
   year:number; week:number; activePromotions:number; submittedShows:number;
   inspectedSlots:number; blockers:WeekBlocker[];
+  /** Internal server-only arbitration inputs, never a player read model. */
+  worldSeed:string;arbitrationClaims:ResourceClaim[];
   /** Strict schedule, venue registry, signed date entitlement and capacity
    * checks; NOT creative approvals or future AI/staff show fallbacks. */
   provisionalClear:boolean;
@@ -31,11 +34,12 @@ export interface WeekConflictReport {
  */
 export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<WeekConflictReport> {
   if(!worldId || worldId.length>200) throw new Error("Invalid World");
-  const states=await tx.query<{year:number;week:number;phase:string}>(
-    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId],
+  const states=await tx.query<{year:number;week:number;phase:string;seed:string|number}>(
+    "SELECT year,week,phase,seed FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId],
   );
   if(states.length!==1 || states[0]!.phase!=="RESOLVING") throw new Error("World is not resolving");
   const {year,week}=states[0]!;
+  const worldSeed=String(states[0]!.seed);
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
@@ -75,6 +79,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   const wrestlers=new Map<string,{promotionId:string;showId:string;day:number;personId:string}>();
   const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean}>=[];
   const venuesNeeded=new Set<string>();
+  const arbitrationClaims:ResourceClaim[]=[];
   let submittedShows=0;
   for(const p of promotions){
     if(p.draft_id===null){
@@ -88,6 +93,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       blockers.push({code:"MISSING_SCHEDULE",promotionIds:[p.promotion_id],showIds:[showId]});
     } else {
       venuesNeeded.add(p.venue_id);
+      arbitrationClaims.push({kind:"VENUE",resourceId:p.venue_id,day:p.show_day,
+        promotionId:p.promotion_id,showId});
       const key=p.show_day+"\u0000"+p.venue_id;
       const prev=venues.get(key);
       if(prev && prev.promotionId!==p.promotion_id) blockers.push({
@@ -186,6 +193,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       const cap=r.weekly_service_capacity??7;
       if(!Number.isSafeInteger(cap)||cap<1||cap>7) throw new Error("Invalid weekly service capacity");
       capacity.set(a.personId,cap);
+      arbitrationClaims.push({kind:"WRESTLER",resourceId:a.personId,day:a.day,
+        promotionId:a.promotionId,showId:a.showId,weeklyCapacity:cap});
       const arr=scheduled.get(a.personId)??[];
       arr.push(a);scheduled.set(a.personId,arr);
     }
@@ -198,6 +207,6 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     }
   }
   return {year,week,activePromotions:promotions.length,submittedShows,
-    inspectedSlots:slots.length,blockers,
+    inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,
     provisionalClear:promotions.length>0 && blockers.length===0};
 }

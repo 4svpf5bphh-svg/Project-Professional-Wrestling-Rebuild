@@ -101,3 +101,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - `consumeShowAppearances` verifies the clearance in its EXISTING submitted-show lookup via an indexed LEFT JOIN; no extra network round-trip per show. Week advancement requires clearance as well as the later completion certification.
 - A clearance cannot be issued after show resolution has begun. Clearing the same week twice with a different request ID is rejected.
 - The existing typed booking command boundary disallows post-deadline player changes. DB-level immutability for all historical/admin write paths and deterministic contested-resource arbitration still need explicit follow-up before a production scheduler.
+
+## World-seeded resource arbitration (pure and provisional)
+- First version: repeatable SHA-256 ordering by immutable World identity/seed, year/week, resource identity and promotion; never submission clock, request ID or mutable show ID.
+- Venue claims are contested per venue/day; wrestlers use both one booking per day and the wrestler's total weekly service capacity. Different-day nonexclusive work is valid when capacity permits.
+- Pure allocation returns proposed losers and protected claims. Does NOT mutate authored cards, select match finishes, consume dates, or write a misleading clearance receipt. Staff/AI fallback and final binding are separate next steps.
+- Server preview reuses the already-batched Week conflict inspector in one World transaction (<=7 SQL statements including BEGIN/COMMIT in a 2-promotion fixture), never a whole-World load or one query per wrestler. Never expose a full cross-promotion draft to player API.
+- Decisions have a canonical claims fingerprint for later durable binding and stale-plan detection; repeatable outcomes across input permutations are covered by tests.

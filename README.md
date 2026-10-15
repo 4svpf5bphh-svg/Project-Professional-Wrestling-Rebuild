@@ -43,3 +43,6 @@ Current-week inspection also verifies each scheduled venue exists in the World r
 
 ## New pre-resolution clearance
 `clearWorldWeekResources` is a trusted-only atomic World command. It refuses to clear a week with any missing show, venue/talent collision, invalid contract or weekly capacity conflict; contested bookings never win simply because their show's date charging ran first. A durable week clearance must exist before `consumeShowAppearances` can charge dates or before advancement can complete. Full arbitration, staff-run show fallback, immutable post-lock persistence and certification of remaining simulation consequences are not yet complete.
+
+## Deterministic provisional resource arbitration
+A pure server-side planner ranks competing venue-day and wrestler-day/weekly-capacity bookings from World seed, PPW week and promotion identity. It does not reward early submissions, and does not silently change scripted finishes. `previewWorldWeekArbitration` reuses bounded World Lock inspection reads. The resulting outcomes remain **proposals only**, not definitive allocation or permission to charge dates; durable decision receipts, staff/AI alternatives and actual conflict remediation remain to be implemented.
