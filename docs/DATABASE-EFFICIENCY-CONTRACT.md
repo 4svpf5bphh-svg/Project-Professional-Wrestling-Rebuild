@@ -136,3 +136,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Truly unfinished work is `STAFF_FALLBACK_ELIGIBLE` only with owner-specific opt-in. Non-delegated human work is `PLAYER_ACTION_REQUIRED`; unclaimed promotions remain `UNASSIGNED` and are not automatically converted to AI.
 - The lock-time snapshot is a bounded current-week query (<=128 promotions) and a **single** batched INSERT; it stores narrow statuses, no card payloads, no individual N+1 SQL and no polling.
 - This checkpoint does NOT create shows, apply absence penalties, amend scripts or permit World advancement. Actual staff show creation and immutable booking submission remain follow-up work.
+
+## Prepared, owner-confirmed cards at World Lock
+- During OPEN and only before next_lock_at, a verified active controller may explicitly confirm a current DRAFT as ready for the automatic lock handoff. The marker contains authenticated owner and a SHA-256 fingerprint of the ordered card slots and schedule.
+- Structural first-version validation checks existing active venue, one to 100 slots, parsable participants/contracts and at least two participants on MATCH slots. It does NOT certify all authored wrestling finishes because full typed match/segment schemas are not yet ported: those remain a later gate before full show simulation.
+- The locked resolver requires an existing continuity snapshot, unchanged fingerprint, active matching owner and valid draft. It atomically submits only confirmed, unchanged, eligible drafts in one set UPDATE; ambiguous/edited drafts are left unchanged with a narrow review reason. It never rewrites the card, creates a match, charges dates, or applies an absence penalty.
+- One bounded batch read of candidates, one batch slot query, one venue batch query and one set UPDATE replace N+1 work. A single finalization receipt and small audit ledger persist result. The World must still be LOCKED; no extension of any booking deadline.

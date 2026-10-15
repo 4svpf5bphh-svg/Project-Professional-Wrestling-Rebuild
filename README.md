@@ -58,3 +58,6 @@ The server-only `applyAiWeekRemediation` now commits one revalidated venue or sh
 
 ## Staff continuity / absence groundwork
 A player-controlled promotion can explicitly opt into staff handling unfinished mandatory shows before the World Lock. The one-time lock-stage `recordWeekContinuity` identifies submitted shows, prepared-but-unsubmitted drafts, delegated unfinished work, unfinished work needing player attention and unassigned promotions. It saves only a small status per active promotion and changes no cards. Full validation/auto-submission for complete drafts, staff-authored fallbacks and actual absence consequences are **not** enabled yet.
+
+## Confirmed prepared-show lock handoff
+Players can explicitly confirm a valid draft as ready for World Lock before the deadline. The server remembers a fingerprint of the original authored card and venue/day. After Lock and the continuity snapshot, `finalizePreparedWorldShows` auto-submits only unchanged owner-confirmed drafts, or flags edited/invalid drafts for review without touching scripted finishes. This is structural validation; full typed wrestling outcome schemas, venue economics, conflicts and simulation still remain gates before the show can actually run.

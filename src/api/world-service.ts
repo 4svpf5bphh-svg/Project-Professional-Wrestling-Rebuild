@@ -4,6 +4,7 @@ import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
+import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
  * This module is framework-neutral; HTTP handlers should map exceptions to
@@ -14,6 +15,7 @@ export interface WorldApiContext { pool:TransactionPool; actor:VerifiedActor }
 export interface WorldMutationInput { worldId:string; requestId:string; expectedRevision:number }
 export interface ClaimInput extends WorldMutationInput { promotionId:string }
 export interface StaffContinuityInput extends ClaimInput { allowUnfinishedFallback:boolean }
+export interface ReadyShowInput extends ClaimInput { showId:string;confirmReadyToRun:true }
 
 function validate(value:string,label:string):void {
   if (typeof value!=="string" || value.length<1 || value.length>200) throw new Error("Invalid "+label);
@@ -45,6 +47,14 @@ export async function setStaffContinuityAsActor(context:WorldApiContext,input:St
   validate(input.promotionId,"promotion");
   if(typeof input.allowUnfinishedFallback!=="boolean")throw new Error("Invalid delegation");
   return setStaffContinuity(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function markPreparedShowReadyAsActor(context:WorldApiContext,input:ReadyShowInput){
+  validate(context.actor.playerId,"actor");
+  validateMutation(input);
+  validate(input.promotionId,"promotion");
+  validate(input.showId,"show");
+  if(input.confirmReadyToRun!==true)throw new Error("Explicit ready-to-run confirmation required");
+  return markPreparedShowReady(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function overviewAsActor(context:WorldApiContext,worldId:string) {
   validate(context.actor.playerId,"actor");
