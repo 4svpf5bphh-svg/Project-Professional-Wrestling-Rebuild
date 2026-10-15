@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:neon": "tsx --test tests/neon-integration.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "pg": "^8.16.3",
+    "@types/pg": "^8.15.5"
   }
 }
