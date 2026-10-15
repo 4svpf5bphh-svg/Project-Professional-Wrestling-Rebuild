@@ -12,7 +12,7 @@ const url=process.env.PPW_NEON_TEST_URL;
 test("original match rating/crowd run from only current-week relational context",
   {skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),id=randomUUID(),worldId="archived-score-"+id;
-  const promotionId="promotion-"+id,showId="show-"+id,personIds=["a-"+id,"b-"+id];
+  const promotionId="promotion-"+id,showId="scorecard",personIds=["a-"+id,"b-"+id];
   const input={worldId,promotionId,showId};
   try{
     await withWorldTransaction(db.pool,async tx=>{
