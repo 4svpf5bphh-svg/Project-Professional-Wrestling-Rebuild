@@ -19,10 +19,11 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
       await createWorld(tx,{id:worldId,name:"Date Fixture",seed:4,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:promotionId,name:"Date Promotion",tier:"LOCAL"});
       await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,11,'SUBMITTED'),($1,$4,$3,1,12,'SUBMITTED')",[worldId,"show-"+id,promotionId,"bad-show-"+id]);
+      await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb),($1,$5,$6,0,'MATCH',$7::jsonb)",[worldId,"show-"+id,"slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2}]}),"bad-show-"+id,"bad-slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]})]);
       await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,'Finite'),($1,$3,'Unlimited')",[worldId,p1,p2]);
       await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,20)",[worldId,c1,p1,promotionId,c2,p2]);
     });
-    const input={worldId,playerId:"system",promotionId,showId:"show-"+id,requestId:"resolve-"+id,expectedRevision:0,currentWeekIndex:10,appearances:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2}]};
+    const input={worldId,playerId:"system",promotionId,showId:"show-"+id,requestId:"resolve-"+id,expectedRevision:0,currentWeekIndex:10};
     const result=await consumeShowAppearances(db.pool,input);
     assert.equal(result.status,"APPLIED");
     assert.deepEqual(result.result,{performers:2,datesCharged:1});
@@ -31,7 +32,7 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
     assert.equal(await read(),1);
     await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"duplicate-show-"+id,expectedRevision:1}),/Show already resolved/);
     assert.equal(await read(),1);
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:1,currentWeekIndex:11,appearances:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]}),/Contract unavailable/);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:1,currentWeekIndex:11}),/Contract unavailable/);
     assert.equal(await read(),1);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
