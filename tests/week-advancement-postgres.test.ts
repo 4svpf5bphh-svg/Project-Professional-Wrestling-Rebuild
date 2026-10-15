@@ -20,8 +20,12 @@ test("week cannot advance until each active promotion is resolved and certified;
       await tx.query(`UPDATE ppw_worlds SET phase='RESOLVING',year=1,week=52,day=7,
         next_lock_at=clock_timestamp()-interval '1 minute' WHERE world_id=$1`,[worldId]);
       await tx.query(
-        "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,52,'SUBMITTED'),($1,$4,$5,1,52,'SUBMITTED')",
+        "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,$2,$3,1,52,'SUBMITTED',1,'arena-a'),($1,$4,$5,1,52,'SUBMITTED',2,'arena-b')",
         [worldId,showA,promoA,showB,promoB],
+      );
+      await tx.query(
+        "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'slot-a',0,'SEGMENT',$4::jsonb),($1,$3,'slot-b',0,'SEGMENT',$4::jsonb)",
+        [worldId,showA,showB,JSON.stringify({participants:[]})],
       );
       await tx.query(
         `INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged)
@@ -43,6 +47,13 @@ test("week cannot advance until each active promotion is resolved and certified;
     await assert.rejects(advance("wrong-seal"),/no valid resolution certification/);
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_week_resolution_seals SET certified_promotions=2 WHERE world_id=$1",[worldId],
+    ));
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_booking_drafts SET show_day=1,venue_id='arena-a' WHERE world_id=$1 AND draft_id=$2",[worldId,showB],
+    ));
+    await assert.rejects(advance("stale-seal-conflict"),/unresolved schedule conflicts/);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_booking_drafts SET show_day=2,venue_id='arena-b' WHERE world_id=$1 AND draft_id=$2",[worldId,showB],
     ));
     const old=await withWorldTransaction(db.pool,tx=>tx.query<{next_lock_at:Date}>(
       "SELECT next_lock_at FROM ppw_worlds WHERE world_id=$1",[worldId],
@@ -94,7 +105,8 @@ test("overdue next deadline blocks reopening; prior data is retained",
       await createWorld(tx,{id:worldId,name:"Overdue Fixture",seed:2,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:promo,name:"Active",tier:"LOCAL"});
       await tx.query("UPDATE ppw_worlds SET phase='RESOLVING',next_lock_at=clock_timestamp()-interval '2 days' WHERE world_id=$1",[worldId]);
-      await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,'show-overdue',$2,1,1,'SUBMITTED')",[worldId,promo]);
+      await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,'show-overdue',$2,1,1,'SUBMITTED',1,'overdue-arena')",[worldId,promo]);
+      await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'show-overdue','overdue-slot',0,'SEGMENT',$2::jsonb)",[worldId,JSON.stringify({participants:[]})]);
       await tx.query(
         `INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged)
          VALUES($1,'show-overdue',$2,0,'overdue-resolve',0,0)`,

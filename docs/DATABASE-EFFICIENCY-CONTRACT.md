@@ -78,3 +78,7 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Same wrestler can work across multiple promotions on **different PPW days**; an identical PPW day conflicts, as does double-booking one venue on one day. Do not award ties to the first submission.
 - Missing shows/schedules, empty/malformed cards and same-day conflicts block provisional readiness. No wrestler's booked finish can be rewritten by a conflict heuristic.
 - This provisional inspection is NOT weekly certification: it does not yet check contract coverage/service capacity, actual venue ownership, staff fallback, or every simulation consequence. No production scheduler or seal writer has been enabled.
+
+## Advancement resource guard
+- Even when a weekly certificate exists, the World-locked advancement transaction inspects the CURRENT submitted shows for missing day/venue/card details and same-day wrestler or venue conflicts before reopening.
+- This adds three bounded server-only queries once per resolved World week, never to routine player reads. It is a safeguard, not a completed talent-capacity, venue-catalogue or AI/staff-resolution pipeline.

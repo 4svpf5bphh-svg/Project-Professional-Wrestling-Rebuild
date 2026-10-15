@@ -1,5 +1,6 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {inspectWeekConflicts} from "./week-conflicts.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -50,6 +51,11 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       if(required<1) throw new Error("World has no active promotions");
       if(resolved!==required) throw new Error("World week incomplete: active promotions need resolved shows");
       if(certified!==required) throw new Error("World week has no valid resolution certification");
+      // A certificate alone is not enough: re-check submitted cards in this
+      // SAME locked World transaction, so stale approvals cannot skip collisions.
+      const conflicts=await inspectWeekConflicts(tx,input.worldId);
+      if(!conflicts.provisionalClear || conflicts.activePromotions!==required)
+        throw new Error("World week has unresolved schedule conflicts");
       // Retain the canonical daily cadence (a 52-week year, 1 real day/week).
       // If the resolver misses a whole day, do not reopen with a deadline
       // already in the past; this needs an explicit recovery policy.
