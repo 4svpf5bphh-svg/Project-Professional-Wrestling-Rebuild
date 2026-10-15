@@ -93,7 +93,7 @@ test("opted-in staff completes only missing venue, while human scripts and contr
      assert.equal(mutation.result.authoredCardPreserved,true);
    }
    assert.equal((await schedule(promos[0]!,"salvage-"+id,5)).status,"REPLAYED");
-   await assert.rejects(schedule(promos[0]!,"again-"+id,6),/not delegated/);
+   await assert.rejects(schedule(promos[0]!,"again-"+id,6),/previously submitted staff draft/);
    const report=await withWorldTransaction(db.pool,tx=>inspectWeekConflicts(tx,worldId));
    assert.ok(!report.blockers.some(b=>b.showIds.includes(shows[0]!)));
    const card=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{scriptedWinner:string;authoredCommentary:string}}>(
