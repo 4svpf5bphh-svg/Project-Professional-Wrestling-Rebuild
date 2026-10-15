@@ -1,4 +1,5 @@
 import type {SqlRows} from "./world-operations.js";
+import {createHash} from "node:crypto";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import type {ResourceClaim} from "../domain/resource-arbitration.js";
@@ -20,6 +21,8 @@ export interface WeekConflictReport {
   inspectedSlots:number; blockers:WeekBlocker[];
   /** Internal server-only arbitration inputs, never a player read model. */
   worldSeed:string;arbitrationClaims:ResourceClaim[];
+  /** Hash over all current-week card/venue/contract evidence, not claims only. */
+  stateFingerprint:string;
   /** Strict schedule, venue registry, signed date entitlement and capacity
    * checks; NOT creative approvals or future AI/staff show fallbacks. */
   provisionalClear:boolean;
@@ -57,8 +60,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     [worldId,year,week],
   );
   if(promotions.length>128) throw new Error("World has too many active promotions for weekly inspection");
-  const slots=await tx.query<{draft_id:string;payload:unknown}>(
-    `SELECT s.draft_id,s.payload FROM ppw_card_slots s
+  const slots=await tx.query<{draft_id:string;slot_id:string;position:number;kind:string;payload:unknown}>(
+    `SELECT s.draft_id,s.slot_id,s.position,s.kind,s.payload FROM ppw_card_slots s
         JOIN ppw_booking_drafts d ON d.world_id=s.world_id AND d.draft_id=s.draft_id
         JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
        WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
@@ -80,6 +83,14 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean}>=[];
   const venuesNeeded=new Set<string>();
   const arbitrationClaims:ResourceClaim[]=[];
+  let venueEvidence:Array<{venue_id:string;status:string}>=[];
+  let contractEvidence:Array<{
+    promotion_id:string;person_id:string;contract_id:string;
+    person_status:string|null;weekly_service_capacity:number|null;
+    contract_status:string|null;family:string|null;
+    remaining_dates:number|null;expires_week_index:number|null;
+    exclusive_elsewhere:boolean;
+  }>=[];
   let submittedShows=0;
   for(const p of promotions){
     if(p.draft_id===null){
@@ -133,6 +144,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       "SELECT venue_id,status FROM ppw_venues WHERE world_id=$1 AND venue_id=ANY($2::text[])",
       [worldId,[...venuesNeeded]],
     );
+    venueEvidence=[...venueRows].sort((a,b)=>a.venue_id.localeCompare(b.venue_id,"en"));
     const byVenue=new Map(venueRows.map(v=>[v.venue_id,v.status]));
     for(const p of promotions) {
       if(p.draft_id && p.show_day!==null && typeof p.venue_id==="string" && p.venue_id.trim()
@@ -168,6 +180,9 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
         requested.map(a=>a.contractId),weekIndex],
     );
     if(rows.length!==requested.length) throw new Error("Wrestler availability batch mismatch");
+    contractEvidence=[...rows].sort((a,b)=>
+      [a.promotion_id,a.person_id,a.contract_id].join("\u0000")
+      .localeCompare([b.promotion_id,b.person_id,b.contract_id].join("\u0000"),"en"));
     const capacity=new Map<string,number>();
     // Associating by IDs avoids relying on unspecified SQL result order.
     const byContract=new Map(rows.map(r=>[r.promotion_id+"\u0000"+r.person_id+"\u0000"+r.contract_id,r]));
@@ -206,7 +221,14 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       });
     }
   }
+  // No extra SQL: hash ONLY the evidence already fetched for inspection.
+  // This invalidates a recorded proposal if a card script, schedule, venue
+  // state, contract eligibility or capacity changes without a revision bump.
+  const stateFingerprint=createHash("sha256").update(JSON.stringify({
+    worldId,worldSeed,year,week,promotions,slots,venues:venueEvidence,
+    contracts:contractEvidence,
+  })).digest("hex");
   return {year,week,activePromotions:promotions.length,submittedShows,
-    inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,
+    inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,stateFingerprint,
     provisionalClear:promotions.length>0 && blockers.length===0};
 }

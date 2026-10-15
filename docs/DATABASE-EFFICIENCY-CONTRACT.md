@@ -108,3 +108,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Pure allocation returns proposed losers and protected claims. Does NOT mutate authored cards, select match finishes, consume dates, or write a misleading clearance receipt. Staff/AI fallback and final binding are separate next steps.
 - Server preview reuses the already-batched Week conflict inspector in one World transaction (<=7 SQL statements including BEGIN/COMMIT in a 2-promotion fixture), never a whole-World load or one query per wrestler. Never expose a full cross-promotion draft to player API.
 - Decisions have a canonical claims fingerprint for later durable binding and stale-plan detection; repeatable outcomes across input permutations are covered by tests.
+
+## Durable arbitration proposal, not an allocation (Gate 10)
+- Exactly one compact proposal row per World week; only disputed outcomes are stored, never a complete World or card snapshot. It is a server-side planning receipt and does NOT unblock clearance, edit any card or authorise date charging.
+- A snapshot fingerprint hashes the already-fetched scoped World-week evidence (promotions, ordered slot metadata/content, venue status and wrestler contract/capacity). This detects raw card edits that leave wrestler/venue claims unchanged; zero additional SQL statements for fingerprinting.
+- Command revision and request receipt serialize simultaneous proposal writers and make exact retries safe; changed input fingerprints and later revisions fail closed.
+- Retrieving the record rechecks World revision and evidence fingerprint under World row lock. Stale proposals cannot be used as current arbitration decisions. Future staff remediation will require its own transactional operations and explicit outcome-ledger records.
+- Concurrency and edited-script regressions use disposable PostgreSQL; no worker or cron is connected.

@@ -46,3 +46,6 @@ Current-week inspection also verifies each scheduled venue exists in the World r
 
 ## Deterministic provisional resource arbitration
 A pure server-side planner ranks competing venue-day and wrestler-day/weekly-capacity bookings from World seed, PPW week and promotion identity. It does not reward early submissions, and does not silently change scripted finishes. `previewWorldWeekArbitration` reuses bounded World Lock inspection reads. The resulting outcomes remain **proposals only**, not definitive allocation or permission to charge dates; durable decision receipts, staff/AI alternatives and actual conflict remediation remain to be implemented.
+
+## Recorded provisional arbitration (not enforced allocation)
+`recordWorldWeekArbitration` persists a small World-week proposal before resource clearance, using revision/idempotency protections and a fingerprint of all inspected evidence. `readRecordedWeekArbitration` returns CURRENT/STALE/NONE and never changes shows. Only server resolution may call these functions. Resolution alternatives, staff/AI decisions and binding resources remain future work.

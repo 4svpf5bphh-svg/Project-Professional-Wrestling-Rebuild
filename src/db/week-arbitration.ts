@@ -15,6 +15,7 @@ export async function previewWorldWeekArbitration(pool:TransactionPool,worldId:s
     },report.arbitrationClaims);
     return {
       year:report.year,week:report.week,sourceFingerprint:plan.fingerprint,
+      stateFingerprint:report.stateFingerprint,
       contestedPromotions:plan.contestedPromotions,outcomes:plan.outcomes,
       unresolvedBlockers:report.blockers.map(b=>b.code).filter((code,i,arr)=>arr.indexOf(code)===i),
       /** Only a PROPOSAL. Decisions require staff remediation and reinspection
