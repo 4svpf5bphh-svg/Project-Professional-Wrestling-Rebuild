@@ -63,3 +63,12 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Show resolution now uses constant query count as card size grows (test fixture: 18 wrestlers, <=12 SQL statements INCLUDING BEGIN/COMMIT). The old loop made up to two additional SQL calls per performer.
 - An invalid/expired contract or unexpected update row count throws inside the transaction: no partial charges and no committed show receipt.
 - This is a database query budget, not evidence of real-world Neon billing; measure billed transfer after staged playtesting.
+
+## Weekly completion / bounded verification gate
+- Only a trusted resolver (never the player API) can advance a World after the single weekly lock and the internal RESOLVING phase.
+- Each ACTIVE promotion must have exactly one SUBMITTED show in the current World week with a matching durable resolution receipt. Missing shows block advancement until AI/staff absence policy is implemented.
+- Conflict arbitration and remaining weekly consequences must produce a compact server-only week certificate before advancement. The certification writer is **not yet implemented**; fixture seeding is test-only. Do not wire advancement into any cron until certification is real.
+- Readiness is verified by one bounded indexed query across current-week booking drafts, show receipts and the single week certificate; no historical World scan or per-promotion queries.
+- Move calendar (52→1), open next week and add precisely one day to next_lock_at in an atomic transaction with an append-only completion ledger entry and retry receipt.
+- If the canonical next deadline has already elapsed, fail closed for manual recovery rather than quietly creating an expired opening.
+- Historical ledger rows are not included in everyday Home data; player UI will query bounded projections later.
