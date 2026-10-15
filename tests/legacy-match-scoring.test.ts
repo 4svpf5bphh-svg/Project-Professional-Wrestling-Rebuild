@@ -4,9 +4,9 @@ import {scoreArchivedSinglesBeforeInjuries,type ScoringInput}
   from "../src/simulation/legacy/match-scoring.js";
 
 const strong={skills:{inRingQuality:85,matchCraft:82,presentation:77,
-  stamina:80,safety:92},popularity:60,recognition:65,momentum:72,fatigue:15};
+  stamina:80,safety:92},popularity:60,recognition:65,momentum:72,fatigue:15,wear:10};
 const skilled={skills:{inRingQuality:77,matchCraft:74,presentation:69,
-  stamina:83,safety:88},popularity:53,recognition:49,momentum:57,fatigue:24};
+  stamina:83,safety:88},popularity:53,recognition:49,momentum:57,fatigue:24,wear:12};
 const base:ScoringInput={
   worldSeed:42,matchId:"show:opening",order:1,eventImportance:61,
   intent:"TECHNICAL",style:null,plannedFinish:"SUBMISSION",

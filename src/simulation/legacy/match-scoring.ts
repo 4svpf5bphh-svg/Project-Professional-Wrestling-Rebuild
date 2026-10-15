@@ -9,7 +9,7 @@ import {evaluateMatchStyleExecution,type MatchStyleSkillProfile} from "./match-s
 type ScoringMatch={intent:MatchIntent;style?:MatchStyleProfile};
 export interface ScoredWrestler {
   skills:MatchStyleSkillProfile;
-  popularity:number;recognition:number;momentum:number;fatigue:number;
+  popularity:number;recognition:number;momentum:number;fatigue:number;wear:number;
 }
 export interface ScoringInput {
   worldSeed:string|number;matchId:string;order:number;eventImportance:number;
@@ -126,7 +126,7 @@ export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):Prelimina
      !Number.isFinite(input.chemistryModifier)||input.chemistryModifier < -25||
      input.chemistryModifier>25||input.people.length!==2)throw new Error("Invalid match scoring context");
   for(const p of input.people){
-    for(const v of [...Object.values(p.skills),p.popularity,p.recognition,p.momentum,p.fatigue]){
+    for(const v of [...Object.values(p.skills),p.popularity,p.recognition,p.momentum,p.fatigue,p.wear]){
       if(typeof v!=="number"||!Number.isFinite(v)||v<0||v>100)
         throw new Error("Unknown or invalid original wrestler scoring input");
     }

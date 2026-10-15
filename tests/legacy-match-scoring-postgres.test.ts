@@ -82,7 +82,7 @@ test("original match rating/crowd run from only current-week relational context"
     const compatibility=Math.round(rng.float(-12,13)*10)/10;
     const chemistryModifier=compatibility*0.45;
     const player={skills:{inRingQuality:85,matchCraft:82,presentation:77,
-      stamina:80,safety:92},popularity:60,recognition:65,momentum:72,fatigue:15};
+      stamina:80,safety:92},popularity:60,recognition:65,momentum:72,fatigue:15,wear:10};
     assert.deepEqual(first.score,scoreArchivedSinglesBeforeInjuries({
       worldSeed:"502",matchId:showId+":opening",order:1,eventImportance:61,
       intent:"TECHNICAL",style:null,plannedFinish:"SUBMISSION",

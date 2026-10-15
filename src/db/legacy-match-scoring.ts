@@ -29,7 +29,7 @@ const readPerson=(r:PersonRow):ScoredWrestler=>{
     inRingQuality:r.in_ring_quality!,matchCraft:r.match_craft!,
     presentation:r.presentation!,stamina:r.stamina!,safety:r.safety!,
   },fatigue:r.fatigue!,popularity:r.popularity!,
-    recognition:r.recognition!,momentum:r.momentum!};
+    recognition:r.recognition!,momentum:r.momentum!,wear:r.wear!};
 };
 
 /** Reuses the original match and show rating equations with a bounded
