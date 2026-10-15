@@ -12,6 +12,9 @@ import {previewArchivedMatchConsequences}
   from "../simulation/legacy/match-consequences.js";
 import {evaluateArchivedMatchPacing,type PacingMatch}
   from "../simulation/legacy/show-pacing.js";
+import {evaluateArchivedShowAlignments,combineArchivedPacingAndAlignments,
+ type WrestlerAlignment,type AlignmentChangeMethod}
+ from "../simulation/legacy/show-alignment.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -21,6 +24,7 @@ type PersonRow={
   in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;
   popularity:number|null;recognition:number|null;momentum:number|null;
+  default_alignment:WrestlerAlignment|null;
 };
 type ChemistryRow={person_a_id:string;person_b_id:string;
   compatibility:string|number;familiarity:string|number;matches_together:number};
@@ -51,9 +55,9 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
   return withWorldTransaction(pool,async tx=>{
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
-      media_reach:number|null}>(
+      media_reach:number|null;alignment_history_loaded:boolean}>(
       `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
-          p.media_reach
+          w.alignment_history_loaded,p.media_reach
         FROM ppw_booking_drafts d
         JOIN ppw_worlds w ON w.world_id=d.world_id
           AND w.year=d.year AND w.week=d.week AND w.phase='RESOLVING'
@@ -104,7 +108,8 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     if(allPeople.length>200)throw new Error("World-scoped scoring roster exceeds batch limit");
     const persons=await tx.query<PersonRow>(
       `SELECT person_id,status,booking_division,in_ring_quality,match_craft,
-        presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum
+        presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,
+        default_alignment
          FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])`,
       [input.worldId,allPeople],
     );
@@ -113,7 +118,9 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     const interfererProfiles=new Map(persons.map(p=>[p.person_id,p]));
     const talent=new Map<string,ScoredWrestler>();
     const divisions=new Map<string,string>();
+    const baseAlignments=new Map<string,WrestlerAlignment|null>();
     for(const p of persons){
+      baseAlignments.set(p.person_id,p.default_alignment);
       if(!appearances.has(p.person_id))continue;
       if(p.status!=="ACTIVE")throw new Error("Inactive wrestler cannot be scored");
       if(p.booking_division!=="MEN"&&p.booking_division!=="WOMEN")
@@ -214,8 +221,49 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     }):[];
     const showPacingPreview=readyForPacing?
       evaluateArchivedMatchPacing(pacingCard):null;
+    // Never interpret an unimported archive as zero prior turns. The
+    // canonical promotion override and 8-week changed-history are batch
+    // projected only after confirmed historical coverage and match scoring.
+    let showAlignmentPreview:ReturnType<typeof combineArchivedPacingAndAlignments>|null=null;
+    if(showPacingPreview!==null && show.alignment_history_loaded){
+      const ids=[...appearances].sort();
+      const overrides=await tx.query<{person_id:string;alignment:WrestlerAlignment}>(
+        `SELECT person_id,alignment FROM ppw_promotion_wrestler_alignments
+           WHERE world_id=$1 AND promotion_id=$2
+             AND person_id=ANY($3::text[])`,
+        [input.worldId,input.promotionId,ids],
+      );
+      const actual=new Map(baseAlignments);
+      for(const o of overrides)actual.set(o.person_id,o.alignment);
+      if([...appearances].every(id=>actual.get(id)!==null && actual.has(id))){
+        const currentWeekIndex=(show.year-1)*52+show.week-1;
+        const history=await tx.query<{person_id:string;year:number;week:number;
+           method:AlignmentChangeMethod;changed:boolean}>(
+          `SELECT person_id,year,week,method,changed
+             FROM ppw_promotion_alignment_changes
+            WHERE world_id=$1 AND promotion_id=$2
+              AND person_id=ANY($3::text[])
+              AND ((year-1)*52+week-1) BETWEEN $4 AND $5
+            ORDER BY year,week,change_id LIMIT 4097`,
+          [input.worldId,input.promotionId,ids,Math.max(0,currentWeekIndex-7),currentWeekIndex],
+        );
+        if(history.length>4096)throw new Error("Alignment history exceeds bounded projection");
+        const alignments=evaluateArchivedShowAlignments(matches.map((slot,index)=>{
+          const match=projections[index]!;
+          return {matchId:slot.slot_id,position:slot.position,
+            aId:match.consequencesPreview?.performers[0]?.personId ??
+              readCardParticipants(slot.payload)[0]!.personId,
+            bId:match.consequencesPreview?.performers[1]?.personId ??
+              readCardParticipants(slot.payload)[1]!.personId,
+            aAlignment:actual.get(readCardParticipants(slot.payload)[0]!.personId)!,
+            bAlignment:actual.get(readCardParticipants(slot.payload)[1]!.personId)!};
+        }),history.map(c=>({personId:c.person_id,weekIndex:(c.year-1)*52+c.week-1,
+          method:c.method,changed:c.changed})),currentWeekIndex);
+        showAlignmentPreview=combineArchivedPacingAndAlignments(showPacingPreview,alignments);
+      }
+    }
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections,showPacingPreview};
+      projections,showPacingPreview,showAlignmentPreview};
   });
 }

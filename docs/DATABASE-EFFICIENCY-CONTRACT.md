@@ -204,3 +204,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Pull pacing/style similarity, ranked signal selection and match weights directly from archived `packages/sim-core/src/show-flow.ts`. No snapshot WorldState read and no standalone SQL in the pure engine.
 - The existing four-batch match preview now derives an explicitly incomplete pacing projection from post-medical/post-interference match crowds. If injury rules have not been migrated, no pacing is inferred.
 - Do not present this as full `evaluateShowFlow` parity: historical programmes, alignment volatility, dirty finish familiarity, and resolved segment audience signals are not yet available. Its `PACING_ONLY_NOT_FINAL` phase and `NOT_PROJECTED` segments marker prevent confusing it with final show results.
+
+## Historic alignment and context without WorldState
+- Aligned show preview uses the archived `show-flow.ts` clarity modifiers and `alignment.ts` eight-week maximum-per-performer change penalty, including different handling for scripted TURN, offscreen switch, first presentation, signing and returning.
+- Promotion-specific alignment overrides are separate from a wrestler's base identity. Unknown values remain NULL; the World must explicitly certify `alignment_history_loaded` before a zero-history result is ever presumed.
+- The active show already has <=100 match participants; two added bounded SQL reads get promotion overrides and up to 4096 recent change records only for confirmed imported-history Worlds. Neither query occurs until medical/interference and pacing are available. No global historical ledger hydration or participant-by-participant query.
+- Incomplete show context returns NULL. The calculated crowd is labeled `PACING_AND_ALIGNMENT_NOT_FINAL` and cannot be recorded as final or award momentum until programmes, cheat familiarity and segment crowds are ported.
