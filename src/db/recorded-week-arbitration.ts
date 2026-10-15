@@ -1,4 +1,5 @@
 import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {withWorldTransaction} from "./transaction.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
@@ -67,35 +68,43 @@ export async function recordWorldWeekArbitration(pool:TransactionPool,input:Reco
  * authorization to spend dates or apply outcomes. One World-scoped read plus
  * existing batched inspection; no historical scan or per-wrestler polling.
  */
+/** Shared transaction helper avoids TOCTOU between checking a recorded
+ * draw and generating staff alternatives. Read-only under the World lock.
+ */
+export async function inspectRecordedWeekArbitration(tx:SqlRows,worldId:string){
+  const world=await tx.query<{year:number;week:number;phase:string;revision:string|number}>(
+    "SELECT year,week,phase,revision FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId],
+  );
+  if(world.length!==1)throw new Error("World not found");
+  if(world[0]!.phase!=="RESOLVING")throw new Error("World is not resolving");
+  const {year,week}=world[0]!;
+  const rows=await tx.query<StoredPlan>(
+    `SELECT source_revision,state_fingerprint,claim_fingerprint,proposal,disputed_count
+     FROM ppw_week_arbitration_proposals WHERE world_id=$1 AND year=$2 AND week=$3`,
+    [worldId,year,week],
+  );
+  if(!rows.length)return {status:"NONE" as const,year,week};
+  if(rows.length!==1)throw new Error("Duplicate arbitration proposals");
+  const record=rows[0]!;
+  if(Number(world[0]!.revision)!==Number(record.source_revision)+1)
+    return {status:"STALE" as const,year,week};
+  const report=await inspectWeekConflicts(tx,worldId);
+  const plan=planResourceArbitration({worldId,worldSeed:report.worldSeed,year,week},
+    report.arbitrationClaims);
+  if(report.stateFingerprint!==record.state_fingerprint||
+    plan.fingerprint!==record.claim_fingerprint||
+    JSON.stringify(plan.outcomes)!==JSON.stringify(record.proposal)||
+    plan.outcomes.length!==record.disputed_count)
+      return {status:"STALE" as const,year,week};
+  return {status:"CURRENT" as const,year,week,
+    sourceFingerprint:record.state_fingerprint,
+    outcomes:record.proposal,disputedCount:record.disputed_count,report};
+}
 export async function readRecordedWeekArbitration(pool:TransactionPool,worldId:string){
   return withWorldTransaction(pool,async tx=>{
-    const world=await tx.query<{year:number;week:number;phase:string;revision:string|number}>(
-      "SELECT year,week,phase,revision FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId],
-    );
-    if(world.length!==1)throw new Error("World not found");
-    if(world[0]!.phase!=="RESOLVING")throw new Error("World is not resolving");
-    const {year,week}=world[0]!;
-    const rows=await tx.query<StoredPlan>(
-      `SELECT source_revision,state_fingerprint,claim_fingerprint,proposal,disputed_count
-         FROM ppw_week_arbitration_proposals WHERE world_id=$1 AND year=$2 AND week=$3`,
-      [worldId,year,week],
-    );
-    if(rows.length===0)return {status:"NONE" as const,year,week};
-    if(rows.length!==1)throw new Error("Duplicate arbitration proposals");
-    const recorded=rows[0]!;
-    // The initial insert increments World revision exactly once.
-    if(Number(world[0]!.revision)!==Number(recorded.source_revision)+1)
-      return {status:"STALE" as const,year,week};
-    const report=await inspectWeekConflicts(tx,worldId);
-    const plan=planResourceArbitration({
-      worldId,worldSeed:report.worldSeed,year,week,
-    },report.arbitrationClaims);
-    if(report.stateFingerprint!==recorded.state_fingerprint ||
-      plan.fingerprint!==recorded.claim_fingerprint ||
-      plan.outcomes.length!==recorded.disputed_count)
-      return {status:"STALE" as const,year,week};
-    return {status:"CURRENT" as const,year,week,
-      sourceFingerprint:recorded.state_fingerprint,
-      outcomes:recorded.proposal,disputedCount:recorded.disputed_count};
+    const state=await inspectRecordedWeekArbitration(tx,worldId);
+    if(state.status!=="CURRENT")return state;
+    const {report:_report,...visible}=state;
+    return visible;
   });
 }

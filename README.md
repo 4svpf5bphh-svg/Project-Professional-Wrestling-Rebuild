@@ -49,3 +49,6 @@ A pure server-side planner ranks competing venue-day and wrestler-day/weekly-cap
 
 ## Recorded provisional arbitration (not enforced allocation)
 `recordWorldWeekArbitration` persists a small World-week proposal before resource clearance, using revision/idempotency protections and a fingerprint of all inspected evidence. `readRecordedWeekArbitration` returns CURRENT/STALE/NONE and never changes shows. Only server resolution may call these functions. Resolution alternatives, staff/AI decisions and binding resources remain future work.
+
+## Staff/AI booking alternatives (preview only)
+The trusted `previewWorldWeekRemediations` operation rechecks the persisted arbitration result and offers an available venue on the same show day, or a free PPW day for the unchanged show. A weekly wrestler capacity problem instead requires an explicit creative booking decision. No alternative is automatically executed; human authorship and scripted outcomes are preserved.

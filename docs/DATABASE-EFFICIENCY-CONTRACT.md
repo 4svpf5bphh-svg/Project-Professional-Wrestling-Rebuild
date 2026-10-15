@@ -115,3 +115,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Command revision and request receipt serialize simultaneous proposal writers and make exact retries safe; changed input fingerprints and later revisions fail closed.
 - Retrieving the record rechecks World revision and evidence fingerprint under World row lock. Stale proposals cannot be used as current arbitration decisions. Future staff remediation will require its own transactional operations and explicit outcome-ledger records.
 - Concurrency and edited-script regressions use disposable PostgreSQL; no worker or cron is connected.
+
+## Staff and AI availability alternatives (read-only first version)
+- For a valid recorded arbitration, suggest a different active venue on the same date or moving the whole show to a free day, checking other bookings' venues and all participants. Weekly wrestler capacity failures always require creative rebooking, not a false reschedule fix.
+- Revalidate the durable proposal and compute alternatives under the SAME World transaction. One bounded World-scoped active-venue query (<=256) is added; no per-person SQL or live polling. Large-venue worlds require a later market-scoped search rather than silent truncation.
+- Suggested changes are individually possible against the existing schedule but not reserved for all losers simultaneously. Future acceptance MUST recheck all World claims atomically.
+- No wrestler replacements, show/card changes, contract deductions or scripted finish changes are applied by this operation.

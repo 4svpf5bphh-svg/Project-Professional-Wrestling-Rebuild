@@ -7,6 +7,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {previewWorldWeekArbitration} from "../src/db/week-arbitration.js";
 import {recordWorldWeekArbitration,readRecordedWeekArbitration} from "../src/db/recorded-week-arbitration.js";
 import {clearWorldWeekResources} from "../src/db/week-clearance.js";
+import {previewWorldWeekRemediations} from "../src/db/week-remediation.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("durable provisional arbitration: racing workers, retries, stale cards, zero charges",
@@ -20,7 +21,7 @@ test("durable provisional arbitration: racing workers, retries, stale cards, zer
       await createWorld(tx,{id:worldId,name:"Proposals",seed:42,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:a,name:"A",tier:"LOCAL"});
       await addPromotion(tx,worldId,{id:b,name:"B",tier:"LOCAL"});
-      await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'venue','Venue')",[worldId]);
+      await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'venue','Venue'),($1,'spare','Spare')",[worldId]);
       await tx.query(
         "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,$2,$3,1,1,'SUBMITTED',3,'venue'),($1,$4,$5,1,1,'SUBMITTED',3,'venue')",
         [worldId,showA,a,showB,b],
@@ -46,6 +47,22 @@ test("durable provisional arbitration: racing workers, retries, stale cards, zer
     await assert.rejects(runner("another",1,preview.stateFingerprint),/already recorded/);
     let stored=await readRecordedWeekArbitration(db.pool,worldId);
     assert.equal(stored.status,"CURRENT");
+    const sql:string[]=[];
+    const meter={async connect(){
+      const client=await db.pool.connect();
+      return {async query<T extends Record<string,unknown>>(query:string,params:readonly unknown[]){
+        sql.push(query);return client.query<T>(query,params);
+      },release(){client.release()}};
+    }};
+    const options=await previewWorldWeekRemediations(meter,worldId);
+    assert.equal(options.status,"CURRENT");
+    if(options.status==="CURRENT"){
+      assert.equal(options.shows.length,1);
+      assert.equal(options.shows[0]!.choices[0]!.kind,"CHANGE_VENUE");
+      assert.equal(options.shows[0]!.automaticallyApplied,false);
+      assert.ok(options.shows[0]!.choices.some(choice=>choice.kind==="CHANGE_DAY"));
+    }
+    assert.ok(sql.length<=11,"too many bounded SQL statements: "+sql.length);
     if(stored.status==="CURRENT")assert.deepEqual(stored.outcomes,preview.outcomes);
     const shows=await withWorldTransaction(db.pool,tx=>tx.query<{remaining_dates:string}>(
       "SELECT count(*)::text AS remaining_dates FROM ppw_show_resolutions WHERE world_id=$1",[worldId],
@@ -60,6 +77,7 @@ test("durable provisional arbitration: racing workers, retries, stale cards, zer
     ));
     stored=await readRecordedWeekArbitration(db.pool,worldId);
     assert.equal(stored.status,"STALE");
+    assert.equal((await previewWorldWeekRemediations(db.pool,worldId)).status,"STALE");
     // No mutation of match winners, booked resources, nor roster dates.
     const script=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{creativeOutcome:string}}>(
       "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2",[worldId,showB],
