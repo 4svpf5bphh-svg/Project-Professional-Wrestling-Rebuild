@@ -73,3 +73,6 @@ The rebuilt architecture now carries **unchanged** original PPW deterministic RN
 
 ## Original roster skills → booked singles evaluation
 `db/migrations/0015_wrestler_simulation_attributes.sql` adds the original five wrestler skill scores plus fatigue and wear. The trusted `previewLegacyShowMatchStyles` adapter retrieves only the current submitted/cleared show slots and the matching World-scoped wrestler rows in indexed batches, then feeds exact original PPW match-style algorithms. Unknown roster data, inactive or mixed-division wrestlers and unsupported match types fail rather than quietly using fake ratings. No actual show results, contract charges or database-wide simulation snapshots are produced yet.
+
+## Original pre-injury match rating and crowd calculations
+The scoring slice now uses the exact legacy match execution, critic stars and opening crowd equations with the original seeded RNG draw order, including dimensional or intent-only branches and finish modifiers. This is a PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW read-only score; it is **not a completed match** and cannot substitute for later injuries, real finishes, load, programmes and full show resolution. New relational audience attributes, event importance and chemistry must be wired before database score previews can run.

@@ -17,7 +17,7 @@ export interface WrestlerSimReadiness {
 }
 export interface AdaptedBookedMatch {
   personIds:[string,string];contractIds:[string,string];winnerId:string;
-  intent:MatchIntent;style:MatchStyleProfile;plannedFinish:MatchFinish;
+  intent:MatchIntent;style:MatchStyleProfile;explicitStyle:boolean;plannedFinish:MatchFinish;
   finishCheaterId:string|null;plannedLengthMinutes:number;
   styleEvaluations:ReturnType<typeof evaluateMatchStyleExecution>[];
   readiness:ReturnType<typeof assessMatchStyleReadiness>[];
@@ -71,7 +71,7 @@ export function adaptBookedSinglesMatch(payload:unknown,
   const readiness=records.map(r=>assessMatchStyleReadiness(style,r.skills,length,r.fatigue,r.wear));
   return {
     personIds:ids,contractIds:[people[0]!.contractId,people[1]!.contractId],
-    winnerId:p.scriptedWinner,intent:typedIntent,style,plannedFinish:finish,
+    winnerId:p.scriptedWinner,intent:typedIntent,style,explicitStyle:p.style!==undefined,plannedFinish:finish,
     finishCheaterId:cheater,plannedLengthMinutes:length,
     styleEvaluations:evaluations,readiness,
     status:readiness.some(x=>x.status==="REFUSES")?"NEEDS_STYLE_REVIEW":"READY",

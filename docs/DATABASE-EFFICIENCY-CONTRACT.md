@@ -169,3 +169,8 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - `previewLegacyShowMatchStyles` is read-only and server-only: first verify the World is RESOLVING, show SUBMITTED, promotion active and weekly resources cleared; then load <=100 current card slots and a single indexed World-scoped batch of <=100 wrestler rows.
 - No one-query-per-person, no historical WorldState, no uploaded whole-World aggregate, and no result writes. Enforce a measured <=6 statement target including transaction controls. Fail closed for missing skills, status, divisions, non-singles slots, absent authored winners and impossible cheating roles.
 - Player-selected finishes remain authored facts. Style readiness is assessment only, not permission to reroll winners, alter segments, spend dates, generate injuries or award popularity. Those require later fully certified resolution and parity tests.
+
+## Archived scoring parity extraction
+- `src/simulation/legacy/match-scoring.ts` ports original `matches.ts` finish modifiers and pre-injury match-rating/crowd equations, including seeded RNG draw order. The original WorldState inputs become a tiny two-person projection. No network/database calls in pure scoring.
+- Its results are explicitly PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW. Not safe to publish as actual ratings or trigger downstream consequences until the original injury, run-in, match-load and show-flow mechanics are fully integrated.
+- The legacy code distinguishes an explicit 6D match style from legacy intent-only matches. The adapter now exposes `explicitStyle`, preserving that distinction rather than silently coercing all matches onto the 6D scoring branch.
