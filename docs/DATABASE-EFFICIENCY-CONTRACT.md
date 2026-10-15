@@ -174,3 +174,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - `src/simulation/legacy/match-scoring.ts` ports original `matches.ts` finish modifiers and pre-injury match-rating/crowd equations, including seeded RNG draw order. The original WorldState inputs become a tiny two-person projection. No network/database calls in pure scoring.
 - Its results are explicitly PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW. Not safe to publish as actual ratings or trigger downstream consequences until the original injury, run-in, match-load and show-flow mechanics are fully integrated.
 - The legacy code distinguishes an explicit 6D match style from legacy intent-only matches. The adapter now exposes `explicitStyle`, preserving that distinction rather than silently coercing all matches onto the 6D scoring branch.
+
+## Bounded archived match execution context (migration 0016)
+- Store original popularity, momentum and recognition on `ppw_people`; original event importance on `ppw_booking_drafts`; and World-owned, ordered singles chemistry keyed by its pair and context. Unknown migrated scores remain NULL, and the preview refuses scoring rather than fabricating them.
+- Single World-locked current-week preview uses four batched reads (show, <=100 slots, <=100 people, <=100 chemistry pairs) + BEGIN/COMMIT. No per-match or per-person queries, and zero writes. Later actual resolution needs its own transaction plus authoritative contract and injury accounting.
+- First-encounter chemistry compatibility is generated using exactly the old PPW World-seed/pair RNG, with no database mutation; repeat pairings within the show advance in-memory familiarity deterministically.
+- Score uses actual original execution/star/crowd calculations, returns clearly labeled PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW, and MUST NOT be displayed as a completed result.

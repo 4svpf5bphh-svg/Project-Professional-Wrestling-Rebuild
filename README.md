@@ -76,3 +76,6 @@ The rebuilt architecture now carries **unchanged** original PPW deterministic RN
 
 ## Original pre-injury match rating and crowd calculations
 The scoring slice now uses the exact legacy match execution, critic stars and opening crowd equations with the original seeded RNG draw order, including dimensional or intent-only branches and finish modifiers. This is a PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW read-only score; it is **not a completed match** and cannot substitute for later injuries, real finishes, load, programmes and full show resolution. New relational audience attributes, event importance and chemistry must be wired before database score previews can run.
+
+## Relational pre-injury match scoring (migration 0016)
+The new bounded server-only `previewArchivedShowMatchScores` reads a submitted current-week show, the wrestler's original audience/skill attributes and current World-owned singles chemistry in four targeted indexed queries. Unknown stats or event importance fail closed, whereas an absent first-time chemistry pair uses the **original deterministic seed** and first-encounter familiarity. Results are previews, not completed matches: no contract debit, injuries, momentum, booking changes, show-flow consequences or ledger writes.
