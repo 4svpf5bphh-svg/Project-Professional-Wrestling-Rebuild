@@ -5,7 +5,8 @@
   "scripts": {
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:neon": "tsx --test tests/neon-integration.test.ts"
+    "test:neon": "tsx --test tests/neon-integration.test.ts",
+    "test:postgres": "tsx --test tests/neon-integration.test.ts tests/command-postgres.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
