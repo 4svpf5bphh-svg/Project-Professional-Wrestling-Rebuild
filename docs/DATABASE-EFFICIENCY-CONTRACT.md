@@ -187,3 +187,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - A MAJOR/SEVERE injury to the intended winner forces actual finish INJURY_STOPPAGE and the opposite winner, with crowd -4. MINOR/MODERATE or injury to loser alone does not change the winner. No other stochastic override is allowed.
 - Original World ruleset injury multiplier is nullable: projection returns null until populated; no default ruleset is guessed. DB projection adds zero SQL queries: world multiplier comes from existing current-show read.
 - NO medical state, contract dates, card scripts or official results are changed by this preview. The future authoritative command must apply injuries, interference, performance consequences and receipts atomically before advertising final results.
+
+## Player-authored run-ins (pure legacy interpolation)
+- The original PPW interference contract is preserved: booked SUCCESS/THWARTED, with ABORTED only for unavailability or a medical injury stoppage. Successful interference switches the finish to PROTECTED_FINISH; it never changes the winner.
+- The interferer must be an ACTIVE World wrestler with a committed, contract-backed appearance in another card slot. An interference reference alone is never accepted as an appearance.
+- The trusted scoring preview expands its existing World-scoped indexed person query to cover interferers, with NO additional SQL statements and an explicit <=200 distinct-person cap. If World injury-rate context is absent, this also returns no interference result rather than inventing a medical outcome.
+- Delivery uses the original presentation formula, and crowd is adjusted only according to the originally authored run-in or genuine abort condition. No RNG draws, outcome writes, contract charges or World changes occur.

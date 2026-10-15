@@ -6,6 +6,8 @@ import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
 import {scoreArchivedSinglesBeforeInjuries,type ScoredWrestler}
   from "../simulation/legacy/match-scoring.js";
 import {previewArchivedInjuryStoppage} from "../simulation/legacy/match-injuries.js";
+import {readBookedInterference,previewArchivedInterference}
+  from "../simulation/legacy/match-interference.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -72,8 +74,17 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     const matches=slots.filter(s=>s.kind==="MATCH");
     if(matches.length===0)throw new Error("No matches on scored show");
     const appearances=new Set<string>();
+    const interferers=new Set<string>();
+    const bookedForShow=new Set<string>();
+    for(const slot of slots){
+      // Booked appearances must originate from a real card slot with a
+      // contract-backed participant, NOT just an interference personId.
+      for(const p of readCardParticipants(slot.payload))bookedForShow.add(p.personId);
+    }
     const pairMap=new Map<string,[string,string]>();
     for(const slot of matches){
+      const interruption=readBookedInterference(slot.payload);
+      if(interruption)interferers.add(interruption.personId);
       const ids=readCardParticipants(slot.payload);
       if(ids.length!==2||ids[0]!.personId===ids[1]!.personId)
         throw new Error("Original first-version scoring supports singles only");
@@ -81,19 +92,23 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
       appearances.add(a);appearances.add(b);
       pairMap.set(pairKey(a,b),[a,b]);
     }
-    if(appearances.size>100||pairMap.size>100)
+    if(appearances.size>100||pairMap.size>100||interferers.size>100)
       throw new Error("Original match scoring input too large");
+    const allPeople=[...new Set([...appearances,...interferers])].sort();
+    if(allPeople.length>200)throw new Error("World-scoped scoring roster exceeds batch limit");
     const persons=await tx.query<PersonRow>(
       `SELECT person_id,status,booking_division,in_ring_quality,match_craft,
         presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum
          FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])`,
-      [input.worldId,[...appearances].sort()],
+      [input.worldId,allPeople],
     );
-    if(persons.length!==appearances.size)
+    if(persons.filter(p=>appearances.has(p.person_id)).length!==appearances.size)
       throw new Error("Scoring wrestler not found in World");
+    const interfererProfiles=new Map(persons.map(p=>[p.person_id,p]));
     const talent=new Map<string,ScoredWrestler>();
     const divisions=new Map<string,string>();
     for(const p of persons){
+      if(!appearances.has(p.person_id))continue;
       if(p.status!=="ACTIVE")throw new Error("Inactive wrestler cannot be scored");
       if(p.booking_division!=="MEN"&&p.booking_division!=="WOMEN")
         throw new Error("Missing canonical booking division for scoring");
@@ -154,9 +169,19 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
         ...scoringInput,personIds:match.personIds,bookedWinnerId:match.winnerId,
         injuryRateMultiplier:injuryRate,
       });
+      // Can't process run-ins until the injury outcome is known: medical
+      // stoppages always supersede scripted interference.
+      const interruption=readBookedInterference(slot.payload);
+      const profile=interruption?interfererProfiles.get(interruption.personId):null;
+      const interferencePreview=injuryPreview===null?null:previewArchivedInterference(
+        injuryPreview,interruption,profile?{
+          active:profile.status==="ACTIVE",
+          appearanceCommitted:bookedForShow.has(interruption!.personId),
+          presentation:profile.presentation,
+        }:null);
       return {slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
         plannedFinish:match.plannedFinish,readiness:match.status,
-        chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview};
+        chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview};
     });
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
