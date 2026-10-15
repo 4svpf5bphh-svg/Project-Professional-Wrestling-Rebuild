@@ -15,7 +15,7 @@ This repository is the clean-room rebuild of Project Professional Wrestling (PPW
 2. Preserve all agreed mechanics, wrestler identities, promotions, roster, contracts, segments, calendar, World Lock, outcomes, relationships, backstage, UI decisions and roadmap.
 3. Do not copy the old monolithic World JSON persistence as the primary architecture. Design relational authoritative state, bounded transactions, efficient player-scoped reads, versioned projections and immutable historical ledgers.
 4. Player scripts match and segment outcomes. Simulation determines consequences, not whether a scripted outcome happens.
-5. PPW year is 52 weeks; career time is separate; a real day is one PPW week; asynchronous World Lock is canonical.
+5. PPW year is 52 weeks; career time is separate; a real day is one PPW week; a single weekly deadline and one asynchronous World Lock are canonical.
 6. Each feature must identify dependencies in and out, simulation versus presentation, and the smallest complete first version.
 7. Preserve recovery and replay paths. No deletion of original resources without explicit approval.
 8. Target Neon transfer below 5 GB/month, preferably 2.5 GB/month for two players; validate with measured network usage and workload tests.
@@ -24,3 +24,10 @@ This repository is the clean-room rebuild of Project Professional Wrestling (PPW
 Document and inventory old domain types and invariants, then build the new schema, deterministic fixtures and tests for World creation, player/promotion control, contracts, booking, and lock/resolution. Bring over gameplay in verified slices, not a blind source copy.
 
 The old repository remains an archival reference, not a deployment dependency.
+
+## One World Lock (approved 15 October 2026)
+- One deadline per 24-hour PPW week, seven days a week; the authoritative timestamp is a UTC-compatible PostgreSQL timestamptz, not device time.
+- Talent/venue arrangements, negotiated commitments and show cards close together at that one deadline. Show conflicts need deterministic, fair server arbitration, never an online-first advantage.
+- Booking mutations must atomically require BOTH phase OPEN and next_lock_at > now(). A late scheduler must not extend the player deadline.
+- OPEN → LOCKED → RESOLVING are internal processing phases of ONE lock, not three player deadlines.
+- World reopening, result publication and next-lock scheduling are only permitted after all shows are committed. Scheduler and conflict rules are not yet complete and must not be deployed prematurely.
