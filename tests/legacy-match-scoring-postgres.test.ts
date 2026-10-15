@@ -121,7 +121,7 @@ test("original match rating/crowd run from only current-week relational context"
       "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId],
     ));
     assert.deepEqual(balances.map(b=>b.remaining_dates),[4,4]);
-    const payload=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{scriptedWinner:string}>}>(
+    const payload=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{scriptedWinner:string}}>(
       "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND slot_id='opening'",[worldId],
     ));
     assert.equal(payload[0]!.payload.scriptedWinner,personIds[1]);
