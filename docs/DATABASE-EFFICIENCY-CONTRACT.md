@@ -82,3 +82,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 ## Advancement resource guard
 - Even when a weekly certificate exists, the World-locked advancement transaction inspects the CURRENT submitted shows for missing day/venue/card details and same-day wrestler or venue conflicts before reopening.
 - This adds three bounded server-only queries once per resolved World week, never to routine player reads. It is a safeguard, not a completed talent-capacity, venue-catalogue or AI/staff-resolution pipeline.
+
+## Resource eligibility inspection (week resolution only)
+- Venue existence/active status is read through one World-scoped indexed batch query. A provisional venue string is not proof of actual capacity or ownership.
+- Wrestler active status, signed promotion-specific contract, remaining dates, term, and competing exclusive rights are checked in a second batched query, with composite World/contract/people keys and indexed exclusive lookups.
+- Distinct show appearances count towards wrestler Service Capacity across the whole PPW week; a nullable per-person override of 1–7 is supported. Unconfigured capacity defaults to 7 until the old workload-calculation model is ported. Same-day collisions always remain illegal.
+- The maximum card limits (100 appearances/show, 128 active promotions) bound the batch. These are server-only weekly inspections, not per-user polling.
+- A contract's final legal/creative approvals and the venue's full rental/financial ledger remain future development gates; this inspector alone cannot certify a week.

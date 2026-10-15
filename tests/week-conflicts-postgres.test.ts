@@ -11,6 +11,7 @@ test("one-day talent and venue collisions block provisional readiness; different
   {skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),id=randomUUID(),worldId="conflicts-"+id;
   const a="a-"+id,b="b-"+id,c="c-"+id,sa="show-a-"+id,sb="show-b-"+id,wrestler="shared-"+id;
+  const contractA="contract-a-"+id,contractB="contract-b-"+id;
   const inspect=()=>withWorldTransaction(db.pool,tx=>inspectWeekConflicts(tx,worldId));
   try {
     await withWorldTransaction(db.pool,async tx=>{
@@ -18,14 +19,22 @@ test("one-day talent and venue collisions block provisional readiness; different
       await addPromotion(tx,worldId,{id:a,name:"Promotion A",tier:"LOCAL"});
       await addPromotion(tx,worldId,{id:b,name:"Promotion B",tier:"LOCAL"});
       await addPromotion(tx,worldId,{id:c,name:"Promotion C",tier:"LOCAL"});
+      await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'arena','Arena'),($1,'different-arena','Second'),($1,'third-arena','Third')",[worldId]);
+      await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,'Shared'),($1,'third','Third')",[worldId,wrestler]);
+      await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+        VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),
+              ($1,$5,$3,$6,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),
+              ($1,'third-contract','third',$7,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20)`,
+        [worldId,contractA,wrestler,a,contractB,b,c]);
       await tx.query("UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);
       await tx.query(
         "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,$2,$3,1,1,'SUBMITTED',3,'arena'),($1,$4,$5,1,1,'SUBMITTED',3,'arena')",
         [worldId,sa,a,sb,b],
       );
       await tx.query(
-        "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'slot-a',0,'MATCH',$4::jsonb),($1,$3,'slot-b',0,'MATCH',$4::jsonb)",
-        [worldId,sa,sb,JSON.stringify({participants:[{personId:wrestler,contractId:"fictional-contract"}]})],
+        "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'slot-a',0,'MATCH',$4::jsonb),($1,$3,'slot-b',0,'MATCH',$5::jsonb)",
+        [worldId,sa,sb,JSON.stringify({participants:[{personId:wrestler,contractId:contractA}]}),
+          JSON.stringify({participants:[{personId:wrestler,contractId:contractB}]})],
       );
     });
     let result=await inspect();
@@ -67,6 +76,9 @@ test("one-day talent and venue collisions block provisional readiness; different
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_venues WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
     }).finally(()=>db.close());
