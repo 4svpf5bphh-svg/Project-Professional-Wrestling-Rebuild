@@ -19,7 +19,7 @@ CREATE TABLE ppw_week_continuity_assessments (
  promotion_id text NOT NULL,
  status text NOT NULL CHECK(status IN (
    'SUBMITTED_READY','SUBMITTED_REVIEW','PREPARED_DRAFT',
-   'STAFF_FALLBACK_ELIGIBLE','PLAYER_ACTION_REQUIRED','UNASSIGNED')),
+   'STAFF_FALLBACK_ELIGIBLE','PLAYER_ACTION_REQUIRED','AI_MANAGED','UNASSIGNED')),
  show_id text,
  controller_player_id text,
  PRIMARY KEY(world_id,year,week,promotion_id),

@@ -4,7 +4,7 @@ import {applyWorldCommand} from "./world-commands.js";
 
 export type ContinuityStatus =
   |"SUBMITTED_READY"|"SUBMITTED_REVIEW"|"PREPARED_DRAFT"
-  |"STAFF_FALLBACK_ELIGIBLE"|"PLAYER_ACTION_REQUIRED"|"UNASSIGNED";
+  |"STAFF_FALLBACK_ELIGIBLE"|"PLAYER_ACTION_REQUIRED"|"AI_MANAGED"|"UNASSIGNED";
 export interface ContinuityAssessment {
   promotionId:string;showId:string|null;
   controllerPlayerId:string|null;status:ContinuityStatus;
@@ -28,7 +28,7 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
   const {year,week}=world[0]!;
   const rows=await tx.query<Candidate>(
     `SELECT p.promotion_id,p.management_mode,
-         c.player_id AS controller_player_id,
+         m.player_id AS controller_player_id,
          x.owner_player_id AS delegated_player_id,x.allow_unfinished_fallback,
          d.draft_id,d.status,d.show_day,d.venue_id,
          (SELECT count(*)::integer FROM ppw_card_slots s
@@ -36,6 +36,8 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
        FROM ppw_promotions p
        LEFT JOIN ppw_promotion_controls c ON c.world_id=p.world_id
          AND c.promotion_id=p.promotion_id AND c.active
+       LEFT JOIN ppw_memberships m ON m.world_id=c.world_id
+         AND m.player_id=c.player_id AND m.status='ACTIVE'
        LEFT JOIN ppw_staff_continuity_settings x ON x.world_id=p.world_id
          AND x.promotion_id=p.promotion_id
        LEFT JOIN LATERAL (
@@ -62,6 +64,7 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
       r.delegated_player_id===r.controller_player_id && r.allow_unfinished_fallback===true)
       status="STAFF_FALLBACK_ELIGIBLE";
     else if(r.controller_player_id!==null)status="PLAYER_ACTION_REQUIRED";
+    else if(r.management_mode==="AI")status="AI_MANAGED";
     else status="UNASSIGNED";
     return {promotionId:r.promotion_id,showId:r.draft_id,
       controllerPlayerId:r.controller_player_id,status};
@@ -102,7 +105,7 @@ export async function recordWeekContinuity(pool:TransactionPool,input:RecordWeek
       );
       const counts:Record<ContinuityStatus,number>={
         SUBMITTED_READY:0,SUBMITTED_REVIEW:0,PREPARED_DRAFT:0,
-        STAFF_FALLBACK_ELIGIBLE:0,PLAYER_ACTION_REQUIRED:0,UNASSIGNED:0,
+        STAFF_FALLBACK_ELIGIBLE:0,PLAYER_ACTION_REQUIRED:0,AI_MANAGED:0,UNASSIGNED:0,
       };
       for(const a of state.assessment)counts[a.status]++;
       return {year:state.year,week:state.week,total:state.assessment.length,counts};
