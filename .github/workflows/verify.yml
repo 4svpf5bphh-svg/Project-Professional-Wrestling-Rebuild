@@ -34,4 +34,4 @@ jobs:
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
-        run: npm run test:neon
+        run: npm run test:postgres
