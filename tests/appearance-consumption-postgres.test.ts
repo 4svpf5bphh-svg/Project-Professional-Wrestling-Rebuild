@@ -6,6 +6,7 @@ import { withWorldTransaction } from "../src/db/transaction.js";
 import { createWorld,addPromotion } from "../src/db/world-operations.js";
 import { consumeShowAppearances } from "../src/db/appearance-consumption.js";
 import { beginWorldResolution } from "../src/db/world-lock.js";
+import { clearWorldWeekResources } from "../src/db/week-clearance.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("show date charges are atomic and idempotent, including failed mixed cards",{skip:!url?"No disposable PostgreSQL":false},async()=>{
@@ -22,7 +23,8 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
       await createWorld(tx,{id:worldId,name:"Date Fixture",seed:4,rulesetVersion:"test"});
       await tx.query("UPDATE ppw_worlds SET week=11 WHERE world_id=$1",[worldId]);
       await addPromotion(tx,worldId,{id:promotionId,name:"Date Promotion",tier:"LOCAL"});
-      await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,11,'SUBMITTED'),($1,$4,$3,1,12,'SUBMITTED')",[worldId,"show-"+id,promotionId,"bad-show-"+id]);
+      await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'date-arena','Date Arena')",[worldId]);
+      await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,$2,$3,1,11,'SUBMITTED',3,'date-arena'),($1,$4,$3,1,12,'SUBMITTED',3,'date-arena')",[worldId,"show-"+id,promotionId,"bad-show-"+id]);
       await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb),($1,$5,$6,0,'MATCH',$7::jsonb)",[worldId,"show-"+id,"slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2},...extras]}),"bad-show-"+id,"bad-slot-"+id,JSON.stringify({participants:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]})]);
       await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,'Finite'),($1,$3,'Unlimited')",[worldId,p1,p2]);
       await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,20)",[worldId,c1,p1,promotionId,c2,p2]);
@@ -44,7 +46,11 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
     assert.deepEqual(begun.result,{year:1,week:11,weekIndex:10});
     assert.equal((await beginWorldResolution(db.pool,start)).status,"REPLAYED");
     await assert.rejects(beginWorldResolution(db.pool,{...start,requestId:"second-begin-"+id,expectedRevision:1}),/World must be locked/);
-    const input={...baseInput,expectedRevision:1};
+    await assert.rejects(consumeShowAppearances(db.pool,{...baseInput,expectedRevision:1}),/resource clearance required/);
+    const cleared=await clearWorldWeekResources(db.pool,{worldId,requestId:"clear-"+id,expectedRevision:1});
+    assert.equal(cleared.status,"APPLIED");
+    assert.deepEqual(cleared.result,{year:1,week:11,eligiblePromotions:1,inspectedSlots:1});
+    const input={...baseInput,expectedRevision:2};
     const queries:string[]=[];
     const meteredPool={
       async connect(){
@@ -73,19 +79,21 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
     assert.equal(await read(),1);
     assert.equal((await consumeShowAppearances(db.pool,input)).status,"REPLAYED");
     assert.equal(await read(),1);
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"duplicate-show-"+id,expectedRevision:2}),/Show already resolved/);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"duplicate-show-"+id,expectedRevision:3}),/Show already resolved/);
     assert.equal(await read(),1);
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"wrong-week-"+id,expectedRevision:2}),/World week/);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"wrong-week-"+id,expectedRevision:3}),/World week/);
     await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET week=12 WHERE world_id=$1",[worldId]));
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:2}),/Contract unavailable/);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:3}),/resource clearance required/);
     assert.equal(await read(),1);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_venues WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
     }).finally(()=>db.close());

@@ -94,3 +94,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Resource inspection distinguishes a show that has a matching durable resolution receipt from a fresh unresolved booking. A remaining contract date balance of zero can be accepted for the *already resolved* show, because date consumption has already occurred.
 - A separate unresolved show with zero remaining dates is still forbidden. Never require remaining_dates>0 during end-of-week reinspection of completed shows, or the World could deadlock after a valid final contract appearance.
 - Regression tests cover already charged date, unsigned deal, conflicting exclusivity, weekly service capacity and inactive venues using disposable PostgreSQL.
+
+## Pre-resolution World-wide clearance gate
+- ALL active promotions' cards must pass the bounded weekly conflict/contract/venue inspector BEFORE any dates can be consumed; missing shows and disputed day allocations fail closed.
+- Trusted resolver records exactly one indexed World/week clearance with observed promotion/slot counts. World revision and request receipt make retries and competing workers safe.
+- `consumeShowAppearances` verifies the clearance in its EXISTING submitted-show lookup via an indexed LEFT JOIN; no extra network round-trip per show. Week advancement requires clearance as well as the later completion certification.
+- A clearance cannot be issued after show resolution has begun. Clearing the same week twice with a different request ID is rejected.
+- The existing typed booking command boundary disallows post-deadline player changes. DB-level immutability for all historical/admin write paths and deterministic contested-resource arbitration still need explicit follow-up before a production scheduler.

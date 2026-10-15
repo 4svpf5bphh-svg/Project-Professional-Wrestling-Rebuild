@@ -29,12 +29,15 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // bound this read to current shows, not the accumulated World history.
       // There is intentionally NO player-scoped access to these internals.
       const ready=await tx.query<{
-        required_promotions:number;resolved_promotions:number;certified_promotions:number|null;
+        required_promotions:number;resolved_promotions:number;
+        certified_promotions:number|null;cleared_promotions:number|null;
       }>(
         `SELECT count(*)::integer AS required_promotions,
                 count(r.show_id)::integer AS resolved_promotions,
                 (SELECT s.certified_promotions FROM ppw_week_resolution_seals s
-                  WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3) AS certified_promotions
+                  WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3) AS certified_promotions,
+                (SELECT c.eligible_promotions FROM ppw_week_resource_clearances c
+                  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3) AS cleared_promotions
            FROM ppw_promotions p
            LEFT JOIN ppw_booking_drafts d
              ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
@@ -47,9 +50,10 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       );
       if(ready.length!==1) throw new Error("World readiness lookup failed");
       const {required_promotions:required,resolved_promotions:resolved,
-        certified_promotions:certified}=ready[0]!;
+        certified_promotions:certified,cleared_promotions:cleared}=ready[0]!;
       if(required<1) throw new Error("World has no active promotions");
       if(resolved!==required) throw new Error("World week incomplete: active promotions need resolved shows");
+      if(cleared!==required) throw new Error("World week has no valid pre-resolution resource clearance");
       if(certified!==required) throw new Error("World week has no valid resolution certification");
       // A certificate alone is not enough: re-check submitted cards in this
       // SAME locked World transaction, so stale approvals cannot skip collisions.

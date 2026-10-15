@@ -59,6 +59,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0008_weekly_resources.sql
+      - name: Apply pre-resolution resource clearance migration
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0009_week_resource_clearances.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test

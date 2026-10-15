@@ -40,3 +40,6 @@ The server-only `advanceResolvedWorldWeek` operation requires all active promoti
 
 ## World resource eligibility slice
 Current-week inspection also verifies each scheduled venue exists in the World registry, each wrestler is active, and the attached promotion-specific contract covers the week and has remaining dates (including exclusive rights). A wrestler can be booked on multiple **different** PPW days subject to their configured weekly service capacity; no contested booking is automatically awarded based on submission order. Historical workload rules and full financial/creative permissions are not yet integrated.
+
+## New pre-resolution clearance
+`clearWorldWeekResources` is a trusted-only atomic World command. It refuses to clear a week with any missing show, venue/talent collision, invalid contract or weekly capacity conflict; contested bookings never win simply because their show's date charging ran first. A durable week clearance must exist before `consumeShowAppearances` can charge dates or before advancement can complete. Full arbitration, staff-run show fallback, immutable post-lock persistence and certification of remaining simulation consequences are not yet complete.

@@ -30,15 +30,19 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
       if (!Number.isSafeInteger(weekIndex)) throw new Error("Invalid World week");
       // Check submitted status, correct World week and prior resolution
       // together, avoiding a separate existence round-trip.
-      const submitted=await tx.query<{draft_id:string;already_resolved:boolean}>(
-        `SELECT d.draft_id,(r.show_id IS NOT NULL) AS already_resolved
+      const submitted=await tx.query<{draft_id:string;already_resolved:boolean;resources_cleared:boolean}>(
+        `SELECT d.draft_id,(r.show_id IS NOT NULL) AS already_resolved,
+                  (clearance.world_id IS NOT NULL) AS resources_cleared
            FROM ppw_booking_drafts d LEFT JOIN ppw_show_resolutions r
              ON r.world_id=d.world_id AND r.show_id=d.draft_id
+           LEFT JOIN ppw_week_resource_clearances clearance
+             ON clearance.world_id=d.world_id AND clearance.year=d.year AND clearance.week=d.week
           WHERE d.world_id=$1 AND d.draft_id=$2 AND d.promotion_id=$3
             AND d.status='SUBMITTED' AND ((d.year-1)*52+d.week-1)=$4`,
         [input.worldId,input.showId,input.promotionId,weekIndex],
       );
       if(submitted.length!==1) throw new Error("Show is not a submitted booking for this World week");
+      if(!submitted[0]!.resources_cleared) throw new Error("World week resource clearance required");
       if(submitted[0]!.already_resolved) throw new Error("Show already resolved");
       const slots=await tx.query<{payload:unknown}>(
         "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2 ORDER BY position",
