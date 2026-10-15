@@ -11,6 +11,15 @@ export interface RecordWeekArbitrationInput {
   /** Obtained from the server-side preview; verifies full booking evidence. */
   expectedStateFingerprint:string;
 }
+function stableArbitrationJson(value:unknown):string {
+  if(Array.isArray(value)) return "["+value.map(stableArbitrationJson).join(",")+"]";
+  if(value!==null && typeof value==="object") {
+    const entries=Object.entries(value as Record<string,unknown>);
+    entries.sort(([a],[b])=>a<b?-1:a>b?1:0);
+    return "{"+entries.map(([k,v])=>JSON.stringify(k)+":"+stableArbitrationJson(v)).join(",")+"}";
+  }
+  return JSON.stringify(value);
+}
 type StoredPlan={
   source_revision:string|number;
   state_fingerprint:string;claim_fingerprint:string;
@@ -93,7 +102,7 @@ export async function inspectRecordedWeekArbitration(tx:SqlRows,worldId:string){
     report.arbitrationClaims);
   if(report.stateFingerprint!==record.state_fingerprint||
     plan.fingerprint!==record.claim_fingerprint||
-    JSON.stringify(plan.outcomes)!==JSON.stringify(record.proposal)||
+    stableArbitrationJson(plan.outcomes)!==stableArbitrationJson(record.proposal)||
     plan.outcomes.length!==record.disputed_count)
       return {status:"STALE" as const,year,week};
   return {status:"CURRENT" as const,year,week,
