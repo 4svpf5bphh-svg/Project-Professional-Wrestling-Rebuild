@@ -21,17 +21,20 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
       await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,'Finite'),($1,$3,'Unlimited')",[worldId,p1,p2]);
       await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,20)",[worldId,c1,p1,promotionId,c2,p2]);
     });
-    const input={worldId,playerId:"system",promotionId,requestId:"resolve-"+id,expectedRevision:0,currentWeekIndex:10,appearances:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2}]};
+    const input={worldId,playerId:"system",promotionId,showId:"show-"+id,requestId:"resolve-"+id,expectedRevision:0,currentWeekIndex:10,appearances:[{personId:p1,contractId:c1},{personId:p1,contractId:c1},{personId:p2,contractId:c2}]};
     const result=await consumeShowAppearances(db.pool,input);
     assert.equal(result.status,"APPLIED");
     assert.deepEqual(result.result,{performers:2,datesCharged:1});
     assert.equal(await read(),1);
     assert.equal((await consumeShowAppearances(db.pool,input)).status,"REPLAYED");
     assert.equal(await read(),1);
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"bad-"+id,expectedRevision:1,appearances:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]}),/Contract unavailable/);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"duplicate-show-"+id,expectedRevision:1}),/Show already resolved/);
+    assert.equal(await read(),1);
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:1,appearances:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]}),/Contract unavailable/);
     assert.equal(await read(),1);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
