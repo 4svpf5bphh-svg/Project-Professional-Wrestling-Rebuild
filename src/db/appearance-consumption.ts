@@ -1,11 +1,11 @@
 import type { TransactionPool } from "./transaction.js";
 import { applyWorldCommand } from "./world-commands.js";
-import { uniqueShowAppearances, type BookedAppearance } from "../domain/appearance-policy.js";
+import { uniqueShowAppearances } from "../domain/appearance-policy.js";
+import { appearancesFromSlots } from "../domain/card-participants.js";
 
 export interface ConsumeAppearancesInput {
   worldId:string; playerId:string; promotionId:string; showId:string;
   requestId:string; expectedRevision:number; currentWeekIndex:number;
-  appearances:readonly BookedAppearance[];
 }
 
 /** Atomic date consumption with World revision + idempotency receipt.
@@ -14,9 +14,7 @@ export interface ConsumeAppearancesInput {
  */
 export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeAppearancesInput) {
   if (!input.showId || input.showId.length>200) throw new Error("Invalid show");
-  const appearances=uniqueShowAppearances(input.appearances);
   if (!Number.isSafeInteger(input.currentWeekIndex)||input.currentWeekIndex<0) throw new Error("Invalid week");
-  if (appearances.length>100) throw new Error("Too many appearances");
   return applyWorldCommand(pool,{
     worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
     expectedRevision:input.expectedRevision,commandType:"CONSUME_SHOW_APPEARANCES",
@@ -31,6 +29,13 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         [input.worldId,input.showId,input.promotionId,input.currentWeekIndex],
       );
       if(submitted.length!==1) throw new Error("Show is not a submitted booking for this World week");
+      const slots=await tx.query<{payload:unknown}>(
+        "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2 ORDER BY position",
+        [input.worldId,input.showId],
+      );
+      if(slots.length===0) throw new Error("Submitted show has no card slots");
+      const appearances=uniqueShowAppearances(appearancesFromSlots(slots.map(s=>s.payload)));
+      if(appearances.length>100) throw new Error("Too many appearances");
       let charged=0;
       for(const a of appearances) {
         const rows=await tx.query<{contract_id:string}>(
