@@ -3,7 +3,7 @@ import { applyWorldCommand } from "./world-commands.js";
 import { uniqueShowAppearances, type BookedAppearance } from "../domain/appearance-policy.js";
 
 export interface ConsumeAppearancesInput {
-  worldId:string; playerId:string; promotionId:string;
+  worldId:string; playerId:string; promotionId:string; showId:string;
   requestId:string; expectedRevision:number; currentWeekIndex:number;
   appearances:readonly BookedAppearance[];
 }
@@ -13,6 +13,7 @@ export interface ConsumeAppearancesInput {
  * validated submitted show; never expose as a player-triggered HTTP action.
  */
 export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeAppearancesInput) {
+  if (!input.showId || input.showId.length>200) throw new Error("Invalid show");
   const appearances=uniqueShowAppearances(input.appearances);
   if (!Number.isSafeInteger(input.currentWeekIndex)||input.currentWeekIndex<0) throw new Error("Invalid week");
   if (appearances.length>100) throw new Error("Too many appearances");
@@ -20,6 +21,11 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
     worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
     expectedRevision:input.expectedRevision,commandType:"CONSUME_SHOW_APPEARANCES",
     execute:async tx=>{
+      const previous=await tx.query<{show_id:string}>(
+        "SELECT show_id FROM ppw_show_resolutions WHERE world_id=$1 AND show_id=$2",
+        [input.worldId,input.showId],
+      );
+      if(previous.length) throw new Error("Show already resolved");
       let charged=0;
       for(const a of appearances) {
         const rows=await tx.query<{contract_id:string}>(
@@ -39,6 +45,10 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         );
         if(unlimited.length!==1) throw new Error("Contract unavailable for show: "+a.contractId);
       }
+      await tx.query(
+        "INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged) VALUES($1,$2,$3,$4,$5,$6,$7)",
+        [input.worldId,input.showId,input.promotionId,input.currentWeekIndex,input.requestId,appearances.length,charged],
+      );
       return {performers:appearances.length,datesCharged:charged};
     },
   });
