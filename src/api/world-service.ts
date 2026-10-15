@@ -3,6 +3,7 @@ import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
+import {setStaffContinuity} from "../db/staff-continuity.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
  * This module is framework-neutral; HTTP handlers should map exceptions to
@@ -12,6 +13,7 @@ export interface VerifiedActor { playerId:string }
 export interface WorldApiContext { pool:TransactionPool; actor:VerifiedActor }
 export interface WorldMutationInput { worldId:string; requestId:string; expectedRevision:number }
 export interface ClaimInput extends WorldMutationInput { promotionId:string }
+export interface StaffContinuityInput extends ClaimInput { allowUnfinishedFallback:boolean }
 
 function validate(value:string,label:string):void {
   if (typeof value!=="string" || value.length<1 || value.length>200) throw new Error("Invalid "+label);
@@ -35,6 +37,14 @@ export async function claimPromotionAsActor(context:WorldApiContext,input:ClaimI
   validateMutation(input);
   validate(input.promotionId,"promotion");
   return submitPromotionClaim(context.pool,{...input,playerId:context.actor.playerId});
+}
+/** The actor identity is injected from verified middleware, not client JSON. */
+export async function setStaffContinuityAsActor(context:WorldApiContext,input:StaffContinuityInput){
+  validate(context.actor.playerId,"actor");
+  validateMutation(input);
+  validate(input.promotionId,"promotion");
+  if(typeof input.allowUnfinishedFallback!=="boolean")throw new Error("Invalid delegation");
+  return setStaffContinuity(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function overviewAsActor(context:WorldApiContext,worldId:string) {
   validate(context.actor.playerId,"actor");

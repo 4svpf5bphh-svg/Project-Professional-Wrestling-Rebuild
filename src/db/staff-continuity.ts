@@ -1,0 +1,41 @@
+import type {TransactionPool} from "./transaction.js";
+import {applyWorldCommand} from "./world-commands.js";
+
+export interface SetStaffContinuityInput {
+  worldId:string;playerId:string;promotionId:string;
+  requestId:string;expectedRevision:number;allowUnfinishedFallback:boolean;
+}
+/** Player-authored BEFORE Lock; actor ID comes from verified middleware.
+ * Staff cannot rewrite existing card scripts, negotiate or create authority
+ * beyond this very narrow missing/incomplete show delegation.
+ */
+export async function setStaffContinuity(pool:TransactionPool,input:SetStaffContinuityInput){
+  if(!input.promotionId||input.promotionId.length>200 ||
+      typeof input.allowUnfinishedFallback!=="boolean")throw new Error("Invalid staff continuity setting");
+  return applyWorldCommand(pool,{
+    worldId:input.worldId,playerId:input.playerId,
+    requestId:input.requestId,expectedRevision:input.expectedRevision,
+    commandType:"SET_STAFF_CONTINUITY",requiresOpenWeek:true,
+    execute:async tx=>{
+      const authorized=await tx.query<{promotion_id:string}>(
+        `SELECT c.promotion_id FROM ppw_promotion_controls c
+          JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+          JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+         WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.player_id=$3
+           AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
+        [input.worldId,input.promotionId,input.playerId],
+      );
+      if(authorized.length!==1)throw new Error("Only the active promotion controller may delegate staff continuity");
+      await tx.query(
+        `INSERT INTO ppw_staff_continuity_settings
+           (world_id,promotion_id,owner_player_id,allow_unfinished_fallback)
+         VALUES($1,$2,$3,$4)
+         ON CONFLICT(world_id,promotion_id) DO UPDATE
+           SET owner_player_id=EXCLUDED.owner_player_id,
+               allow_unfinished_fallback=EXCLUDED.allow_unfinished_fallback`,
+        [input.worldId,input.promotionId,input.playerId,input.allowUnfinishedFallback],
+      );
+      return {promotionId:input.promotionId,allowUnfinishedFallback:input.allowUnfinishedFallback};
+    },
+  });
+}

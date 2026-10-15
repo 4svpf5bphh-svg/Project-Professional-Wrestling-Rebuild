@@ -129,3 +129,10 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Atomically refresh the compact provisional proposal for remaining disputes using the NEW World revision, or delete it when no disputes remain; later workers can continue fairly, but must request a fresh preview/revision.
 - This is a server-only weekly resolution workload, not an ordinary player read. Two bounded whole-week inspection passes are permitted here; player UI is never polled.
 - Human delegation and authority tokens, venue capacity/cost, and creative substitution/absence fallbacks remain separate gates.
+
+## Staff continuity: narrow opt-in and weekly Lock checkpoint
+- Only verified active controlling promotion player may opt in/out of unfinished-show staff fallback, before the single weekly World Lock. A controller ID is stored with delegation; stale settings cannot transfer automatically to another owner.
+- A SUBMITTED show with basic scheduled card readiness is not a missed-show absence. A schedule-filled draft with card slots is `PREPARED_DRAFT` and is explicitly protected from being deemed an absence, but still requires full card validation and finalisation in a later feature.
+- Truly unfinished work is `STAFF_FALLBACK_ELIGIBLE` only with owner-specific opt-in. Non-delegated human work is `PLAYER_ACTION_REQUIRED`; unclaimed promotions remain `UNASSIGNED` and are not automatically converted to AI.
+- The lock-time snapshot is a bounded current-week query (<=128 promotions) and a **single** batched INSERT; it stores narrow statuses, no card payloads, no individual N+1 SQL and no polling.
+- This checkpoint does NOT create shows, apply absence penalties, amend scripts or permit World advancement. Actual staff show creation and immutable booking submission remain follow-up work.
