@@ -167,7 +167,7 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(successful.interference!.outcome,"SUCCESS");
     assert.equal(successful.actualFinish,"PROTECTED_FINISH");
     assert.equal(successful.actualWinnerId,personIds[1]);
-    assert.equal(successful.interference!.delivery,1.8);
+    assert.ok(Math.abs(successful.interference!.delivery-1.8)<1e-12);
     assert.equal(successful.crowdResponse,Math.round(Math.min(100,
       withRunIn.projections[0]!.injuryPreview!.crowdResponse+3.3)*10)/10);
     assert.equal(count.length,12,"Each preview must retain the six-query SQL budget");

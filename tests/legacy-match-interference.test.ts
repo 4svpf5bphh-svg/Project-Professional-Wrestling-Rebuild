@@ -27,7 +27,7 @@ test("a scripted successful interference changes the finish, never the winner",(
   assert.equal(actual.actualWinnerId,"a");
   assert.equal(actual.actualFinish,"PROTECTED_FINISH");
   assert.equal(actual.interference?.outcome,"SUCCESS");
-  assert.equal(actual.interference?.delivery,1.8);
+  assert.ok(Math.abs(actual.interference!.delivery-1.8)<1e-12);
   assert.equal(actual.crowdResponse,round(injury.crowdResponse+1.5+1.8));
   assert.deepEqual(actual,previewArchivedInterference(injury,booked,available));
 });
