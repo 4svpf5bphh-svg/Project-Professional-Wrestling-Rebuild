@@ -113,7 +113,7 @@ test("original match rating/crowd run from only current-week relational context"
       [worldId,promotionId],
     ));
     const progressed=await previewArchivedShowMatchScores(instrumented,input);
-    assert.equal(count.length,18,"Post-match projection added an unexpected SQL read");
+    assert.equal(count.length,12,"Post-match projection added an unexpected SQL read");
     assert.ok(progressed.projections[0]!.consequencesPreview!==null);
     const projected=progressed.projections[0]!.consequencesPreview!;
     const direct=previewArchivedMatchConsequences({
