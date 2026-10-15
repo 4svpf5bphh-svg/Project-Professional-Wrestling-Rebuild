@@ -8,6 +8,8 @@ import {scoreArchivedSinglesBeforeInjuries,type ScoredWrestler}
 import {previewArchivedInjuryStoppage} from "../simulation/legacy/match-injuries.js";
 import {readBookedInterference,previewArchivedInterference}
   from "../simulation/legacy/match-interference.js";
+import {previewArchivedMatchConsequences}
+  from "../simulation/legacy/match-consequences.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -46,8 +48,10 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     throw new Error("Invalid scoring scope");
   return withWorldTransaction(pool,async tx=>{
     const shows=await tx.query<{year:number;week:number;seed:string|number;
-      event_importance:number|null;injury_rate_multiplier:string|number|null}>(
-      `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier
+      event_importance:number|null;injury_rate_multiplier:string|number|null;
+      media_reach:number|null}>(
+      `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
+          p.media_reach
         FROM ppw_booking_drafts d
         JOIN ppw_worlds w ON w.world_id=d.world_id
           AND w.year=d.year AND w.week=d.week AND w.phase='RESOLVING'
@@ -179,9 +183,16 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           appearanceCommitted:bookedForShow.has(interruption!.personId),
           presentation:profile.presentation,
         }:null);
+      const consequencesPreview=interferencePreview!==null &&
+        assertStat(show.media_reach) ? previewArchivedMatchConsequences({
+          booked:{...scoringInput,personIds:match.personIds,
+            bookedWinnerId:match.winnerId,injuryRateMultiplier:injuryRate!},
+          injury:injuryPreview!,final:interferencePreview,
+          mediaReach:show.media_reach,isMainEvent:index===matches.length-1,
+        }):null;
       return {slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
         plannedFinish:match.plannedFinish,readiness:match.status,
-        chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview};
+        chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
     });
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,

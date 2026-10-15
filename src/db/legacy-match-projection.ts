@@ -66,7 +66,7 @@ export async function previewLegacyShowMatchStyles(pool:TransactionPool,input:Le
       const numerical=[
         p.in_ring_quality,p.match_craft,p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
       ];
-      if(numerical.some(n=>typeof n!=="number"||!Number.isInteger(n)||n<0||n>100))
+      if(numerical.some(n=>typeof n!=="number"||!Number.isFinite(n)||n<0||n>100))
         throw new Error("Missing or invalid original PPW wrestler skills");
       const [inRingQuality,matchCraft,presentation,stamina,safety,fatigue,wear]=
         numerical as [number,number,number,number,number,number,number];

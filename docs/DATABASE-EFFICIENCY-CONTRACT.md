@@ -193,3 +193,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - The interferer must be an ACTIVE World wrestler with a committed, contract-backed appearance in another card slot. An interference reference alone is never accepted as an appearance.
 - The trusted scoring preview expands its existing World-scoped indexed person query to cover interferers, with NO additional SQL statements and an explicit <=200 distinct-person cap. If World injury-rate context is absent, this also returns no interference result rather than inventing a medical outcome.
 - Delivery uses the original presentation formula, and crowd is adjusted only according to the originally authored run-in or genuine abort condition. No RNG draws, outcome writes, contract charges or World changes occur.
+
+## Faithful original post-match progression, without a monolithic World
+- Port exact `matches.ts` load and momentum/recognition/popularity expressions, plus `career.ts` injury floors and applyMatchLoad ordering, to a pure singles-consequence projector. Inputs: already resolved medical outcome, booked interference and media reach. Medical stoppage must determine actual winner before downstream momentum.
+- Existing smallint progression columns were incorrect for legacy 0.1/0.01 changes; migration 0018 promotes fatigue, wear, momentum, recognition and popularity to float8 with original [0,100] bounds still enforced. This matches original JS double arithmetic and avoids truncation.
+- Promotion media reach is a nullable input until legacy migration; NEVER fabricate a default. Read it on the existing show SELECT; no additional SQL. No medical or athlete changes are written by a preview, and injuries and interference still resolve prior to consequences.
+- Projection is per match, NOT multi-match/week globally applied simulation. Authoritative multi-show wrestler updates, injuries and narrative effects must use one consistent ordering under World Lock.
