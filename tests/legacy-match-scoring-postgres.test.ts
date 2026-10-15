@@ -81,6 +81,7 @@ test("original match rating/crowd run from only current-week relational context"
     // Until legacy World rulesets are imported, never fabricate an injury rate.
     assert.equal(first.injuryPreview,null);
     assert.equal(result.showPacingPreview,null);
+    assert.equal(result.showAlignmentPreview,null);
     assert.equal(result.projections[0]!.consequencesPreview,null);
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET injury_rate_multiplier=10 WHERE world_id=$1",[worldId],
@@ -91,6 +92,7 @@ test("original match rating/crowd run from only current-week relational context"
     assert.ok(originalInjury!==null);
     assert.ok(injuryScored.showPacingPreview!==null);
     assert.equal(injuryScored.showPacingPreview!.phase,"PACING_ONLY_NOT_FINAL");
+    assert.equal(injuryScored.showAlignmentPreview,null);
     assert.equal(injuryScored.showPacingPreview!.segments,"NOT_PROJECTED");
     assert.equal(injuryScored.showPacingPreview!.matches.length,1);
     assert.equal(injuryScored.showPacingPreview!.matches[0]!.matchId,"opening");
@@ -139,6 +141,49 @@ test("original match rating/crowd run from only current-week relational context"
     assert.deepEqual(projected,direct);
     assert.ok(projected.performers.every(p=>p.after.fatigue>=p.before.fatigue));
     assert.deepEqual(projected.performers.map(p=>p.personId),personIds);
+    // Certified histories activate exactly TWO indexed reads and the original
+    // face-v-heel contextual crowd bonus, without altering match scores.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(
+        "UPDATE ppw_worlds SET alignment_history_loaded=true WHERE world_id=$1",
+        [worldId]);
+      await tx.query(
+        "UPDATE ppw_people SET default_alignment='FACE' WHERE world_id=$1 AND person_id=$2",
+        [worldId,personIds[0]!]);
+      await tx.query(
+        "UPDATE ppw_people SET default_alignment='HEEL' WHERE world_id=$1 AND person_id=$2",
+        [worldId,personIds[1]!]);
+    });
+    const previousCount=count.length;
+    const aligned=await previewArchivedShowMatchScores(instrumented,input);
+    assert.equal(count.length-previousCount,8,
+      "Aligned scoring should use exactly two additional batched reads");
+    assert.equal(aligned.showAlignmentPreview!.phase,"PACING_AND_ALIGNMENT_NOT_FINAL");
+    assert.equal(aligned.showAlignmentPreview!.matches[0]!.reason,"FACE_HEEL_CLARITY");
+    assert.equal(aligned.showAlignmentPreview!.matches[0]!.modifier,2.2);
+    assert.deepEqual(aligned.projections[0]!.score,progressed.projections[0]!.score);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      `INSERT INTO ppw_promotion_alignment_changes
+       (world_id,promotion_id,person_id,year,week,method,changed)
+       VALUES($1,$2,$3,1,1,'OFFSCREEN_SWITCH',true)`,
+      [worldId,promotionId,personIds[0]!],
+    ));
+    const volatile=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(volatile.showAlignmentPreview!.matches[0]!.reason,"ALIGNMENT_VOLATILITY");
+    assert.equal(volatile.showAlignmentPreview!.matches[0]!.modifier,1.1);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      `INSERT INTO ppw_promotion_wrestler_alignments
+       (world_id,promotion_id,person_id,alignment) VALUES($1,$2,$3,'FACE')`,
+      [worldId,promotionId,personIds[1]!],
+    ));
+    const overridden=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(overridden.showAlignmentPreview!.matches[0]!.baseModifier,-0.3);
+    assert.equal(overridden.showAlignmentPreview!.matches[0]!.modifier,-1.4);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET alignment_history_loaded=false WHERE world_id=$1",
+      [worldId],
+    ));
+    assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showAlignmentPreview,null);
     // Original fractional values survive PostgreSQL instead of smallint
     // truncation, and remain valid inputs to both projection adapters.
     await withWorldTransaction(db.pool,tx=>tx.query(
@@ -242,6 +287,8 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(payload[0]!.payload.scriptedWinner,personIds[1]);
   }finally{
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_promotion_alignment_changes WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotion_wrestler_alignments WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_working_chemistry WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
