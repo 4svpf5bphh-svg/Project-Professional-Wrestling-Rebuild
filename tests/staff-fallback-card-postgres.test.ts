@@ -78,7 +78,7 @@ test("staff generates only delegated missing shows, preserving absent/unassigned
       {worldId,requestId:"prepared",expectedRevision:4})).status,"APPLIED");
     assert.equal((await beginWorldResolution(db.pool,
       {worldId,requestId:"resolution",expectedRevision:5})).status,"APPLIED");
-    const wrongTime=await assert.rejects(run("stale",5));
+    assert.equal((await run("stale",5)).status,"STALE");
     const result=await run("staff-missing",6);
     assert.equal(result.status,"APPLIED");
     if(result.status!=="APPLIED")throw new Error("Expected staff run");
