@@ -31,7 +31,10 @@ test("show date charges are atomic and idempotent, including failed mixed cards"
     assert.equal(await read(),1);
     await assert.rejects(consumeShowAppearances(db.pool,{...input,requestId:"duplicate-show-"+id,expectedRevision:1}),/Show already resolved/);
     assert.equal(await read(),1);
-    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"show-"+id,requestId:"bad-"+id,expectedRevision:1,appearances:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]}),/Contract unavailable/);
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("UPDATE ppw_booking_drafts SET status='SUBMITTED' WHERE world_id=$1 AND draft_id=$2",[worldId,"bad-show-"+id]);
+    });
+    await assert.rejects(consumeShowAppearances(db.pool,{...input,showId:"bad-show-"+id,requestId:"bad-"+id,expectedRevision:1,appearances:[{personId:p1,contractId:c1},{personId:"missing",contractId:"missing"}]}),/Contract unavailable/);
     assert.equal(await read(),1);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
