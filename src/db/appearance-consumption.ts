@@ -26,6 +26,11 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         [input.worldId,input.showId],
       );
       if(previous.length) throw new Error("Show already resolved");
+      const submitted=await tx.query<{draft_id:string}>(
+        "SELECT draft_id FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3 AND status='SUBMITTED' AND ((year-1)*52+week-1)=$4",
+        [input.worldId,input.showId,input.promotionId,input.currentWeekIndex],
+      );
+      if(submitted.length!==1) throw new Error("Show is not a submitted booking for this World week");
       let charged=0;
       for(const a of appearances) {
         const rows=await tx.query<{contract_id:string}>(
