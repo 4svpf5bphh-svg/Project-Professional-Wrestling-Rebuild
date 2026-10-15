@@ -183,12 +183,15 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           appearanceCommitted:bookedForShow.has(interruption!.personId),
           presentation:profile.presentation,
         }:null);
+      const mediaReach=show.media_reach;
+      const hasMediaReach=typeof mediaReach==="number" &&
+        Number.isFinite(mediaReach) && mediaReach>=0 && mediaReach<=1000000;
       const consequencesPreview=interferencePreview!==null &&
-        assertStat(show.media_reach) ? previewArchivedMatchConsequences({
+        hasMediaReach ? previewArchivedMatchConsequences({
           booked:{...scoringInput,personIds:match.personIds,
             bookedWinnerId:match.winnerId,injuryRateMultiplier:injuryRate!},
           injury:injuryPreview!,final:interferencePreview,
-          mediaReach:show.media_reach,isMainEvent:index===matches.length-1,
+          mediaReach:mediaReach!,isMainEvent:index===matches.length-1,
         }):null;
       return {slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
         plannedFinish:match.plannedFinish,readiness:match.status,

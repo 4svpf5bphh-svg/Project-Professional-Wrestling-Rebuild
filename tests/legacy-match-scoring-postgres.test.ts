@@ -6,6 +6,8 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {previewArchivedShowMatchScores} from "../src/db/legacy-match-scoring.js";
 import {scoreArchivedSinglesBeforeInjuries} from "../src/simulation/legacy/match-scoring.js";
+import {previewArchivedMatchConsequences}
+  from "../src/simulation/legacy/match-consequences.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../src/simulation/legacy/rng.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -83,6 +85,7 @@ test("original match rating/crowd run from only current-week relational context"
     ));
     const injuryScored=await previewArchivedShowMatchScores(db.pool,input);
     const originalInjury=injuryScored.projections[0]!.injuryPreview;
+    assert.equal(injuryScored.projections[0]!.consequencesPreview,null);
     assert.ok(originalInjury!==null);
     assert.equal(originalInjury!.plannedWinnerId,personIds[1]);
     assert.equal(originalInjury!.plannedFinish,"SUBMISSION");
@@ -103,6 +106,39 @@ test("original match rating/crowd run from only current-week relational context"
       intent:"TECHNICAL",style:null,plannedFinish:"SUBMISSION",
       plannedLengthMinutes:20,chemistryModifier,people:[player,player],
     }));
+    // No invented media exposure. Once promotion reach is imported, the
+    // consequences use the same four batched reads + transaction.
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_promotions SET media_reach=72 WHERE world_id=$1 AND promotion_id=$2",
+      [worldId,promotionId],
+    ));
+    const progressed=await previewArchivedShowMatchScores(instrumented,input);
+    assert.equal(count.length,18,"Post-match projection added an unexpected SQL read");
+    assert.ok(progressed.projections[0]!.consequencesPreview!==null);
+    const projected=progressed.projections[0]!.consequencesPreview!;
+    const direct=previewArchivedMatchConsequences({
+      booked:{worldSeed:"502",matchId:showId+":opening",order:1,
+        eventImportance:61,intent:"TECHNICAL",style:null,plannedFinish:"SUBMISSION",
+        plannedLengthMinutes:20,chemistryModifier,people:[player,player],
+        personIds:[personIds[0]!,personIds[1]!],bookedWinnerId:personIds[1]!,
+        injuryRateMultiplier:10},
+      injury:progressed.projections[0]!.injuryPreview!,
+      final:progressed.projections[0]!.interferencePreview!,
+      mediaReach:72,isMainEvent:true,
+    });
+    assert.deepEqual(projected,direct);
+    assert.ok(projected.performers.every(p=>p.after.fatigue>=p.before.fatigue));
+    assert.deepEqual(projected.performers.map(p=>p.personId),personIds);
+    // Original fractional values survive PostgreSQL instead of smallint
+    // truncation, and remain valid inputs to both projection adapters.
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_people SET fatigue=11.6,wear=10.3,momentum=71.7,popularity=60.62,recognition=65.35 WHERE world_id=$1 AND person_id=$2",
+      [worldId,personIds[1]!],
+    ));
+    const fractional=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(fractional.projections[0]!.consequencesPreview!.performers[1]!.before.fatigue,11.6);
+    assert.equal(fractional.projections[0]!.consequencesPreview!.performers[1]!.before.wear,10.3);
+    assert.equal(fractional.projections[0]!.consequencesPreview!.performers[1]!.before.momentum,71.7);
     // A historical chemistry row must override first-match generated values.
     await withWorldTransaction(db.pool,tx=>tx.query(
       `INSERT INTO ppw_working_chemistry
