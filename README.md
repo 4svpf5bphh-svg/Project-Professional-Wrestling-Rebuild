@@ -52,3 +52,6 @@ A pure server-side planner ranks competing venue-day and wrestler-day/weekly-cap
 
 ## Staff/AI booking alternatives (preview only)
 The trusted `previewWorldWeekRemediations` operation rechecks the persisted arbitration result and offers an available venue on the same show day, or a free PPW day for the unchanged show. A weekly wrestler capacity problem instead requires an explicit creative booking decision. No alternative is automatically executed; human authorship and scripted outcomes are preserved.
+
+## AI-only authoritative booking alternative (not deployed)
+The server-only `applyAiWeekRemediation` now commits one revalidated venue or show-day alternative for an explicitly AI-managed promotion, never a human-controlled or dormant promotion. It preserves every saved card slot and scripted finish, rejects changed proposals or commenced resolution, and records a durable decision ledger. Remaining disputes can be re-planned after each atomic update. No staff delegation or human post-lock approvals exist yet.

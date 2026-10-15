@@ -121,3 +121,11 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - Revalidate the durable proposal and compute alternatives under the SAME World transaction. One bounded World-scoped active-venue query (<=256) is added; no per-person SQL or live polling. Large-venue worlds require a later market-scoped search rather than silent truncation.
 - Suggested changes are individually possible against the existing schedule but not reserved for all losers simultaneously. Future acceptance MUST recheck all World claims atomically.
 - No wrestler replacements, show/card changes, contract deductions or scripted finish changes are applied by this operation.
+
+## AI-only remediation commit, with authored-card safety
+- Only explicit AI management-mode promotions with **no active human controller** are eligible. Unassigned/dormant promotions are never treated as AI by absence of a claim.
+- Apply exactly one previously offered venue/day alternative per World-locked command; verify proposal fingerprint, revision, current venue inventory and eligibility, then inspect post-change claims before committing.
+- Never touch ppw_card_slots (matches, segments, winners, outcomes), contracts or date charges. Every successful change creates an append-only World/week ledger receipt plus the command retry receipt.
+- Atomically refresh the compact provisional proposal for remaining disputes using the NEW World revision, or delete it when no disputes remain; later workers can continue fairly, but must request a fresh preview/revision.
+- This is a server-only weekly resolution workload, not an ordinary player read. Two bounded whole-week inspection passes are permitted here; player UI is never polled.
+- Human delegation and authority tokens, venue capacity/cost, and creative substitution/absence fallbacks remain separate gates.
