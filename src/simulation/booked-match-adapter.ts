@@ -21,7 +21,7 @@ export interface AdaptedBookedMatch {
   finishCheaterId:string|null;plannedLengthMinutes:number;
   styleEvaluations:ReturnType<typeof evaluateMatchStyleExecution>[];
   readiness:ReturnType<typeof assessMatchStyleReadiness>[];
-  status:"READY"|"NEEDS_CREATIVE_APPROVAL";
+  status:"READY"|"NEEDS_STYLE_REVIEW";
 }
 /** Pure adapter: translates the new card payload into legacy match evaluation.
  * It NEVER decides a winner, writes a result, charges a date or loads a World.
@@ -58,8 +58,9 @@ export function adaptBookedSinglesMatch(payload:unknown,
   const records=ids.map(id=>{
     const record=talent.get(id);
     if(!record)throw new Error("Missing wrestler skills for legacy match projection");
-    for(const [field,v] of Object.entries(record.skills)){
-      if(!Number.isFinite(v)||v<0||v>100)
+    for(const field of ["inRingQuality","matchCraft","presentation","stamina","safety"] as const){
+      const v=record.skills[field];
+      if(typeof v!=="number"||!Number.isFinite(v)||v<0||v>100)
         throw new Error("Invalid wrestler skill: "+field);
     }
     if(!Number.isFinite(record.fatigue)||!Number.isFinite(record.wear))
@@ -73,6 +74,6 @@ export function adaptBookedSinglesMatch(payload:unknown,
     winnerId:p.scriptedWinner,intent:typedIntent,style,plannedFinish:finish,
     finishCheaterId:cheater,plannedLengthMinutes:length,
     styleEvaluations:evaluations,readiness,
-    status:readiness.some(x=>x.status==="REFUSES")?"NEEDS_CREATIVE_APPROVAL":"READY",
+    status:readiness.some(x=>x.status==="REFUSES")?"NEEDS_STYLE_REVIEW":"READY",
   };
 }
