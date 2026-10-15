@@ -157,3 +157,9 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - The fallback must not grant normal storyline/competitive power. A payload marker describes the intended limited consequence policy, but the consequence simulator has NOT implemented the limit yet: do not represent these emergency shows as equivalent to fully booked programmes or deploy them as playable results.
 - Entire batch is sorted by reproducible World seed/week/promotion priority, not order of worker calls. All wrestler contract candidates are fetched in one bounded SQL query (10,000 max, no per-roster N+1); existing claims are reused from the current-week conflict inspector. After generated cards are inserted together, run one authoritative post-check before any appearance charges.
 - Records a small weekly outcome and one compact ledger event. No original player card mutations and no background polling.
+
+## Original engine migration: pure first, persistence by explicit projection
+- Source modules: archived PPW `packages/sim-core/src/{rng,match-style,match-finishes}.ts`; math and RNG were copied unchanged, replacing ONLY the old monolithic domain type imports with equivalent local type definitions.
+- Player outcome is an immutable input. `adaptBookedSinglesMatch` requires an authored winner, validates planned finish and cheating side using the original rules, and evaluates style/skill readiness without choosing the result.
+- Computations are pure and use *zero* database round-trips. The persisted roster skill projection must be fetched in a bounded batch during a later trusted resolution command, never by loading a historical World snapshot or querying once per participant.
+- Full match simulation is not yet integrated: injuries, chemistry, pacing, finances, programme signals, and event resolutions will be adapted individually with old-to-new deterministic parity tests.
