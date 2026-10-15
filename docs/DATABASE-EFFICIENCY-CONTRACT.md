@@ -149,3 +149,11 @@ This contract is intentionally stricter than the previous PPW persistence approa
 - A confirmed prepared draft uses the separate prior ready-to-run handoff. A fully scheduled but unconfirmed draft, a draft with no match, inactive/changed controller or missing opt-in is refused.
 - All choice reads, deterministic priority, World-wide post-change eligibility check, write and compact ledger receipt run inside one serialized World transaction. Bounded active-venue, submitted-card and person batches; no idle polling or N+1.
 - No claim of a universal unattended show fallback yet: missing whole cards require a later genuine staff creative/simulation mechanism.
+
+## Generated emergency staff card (first true missing-show slice)
+- Under a prior, owner-specific opt-in and **only after World Lock**, one World-locked batch may make exactly one minimal singles MATCH for a missing card; no player-authored draft or slot is overwritten. Promotions with no valid roster, safe venue or available dates remain explicitly UNFILLED.
+- The current first-version booking division MUST be known (MEN/WOMEN); NULL means NOT eligible for automated generation. Same-division pairing only. This is a booking-eligibility field, not a personal identity assertion.
+- Staff chooses and persists a scripted winner as its own creative choice under delegated authority, never as a simulation override of a player-authored finish. Label the slot STAFF_FALLBACK and preserve its emergency status in the draft and ledger.
+- The fallback must not grant normal storyline/competitive power. A payload marker describes the intended limited consequence policy, but the consequence simulator has NOT implemented the limit yet: do not represent these emergency shows as equivalent to fully booked programmes or deploy them as playable results.
+- Entire batch is sorted by reproducible World seed/week/promotion priority, not order of worker calls. All wrestler contract candidates are fetched in one bounded SQL query (10,000 max, no per-roster N+1); existing claims are reused from the current-week conflict inspector. After generated cards are inserted together, run one authoritative post-check before any appearance charges.
+- Records a small weekly outcome and one compact ledger event. No original player card mutations and no background polling.
