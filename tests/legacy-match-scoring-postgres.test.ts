@@ -128,6 +128,58 @@ test("original match rating/crowd run from only current-week relational context"
     ));
     await assert.rejects(previewArchivedShowMatchScores(db.pool,input),
       /event importance has not been migrated/);
+    // A booked third-party interferer is included in the same participant
+    // batch; a run-in only changes the finish when SUCCESS was scripted.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("UPDATE ppw_booking_drafts SET event_importance=61 WHERE world_id=$1 AND draft_id=$2",
+        [worldId,showId]);
+      await tx.query(
+        `INSERT INTO ppw_people(world_id,person_id,name,booking_division,
+           in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,
+           popularity,recognition,momentum)
+          VALUES($1,$2,'Run In','MEN',50,50,90,80,80,10,10,40,40,40)`,
+        [worldId,"interferer-"+id],
+      );
+      await tx.query(
+        `INSERT INTO ppw_contracts
+          (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+          VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',4,52)`,
+        [worldId,"contract-i-"+id,"interferer-"+id,promotionId],
+      );
+      await tx.query(
+        `UPDATE ppw_card_slots SET payload=jsonb_set(payload,'{participants}',
+             $3::jsonb) WHERE world_id=$1 AND draft_id=$2 AND slot_id='interview'`,
+        [worldId,showId,JSON.stringify([{
+          personId:"interferer-"+id,contractId:"contract-i-"+id,
+        }])],
+      );
+      await tx.query(
+        `UPDATE ppw_card_slots SET payload=jsonb_set(payload,'{interference}',
+            $3::jsonb) WHERE world_id=$1 AND draft_id=$2 AND slot_id='opening'`,
+        [worldId,showId,JSON.stringify({
+          personId:"interferer-"+id,aidedSide:"B",plannedOutcome:"SUCCESS",
+        })],
+      );
+    });
+    const withRunIn=await previewArchivedShowMatchScores(instrumented,input);
+    const successful=withRunIn.projections[0]!.interferencePreview!;
+    assert.ok(successful!==null);
+    assert.equal(successful.interference!.outcome,"SUCCESS");
+    assert.equal(successful.actualFinish,"PROTECTED_FINISH");
+    assert.equal(successful.actualWinnerId,personIds[1]);
+    assert.equal(successful.interference!.delivery,1.8);
+    assert.equal(successful.crowdResponse,Math.round(Math.min(100,
+      withRunIn.projections[0]!.injuryPreview!.crowdResponse+3.3)*10)/10);
+    assert.equal(count.length,12,"Each preview must retain the six-query SQL budget");
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_people SET status='INACTIVE' WHERE world_id=$1 AND person_id=$2",
+      [worldId,"interferer-"+id],
+    ));
+    const aborted=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(aborted.projections[0]!.interferencePreview!.interference!.outcome,"ABORTED");
+    assert.equal(aborted.projections[0]!.interferencePreview!.interference!.abortReason,
+      "INTERFERER_UNAVAILABLE");
+    assert.equal(aborted.projections[0]!.interferencePreview!.actualFinish,"SUBMISSION");
     const receipts=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
       "SELECT count(*)::text AS n FROM ppw_show_resolutions WHERE world_id=$1",[worldId],
     ));
@@ -135,7 +187,7 @@ test("original match rating/crowd run from only current-week relational context"
     const balances=await withWorldTransaction(db.pool,tx=>tx.query<{remaining_dates:number}>(
       "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId],
     ));
-    assert.deepEqual(balances.map(b=>b.remaining_dates),[4,4]);
+    assert.deepEqual(balances.map(b=>b.remaining_dates),[4,4,4]);
     const payload=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{scriptedWinner:string}}>(
       "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND slot_id='opening'",[worldId],
     ));
