@@ -202,7 +202,8 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     // All match crowd reactions must exist before inferring the card's pacing.
     // A missing injury ruleset, segment resolution or storyline context must
     // never be mistaken for an official completed show score.
-    const pacingCard:PacingMatch[]=projections.map((match,index)=>{
+    const readyForPacing=projections.every(match=>match.interferencePreview!==null);
+    const pacingCard:PacingMatch[]=readyForPacing?projections.map((match,index)=>{
       const original=matches[index]!.payload as Record<string,unknown>;
       const intent=original.intent===undefined?"COMPETITIVE":original.intent;
       return {matchId:match.slotId,position:match.position,
@@ -210,8 +211,8 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
         style:original.style===undefined?undefined:
           (original.style as PacingMatch["style"]),
         crowdResponse:match.interferencePreview!.crowdResponse};
-    });
-    const showPacingPreview=projections.every(match=>match.interferencePreview!==null)?
+    }):[];
+    const showPacingPreview=readyForPacing?
       evaluateArchivedMatchPacing(pacingCard):null;
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
