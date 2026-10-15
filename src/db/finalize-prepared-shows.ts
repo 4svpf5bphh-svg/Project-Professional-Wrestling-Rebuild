@@ -72,7 +72,7 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
         [input.worldId,[...new Set(candidates.map(c=>c.venue_id).filter((x):x is string=>x!==null))]],
       ):[];
       const venues=new Set(available.map(x=>x.venue_id));
-      const byShow=new Map<string,typeof slots>();
+      const byShow=new Map<string,Array<(typeof slots)[number]>>();
       for(const slot of slots){
         const list=byShow.get(slot.draft_id)??[];
         list.push(slot);byShow.set(slot.draft_id,list);
