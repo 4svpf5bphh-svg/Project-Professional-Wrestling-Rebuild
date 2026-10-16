@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {randomUUID} from "node:crypto";
+import {postgresPool} from "../src/db/postgres.js";
+import {withWorldTransaction} from "../src/db/transaction.js";
+import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
+import {originalGenesisFixture} from "./fixtures/original-genesis.js";
+import {lockWorldWeek,beginWorldResolution} from "../src/db/world-lock.js";
+import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
+import {generateWeekStaffFallbackCards} from "../src/db/generate-staff-fallback-cards.js";
+import {prepareGeneratedWorldShowCommerce} from "../src/db/prepare-generated-show-commerce.js";
+import {planNextWorldResolutionAction} from "../src/db/world-resolution-pipeline.js";
+import {originalAiTicketStrategy} from "../src/domain/legacy-show-economics.js";
+const url=process.env.PPW_NEON_TEST_URL;
+test("Eight AI promotions generate roster-backed original-market shows and frozen commercial forecasts in one World stage",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const world="ai-week-"+randomUUID(),db=postgresPool(url!,4);
+ try{
+  const source=originalGenesisFixture(world,120);
+  await importOriginalGenesis(db.pool,source);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[world]));
+  assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock",expectedRevision:0})).status,"APPLIED");
+  const assessed=await recordWeekContinuity(db.pool,{worldId:world,requestId:"continuity",expectedRevision:1});
+  assert.equal(assessed.status,"APPLIED");
+  if(assessed.status!=="APPLIED")throw Error("Missing assessment");
+  assert.equal(assessed.result.counts.AI_MANAGED,8);
+  assert.equal((await finalizePreparedWorldShows(db.pool,{worldId:world,
+   requestId:"finalize",expectedRevision:2})).status,"APPLIED");
+  assert.equal((await beginWorldResolution(db.pool,{worldId:world,
+   requestId:"begin",expectedRevision:3})).status,"APPLIED");
+  assert.equal((await planNextWorldResolutionAction(db.pool,world)).action,"GENERATE_STAFF_AND_AI_CARDS");
+  const generated=await generateWeekStaffFallbackCards(db.pool,{worldId:world,
+   requestId:"generate",expectedRevision:4});
+  assert.equal(generated.status,"APPLIED");
+  if(generated.status!=="APPLIED")throw Error("Missing AI generation");
+  assert.equal(generated.result.generated.length,8);
+  assert.deepEqual(generated.result.unfilled,[]);
+  assert.ok(generated.result.generated.every(x=>x.origin==="AI"));
+  assert.equal((await generateWeekStaffFallbackCards(db.pool,{worldId:world,
+   requestId:"generate",expectedRevision:4})).status,"REPLAYED");
+  const before=await withWorldTransaction(db.pool,tx=>tx.query<{
+   date_count:number;cash_total:string}>(`
+    SELECT (SELECT sum(remaining_dates)::integer FROM ppw_contracts
+      WHERE world_id=$1) AS date_count,
+     (SELECT sum(cash)::text FROM ppw_promotions WHERE world_id=$1) AS cash_total`,
+   [world]));
+  assert.equal((await planNextWorldResolutionAction(db.pool,world)).action,"PREPARE_AI_AND_STAFF_COMMERCE");
+  const prepared=await prepareGeneratedWorldShowCommerce(db.pool,{
+   worldId:world,requestId:"commerce",expectedRevision:5});
+  assert.equal(prepared.status,"APPLIED");
+  if(prepared.status!=="APPLIED")throw Error("Commercial stage failed");
+  assert.equal(prepared.result.preparedShows.length,8);
+  assert.equal((await prepareGeneratedWorldShowCommerce(db.pool,{
+   worldId:world,requestId:"commerce",expectedRevision:5})).status,"REPLAYED");
+  await assert.rejects(prepareGeneratedWorldShowCommerce(db.pool,{
+   worldId:world,requestId:"second",expectedRevision:6}),/No AI\/staff shows needed/);
+  const rows=await withWorldTransaction(db.pool,tx=>tx.query<{
+   draft_id:string;booking_origin:string;market_id:string;venue_market_id:string;
+   ticket_strategy:"ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE";
+   tier:"GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT";
+   event_type:"REGULAR"|"MAJOR";ai_financial_caution:number;
+   booking_expected_demand:number;booking_ticket_yield:string;
+   booking_snapshot_fingerprint:string;event_importance:number;
+  }>(`
+    SELECT d.draft_id,d.booking_origin,d.market_id,v.market_id AS venue_market_id,
+      d.ticket_strategy,p.tier,d.event_type,p.ai_financial_caution,
+      d.booking_expected_demand,d.booking_ticket_yield::text,
+      d.booking_snapshot_fingerprint,d.event_importance
+    FROM ppw_booking_drafts d
+    JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id
+    JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
+    WHERE d.world_id=$1 ORDER BY d.promotion_id`,[world]));
+  assert.equal(rows.length,8);
+  for(const row of rows){
+   assert.equal(row.booking_origin,"AI");
+   assert.equal(row.market_id,row.venue_market_id);
+   assert.equal(row.event_type,"REGULAR");
+   assert.equal(row.event_importance,58);
+   assert.equal(row.ticket_strategy,originalAiTicketStrategy(row.tier,
+    row.event_type,row.ai_financial_caution));
+   assert.ok(row.booking_expected_demand>=100);
+   assert.ok(Number(row.booking_ticket_yield)>0);
+   assert.match(row.booking_snapshot_fingerprint,/^[a-f0-9]{64}$/);
+  }
+  const after=await withWorldTransaction(db.pool,tx=>tx.query<{
+   date_count:number;cash_total:string}>(`
+    SELECT (SELECT sum(remaining_dates)::integer FROM ppw_contracts
+      WHERE world_id=$1) AS date_count,
+     (SELECT sum(cash)::text FROM ppw_promotions WHERE world_id=$1) AS cash_total`,
+   [world]));
+  assert.deepEqual(after,before,"Booking spends neither contract dates nor cash");
+  assert.equal((await planNextWorldResolutionAction(db.pool,world)).action,"CLEAR_RESOURCES");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const name of ["ppw_ledger_events","ppw_week_staff_fallback_runs",
+    "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
+    "ppw_command_receipts","ppw_card_slots","ppw_booking_drafts",
+    "ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotions","ppw_markets"])
+    await tx.query(`DELETE FROM ${name} WHERE world_id=$1`,[world]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

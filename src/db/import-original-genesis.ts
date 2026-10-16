@@ -14,10 +14,11 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
  return withWorldTransaction(pool,async tx=>{
   const world=await tx.query<{world_id:string}>(`
    INSERT INTO ppw_worlds(world_id,name,seed,ruleset_version,
-    year,week,day,phase,offer_acceptance_threshold,injury_rate_multiplier,show_economics_enabled)
-   VALUES($1,$2,$3,$4,1,1,1,'OPEN',$5,$6,true) RETURNING world_id`,
+    year,week,day,phase,offer_acceptance_threshold,injury_rate_multiplier,
+    show_economics_enabled,major_event_interval_weeks)
+   VALUES($1,$2,$3,$4,1,1,1,'OPEN',$5,$6,true,$7) RETURNING world_id`,
    [g.world.id,g.world.name,g.world.seed,g.world.rulesetVersion,
-    g.world.acceptance,g.world.injury]);
+    g.world.acceptance,g.world.injury,g.world.majorEventIntervalWeeks]);
   if(world.length!==1)throw new Error("Could not initialise fresh original World");
   // One narrow, batched insert per original Genesis entity family.
   // Market identity must exist before promotion homes and venue markets.
@@ -37,18 +38,22 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
   const promotions=await tx.query<{count:number}>(`
    WITH inserted AS (
     INSERT INTO ppw_promotions(world_id,promotion_id,name,home_market_id,tier,lifecycle,
-     management_mode,cash,debt,media_reach,weekly_media_income,
+     management_mode,cash,debt,media_reach,ai_financial_caution,
+     event_cadence_weeks,weekly_media_income,
      weekly_sponsor_income,weekly_fixed_overhead,last_weekly_net,financial_distress)
     SELECT $1,x.id,x.name,x.home_market_id,x.tier,x.lifecycle,x.mode,x.cash,x.debt,x.media,
-     x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
+     x.ai_financial_caution,x.event_cadence_weeks,x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
     FROM jsonb_to_recordset($2::jsonb) AS x(
      id text,name text,home_market_id text,tier text,lifecycle text,mode text,cash bigint,debt bigint,
-     media double precision,weekly_media bigint,weekly_sponsor bigint,
+     media double precision,ai_financial_caution double precision,
+     event_cadence_weeks integer,weekly_media bigint,weekly_sponsor bigint,
      weekly_overhead bigint,last_net bigint,distress text)
     RETURNING promotion_id
    ) SELECT count(*)::integer AS count FROM inserted`,
    [g.world.id,JSON.stringify(g.promotions.map(p=>({
-    ...p,home_market_id:p.homeMarketId,weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
+    ...p,home_market_id:p.homeMarketId,
+    ai_financial_caution:p.aiFinancialCaution,event_cadence_weeks:p.eventCadenceWeeks,
+    weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
    })))]);
   const promotionMarkets=await tx.query<{count:number}>(`

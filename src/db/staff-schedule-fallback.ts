@@ -127,7 +127,8 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
       if(invalid)throw new Error("Staff may not run an invalid match card: "+invalid);
       const changed=await tx.query<{draft_id:string}>(
         `UPDATE ppw_booking_drafts
-            SET show_day=$4,venue_id=$5,status='SUBMITTED',revision=revision+1
+            SET show_day=$4,venue_id=$5,status='SUBMITTED',
+                booking_origin='STAFF_FALLBACK',revision=revision+1
            WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3
              AND year=$6 AND week=$7 AND status='DRAFT'
            RETURNING draft_id`,

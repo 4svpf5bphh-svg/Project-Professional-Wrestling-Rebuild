@@ -10,11 +10,13 @@ type Status="ACTIVE"|"INJURED"|"RETIRED";
 type Tier="GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT"|"LOCAL";
 export interface OriginalGenesisSource {
  world:{id:string;name:string;seed:number;rulesetVersion:string;currentDate:DateParts};
- ruleset:{version:string;weeksPerYear:number;offerAcceptanceThreshold:number;injuryRateMultiplier:number};
+ ruleset:{version:string;weeksPerYear:number;offerAcceptanceThreshold:number;injuryRateMultiplier:number;
+  majorEventIntervalWeeks:number};
  promotions:Array<{id:string;worldId:string;name:string;tier:Tier;lifecycle:string;
   controllerType:"AI"|"HUMAN";cash:number;debt:number;mediaReach:number;
   weeklyMediaIncome:number;weeklySponsorIncome:number;weeklyFixedOverhead:number;
-  lastWeeklyNet:number;financialDistress:string;homeMarketId:string}>;
+  lastWeeklyNet:number;financialDistress:string;homeMarketId:string;
+  eventCadenceWeeks:number;aiProfile:{financialCaution:number}}>;
  people:Array<{id:string;worldId:string;name:string;status:Status;
   careerStage:PersonEconomics["careerStage"];morale:number;
   recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;
@@ -37,13 +39,15 @@ export interface OriginalGenesisSource {
   roleExpectation:Role;creativeControl?:Creative}>;
 }
 export interface GenesisProjection {
- world:{id:string;name:string;seed:number;rulesetVersion:string;acceptance:number;injury:number};
+ world:{id:string;name:string;seed:number;rulesetVersion:string;acceptance:number;injury:number;
+ majorEventIntervalWeeks:number};
  markets:Array<{id:string;name:string;audiencePotential:number;
   wrestlingInterest:number;spendingIndex:number}>;
  promotionMarketStates:Array<{promotionId:string;marketId:string;
   awareness:number;liveStrength:number;loyalty:number}>;
  promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
- cash:number;debt:number;media:number;weeklyMedia:number;weeklySponsor:number;
+ cash:number;debt:number;media:number;eventCadenceWeeks:number;aiFinancialCaution:number;
+ weeklyMedia:number;weeklySponsor:number;
  weeklyOverhead:number;lastWeeklyNet:number;distress:string}>;
  people:Array<{id:string;name:string;status:Status;careerStage:PersonEconomics["careerStage"];
  recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;morale:number;
@@ -108,9 +112,12 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    wrestlingInterest:m.wrestlingInterest,spendingIndex:m.spendingIndex};
  });
  const marketIds=new Set(markets.map(m=>m.id));
+ if(!int(source.ruleset.majorEventIntervalWeeks,1,104))
+  throw new Error("Invalid original major event interval");
  const promotions=source.promotions.map(p=>{
   if(!isText(p.id)||p.worldId!==worldId||!isText(p.name)
    ||!isText(p.homeMarketId)||!marketIds.has(p.homeMarketId)
+   ||!int(p.eventCadenceWeeks,1,52)||!stat(p.aiProfile?.financialCaution)
    ||!["GLOBAL","NATIONAL","RISING","INDEPENDENT","LOCAL"].includes(p.tier)
    ||!lifecycles.has(p.lifecycle)||!["AI","HUMAN"].includes(p.controllerType)
    ||!int(p.cash,-2_000_000_000_000,2_000_000_000_000)
@@ -121,6 +128,7 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    throw new Error("Incomplete original promotion finance profile: "+p.id);
   return {id:p.id,name:p.name,homeMarketId:p.homeMarketId,tier:p.tier,lifecycle:p.lifecycle,
    mode:p.controllerType,cash:p.cash,debt:p.debt,media:p.mediaReach,
+   eventCadenceWeeks:p.eventCadenceWeeks,aiFinancialCaution:p.aiProfile.financialCaution,
    weeklyMedia:p.weeklyMediaIncome,weeklySponsor:p.weeklySponsorIncome,
    weeklyOverhead:p.weeklyFixedOverhead,lastWeeklyNet:p.lastWeeklyNet,
    distress:p.financialDistress};
@@ -205,6 +213,7 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  }
  return {world:{id:worldId,name:source.world.name,seed:source.world.seed,
   rulesetVersion:source.world.rulesetVersion,acceptance:source.ruleset.offerAcceptanceThreshold,
-  injury:source.ruleset.injuryRateMultiplier},
+  injury:source.ruleset.injuryRateMultiplier,
+  majorEventIntervalWeeks:source.ruleset.majorEventIntervalWeeks},
   markets,promotionMarketStates,promotions,people,venues,contracts};
 }

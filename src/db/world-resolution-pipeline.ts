@@ -11,6 +11,7 @@ import {beginWorldResolution} from "./world-lock.js";
 import {clearWorldWeekResources} from "./week-clearance.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
+import {prepareGeneratedWorldShowCommerce} from "./prepare-generated-show-commerce.js";
 import {consumeWorldWeekAppearances} from "./world-week-appearance-coordinator.js";
 import {certifyResolvedWorldWeek} from "./week-certification.js";
 import type {CommandResult} from "./world-commands.js";
@@ -23,6 +24,7 @@ import {settlePendingWorldContracts} from "./world-contract-desk-resolution.js";
 import type {RemediationChoice} from "../domain/resource-remediation.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
+ showEconomicsEnabled:boolean;
  cleared:number|null;certified:number|null;legacyResolved:number;
  detailedResolved:number;blockers:string[];
 };
@@ -31,8 +33,8 @@ export async function inspectWorldResolutionReadiness(
 ):Promise<ResolutionReadiness>{
  if(!worldId)throw new Error("World ID required");
  return withWorldTransaction(pool,async tx=>{
-  const w=await tx.query<{year:number;week:number;phase:string}>(
-   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId]);
+  const w=await tx.query<{year:number;week:number;phase:string;show_economics_enabled:boolean}>(
+   "SELECT year,week,phase,show_economics_enabled FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId]);
   if(w.length!==1)throw new Error("World not found");
   const {year,week,phase}=w[0]!;
   const rows=await tx.query<{
@@ -60,7 +62,8 @@ export async function inspectWorldResolutionReadiness(
   if(r.cleared!==r.active)blockers.push("RESOURCES_NOT_CLEARED");
   if(r.legacy_resolved>r.active||r.detailed_resolved>r.active)
    blockers.push("EXCESS_RESOLUTION_RECEIPTS");
-  return {year,week,phase,active:r.active,submitted:r.submitted,
+  return {year,week,phase,showEconomicsEnabled:w[0]!.show_economics_enabled===true,
+   active:r.active,submitted:r.submitted,
    cleared:r.cleared,certified:r.certified,legacyResolved:r.legacy_resolved,
    detailedResolved:r.detailed_resolved,blockers};
  });
@@ -78,7 +81,7 @@ function commandStage<T>(action:WorldResolutionAction,result:CommandResult<T>){
  */
 export type WorldResolutionAction=
  |"WAIT_FOR_WORLD_LOCK"|"BEGIN_RESOLUTION"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
- |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
+ |"GENERATE_STAFF_AND_AI_CARDS"|"PREPARE_AI_AND_STAFF_COMMERCE"|"ARBITRATE_OR_REMEDIATE"
  |"RECORD_ARBITRATION"|"REMEDIATE_AI_CLAIM"|"REMEDIATE_HUMAN_LOGISTICS"
  |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
  |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"RESOLVE_CONTRACTS"|"PUBLISH_WEEK";
@@ -117,7 +120,8 @@ export async function planNextWorldResolutionAction(
        WHERE world_id=$1 AND year=$2 AND week=$3) AS done,
      (SELECT count(*)::integer FROM ppw_week_continuity_assessments
        WHERE world_id=$1 AND year=$2 AND week=$3
-         AND status='STAFF_FALLBACK_ELIGIBLE' AND show_id IS NULL) AS eligible`,
+         AND show_id IS NULL
+         AND status IN ('STAFF_FALLBACK_ELIGIBLE','AI_MANAGED')) AS eligible`,
       [worldId,ready.year,ready.week]));
    if(run.length!==1)throw new Error("Staff fallback checkpoint missing");
    const checkpoint=run[0]!;
@@ -127,7 +131,77 @@ export async function planNextWorldResolutionAction(
    }else{
     action="ARBITRATE_OR_REMEDIATE";
     blockers.push(checkpoint.done?"MISSING_PROMOTION_SHOWS_AFTER_STAFF":
-      "MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF");
+      "MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF_OR_AI");
+   }
+  }else if(ready.cleared===null&&ready.showEconomicsEnabled&&
+   ready.submitted===ready.active){
+   const missing=await withWorldTransaction(pool,tx=>tx.query<{
+    automatic:number;player:number}>(`
+    SELECT
+      count(*) FILTER (WHERE
+        ((p.management_mode='AI' AND c.player_id IS NULL) OR
+        (d.booking_origin='STAFF_FALLBACK' AND c.player_id IS NOT NULL
+         AND EXISTS(SELECT 1 FROM ppw_week_continuity_assessments a
+          JOIN ppw_staff_continuity_settings s
+            ON s.world_id=a.world_id AND s.promotion_id=a.promotion_id
+              AND s.owner_player_id=a.controller_player_id
+          WHERE a.world_id=d.world_id AND a.year=d.year AND a.week=d.week
+            AND a.promotion_id=d.promotion_id
+            AND a.status='STAFF_FALLBACK_ELIGIBLE'
+            AND s.allow_unfinished_fallback))))::integer AS automatic,
+      count(*) FILTER (WHERE
+        NOT ((p.management_mode='AI' AND c.player_id IS NULL) OR
+        (d.booking_origin='STAFF_FALLBACK' AND c.player_id IS NOT NULL
+         AND EXISTS(SELECT 1 FROM ppw_week_continuity_assessments a
+          JOIN ppw_staff_continuity_settings s ON s.world_id=a.world_id
+            AND s.promotion_id=a.promotion_id
+            AND s.owner_player_id=a.controller_player_id
+          WHERE a.world_id=d.world_id AND a.year=d.year AND a.week=d.week
+            AND a.promotion_id=d.promotion_id
+            AND a.status='STAFF_FALLBACK_ELIGIBLE'
+            AND s.allow_unfinished_fallback))))::integer AS player
+    FROM ppw_booking_drafts d JOIN ppw_promotions p ON p.world_id=d.world_id
+      AND p.promotion_id=d.promotion_id
+    LEFT JOIN ppw_promotion_controls c ON c.world_id=d.world_id
+      AND c.promotion_id=d.promotion_id AND c.active
+    WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
+     AND (d.booking_expected_demand IS NULL OR d.booking_ticket_yield IS NULL)`,
+    [worldId,ready.year,ready.week]));
+   if(missing.length!==1)throw new Error("Missing commercial-readiness result");
+   if(missing[0]!.player>0){
+    action="ARBITRATE_OR_REMEDIATE";
+    blockers.push("PLAYER_COMMERCIAL_BOOKING_REQUIRED");
+   }else if(missing[0]!.automatic>0){
+    action="PREPARE_AI_AND_STAFF_COMMERCE";
+   }else{
+    // All commercial snapshots are present; retain the SAME arbitration
+    // options as noncommercial Worlds, including human logistics permission.
+    const report=await withWorldTransaction(pool,tx=>inspectWeekConflicts(tx,worldId));
+    if(report.provisionalClear)action="CLEAR_RESOURCES";
+    else{
+     blockers.push(...new Set(report.blockers.map(b=>b.code)));
+     const arbitrable=new Set(["VENUE_DAY_CONFLICT","WRESTLER_DAY_CONFLICT",
+       "WRESTLER_WEEK_CAPACITY"]);
+     if(!report.blockers.length||report.blockers.some(b=>!arbitrable.has(b.code)))
+      action="ARBITRATE_OR_REMEDIATE";
+     else{
+      const recovery=await inspectWorldArbitrationRecovery(pool,worldId);
+      if(recovery.status==="NEEDS_PROPOSAL")action="RECORD_ARBITRATION";
+      else if(recovery.status==="AI_REMEDIATION"){
+       action="REMEDIATE_AI_CLAIM";
+       arbitration={showId:recovery.showId,
+        sourceFingerprint:recovery.sourceFingerprint,choice:recovery.choice};
+      }else if(recovery.status==="HUMAN_LOGISTICS_REMEDIATION"){
+       action="REMEDIATE_HUMAN_LOGISTICS";
+       arbitration={showId:recovery.showId,
+        sourceFingerprint:recovery.sourceFingerprint,choice:recovery.choice};
+      }else{
+       action="ARBITRATE_OR_REMEDIATE";
+       blockers.push(recovery.status==="STALE_PROPOSAL"
+         ?"STALE_ARBITRATION_PROPOSAL":"HUMAN_OR_CREATIVE_REBOOK_REQUIRED");
+      }
+     }
+    }
    }
   }else if(ready.cleared!==ready.active){
    if(ready.cleared!==null){
@@ -262,6 +336,11 @@ export async function executeNextWorldResolutionStage(
  }
  if(plan.action==="GENERATE_STAFF_AND_AI_CARDS"&&plan.ready.phase==="RESOLVING"){
   const result=await generateWeekStaffFallbackCards(pool,{worldId,requestId,expectedRevision});
+  return commandStage(plan.action,result);
+ }
+ if(plan.action==="PREPARE_AI_AND_STAFF_COMMERCE"){
+  const result=await prepareGeneratedWorldShowCommerce(pool,{
+   worldId,requestId,expectedRevision});
   return commandStage(plan.action,result);
  }
  if(plan.action==="RECORD_ARBITRATION"){

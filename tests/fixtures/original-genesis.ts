@@ -7,7 +7,8 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
   id:"promotion-"+i,worldId,name:"Promotion "+i,homeMarketId:"market-"+(i%4),
   tier:(i===0?"GLOBAL":i<3?"NATIONAL":i<5?"RISING":"INDEPENDENT") as "GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT",
   lifecycle:"ACTIVE",controllerType:"AI" as const,cash:5_000_000+i*1_000,
-  debt:0,mediaReach:90-i*7,
+  debt:0,mediaReach:90-i*7,eventCadenceWeeks:1,
+  aiProfile:{financialCaution:65},
   weeklyMediaIncome:300_000,weeklySponsorIncome:25_000,
   weeklyFixedOverhead:60_000,lastWeeklyNet:0,financialDistress:"HEALTHY",
  }));
@@ -50,5 +51,5 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
  return {world:{id:worldId,name:"PPW Genesis",seed:7,rulesetVersion:"sim0.0.11",
    currentDate:{year:1,week:1,day:1}},
   ruleset:{version:"sim0.0.11",weeksPerYear:52,offerAcceptanceThreshold:50,
-   injuryRateMultiplier:1},markets,promotionMarketStates,promotions,people,venues,contracts};
+   injuryRateMultiplier:1,majorEventIntervalWeeks:13},markets,promotionMarketStates,promotions,people,venues,contracts};
 }

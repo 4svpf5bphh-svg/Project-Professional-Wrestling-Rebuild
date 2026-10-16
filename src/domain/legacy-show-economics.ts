@@ -130,3 +130,20 @@ export function originalShowSettlement(input:SettlementContext){
   appearanceFees:input.appearanceFees,totalCost,netResult,
   incrementalCash:gateRevenue-input.venueCost-production-travel};
 }
+
+/** Original events.ts ticketStrategyFor, without inventing staff preferences.
+ * For AI the saved financial caution decides the national regular case. */
+export function originalAiTicketStrategy(tier:ShowTier,type:EventType,
+ financialCaution:number):TicketStrategy{
+ if(!Number.isFinite(financialCaution)||financialCaution<0||financialCaution>100)
+  throw new Error("Original AI ticket financial caution not imported");
+ if(type==="MAJOR"){
+  if(tier==="GLOBAL")return "PRESTIGE";
+  if(tier==="NATIONAL")return "PREMIUM";
+  return "STANDARD";
+ }
+ if(tier==="GLOBAL")return "PREMIUM";
+ if(tier==="NATIONAL")return financialCaution<50?"PREMIUM":"STANDARD";
+ if(tier==="INDEPENDENT"||tier==="LOCAL")return "ACCESSIBLE";
+ return "STANDARD";
+}

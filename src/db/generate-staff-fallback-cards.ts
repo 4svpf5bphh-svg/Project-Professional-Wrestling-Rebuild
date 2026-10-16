@@ -19,7 +19,7 @@ type SignedCandidate={
 };
 type Generated={promotionId:string;showId:string;day:number;venueId:string;
   participants:[{personId:string;contractId:string},{personId:string;contractId:string}];
-  scriptedWinner:string;bookingDivision:"MEN"|"WOMEN"};
+  scriptedWinner:string;bookingDivision:"MEN"|"WOMEN";origin:"STAFF_FALLBACK"|"AI"};
 type Unfilled={promotionId:string;reason:string};
 
 /** A single World-locked, server-only STAFF fallback BATCH.
@@ -32,8 +32,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
     worldId:input.worldId,playerId:"system",requestId:input.requestId,
     expectedRevision:input.expectedRevision,commandType:"GENERATE_WEEK_STAFF_FALLBACK_CARDS",
     execute:async tx=>{
-      const worlds=await tx.query<{year:number;week:number;phase:string;seed:string|number}>(
-        "SELECT year,week,phase,seed FROM ppw_worlds WHERE world_id=$1",[input.worldId],
+      const worlds=await tx.query<{year:number;week:number;phase:string;seed:string|number;
+        show_economics_enabled:boolean;major_event_interval_weeks:number|null}>(
+        "SELECT year,week,phase,seed,show_economics_enabled,major_event_interval_weeks FROM ppw_worlds WHERE world_id=$1",[input.worldId],
       );
       if(worlds.length!==1||worlds[0]!.phase!=="RESOLVING")
         throw new Error("Staff fallback requires World resolution");
@@ -69,13 +70,17 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
          LEFT JOIN ppw_staff_continuity_settings s ON s.world_id=a.world_id
             AND s.promotion_id=a.promotion_id
          WHERE a.world_id=$1 AND a.year=$2 AND a.week=$3
-           AND a.status='STAFF_FALLBACK_ELIGIBLE' AND a.show_id IS NULL
-           AND p.lifecycle='ACTIVE'
+           AND a.show_id IS NULL AND p.lifecycle='ACTIVE'
+           AND (a.status='STAFF_FALLBACK_ELIGIBLE' OR
+             (a.status='AI_MANAGED' AND p.management_mode='AI'
+              AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls active_c
+               WHERE active_c.world_id=p.world_id AND active_c.promotion_id=p.promotion_id
+                AND active_c.active)))
          ORDER BY a.promotion_id LIMIT 129`,
         [input.worldId,year,week],
       );
-      if(all.length>128)throw new Error("Too many delegated missing-card shows");
-      if(all.length===0)throw new Error("No missing-card staff fallback required");
+      if(all.length>128)throw new Error("Too many AI/delegated missing-card shows");
+      if(all.length===0)throw new Error("No missing AI or delegated staff show required");
       const priority=orderStaffPromotions(input.worldId,String(worlds[0]!.seed),year,week,
         all.map(x=>x.promotion_id));
       const delegations=new Map(all.map(x=>[x.promotion_id,x]));
@@ -113,8 +118,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         byPromotion.set(c.promotion_id,list);
       }
       const venueRows=await tx.query<{venue_id:string}>(
-        "SELECT venue_id FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' ORDER BY venue_id LIMIT 257",
-        [input.worldId],
+        "SELECT venue_id FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' AND ($2::boolean=false OR (market_id IS NOT NULL AND capacity IS NOT NULL AND weekly_hire_cost IS NOT NULL)) ORDER BY venue_id LIMIT 257",
+        [input.worldId,worlds[0]!.show_economics_enabled],
       );
       if(venueRows.length>256)throw new Error("Venue catalogue limit exceeded");
       const before=await inspectWeekConflicts(tx,input.worldId);
@@ -136,14 +141,18 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const unfilled:Unfilled[]=[];
       for(const promotionId of priority){
         const d=delegations.get(promotionId)!;
-        if(!d.controller_player_id||d.controller_player_id!==d.current_controller||
-          d.owner_player_id!==d.current_controller||d.delegated!==true){
+        const ai=d.status==="AI_MANAGED"&&d.management_mode==="AI"&&
+          d.current_controller===null;
+        const delegated=d.status==="STAFF_FALLBACK_ELIGIBLE"&&
+          !!d.controller_player_id&&d.controller_player_id===d.current_controller&&
+          d.owner_player_id===d.current_controller&&d.delegated===true;
+        if(!ai&&!delegated){
           unfilled.push({promotionId,reason:"OWNER_PERMISSION_CHANGED"});continue;
         }
         if(existingDrafts.has(promotionId)){
           unfilled.push({promotionId,reason:"EXISTING_DRAFT_PRESERVED"});continue;
         }
-        const showId="staff-fallback-"+year+"-"+week+"-"+promotionId;
+        const showId=(ai?"ai-week-":"staff-fallback-")+year+"-"+week+"-"+promotionId;
         const choice=chooseEmergencyStaffCard({
           worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
           promotionId,showId,roster:byPromotion.get(promotionId)??[],
@@ -157,20 +166,29 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           venueId:choice.schedule.venueId,
           participants:[{personId:a.personId,contractId:a.contractId},
             {personId:b.personId,contractId:b.contractId}],
-          scriptedWinner:choice.scriptedWinner,bookingDivision:a.bookingDivision});
+          scriptedWinner:choice.scriptedWinner,bookingDivision:a.bookingDivision,
+          origin:ai?"AI":"STAFF_FALLBACK"});
         booked.push({showId,day:choice.schedule.day,venueId:choice.schedule.venueId,
           personIds:[a.personId,b.personId]});
       }
       if(generated.length){
         const drafts=await tx.query<{draft_id:string}>(
           `INSERT INTO ppw_booking_drafts
-             (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_origin)
-           SELECT $1,show_id,promotion_id,$2,$3,'SUBMITTED',day,venue_id,'STAFF_FALLBACK'
-             FROM unnest($4::text[],$5::text[],$6::smallint[],$7::text[])
-               AS proposals(show_id,promotion_id,day,venue_id) RETURNING draft_id`,
+             (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_origin,
+              event_type,event_importance)
+           SELECT $1,show_id,promotion_id,$2,$3,'SUBMITTED',day,venue_id,origin,
+              CASE WHEN $9::integer IS NOT NULL AND $8::integer%$9::integer=0
+                 THEN 'MAJOR' ELSE 'REGULAR' END,
+              CASE WHEN $9::integer IS NOT NULL AND $8::integer%$9::integer=0
+                 THEN 85 ELSE 58 END
+             FROM unnest($4::text[],$5::text[],$6::smallint[],$7::text[],$10::text[])
+               AS proposals(show_id,promotion_id,day,venue_id,origin)
+              RETURNING draft_id`,
           [input.worldId,year,week,generated.map(x=>x.showId),
             generated.map(x=>x.promotionId),generated.map(x=>x.day),
-            generated.map(x=>x.venueId)],
+            generated.map(x=>x.venueId),
+            weekIndex+1,worlds[0]!.major_event_interval_weeks,
+            generated.map(x=>x.origin)],
         );
         if(drafts.length!==generated.length)throw new Error("Staff draft batch insert mismatch");
         const slots=await tx.query<{slot_id:string}>(
@@ -181,7 +199,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           [input.worldId,generated.map(x=>x.showId),
             generated.map(x=>JSON.stringify({
               participants:x.participants,scriptedWinner:x.scriptedWinner,
-              scriptedBy:"DELEGATED_STAFF",staffFallback:true,
+              scriptedBy:x.origin==="AI"?"AI_WORLD_BOOKER":"DELEGATED_STAFF",
+              staffFallback:x.origin==="STAFF_FALLBACK",
               matchType:"SINGLES",bookingDivision:x.bookingDivision,
               consequencesPolicy:"EMERGENCY_LIMITED_PENDING_SIMULATION",
             }))],
@@ -203,13 +222,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
          VALUES($1,$2,$3,'STAFF_FALLBACK_CARDS_CREATED',$4::jsonb)`,
         [input.worldId,year,week,JSON.stringify({
           generated:generated.map(x=>({promotionId:x.promotionId,showId:x.showId,
-            day:x.day,venueId:x.venueId,winner:x.scriptedWinner,
+            day:x.day,venueId:x.venueId,origin:x.origin,winner:x.scriptedWinner,
             participants:x.participants.map(p=>p.personId)})),
           unfilled,staffAuthored:true,simulationConsequencesPending:true,
         })],
       );
       return {year,week,generated:generated.map(x=>({promotionId:x.promotionId,
-        showId:x.showId,day:x.day,venueId:x.venueId})),unfilled};
+        showId:x.showId,day:x.day,venueId:x.venueId,origin:x.origin})),unfilled};
     },
   });
 }
