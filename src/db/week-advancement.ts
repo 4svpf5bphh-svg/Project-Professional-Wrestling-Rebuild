@@ -58,22 +58,30 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       if(certified!==required) throw new Error("World week has no valid resolution certification");
       // The new detailed results are a second mandatory durable layer.
       // Legacy date-charge receipts alone cannot certify published results.
-      const detailed=await tx.query<{completed_promotions:number;invalid_results:number}>(
+      const detailed=await tx.query<{completed_promotions:number;invalid_results:number;
+        missing_economics:number}>(
         `SELECT count(c.show_id)::integer AS completed_promotions,
                 count(*) FILTER (WHERE c.show_id IS NOT NULL AND
                   (c.year<>$2 OR c.week<>$3 OR c.promotion_id<>p.promotion_id))::integer
-                  AS invalid_results
+                  AS invalid_results,
+                count(*) FILTER (WHERE w.show_economics_enabled AND
+                  c.show_id IS NOT NULL AND econ.show_id IS NULL)::integer
+                  AS missing_economics
            FROM ppw_promotions p
+           JOIN ppw_worlds w ON w.world_id=p.world_id
            LEFT JOIN ppw_booking_drafts d
              ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
              AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
            LEFT JOIN ppw_completed_shows c
              ON c.world_id=d.world_id AND c.show_id=d.draft_id
+           LEFT JOIN ppw_show_economics econ
+             ON econ.world_id=c.world_id AND econ.show_id=c.show_id
            WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
         [input.worldId,year,week],
       );
       if(detailed.length!==1||detailed[0]!.completed_promotions!==required||
-       detailed[0]!.invalid_results!==0)
+       detailed[0]!.invalid_results!==0||
+       detailed[0]!.missing_economics!==0)
         throw new Error("World week incomplete: detailed show results missing or mismatched");
       // A detailed receipt is not sufficient without its legacy resource
       // charge. Both records must point to the same submitted canonical show.

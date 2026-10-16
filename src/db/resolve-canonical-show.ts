@@ -12,6 +12,7 @@ import {assembleArchivedShowResolution}
  from "../simulation/assemble-archived-show-resolution.js";
 import {recordCompletedShowInTransaction}
  from "./completed-show-results.js";
+import {settleCompletedShowEconomics} from "./show-economics.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -21,8 +22,9 @@ export async function resolveCanonicalShow(
 ):Promise<"RECORDED"|"IDENTICAL_RETRY">{
  return withWorldTransaction(pool,async tx=>{
   // World row serialization makes the prior-result check race-safe.
-  const world=await tx.query<{year:number;week:number;phase:string}>(
-   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
+  const world=await tx.query<{year:number;week:number;phase:string;seed:string|number;
+  show_economics_enabled:boolean}>(
+   "SELECT year,week,phase,seed,show_economics_enabled FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
    [input.worldId]);
   if(world.length!==1||world[0]!.year!==input.year||
    world[0]!.week!==input.week||world[0]!.phase!=="RESOLVING")
@@ -40,6 +42,9 @@ export async function resolveCanonicalShow(
    throw new Error("Canonical show week differs from World resolution");
   const segments=await readCanonicalSegmentContextsInTransaction(tx,input);
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
-  return recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
+  const recorded=await recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
+  if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
+   await settleCompletedShowEconomics(tx,input);
+  return recorded;
  });
 }

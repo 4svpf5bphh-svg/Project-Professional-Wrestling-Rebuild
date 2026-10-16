@@ -14,7 +14,7 @@ export interface OriginalGenesisSource {
  promotions:Array<{id:string;worldId:string;name:string;tier:Tier;lifecycle:string;
   controllerType:"AI"|"HUMAN";cash:number;debt:number;mediaReach:number;
   weeklyMediaIncome:number;weeklySponsorIncome:number;weeklyFixedOverhead:number;
-  lastWeeklyNet:number;financialDistress:string}>;
+  lastWeeklyNet:number;financialDistress:string;homeMarketId:string}>;
  people:Array<{id:string;worldId:string;name:string;status:Status;
   careerStage:PersonEconomics["careerStage"];morale:number;
   recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;
@@ -23,7 +23,11 @@ export interface OriginalGenesisSource {
   bookingDivision?:"MEN"|"WOMEN"|null;
   defaultAlignment?:"FACE"|"HEEL"|"TWEENER"|null;
   portableGimmickId?:string|null}>;
- venues:Array<{id:string;worldId:string;name:string;capacity:number;
+ markets:Array<{id:string;worldId:string;name:string;audiencePotential:number;
+  wrestlingInterest:number;spendingIndex:number}>;
+ promotionMarketStates:Array<{worldId:string;promotionId:string;marketId:string;
+  awareness:number;liveStrength:number;loyalty:number}>;
+ venues:Array<{id:string;worldId:string;name:string;marketId:string;capacity:number;
   weeklyHireCost:number;prestige:number;productionSuitability:number}>;
  contracts:Array<{id:string;worldId:string;personId:string;promotionId:string;
   status:"SIGNED"|"EXPIRED"|"TERMINATED";family:Family;
@@ -34,7 +38,11 @@ export interface OriginalGenesisSource {
 }
 export interface GenesisProjection {
  world:{id:string;name:string;seed:number;rulesetVersion:string;acceptance:number;injury:number};
- promotions:Array<{id:string;name:string;tier:Tier;lifecycle:string;mode:string;
+ markets:Array<{id:string;name:string;audiencePotential:number;
+  wrestlingInterest:number;spendingIndex:number}>;
+ promotionMarketStates:Array<{promotionId:string;marketId:string;
+  awareness:number;liveStrength:number;loyalty:number}>;
+ promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
  cash:number;debt:number;media:number;weeklyMedia:number;weeklySponsor:number;
  weeklyOverhead:number;lastWeeklyNet:number;distress:string}>;
  people:Array<{id:string;name:string;status:Status;careerStage:PersonEconomics["careerStage"];
@@ -42,7 +50,7 @@ export interface GenesisProjection {
  ring:number;craft:number;presentation:number;stamina:number;safety:number;
  priorities:PersonEconomics["priorities"];division:string|null;
  alignment:string|null;gimmick:string|null}>;
- venues:Array<{id:string;name:string;capacity:number;cost:number;prestige:number;suitability:number}>;
+ venues:Array<{id:string;name:string;marketId:string;capacity:number;cost:number;prestige:number;suitability:number}>;
  contracts:Array<{id:string;person:string;promotion:string;family:Family;status:string;
  remaining:number|null;start:number;expires:number;entitlement:number;weekly:number;
  appearance:number;bonus:number;role:Role;creative:Creative}>;
@@ -79,16 +87,30 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  throw new Error("Expected a fresh 52-week original PPW Genesis World");
  if(!Array.isArray(source.promotions)||source.promotions.length<1||source.promotions.length>128
  ||!Array.isArray(source.people)||source.people.length<1||source.people.length>2500
+ ||!Array.isArray(source.markets)||source.markets.length<1||source.markets.length>128
+ ||!Array.isArray(source.promotionMarketStates)||source.promotionMarketStates.length<1
+ ||source.promotionMarketStates.length>16384
  ||!Array.isArray(source.venues)||source.venues.length<1||source.venues.length>2048
  ||!Array.isArray(source.contracts)||source.contracts.length>10000)
  throw new Error("Original Genesis population outside import bounds");
  const worldId=source.world.id;
  unique(source.promotions.map(p=>p.id),"promotion");
  unique(source.people.map(p=>p.id),"wrestler");
+ unique(source.markets.map(p=>p.id),"market");
  unique(source.venues.map(p=>p.id),"venue");
  unique(source.contracts.map(p=>p.id),"contract");
+ const markets=source.markets.map(m=>{
+  if(!isText(m.id)||m.worldId!==worldId||!isText(m.name)
+    ||![m.audiencePotential,m.wrestlingInterest].every(stat)
+    ||!Number.isFinite(m.spendingIndex)||m.spendingIndex<0||m.spendingIndex>1000)
+    throw new Error("Invalid original market: "+m.id);
+  return {id:m.id,name:m.name,audiencePotential:m.audiencePotential,
+   wrestlingInterest:m.wrestlingInterest,spendingIndex:m.spendingIndex};
+ });
+ const marketIds=new Set(markets.map(m=>m.id));
  const promotions=source.promotions.map(p=>{
   if(!isText(p.id)||p.worldId!==worldId||!isText(p.name)
+   ||!isText(p.homeMarketId)||!marketIds.has(p.homeMarketId)
    ||!["GLOBAL","NATIONAL","RISING","INDEPENDENT","LOCAL"].includes(p.tier)
    ||!lifecycles.has(p.lifecycle)||!["AI","HUMAN"].includes(p.controllerType)
    ||!int(p.cash,-2_000_000_000_000,2_000_000_000_000)
@@ -97,12 +119,24 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    ||!int(p.lastWeeklyNet,-1_000_000_000_000,1_000_000_000_000)
    ||!distress.has(p.financialDistress))
    throw new Error("Incomplete original promotion finance profile: "+p.id);
-  return {id:p.id,name:p.name,tier:p.tier,lifecycle:p.lifecycle,
+  return {id:p.id,name:p.name,homeMarketId:p.homeMarketId,tier:p.tier,lifecycle:p.lifecycle,
    mode:p.controllerType,cash:p.cash,debt:p.debt,media:p.mediaReach,
    weeklyMedia:p.weeklyMediaIncome,weeklySponsor:p.weeklySponsorIncome,
    weeklyOverhead:p.weeklyFixedOverhead,lastWeeklyNet:p.lastWeeklyNet,
    distress:p.financialDistress};
  });
+ const knownPromotions=new Set(promotions.map(p=>p.id));
+ unique(source.promotionMarketStates.map(s=>s.promotionId+"\\u0000"+s.marketId),"promotion-market");
+ const promotionMarketStates=source.promotionMarketStates.map(m=>{
+  if(m.worldId!==worldId||!knownPromotions.has(m.promotionId)||!marketIds.has(m.marketId)
+   ||![m.awareness,m.liveStrength,m.loyalty].every(stat))
+   throw new Error("Invalid original promotion market state");
+  return {promotionId:m.promotionId,marketId:m.marketId,
+    awareness:m.awareness,liveStrength:m.liveStrength,loyalty:m.loyalty};
+ });
+ for(const promotion of promotions)for(const market of markets)
+  if(!promotionMarketStates.some(s=>s.promotionId===promotion.id&&s.marketId===market.id))
+   throw new Error("Missing original promotion market state");
  const people=source.people.map(p=>{
   if(!isText(p.id)||p.worldId!==worldId||!isText(p.name)
    ||!["ACTIVE","INJURED","RETIRED"].includes(p.status)||!p.skills
@@ -129,10 +163,10 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  });
  const venues=source.venues.map(v=>{
   if(!isText(v.id)||v.worldId!==worldId||!isText(v.name)
-   ||!int(v.capacity,1,1_000_000)||!fee(v.weeklyHireCost)
+   ||!marketIds.has(v.marketId)||!int(v.capacity,1,1_000_000)||!fee(v.weeklyHireCost)
    ||!stat(v.prestige)||!stat(v.productionSuitability))
    throw new Error("Incomplete original venue: "+v.id);
-  return {id:v.id,name:v.name,capacity:v.capacity,cost:v.weeklyHireCost,
+  return {id:v.id,name:v.name,marketId:v.marketId,capacity:v.capacity,cost:v.weeklyHireCost,
    prestige:v.prestige,suitability:v.productionSuitability};
  });
  const ids=new Set(people.map(p=>p.id)),promos=new Set(promotions.map(p=>p.id));
@@ -172,5 +206,5 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  return {world:{id:worldId,name:source.world.name,seed:source.world.seed,
   rulesetVersion:source.world.rulesetVersion,acceptance:source.ruleset.offerAcceptanceThreshold,
   injury:source.ruleset.injuryRateMultiplier},
-  promotions,people,venues,contracts};
+  markets,promotionMarketStates,promotions,people,venues,contracts};
 }

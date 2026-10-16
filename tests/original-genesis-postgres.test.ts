@@ -22,6 +22,9 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  assert.equal(projected.contracts[1]!.remaining,6);
  assert.equal(projected.contracts[0]!.remaining,null);
  assert.equal(projected.people[0]!.priorities.money,65);
+ const missingLocal=originalGenesisFixture("genesis-missing-market");
+ missingLocal.promotionMarketStates.pop();
+ assert.throws(()=>projectOriginalGenesis(missingLocal),/Missing original promotion market state/);
  const duplicate=originalGenesisFixture("genesis-duplicate");
  duplicate.people[1]!.id=duplicate.people[0]!.id;
  assert.throws(()=>projectOriginalGenesis(duplicate),/Duplicate wrestler/);
@@ -40,7 +43,7 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);
 });
-test("Original 643-person/8-promotion Genesis imports once with <=8 PostgreSQL statements",{
+test("Original 643-person/8-promotion Genesis imports markets with 10 PostgreSQL statements",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
@@ -56,10 +59,10 @@ test("Original 643-person/8-promotion Genesis imports once with <=8 PostgreSQL s
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,sqlStatements:6});
-  const sample=meter.assertBudget({maxQueries:8,maxResultBytes:2_000});
-  assert.equal(sample.queryCount,8);
-  assert.equal(sample.resultRows,5);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,sqlStatements:8});
+  const sample=meter.assertBudget({maxQueries:10,maxResultBytes:2_000});
+  assert.equal(sample.queryCount,10);
+  assert.equal(sample.resultRows,7);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
@@ -105,6 +108,13 @@ test("Original 643-person/8-promotion Genesis imports once with <=8 PostgreSQL s
   assert.equal(state.promotion[0]!.management_mode,"AI");
   assert.equal(Number(state.promotion[0]!.weekly_media_income),300000);
   assert.equal(state.imports[0]!.payload.wrestlers,643);
+  const metadata=await withWorldTransaction(db.pool,tx=>tx.query<{
+    enabled:boolean;markets:number;states:number}>(`
+   SELECT w.show_economics_enabled AS enabled,
+    (SELECT count(*)::integer FROM ppw_markets WHERE world_id=$1) AS markets,
+    (SELECT count(*)::integer FROM ppw_promotion_market_states WHERE world_id=$1) AS states
+   FROM ppw_worlds w WHERE w.world_id=$1`,[world]));
+  assert.deepEqual(metadata[0],{enabled:true,markets:4,states:32});
   await assert.rejects(importOriginalGenesis(db.pool,source),/duplicate key/);
   await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join-"+world,expectedRevision:0});
   await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
@@ -121,7 +131,7 @@ test("Original 643-person/8-promotion Genesis imports once with <=8 PostgreSQL s
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
-    "ppw_contracts","ppw_people","ppw_venues","ppw_promotions"]){
+    "ppw_contracts","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
     await tx.query(`DELETE FROM ${name} WHERE world_id=$1`,[world]);
    }
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
@@ -150,7 +160,7 @@ test("Concurrent bootstraps cannot create duplicate or partial Genesis Worlds",{
   assert.deepEqual(counts[0],{worlds:1,people:15,contracts:15,promotions:8,venues:16});
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_people","ppw_venues","ppw_promotions"])
+   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());

@@ -19,12 +19,13 @@ export async function settleWeeklyPromotionHealth(
       WHEN 'CONTRACT_APPEARANCE_FEES' THEN -COALESCE((payload->>'amount')::bigint,0)
       WHEN 'CONTRACT_GUARANTEE_PAID' THEN -COALESCE((payload->>'amount')::bigint,0)
       WHEN 'PROMOTION_RECURRING_FINANCES' THEN COALESCE((payload->>'net')::bigint,0)
+      WHEN 'SHOW_EVENT_ECONOMICS' THEN COALESCE((payload->>'incrementalCash')::bigint,0)
       ELSE 0::bigint END)::bigint AS weekly_net
    FROM ppw_ledger_events
    WHERE world_id=$1 AND year=$2 AND week=$3
      AND event_type IN ('CONTRACT_SIGNED','CONTRACT_EXTRA_DATES_ACCEPTED',
       'CONTRACT_APPEARANCE_FEES','CONTRACT_GUARANTEE_PAID',
-      'PROMOTION_RECURRING_FINANCES')
+      'PROMOTION_RECURRING_FINANCES','SHOW_EVENT_ECONOMICS')
    GROUP BY payload->>'promotionId'
   ), base AS (
    SELECT p.promotion_id,p.cash,p.financial_distress AS old_distress,
