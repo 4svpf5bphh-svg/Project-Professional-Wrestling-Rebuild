@@ -28,14 +28,17 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
     [worldId,showId,promotionId]);
    await tx.query(
     `INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
-     VALUES($1,$2,'match',0,'MATCH','{}'::jsonb),
-           ($1,$2,'angle',1,'SEGMENT','{}'::jsonb)`,
+     VALUES($1,$2,'match',0,'MATCH',\n            '{"matchType":"SINGLES","participants":[{"personId":"a"},{"personId":"b"}],"scriptedWinner":"a","plannedFinish":"CLEAN_PIN"}'::jsonb),\n           ($1,$2,'angle',1,'SEGMENT',\n            '{"kind":"TURN","outcome":"REFUSED"}'::jsonb)`,
     [worldId,showId]);
    await tx.query(
     "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);
   });
   for(const invalid of [
    {...receipt,matches:[{...receipt.matches[0]!,matchId:"invented"}]},
+   {...receipt,matches:[{...receipt.matches[0]!,actualWinnerSide:"B"}]},
+   {...receipt,matches:[{...receipt.matches[0]!,actualFinish:"SUBMISSION"}]},
+   {...receipt,segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]},
+   {...receipt,segments:[{...receipt.segments[0]!,kind:"ATTACK"}]},
    {...receipt,matches:[]},
    {...receipt,segments:[]},
    {...receipt,segments:[{...receipt.segments[0]!,position:2}]},
@@ -43,7 +46,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
     segments:[{...receipt.segments[0]!,position:0}]},
   ]){
    await assert.rejects(recordCompletedShow(db.pool,invalid),
-    /does not match submitted card/);
+    /does not match submitted card|differs from submitted booking|differs from submitted card/);
    const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
     "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",
     [worldId]));

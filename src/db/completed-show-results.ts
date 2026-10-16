@@ -55,6 +55,47 @@ export async function recordCompletedShow(
     typeof (slot.payload as Record<string,unknown>).kind==="string"&&
     (slot.payload as Record<string,unknown>).kind!==segmentKinds.get(slot.slot_id)))
    throw new Error("Completed segment kind differs from submitted card");
+  // Validate known canonical booking fields; legacy optional fields are not
+  // interpreted as evidence when absent. Resolver must enforce full schema.
+  const matchResults=new Map(receipt.matches.map(m=>[m.matchId,m]));
+  const segmentResults=new Map(receipt.segments.map(x=>[x.slotId,x]));
+  for(const slot of slots){
+   const raw=slot.payload;
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))
+    throw new Error("Invalid canonical submitted slot payload");
+   const p=raw as Record<string,unknown>;
+   if(slot.kind==="MATCH"){
+    const result=matchResults.get(slot.slot_id)!;
+    if(p.matchType==="SINGLES"){
+     if(!Array.isArray(p.participants)||p.participants.length!==2||
+      p.participants.some(x=>!x||typeof x!=="object"||
+       typeof (x as Record<string,unknown>).personId!=="string")||
+      (p.participants[0] as {personId:string}).personId===
+       (p.participants[1] as {personId:string}).personId)
+      throw new Error("Invalid canonical singles participants");
+     if(typeof p.scriptedWinner==="string"){
+      const a=(p.participants[0] as {personId:string}).personId;
+      const b=(p.participants[1] as {personId:string}).personId;
+      const booked=p.scriptedWinner===a?"A":p.scriptedWinner===b?"B":null;
+      if(!booked||result.actualWinnerSide!==booked&&
+       result.actualFinish!=="INJURY_STOPPAGE")
+       throw new Error("Completed winner differs from submitted booking");
+     }
+    }
+    if(typeof p.plannedFinish==="string"&&
+     result.actualFinish!==p.plannedFinish&&
+     result.actualFinish!=="INJURY_STOPPAGE"&&
+     !(p.interference&&typeof p.interference==="object"&&
+       !Array.isArray(p.interference)&&
+       (p.interference as Record<string,unknown>).plannedOutcome==="SUCCESS"&&
+       result.actualFinish==="PROTECTED_FINISH"))
+     throw new Error("Completed finish differs from submitted booking");
+   }else{
+    const result=segmentResults.get(slot.slot_id)!;
+    if(typeof p.outcome==="string"&&p.outcome!==result.outcome)
+     throw new Error("Completed segment outcome differs from submitted booking");
+   }
+  }
   await tx.query(
    `INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,
