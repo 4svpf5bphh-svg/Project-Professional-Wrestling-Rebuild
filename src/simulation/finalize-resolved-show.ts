@@ -9,6 +9,8 @@ export interface FinalizedSinglesMatch {
  plannedWinnerSide:"A"|"B";plannedFinish:string;
  actualWinnerSide:"A"|"B";actualFinish:string;
  injuryStoppage:boolean;medicalOverrideCertified:boolean;
+ interference?:{plannedOutcome:"SUCCESS"|"THWARTED";
+  actualOutcome:"SUCCESS"|"THWARTED"|"ABORTED"};
 }
 export interface FinalizedAuthoredSegment {
  slotId:string;position:number;kind:string;
@@ -22,9 +24,14 @@ export interface FinalizedShowInput extends Omit<ResolvedShowFacts,"matches"|"se
 }
 export function finalizeResolvedShow(input:FinalizedShowInput):CompletedShowReceipt{
  if(input.matches.some(m=>{
-  const changed=m.plannedWinnerSide!==m.actualWinnerSide||
-   m.plannedFinish!==m.actualFinish;
-  return changed&&(!m.injuryStoppage||!m.medicalOverrideCertified)||
+  const winnerChanged=m.plannedWinnerSide!==m.actualWinnerSide;
+  const finishChanged=m.plannedFinish!==m.actualFinish;
+  const scriptedInterference=m.interference?.plannedOutcome==="SUCCESS"&&
+   m.interference.actualOutcome==="SUCCESS"&&
+   m.actualFinish==="PROTECTED_FINISH"&&!winnerChanged;
+  const unauthorized=(winnerChanged||finishChanged)&&
+   !scriptedInterference;
+  return unauthorized&&(!m.injuryStoppage||!m.medicalOverrideCertified)||
    m.injuryStoppage&&!m.medicalOverrideCertified||
    !m.injuryStoppage&&m.medicalOverrideCertified;
  }))throw new Error("Uncertified override of scripted match outcome");
