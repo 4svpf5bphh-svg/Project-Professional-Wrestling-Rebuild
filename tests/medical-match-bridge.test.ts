@@ -7,7 +7,7 @@ const p:InjuryResolutionPreview={
  stage:"POST_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW",
  preInjury:{} as InjuryResolutionPreview["preInjury"],
  injuries:[],injuryStoppage:false,plannedWinnerId:"a",actualWinnerId:"a",
- plannedFinish:"PIN",actualFinish:"PIN",crowdResponse:76};
+ plannedFinish:"CLEAN_PIN",actualFinish:"CLEAN_PIN",crowdResponse:76};
 test("ordinary finish remains scripted",()=>{
  const m=adaptMedicalMatch("m",0,["a","b"],p);
  assert.equal(m.actualWinnerSide,"A");
