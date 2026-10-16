@@ -103,6 +103,23 @@ export async function recordWeekContinuity(pool:TransactionPool,input:RecordWeek
          state.assessment.map(x=>x.showId),
          state.assessment.map(x=>x.controllerPlayerId)],
       );
+      // Freeze logistics authority at Lock. The active controller must be
+      // identical to the consenting owner; absent or stale permissions are false.
+      await tx.query(
+        `INSERT INTO ppw_week_logistics_authorizations
+          (world_id,year,week,promotion_id,controller_player_id,
+           allow_logistics_fallback,permitted_days,permitted_venue_ids)
+         SELECT a.world_id,a.year,a.week,a.promotion_id,a.controller_player_id,
+           s.allow_logistics_fallback,s.permitted_days,s.permitted_venue_ids
+         FROM ppw_week_continuity_assessments a
+         JOIN ppw_staff_continuity_settings s
+           ON s.world_id=a.world_id AND s.promotion_id=a.promotion_id
+           AND s.owner_player_id=a.controller_player_id
+         WHERE a.world_id=$1 AND a.year=$2 AND a.week=$3
+           AND a.controller_player_id IS NOT NULL
+           AND s.allow_logistics_fallback=true`,
+        [input.worldId,state.year,state.week],
+      );
       const counts:Record<ContinuityStatus,number>={
         SUBMITTED_READY:0,SUBMITTED_REVIEW:0,PREPARED_DRAFT:0,
         STAFF_FALLBACK_ELIGIBLE:0,PLAYER_ACTION_REQUIRED:0,AI_MANAGED:0,UNASSIGNED:0,
