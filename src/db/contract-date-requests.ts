@@ -27,8 +27,8 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
        AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
        [input.worldId,input.promotionId,input.playerId]);
      if(controllers.length!==1)throw new Error("Promotion access denied");
-     const contracts=await tx.query<{person_id:string;remaining_dates:number|null;expires_week_index:number;family:string}>(`
-       SELECT person_id,remaining_dates,expires_week_index,family FROM ppw_contracts
+     const contracts=await tx.query<{person_id:string;remaining_dates:number|null;date_entitlement:number|null;start_week_index:number;expires_week_index:number;family:string}>(`
+       SELECT person_id,remaining_dates,date_entitlement,start_week_index,expires_week_index,family FROM ppw_contracts
        WHERE world_id=$1 AND promotion_id=$2 AND contract_id=$3 AND status='SIGNED'
        FOR UPDATE`,[input.worldId,input.promotionId,input.contractId]);
      if(contracts.length!==1)throw new Error("Signed contract not found");
@@ -40,6 +40,9 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
      const clock=clocks[0]!;
      const weekIndex=(clock.year-1)*52+clock.week-1;
      if(contract.expires_week_index<weekIndex)throw new Error("Contract has expired");
+     if(contract.start_week_index>weekIndex)throw new Error("Contract has not started");
+     if((contract.date_entitlement??contract.remaining_dates??0)+input.additionalDates>104)
+       throw new Error("Purchased date allowance exceeds 104");
      const existing=await tx.query<{request_id:string}>(`
        SELECT request_id FROM ppw_contract_date_requests
        WHERE world_id=$1 AND contract_id=$2 AND status='PENDING'`,

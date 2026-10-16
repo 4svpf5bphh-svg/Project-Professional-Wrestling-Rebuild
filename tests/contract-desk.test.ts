@@ -39,3 +39,10 @@ test("expired and terminated agreements do not offer negotiation actions",()=>{
 test("one-off contract does not offer multiweek renewal",()=>{
  assert.equal(contractDeskEntry({...base,family:"ONE_OFF"}).renewalEligible,false);
 });
+
+test("future signing does not prematurely offer extra dates",()=>{
+ const r=contractDeskEntry({...base,startWeekIndex:12,currentWeekIndex:10});
+ assert.equal(r.availableForBooking,false);
+ assert.equal(r.reason,"NOT_STARTED");
+ assert.equal(r.additionalDatesEligible,false);
+});

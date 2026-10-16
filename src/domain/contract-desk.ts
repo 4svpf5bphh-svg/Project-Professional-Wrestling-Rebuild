@@ -19,8 +19,9 @@ export function contractDeskEntry(c:ContractDeskTerms):ContractDeskEntry {
   const availability=contractAvailability(c);
   const weeksRemaining=Math.max(0,c.expiresWeekIndex-c.currentWeekIndex+1);
   const expiringSoon=weeksRemaining<=4;
+  const started=c.startWeekIndex===undefined||c.currentWeekIndex>=c.startWeekIndex;
   const renewalEligible=c.status==="SIGNED"&&c.family!=="ONE_OFF"&&weeksRemaining>0;
-  const additionalDatesEligible=c.status==="SIGNED"&&c.family!=="EXCLUSIVE"
+  const additionalDatesEligible=started&&c.status==="SIGNED"&&c.family==="LIMITED_NON_EXCLUSIVE"
     &&weeksRemaining>0&&c.remainingDates!==null;
   return {
     contractId:c.contractId,personId:c.personId,name:c.name,family:c.family,

@@ -28,8 +28,8 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
    const r=req[0]!;
    if(r.promotion_id!==input.promotionId)throw new Error("Promotion mismatch");
    const rows=await tx.query<{family:ExistingCommitment["family"];status:string;
-    remaining_dates:number|null;start_week_index:number;expires_week_index:number;appearance_fee:string;role_expectation:Role}>(`
-    SELECT family,status,remaining_dates,start_week_index,expires_week_index,appearance_fee,role_expectation
+    remaining_dates:number|null;date_entitlement:number|null;start_week_index:number;expires_week_index:number;appearance_fee:string;role_expectation:Role}>(`
+    SELECT family,status,remaining_dates,date_entitlement,start_week_index,expires_week_index,appearance_fee,role_expectation
     FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2 AND promotion_id=$3 FOR UPDATE`,
     [input.worldId,r.contract_id,input.promotionId]);
    if(rows.length!==1)throw new Error("Contract missing");
@@ -40,7 +40,9 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
    let decision=input.decision;
    if(contract.status!=="SIGNED"||contract.family!=="LIMITED_NON_EXCLUSIVE"
      ||contract.remaining_dates===null||contract.expires_week_index<current
-     ||contract.start_week_index>current)decision="REJECTED";
+     ||contract.start_week_index>current
+     ||(contract.date_entitlement??contract.remaining_dates??0)+r.additional_dates>104)
+     decision="REJECTED";
    if(decision==="ACCEPTED"){
     const persons=await tx.query<{career_stage:PersonEconomics["careerStage"];morale:number;
      recognition:number;popularity:number;in_ring_quality:number;match_craft:number;
@@ -93,6 +95,7 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      revision=revision+1 WHERE world_id=$1 AND promotion_id=$2 AND contract_id=$3
      AND family='LIMITED_NON_EXCLUSIVE' AND status='SIGNED'
      AND remaining_dates IS NOT NULL AND remaining_dates<=$5
+     AND COALESCE(date_entitlement,remaining_dates)+$4<=104
      AND expires_week_index>=$6 RETURNING contract_id`,
      [input.worldId,input.promotionId,r.contract_id,r.additional_dates,
       2147483647-r.additional_dates,current]);
