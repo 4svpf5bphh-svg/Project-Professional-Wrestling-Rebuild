@@ -17,6 +17,19 @@ test("week cannot advance until each active promotion is resolved and certified;
       await createWorld(tx,{id:worldId,name:"Rollover Fixture",seed:1,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:promoA,name:"Promotion A",tier:"LOCAL"});
       await addPromotion(tx,worldId,{id:promoB,name:"Promotion B",tier:"LOCAL"});
+      await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,'renewing','R'),($1,'expiring','E')",[worldId]);
+      await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+       family,status,remaining_dates,start_week_index,expires_week_index,date_entitlement,
+       weekly_guarantee,appearance_fee,role_expectation,creative_control)
+       VALUES($1,'renew-contract','renewing',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',0,0,51,2,100,10,'REGULAR','NONE'),
+        ($1,'expire-contract','expiring',$3,'EXCLUSIVE','SIGNED',NULL,0,51,52,200,0,'MAIN_EVENT','NONE')`,
+       [worldId,promoA,promoB]);
+      await tx.query(`INSERT INTO ppw_contract_renewal_proposals(world_id,proposal_id,
+       contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
+       VALUES($1,'renewal','renew-contract',$2,'renewing','ACCEPTED',48,$3::jsonb)`,
+       [worldId,promoA,JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:13,
+        dateEntitlement:5,weeklyGuarantee:250,appearanceFee:20,roleExpectation:"REGULAR",
+        creativeControl:"NONE",signingBonus:0})]);
       await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'arena-a','A'),($1,'arena-b','B')",[worldId]);
       // This fixture tests advancement, not certification production.
       await tx.query("INSERT INTO ppw_week_resource_clearances(world_id,year,week,eligible_promotions,inspected_slots,command_request_id) VALUES($1,1,52,2,2,'fixture-clear')",[worldId]);
@@ -90,7 +103,28 @@ test("week cannot advance until each active promotion is resolved and certified;
     const ledger=await withWorldTransaction(db.pool,tx=>tx.query<{event_type:string;year:number;week:number}>(
       "SELECT event_type,year,week FROM ppw_ledger_events WHERE world_id=$1",[worldId],
     ));
-    assert.deepEqual(ledger,[{event_type:"WORLD_WEEK_COMPLETED",year:1,week:52}]);
+    assert.deepEqual(ledger.map(r=>r.event_type).sort(),
+      ["CONTRACT_GUARANTEE_PAID","CONTRACT_GUARANTEE_PAID","WORLD_WEEK_COMPLETED"]);
+    assert.ok(ledger.every(r=>r.year===1&&r.week===52));
+    const finance=await withWorldTransaction(db.pool,async tx=>{
+      const rows=await tx.query<{promotion_id:string;cash:string}>(
+        "SELECT promotion_id,cash FROM ppw_promotions WHERE world_id=$1 ORDER BY promotion_id",[worldId]);
+      const contracts=await tx.query<{contract_id:string;status:string;start_week_index:number;
+       expires_week_index:number;remaining_dates:number|null;weekly_guarantee:string}>(
+        "SELECT contract_id,status,start_week_index,expires_week_index,remaining_dates,weekly_guarantee FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
+      const status=await tx.query<{status:string}>(
+        "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
+      return {rows,contracts,status};
+    });
+    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoA)!.cash),-100);
+    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoB)!.cash),-200);
+    assert.equal(finance.contracts[0]!.status,"EXPIRED");
+    assert.equal(finance.contracts[1]!.status,"SIGNED");
+    assert.equal(finance.contracts[1]!.start_week_index,52);
+    assert.equal(finance.contracts[1]!.expires_week_index,64);
+    assert.equal(finance.contracts[1]!.remaining_dates,5);
+    assert.equal(Number(finance.contracts[1]!.weekly_guarantee),250);
+    assert.equal(finance.status[0]!.status,"ACTIVATED");
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
@@ -101,6 +135,9 @@ test("week cannot advance until each active promotion is resolved and certified;
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_venues WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
     }).finally(()=>db.close());
