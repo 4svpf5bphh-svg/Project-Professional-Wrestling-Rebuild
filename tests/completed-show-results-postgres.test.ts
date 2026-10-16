@@ -39,6 +39,10 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
    {...receipt,matches:[{...receipt.matches[0]!,actualFinish:"SUBMISSION"}]},
    {...receipt,segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]},
    {...receipt,segments:[{...receipt.segments[0]!,kind:"ATTACK"}]},
+   {...receipt,matches:[{...receipt.matches[0]!,
+    actualFinish:"INJURY_STOPPAGE",actualWinnerSide:"B"}]},
+   {...receipt,matches:[{...receipt.matches[0]!,
+    actualFinish:"PROTECTED_FINISH"}]},
    {...receipt,matches:[]},
    {...receipt,segments:[]},
    {...receipt,segments:[{...receipt.segments[0]!,position:2}]},
@@ -46,7 +50,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
     segments:[{...receipt.segments[0]!,position:0}]},
   ] as CompletedShowReceipt[])){
    await assert.rejects(recordCompletedShow(db.pool,invalid),
-    /does not match submitted card|differs from submitted booking|differs from submitted card/);
+    /does not match submitted card|differs from submitted booking|differs from submitted card|requires authoritative/);
    const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
     "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",
     [worldId]));

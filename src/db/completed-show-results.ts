@@ -82,6 +82,13 @@ export async function recordCompletedShow(
        throw new Error("Completed winner differs from submitted booking");
      }
     }
+    // No medical or interference evidence is persisted in this receipt.
+    // Reject exceptional results until the World resolver can certify them.
+    if(result.actualFinish==="INJURY_STOPPAGE")
+     throw new Error("Medical stoppage requires authoritative injury evidence");
+    if(result.actualFinish==="PROTECTED_FINISH"&&
+     p.plannedFinish!==undefined&&p.plannedFinish!=="PROTECTED_FINISH")
+     throw new Error("Interference finish requires authoritative resolution evidence");
     if(typeof p.plannedFinish==="string"&&
      result.actualFinish!==p.plannedFinish&&
      result.actualFinish!=="INJURY_STOPPAGE"&&
