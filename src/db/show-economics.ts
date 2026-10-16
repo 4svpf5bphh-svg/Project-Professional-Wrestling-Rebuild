@@ -4,15 +4,18 @@
  */
 import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
-import {originalCompetitionFactor,originalExpectedDemand,originalShowSettlement,
- originalTicketYield,type Competitor,type ShowMarket,type LocalAudience,
+import {originalCompetitionFactor,originalShowSettlement,
+ type Competitor,type LocalAudience,
  type ShowTier,type EventType,type TicketStrategy}
  from "../domain/legacy-show-economics.js";
-export interface SettleShowInput{worldId:string;promotionId:string;showId:string;year:number;week:number}
+export interface SettleShowInput{worldId:string;promotionId:string;showId:string;year:number;week:number;
+ averageMatchRating:number}
 
 export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowInput){
  const rows=await tx.query<{
   seed:string|number;market_id:string|null;show_day:number|null;event_type:EventType|null;
+  booking_expected_demand:number|null;booking_ticket_yield:string|null;
+  booking_snapshot_fingerprint:string|null;
   ticket_strategy:TicketStrategy|null;promotion_id:string;
   venue_market_id:string|null;home_market_id:string|null;
   capacity:number|null;weekly_hire_cost:string|null;venue_status:string|null;tier:ShowTier;
@@ -22,6 +25,8 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   resource_charged:boolean;show_completed:boolean;
  }>(`
  SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,
+  d.booking_expected_demand,d.booking_ticket_yield::text,
+  d.booking_snapshot_fingerprint,
   p.promotion_id,p.home_market_id,p.tier,p.media_reach,
   v.market_id AS venue_market_id,v.capacity,v.weekly_hire_cost,
   v.status AS venue_status,
@@ -53,11 +58,15 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   ||x.capacity===null||x.weekly_hire_cost===null
   ||x.media_reach===null||x.audience_potential===null
   ||x.wrestling_interest===null||x.spending_index===null
-  ||x.awareness===null||x.live_strength===null||x.loyalty===null)
+  ||x.awareness===null||x.live_strength===null||x.loyalty===null||
+  x.booking_expected_demand===null||x.booking_ticket_yield===null||
+  !x.booking_snapshot_fingerprint||
+  !Number.isFinite(input.averageMatchRating)||
+  input.averageMatchRating<.5||input.averageMatchRating>5)
   throw new Error("Original show market, venue or ticket context not imported");
- const market:ShowMarket={audiencePotential:x.audience_potential,
-  wrestlingInterest:x.wrestling_interest,spendingIndex:x.spending_index};
- const local:LocalAudience={awareness:x.awareness,liveStrength:x.live_strength,loyalty:x.loyalty};
+ // Booking's forecast is frozen when the player confirms Ready to Run.
+ // A rival or wrestler profile change after that point cannot rewrite it.
+ const expectedDemand=x.booking_expected_demand;
  const slots=await tx.query<{payload:unknown}>(`
   SELECT payload FROM ppw_card_slots
   WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101`,
@@ -66,21 +75,7 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
  const everyone=new Set<string>();
  for(const slot of slots)for(const p of readCardParticipants(slot.payload))everyone.add(p.personId);
  if(everyone.size<2||everyone.size>100)throw new Error("No valid event talent roster");
- const people=await tx.query<{person_id:string;recognition:number|null;
-  popularity:number|null;presentation:number|null}>(`
-  SELECT person_id,recognition,popularity,presentation FROM ppw_people
-   WHERE world_id=$1 AND person_id=ANY($2::text[])`,
-  [input.worldId,[...everyone].sort()]);
- if(people.length!==everyone.size||
-  people.some(p=>p.recognition===null||p.popularity===null||p.presentation===null))
-  throw new Error("Original ticket drawing power not imported");
- const expectedDemand=originalExpectedDemand({
-  promotionId:input.promotionId,marketId:x.market_id,day:x.show_day,
-  eventType:x.event_type,ticketStrategy:x.ticket_strategy,
-  mediaReach:x.media_reach,market,local,
-  people:people.map(p=>({recognition:p.recognition!,popularity:p.popularity!,
-   presentation:p.presentation!})),
- });
+ const local:LocalAudience={awareness:x.awareness,liveStrength:x.live_strength,loyalty:x.loyalty};
  // Rival capacity is shared across the World, not promotion-private. This
  // single week-scoped query gathers ONLY the competition projection.
  const rivals=await tx.query<{
@@ -121,20 +116,20 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   [input.worldId,input.year,input.week,input.showId,input.promotionId]);
  const quote=originalShowSettlement({seed:x.seed,showId:input.showId,
   expectedDemand,competitionFactor:factor,capacity:x.capacity,
-  ticketYield:originalTicketYield(x.ticket_strategy,market.spendingIndex),
+  ticketYield:Number(x.booking_ticket_yield),
   venueCost:Number(x.weekly_hire_cost),tier:x.tier,eventType:x.event_type,
   participants:everyone.size,away:x.market_id!==x.home_market_id,
   appearanceFees:Number(appearance[0]?.amount??0)});
  const inserted=await tx.query<{show_id:string}>(`
  INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,
   attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,
-  appearance_fees,total_cost,net_result,incremental_cash)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+  appearance_fees,total_cost,net_result,incremental_cash,average_match_rating)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
  RETURNING show_id`,
  [input.worldId,input.showId,input.promotionId,input.year,input.week,
   quote.attendance,quote.expectedDemand,quote.gateRevenue,quote.venueCost,
   quote.productionCost,quote.travelCost,quote.appearanceFees,quote.totalCost,
-  quote.netResult,quote.incrementalCash]);
+  quote.netResult,quote.incrementalCash,input.averageMatchRating]);
  if(inserted.length!==1)throw new Error("Event economics result not recorded");
  const paid=await tx.query<{promotion_id:string}>(`
   UPDATE ppw_promotions SET cash=cash+$3

@@ -44,7 +44,11 @@ export async function resolveCanonicalShow(
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
   const recorded=await recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
-   await settleCompletedShowEconomics(tx,input);
+   await settleCompletedShowEconomics(tx,{
+     ...input,averageMatchRating:Math.round(
+       projection.projections.reduce((sum,m)=>sum+m.score.criticalRatingStars,0)/
+       projection.projections.length*100)/100,
+    });
   return recorded;
  });
 }

@@ -9,6 +9,8 @@ import {recordCompletedShow} from "../src/db/completed-show-results.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 import {settleCompletedShowEconomics} from "../src/db/show-economics.js";
 import {settleWeeklyPromotionHealth} from "../src/db/weekly-finance-health.js";
+import {settleWeekLocalMarkets} from "../src/db/market-response.js";
+import {originalMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
 import {originalShowSettlement,originalExpectedDemand,originalCompetitionFactor,
  originalTicketYield} from "../src/domain/legacy-show-economics.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -57,6 +59,18 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
    await tx.query(`INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,
     resolved_week_index,command_request_id,performers_count,dates_charged)
     VALUES($1,$2,$3,0,'resolve-fixture',2,2)`,[world,show,promoter]);
+   const market={audiencePotential:85,wrestlingInterest:70,spendingIndex:100};
+   const local={awareness:70,liveStrength:60,loyalty:55};
+   const people=[{recognition:70,popularity:80,presentation:85},
+    {recognition:60,popularity:75,presentation:80}];
+   const expectedDemand=originalExpectedDemand({promotionId:promoter,marketId:"metro",
+    day:2,eventType:"REGULAR",ticketStrategy:"STANDARD",mediaReach:65,
+    market,local,people});
+   await tx.query(`UPDATE ppw_booking_drafts
+    SET booking_expected_demand=$3,booking_ticket_yield=$4,
+    booking_snapshot_fingerprint=repeat('a',64)
+    WHERE world_id=$1 AND draft_id=$2`,
+    [world,show,expectedDemand,originalTicketYield("STANDARD",100)]);
    await tx.query(`UPDATE ppw_promotions SET cash=8000
      WHERE world_id=$1 AND promotion_id=$2`,[world,promoter]);
    await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
@@ -75,7 +89,8 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
     }};
   }};
   const result=await withWorldTransaction(measured,tx=>settleCompletedShowEconomics(tx,{
-   worldId:world,promotionId:promoter,showId:show,year:1,week:1}));
+   worldId:world,promotionId:promoter,showId:show,year:1,week:1,
+   averageMatchRating:3.5}));
   const sample=meter.assertBudget({maxQueries:10,maxResultBytes:12000});
   assert.equal(sample.queryCount,10);
   console.log("PPW original show economy PostgreSQL budget:",JSON.stringify(sample));
@@ -113,7 +128,8 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
   assert.equal(after[0]!.recorded_attendance,result.attendance);
   await assert.rejects(
    withWorldTransaction(db.pool,tx=>settleCompletedShowEconomics(tx,{
-    worldId:world,promotionId:promoter,showId:show,year:1,week:1})),/duplicate key/);
+    worldId:world,promotionId:promoter,showId:show,year:1,week:1,
+    averageMatchRating:3.5})),/duplicate key/);
   const again=await read<{cash:string;entries:number}>(`
    SELECT p.cash,(SELECT count(*)::integer FROM ppw_ledger_events
     WHERE world_id=$1 AND event_type='SHOW_EVENT_ECONOMICS') AS entries
@@ -130,10 +146,21 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
     WHERE world_id=$1 AND promotion_id=$2`,[world,promoter]);
   assert.equal(Number(pAndL[0]!.last_weekly_net),result.incrementalCash-2000);
   assert.equal(Number(pAndL[0]!.cash),8000+result.incrementalCash);
+  const drift=await withWorldTransaction(db.pool,tx=>settleWeekLocalMarkets(tx,world,1,1));
+  assert.deepEqual(drift,{affected:1});
+  const state=await read<{awareness:number;live_strength:number;loyalty:number}>(`
+   SELECT awareness,live_strength,loyalty FROM ppw_promotion_market_states
+   WHERE world_id=$1 AND promotion_id=$2 AND market_id='metro'`,[world,promoter]);
+  const expectedMarket=originalMarketAfterEvent({awareness:70,liveStrength:60,loyalty:55},{
+   eventType:"REGULAR",isHomeMarket:true,expectedDemand:result.expectedDemand,
+   attendance:result.attendance,capacity:1000,averageMatchRating:3.5,crowdResponse:78});
+  assert.deepEqual(state[0],{awareness:expectedMarket.awareness,
+   live_strength:expectedMarket.liveStrength,loyalty:expectedMarket.loyalty});
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET phase='OPEN' WHERE world_id=$1",[world]));
   await assert.rejects(withWorldTransaction(db.pool,tx=>settleCompletedShowEconomics(tx,{
-   worldId:world,promotionId:promoter,showId:show,year:1,week:1})),/requires a submitted show/);
+   worldId:world,promotionId:promoter,showId:show,year:1,week:1,
+   averageMatchRating:3.5})),/requires a submitted show/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_show_economics","ppw_completed_show_matches",

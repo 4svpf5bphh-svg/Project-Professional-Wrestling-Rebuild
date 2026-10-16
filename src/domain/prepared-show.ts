@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import type {CommercialSnapshot} from "../db/prepared-show-demand.js";
 import {readCardParticipants} from "./card-participants.js";
 import {uniqueShowAppearances} from "./appearance-policy.js";
 
@@ -6,6 +7,7 @@ export interface ReadyDraftEvidence {
   worldId:string;promotionId:string;showId:string;
   year:number;week:number;day:number|null;venueId:string|null;
   slots:readonly {slot_id:string;position:number;kind:string;payload:unknown}[];
+  commercial?:CommercialSnapshot;
 }
 export function validatePreparedDraft(d:ReadyDraftEvidence):string|null {
   if(!d.worldId||!d.promotionId||!d.showId||
@@ -33,6 +35,7 @@ export function preparedDraftFingerprint(d:ReadyDraftEvidence):string {
   return createHash("sha256").update(JSON.stringify({
     worldId:d.worldId,promotionId:d.promotionId,showId:d.showId,
     year:d.year,week:d.week,day:d.day,venueId:d.venueId,
+    commercial:d.commercial,
     slots:[...d.slots].sort((a,b)=>a.position-b.position || a.slot_id.localeCompare(b.slot_id,"en")),
   })).digest("hex");
 }

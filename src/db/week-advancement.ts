@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
+import {settleWeekLocalMarkets} from "./market-response.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -118,6 +119,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING'))
         AS pending`,[input.worldId]);
       if(outstanding[0]!.pending)throw new Error("Contract desk negotiations must resolve before World rollover");
+      // Market response must update while the World is still RESOLVING;
+      // the eventual clock move/payroll/health writes share this transaction.
+      await settleWeekLocalMarkets(tx,input.worldId,year,week);
       // Retain the canonical daily cadence (a 52-week year, 1 real day/week).
       // If the resolver misses a whole day, do not reopen with a deadline
       // already in the past; this needs an explicit recovery policy.

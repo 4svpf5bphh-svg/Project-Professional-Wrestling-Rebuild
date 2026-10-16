@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {validatePreparedDraft,preparedDraftFingerprint,type ReadyDraftEvidence} from "../domain/prepared-show.js";
+import {snapshotPreparedShowDemand} from "./prepared-show-demand.js";
 
 export interface MarkPreparedShowInput {
   worldId:string;playerId:string;requestId:string;expectedRevision:number;
@@ -18,8 +19,9 @@ export async function markPreparedShowReady(pool:TransactionPool,input:MarkPrepa
     requestId:input.requestId,expectedRevision:input.expectedRevision,
     commandType:"MARK_PREPARED_SHOW_READY",requiresOpenWeek:true,
     execute:async tx=>{
-      const control=await tx.query<{draft_id:string;year:number;week:number;show_day:number|null;venue_id:string|null}>(
-        `SELECT d.draft_id,d.year,d.week,d.show_day,d.venue_id
+      const control=await tx.query<{draft_id:string;year:number;week:number;show_day:number|null;
+        venue_id:string|null;show_economics_enabled:boolean}>(
+        `SELECT d.draft_id,d.year,d.week,d.show_day,d.venue_id,w.show_economics_enabled
           FROM ppw_booking_drafts d
           JOIN ppw_worlds w ON w.world_id=d.world_id AND w.year=d.year AND w.week=d.week
           JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
@@ -48,15 +50,24 @@ export async function markPreparedShowReady(pool:TransactionPool,input:MarkPrepa
         [input.worldId,evidence.venueId],
       );
       if(venue.length!==1)throw new Error("Prepared show venue unavailable");
+      const snapshot=draft.show_economics_enabled?
+        await snapshotPreparedShowDemand(tx,input.worldId,input.promotionId,input.showId,slots):undefined;
+      if(snapshot)evidence.commercial=snapshot;
       const fingerprint=preparedDraftFingerprint(evidence);
       await tx.query(
         `UPDATE ppw_booking_drafts SET lock_ready_by_player_id=$3,
-           lock_ready_fingerprint=$4,revision=revision+1
+           lock_ready_fingerprint=$4,
+           booking_expected_demand=$5,booking_ticket_yield=$6,
+           booking_snapshot_fingerprint=$7,revision=revision+1
           WHERE world_id=$1 AND draft_id=$2 AND status='DRAFT'`,
-        [input.worldId,input.showId,input.playerId,fingerprint],
+        [input.worldId,input.showId,input.playerId,fingerprint,
+         snapshot?.expectedDemand??null,snapshot?.ticketYield??null,
+         snapshot?fingerprint:null],
       );
       return {showId:input.showId,promotionId:input.promotionId,
-        preparedForLock:true,fingerprint};
+        preparedForLock:true,fingerprint,
+        ...(snapshot?{expectedDemand:snapshot.expectedDemand,
+         ticketYield:snapshot.ticketYield}:{})};
     },
   });
 }

@@ -8,6 +8,10 @@ export interface FinalizePreparedWorldShowsInput {
 type Candidate={
   draft_id:string;promotion_id:string;year:number;week:number;
   show_day:number|null;venue_id:string|null;
+  market_id:string|null;event_type:"REGULAR"|"MAJOR"|null;
+  ticket_strategy:"ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE"|null;
+  booking_expected_demand:number|null;booking_ticket_yield:string|null;
+  booking_snapshot_fingerprint:string|null;show_economics_enabled:boolean;
   lock_ready_fingerprint:string;lock_ready_by_player_id:string;
   controller_player_id:string|null;assessment_owner:string|null;
 };
@@ -39,9 +43,13 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
       if(prior.length)throw new Error("Prepared show finalisation already completed");
       const candidates=await tx.query<Candidate>(
         `SELECT d.draft_id,d.promotion_id,d.year,d.week,d.show_day,d.venue_id,
+             d.market_id,d.event_type,d.ticket_strategy,d.booking_expected_demand,
+             d.booking_ticket_yield::text,d.booking_snapshot_fingerprint,
+             w.show_economics_enabled,
              d.lock_ready_fingerprint,d.lock_ready_by_player_id,
              m.player_id AS controller_player_id,a.controller_player_id AS assessment_owner
           FROM ppw_booking_drafts d
+          JOIN ppw_worlds w ON w.world_id=d.world_id
           JOIN ppw_week_continuity_assessments a
             ON a.world_id=d.world_id AND a.promotion_id=d.promotion_id
             AND a.year=d.year AND a.week=d.week AND a.show_id=d.draft_id
@@ -87,12 +95,23 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
             slot_id,position,kind,payload,
           })),
         };
+        const missingCommerce=d.show_economics_enabled&&(
+          !d.market_id||!d.ticket_strategy||!d.event_type||
+          d.booking_expected_demand===null||d.booking_ticket_yield===null||
+          !d.booking_snapshot_fingerprint);
+        if(d.show_economics_enabled&&!missingCommerce)
+          evidence.commercial={marketId:d.market_id!,ticketStrategy:d.ticket_strategy!,
+            eventType:d.event_type!,expectedDemand:d.booking_expected_demand!,
+            ticketYield:Number(d.booking_ticket_yield)};
         const error=validatePreparedDraft(evidence);
         const permitted=d.controller_player_id!==null&&
           d.controller_player_id===d.assessment_owner &&
           d.lock_ready_by_player_id===d.controller_player_id;
         const reason=!permitted?"OWNER_CHANGED":error??(
+          missingCommerce?"MISSING_COMMERCIAL_SNAPSHOT":
           !venues.has(d.venue_id??"")?"VENUE_UNAVAILABLE":
+          d.show_economics_enabled&&d.booking_snapshot_fingerprint!==d.lock_ready_fingerprint?
+            "DRAFT_CHANGED":
           preparedDraftFingerprint(evidence)!==d.lock_ready_fingerprint?"DRAFT_CHANGED":null
         );
         if(reason)flagged.push({showId:d.draft_id,reason});
