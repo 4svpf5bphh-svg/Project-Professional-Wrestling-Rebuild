@@ -33,7 +33,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
    await tx.query(
     "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);
   });
-  for(const invalid of [
+  for(const invalid of ([
    {...receipt,matches:[{...receipt.matches[0]!,matchId:"invented"}]},
    {...receipt,matches:[{...receipt.matches[0]!,actualWinnerSide:"B"}]},
    {...receipt,matches:[{...receipt.matches[0]!,actualFinish:"SUBMISSION"}]},
