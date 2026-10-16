@@ -3,7 +3,8 @@
  * validated side participants. Never use a booked finish if medical stoppage
  * superseded it. Historical matches must be strictly earlier than this week.
  */
-export type FinishKind="DISQUALIFICATION"|"FOREIGN_OBJECT"|"PIN"|"SUBMISSION"|"OTHER";
+import type {MatchFinish} from "./match-finishes.js";
+export type FinishKind=MatchFinish|"OTHER";
 export type FinishAlignment="FACE"|"HEEL"|"TWEENER";
 export interface FinishedCheatingMatch {
  matchId:string;promotionId:string;weekIndex:number;
