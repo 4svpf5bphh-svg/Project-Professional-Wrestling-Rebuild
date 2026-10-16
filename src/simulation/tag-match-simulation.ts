@@ -1,4 +1,4 @@
-/** Deterministic 2v2 simulation slice. Every member is evaluated and
+/** Deterministic 2v2 through 5v5 simulation. Every member is evaluated and
  * injured individually; scripted winning TEAM remains canonical unless a
  * serious medical incident to that team requires a stoppage.
  * Reuses archived PPW quality/crowd equations on both side-average profiles.
@@ -38,18 +38,21 @@ function average(team:readonly ScoredWrestler[]):ScoredWrestler{
 export function simulateBookedTagMatch(input:TagSimulationInput){
  const {layout}=input;
  if(layout.family!=="TEAMS"||layout.sides.length!==2||
-  layout.sides.some(x=>x.participants.length!==2)||
+  layout.sides.some(x=>x.participants.length<2||
+   x.participants.length>5||
+   x.participants.length!==layout.sides[0]!.participants.length)||
   !Number.isFinite(input.injuryRateMultiplier)||input.injuryRateMultiplier<0||
   input.injuryRateMultiplier>10||
   !Number.isFinite(input.mediaReach)||input.mediaReach<0||input.mediaReach>1000000)
-  throw new Error("First team simulator only supports canonical 2v2");
+  throw new Error("Team simulator supports two equal sides of 2 to 5 wrestlers");
  const ids=layout.sides.flatMap(x=>x.participants.map(p=>p.personId));
  const people=ids.map(id=>{
   const person=input.wrestlers.get(id);
   if(!person)throw new Error("Missing booked tag wrestler attributes");
   return person;
  });
- const teams=[people.slice(0,2),people.slice(2,4)] as
+ const teamSize=layout.sides[0]!.participants.length;
+ const teams=[people.slice(0,teamSize),people.slice(teamSize)] as
   [ScoredWrestler[],ScoredWrestler[]];
  const scoring:ScoringInput={
   worldSeed:input.worldSeed,matchId:input.matchId,order:input.order,
@@ -61,13 +64,14 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
  const {score,rng}=scoreArchivedSinglesBeforeInjuriesWithRng(scoring);
  const avgSafety=mean(people.map(p=>p.skills.safety));
  const injuries:InjuryRecordPreview[]=[];
- for(let index=0;index<4;index++){
+ for(let index=0;index<people.length;index++){
   const p=people[index]!,personId=ids[index]!;
   const intentRisk=input.intent==="HIGH_RISK"?.006:
    input.intent==="EPIC"?.0024:input.intent==="TECHNICAL"?.0012:.0007;
   const probability=clamp((.0007+intentRisk+p.fatigue/18000+
    p.wear/22000+Math.max(0,70-avgSafety)/9000+
-   Math.max(0,input.plannedLengthMinutes-15)/12000)*
+   Math.max(0,input.plannedLengthMinutes-15)/12000+
+   (teamSize-2)*.00025)*
    input.injuryRateMultiplier,.0002,.035);
   if(!rng.chance(probability))continue;
   const roll=rng.next();
@@ -97,7 +101,7 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
  };
  const final=previewArchivedInterference(injury,
   input.interference??null,input.interferer??null);
- // Full four-person consequence summaries. These are immutable calculated
+ // Full participant consequence summaries. These are immutable calculated
  // evidence until the generic career settlement writer is implemented.
  const winnerSide=injuryStoppage?actualSide:plannedSide;
  const members=ids.map((personId,i)=>{
@@ -139,7 +143,7 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
     momentum:round1(clamp(person.momentum+momentumDelta,0,100)),
     recognition:Math.round(clamp(person.recognition+recognitionGain,0,100)*100)/100,
     popularity:Math.round(clamp(person.popularity+popularityDelta,0,100)*100)/100};
-  return {personId,sideId:layout.sides[Math.floor(i/2)]!.sideId,
+  return {personId,sideId:layout.sides[Math.floor(i/teamSize)]!.sideId,
    won,injury:injuryRecord,before,after};
  });
  return {score,injury,final,members,actualWinnerSide:actualSide,

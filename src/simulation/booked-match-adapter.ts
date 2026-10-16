@@ -82,13 +82,13 @@ export function adaptBookedSinglesMatch(payload:unknown,
   };
 }
 
-/** Read-only team style readiness; preserves all four participants and
+/** Read-only team style readiness; preserves every participant and
  * never pretends that the first wrestler represents the whole team. */
 export function adaptBookedTagReadiness(payload:unknown,
  talent:ReadonlyMap<string,WrestlerSimReadiness>){
  const layout=readCanonicalMatchLayout(payload);
  if(requireSupportedScoringLayout(layout)!=="TAG")
-  throw new Error("Tag readmodel requires 2v2 format");
+  throw new Error("Teams readmodel requires 2v2 through 5v5 format");
  const p=payload as Record<string,unknown>;
  const intent=p.intent??"COMPETITIVE";
  if(typeof intent!=="string"||!INTENTS.has(intent as MatchIntent))
@@ -106,6 +106,7 @@ export function adaptBookedTagReadiness(payload:unknown,
    execution:evaluateMatchStyleExecution(style,r.skills,length)};
  });
  return {family:"TEAMS" as const,sides:layout.sides,
+  teamSize:layout.sides[0]!.participants.length,
   scriptedWinnerSide:layout.scriptedWinnerSide,
   status:records.some(x=>x.readiness.status==="REFUSES")?
     "NEEDS_STYLE_REVIEW" as const:"READY" as const,

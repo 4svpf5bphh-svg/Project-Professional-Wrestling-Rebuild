@@ -122,12 +122,18 @@ export async function previewArchivedShowMatchScoresInTransaction(
         pairMap.set(pairKey(a,b),[a,b]);
       }else if(kind==="TAG"){
         for(const side of layout.sides){
-          const [a,b]=pairIds(side.participants[0]!.personId,side.participants[1]!.personId);
-          tagPairs.set(pairKey(a,b),[a,b]);
+          for(let i=0;i<side.participants.length;i++){
+            for(let j=i+1;j<side.participants.length;j++){
+              const [a,b]=pairIds(side.participants[i]!.personId,
+                side.participants[j]!.personId);
+              tagPairs.set(pairKey(a,b),[a,b]);
+            }
+          }
         }
       }
     }
-    if(appearances.size>100||pairMap.size>100||interferers.size>100)
+    if(appearances.size>100||pairMap.size>100||
+       tagPairs.size>500||interferers.size>100)
       throw new Error("Original match scoring input too large");
     const allPeople=[...new Set([...appearances,...interferers])].sort();
     if(allPeople.length>200)throw new Error("World-scoped scoring roster exceeds batch limit");
@@ -240,7 +246,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
       if(format==="TAG"){
         const participantIds=layout.participants.map(x=>x.personId);
         if(new Set(participantIds.map(id=>divisions.get(id))).size!==1)
-          throw new Error("Mixed booking divisions cannot form a 2v2 tag match");
+          throw new Error("Mixed booking divisions cannot form a team match");
         const raw=slot.payload as Record<string,unknown>;
         const allowed=["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
           "HIGH_RISK","STORY","PROTECTIVE","EPIC"];
@@ -254,17 +260,28 @@ export async function previewArchivedShowMatchScoresInTransaction(
           throw new Error("Unsupported tag match intent, duration, finish or style");
         let modifier=0;
         for(const side of layout.sides){
-          const [a,b]=pairIds(side.participants[0]!.personId,side.participants[1]!.personId);
-          const key=pairKey(a,b);
-          let chem=mutableTagChem.get(key);
-          if(!chem){
-            const rng=new DeterministicRng(deterministicSeedFromText(
-              `${worldSeed}:chemistry:TAG:${a}:${b}`));
-            chem={compatibility:Math.round(rng.float(-12,13)*10)/10,familiarity:0};
-            mutableTagChem.set(key,chem);
+          let sideSum=0,pairCount=0;
+          for(let i=0;i<side.participants.length;i++){
+           for(let j=i+1;j<side.participants.length;j++){
+            const [a,b]=pairIds(side.participants[i]!.personId,
+              side.participants[j]!.personId);
+            const key=pairKey(a,b);
+            let chem=mutableTagChem.get(key);
+            if(!chem){
+              const rng=new DeterministicRng(deterministicSeedFromText(
+                `${worldSeed}:chemistry:TAG:${a}:${b}`));
+              chem={compatibility:Math.round(rng.float(-12,13)*10)/10,
+                familiarity:0};
+              mutableTagChem.set(key,chem);
+            }
+            sideSum+=chem.compatibility*.55+chem.familiarity*.04;
+            chem.familiarity=Math.min(100,chem.familiarity+4);
+            pairCount++;
+           }
           }
-          modifier+=chem.compatibility*.55+chem.familiarity*.04;
-          chem.familiarity=Math.min(100,chem.familiarity+4);
+          // Normalise each side by its pairs: 5v5 must not earn 10 times
+          // as much chemistry simply for having 10 teammate pairs.
+          modifier+=sideSum/pairCount;
         }
         const interruption=readBookedInterference(slot.payload);
         const profile=interruption?interfererProfiles.get(interruption.personId):null;
@@ -522,6 +539,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
         !payload.championshipId||payload.championshipId.length>200)
        throw new Error("Invalid canonical tag championship");
       const layout=layouts[index]!;
+      if(layout.sides[0]!.participants.length!==2)
+        throw new Error("Only a 2v2 title uses an existing tag-team reign; larger-team titles need their own identity");
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
        sides:layout.sides.map(side=>({sideId:side.sideId,
         personIds:side.participants.map(x=>x.personId)})) as

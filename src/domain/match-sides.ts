@@ -93,6 +93,8 @@ export function requireSupportedScoringLayout(layout:CanonicalMatchLayout):
  if(layout.family==="INDIVIDUAL"&&layout.sides.length===3)return "TRIPLE_THREAT";
  if(layout.family==="INDIVIDUAL"&&layout.sides.length===4)return "FOUR_WAY";
  if(layout.family==="TEAMS"&&layout.sides.length===2&&
-  layout.sides.every(x=>x.participants.length===2))return "TAG";
+  layout.sides.every(x=>x.participants.length>=2&&
+   x.participants.length<=5&&
+   x.participants.length===layout.sides[0]!.participants.length))return "TAG";
  throw new Error("Match formation awaits the approved scoring rules");
 }

@@ -1,4 +1,4 @@
-/** Canonical 2v2 career mutations are made only AFTER all four
+/** Canonical 2v2–5v5 career mutations are made only AFTER all
  * participants are proved by the verified completed show in the same World
  * transaction. The UPDATE and history INSERT each operate on bounded arrays.
  * If any row is missing or its scored baseline changed, throw and roll back
@@ -24,7 +24,11 @@ export async function settleCanonicalTagCareerConsequences(
  if(!effects.length)return {performers:0,matches:0,injuries:0};
  if(effects.length>100||tagCount>100||
    new Set(effects.map(e=>e.person_id)).size!==effects.length||
-   effects.length!==tagCount*4)
+   projection.projections.some(p=>p.tag!==null&&
+    (p.tag.result.members.length!==p.tag.layout.participants.length||
+     p.tag.result.members.length<4||
+     p.tag.result.members.length>10))||
+   effects.length<4*tagCount||effects.length>10*tagCount)
   throw new Error("Tag career batch exceeds bounded unique performer capacity");
  const values=effects.map(e=>({
   person_id:e.person_id,

@@ -19,13 +19,16 @@ export function verifyResolvedTeamEvidence(
 ):{actualWinnerSide:"A"|"B";actualFinish:string}{
  if(booking.family!=="TEAMS"||booking.sides.length!==2||
   booking.sides[0]?.sideId!=="A"||booking.sides[1]?.sideId!=="B"||
-  booking.sides.some(s=>s.participants.length!==2)||
+  booking.sides.some(s=>s.participants.length<2||
+   s.participants.length>5||
+   s.participants.length!==booking.sides[0]!.participants.length)||
   !["A","B"].includes(booking.scriptedWinnerSide)||
   !["A","B"].includes(resolved.actualWinnerSide)||
   !booking.plannedFinish||
-  new Set(booking.sides.flatMap(s=>s.participants)).size!==4||
+  new Set(booking.sides.flatMap(s=>s.participants)).size!==
+   booking.sides[0]!.participants.length*2||
   booking.sides.some(s=>s.participants.some(id=>!id)))
-  throw new Error("Invalid canonical 2v2 match evidence");
+  throw new Error("Invalid canonical 2v2–5v5 team match evidence");
  const medicallyStopped=resolved.medical?.stoppage===true;
  if(resolved.medical&&
   (!medicallyStopped||!["MAJOR","SEVERE"].includes(resolved.medical.severity)||

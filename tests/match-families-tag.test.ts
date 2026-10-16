@@ -89,3 +89,48 @@ test("team evidence refuses overturned scripted finishes except verified severe 
   matches:[{...receipt.matches[0]!,actualWinnerSide:"A" as const}]},[evidence]),
  /contradicts/);
 });
+
+test("trios, 4v4 and 5v5 preserve every booked performer, both sides and a scripted team winner",()=>{
+ for(const teamSize of [3,4,5]){
+  const names=Array.from({length:2*teamSize},(_,i)=>"member-"+i);
+  const players=names.map(person);
+  const match={matchType:"TAG",family:"TEAMS",participants:players,
+   sides:[{sideId:"A",participants:players.slice(0,teamSize)},
+    {sideId:"B",participants:players.slice(teamSize)}],
+   scriptedWinnerSide:"B",intent:"COMPETITIVE",plannedFinish:"CLEAN_PIN",
+   plannedLengthMinutes:22};
+  const layout=readCanonicalMatchLayout(match);
+  assert.equal(requireSupportedScoringLayout(layout),"TAG");
+  assert.equal(layout.participants.length,2*teamSize);
+  const roster=new Map(names.map((id,i)=>[id,{
+   ...w,skills:{...w.skills,inRingQuality:w.skills.inRingQuality+i},
+   momentum:65+i}] as const));
+  const argsLarge={...args,layout,wrestlers:roster};
+  const result=simulateBookedTagMatch(argsLarge);
+  assert.deepEqual(result,simulateBookedTagMatch(argsLarge));
+  assert.equal(result.members.length,2*teamSize);
+  assert.equal(result.members.filter(x=>x.won).length,teamSize);
+  assert.equal(result.actualWinnerSide,result.injury.injuryStoppage?"A":"B");
+  assert.deepEqual(result.members.map(x=>x.personId),names);
+  assert.deepEqual(result.members.map(x=>x.sideId),[
+   ...Array(teamSize).fill("A"),...Array(teamSize).fill("B")]);
+  assert.ok(result.members.every(x=>x.after.fatigue>x.before.fatigue&&
+   x.after.wear>=x.before.wear));
+  assert.deepEqual(verifyResolvedTeamEvidence({
+   family:"TEAMS",sides:layout.sides.map(side=>({sideId:side.sideId,
+    participants:side.participants.map(x=>x.personId)})),
+   scriptedWinnerSide:"B",plannedFinish:"CLEAN_PIN"},{
+    actualWinnerSide:result.actualWinnerSide,
+    actualFinish:result.final.actualFinish,
+    ...(result.injury.injuryStoppage?{medical:{
+     injuredPersonId:result.injury.injuries.find(x=>x.personId&&
+      layout.sides[1]!.participants.some(p=>p.personId===x.personId)&&
+      ["MAJOR","SEVERE"].includes(x.severity))!.personId,
+     severity:"MAJOR" as const,stoppage:true as const}}:{})
+   }),{actualWinnerSide:result.actualWinnerSide,
+    actualFinish:result.final.actualFinish});
+  assert.throws(()=>readCanonicalMatchLayout({...match,
+   sides:[match.sides[0],{sideId:"B",participants:players.slice(teamSize+1)}]}),
+   /disagree|evenly/);
+ }
+});
