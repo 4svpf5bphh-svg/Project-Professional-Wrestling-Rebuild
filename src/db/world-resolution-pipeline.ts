@@ -51,6 +51,59 @@ export async function inspectWorldResolutionReadiness(
    detailedResolved:r.detailed_resolved,blockers};
  });
 }
+/** Deterministic, read-only next-action decision for the trusted resolver.
+ * It never silently resolves conflicts or invents human-authored shows.
+ */
+export type WorldResolutionAction=
+ |"WAIT_FOR_WORLD_LOCK"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
+ |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
+ |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
+ |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"PUBLISH_WEEK";
+export interface WorldResolutionPlan {
+ year:number;week:number;action:WorldResolutionAction;
+ blockers:string[];ready:ResolutionReadiness;
+}
+export async function planNextWorldResolutionAction(
+ pool:TransactionPool,worldId:string,
+):Promise<WorldResolutionPlan>{
+ const ready=await inspectWorldResolutionReadiness(pool,worldId);
+ let action:WorldResolutionAction;
+ const blockers:string[]=[];
+ if(ready.phase==="OPEN")action="WAIT_FOR_WORLD_LOCK";
+ else if(ready.phase==="LOCKED"){
+  const stages=await withWorldTransaction(pool,tx=>tx.query<{
+   assessed:boolean;finalized:boolean;
+  }>(`SELECT
+   EXISTS(SELECT 1 FROM ppw_week_continuity_assessments
+    WHERE world_id=$1 AND year=$2 AND week=$3) AS assessed,
+   EXISTS(SELECT 1 FROM ppw_week_prepared_finalizations
+    WHERE world_id=$1 AND year=$2 AND week=$3) AS finalized`,
+   [worldId,ready.year,ready.week]));
+  if(stages.length!==1)throw new Error("World preparation state missing");
+  action=!stages[0]!.assessed?"ASSESS_CONTINUITY":
+   !stages[0]!.finalized?"FINALIZE_PREPARED_SHOWS":
+   "GENERATE_STAFF_AND_AI_CARDS";
+ }else if(ready.phase==="RESOLVING"){
+  if(ready.submitted!==ready.active){
+   action="GENERATE_STAFF_AND_AI_CARDS";
+   blockers.push("MISSING_PROMOTION_SHOWS");
+  }else if(ready.cleared!==ready.active){
+   action="ARBITRATE_OR_REMEDIATE";
+   blockers.push("RESOURCE_CLEARANCE_PENDING");
+  }else if(ready.legacyResolved!==ready.active)
+   action="RESOLVE_LEGACY_SHOWS";
+  else if(ready.detailedResolved!==ready.active)
+   action="RESOLVE_DETAILED_SHOWS";
+  else if(ready.certified!==ready.active)
+   action="CERTIFY_WEEK";
+  else action="PUBLISH_WEEK";
+ }else{
+  action="WAIT_FOR_WORLD_LOCK";
+  blockers.push("UNKNOWN_WORLD_PHASE");
+ }
+ return {year:ready.year,week:ready.week,action,
+  blockers,ready};
+}
 export interface RunWorldShowPhaseInput{
  worldId:string;year:number;week:number;resolutionId:string;
 }

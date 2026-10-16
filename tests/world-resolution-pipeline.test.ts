@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek}
+import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek,planNextWorldResolutionAction}
  from "../src/db/world-resolution-pipeline.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 function fixture(config:{phase?:string;active?:number;submitted?:number;
@@ -56,4 +56,21 @@ test("publication refuses unsubmitted shows",async()=>{
  await assert.rejects(publishResolvedWorldWeek(db.pool,{
   worldId:"world",year:1,week:1,requestId:"publish",expectedRevision:0,
  }),/SHOWS_NOT_SUBMITTED/);
+});
+
+test("planner points incomplete resolved weeks to missing promotion cards",async()=>{
+ const db=fixture({submitted:1,legacy:0});
+ const plan=await planNextWorldResolutionAction(db.pool,"world");
+ assert.equal(plan.action,"GENERATE_STAFF_AND_AI_CARDS");
+ assert.deepEqual(plan.blockers,["MISSING_PROMOTION_SHOWS"]);
+});
+test("planner requires legacy accounting before detailed show resolution",async()=>{
+ const db=fixture({legacy:1});
+ const plan=await planNextWorldResolutionAction(db.pool,"world");
+ assert.equal(plan.action,"RESOLVE_LEGACY_SHOWS");
+});
+test("planner requires certification after all receipts",async()=>{
+ const db=fixture({legacy:2,detailed:2});
+ const plan=await planNextWorldResolutionAction(db.pool,"world");
+ assert.equal(plan.action,"CERTIFY_WEEK");
 });
