@@ -4,6 +4,7 @@ import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
 import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
+import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match.js";
 import {isBookableMatchFinish} from "../simulation/legacy/match-finishes.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
@@ -119,7 +120,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
       if(kind==="SINGLES"){
         const [a,b]=pairIds(ids[0]!.personId,ids[1]!.personId);
         pairMap.set(pairKey(a,b),[a,b]);
-      }else{
+      }else if(kind==="TAG"){
         for(const side of layout.sides){
           const [a,b]=pairIds(side.participants[0]!.personId,side.participants[1]!.personId);
           tagPairs.set(pairKey(a,b),[a,b]);
@@ -191,7 +192,52 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const readiness=new Map<string,WrestlerSimReadiness>(talent);
     const projections=matches.map((slot,index)=>{
       const layout=layouts[index]!;
-      if(requireSupportedScoringLayout(layout)==="TAG"){
+      const format=requireSupportedScoringLayout(layout);
+      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+        const raw=slot.payload as Record<string,unknown>;
+        const intent=raw.intent??"COMPETITIVE";
+        const finish=raw.plannedFinish??"CLEAN_PIN";
+        const length=raw.plannedLengthMinutes??18;
+        if(!["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
+         "HIGH_RISK","STORY","PROTECTIVE","EPIC"].includes(String(intent))||
+          !["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"].includes(String(finish))||
+          raw.interference!==undefined||raw.style!==undefined||
+          typeof length!=="number"||!Number.isInteger(length)||length<3||length>60)
+         throw new Error("Unsupported multi-person intent, finish, run-in or length");
+        const ids=layout.participants.map(x=>x.personId);
+        if(new Set(ids.map(id=>divisions.get(id))).size!==1)
+         throw new Error("Mixed booking divisions are not supported in multi-person matches");
+        if(show.injury_rate_multiplier===null||show.media_reach===null||
+          !Number.isFinite(Number(show.injury_rate_multiplier))||
+          !Number.isFinite(show.media_reach))
+         throw new Error("Canonical multi-person injury or media ruleset missing");
+        const result=simulateMultiIndividualMatch({
+          layout,wrestlers:talent,worldSeed:String(show.seed),
+          matchId:`${input.showId}:${slot.slot_id}`,
+          order:index+1,eventImportance:show.event_importance!,
+          intent:intent as MatchIntent,plannedFinish:finish as
+           "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
+          plannedLengthMinutes:length,
+          injuryRateMultiplier:Number(show.injury_rate_multiplier),
+          mediaReach:show.media_reach,isMainEvent:index===matches.length-1,
+        });
+        const winningIndex=layout.sides.findIndex(x=>
+         x.sideId===layout.scriptedWinnerSide);
+        return {multi:{layout,result},tag:null,
+         slotId:slot.slot_id,position:slot.position,
+         winnerId:ids[winningIndex]!,
+         personIds:[ids[0]!,ids[1]!] as [string,string],
+         plannedFinish:finish as "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
+         finishCheaterId:null,readiness:"READY" as const,chemistryModifier:0,
+         score:result.score,injuryPreview:null,interferencePreview:{
+          crowdResponse:result.score.crowdResponse,actualFinish:result.actualFinish,
+          actualWinnerId:ids[result.actualWinnerSide.charCodeAt(0)-65]!,
+          injuryStoppage:result.injuryStoppage,
+          plannedWinnerId:ids[winningIndex]!,plannedFinish:finish,
+          interference:null,stage:"POST_INTERFERENCE_PRE_SHOW_FLOW" as const,
+         },consequencesPreview:null};
+      }
+      if(format==="TAG"){
         const participantIds=layout.participants.map(x=>x.personId);
         if(new Set(participantIds.map(id=>divisions.get(id))).size!==1)
           throw new Error("Mixed booking divisions cannot form a 2v2 tag match");
@@ -243,7 +289,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
             appearanceCommitted:bookedForShow.has(interruption!.personId),
             presentation:profile.presentation}:null,
         });
-        return {tag:{layout,result},slotId:slot.slot_id,position:slot.position,
+        return {multi:null,tag:{layout,result},slotId:slot.slot_id,position:slot.position,
           winnerId:result.injury.plannedWinnerId,
           personIds:[layout.sides[0]!.participants[0]!.personId,
             layout.sides[1]!.participants[0]!.personId] as [string,string],
@@ -306,7 +352,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
           injury:injuryPreview!,final:interferencePreview,
           mediaReach:mediaReach!,isMainEvent:index===matches.length-1,
         }):null;
-      return {tag:null,slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
+      return {multi:null,tag:null,slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
         personIds:match.personIds,finishCheaterId:match.finishCheaterId,
         plannedFinish:match.plannedFinish,readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
@@ -331,7 +377,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
     // projected only after confirmed historical coverage and match scoring.
     let showAlignmentPreview:ReturnType<typeof combineArchivedPacingAndAlignments>|null=null;
     if(showPacingPreview!==null && show.alignment_history_loaded &&
-       projections.every(p=>p.tag===null)){
+       projections.every(p=>p.tag===null&&p.multi===null)){
       const ids=[...appearances].sort();
       const overrides=await tx.query<{person_id:string;alignment:WrestlerAlignment}>(
         `SELECT person_id,alignment FROM ppw_promotion_wrestler_alignments
@@ -489,9 +535,9 @@ export async function previewArchivedShowMatchScoresInTransaction(
        !payload.championshipId||payload.championshipId.length>200)
        throw new Error("Invalid singles championship booking");
       const ids=readCardParticipants(slot.payload);
-      if(ids.length!==2)throw new Error("Title booking must be a singles match");
+      if(![2,3,4].includes(ids.length))throw new Error("Title booking must be an individual match");
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
-       participants:[ids[0]!.personId,ids[1]!.personId] as [string,string]}];
+       participants:ids.map(x=>x.personId)}];
     });
     return {titleBookings,tagTitleBookings,worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,

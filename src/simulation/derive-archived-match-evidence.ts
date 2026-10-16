@@ -10,6 +10,8 @@ import type {CompletedMatchReceipt}
  from "../domain/completed-show-receipt.js";
 import {verifyResolvedSinglesEvidence}
  from "../domain/verified-match-evidence.js";
+import {verifyMultiIndividualEvidence,type BookedMultiIndividualOutcome,
+ type ResolvedMultiIndividualEvidence} from "../domain/verified-multi-individual.js";
 import {verifyResolvedTeamEvidence,type BookedTeamOutcome,
  type ResolvedTeamEvidence} from "../domain/verified-team-evidence.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScores>>;
@@ -21,6 +23,23 @@ export function deriveArchivedMatchEvidence(
  projection:Projection,
 ):DerivedArchivedMatch[]{
  return projection.projections.map(p=>{
+  if(p.multi){
+   const {layout,result}=p.multi;
+   const booking:BookedMultiIndividualOutcome={
+    family:"INDIVIDUAL",participants:layout.participants.map(x=>x.personId),
+    scriptedWinnerSide:layout.scriptedWinnerSide,
+    plannedFinish:p.plannedFinish,
+   };
+   const resolution:ResolvedMultiIndividualEvidence={
+    actualWinnerSide:result.actualWinnerSide,actualFinish:result.actualFinish,
+    ...(result.medical?{medical:result.medical}:{}),
+   };
+   const verified=verifyMultiIndividualEvidence(booking,resolution);
+   return {evidence:{matchId:p.slotId,booking,resolution},
+    receipt:{matchId:p.slotId,position:p.position,
+     crowdResponse:result.score.crowdResponse,
+     actualFinish:verified.actualFinish,actualWinnerSide:verified.actualWinnerSide}};
+  }
   if(p.tag){
    const {layout,result}=p.tag;
    const final=result.final,injury=result.injury;

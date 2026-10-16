@@ -5,7 +5,7 @@
 import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 export interface BookedSinglesTitle{
- slotId:string;championshipId:string;participants:readonly [string,string];
+ slotId:string;championshipId:string;participants:readonly string[];
 }
 export async function settleCanonicalSinglesTitleContests(
  tx:SqlRows,receipt:CompletedShowReceipt,bookings:readonly BookedSinglesTitle[],
@@ -17,11 +17,13 @@ export async function settleCanonicalSinglesTitleContests(
  for(const booking of bookings){
   const bout=completed.get(booking.slotId);
   if(!bout||!booking.championshipId||
-    booking.participants.length!==2||
-    booking.participants[0]===booking.participants[1])
+    ![2,3,4].includes(booking.participants.length)||
+    new Set(booking.participants).size!==booking.participants.length)
    throw new Error("Missing verified title bout or invalid opponents");
-  if(bout.actualWinnerSide!=="A"&&bout.actualWinnerSide!=="B")
-   throw new Error("Title result has no winner side");
+  const winnerIndex=(bout.actualWinnerSide??"").charCodeAt(0)-65;
+  if(!Number.isInteger(winnerIndex)||winnerIndex<0||
+     winnerIndex>=booking.participants.length)
+   throw new Error("Title result has no booked winner side");
   const title=await tx.query<{
    division:string;reign_id:string|null;person_id:string|null;
    reign_status:string|null;holder_type:string|null;reign_defenses:number|null;
@@ -43,7 +45,7 @@ export async function settleCanonicalSinglesTitleContests(
    state.reign_status!=="ACTIVE"||!state.person_id||
    !booking.participants.includes(state.person_id))
    throw new Error("Title contest lacks a valid defending singles champion");
-  const winner=booking.participants[bout.actualWinnerSide==="A"?0:1]!;
+  const winner=booking.participants[winnerIndex]!;
   // A dirty finish, protected finish or referee's medical stoppage never
   // transfers the belt; clean, submission and flash victories can.
   const transfer=winner!==state.person_id&&

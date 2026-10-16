@@ -45,7 +45,7 @@ test("individual legacy booking upgrades losslessly and 2v2 uses real side contr
   participants:["a","b","c"].map(person),
   sides:["a","b","c"].map((id,i)=>({sideId:"ABC"[i],participants:[person(id)]})),
   scriptedWinnerSide:"C"});
- assert.throws(()=>requireSupportedScoringLayout(triple),/awaits/);
+ assert.equal(requireSupportedScoringLayout(triple),"TRIPLE_THREAT");
 });
 test("scripted 2v2 results, team chemistry and all four medical exposures are deterministic",()=>{
  const a=simulateBookedTagMatch(args),b=simulateBookedTagMatch(args);

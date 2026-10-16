@@ -4,7 +4,7 @@
  */
 export interface CompletedMatchReceipt {
  matchId:string;position:number;crowdResponse:number;
- actualFinish:string;actualWinnerSide:"A"|"B"|null;
+ actualFinish:string;actualWinnerSide:"A"|"B"|"C"|"D"|null;
 }
 export interface CompletedSegmentReceipt {
  slotId:string;position:number;kind:string;
@@ -30,7 +30,7 @@ export function validateCompletedShowReceipt(r:CompletedShowReceipt):CompletedSh
  for(const m of r.matches){
   if(!id(m.matchId)||slots.has(m.matchId)||!Number.isSafeInteger(m.position)||
    m.position<0||positions.has(m.position)||!score(m.crowdResponse)||
-   !id(m.actualFinish)||!["A","B",null].includes(m.actualWinnerSide))
+   !id(m.actualFinish)||!["A","B","C","D",null].includes(m.actualWinnerSide))
    throw new Error("Invalid completed match receipt");
   slots.add(m.matchId);positions.add(m.position);
  }

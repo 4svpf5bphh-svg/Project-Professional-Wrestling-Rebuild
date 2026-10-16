@@ -16,6 +16,7 @@ import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
 import {settleCanonicalTagCareerConsequences} from "./tag-career-settlement.js";
+import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -52,6 +53,7 @@ export async function resolveCanonicalShow(
    if(projection.tagTitleBookings.length)
     await settleCanonicalTagTitleContests(tx,completed.receipt,projection.tagTitleBookings);
    await settleCanonicalTagCareerConsequences(tx,projection);
+   await settleMultiIndividualCareerConsequences(tx,projection);
   }
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{

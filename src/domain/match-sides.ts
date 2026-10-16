@@ -68,6 +68,10 @@ export function readCanonicalMatchLayout(payload:unknown):CanonicalMatchLayout{
  if(typeof p.scriptedWinnerSide!=="string"||
   !sides.some(s=>s.sideId===p.scriptedWinnerSide))
   throw new Error("Match outcome must name a booked side");
+ if(family==="INDIVIDUAL"&&p.scriptedWinner!==undefined&&
+  p.scriptedWinner!==sides.find(x=>x.sideId===p.scriptedWinnerSide)!
+   .participants[0]!.personId)
+  throw new Error("Authored winner and individual winning side disagree");
  // The result/scoring layer is expanding in controlled format slices.
  // Do NOT silently call a 3-way or a battle royal a 1v1.
  if(family==="INDIVIDUAL"&&sides.length===2&&

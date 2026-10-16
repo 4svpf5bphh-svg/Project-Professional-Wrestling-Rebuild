@@ -119,7 +119,9 @@ function styledFinishCrowdModifier(match: ScoringMatch, finish: MatchFinish): nu
  */
 /** Retain the exact RNG instance *after* the three legacy scoring draws so
  * injury rolls consume the right continuation, not a fresh random seed. */
-export function scoreArchivedSinglesBeforeInjuriesWithRng(input:ScoringInput):{
+export function scoreArchivedFieldBeforeInjuriesWithRng(
+ input:Omit<ScoringInput,"people">&{people:readonly ScoredWrestler[]},
+):{
   score:PreliminaryMatchScore;rng:DeterministicRng;
   styleEvaluation:MatchStyleExecutionEvaluation|null;
 } {
@@ -129,7 +131,8 @@ export function scoreArchivedSinglesBeforeInjuriesWithRng(input:ScoringInput):{
      !Number.isInteger(input.plannedLengthMinutes)||
      input.plannedLengthMinutes<3||input.plannedLengthMinutes>60||
      !Number.isFinite(input.chemistryModifier)||input.chemistryModifier < -25||
-     input.chemistryModifier>25||input.people.length!==2)throw new Error("Invalid match scoring context");
+     input.chemistryModifier>25||input.people.length<2||
+     input.people.length>4)throw new Error("Invalid match scoring context");
   for(const p of input.people){
     for(const v of [...Object.values(p.skills),p.popularity,p.recognition,p.momentum,p.fatigue,p.wear]){
       if(typeof v!=="number"||!Number.isFinite(v)||v<0||v>100)
@@ -226,6 +229,13 @@ export function scoreArchivedSinglesBeforeInjuriesWithRng(input:ScoringInput):{
     executionQuality:match.executionQuality,criticalRatingStars:match.criticalRatingStars,
     crowdResponse:match.crowdResponse,actualLengthMinutes:match.actualLengthMinutes,
     styleResolver:styleEvaluation?"DIMENSIONAL":"INTENT"},rng,styleEvaluation};
+}
+/** Existing 1v1 contract is unchanged; field matches share the equations,
+ * but all three/four wrestler scores are included in the averages.
+ */
+export function scoreArchivedSinglesBeforeInjuriesWithRng(input:ScoringInput){
+ if(input.people.length!==2)throw new Error("Singles scoring requires two wrestlers");
+ return scoreArchivedFieldBeforeInjuriesWithRng(input);
 }
 /** Existing stable read-only scoring contract. */
 export function scoreArchivedSinglesBeforeInjuries(input:ScoringInput):PreliminaryMatchScore {

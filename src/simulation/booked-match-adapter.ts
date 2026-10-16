@@ -111,3 +111,32 @@ export function adaptBookedTagReadiness(payload:unknown,
     "NEEDS_STYLE_REVIEW" as const:"READY" as const,
   performers:records,plannedLengthMinutes:length};
 }
+
+/** Readmodel for true 3/4 person competitive field, not a two-person proxy. */
+export function adaptBookedMultiIndividualReadiness(payload:unknown,
+ talent:ReadonlyMap<string,WrestlerSimReadiness>){
+ const layout=readCanonicalMatchLayout(payload);
+ const kind=requireSupportedScoringLayout(layout);
+ if(kind!=="TRIPLE_THREAT"&&kind!=="FOUR_WAY")
+  throw new Error("Multi-person readiness requires three or four opponents");
+ const p=payload as Record<string,unknown>;
+ const intent=p.intent??"COMPETITIVE";
+ const length=p.plannedLengthMinutes??18;
+ if(typeof intent!=="string"||!INTENTS.has(intent as MatchIntent)||
+   typeof length!=="number"||!Number.isInteger(length)||
+   length<3||length>60||p.style!==undefined||p.interference!==undefined)
+  throw new Error("Unsupported multi-person match readiness rules");
+ const style=defaultMatchStyleForIntent(intent as MatchIntent);
+ const performers=layout.participants.map(x=>{
+  const r=talent.get(x.personId);
+  if(!r)throw new Error("Missing canonical multi-person wrestler");
+  return {personId:x.personId,
+   readiness:assessMatchStyleReadiness(style,r.skills,length,r.fatigue,r.wear),
+   execution:evaluateMatchStyleExecution(style,r.skills,length)};
+ });
+ return {family:"INDIVIDUAL" as const,format:kind,
+  scriptedWinnerSide:layout.scriptedWinnerSide,
+  performers,plannedLengthMinutes:length,
+  status:performers.some(x=>x.readiness.status==="REFUSES")?
+   "NEEDS_STYLE_REVIEW" as const:"READY" as const};
+}

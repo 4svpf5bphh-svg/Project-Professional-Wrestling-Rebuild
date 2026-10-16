@@ -3,6 +3,7 @@ import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
 import {adaptBookedSinglesMatch,adaptBookedTagReadiness,
+ adaptBookedMultiIndividualReadiness,
  type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
 
@@ -81,7 +82,12 @@ export async function previewLegacyShowMatchStyles(pool:TransactionPool,input:Le
       const identities=layout.participants.map(x=>x.personId);
       if(new Set(identities.map(id=>divisions.get(id))).size!==1)
         throw new Error("Mixed booking divisions are not supported");
-      if(requireSupportedScoringLayout(layout)==="TAG"){
+      const format=requireSupportedScoringLayout(layout);
+      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+       const match=adaptBookedMultiIndividualReadiness(slot.payload,talents);
+       return {slotId:slot.slot_id,position:slot.position,...match};
+      }
+      if(format==="TAG"){
         const match=adaptBookedTagReadiness(slot.payload,talents);
         return {slotId:slot.slot_id,position:slot.position,...match};
       }

@@ -11,6 +11,7 @@ const stableJson=(value:unknown):string=>JSON.stringify(value,(_key,v)=>
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../domain/match-sides.js";
 import type {BookedTeamOutcome} from "../domain/verified-team-evidence.js";
+import type {BookedMultiIndividualOutcome} from "../domain/verified-multi-individual.js";
 import type {BookedSinglesOutcome} from "../domain/verified-match-evidence.js";
 import {validateCompletedMatchEvidence,type CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
@@ -119,6 +120,17 @@ export async function recordCompletedShowInTransaction(
      }
     }
     const ev=evidenceByMatch.get(slot.slot_id);
+    if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+      if(!ev||!("family" in ev.booking)||ev.booking.family!=="INDIVIDUAL")
+       throw new Error("Verified multi-person winner evidence required");
+      const book=ev.booking as BookedMultiIndividualOutcome;
+      if(JSON.stringify(book.participants)!==
+       JSON.stringify(layout!.participants.map(x=>x.personId))||
+       book.scriptedWinnerSide!==layout!.scriptedWinnerSide||
+       book.plannedFinish!==p.plannedFinish)
+       throw new Error("Multi-person result differs from submitted card");
+      continue;
+    }
     if(format==="TAG"){
       if(!ev||!("family" in ev.booking)||ev.booking.family!=="TEAMS")
        throw new Error("Authoritative tag evidence required for every four-person match");
