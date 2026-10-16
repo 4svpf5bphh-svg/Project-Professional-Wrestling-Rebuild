@@ -4,6 +4,7 @@ import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
+import {requestAdditionalDates} from "../db/contract-date-requests.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
@@ -73,4 +74,16 @@ export async function availablePromotionsAsActor(
   validate(worldId,"World");
   if (afterId!==null) validate(afterId,"cursor");
   return listAvailablePromotions(context.pool,worldId,afterId,limit);
+}
+
+/** Request only: no dates are added until a separate authoritative acceptance. */
+export async function requestAdditionalDatesAsActor(
+ context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;contractId:string;additionalDates:number},
+){
+ validate(context.actor.playerId,"actor");
+ validateMutation(input);
+ validate(input.promotionId,"promotion");
+ validate(input.contractId,"contract");
+ return requestAdditionalDates(context.pool,{...input,playerId:context.actor.playerId});
 }
