@@ -9,6 +9,9 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {chooseShowMarketAndTickets,readShowMarketOptions}
  from "../src/db/show-booking-commerce.js";
 import {markPreparedShowReady} from "../src/db/ready-prepared-show.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
 import {originalExpectedDemand,originalTicketYield}
  from "../src/domain/legacy-show-economics.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -113,9 +116,31 @@ test("Booking market and ticket selection freezes original demand; actor isolati
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
   await assert.rejects(cmd("late-change",6,"PREMIUM"),/booking deadline passed/);
   assert.equal((await cmd("choose-2",4,"ACCESSIBLE")).status,"REPLAYED");
+  // An unchanged commercial snapshot survives authoritative lock/finalize;
+  // it cannot be silently re-priced during asynchronous World resolution.
+  assert.equal((await lockWorldWeek(db.pool,{worldId,
+    requestId:"lock-"+id,expectedRevision:6})).status,"APPLIED");
+  assert.equal((await recordWeekContinuity(db.pool,{worldId,
+    requestId:"continuity-"+id,expectedRevision:7})).status,"APPLIED");
+  const finalized=await finalizePreparedWorldShows(db.pool,{worldId,
+    requestId:"finalize-"+id,expectedRevision:8});
+  assert.equal(finalized.status,"APPLIED");
+  if(finalized.status!=="APPLIED")throw new Error("Missing World handoff");
+  assert.deepEqual(finalized.result.submittedShowIds,[show]);
+  assert.deepEqual(finalized.result.review,[]);
+  const afterLock=await withWorldTransaction(db.pool,tx=>tx.query<{
+    status:string;booking_expected_demand:number;booking_ticket_yield:string;
+    booking_snapshot_fingerprint:string;lock_ready_fingerprint:string}>(`
+   SELECT status,booking_expected_demand,booking_ticket_yield::text,
+    booking_snapshot_fingerprint,lock_ready_fingerprint
+   FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=$2`,[worldId,show]));
+  assert.equal(afterLock[0]!.status,"SUBMITTED");
+  assert.equal(afterLock[0]!.booking_expected_demand,ready.result.expectedDemand);
+  assert.equal(afterLock[0]!.booking_snapshot_fingerprint,ready.result.fingerprint);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const tbl of ["ppw_command_receipts","ppw_ledger_events",
+    "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
     "ppw_card_slots","ppw_booking_drafts","ppw_promotion_controls","ppw_memberships",
     "ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query(`DELETE FROM ${tbl} WHERE world_id=$1`,[worldId]);
