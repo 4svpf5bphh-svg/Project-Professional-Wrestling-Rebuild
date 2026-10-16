@@ -8,14 +8,17 @@ import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  from "./card-editor-model.js";
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
+import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
+type ReadyResult=Awaited<ReturnType<typeof markPreparedShowReady>>;
 export interface CardEditorPort{
  load():Promise<View>;
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
   matches:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
+ confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
  const node=document.createElement(tag);
@@ -64,7 +67,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"] }|null=null;
- let loading=false,saving=false,error="",success="";
+ let loading=false,saving=false,dirty=false,error="",success="";
+ let pendingRequestId:string|null=null;
  let formatChoice:Format="SINGLES";
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
@@ -75,8 +79,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   return fmt+" · "+assignedIds(m).length+" / "+
    m.teams.reduce((a,s)=>a+s.length,0)+" booked";
  };
+ function markDirty(){dirty=true;pendingRequestId=null;error="";success="";}
  function setMatch(slotId:string,next:EditorMatch){
-  matches.set(slotId,next);error="";success="";render();
+  matches.set(slotId,next);markDirty();render();
  }
  async function load(){
   loading=true;render();
@@ -94,7 +99,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      roster.set(p.personId,{personId:p.personId,name:p.name,division:p.division,
       contractId:"",available:false,reason:"BOOKED"});
    }
-   expanded=null;error="";success="";
+   expanded=null;dirty=false;pendingRequestId=null;error="";success="";
   }catch(e){error=errorText(e);}
   finally{loading=false;render();}
  }
@@ -144,16 +149,30 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(new Set(all).size!==all.length)
     throw new Error("One wrestler cannot be in two matches");
    saving=true;error="";success="";render();
-   const requestId=crypto.randomUUID();
+   const requestId=pendingRequestId??(pendingRequestId=crypto.randomUUID());
    const result=await port.save({requestId,expectedRevision:view.worldRevision,
     matches:payloads,runningOrder:order});
    if(result.status==="STALE"){
-    error="The World changed; booking was reloaded. Review your card before saving.";
-    await load();return;
+    await load();
+    error="The World changed; review the reloaded booking before saving.";
+    return;
    }
    const previous=result.status;
    await load();
    success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
+  }catch(e){error=errorText(e);}
+  finally{saving=false;render();}
+ }
+ async function confirm(){
+  if(!mutable()||!view||dirty||view.ready||!port.confirmReady)return;
+  saving=true;error="";success="";render();
+  try{
+   const response=await port.confirmReady({requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision});
+   await load();
+   if(response.status==="STALE")
+    error="The World changed. Recheck your show and confirm again.";
+   else success="Show confirmed for the next World Lock";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -177,7 +196,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const summary=el("div","ppw-summary");
   summary.append(el("span","",matches.size+" matches"),
    el("span","",order.length+" card slots"),
-   el("span","",view.ready?"Ready — edits need reconfirmation":"Not confirmed"));
+   el("span","",dirty?"Unsaved changes":view.ready?"Ready for World Lock":"Not confirmed"));
   root.append(summary);
   const toolbar=el("div","ppw-toolbar");
   toolbar.append(selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
@@ -185,7 +204,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   toolbar.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
-   order.push(id);expanded=id;success="";render();
+   order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-primary"));
   root.append(toolbar);
   const list=el("section","ppw-card-list");
@@ -200,9 +219,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     expanded=expanded===slotId?null:slotId;render();
    },!m,"ppw-expand"),label);
    const arrows=el("div","ppw-actions");
-   arrows.append(button("↑",()=>{order=moveRunningOrder(order,slotId,-1);render();},
+   arrows.append(button("↑",()=>{order=moveRunningOrder(order,slotId,-1);markDirty();render();},
      !mutable()||i===0),
-    button("↓",()=>{order=moveRunningOrder(order,slotId,1);render();},
+    button("↓",()=>{order=moveRunningOrder(order,slotId,1);markDirty();render();},
      !mutable()||i===order.length-1));
    bar.append(arrows);card.append(bar);
    if(!m){card.append(el("p","ppw-muted","This existing angle is preserved when saving."));}
@@ -280,7 +299,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     body.append(elimination);
     body.append(button("Remove match",()=>{
-     matches.delete(slotId);order=order.filter(x=>x!==slotId);expanded=null;render();
+     matches.delete(slotId);order=order.filter(x=>x!==slotId);
+     expanded=null;markDirty();render();
     },!mutable(),"ppw-remove"));
     card.append(body);
    }
@@ -291,6 +311,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   foot.append(el("p","ppw-muted","Booking saves your choices only. It never advances World time."),
    button(saving?"Saving…":"Save running order",()=>{void save();},
     !mutable()||matches.size===0,"ppw-primary"));
+  if(port.confirmReady)foot.append(button(
+   view.ready?"Show confirmed":"Confirm ready for World Lock",
+   ()=>{void confirm();},
+   !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
   root.append(foot);
   if(picker){
    const current=picker;
@@ -324,7 +348,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      chosen?.personId!==candidate.personId;
     const name=candidate.name??candidate.personId;
     rows.append(button(name+" · "+(candidate.division??"Unknown division")+
-     (candidate.available?"":" · "+candidate.reason),
+     (candidate.available?" · "+(candidate.remainingDates===null?
+      "Unlimited dates":candidate.remainingDates+" dates"):" · "+candidate.reason),
      ()=>chooseTalent(candidate),!candidate.available||taken,"ppw-talent"));
    }
    sheet.append(rows);

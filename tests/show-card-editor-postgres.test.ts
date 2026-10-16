@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import type {TransactionPool} from "../src/db/transaction.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,
@@ -61,12 +63,30 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     saveCardEditorAsActor(context,{...identity,requestId,expectedRevision,
      matches:[{slotId:"main",payload:raw}],runningOrder});
    await assert.rejects(save("bad",0,["main"]),/running order|Running order|slot/i);
-   const first=await save("save-1",0,["main","angle"]);
+   const meter=new MeasuredQuerySession("edit-"+mode+"-whole-card");
+   const meteredPool:TransactionPool={
+    async connect(){
+     const connection=await db.pool.connect();
+     return {
+      release(){connection.release();},
+      async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+       return meter.execute(()=>connection.query<T>(sql,params));
+      }
+     };
+    }
+   };
+   const first=await saveCardEditorAsActor({...context,pool:meteredPool},
+    {...identity,requestId:"save-1",expectedRevision:0,
+     matches:[{slotId:"main",payload:raw}],runningOrder:["main","angle"]});
+   const sample=meter.assertBudget({maxQueries:15,maxResultBytes:40_000});
+   assert.ok(sample.queryCount>=12);
+   console.log("PPW booking card query budget:",JSON.stringify(sample));
    assert.equal(first.status,"APPLIED");
    assert.equal(first.result.performers,ids.length);
    assert.equal((await save("save-1",0,["main","angle"])).status,"REPLAYED");
    const saved=await showCardEditorAsActor(context,world,promotion,show);
    assert.equal(saved.slots.length,2);
+   assert.equal(saved.selectedPeople.length,ids.length);
    assert.equal(saved.slots[0]!.slotId,"main");
    assert.equal((saved.slots[0]!.payload as {participants:unknown[]}).participants.length,ids.length);
    assert.equal((await markPreparedShowReadyAsActor(context,{...identity,
