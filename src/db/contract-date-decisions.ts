@@ -1,6 +1,6 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
-import {canAddDates,requireEconomics,type PersonEconomics,type ExistingCommitment} from "../domain/contract-economics.js";
+import {canAddDates,addendumUtility,requireEconomics,type PersonEconomics,type ExistingCommitment,type Role} from "../domain/contract-economics.js";
 
 export interface ResolveDateRequestInput {
  worldId:string;playerId:string;promotionId:string;dateRequestId:string;
@@ -28,13 +28,13 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
    const r=req[0]!;
    if(r.promotion_id!==input.promotionId)throw new Error("Promotion mismatch");
    const rows=await tx.query<{family:ExistingCommitment["family"];status:string;
-    remaining_dates:number|null;start_week_index:number;expires_week_index:number}>(`
-    SELECT family,status,remaining_dates,start_week_index,expires_week_index
+    remaining_dates:number|null;start_week_index:number;expires_week_index:number;appearance_fee:string;role_expectation:Role}>(`
+    SELECT family,status,remaining_dates,start_week_index,expires_week_index,appearance_fee,role_expectation
     FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2 AND promotion_id=$3 FOR UPDATE`,
     [input.worldId,r.contract_id,input.promotionId]);
    if(rows.length!==1)throw new Error("Contract missing");
    const contract=rows[0]!;
-   const clocks=await tx.query<{year:number;week:number}>(`SELECT year,week FROM ppw_worlds WHERE world_id=$1`,[input.worldId]);
+   const clocks=await tx.query<{year:number;week:number;seed:string|number;offer_acceptance_threshold:number}>(`SELECT year,week,seed,offer_acceptance_threshold FROM ppw_worlds WHERE world_id=$1`,[input.worldId]);
    if(clocks.length!==1)throw new Error("World clock missing");
    const {year,week}=clocks[0]!,current=(year-1)*52+week-1;
    let decision=input.decision;
@@ -70,6 +70,21 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      expiresWeekIndex:contract.expires_week_index,
     },r.additional_dates,commitments,current);
     if(invalid)decision="REJECTED";
+    if(decision==="ACCEPTED"){
+     const promotions=await tx.query<{tier:string;media_reach:number|null}>(`
+      SELECT tier,media_reach FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$2`,
+      [input.worldId,input.promotionId]);
+     if(promotions.length!==1||promotions[0]!.media_reach===null)
+      throw new Error("Original promotion contract economics not imported");
+     const utility=addendumUtility(p,{
+      roleExpectation:contract.role_expectation,appearanceFee:Number(contract.appearance_fee),
+     },r.additional_dates,Number(r.additional_payment),
+       Math.max(1,contract.expires_week_index-current),{
+      tier:promotions[0]!.tier,mediaReach:promotions[0]!.media_reach!,
+      trust:50,seed:String(clocks[0]!.seed),offerId:input.dateRequestId,
+     });
+     if(utility<clocks[0]!.offer_acceptance_threshold)decision="REJECTED";
+    }
    }
    if(decision==="ACCEPTED"){
     const updated=await tx.query<{contract_id:string}>(`

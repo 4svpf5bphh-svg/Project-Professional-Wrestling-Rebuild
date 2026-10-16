@@ -79,8 +79,8 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.equal(Number(exclusiveRows[0]!.appearance_fee),0);
   await withWorldTransaction(db.pool,tx=>tx.query(`INSERT INTO ppw_contracts(
    world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,
-   start_week_index,expires_week_index,date_entitlement,weekly_guarantee,appearance_fee)
-   VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',0,0,12,5,100,900)`,
+   start_week_index,expires_week_index,date_entitlement,weekly_guarantee,appearance_fee,role_expectation,creative_control)
+   VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',0,0,12,5,100,12000,'MAIN_EVENT','NONE')`,
    [world,source,addendumPerson,pA]));
   const add="dates-"+id;
   assert.equal((await requestAdditionalDates(db.pool,{worldId:world,playerId:playerA,

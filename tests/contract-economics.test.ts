@@ -31,3 +31,12 @@ test("original deterministic wrestler utility and creative bargaining floor",()=
  assert.ok(offerUtility(person,{...limited,creativeControl:"FULL_APPROVAL"},context)>base);
  assert.throws(()=>canAcceptTerms(person,{...limited,family:"ONE_OFF"},[],0),/One-off/);
 });
+
+test("date addenda price only the newly purchased dates, not a fresh term",async()=>{
+ const {addendumUtility}=await import("../src/domain/contract-economics.js");
+ const ctx={tier:"NATIONAL",mediaReach:60,trust:50,seed:"7",offerId:"addendum-a"};
+ const low=addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:100},2,0,13,ctx);
+ const higher=addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:10000},2,4000,13,ctx);
+ assert.ok(higher>low);
+ assert.equal(higher,addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:10000},2,4000,13,ctx));
+});

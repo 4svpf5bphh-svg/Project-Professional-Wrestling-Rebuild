@@ -124,3 +124,27 @@ export function offerUtility(p:PersonEconomics,t:OfferTerms,context:{
  const rights=Math.round(bonus*credibility*termCred*10)/10;
  return Math.round((raw+rights+(randomUtility(context.seed+":"+context.offerId+":utility")*6-3))*10)/10;
 }
+
+/** Original DATES_ADDENDUM branch of evaluateContractOffer: incremental cash
+ * per new appearance and stricter schedule density; no bonus from creative
+ * control, since the parent agreement's rights cannot be rewritten.
+ */
+export function addendumUtility(p:PersonEconomics,source:{roleExpectation:Role;appearanceFee:number},
+ extraDates:number,incrementalPayment:number,weeksRemaining:number,
+ context:{tier:string;mediaReach:number;trust:number;seed:string;offerId:string}):number{
+ requireEconomics(p);
+ if(!validRoles.includes(source.roleExpectation)||!nonnegative(source.appearanceFee)
+ ||!nonnegative(incrementalPayment)||!Number.isSafeInteger(extraDates)||extraDates<1
+ ||!Number.isSafeInteger(weeksRemaining)||weeksRemaining<1)
+  throw new Error("Invalid date addendum terms");
+ const market=Math.max(1,marketWeeklyValue(p));
+ const perDate=source.appearanceFee+incrementalPayment/extraDates;
+ const money=Math.max(0,Math.min(100,50+((perDate-market*.8)/market)*65));
+ const schedule=Math.max(10,Math.min(100,92-extraDates/weeksRemaining*55));
+ const loyalty=Math.max(0,Math.min(100,78+(context.trust-50)*.3));
+ const pr=p.priorities,total=moneyKeys.reduce((n,k)=>n+pr[k],0);
+ const raw=(money*pr.money+ROLES[source.roleExpectation]*pr.role
+  +(TIERS[context.tier]??0)*pr.prestige+schedule*pr.schedule
+  +loyalty*pr.loyalty+context.mediaReach*pr.exposure)/total;
+ return Math.round((raw+(randomUtility(context.seed+":"+context.offerId+":utility")*6-3))*10)/10;
+}
