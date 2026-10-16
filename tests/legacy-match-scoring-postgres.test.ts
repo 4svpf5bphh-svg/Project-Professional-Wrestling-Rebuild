@@ -186,6 +186,10 @@ test("original match rating/crowd run from only current-week relational context"
     ));
     assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showProgrammePreview,null);
     await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET alignment_history_loaded=true WHERE world_id=$1",
+      [worldId],
+    ));
+    await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET dirty_finish_history_loaded=true WHERE world_id=$1",
       [worldId],
     ));
@@ -198,6 +202,10 @@ test("original match rating/crowd run from only current-week relational context"
       [worldId],
     ));
     assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showFinishPreview,null);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET dirty_finish_history_loaded=false WHERE world_id=$1",
+      [worldId],
+    ));
     // Certified histories activate exactly TWO indexed reads and the original
     // face-v-heel contextual crowd bonus, without altering match scores.
     await withWorldTransaction(db.pool,async tx=>{
