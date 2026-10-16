@@ -85,7 +85,8 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
    .filter(x=>x.payload.matchType==="TAG");
   assert.equal(tagMatches.length,1,"AI must use two available established tag teams");
   assert.deepEqual(tagMatches[0]!.payload.sides?.map(side=>
-   side.participants.map(p=>p.personId).sort()),[
+   side.participants.map(p=>p.personId).sort())
+    .sort((a,b)=>a.join(":").localeCompare(b.join(":"))),[
     ["person-0","person-24"],["person-48","person-72"]]);
   const mainProgramme=byCard.get("ai-week-1-1-promotion-0")?.at(-1);
   assert.equal(mainProgramme?.payload.mainEvent,true);
