@@ -10,7 +10,7 @@ function fixture(config:{phase?:string;active?:number;submitted?:number;
   async query<T extends Record<string,unknown>>(sql:string){
    queries.push(sql);
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
-   if(sql.includes("FROM ppw_worlds"))return [{year:1,week:1,
+   if(sql.includes("FROM ppw_worlds"))return [{revision:0,year:1,week:1,
     phase:config.phase??"RESOLVING"}] as unknown as T[];
    if(sql.includes("AS done"))return [{done:false}] as unknown as T[];
    if(sql.includes("AS active"))return [{
