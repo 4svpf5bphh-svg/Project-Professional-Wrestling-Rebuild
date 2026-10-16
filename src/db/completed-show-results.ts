@@ -5,11 +5,18 @@ import {createHash} from "node:crypto";
 import {validateCompletedMatchEvidence,type CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
 import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
 import {canonicalCompletedShowReceipt,type CompletedShowReceipt}
  from "../domain/completed-show-receipt.js";
 export async function recordCompletedShow(
  pool:TransactionPool,receipt:CompletedShowReceipt,
+ evidence:readonly CompletedMatchEvidence[] = [],
+):Promise<"RECORDED"|"IDENTICAL_RETRY">{
+ return withWorldTransaction(pool,tx=>recordCompletedShowInTransaction(tx,receipt,evidence));
+}
+export async function recordCompletedShowInTransaction(
+ tx:SqlRows,receipt:CompletedShowReceipt,
  evidence:readonly CompletedMatchEvidence[] = [],
 ):Promise<"RECORDED"|"IDENTICAL_RETRY">{
  const canonical=canonicalCompletedShowReceipt(receipt);
@@ -19,7 +26,7 @@ export async function recordCompletedShow(
   a.matchId.localeCompare(b.matchId)));
  const digest=createHash("sha256").update(canonical).update("\\0")
   .update(evidenceCanonical).digest("hex");
- return withWorldTransaction(pool,async tx=>{
+ {
   const world=await tx.query<{year:number;week:number;phase:string}>(
    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
    [receipt.worldId]);
@@ -150,5 +157,5 @@ export async function recordCompletedShow(
    [receipt.worldId,receipt.showId,s.slotId,s.position,s.kind,s.outcome,
     s.crowdResponse]);
   return "RECORDED";
- });
+ }
 }

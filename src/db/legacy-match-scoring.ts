@@ -1,4 +1,5 @@
 import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
@@ -56,7 +57,11 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
   if(!input.worldId||!input.promotionId||!input.showId ||
     [input.worldId,input.promotionId,input.showId].some(v=>v.length>200))
     throw new Error("Invalid scoring scope");
-  return withWorldTransaction(pool,async tx=>{
+  return withWorldTransaction(pool,tx=>previewArchivedShowMatchScoresInTransaction(tx,input));
+}
+export async function previewArchivedShowMatchScoresInTransaction(
+ tx:SqlRows,input:OriginalMatchScoringInput,
+){
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
       media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean;
@@ -371,5 +376,4 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
       projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
-  });
 }

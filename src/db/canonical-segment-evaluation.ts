@@ -2,6 +2,7 @@
  * This is an evaluation projection, not permission to write World results.
  */
 import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {validateAuthoredSegments,type AuthoredSegment}
@@ -14,7 +15,11 @@ export interface CanonicalSegmentScope {
 export async function readCanonicalSegmentContexts(
  pool:TransactionPool,scope:CanonicalSegmentScope,
 ):Promise<SegmentCrowdContext[]>{
- return withWorldTransaction(pool,async tx=>{
+ return withWorldTransaction(pool,tx=>readCanonicalSegmentContextsInTransaction(tx,scope));
+}
+export async function readCanonicalSegmentContextsInTransaction(
+ tx:SqlRows,scope:CanonicalSegmentScope,
+):Promise<SegmentCrowdContext[]>{
   const world=await tx.query<{phase:string}>(
    "SELECT phase FROM ppw_worlds WHERE world_id=$1 AND year=$2 AND week=$3 FOR UPDATE",
    [scope.worldId,scope.year,scope.week]);
@@ -68,5 +73,4 @@ export async function readCanonicalSegmentContexts(
    // repetition projections are migrated into the World resolver.
    storylineHeat:50,repetitionCount:0,
   }));
- });
 }
