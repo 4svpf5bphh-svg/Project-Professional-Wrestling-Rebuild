@@ -76,12 +76,11 @@ test("planner requires certification after all receipts",async()=>{
  assert.equal(plan.action,"CERTIFY_WEEK");
 });
 
-test("executor does not fabricate legacy show receipts",async()=>{
+test("executor routes legacy show receipts to authoritative accounting",async()=>{
  const db=fixture({legacy:0});
- const result=await executeNextWorldResolutionStage(db.pool,{
-  worldId:"world",requestId:"stage",expectedRevision:0,resolutionId:"resolve"});
- assert.equal(result.action,"RESOLVE_LEGACY_SHOWS");
- assert.equal(result.status,"BLOCKED");
+ await assert.rejects(executeNextWorldResolutionStage(db.pool,{
+  worldId:"world",requestId:"stage",expectedRevision:0,resolutionId:"resolve"}),
+  /Unexpected query: SELECT p.promotion_id/);
  assert.equal(db.queries.some(x=>x.startsWith("INSERT")),false);
 });
 test("executor refuses to bypass missing staff preparation",async()=>{
@@ -91,12 +90,11 @@ test("executor refuses to bypass missing staff preparation",async()=>{
  assert.equal(plan.ready.submitted,1);
 });
 
-test("bounded driver halts at legacy accounting rather than advancing",async()=>{
+test("bounded driver routes to legacy accounting without advancing on failure",async()=>{
  const db=fixture({legacy:0});
- const result=await driveWorldResolution(db.pool,{
-  worldId:"world",resolutionId:"resolution",maxStages:4});
- assert.equal(result.status,"BLOCKED");
- assert.equal(result.steps[0]!.action,"RESOLVE_LEGACY_SHOWS");
+ await assert.rejects(driveWorldResolution(db.pool,{
+  worldId:"world",resolutionId:"resolution",maxStages:4}),
+  /Unexpected query: SELECT p.promotion_id/);
  assert.equal(db.queries.some(x=>x.startsWith("UPDATE")),false);
 });
 test("driver rejects unbounded stage execution",async()=>{
