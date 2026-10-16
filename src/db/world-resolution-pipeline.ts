@@ -7,6 +7,11 @@ import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {resolveWorldWeekShows} from "./world-week-show-coordinator.js";
 import {advanceResolvedWorldWeek} from "./week-advancement.js";
+import {recordWeekContinuity} from "./week-continuity.js";
+import {finalizePreparedWorldShows} from "./finalize-prepared-shows.js";
+import {beginWorldResolution} from "./world-lock.js";
+import {clearWorldWeekResources} from "./week-clearance.js";
+import {inspectWeekConflicts} from "./week-conflicts.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -55,7 +60,7 @@ export async function inspectWorldResolutionReadiness(
  * It never silently resolves conflicts or invents human-authored shows.
  */
 export type WorldResolutionAction=
- |"WAIT_FOR_WORLD_LOCK"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
+ |"WAIT_FOR_WORLD_LOCK"|"BEGIN_RESOLUTION"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
  |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
  |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
  |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"PUBLISH_WEEK";
@@ -82,14 +87,15 @@ export async function planNextWorldResolutionAction(
   if(stages.length!==1)throw new Error("World preparation state missing");
   action=!stages[0]!.assessed?"ASSESS_CONTINUITY":
    !stages[0]!.finalized?"FINALIZE_PREPARED_SHOWS":
-   "GENERATE_STAFF_AND_AI_CARDS";
+   "BEGIN_RESOLUTION";
  }else if(ready.phase==="RESOLVING"){
   if(ready.submitted!==ready.active){
    action="GENERATE_STAFF_AND_AI_CARDS";
    blockers.push("MISSING_PROMOTION_SHOWS");
   }else if(ready.cleared!==ready.active){
-   action="ARBITRATE_OR_REMEDIATE";
-   blockers.push("RESOURCE_CLEARANCE_PENDING");
+   const report=await withWorldTransaction(pool,tx=>inspectWeekConflicts(tx,worldId));
+   action=report.provisionalClear?"CLEAR_RESOURCES":"ARBITRATE_OR_REMEDIATE";
+   if(!report.provisionalClear)blockers.push(...new Set(report.blockers.map(b=>b.code)));
   }else if(ready.legacyResolved!==ready.active)
    action="RESOLVE_LEGACY_SHOWS";
   else if(ready.detailedResolved!==ready.active)
@@ -166,6 +172,22 @@ export async function executeNextWorldResolutionStage(
  const {worldId,requestId,expectedRevision,resolutionId}=input;
  if(!requestId||!resolutionId||!Number.isSafeInteger(expectedRevision)||
   expectedRevision<0)throw new Error("Invalid resolver command input");
+ if(plan.action==="ASSESS_CONTINUITY"){
+  const result=await recordWeekContinuity(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="FINALIZE_PREPARED_SHOWS"){
+  const result=await finalizePreparedWorldShows(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="BEGIN_RESOLUTION"){
+  const result=await beginWorldResolution(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="CLEAR_RESOURCES"){
+  const result=await clearWorldWeekResources(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
  if(plan.action==="RESOLVE_DETAILED_SHOWS"){
   const result=await runWorldShowResolutionPhase(pool,{
    worldId,year:plan.year,week:plan.week,resolutionId});
