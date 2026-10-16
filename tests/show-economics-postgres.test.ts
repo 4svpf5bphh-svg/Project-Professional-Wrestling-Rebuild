@@ -6,6 +6,7 @@ import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.j
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordCompletedShow} from "../src/db/completed-show-results.js";
+import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 import {settleCompletedShowEconomics} from "../src/db/show-economics.js";
 import {originalShowSettlement,originalExpectedDemand,originalCompetitionFactor,
  originalTicketYield} from "../src/domain/legacy-show-economics.js";
@@ -16,7 +17,7 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
 },async()=>{
  const id=randomUUID(),world="event-"+id,db=postgresPool(url!,3),
   show="show-a",rival="show-b",promoter="promotion-a",opponent="promotion-b";
- const eventReceipt={worldId:world,promotionId:promoter,showId:show,year:1,week:1,
+ const eventReceipt:CompletedShowReceipt={worldId:world,promotionId:promoter,showId:show,year:1,week:1,
   resolutionId:"score-"+id,crowdResponse:78,
   matches:[{matchId:"match",position:0,crowdResponse:78,
    actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],segments:[]};
