@@ -65,6 +65,7 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.equal(result.status,"APPLIED");
   assert.equal(result.result.accepted,1);
   assert.equal(result.result.rejected,1);
+  assert.ok(result.result.decisions);
   assert.equal(result.result.decisions.find(d=>d.id===offerB)?.status,"ACCEPTED");
   assert.equal(result.result.decisions.find(d=>d.id===offerA)?.status,"REJECTED");
   assert.equal((await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
