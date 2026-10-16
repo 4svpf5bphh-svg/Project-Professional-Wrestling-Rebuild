@@ -185,10 +185,17 @@ test("original match rating/crowd run from only current-week relational context"
       [worldId],
     ));
     assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showProgrammePreview,null);
-    await withWorldTransaction(db.pool,tx=>tx.query(
-      "UPDATE ppw_worlds SET alignment_history_loaded=true WHERE world_id=$1",
-      [worldId],
-    ));
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(
+        "UPDATE ppw_people SET default_alignment='FACE' WHERE world_id=$1 AND person_id=$2",
+        [worldId,personIds[0]!]);
+      await tx.query(
+        "UPDATE ppw_people SET default_alignment='HEEL' WHERE world_id=$1 AND person_id=$2",
+        [worldId,personIds[1]!]);
+      await tx.query(
+        "UPDATE ppw_worlds SET alignment_history_loaded=true WHERE world_id=$1",
+        [worldId]);
+    });
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET dirty_finish_history_loaded=true WHERE world_id=$1",
       [worldId],
