@@ -12,7 +12,7 @@ export interface ResolvedMultiIndividualEvidence{
 }
 export function verifyMultiIndividualEvidence(
  booking:BookedMultiIndividualOutcome,resolved:ResolvedMultiIndividualEvidence,
-):{actualWinnerSide:MatchSideId;actualFinish:string}{
+):{actualWinnerSide:"A"|"B"|"C"|"D";actualFinish:string}{
  const ids=booking.participants;
  if(![3,4].includes(ids.length)||new Set(ids).size!==ids.length||
   ids.some(x=>typeof x!=="string"||!x)||
@@ -32,5 +32,6 @@ export function verifyMultiIndividualEvidence(
  }else if(resolved.actualWinnerSide!==booking.scriptedWinnerSide||
   resolved.actualFinish!==booking.plannedFinish)
   throw new Error("Multi-person simulation cannot alter the authored finish");
- return {actualWinnerSide:resolved.actualWinnerSide,actualFinish:resolved.actualFinish};
+ return {actualWinnerSide:resolved.actualWinnerSide as "A"|"B"|"C"|"D",
+  actualFinish:resolved.actualFinish};
 }

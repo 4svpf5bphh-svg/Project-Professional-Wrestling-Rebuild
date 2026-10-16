@@ -49,7 +49,8 @@ test("3/4 distinct individual sides are scored from ALL wrestlers and determinis
   const receipt={worldId:"world",promotionId:"promotion",showId:"show",
    year:1,week:1,resolutionId:"resolution",crowdResponse:70,
    matches:[{matchId:"main",position:0,crowdResponse:70,
-    actualFinish:a.actualFinish,actualWinnerSide:a.actualWinnerSide}],segments:[]};
+    actualFinish:a.actualFinish,
+    actualWinnerSide:a.actualWinnerSide as "A"|"B"|"C"|"D"}],segments:[]};
   assert.doesNotThrow(()=>validateCompletedMatchEvidence(receipt,
    [{matchId:"main",booking,resolution}]));
   assert.throws(()=>verifyMultiIndividualEvidence(booking,{

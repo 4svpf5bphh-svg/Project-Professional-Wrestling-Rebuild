@@ -79,14 +79,19 @@ export function readCanonicalMatchLayout(payload:unknown):CanonicalMatchLayout{
   const winner=all.find((x,i)=>sides[i]!.sideId===p.scriptedWinnerSide);
   if(p.scriptedWinner!==undefined&&p.scriptedWinner!==winner?.personId)
    throw new Error("Scripted winner and winner side disagree");
- }else if(family==="TEAMS"&&p.matchType!=="TAG")
+ }else if(family==="INDIVIDUAL"&&sides.length>=3&&
+  !(p.matchType==="SINGLES"||p.matchType==="MULTI_PERSON"))
+  throw new Error("Individual multi-person match requires individual rules");
+ else if(family==="TEAMS"&&p.matchType!=="TAG")
   throw new Error("Team match must declare TAG rules");
  return {family,sides,participants:all,
   scriptedWinnerSide:p.scriptedWinnerSide as MatchSideId};
 }
 export function requireSupportedScoringLayout(layout:CanonicalMatchLayout):
- "SINGLES"|"TAG"{
+ "SINGLES"|"TAG"|"TRIPLE_THREAT"|"FOUR_WAY"{
  if(layout.family==="INDIVIDUAL"&&layout.sides.length===2)return "SINGLES";
+ if(layout.family==="INDIVIDUAL"&&layout.sides.length===3)return "TRIPLE_THREAT";
+ if(layout.family==="INDIVIDUAL"&&layout.sides.length===4)return "FOUR_WAY";
  if(layout.family==="TEAMS"&&layout.sides.length===2&&
   layout.sides.every(x=>x.participants.length===2))return "TAG";
  throw new Error("Match formation awaits the approved scoring rules");
