@@ -13,6 +13,7 @@ import {inspectWeekConflicts} from "./week-conflicts.js";
 import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
 import {consumeWorldWeekAppearances} from "./world-week-appearance-coordinator.js";
 import {certifyResolvedWorldWeek} from "./week-certification.js";
+import type {CommandResult} from "./world-commands.js";
 import {previewWorldWeekArbitration} from "./week-arbitration.js";
 import {recordWorldWeekArbitration} from "./recorded-week-arbitration.js";
 import {applyAiWeekRemediation} from "./apply-ai-remediation.js";
@@ -62,6 +63,14 @@ export async function inspectWorldResolutionReadiness(
    detailedResolved:r.detailed_resolved,blockers};
  });
 }
+/** Durable commands must never be reported as executed on a stale revision.
+ * This allows multiple workers to race without a phantom stage completion.
+ */
+function commandStage<T>(action:WorldResolutionAction,result:CommandResult<T>){
+ return result.status==="STALE"
+  ?{action,status:"BLOCKED" as const,blockers:["WORLD_REVISION_CHANGED"]}
+  :{action,status:"EXECUTED" as const,result};
+}
 /** Deterministic, read-only next-action decision for the trusted resolver.
  * It never silently resolves conflicts or invents human-authored shows.
  */
@@ -99,10 +108,25 @@ export async function planNextWorldResolutionAction(
    "BEGIN_RESOLUTION";
  }else if(ready.phase==="RESOLVING"){
   if(ready.submitted!==ready.active){
-   const run=await withWorldTransaction(pool,tx=>tx.query<{done:boolean}>(`SELECT EXISTS(SELECT 1 FROM ppw_week_staff_fallback_runs WHERE world_id=$1 AND year=$2 AND week=$3) AS done`,[worldId,ready.year,ready.week]));
+   const run=await withWorldTransaction(pool,tx=>tx.query<{
+    done:boolean;eligible:number;
+   }>(`SELECT
+     EXISTS(SELECT 1 FROM ppw_week_staff_fallback_runs
+       WHERE world_id=$1 AND year=$2 AND week=$3) AS done,
+     (SELECT count(*)::integer FROM ppw_week_continuity_assessments
+       WHERE world_id=$1 AND year=$2 AND week=$3
+         AND status='STAFF_FALLBACK_ELIGIBLE' AND show_id IS NULL) AS eligible`,
+      [worldId,ready.year,ready.week]));
    if(run.length!==1)throw new Error("Staff fallback checkpoint missing");
-   action=run[0]!.done?"ARBITRATE_OR_REMEDIATE":"GENERATE_STAFF_AND_AI_CARDS";
-   blockers.push(run[0]!.done?"MISSING_PROMOTION_SHOWS_AFTER_STAFF":"MISSING_PROMOTION_SHOWS");
+   const checkpoint=run[0]!;
+   if(!checkpoint.done&&checkpoint.eligible>0){
+    action="GENERATE_STAFF_AND_AI_CARDS";
+    blockers.push("MISSING_PROMOTION_SHOWS");
+   }else{
+    action="ARBITRATE_OR_REMEDIATE";
+    blockers.push(checkpoint.done?"MISSING_PROMOTION_SHOWS_AFTER_STAFF":
+      "MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF");
+   }
   }else if(ready.cleared!==ready.active){
    if(ready.cleared!==null){
     action="ARBITRATE_OR_REMEDIATE";
@@ -209,27 +233,25 @@ export async function executeNextWorldResolutionStage(
   expectedRevision<0)throw new Error("Invalid resolver command input");
  if(plan.action==="ASSESS_CONTINUITY"){
   const result=await recordWeekContinuity(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="FINALIZE_PREPARED_SHOWS"){
   const result=await finalizePreparedWorldShows(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="BEGIN_RESOLUTION"){
   const result=await beginWorldResolution(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="GENERATE_STAFF_AND_AI_CARDS"&&plan.ready.phase==="RESOLVING"){
   const result=await generateWeekStaffFallbackCards(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="RECORD_ARBITRATION"){
   const preview=await previewWorldWeekArbitration(pool,worldId);
   const result=await recordWorldWeekArbitration(pool,{worldId,requestId,
    expectedRevision,expectedStateFingerprint:preview.stateFingerprint});
-  if(result.status==="STALE")return {action:plan.action,
-   status:"BLOCKED" as const,blockers:["WORLD_REVISION_CHANGED"]};
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="REMEDIATE_AI_CLAIM"){
   if(!plan.arbitration)throw new Error("Missing authorized AI remedy");
@@ -237,13 +259,11 @@ export async function executeNextWorldResolutionStage(
    expectedRevision,showId:plan.arbitration.showId,
    expectedStateFingerprint:plan.arbitration.sourceFingerprint,
    choice:plan.arbitration.choice});
-  if(result.status==="STALE")return {action:plan.action,
-   status:"BLOCKED" as const,blockers:["WORLD_REVISION_CHANGED"]};
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="CLEAR_RESOURCES"){
   const result=await clearWorldWeekResources(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="RESOLVE_LEGACY_SHOWS"){
   const result=await consumeWorldWeekAppearances(pool,{worldId,year:plan.year,week:plan.week,resolutionId});
@@ -256,12 +276,12 @@ export async function executeNextWorldResolutionStage(
  }
  if(plan.action==="CERTIFY_WEEK"){
   const result=await certifyResolvedWorldWeek(pool,{worldId,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  if(plan.action==="PUBLISH_WEEK"){
   const result=await publishResolvedWorldWeek(pool,{
    worldId,year:plan.year,week:plan.week,requestId,expectedRevision});
-  return {action:plan.action,status:"EXECUTED" as const,result};
+  return commandStage(plan.action,result);
  }
  return {action:plan.action,status:"BLOCKED" as const,
   blockers:plan.blockers.length?plan.blockers:

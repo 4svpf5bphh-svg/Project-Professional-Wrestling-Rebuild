@@ -214,3 +214,32 @@ test("three AI venue claimants resume after the first remedial edit with distinc
   assert.notEqual(receipts[0]!.request_id,receipts[1]!.request_id);
  }finally{await cleanup(db.pool,worldId).finally(()=>db.close());}
 });
+
+
+test("missing unassigned show cleanly blocks World after lock without running unauthorized staff",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,4),worldId="missing-show-"+randomUUID();
+ const resolutionId="resolution-"+worldId;
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"No Staff Authority",seed:99,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:"unassigned",name:"Unassigned",tier:"LOCAL"});
+   await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
+    [worldId]);
+  });
+  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:0})).status,"APPLIED");
+  const result=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:8});
+  assert.equal(result.status,"BLOCKED");
+  assert.deepEqual(result.steps.map(x=>x.action),[
+   "ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
+   "ARBITRATE_OR_REMEDIATE",
+  ]);
+  assert.ok(result.blockers.includes("MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF"));
+  const shows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_booking_drafts WHERE world_id=$1",[worldId]));
+  assert.equal(shows[0]!.n,"0");
+  const info=await withWorldTransaction(db.pool,tx=>tx.query<{phase:string;year:number;week:number}>(
+   "SELECT phase,year,week FROM ppw_worlds WHERE world_id=$1",[worldId]));
+  assert.deepEqual(info,[{phase:"RESOLVING",year:1,week:1}]);
+ }finally{await cleanup(db.pool,worldId).finally(()=>db.close());}
+});

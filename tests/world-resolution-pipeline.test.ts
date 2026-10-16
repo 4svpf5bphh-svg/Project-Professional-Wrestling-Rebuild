@@ -4,7 +4,7 @@ import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResol
  from "../src/db/world-resolution-pipeline.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 function fixture(config:{phase?:string;active?:number;submitted?:number;
- cleared?:number|null;legacy?:number;detailed?:number}={}){
+ cleared?:number|null;legacy?:number;detailed?:number;eligible?:number}={}){
  const queries:string[]=[];
  const pool:TransactionPool={async connect(){return {
   async query<T extends Record<string,unknown>>(sql:string){
@@ -12,7 +12,7 @@ function fixture(config:{phase?:string;active?:number;submitted?:number;
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    if(sql.includes("FROM ppw_worlds"))return [{revision:0,year:1,week:1,
     phase:config.phase??"RESOLVING"}] as unknown as T[];
-   if(sql.includes("AS done"))return [{done:false}] as unknown as T[];
+   if(sql.includes("AS done"))return [{done:false,eligible:config.eligible??1}] as unknown as T[];
    if(sql.includes("AS active"))return [{
     active:config.active??2,submitted:config.submitted??2,
     cleared:config.cleared===undefined?2:config.cleared,
@@ -101,4 +101,15 @@ test("driver rejects unbounded stage execution",async()=>{
  const db=fixture();
  await assert.rejects(driveWorldResolution(db.pool,{
   worldId:"world",resolutionId:"resolution",maxStages:100}),/Invalid World driver scope/);
+});
+
+test("planner blocks absent show without explicit delegated staff instead of throwing",async()=>{
+ const db=fixture({submitted:1,eligible:0});
+ const plan=await planNextWorldResolutionAction(db.pool,"world");
+ assert.equal(plan.action,"ARBITRATE_OR_REMEDIATE");
+ assert.deepEqual(plan.blockers,["MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF"]);
+ const run=await driveWorldResolution(db.pool,{worldId:"world",
+  resolutionId:"missing",maxStages:3});
+ assert.equal(run.status,"BLOCKED");
+ assert.deepEqual(run.steps.map(x=>x.action),["ARBITRATE_OR_REMEDIATE"]);
 });
