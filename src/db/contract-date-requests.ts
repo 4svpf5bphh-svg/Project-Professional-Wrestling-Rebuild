@@ -4,7 +4,7 @@ import {applyWorldCommand} from "./world-commands.js";
 
 export interface RequestAdditionalDatesInput {
  worldId:string;playerId:string;promotionId:string;contractId:string;
- requestId:string;expectedRevision:number;additionalDates:number;
+ requestId:string;expectedRevision:number;additionalDates:number;additionalPayment?:number;
 }
 /** Player proposes extra non-exclusive dates; this never silently awards dates.
  * Negotiation/acceptance must be implemented as a separate wrestler decision. */
@@ -13,6 +13,8 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
    throw new Error("Invalid contract request");
  if(!Number.isSafeInteger(input.additionalDates)||input.additionalDates<1||input.additionalDates>104)
    throw new Error("Additional dates must be between 1 and 104");
+ if(!Number.isSafeInteger(input.additionalPayment??0)||(input.additionalPayment??0)<0||(input.additionalPayment??0)>1_000_000_000)
+   throw new Error("Invalid incremental payment");
  return applyWorldCommand(pool,{
    worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
    expectedRevision:input.expectedRevision,commandType:"REQUEST_ADDITIONAL_DATES",requiresOpenWeek:true,
@@ -45,10 +47,10 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
      if(existing.length)throw new Error("An additional-dates request is already pending");
      await tx.query(`
        INSERT INTO ppw_contract_date_requests
-       (world_id,request_id,contract_id,promotion_id,person_id,additional_dates,status,created_week_index)
-       VALUES($1,$2,$3,$4,$5,$6,'PENDING',$7)`,
-       [input.worldId,input.requestId,input.contractId,input.promotionId,contract.person_id,input.additionalDates,weekIndex]);
-     return {contractId:input.contractId,additionalDates:input.additionalDates,status:"PENDING" as const};
+       (world_id,request_id,contract_id,promotion_id,person_id,additional_dates,status,created_week_index,additional_payment)
+       VALUES($1,$2,$3,$4,$5,$6,'PENDING',$7,$8)`,
+       [input.worldId,input.requestId,input.contractId,input.promotionId,contract.person_id,input.additionalDates,weekIndex,input.additionalPayment??0]);
+     return {contractId:input.contractId,additionalDates:input.additionalDates,additionalPayment:input.additionalPayment??0,status:"PENDING" as const};
    },
  });
 }
@@ -67,8 +69,8 @@ export async function readPendingDateRequests(
    [worldId,playerId,promotionId]);
   if(owner.length!==1)throw new Error("Promotion access denied");
   return tx.query<{request_id:string;contract_id:string;person_id:string;
-    additional_dates:number;status:string;created_week_index:number}>(`
-    SELECT request_id,contract_id,person_id,additional_dates,status,created_week_index
+    additional_dates:number;additional_payment:number;status:string;created_week_index:number}>(`
+    SELECT request_id,contract_id,person_id,additional_dates,additional_payment,status,created_week_index
     FROM ppw_contract_date_requests
     WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
     ORDER BY created_week_index,request_id LIMIT 100`,[worldId,promotionId]);

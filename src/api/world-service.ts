@@ -9,6 +9,8 @@ import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
+import {submitManualContractOffer,withdrawManualContractOffer,readPendingContractOffers} from "../db/manual-contract-offers.js";
+import type {OfferTerms} from "../domain/contract-economics.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
  * This module is framework-neutral; HTTP handlers should map exceptions to
@@ -133,4 +135,23 @@ export async function withdrawRenewalAsActor(
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.proposalId,"proposal");
  return withdrawRenewal(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Original manual human recruitment/renegotiation with verified controller identity. */
+export async function submitContractOfferAsActor(context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;personId:string;sourceContractId?:string|null;terms:OfferTerms}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.personId,"wrestler");
+ if(input.sourceContractId!=null)validate(input.sourceContractId,"source contract");
+ return submitManualContractOffer(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function withdrawContractOfferAsActor(context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;offerId:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.offerId,"offer");
+ return withdrawManualContractOffer(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function pendingContractOffersAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readPendingContractOffers(context.pool,worldId,context.actor.playerId,promotionId);
 }

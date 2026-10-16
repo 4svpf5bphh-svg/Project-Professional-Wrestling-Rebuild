@@ -24,9 +24,12 @@ export async function readContractDesk(
    contract_id:string;person_id:string;name:string;
    family:ContractAvailabilityInput["family"];status:ContractAvailabilityInput["status"];
    remaining_dates:number|null;expires_week_index:number;
+   date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
+   creative_control:string;role_expectation:string;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
-     c.remaining_dates,c.expires_week_index
+     c.remaining_dates,c.expires_week_index,c.date_entitlement,c.weekly_guarantee,
+     c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation
    FROM ppw_contracts c JOIN ppw_people p
      ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'
@@ -42,6 +45,11 @@ export async function readContractDesk(
    ORDER BY created_week_index,request_id LIMIT 200`,
    [worldId,promotionId]);
   const renewals=await tx.query<{proposal_id:string;contract_id:string;person_id:string;status:string;created_week_index:number;proposed_terms:unknown}>(`SELECT proposal_id,contract_id,person_id,status,created_week_index,proposed_terms FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING' ORDER BY created_week_index,proposal_id LIMIT 200`,[worldId,promotionId]);
+  const offers=await tx.query<{offer_id:string;person_id:string;source_contract_id:string|null;
+   terms:unknown;submitted_week_index:number}>(`SELECT offer_id,person_id,source_contract_id,terms,submitted_week_index
+   FROM ppw_contract_offers WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
+   ORDER BY submitted_week_index DESC,offer_id LIMIT 200`,[worldId,promotionId]);
+  const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
   const roster=contracts.map(c=>contractDeskEntry({
    contractId:c.contract_id,personId:c.person_id,name:c.name,
    family:c.family,status:c.status,remainingDates:c.remaining_dates,
@@ -51,14 +59,19 @@ export async function readContractDesk(
   const renewalIds=new Set(renewals.map(q=>q.contract_id));
   return {
    currentWeekIndex,
-   roster:roster.map(c=>({...c,pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId)})),
+   roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
+    dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
+    appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
+    roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
+    pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId)};}),
    requests,
-   renewals,
+   renewals,offers,
    summary:{
     signed:roster.length,expiringSoon:roster.filter(c=>c.expiringSoon).length,
     noDates:roster.filter(c=>c.reason==="NO_DATES").length,
     pendingNegotiations:requests.length,
-    pendingRenewals:renewals.length,
+    pendingRenewals:renewals.length,pendingOffers:offers.length,
+    weeklyGuarantees:contracts.reduce((sum,c)=>sum+Number(c.weekly_guarantee),0),
    },
   };
  });
