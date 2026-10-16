@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {marketWeeklyValue,canAcceptTerms,canAddDates,offerUtility,
+ type PersonEconomics,type OfferTerms} from "../src/domain/contract-economics.js";
+
+const person:PersonEconomics={recognition:80,popularity:70,inRingQuality:80,matchCraft:80,
+ presentation:90,stamina:80,fatigue:0,careerStage:"PRIME",morale:80,
+ priorities:{money:60,role:10,prestige:10,schedule:10,loyalty:5,exposure:5}};
+const limited:OfferTerms={family:"LIMITED_NON_EXCLUSIVE",roleExpectation:"MAIN_EVENT",creativeControl:"NONE",
+ startWeekIndex:0,termWeeks:13,dateEntitlement:5,weeklyGuarantee:2000,appearanceFee:6000,signingBonus:2000};
+test("original market formula and exclusive minimum guarantee",()=>{
+ const avg=(person.inRingQuality+person.matchCraft+person.presentation)/3;
+ assert.equal(marketWeeklyValue(person),Math.round(500+person.recognition*50+person.popularity*30+avg*25));
+ assert.match(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:1,appearanceFee:0},[],0)??"",/minimum/);
+ assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:marketWeeklyValue(person),appearanceFee:0},[],0),null);
+});
+test("future non-exclusive service capacity accounts for unused dates not historical purchases",()=>{
+ const contracts=[{contractId:"old",family:"LIMITED_NON_EXCLUSIVE" as const,status:"SIGNED",
+  remainingDates:0,startWeekIndex:0,expiresWeekIndex:12}];
+ assert.equal(canAcceptTerms(person,limited,contracts,0),null);
+ const blocked=[{...contracts[0]!,family:"EXCLUSIVE" as const,remainingDates:null}];
+ assert.match(canAcceptTerms(person,limited,blocked,0)??"",/exclusive/);
+ assert.equal(canAddDates(person,contracts[0]!,3,[],0),null);
+ assert.match(canAddDates(person,{...contracts[0]!,remainingDates:12},104,[],12)??"",/capacity/);
+});
+test("original deterministic wrestler utility and creative bargaining floor",()=>{
+ const context={tier:"NATIONAL",mediaReach:60,hasPriorRelationship:false,trust:50,
+  seed:"7",offerId:"contract-a"};
+ const base=offerUtility(person,limited,context);
+ assert.equal(offerUtility(person,limited,context),base);
+ assert.ok(offerUtility(person,{...limited,creativeControl:"FULL_APPROVAL"},context)>base);
+ assert.throws(()=>canAcceptTerms(person,{...limited,family:"ONE_OFF"},[],0),/One-off/);
+});
