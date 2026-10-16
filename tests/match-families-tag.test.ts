@@ -60,7 +60,7 @@ test("scripted 2v2 results, team chemistry and all four medical exposures are de
  assert.equal(a.members.filter(x=>x.won).length,2);
  assert.throws(()=>simulateBookedTagMatch({...args,
   layout:readCanonicalMatchLayout({participants:[person("a"),person("b")],
-    scriptedWinner:"a"})}),/only supports/);
+    scriptedWinner:"a"})}),/supports two equal sides/);
 });
 test("team evidence refuses overturned scripted finishes except verified severe medical stoppages",()=>{
  const booking={family:"TEAMS" as const,
