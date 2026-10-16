@@ -8,9 +8,9 @@ test("term expires after final valid week",()=>{
   assert.equal(contractAvailability({...base,currentWeekIndex:20}).available,true);
   assert.equal(contractAvailability({...base,currentWeekIndex:21}).reason,"EXPIRED");
 });
-test("exclusive may use unlimited or finite dates",()=>{
+test("exclusive appearances remain unlimited even with legacy finite date counters",()=>{
   assert.equal(contractAvailability({...base,family:"EXCLUSIVE",remainingDates:null}).available,true);
-  assert.equal(contractAvailability({...base,family:"EXCLUSIVE",remainingDates:0}).reason,"NO_DATES");
+  assert.equal(contractAvailability({...base,family:"EXCLUSIVE",remainingDates:0}).reason,"AVAILABLE");
 });
 test("one-off requires a date and inactive contract cannot book",()=>{
   assert.equal(contractAvailability({...base,family:"ONE_OFF",remainingDates:null}).reason,"INVALID_CONTRACT");
