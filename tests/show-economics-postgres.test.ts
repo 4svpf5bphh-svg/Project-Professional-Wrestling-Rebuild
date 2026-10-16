@@ -8,6 +8,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordCompletedShow} from "../src/db/completed-show-results.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 import {settleCompletedShowEconomics} from "../src/db/show-economics.js";
+import {settleWeeklyPromotionHealth} from "../src/db/weekly-finance-health.js";
 import {originalShowSettlement,originalExpectedDemand,originalCompetitionFactor,
  originalTicketYield} from "../src/domain/legacy-show-economics.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -32,7 +33,9 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
      VALUES($1,'metro','Metro',85,70,100)`,[world]);
    for(const [p,reach] of [[promoter,65],[opponent,90]] as const){
     await addPromotion(tx,world,{id:p,name:p,tier:"LOCAL"});
-    await tx.query(`UPDATE ppw_promotions SET cash=10000,media_reach=$3,home_market_id='metro'
+    await tx.query(`UPDATE ppw_promotions SET cash=10000,media_reach=$3,home_market_id='metro',
+     financial_distress='HEALTHY',weekly_media_income=0,
+     weekly_sponsor_income=0,weekly_fixed_overhead=0
      WHERE world_id=$1 AND promotion_id=$2`,[world,p,reach]);
     await tx.query(`INSERT INTO ppw_promotion_market_states(world_id,promotion_id,market_id,
      awareness,live_strength,loyalty) VALUES($1,$2,'metro',70,60,55)`,[world,p]);
@@ -117,6 +120,16 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
    FROM ppw_promotions p WHERE world_id=$1 AND promotion_id=$2`,[world,promoter]);
   assert.equal(Number(again[0]!.cash),Number(after[0]!.cash));
   assert.equal(again[0]!.entries,1);
+  // Wages/appearance fees are part of WEEK P&L even though they were
+  // already debited before event settlement. No double-counting.
+  const health=await withWorldTransaction(db.pool,tx=>
+   settleWeeklyPromotionHealth(tx,world,1,1));
+  assert.equal(health.evaluated,2);
+  const pAndL=await read<{last_weekly_net:string;cash:string}>(`
+   SELECT last_weekly_net,cash FROM ppw_promotions
+    WHERE world_id=$1 AND promotion_id=$2`,[world,promoter]);
+  assert.equal(Number(pAndL[0]!.last_weekly_net),result.incrementalCash-2000);
+  assert.equal(Number(pAndL[0]!.cash),8000+result.incrementalCash);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET phase='OPEN' WHERE world_id=$1",[world]));
   await assert.rejects(withWorldTransaction(db.pool,tx=>settleCompletedShowEconomics(tx,{
