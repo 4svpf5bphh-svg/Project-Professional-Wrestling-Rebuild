@@ -15,6 +15,7 @@ import {evaluateArchivedMatchPacing,type PacingMatch}
 import {evaluateArchivedShowAlignments,combineArchivedPacingAndAlignments,
  type WrestlerAlignment,type AlignmentChangeMethod}
  from "../simulation/legacy/show-alignment.js";
+import {evaluateArchivedProgrammeReactions} from "../simulation/legacy/show-programmes.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -55,9 +56,9 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
   return withWorldTransaction(pool,async tx=>{
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
-      media_reach:number|null;alignment_history_loaded:boolean}>(
+      media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean}>(
       `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
-          w.alignment_history_loaded,p.media_reach
+          w.alignment_history_loaded,w.programme_history_loaded,p.media_reach
         FROM ppw_booking_drafts d
         JOIN ppw_worlds w ON w.world_id=d.world_id
           AND w.year=d.year AND w.week=d.week AND w.phase='RESOLVING'
@@ -266,8 +267,44 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
         showAlignmentPreview=combineArchivedPacingAndAlignments(showPacingPreview,alignments);
       }
     }
+    let showProgrammePreview:ReturnType<typeof evaluateArchivedProgrammeReactions>|null=null;
+    if(showPacingPreview!==null&&show.programme_history_loaded){
+      const links=await tx.query<{slot_id:string;programme_id:string}>(
+        `SELECT a.slot_id,a.programme_id
+         FROM ppw_programme_match_activities a
+         WHERE a.world_id=$1 AND a.promotion_id=$2
+           AND a.draft_id=$3 AND a.kind='MATCH'
+           AND a.slot_id=ANY($4::text[])
+         ORDER BY a.slot_id,a.programme_id LIMIT 10001`,
+        [input.worldId,input.promotionId,input.showId,matches.map(x=>x.slot_id)],
+      );
+      if(links.length>10000)throw new Error("Programme links exceed bounded show scope");
+      const ids=[...new Set(links.map(x=>x.programme_id))].sort();
+      if(ids.length>500)throw new Error("Programme context exceeds bounded show scope");
+      const programmes=ids.length===0?[]:await tx.query<{
+        programme_id:string;promotion_id:string;status:"ACTIVE"|"INACTIVE"|"COMPLETED";
+        heat:number|null;repetition:number;
+      }>(
+        `SELECT programme_id,promotion_id,status,heat,repetition
+           FROM ppw_programmes WHERE world_id=$1 AND promotion_id=$2
+             AND programme_id=ANY($3::text[])`,
+        [input.worldId,input.promotionId,ids],
+      );
+      if(programmes.length!==ids.length)throw new Error("Missing linked canonical programme");
+      const byMatch=new Map<string,string[]>();
+      for(const link of links){
+        const arr=byMatch.get(link.slot_id)??[];
+        arr.push(link.programme_id);byMatch.set(link.slot_id,arr);
+      }
+      showProgrammePreview=evaluateArchivedProgrammeReactions(
+        matches.map(m=>({matchId:m.slot_id,promotionId:input.promotionId,
+          linkedProgrammeIds:byMatch.get(m.slot_id)??[]})),
+        programmes.map(x=>({programmeId:x.programme_id,promotionId:x.promotion_id,
+          status:x.status,heat:x.heat,repetition:x.repetition})),
+      );
+    }
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections,showPacingPreview,showAlignmentPreview};
+      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview};
   });
 }

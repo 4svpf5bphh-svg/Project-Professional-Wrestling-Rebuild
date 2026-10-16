@@ -82,6 +82,7 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(first.injuryPreview,null);
     assert.equal(result.showPacingPreview,null);
     assert.equal(result.showAlignmentPreview,null);
+    assert.equal(result.showProgrammePreview,null);
     assert.equal(result.projections[0]!.consequencesPreview,null);
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET injury_rate_multiplier=10 WHERE world_id=$1",[worldId],
@@ -93,6 +94,7 @@ test("original match rating/crowd run from only current-week relational context"
     assert.ok(injuryScored.showPacingPreview!==null);
     assert.equal(injuryScored.showPacingPreview!.phase,"PACING_ONLY_NOT_FINAL");
     assert.equal(injuryScored.showAlignmentPreview,null);
+    assert.equal(injuryScored.showProgrammePreview,null);
     assert.equal(injuryScored.showPacingPreview!.segments,"NOT_PROJECTED");
     assert.equal(injuryScored.showPacingPreview!.matches.length,1);
     assert.equal(injuryScored.showPacingPreview!.matches[0]!.matchId,"opening");
@@ -141,6 +143,46 @@ test("original match rating/crowd run from only current-week relational context"
     assert.deepEqual(projected,direct);
     assert.ok(projected.performers.every(p=>p.after.fatigue>=p.before.fatigue));
     assert.deepEqual(projected.performers.map(p=>p.personId),personIds);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET programme_history_loaded=true WHERE world_id=$1",
+      [worldId],
+    ));
+    const unlinked=await previewArchivedShowMatchScores(instrumented,input);
+    assert.deepEqual(unlinked.showProgrammePreview,[{
+      matchId:"opening",modifier:0,reason:null,linkedActiveProgrammeCount:0,
+    }]);
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(
+        `INSERT INTO ppw_programmes
+         (world_id,promotion_id,programme_id,status,heat,repetition)
+         VALUES($1,$2,'feud','ACTIVE',95,0)`,[worldId,promotionId],
+      );
+      await tx.query(
+        `INSERT INTO ppw_programme_match_activities
+         (world_id,promotion_id,programme_id,draft_id,slot_id,kind)
+         VALUES($1,$2,'feud',$3,'opening','MATCH')`,
+        [worldId,promotionId,showId],
+      );
+    });
+    const beforeProgramme=count.length;
+    const feud=await previewArchivedShowMatchScores(instrumented,input);
+    assert.equal(count.length-beforeProgramme,8,
+      "Linked programmes add exactly two bounded SQL reads");
+    assert.deepEqual(feud.showProgrammePreview,[{
+      matchId:"opening",modifier:2.5,reason:"HOT_PROGRAMME",linkedActiveProgrammeCount:1,
+    }]);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_programmes SET repetition=80 WHERE world_id=$1 AND promotion_id=$2",
+      [worldId,promotionId],
+    ));
+    const stale=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(stale.showProgrammePreview![0]!.reason,"PROGRAMME_REPETITION");
+    assert.ok(stale.showProgrammePreview![0]!.modifier<0);
+    await withWorldTransaction(db.pool,tx=>tx.query(
+      "UPDATE ppw_worlds SET programme_history_loaded=false WHERE world_id=$1",
+      [worldId],
+    ));
+    assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showProgrammePreview,null);
     // Certified histories activate exactly TWO indexed reads and the original
     // face-v-heel contextual crowd bonus, without altering match scores.
     await withWorldTransaction(db.pool,async tx=>{
@@ -307,6 +349,8 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(payload[0]!.payload.scriptedWinner,personIds[1]);
   }finally{
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_programme_match_activities WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_programmes WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotion_alignment_changes WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotion_wrestler_alignments WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_working_chemistry WHERE world_id=$1",[worldId]);
