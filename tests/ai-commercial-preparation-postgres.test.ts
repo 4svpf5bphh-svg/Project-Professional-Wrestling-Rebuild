@@ -39,6 +39,37 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   assert.equal(generated.result.generated.length,8);
   assert.deepEqual(generated.result.unfilled,[]);
   assert.ok(generated.result.generated.every(x=>x.origin==="AI"));
+  const cardRows=await withWorldTransaction(db.pool,tx=>tx.query<{
+    draft_id:string;slot_id:string;position:number;payload:{
+      participants:{personId:string;contractId:string}[];
+      scriptedWinner:string;intent:string;plannedFinish:string;
+      plannedLengthMinutes:number;mainEvent:boolean;scriptedBy:string;
+    }}>(`
+    SELECT draft_id,slot_id,position,payload FROM ppw_card_slots
+    WHERE world_id=$1 ORDER BY draft_id,position`,[world]));
+  const byCard=new Map<string,typeof cardRows>();
+  for(const row of cardRows){
+    const group=byCard.get(row.draft_id)??[];
+    group.push(row);byCard.set(row.draft_id,group);
+  }
+  assert.equal(byCard.size,8);
+  for(const slots of byCard.values()){
+    assert.ok(slots.length>=2&&slots.length<=5);
+    assert.deepEqual(slots.map(x=>x.position),slots.map((_,i)=>i));
+    assert.equal(slots.at(-1)!.payload.mainEvent,true);
+    assert.ok(slots.slice(0,-1).every(x=>!x.payload.mainEvent));
+    const ids=slots.flatMap(s=>s.payload.participants.map(p=>p.personId));
+    assert.equal(ids.length,slots.length*2);
+    assert.equal(new Set(ids).size,ids.length);
+    assert.ok(ids.length<=10);
+    for(const slot of slots){
+      assert.equal(slot.payload.scriptedBy,"AI_WORLD_BOOKER");
+      assert.ok(slot.payload.participants.some(x=>x.personId===slot.payload.scriptedWinner));
+      assert.ok(slot.payload.intent);
+      assert.ok(slot.payload.plannedFinish);
+      assert.ok(slot.payload.plannedLengthMinutes>=3);
+    }
+  }
   assert.equal((await generateWeekStaffFallbackCards(db.pool,{worldId:world,
    requestId:"generate",expectedRevision:4})).status,"REPLAYED");
   const before=await withWorldTransaction(db.pool,tx=>tx.query<{

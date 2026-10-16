@@ -8,7 +8,8 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
   tier:(i===0?"GLOBAL":i<3?"NATIONAL":i<5?"RISING":"INDEPENDENT") as "GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT",
   lifecycle:"ACTIVE",controllerType:"AI" as const,cash:5_000_000+i*1_000,
   debt:0,mediaReach:90-i*7,eventCadenceWeeks:1,
-  aiProfile:{financialCaution:65},
+  aiProfile:{financialCaution:65,riskTolerance:63,
+   matchQualityPreference:70,starPreference:75},
   weeklyMediaIncome:300_000,weeklySponsorIncome:25_000,
   weeklyFixedOverhead:60_000,lastWeeklyNet:0,financialDistress:"HEALTHY",
  }));

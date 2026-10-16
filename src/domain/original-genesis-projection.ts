@@ -16,7 +16,8 @@ export interface OriginalGenesisSource {
   controllerType:"AI"|"HUMAN";cash:number;debt:number;mediaReach:number;
   weeklyMediaIncome:number;weeklySponsorIncome:number;weeklyFixedOverhead:number;
   lastWeeklyNet:number;financialDistress:string;homeMarketId:string;
-  eventCadenceWeeks:number;aiProfile:{financialCaution:number}}>;
+  eventCadenceWeeks:number;aiProfile:{financialCaution:number;riskTolerance:number;
+    matchQualityPreference:number;starPreference:number}}>;
  people:Array<{id:string;worldId:string;name:string;status:Status;
   careerStage:PersonEconomics["careerStage"];morale:number;
   recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;
@@ -47,6 +48,7 @@ export interface GenesisProjection {
   awareness:number;liveStrength:number;loyalty:number}>;
  promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
  cash:number;debt:number;media:number;eventCadenceWeeks:number;aiFinancialCaution:number;
+ aiRiskTolerance:number;aiMatchQualityPreference:number;aiStarPreference:number;
  weeklyMedia:number;weeklySponsor:number;
  weeklyOverhead:number;lastWeeklyNet:number;distress:string}>;
  people:Array<{id:string;name:string;status:Status;careerStage:PersonEconomics["careerStage"];
@@ -118,6 +120,8 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   if(!isText(p.id)||p.worldId!==worldId||!isText(p.name)
    ||!isText(p.homeMarketId)||!marketIds.has(p.homeMarketId)
    ||!int(p.eventCadenceWeeks,1,52)||!stat(p.aiProfile?.financialCaution)
+   ||!stat(p.aiProfile?.riskTolerance)||!stat(p.aiProfile?.matchQualityPreference)
+   ||!stat(p.aiProfile?.starPreference)
    ||!["GLOBAL","NATIONAL","RISING","INDEPENDENT","LOCAL"].includes(p.tier)
    ||!lifecycles.has(p.lifecycle)||!["AI","HUMAN"].includes(p.controllerType)
    ||!int(p.cash,-2_000_000_000_000,2_000_000_000_000)
@@ -129,6 +133,9 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   return {id:p.id,name:p.name,homeMarketId:p.homeMarketId,tier:p.tier,lifecycle:p.lifecycle,
    mode:p.controllerType,cash:p.cash,debt:p.debt,media:p.mediaReach,
    eventCadenceWeeks:p.eventCadenceWeeks,aiFinancialCaution:p.aiProfile.financialCaution,
+   aiRiskTolerance:p.aiProfile.riskTolerance,
+   aiMatchQualityPreference:p.aiProfile.matchQualityPreference,
+   aiStarPreference:p.aiProfile.starPreference,
    weeklyMedia:p.weeklyMediaIncome,weeklySponsor:p.weeklySponsorIncome,
    weeklyOverhead:p.weeklyFixedOverhead,lastWeeklyNet:p.lastWeeklyNet,
    distress:p.financialDistress};
