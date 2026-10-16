@@ -33,6 +33,20 @@ export async function recordCompletedShow(
        AND year=$4 AND week=$5 AND status='SUBMITTED' FOR UPDATE`,
    [receipt.worldId,receipt.promotionId,receipt.showId,receipt.year,receipt.week]);
   if(show.length!==1)throw new Error("Show is not a canonical submitted card");
+  const slots=await tx.query<{slot_id:string;position:number;kind:string}>(
+   `SELECT slot_id,position,kind FROM ppw_card_slots
+     WHERE world_id=$1 AND draft_id=$2 ORDER BY position FOR SHARE`,
+   [receipt.worldId,receipt.showId]);
+  const expected=[...receipt.matches.map(m=>({slot_id:m.matchId,
+   position:m.position,kind:"MATCH"})),
+   ...receipt.segments.map(s=>({slot_id:s.slotId,
+   position:s.position,kind:"SEGMENT"}))]
+   .sort((a,b)=>a.position-b.position);
+  if(slots.length!==expected.length||slots.some((slot,i)=>
+    slot.slot_id!==expected[i]!.slot_id||
+    slot.position!==expected[i]!.position||
+    slot.kind!==expected[i]!.kind))
+   throw new Error("Completed show receipt does not match submitted card");
   await tx.query(
    `INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,

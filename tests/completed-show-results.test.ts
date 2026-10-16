@@ -26,6 +26,9 @@ function fake(options:{existing?:boolean;conflict?:boolean;
    if(sql.includes("FROM ppw_completed_shows"))return (
     options.existing?[{receipt_digest:options.conflict?"bad":digest,
      receipt_json:JSON.parse(canonical)}]:[]) as unknown as T[];
+   if(sql.includes("FROM ppw_card_slots"))return [
+    {slot_id:"m",position:0,kind:"MATCH"},
+    {slot_id:"angle",position:1,kind:"SEGMENT"}] as unknown as T[];
    if(sql.includes("FROM ppw_booking_drafts"))return [{draft_id:"s"}] as unknown as T[];
    if(sql.startsWith("INSERT")){
     writes++;

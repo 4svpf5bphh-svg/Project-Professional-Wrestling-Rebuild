@@ -27,6 +27,11 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
       VALUES($1,$2,$3,1,1,'SUBMITTED',3)`,
     [worldId,showId,promotionId]);
    await tx.query(
+    `INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+     VALUES($1,$2,'match',0,'MATCH','{}'::jsonb),
+           ($1,$2,'angle',1,'SEGMENT','{}'::jsonb)`,
+    [worldId,showId]);
+   await tx.query(
     "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);
   });
   const first=await Promise.all([
@@ -50,6 +55,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
    await tx.query("DELETE FROM ppw_completed_show_segments WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_completed_show_matches WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_card_slots WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
