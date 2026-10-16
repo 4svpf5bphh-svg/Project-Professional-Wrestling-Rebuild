@@ -289,3 +289,51 @@ test("frozen human venue delegation resolves a conflict without rewriting creati
   await db.close();
  }
 });
+
+test("human logistics refuses unapproved alternatives, controller transfers, and stale evidence",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,4),worldId="human-denial-"+randomUUID();
+ const playerId="controller-"+randomUUID(),otherId="successor-"+randomUUID();
+ try{
+  const {promotions}=await fixture(db.pool,worldId,"VENUE");
+  const preview=await previewWorldWeekArbitration(db.pool,worldId);
+  const denied=preview.outcomes[0]!.denied.promotionId;
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const id of [playerId,otherId]){
+    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[id]);
+    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,id]);
+   }
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,denied]);
+   await tx.query("UPDATE ppw_promotions SET management_mode='HUMAN' WHERE world_id=$1 AND promotion_id=$2",[worldId,denied]);
+   await tx.query(`INSERT INTO ppw_week_logistics_authorizations
+    (world_id,year,week,promotion_id,controller_player_id,allow_logistics_fallback,permitted_days,permitted_venue_ids)
+    VALUES($1,1,1,$2,$3,true,ARRAY[7]::smallint[],ARRAY['not-an-option']::text[])`,
+    [worldId,denied,playerId]);
+  });
+  const deniedPlan=await driveWorldResolution(db.pool,{worldId,resolutionId:"deny-"+worldId,maxStages:3});
+  assert.equal(deniedPlan.status,"BLOCKED");
+  assert.ok(deniedPlan.blockers.includes("HUMAN_OR_CREATIVE_REBOOK_REQUIRED"));
+  const untouched=await withWorldTransaction(db.pool,tx=>tx.query<{show_day:number;venue_id:string}>(
+   "SELECT show_day,venue_id FROM ppw_booking_drafts WHERE world_id=$1 AND promotion_id=$2",[worldId,denied]));
+  assert.deepEqual(untouched,[{show_day:3,venue_id:"venue-0"}]);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_week_logistics_authorizations SET permitted_days=ARRAY[1,2,3,4,5,6,7]::smallint[],permitted_venue_ids=ARRAY['venue-0','venue-1']::text[] WHERE world_id=$1",[worldId]);
+   await tx.query("UPDATE ppw_promotion_controls SET active=false WHERE world_id=$1 AND player_id=$2",[worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,otherId,denied]);
+  });
+  const transferred=await driveWorldResolution(db.pool,{worldId,resolutionId:"transfer-"+worldId,maxStages:2});
+  assert.equal(transferred.status,"BLOCKED");
+  const after=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type='AUTHORIZED_LOGISTICS_REMEDIATED'",[worldId]));
+  assert.equal(after[0]!.n,"0");
+  assert.equal(promotions.length,2);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
+  });
+  await cleanup(db.pool,worldId);
+  await withWorldTransaction(db.pool,tx=>tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[playerId,otherId]]));
+  await db.close();
+ }
+});
