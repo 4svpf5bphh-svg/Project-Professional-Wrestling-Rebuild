@@ -6,6 +6,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {resolveWorldWeekShows} from "./world-week-show-coordinator.js";
+import {advanceResolvedWorldWeek} from "./week-advancement.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -73,4 +74,28 @@ export async function runWorldShowResolutionPhase(
   after.detailedResolved!==after.active||after.blockers.length)
   throw new Error("World show resolution did not complete cleanly");
  return {result,readiness:after};
+}
+
+/** Final server-only publication phase. A caller must have completed
+ * resource arbitration, date charges, detailed results and certification.
+ * The existing transactional advancement command rechecks all invariants.
+ * No extra deadline, no cron, and no player-facing shortcut.
+ */
+export async function publishResolvedWorldWeek(
+ pool:TransactionPool,input:{worldId:string;year:number;week:number;
+ requestId:string;expectedRevision:number},
+){
+ const ready=await inspectWorldResolutionReadiness(pool,input.worldId);
+ if(ready.year!==input.year||ready.week!==input.week)
+  throw new Error("World week changed before publication");
+ if(ready.blockers.length)throw new Error(
+  "World publication blocked: "+ready.blockers.join(","));
+ if(ready.legacyResolved!==ready.active||
+  ready.detailedResolved!==ready.active||
+  ready.certified!==ready.active)
+  throw new Error("World publication blocked: incomplete results or certification");
+ return advanceResolvedWorldWeek(pool,{
+  worldId:input.worldId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,
+ });
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase}
+import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek}
  from "../src/db/world-resolution-pipeline.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 function fixture(config:{phase?:string;active?:number;submitted?:number;
@@ -43,4 +43,17 @@ test("resolution phase refuses a World outside RESOLVING",async()=>{
  const db=fixture({phase:"LOCKED",legacy:2});
  await assert.rejects(runWorldShowResolutionPhase(db.pool,scope),
   /WORLD_NOT_RESOLVING/);
+});
+
+test("publication refuses missing detailed results",async()=>{
+ const db=fixture({legacy:2,detailed:1});
+ await assert.rejects(publishResolvedWorldWeek(db.pool,{
+  worldId:"world",year:1,week:1,requestId:"publish",expectedRevision:0,
+ }),/incomplete results or certification/);
+});
+test("publication refuses unsubmitted shows",async()=>{
+ const db=fixture({submitted:1,legacy:2,detailed:2});
+ await assert.rejects(publishResolvedWorldWeek(db.pool,{
+  worldId:"world",year:1,week:1,requestId:"publish",expectedRevision:0,
+ }),/SHOWS_NOT_SUBMITTED/);
 });
