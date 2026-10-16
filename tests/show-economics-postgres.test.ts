@@ -91,8 +91,8 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
   const result=await withWorldTransaction(measured,tx=>settleCompletedShowEconomics(tx,{
    worldId:world,promotionId:promoter,showId:show,year:1,week:1,
    averageMatchRating:3.5}));
-  const sample=meter.assertBudget({maxQueries:10,maxResultBytes:12000});
-  assert.equal(sample.queryCount,10);
+  const sample=meter.assertBudget({maxQueries:9,maxResultBytes:12000});
+  assert.equal(sample.queryCount,9);
   console.log("PPW original show economy PostgreSQL budget:",JSON.stringify(sample));
   const local={awareness:70,liveStrength:60,loyalty:55};
   const market={audiencePotential:85,wrestlingInterest:70,spendingIndex:100};
