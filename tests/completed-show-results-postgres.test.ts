@@ -34,6 +34,21 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
    await tx.query(
     "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);
   });
+  for(const invalid of [
+   {...receipt,matches:[{...receipt.matches[0]!,matchId:"invented"}]},
+   {...receipt,matches:[]},
+   {...receipt,segments:[]},
+   {...receipt,segments:[{...receipt.segments[0]!,position:2}]},
+   {...receipt,matches:[{...receipt.matches[0]!,position:1}],
+    segments:[{...receipt.segments[0]!,position:0}]},
+  ]){
+   await assert.rejects(recordCompletedShow(db.pool,invalid),
+    /does not match submitted card/);
+   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+    "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",
+    [worldId]));
+   assert.equal(rows[0]!.n,"0","Invalid receipt must leave no completed show");
+  }
   const first=await Promise.all([
    recordCompletedShow(db.pool,receipt),
    recordCompletedShow(db.pool,receipt)]);
