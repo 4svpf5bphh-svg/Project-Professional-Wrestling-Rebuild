@@ -63,6 +63,8 @@ for(const kind of ["ROYAL","MULTI_TEAM"] as const){
   const readiness=await previewLegacyShowMatchStyles(db.pool,scope);
   assert.equal(readiness.matchCount,1);
   assert.equal(readiness.projections[0]!.status,"READY");
+  if(!("performers" in readiness.projections[0]!))
+   throw new Error("Missing full field readiness projection");
   assert.equal(readiness.projections[0]!.performers.length,count);
   const projected=await previewArchivedShowMatchScores(db.pool,scope);
   assert.equal((kind==="ROYAL"?projected.projections[0]!.multi?.result.members:

@@ -5,7 +5,7 @@ import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
 import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
 import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match.js";
-import {isBookableMatchFinish} from "../simulation/legacy/match-finishes.js";
+import {isBookableMatchFinish,type MatchFinish} from "../simulation/legacy/match-finishes.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
@@ -506,13 +506,14 @@ export async function previewArchivedShowMatchScoresInTransaction(
       for(const o of overrides)alignments.set(o.person_id,o.alignment);
       const booked=matches.map((slot,index):FinishedCheatingMatch=>{
         const projection=projections[index]!;
+        if(projection.multi||projection.tag)throw new Error("Dirty-finish history supports singles only");
         const resolved=projection.interferencePreview!;
         const ids=projection.personIds;
         const actualWinnerSide=resolved.actualWinnerId===ids[0]?"A":
           resolved.actualWinnerId===ids[1]?"B":null;
         if(!actualWinnerSide)throw new Error("Unrecognized actual match winner");
         return {matchId:slot.slot_id,promotionId:input.promotionId,
-          weekIndex:currentWeekIndex,actualFinish:resolved.actualFinish,
+          weekIndex:currentWeekIndex,actualFinish:resolved.actualFinish as MatchFinish,
           actualWinnerSide,finishCheaterPersonId:
             resolved.actualFinish==="DISQUALIFICATION"||
             resolved.actualFinish==="FOREIGN_OBJECT"?
