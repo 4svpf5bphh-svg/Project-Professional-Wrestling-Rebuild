@@ -14,6 +14,7 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
   if(!input.promotionId||input.promotionId.length>200 ||
       typeof input.allowUnfinishedFallback!=="boolean")throw new Error("Invalid staff continuity setting");
   const days=input.permittedDays??[],venues=input.permittedVenueIds??[];
+  const changeLogistics=input.allowLogisticsFallback!==undefined||input.permittedDays!==undefined||input.permittedVenueIds!==undefined;
   if(input.allowLogisticsFallback!==undefined&&typeof input.allowLogisticsFallback!=="boolean"||
      days.length>7||new Set(days).size!==days.length||days.some(d=>!Number.isInteger(d)||d<1||d>7)||
      venues.length>32||new Set(venues).size!==venues.length||venues.some(v=>typeof v!=="string"||!v||v.length>200))
@@ -42,11 +43,11 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
          ON CONFLICT(world_id,promotion_id) DO UPDATE
            SET owner_player_id=EXCLUDED.owner_player_id,
                allow_unfinished_fallback=EXCLUDED.allow_unfinished_fallback,
-               allow_logistics_fallback=EXCLUDED.allow_logistics_fallback,
-               permitted_days=EXCLUDED.permitted_days,
-               permitted_venue_ids=EXCLUDED.permitted_venue_ids`,
+               allow_logistics_fallback=CASE WHEN $8::boolean THEN EXCLUDED.allow_logistics_fallback ELSE ppw_staff_continuity_settings.allow_logistics_fallback END,
+               permitted_days=CASE WHEN $8::boolean THEN EXCLUDED.permitted_days ELSE ppw_staff_continuity_settings.permitted_days END,
+               permitted_venue_ids=CASE WHEN $8::boolean THEN EXCLUDED.permitted_venue_ids ELSE ppw_staff_continuity_settings.permitted_venue_ids END`,
         [input.worldId,input.promotionId,input.playerId,input.allowUnfinishedFallback,
-         input.allowLogisticsFallback??false,days,venues],
+         input.allowLogisticsFallback??false,days,venues,changeLogistics],
       );
       return {promotionId:input.promotionId,allowUnfinishedFallback:input.allowUnfinishedFallback};
     },
