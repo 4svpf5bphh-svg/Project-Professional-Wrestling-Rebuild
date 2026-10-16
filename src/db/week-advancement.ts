@@ -117,8 +117,55 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         [input.worldId,year,week],
       );
       if(moved.length!==1) throw new Error("World rollover deadline expired; recovery required");
+      // Original PPW charges wages even if limited dates are exhausted.
+      // One grouped debit and ledger insert, regardless of roster size.
+      await tx.query(`
+        WITH payroll AS (
+          SELECT promotion_id,sum(weekly_guarantee)::bigint AS amount
+          FROM ppw_contracts WHERE world_id=$1 AND status='SIGNED'
+            AND start_week_index<=$4 AND expires_week_index>=$4
+          GROUP BY promotion_id
+        ), charged AS (
+          UPDATE ppw_promotions p SET cash=p.cash-payroll.amount
+          FROM payroll WHERE p.world_id=$1 AND p.promotion_id=payroll.promotion_id
+          RETURNING p.promotion_id,payroll.amount
+        )
+        INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+        SELECT $1,$2,$3,'CONTRACT_GUARANTEE_PAID',
+          jsonb_build_object('promotionId',promotion_id,'amount',amount)
+        FROM charged`,[input.worldId,year,week,weekIndex]);
       // Apply accepted renewals only at the end of the paid current term.
-      await tx.query("UPDATE ppw_contracts c SET start_week_index=c.expires_week_index+1, expires_week_index=c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer, date_entitlement=(r.proposed_terms->>'dateEntitlement')::integer, remaining_dates=CASE WHEN c.family='EXCLUSIVE' THEN NULL ELSE (r.proposed_terms->>'dateEntitlement')::integer END, weekly_guarantee=(r.proposed_terms->>'weeklyGuarantee')::bigint, appearance_fee=(r.proposed_terms->>'appearanceFee')::bigint, role_expectation=r.proposed_terms->>'roleExpectation', creative_control=r.proposed_terms->>'creativeControl', signing_bonus=0, revision=c.revision+1 FROM ppw_contract_renewal_proposals r WHERE c.world_id=$1 AND c.expires_week_index=$2 AND c.status='SIGNED' AND r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED' AND (r.proposed_terms->>'termWeeks')::integer BETWEEN 1 AND 52 AND (r.proposed_terms->>'dateEntitlement')::integer BETWEEN 1 AND 104",[input.worldId,weekIndex]);
+      await tx.query(`UPDATE ppw_contracts c SET
+          start_week_index=c.expires_week_index+1,
+          expires_week_index=c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer,
+          date_entitlement=(r.proposed_terms->>'dateEntitlement')::integer,
+          remaining_dates=CASE WHEN c.family='EXCLUSIVE' THEN NULL ELSE (r.proposed_terms->>'dateEntitlement')::integer END,
+          weekly_guarantee=(r.proposed_terms->>'weeklyGuarantee')::bigint,
+          appearance_fee=(r.proposed_terms->>'appearanceFee')::bigint,
+          role_expectation=r.proposed_terms->>'roleExpectation',
+          creative_control=r.proposed_terms->>'creativeControl',
+          signing_bonus=0,revision=c.revision+1
+         FROM ppw_contract_renewal_proposals r
+         WHERE c.world_id=$1 AND c.expires_week_index=$2 AND c.status='SIGNED'
+           AND r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED'
+           AND (r.proposed_terms->>'family')=c.family
+           AND (r.proposed_terms->>'termWeeks')::integer BETWEEN 1 AND 52
+           AND (r.proposed_terms->>'dateEntitlement')::integer BETWEEN 1 AND 104`,
+           [input.worldId,weekIndex]);
+      // An accepted proposal activates exactly once, never on every rollover.
+      await tx.query(`UPDATE ppw_contract_renewal_proposals r SET status='ACTIVATED'
+        FROM ppw_contracts c WHERE r.world_id=$1 AND r.status='ACCEPTED'
+        AND c.world_id=r.world_id AND c.contract_id=r.contract_id
+        AND c.start_week_index=$2+1`,[input.worldId,weekIndex]);
+      await tx.query(`UPDATE ppw_contracts c SET status='EXPIRED',revision=revision+1
+        WHERE c.world_id=$1 AND c.status='SIGNED' AND c.expires_week_index=$2
+        AND NOT EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals r
+          WHERE r.world_id=c.world_id AND r.contract_id=c.contract_id
+          AND r.status='ACCEPTED')`,[input.worldId,weekIndex]);
+      await tx.query(`UPDATE ppw_contract_renewal_proposals r SET status='REJECTED'
+        FROM ppw_contracts c WHERE r.world_id=$1 AND r.status='PENDING'
+        AND c.world_id=r.world_id AND c.contract_id=r.contract_id
+        AND c.status='EXPIRED'`,[input.worldId]);
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],

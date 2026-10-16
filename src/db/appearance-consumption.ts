@@ -59,10 +59,10 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
       if(appearances.length>0) {
         const contracts=await tx.query<{
           person_id:string;contract_id:string;family:string|null;
-          status:string|null;remaining_dates:number|null;expires_week_index:number|null;
+          status:string|null;remaining_dates:number|null;expires_week_index:number|null;start_week_index:number|null;appearance_fee:string|number|null;
         }>(
           `SELECT booked.person_id,booked.contract_id,c.family,c.status,
-                  c.remaining_dates,c.expires_week_index
+                  c.remaining_dates,c.expires_week_index,c.start_week_index,c.appearance_fee
              FROM unnest($3::text[],$4::text[]) AS booked(person_id,contract_id)
              LEFT JOIN ppw_contracts c ON c.world_id=$1
                AND c.promotion_id=$2 AND c.person_id=booked.person_id
@@ -71,14 +71,22 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         );
         if(contracts.length!==appearances.length) throw new Error("Invalid contract batch");
         const finite:string[]=[];
+        let appearanceFees=0;
         for(const c of contracts) {
           const valid= c.status==="SIGNED"
             && typeof c.expires_week_index==="number" && c.expires_week_index>=weekIndex
+            && typeof c.start_week_index==="number" && c.start_week_index<=weekIndex
             && (c.family==="EXCLUSIVE"
               || ((c.family==="ONE_OFF" || c.family==="LIMITED_NON_EXCLUSIVE")
                   && typeof c.remaining_dates==="number" && c.remaining_dates>0));
           if(!valid) throw new Error("Contract unavailable for show: "+c.contract_id);
           if(c.family!=="EXCLUSIVE" && c.remaining_dates!==null) finite.push(c.contract_id);
+          appearanceFees+=Number(c.appearance_fee??0);
+          if(!Number.isSafeInteger(appearanceFees)||appearanceFees<0)throw new Error("Invalid appearance fee");
+        }
+        if(appearanceFees>0){
+          await tx.query("UPDATE ppw_promotions SET cash=cash-$3 WHERE world_id=$1 AND promotion_id=$2",[input.worldId,input.promotionId,appearanceFees]);
+          await tx.query("INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'CONTRACT_APPEARANCE_FEES',jsonb_build_object('promotionId',$4::text,'showId',$5::text,'amount',$6::bigint))",[input.worldId,year,week,input.promotionId,input.showId,appearanceFees]);
         }
         if(finite.length>0) {
           const updated=await tx.query<{contract_id:string}>(

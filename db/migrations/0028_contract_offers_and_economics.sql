@@ -30,3 +30,11 @@ CREATE INDEX ppw_offer_resolve_person
  WHERE status='PENDING';
 CREATE INDEX ppw_offer_desk
  ON ppw_contract_offers(world_id,promotion_id,status,submitted_week_index DESC);
+
+ALTER TABLE ppw_contract_date_requests
+ ADD COLUMN additional_payment bigint NOT NULL DEFAULT 0 CHECK(additional_payment BETWEEN 0 AND 1000000000);
+ALTER TABLE ppw_contract_renewal_proposals DROP CONSTRAINT ppw_contract_renewal_proposals_status_check;
+ALTER TABLE ppw_contract_renewal_proposals ADD CONSTRAINT ppw_contract_renewal_proposals_status_check
+ CHECK(status IN ('PENDING','ACCEPTED','REJECTED','WITHDRAWN','ACTIVATED'));
+CREATE UNIQUE INDEX ppw_one_accepted_renewal_per_contract
+ ON ppw_contract_renewal_proposals(world_id,contract_id) WHERE status='ACCEPTED';
