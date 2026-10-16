@@ -152,3 +152,31 @@ export async function publishResolvedWorldWeek(
   expectedRevision:input.expectedRevision,
  });
 }
+
+/** Executes only safe, already-implemented transitions. A blocked stage
+ * returns a reason instead of guessing staff decisions or modifying cards.
+ * The caller supplies the current World revision and a durable request ID;
+ * commands retain their own transaction and replay protection.
+ */
+export async function executeNextWorldResolutionStage(
+ pool:TransactionPool,input:{worldId:string;requestId:string;
+ expectedRevision:number;resolutionId:string},
+){
+ const plan=await planNextWorldResolutionAction(pool,input.worldId);
+ const {worldId,requestId,expectedRevision,resolutionId}=input;
+ if(!requestId||!resolutionId||!Number.isSafeInteger(expectedRevision)||
+  expectedRevision<0)throw new Error("Invalid resolver command input");
+ if(plan.action==="RESOLVE_DETAILED_SHOWS"){
+  const result=await runWorldShowResolutionPhase(pool,{
+   worldId,year:plan.year,week:plan.week,resolutionId});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="PUBLISH_WEEK"){
+  const result=await publishResolvedWorldWeek(pool,{
+   worldId,year:plan.year,week:plan.week,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ return {action:plan.action,status:"BLOCKED" as const,
+  blockers:plan.blockers.length?plan.blockers:
+   ["STAGE_REQUIRES_AUTHORITATIVE_PREPARATION_OR_CERTIFICATION"]};
+}

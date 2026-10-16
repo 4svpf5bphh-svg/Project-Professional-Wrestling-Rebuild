@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek,planNextWorldResolutionAction}
+import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek,planNextWorldResolutionAction,executeNextWorldResolutionStage}
  from "../src/db/world-resolution-pipeline.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 function fixture(config:{phase?:string;active?:number;submitted?:number;
@@ -73,4 +73,20 @@ test("planner requires certification after all receipts",async()=>{
  const db=fixture({legacy:2,detailed:2});
  const plan=await planNextWorldResolutionAction(db.pool,"world");
  assert.equal(plan.action,"CERTIFY_WEEK");
+});
+
+test("executor does not fabricate legacy show receipts",async()=>{
+ const db=fixture({legacy:0});
+ const result=await executeNextWorldResolutionStage(db.pool,{
+  worldId:"world",requestId:"stage",expectedRevision:0,resolutionId:"resolve"});
+ assert.equal(result.action,"RESOLVE_LEGACY_SHOWS");
+ assert.equal(result.status,"BLOCKED");
+ assert.equal(db.queries.some(x=>x.startsWith("INSERT")),false);
+});
+test("executor blocks staff preparation instead of inventing cards",async()=>{
+ const db=fixture({submitted:1});
+ const result=await executeNextWorldResolutionStage(db.pool,{
+  worldId:"world",requestId:"stage",expectedRevision:0,resolutionId:"resolve"});
+ assert.equal(result.status,"BLOCKED");
+ assert.equal(result.action,"GENERATE_STAFF_AND_AI_CARDS");
 });
