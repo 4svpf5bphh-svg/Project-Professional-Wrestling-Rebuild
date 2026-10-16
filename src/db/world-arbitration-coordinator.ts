@@ -46,6 +46,10 @@ export async function inspectWorldArbitrationRecovery(
  const allowed=new Set(owners.filter(x=>x.management_mode==="AI"&&!x.controlled)
   .map(x=>x.promotion_id));
  // The preview is canonically sorted by promotion/show, never request arrival.
+ // Mixed human/AI conflicts require explicit authority before any edit.
+ // Preserve all authored claims until the human fallback policy is recorded.
+ if(preview.shows.some(c=>!allowed.has(c.promotionId)))
+  return {status:"NEEDS_HUMAN_REVIEW"};
  const next=candidates.find(c=>allowed.has(c.promotionId));
  if(!next)return {status:"NEEDS_HUMAN_REVIEW"};
  return {status:"AI_REMEDIATION",showId:next.showId,
