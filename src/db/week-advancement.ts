@@ -74,6 +74,29 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       if(detailed.length!==1||detailed[0]!.completed_promotions!==required||
        detailed[0]!.invalid_results!==0)
         throw new Error("World week incomplete: detailed show results missing or mismatched");
+      // A detailed receipt is not sufficient without its legacy resource
+      // charge. Both records must point to the same submitted canonical show.
+      const paired=await tx.query<{paired_promotions:number;orphan_results:number}>(
+        `SELECT count(*) FILTER (WHERE c.show_id IS NOT NULL AND
+             r.show_id IS NOT NULL)::integer AS paired_promotions,
+           count(*) FILTER (WHERE c.show_id IS NOT NULL AND
+             r.show_id IS NULL)::integer AS orphan_results
+         FROM ppw_promotions p
+         LEFT JOIN ppw_booking_drafts d
+           ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
+           AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
+         LEFT JOIN ppw_completed_shows c
+           ON c.world_id=d.world_id AND c.show_id=d.draft_id
+           AND c.promotion_id=p.promotion_id
+         LEFT JOIN ppw_show_resolutions r
+           ON r.world_id=d.world_id AND r.show_id=d.draft_id
+           AND r.promotion_id=p.promotion_id AND r.resolved_week_index=$4
+         WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+        [input.worldId,year,week,weekIndex],
+      );
+      if(paired.length!==1||paired[0]!.paired_promotions!==required||
+       paired[0]!.orphan_results!==0)
+        throw new Error("World week incomplete: detailed results and resource receipts disagree");
       // A certificate alone is not enough: re-check submitted cards in this
       // SAME locked World transaction, so stale approvals cannot skip collisions.
       const conflicts=await inspectWeekConflicts(tx,input.worldId);
