@@ -20,18 +20,18 @@ function fake(options:{existing?:boolean;conflict?:boolean;
  const pool:TransactionPool={async connect(){
   return {async query<T extends Record<string,unknown>>(sql:string){
    calls.push(sql);if(sql.startsWith("BEGIN")||sql.startsWith("COMMIT")||
-    sql.startsWith("ROLLBACK"))return [] as T[];
+    sql.startsWith("ROLLBACK"))return [] as unknown as T[];
    if(sql.includes("FROM ppw_worlds"))return [{year:1,week:1,
-    phase:options.phase??"RESOLVING"}] as T[];
+    phase:options.phase??"RESOLVING"}] as unknown as T[];
    if(sql.includes("FROM ppw_completed_shows"))return (
     options.existing?[{receipt_digest:options.conflict?"bad":digest,
-     receipt_json:JSON.parse(canonical)}]:[]) as T[];
-   if(sql.includes("FROM ppw_booking_drafts"))return [{draft_id:"s"}] as T[];
+     receipt_json:JSON.parse(canonical)}]:[]) as unknown as T[];
+   if(sql.includes("FROM ppw_booking_drafts"))return [{draft_id:"s"}] as unknown as T[];
    if(sql.startsWith("INSERT")){
     writes++;
     if(options.failOnSegment&&sql.includes("ppw_completed_show_segments"))
      throw new Error("segment insert failed");
-    return [] as T[];
+    return [] as unknown as T[];
    }
    throw new Error("Unexpected query: "+sql);
   },release(){}};
