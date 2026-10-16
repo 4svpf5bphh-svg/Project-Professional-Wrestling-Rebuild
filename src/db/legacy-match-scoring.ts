@@ -16,6 +16,8 @@ import {evaluateArchivedShowAlignments,combineArchivedPacingAndAlignments,
  type WrestlerAlignment,type AlignmentChangeMethod}
  from "../simulation/legacy/show-alignment.js";
 import {evaluateArchivedProgrammeReactions} from "../simulation/legacy/show-programmes.js";
+import {evaluateArchivedFinishReactions,type FinishedCheatingMatch,
+ type HistoricalDirtyFinish} from "../simulation/legacy/show-finishes.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../simulation/legacy/rng.js";
 
@@ -56,9 +58,11 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
   return withWorldTransaction(pool,async tx=>{
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
-      media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean}>(
+      media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean;
+      dirty_finish_history_loaded:boolean}>(
       `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
-          w.alignment_history_loaded,w.programme_history_loaded,p.media_reach
+          w.alignment_history_loaded,w.programme_history_loaded,
+          w.dirty_finish_history_loaded,p.media_reach
         FROM ppw_booking_drafts d
         JOIN ppw_worlds w ON w.world_id=d.world_id
           AND w.year=d.year AND w.week=d.week AND w.phase='RESOLVING'
@@ -204,6 +208,7 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           mediaReach:mediaReach!,isMainEvent:index===matches.length-1,
         }):null;
       return {slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
+        personIds:match.personIds,finishCheaterId:match.finishCheaterId,
         plannedFinish:match.plannedFinish,readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
     });
@@ -303,8 +308,62 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           status:x.status,heat:x.heat,repetition:x.repetition})),
       );
     }
+    let showFinishPreview:ReturnType<typeof evaluateArchivedFinishReactions>|null=null;
+    // Actual, post-medical and post-interference finishes are authoritative
+    // inputs. No guessed alignment or invented zero historical cheating.
+    if(showPacingPreview!==null&&show.dirty_finish_history_loaded&&
+       show.alignment_history_loaded&&showAlignmentPreview!==null){
+      const currentWeekIndex=(show.year-1)*52+show.week-1;
+      const history=await tx.query<{promotion_id:string;week_index:number;
+        actual_finish:"DISQUALIFICATION"|"FOREIGN_OBJECT";
+        cheater_person_id:string;participant_ids:string[]}>(
+        `SELECT promotion_id,week_index,actual_finish,cheater_person_id,participant_ids
+           FROM ppw_completed_dirty_finishes
+          WHERE world_id=$1 AND promotion_id=$2
+            AND week_index BETWEEN $3 AND $4
+          ORDER BY week_index,match_id LIMIT 10001`,
+        [input.worldId,input.promotionId,Math.max(0,currentWeekIndex-8),currentWeekIndex-1],
+      );
+      if(history.length>10000)throw new Error("Dirty finish history exceeds bounded show scope");
+      const overrides=await tx.query<{person_id:string;alignment:WrestlerAlignment}>(
+        `SELECT person_id,alignment FROM ppw_promotion_wrestler_alignments
+           WHERE world_id=$1 AND promotion_id=$2
+             AND person_id=ANY($3::text[])
+             AND wrestler_approved=true AND approval_receipt_id IS NOT NULL
+             AND starts_week_index<=$4 AND expires_week_index>=$4`,
+        [input.worldId,input.promotionId,[...appearances],currentWeekIndex],
+      );
+      const alignments=new Map(baseAlignments);
+      for(const o of overrides)alignments.set(o.person_id,o.alignment);
+      const booked=matches.map((slot,index):FinishedCheatingMatch=>{
+        const projection=projections[index]!;
+        const resolved=projection.interferencePreview!;
+        const ids=projection.personIds;
+        const actualWinnerSide=resolved.actualWinnerId===ids[0]?"A":
+          resolved.actualWinnerId===ids[1]?"B":null;
+        if(!actualWinnerSide)throw new Error("Unrecognized actual match winner");
+        return {matchId:slot.slot_id,promotionId:input.promotionId,
+          weekIndex:currentWeekIndex,actualFinish:resolved.actualFinish,
+          actualWinnerSide,finishCheaterPersonId:
+            resolved.actualFinish==="DISQUALIFICATION"||
+            resolved.actualFinish==="FOREIGN_OBJECT"?
+              projection.finishCheaterId:null,
+          participants:ids.map((id,i)=>({personId:id,side:i===0?"A" as const:"B" as const,
+            alignment:alignments.get(id)!})),linkedProgramme:
+              showProgrammePreview?.[index]?.linkedActiveProgrammeCount!==0 &&
+              showProgrammePreview?.[index]!==undefined};
+      });
+      if(booked.some(m=>m.participants.some(p=>!p.alignment)))
+        throw new Error("Missing canonical cheating alignment");
+      showFinishPreview=evaluateArchivedFinishReactions(booked,
+        history.map((h):HistoricalDirtyFinish=>({
+          promotionId:h.promotion_id,weekIndex:h.week_index,
+          actualFinish:h.actual_finish,cheaterPersonId:h.cheater_person_id,
+          participantIds:h.participant_ids,completed:true,
+        })));
+    }
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview};
+      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview};
   });
 }

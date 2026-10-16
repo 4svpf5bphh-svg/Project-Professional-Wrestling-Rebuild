@@ -100,3 +100,6 @@ A wrestler has ONE core alignment and one portable gimmick identity in their Wor
 
 ## Archived programme heat — bounded World read model
 Migration 0021 adds promotion-owned programme records and explicit match activity links, with a `programme_history_loaded` gate to distinguish an imported empty history from missing historical data. The read-only match preview returns `showProgrammePreview` only when medical/interference and pacing are available and programme history is certified. The original heat, cooldown and repetition equations run without touching final results. At most two extra indexed reads for linked programmes (one when none linked). Match context still needs dirty-finish history and recorded segment crowds before an official show score can be calculated.
+
+## Completed dirty-finish history
+Migration 0022 stores compact, promotion-scoped, World-authoritative completed cheating finishes. An explicit import-completeness gate prevents a missing historical ledger being treated as no repeats. A read-only `showFinishPreview` uses actual post-injury/post-interference outcomes, wrestler-owned alignment with approved presentation exceptions, and at most eight earlier PPW weeks. Repeated dirty finishes erode heel cheating's bonus but do not double-penalize programme repetition. These projections are NOT committed match or show results.
