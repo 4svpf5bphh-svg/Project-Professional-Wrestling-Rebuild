@@ -17,6 +17,7 @@ import type {CommandResult} from "./world-commands.js";
 import {previewWorldWeekArbitration} from "./week-arbitration.js";
 import {recordWorldWeekArbitration} from "./recorded-week-arbitration.js";
 import {applyAiWeekRemediation} from "./apply-ai-remediation.js";
+import {applyHumanLogisticsRemediation} from "./apply-human-logistics-remediation.js";
 import {inspectWorldArbitrationRecovery} from "./world-arbitration-coordinator.js";
 import type {RemediationChoice} from "../domain/resource-remediation.js";
 export type ResolutionReadiness={
@@ -77,7 +78,7 @@ function commandStage<T>(action:WorldResolutionAction,result:CommandResult<T>){
 export type WorldResolutionAction=
  |"WAIT_FOR_WORLD_LOCK"|"BEGIN_RESOLUTION"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
  |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
- |"RECORD_ARBITRATION"|"REMEDIATE_AI_CLAIM"
+ |"RECORD_ARBITRATION"|"REMEDIATE_AI_CLAIM"|"REMEDIATE_HUMAN_LOGISTICS"
  |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
  |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"PUBLISH_WEEK";
 export interface WorldResolutionPlan {
@@ -145,6 +146,10 @@ export async function planNextWorldResolutionAction(
       if(recovery.status==="NEEDS_PROPOSAL")action="RECORD_ARBITRATION";
       else if(recovery.status==="AI_REMEDIATION"){
        action="REMEDIATE_AI_CLAIM";
+       arbitration={showId:recovery.showId,
+        sourceFingerprint:recovery.sourceFingerprint,choice:recovery.choice};
+      }else if(recovery.status==="HUMAN_LOGISTICS_REMEDIATION"){
+       action="REMEDIATE_HUMAN_LOGISTICS";
        arbitration={showId:recovery.showId,
         sourceFingerprint:recovery.sourceFingerprint,choice:recovery.choice};
       }else{
@@ -261,6 +266,14 @@ export async function executeNextWorldResolutionStage(
    choice:plan.arbitration.choice});
   return commandStage(plan.action,result);
  }
+ if(plan.action==="REMEDIATE_HUMAN_LOGISTICS"){
+  if(!plan.arbitration)throw new Error("Missing authorized human logistics remedy");
+  const result=await applyHumanLogisticsRemediation(pool,{worldId,requestId,
+   expectedRevision,showId:plan.arbitration.showId,
+   expectedStateFingerprint:plan.arbitration.sourceFingerprint,
+   choice:plan.arbitration.choice});
+  return commandStage(plan.action,result);
+ }
  if(plan.action==="CLEAR_RESOURCES"){
   const result=await clearWorldWeekResources(pool,{worldId,requestId,expectedRevision});
   return commandStage(plan.action,result);
@@ -321,7 +334,7 @@ export async function driveWorldResolution(
   });
   // Each AI remedy changes the evidence fingerprint. A fixed stage-only
   // request ID would replay the FIRST remedy forever for later contenders.
-  const suffix=plan.action==="REMEDIATE_AI_CLAIM"
+  const suffix=(plan.action==="REMEDIATE_AI_CLAIM"||plan.action==="REMEDIATE_HUMAN_LOGISTICS")
     ?":"+plan.arbitration!.sourceFingerprint.slice(0,24):"";
   const requestId=`${input.resolutionId}:${plan.year}:${plan.week}:${plan.action}${suffix}`;
   if(requestId.length>200)throw new Error("World stage request ID exceeds limit");

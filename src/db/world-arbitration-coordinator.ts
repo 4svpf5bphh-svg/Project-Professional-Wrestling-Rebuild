@@ -12,6 +12,7 @@ export type ArbitrationRecovery=
  | {status:"NEEDS_PROPOSAL"}
  | {status:"STALE_PROPOSAL"}
  | {status:"NEEDS_HUMAN_REVIEW"}
+ | {status:"HUMAN_LOGISTICS_REMEDIATION";showId:string;sourceFingerprint:string;choice:RemediationChoice}
  | {status:"AI_REMEDIATION";showId:string;
     sourceFingerprint:string;choice:RemediationChoice};
 
@@ -75,7 +76,13 @@ export async function inspectWorldArbitrationRecovery(
      permission.permitted_venue_ids.includes(choice.venueId)))
     return {status:"NEEDS_HUMAN_REVIEW"};
   }
-  return {status:"NEEDS_HUMAN_REVIEW"};
+  const nextHuman=humanLosers[0]!;
+  const permission=authorized.get(nextHuman.promotionId)!;
+  const choice=nextHuman.choices.find(choice=>
+    permission.permitted_days.includes(choice.day)&&
+    permission.permitted_venue_ids.includes(choice.venueId))!;
+  return {status:"HUMAN_LOGISTICS_REMEDIATION",showId:nextHuman.showId,
+    sourceFingerprint:preview.sourceFingerprint,choice};
  }
  const next=candidates.find(c=>allowed.has(c.promotionId));
  if(!next)return {status:"NEEDS_HUMAN_REVIEW"};
