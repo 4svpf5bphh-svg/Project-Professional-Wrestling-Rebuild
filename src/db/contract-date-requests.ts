@@ -1,4 +1,5 @@
 import type {TransactionPool} from "./transaction.js";
+import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 
 export interface RequestAdditionalDatesInput {
@@ -49,5 +50,27 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
        [input.worldId,input.requestId,input.contractId,input.promotionId,contract.person_id,input.additionalDates,weekIndex]);
      return {contractId:input.contractId,additionalDates:input.additionalDates,status:"PENDING" as const};
    },
+ });
+}
+
+/** Contract desk inbox. World ownership is verified in the same read. */
+export async function readPendingDateRequests(
+ pool:TransactionPool,worldId:string,playerId:string,promotionId:string,
+){
+ return withSqlClient(pool,async tx=>{
+  const owner=await tx.query<{promotion_id:string}>(`
+   SELECT c.promotion_id FROM ppw_promotion_controls c
+   JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+   JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+   WHERE c.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3
+     AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
+   [worldId,playerId,promotionId]);
+  if(owner.length!==1)throw new Error("Promotion access denied");
+  return tx.query<{request_id:string;contract_id:string;person_id:string;
+    additional_dates:number;status:string;created_week_index:number}>(`
+    SELECT request_id,contract_id,person_id,additional_dates,status,created_week_index
+    FROM ppw_contract_date_requests
+    WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
+    ORDER BY created_week_index,request_id LIMIT 100`,[worldId,promotionId]);
  });
 }
