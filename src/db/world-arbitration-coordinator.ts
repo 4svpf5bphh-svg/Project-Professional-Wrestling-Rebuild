@@ -59,11 +59,16 @@ export async function inspectWorldArbitrationRecovery(
       world[0]!.year!==preview.year||world[0]!.week!==preview.week)
     throw new Error("World changed during frozen logistics check");
    return tx.query<{promotion_id:string;permitted_days:number[];permitted_venue_ids:string[]}>(
-    `SELECT promotion_id,permitted_days,permitted_venue_ids
-       FROM ppw_week_logistics_authorizations
-      WHERE world_id=$1 AND year=$2 AND week=$3
-        AND allow_logistics_fallback=true
-        AND promotion_id=ANY($4::text[])`,
+    `SELECT a.promotion_id,a.permitted_days,a.permitted_venue_ids
+       FROM ppw_week_logistics_authorizations a
+       JOIN ppw_promotion_controls c ON c.world_id=a.world_id
+        AND c.promotion_id=a.promotion_id AND c.player_id=a.controller_player_id
+        AND c.active
+       JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+        AND m.status='ACTIVE'
+      WHERE a.world_id=$1 AND a.year=$2 AND a.week=$3
+        AND a.allow_logistics_fallback=true
+        AND a.promotion_id=ANY($4::text[])`,
     [worldId,preview.year,preview.week,humanLosers.map(c=>c.promotionId)]);
   });
   const authorized=new Map(frozen.map(f=>[f.promotion_id,f]));
