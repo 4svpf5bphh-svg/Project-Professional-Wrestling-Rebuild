@@ -107,7 +107,7 @@ test("planner blocks absent show without explicit delegated staff instead of thr
  const db=fixture({submitted:1,eligible:0});
  const plan=await planNextWorldResolutionAction(db.pool,"world");
  assert.equal(plan.action,"ARBITRATE_OR_REMEDIATE");
- assert.deepEqual(plan.blockers,["MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF"]);
+ assert.deepEqual(plan.blockers,["MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF_OR_AI"]);
  const run=await driveWorldResolution(db.pool,{worldId:"world",
   resolutionId:"missing",maxStages:3});
  assert.equal(run.status,"BLOCKED");
