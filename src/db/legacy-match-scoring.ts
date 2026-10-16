@@ -16,6 +16,7 @@ import {evaluateArchivedShowAlignments,combineArchivedPacingAndAlignments,
  type WrestlerAlignment,type AlignmentChangeMethod}
  from "../simulation/legacy/show-alignment.js";
 import {evaluateArchivedProgrammeReactions} from "../simulation/legacy/show-programmes.js";
+import {combineArchivedShowMatchContext} from "../simulation/legacy/show-context.js";
 import {evaluateArchivedFinishReactions,type FinishedCheatingMatch,
  type HistoricalDirtyFinish} from "../simulation/legacy/show-finishes.js";
 import {DeterministicRng,deterministicSeedFromText}
@@ -362,8 +363,13 @@ export async function previewArchivedShowMatchScores(pool:TransactionPool,input:
           participantIds:h.participant_ids,completed:true,
         })));
     }
+    const showMatchContextPreview=showPacingPreview!==null&&
+      showAlignmentPreview!==null&&showProgrammePreview!==null&&
+      showFinishPreview!==null?
+      combineArchivedShowMatchContext(showPacingPreview,
+        showAlignmentPreview.matches,showProgrammePreview,showFinishPreview):null;
     return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview};
+      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
   });
 }
