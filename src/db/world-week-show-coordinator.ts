@@ -45,6 +45,12 @@ export async function resolveWorldWeekShows(
  });
  if(active.length===0||active.length>128)
   throw new Error("Invalid active promotion population");
+ const submittedIds=new Set<string>();
+ for(const show of shows){
+  if(!show.promotion_id||!show.draft_id||submittedIds.has(show.promotion_id))
+   throw new Error("Multiple or invalid submitted shows for one promotion");
+  submittedIds.add(show.promotion_id);
+ }
  const requiredIds=new Set(active.map(p=>p.promotion_id));
  if(requiredIds.size!==active.length||shows.length!==active.length||
   shows.some(x=>!requiredIds.has(x.promotion_id)))
