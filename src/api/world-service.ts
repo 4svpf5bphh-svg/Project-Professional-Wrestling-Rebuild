@@ -5,6 +5,7 @@ import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
+import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
@@ -123,4 +124,13 @@ export async function proposeRenewalAsActor(
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.contractId,"contract");
  return proposeSameTermsRenewal(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function withdrawRenewalAsActor(
+ context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;proposalId:string},
+){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.proposalId,"proposal");
+ return withdrawRenewal(context.pool,{...input,playerId:context.actor.playerId});
 }
