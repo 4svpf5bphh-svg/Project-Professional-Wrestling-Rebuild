@@ -36,22 +36,13 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
    const current=(clock[0]!.year-1)*52+clock[0]!.week-1;
    const old=contracts[0]!;
    const decision=old.status==="SIGNED"&&old.expires_week_index>=current?input.decision:"REJECTED";
+   // Acceptance reserves the NEXT term; never reset remaining dates during
+   // the paid current term. Activation occurs at the World week rollover.
    if(decision==="ACCEPTED"){
     const t=p.proposed_terms;
     if(!Number.isSafeInteger(t.termWeeks)||t.termWeeks<1||t.termWeeks>52||
-      !Number.isSafeInteger(t.dateEntitlement)||t.dateEntitlement<1||t.dateEntitlement>104)
+       !Number.isSafeInteger(t.dateEntitlement)||t.dateEntitlement<1||t.dateEntitlement>104)
       throw new Error("Invalid renewal terms");
-    // Extension starts after current expiry, preserving the existing paid term.
-    const nextStart=old.expires_week_index+1;
-    await tx.query(`UPDATE ppw_contracts SET start_week_index=$4,
-     expires_week_index=$5,date_entitlement=$6,
-     remaining_dates=CASE WHEN family='EXCLUSIVE' THEN NULL ELSE $6 END,
-     weekly_guarantee=$7,appearance_fee=$8,role_expectation=$9,
-     creative_control=$10,signing_bonus=0,revision=revision+1
-     WHERE world_id=$1 AND contract_id=$2 AND promotion_id=$3`,
-     [input.worldId,p.contract_id,input.promotionId,nextStart,
-      nextStart+t.termWeeks-1,t.dateEntitlement,t.weeklyGuarantee,
-      t.appearanceFee,t.roleExpectation,t.creativeControl]);
    }
    await tx.query(`UPDATE ppw_contract_renewal_proposals SET status=$3
     WHERE world_id=$1 AND proposal_id=$2`,
