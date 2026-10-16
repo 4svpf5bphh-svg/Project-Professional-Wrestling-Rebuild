@@ -107,7 +107,7 @@ test("Booking market and ticket selection freezes original demand; actor isolati
    confirmReadyToRun:true});
   assert.equal(ready.status,"APPLIED");
   if(ready.status!=="APPLIED")throw new Error("Missing second ready");
-  assert.ok(ready.result.expectedDemand>forecast);
+  assert.ok((ready.result.expectedDemand??0)>forecast);
   assert.notEqual(ready.result.fingerprint,first.result.fingerprint);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
