@@ -272,7 +272,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             generated.map(x=>x.origin)],
         );
         if(drafts.length!==generated.length)throw new Error("Staff draft batch insert mismatch");
-        const slotRows=generated.flatMap(show=>show.matches?
+        const slotRows=generated.flatMap<{
+          showId:string;slotId:string;position:number;payload:unknown
+        }>(show=>show.matches?
           show.matches.map((match,index)=>({
             showId:show.showId,slotId:"ai-singles-"+String(index+1).padStart(2,"0"),
             position:index,payload:{
