@@ -47,7 +47,16 @@ export async function recordCompletedShow(
     slot.position!==expected[i]!.position||
     slot.kind!==expected[i]!.kind))
    throw new Error("Completed show receipt does not match submitted card");
-  // A submitted segment cannot become a different angle in the results.\n  const segmentKinds=new Map(receipt.segments.map(s=>[s.slotId,s.kind]));\n  if(slots.some(slot=>slot.kind==="SEGMENT"&&\n    slot.payload!==null&&typeof slot.payload==="object"&&\n    !Array.isArray(slot.payload)&&\n    typeof (slot.payload as Record<string,unknown>).kind==="string"&&\n    (slot.payload as Record<string,unknown>).kind!==segmentKinds.get(slot.slot_id)))\n   throw new Error("Completed segment kind differs from submitted card");\n  await tx.query(\n   `INSERT INTO ppw_completed_shows
+  // A submitted segment cannot become a different angle in the results.
+  const segmentKinds=new Map(receipt.segments.map(s=>[s.slotId,s.kind]));
+  if(slots.some(slot=>slot.kind==="SEGMENT"&&
+    slot.payload!==null&&typeof slot.payload==="object"&&
+    !Array.isArray(slot.payload)&&
+    typeof (slot.payload as Record<string,unknown>).kind==="string"&&
+    (slot.payload as Record<string,unknown>).kind!==segmentKinds.get(slot.slot_id)))
+   throw new Error("Completed segment kind differs from submitted card");
+  await tx.query(
+   `INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,
       crowd_response,receipt_json,receipt_digest)
      VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
