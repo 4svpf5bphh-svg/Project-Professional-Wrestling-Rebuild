@@ -14,7 +14,12 @@ export interface VerifiedActor { playerId:string }
 export interface WorldApiContext { pool:TransactionPool; actor:VerifiedActor }
 export interface WorldMutationInput { worldId:string; requestId:string; expectedRevision:number }
 export interface ClaimInput extends WorldMutationInput { promotionId:string }
-export interface StaffContinuityInput extends ClaimInput { allowUnfinishedFallback:boolean }
+export interface StaffContinuityInput extends ClaimInput {
+  allowUnfinishedFallback:boolean;
+  allowLogisticsFallback?:boolean;
+  permittedDays?:number[];
+  permittedVenueIds?:string[];
+}
 export interface ReadyShowInput extends ClaimInput { showId:string;confirmReadyToRun:true }
 
 function validate(value:string,label:string):void {
