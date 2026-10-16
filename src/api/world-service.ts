@@ -14,6 +14,8 @@ import type {OfferTerms} from "../domain/contract-economics.js";
 import {chooseShowMarketAndTickets,readShowMarketOptions}
  from "../db/show-booking-commerce.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
+import {readShowCardEditor,readBookableCardTalent,saveShowCardMatches,
+ type EditedMatchSlot} from "../db/show-card-editor.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
  * This module is framework-neutral; HTTP handlers should map exceptions to
@@ -176,4 +178,30 @@ export async function chooseShowMarketAsActor(context:WorldApiContext,
  validate(input.promotionId,"promotion");validate(input.showId,"show");
  return chooseShowMarketAndTickets(context.pool,{...input,
   playerId:context.actor.playerId});
+}
+
+/** Card editing RPC surface; actual HTTP session identity is injected.
+ * No playerId may be supplied by a browser to these operations.
+ */
+export async function showCardEditorAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,showId:string){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
+ return readShowCardEditor(context.pool,{worldId,promotionId,showId,
+  playerId:context.actor.playerId});
+}
+export async function cardTalentAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,showId:string,search="",
+ after:{name:string;personId:string;contractId:string}|null=null,limit=40){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
+ return readBookableCardTalent(context.pool,{worldId,promotionId,showId,
+  playerId:context.actor.playerId},search,after,limit);
+}
+export async function saveCardEditorAsActor(context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;showId:string;
+  matches:readonly EditedMatchSlot[];runningOrder:readonly string[]}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.showId,"show");
+ return saveShowCardMatches(context.pool,{...input,playerId:context.actor.playerId});
 }
