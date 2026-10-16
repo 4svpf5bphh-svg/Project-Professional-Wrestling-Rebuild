@@ -21,7 +21,9 @@ export function contractAvailability(c:ContractAvailabilityInput):{
   }
   if (c.status!=="SIGNED") return {available:false,reason:"NOT_SIGNED"};
   if (c.currentWeekIndex>c.expiresWeekIndex) return {available:false,reason:"EXPIRED"};
-  if (c.family==="EXCLUSIVE" && c.remainingDates===null) return {available:true,reason:"AVAILABLE"};
+  // Ported from the original PPW contractHasAppearanceRights rule:
+  // exclusivity buys appearances throughout the term, not a finite date allowance.
+  if (c.family==="EXCLUSIVE") return {available:true,reason:"AVAILABLE"};
   if (c.remainingDates===null) return {available:false,reason:"INVALID_CONTRACT"};
   if (c.remainingDates===0) return {available:false,reason:"NO_DATES"};
   return {available:true,reason:"AVAILABLE"};
