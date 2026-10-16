@@ -234,7 +234,7 @@ test("missing unassigned show cleanly blocks World after lock without running un
    "ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
    "ARBITRATE_OR_REMEDIATE",
   ]);
-  assert.ok(result.blockers.includes("MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF"));
+  assert.ok(result.blockers.includes("MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF_OR_AI"));
   const shows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_booking_drafts WHERE world_id=$1",[worldId]));
   assert.equal(shows[0]!.n,"0");
