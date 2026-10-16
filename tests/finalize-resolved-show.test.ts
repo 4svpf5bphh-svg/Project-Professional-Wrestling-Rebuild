@@ -37,3 +37,15 @@ test("simulation cannot change a wrestler's authored segment refusal",()=>{
  assert.throws(()=>finalizeResolvedShow({...input,segments:[{
   ...input.segments[0]!,resolvedOutcome:"HAPPENS"}]}),/cannot rewrite/);
 });
+
+test("booked successful interference may protect the finish, not change winner",()=>{
+ const match={...input.matches[0]!,actualFinish:"PROTECTED_FINISH",
+  interference:{plannedOutcome:"SUCCESS" as const,actualOutcome:"SUCCESS" as const}};
+ const r=finalizeResolvedShow({...input,matches:[match]});
+ assert.equal(r.matches[0]!.actualFinish,"PROTECTED_FINISH");
+ assert.throws(()=>finalizeResolvedShow({...input,matches:[{
+  ...match,actualWinnerSide:"B"}]}),/Uncertified/);
+ assert.throws(()=>finalizeResolvedShow({...input,matches:[{
+  ...match,interference:{plannedOutcome:"SUCCESS",actualOutcome:"ABORTED"}
+   as typeof match.interference}]}),/Uncertified/);
+});
