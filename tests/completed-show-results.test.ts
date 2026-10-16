@@ -16,7 +16,7 @@ function fake(options:{existing?:boolean;conflict?:boolean;
  const calls:string[]=[];
  let writes=0;
  const canonical=canonicalCompletedShowReceipt(receipt);
- const digest=createHash("sha256").update(canonical).digest("hex");
+ const digest=createHash("sha256").update(canonical).update("\\0").update("[]").digest("hex");
  const pool:TransactionPool={async connect(){
   return {async query<T extends Record<string,unknown>>(sql:string){
    calls.push(sql);if(sql.startsWith("BEGIN")||sql.startsWith("COMMIT")||
@@ -26,6 +26,7 @@ function fake(options:{existing?:boolean;conflict?:boolean;
    if(sql.includes("FROM ppw_completed_shows"))return (
     options.existing?[{receipt_digest:options.conflict?"bad":digest,
      receipt_json:JSON.parse(canonical)}]:[]) as unknown as T[];
+   if(sql.includes("FROM ppw_completed_match_evidence"))return [] as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [
     {slot_id:"m",position:0,kind:"MATCH",payload:{}},
     {slot_id:"angle",position:1,kind:"SEGMENT",payload:{}}] as unknown as T[];

@@ -2,15 +2,23 @@
  * server-side from canonical submitted card; never expose this as player API.
  */
 import {createHash} from "node:crypto";
+import {validateCompletedMatchEvidence,type CompletedMatchEvidence}
+ from "../domain/completed-match-evidence.js";
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {canonicalCompletedShowReceipt,type CompletedShowReceipt}
  from "../domain/completed-show-receipt.js";
 export async function recordCompletedShow(
  pool:TransactionPool,receipt:CompletedShowReceipt,
+ evidence:readonly CompletedMatchEvidence[] = [],
 ):Promise<"RECORDED"|"IDENTICAL_RETRY">{
  const canonical=canonicalCompletedShowReceipt(receipt);
- const digest=createHash("sha256").update(canonical).digest("hex");
+ validateCompletedMatchEvidence(receipt,evidence);
+ const evidenceByMatch=new Map(evidence.map(e=>[e.matchId,e]));
+ const evidenceCanonical=JSON.stringify([...evidence].sort((a,b)=>
+  a.matchId.localeCompare(b.matchId)));
+ const digest=createHash("sha256").update(canonical).update("\\0")
+  .update(evidenceCanonical).digest("hex");
  return withWorldTransaction(pool,async tx=>{
   const world=await tx.query<{year:number;week:number;phase:string}>(
    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
@@ -25,6 +33,12 @@ export async function recordCompletedShow(
    if(prior.length!==1||prior[0]!.receipt_digest!==digest||
     JSON.stringify(prior[0]!.receipt_json)!==JSON.stringify(JSON.parse(canonical)))
     throw new Error("Conflicting completed show resolution");
+   const saved=await tx.query<{match_id:string;evidence_json:unknown}>(
+    "SELECT match_id,evidence_json FROM ppw_completed_match_evidence WHERE world_id=$1 AND show_id=$2 ORDER BY match_id",
+    [receipt.worldId,receipt.showId]);
+   if(JSON.stringify(saved.map(x=>x.evidence_json))!==
+    JSON.stringify([...evidence].sort((a,b)=>a.matchId.localeCompare(b.matchId))))
+    throw new Error("Conflicting completed match evidence");
    return "IDENTICAL_RETRY";
   }
   const show=await tx.query<{draft_id:string}>(
@@ -78,24 +92,33 @@ export async function recordCompletedShow(
       const b=(p.participants[1] as {personId:string}).personId;
       const booked=p.scriptedWinner===a?"A":p.scriptedWinner===b?"B":null;
       if(!booked||result.actualWinnerSide!==booked&&
-       result.actualFinish!=="INJURY_STOPPAGE")
+       !(evidenceByMatch.has(slot.slot_id)&&result.actualFinish==="INJURY_STOPPAGE"))
        throw new Error("Completed winner differs from submitted booking");
      }
     }
-    // No medical or interference evidence is persisted in this receipt.
-    // Reject exceptional results until the World resolver can certify them.
-    if(result.actualFinish==="INJURY_STOPPAGE")
-     throw new Error("Medical stoppage requires authoritative injury evidence");
-    if(result.actualFinish==="PROTECTED_FINISH"&&
-     p.plannedFinish!==undefined&&p.plannedFinish!=="PROTECTED_FINISH")
-     throw new Error("Interference finish requires authoritative resolution evidence");
+    const ev=evidenceByMatch.get(slot.slot_id);
+    const exceptional=result.actualFinish==="INJURY_STOPPAGE"||
+     result.actualFinish==="PROTECTED_FINISH";
+    if(exceptional&&!ev)
+     throw new Error("Exceptional finish requires authoritative evidence");
+    if(ev){
+     if(p.matchType!=="SINGLES"||!Array.isArray(p.participants)||
+      p.participants.length!==2||typeof p.scriptedWinner!=="string"||
+      typeof p.plannedFinish!=="string")
+      throw new Error("Evidence requires complete canonical singles booking");
+     const participants=p.participants as {personId:string}[];
+     if(JSON.stringify(ev.booking.participants)!==
+       JSON.stringify(participants.map(x=>x.personId))||
+      ev.booking.scriptedWinner!==p.scriptedWinner||
+      ev.booking.plannedFinish!==p.plannedFinish||
+      ev.booking.interferencePlannedOutcome!==
+       ((p.interference as {plannedOutcome?:string}|undefined)?.plannedOutcome))
+      throw new Error("Evidence differs from canonical submitted booking");
+    }
     if(typeof p.plannedFinish==="string"&&
      result.actualFinish!==p.plannedFinish&&
-     result.actualFinish!=="INJURY_STOPPAGE"&&
-     !(p.interference&&typeof p.interference==="object"&&
-       !Array.isArray(p.interference)&&
-       (p.interference as Record<string,unknown>).plannedOutcome==="SUCCESS"&&
-       result.actualFinish==="PROTECTED_FINISH"))
+     !(ev&&result.actualFinish==="INJURY_STOPPAGE")&&
+     !(ev&&result.actualFinish==="PROTECTED_FINISH"))
      throw new Error("Completed finish differs from submitted booking");
    }else{
     const result=segmentResults.get(slot.slot_id)!;
@@ -116,6 +139,10 @@ export async function recordCompletedShow(
     VALUES($1,$2,$3,$4,$5,$6,$7)`,
    [receipt.worldId,receipt.showId,m.matchId,m.position,m.crowdResponse,
     m.actualFinish,m.actualWinnerSide]);
+  for(const e of evidence)await tx.query(
+   `INSERT INTO ppw_completed_match_evidence(world_id,show_id,match_id,evidence_json)
+    VALUES($1,$2,$3,$4::jsonb)`,
+   [receipt.worldId,receipt.showId,e.matchId,JSON.stringify(e)]);
   for(const s of receipt.segments)await tx.query(
    `INSERT INTO ppw_completed_show_segments
     (world_id,show_id,slot_id,position,kind,authored_outcome,crowd_response)
