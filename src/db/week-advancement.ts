@@ -141,6 +141,30 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         SELECT $1,$2,$3,'CONTRACT_GUARANTEE_PAID',
           jsonb_build_object('promotionId',promotion_id,'amount',amount)
         FROM charged`,[input.worldId,year,week,weekIndex]);
+      // Original packages/sim-core/src/finance.ts settles recurring media,
+      // sponsors and overhead once per completed week, excluding dormant/
+      // closed promotions. Only populated ORIGINAL economic profiles qualify;
+      // NULL fixtures never receive fabricated finance values. One write
+      // updates all promotions and records compact category totals, not a
+      // historical financial-transaction row per category and promotion.
+      await tx.query(`
+        WITH credited AS (
+         UPDATE ppw_promotions p SET
+          cash=p.cash+p.weekly_media_income+p.weekly_sponsor_income-p.weekly_fixed_overhead
+         WHERE p.world_id=$1 AND p.lifecycle NOT IN ('DORMANT','CLOSED')
+           AND p.weekly_media_income IS NOT NULL
+           AND p.weekly_sponsor_income IS NOT NULL
+           AND p.weekly_fixed_overhead IS NOT NULL
+         RETURNING p.promotion_id,p.weekly_media_income,p.weekly_sponsor_income,
+           p.weekly_fixed_overhead
+        )
+        INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+         SELECT $1,$2,$3,'PROMOTION_RECURRING_FINANCES',
+          jsonb_build_object('promotionId',promotion_id,
+           'mediaIncome',weekly_media_income,'sponsorIncome',weekly_sponsor_income,
+           'fixedOverhead',weekly_fixed_overhead,
+           'net',weekly_media_income+weekly_sponsor_income-weekly_fixed_overhead)
+         FROM credited`,[input.worldId,year,week]);
       // Apply accepted renewals only at the end of the paid current term.
       await tx.query(`UPDATE ppw_contracts c SET
           start_week_index=c.expires_week_index+1,
