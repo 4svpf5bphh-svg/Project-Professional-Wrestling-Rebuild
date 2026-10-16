@@ -14,6 +14,7 @@ import {clearWorldWeekResources} from "./week-clearance.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
 import {consumeWorldWeekAppearances} from "./world-week-appearance-coordinator.js";
+import {certifyResolvedWorldWeek} from "./week-certification.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -205,6 +206,10 @@ export async function executeNextWorldResolutionStage(
    worldId,year:plan.year,week:plan.week,resolutionId});
   return {action:plan.action,status:"EXECUTED" as const,result};
  }
+ if(plan.action==="CERTIFY_WEEK"){
+  const result=await certifyResolvedWorldWeek(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
  if(plan.action==="PUBLISH_WEEK"){
   const result=await publishResolvedWorldWeek(pool,{
    worldId,year:plan.year,week:plan.week,requestId,expectedRevision});
@@ -231,7 +236,7 @@ export async function driveWorldResolution(
   const plan=await planNextWorldResolutionAction(pool,input.worldId);
   const blocked=new Set<WorldResolutionAction>([
    "WAIT_FOR_WORLD_LOCK","ARBITRATE_OR_REMEDIATE",
-   "CERTIFY_WEEK",
+
   ]);
   if(blocked.has(plan.action)){
    steps.push({action:plan.action,status:"BLOCKED"});
