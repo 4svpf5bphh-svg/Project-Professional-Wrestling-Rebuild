@@ -52,6 +52,10 @@ test("week cannot advance until each active promotion is resolved and certified;
       "UPDATE ppw_week_resolution_seals SET certified_promotions=2 WHERE world_id=$1",[worldId],
     ));
     await withWorldTransaction(db.pool,tx=>tx.query(
+      "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES ($1,$2,$3,1,52,$4,70,'{}'::jsonb,repeat('a',64)),($1,$5,$6,1,52,$7,70,'{}'::jsonb,repeat('b',64))",
+      [worldId,promoA,showA,"fixture-a-"+id,promoB,showB,"fixture-b-"+id],
+    ));
+    await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_booking_drafts SET show_day=1,venue_id='arena-a' WHERE world_id=$1 AND draft_id=$2",[worldId,showB],
     ));
     await assert.rejects(advance("stale-seal-conflict"),/unresolved schedule conflicts/);
@@ -92,6 +96,7 @@ test("week cannot advance until each active promotion is resolved and certified;
       await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resolution_seals WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
@@ -120,6 +125,7 @@ test("overdue next deadline blocks reopening; prior data is retained",
         [worldId,promo],
       );
       await tx.query("INSERT INTO ppw_week_resolution_seals(world_id,year,week,certified_promotions) VALUES($1,1,1,1)",[worldId]);
+      await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,'show-overdue',1,1,'fixture-overdue',70,'{}'::jsonb,repeat('c',64))",[worldId,promo]);
     });
     await assert.rejects(advanceResolvedWorldWeek(db.pool,{worldId,requestId:"overdue",expectedRevision:0}),/recovery required/);
     const state=await withWorldTransaction(db.pool,tx=>tx.query<{phase:string;revision:string;week:number}>(
@@ -133,6 +139,7 @@ test("overdue next deadline blocks reopening; prior data is retained",
       await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resolution_seals WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
