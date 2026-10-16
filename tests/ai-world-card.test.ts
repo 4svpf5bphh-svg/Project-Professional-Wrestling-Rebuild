@@ -69,3 +69,39 @@ test("AI honors World capacity, original division eligibility, live booking and 
  assert.equal(blocked.status,"UNFILLED");
  assert.throws(()=>chooseAiWorldCard({...base,roster:[{...roster[0]!,presentation:NaN}]}),/Invalid/);
 });
+
+test("active hot programmes headline without changing existing human bookings; teams are not split into accidental singles opponents",()=>{
+ const input={...base,featuredPairs:[{aId:"talent-04",bId:"talent-07",
+  kind:"PROGRAMME" as const,programmeId:"feud-main",heat:94}],
+  establishedPartners:[{aId:"talent-01",bId:"talent-02"}]};
+ const card=chooseAiWorldCard(input);
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const main=card.matches.at(-1)!;
+ assert.equal(main.programmeId,"feud-main");
+ assert.deepEqual(main.participants.map(p=>p.personId).sort(),["talent-04","talent-07"]);
+ assert.ok(!card.matches.some(m=>m.participants.map(p=>p.personId).sort().join(":")==="talent-01:talent-02"));
+ assert.deepEqual(card,chooseAiWorldCard({...input,roster:[...roster].reverse()}));
+});
+test("singles titles trump programmes on a major show only when the champion and challenger are available",()=>{
+ const featured=[
+  {aId:"talent-04",bId:"talent-07",kind:"PROGRAMME" as const,programmeId:"hot-feud",heat:100},
+  {aId:"talent-01",bId:"talent-02",kind:"SINGLES_TITLE" as const,
+   championshipId:"world-title",holderId:"talent-01",heat:75},
+ ];
+ const card=chooseAiWorldCard({...base,eventType:"MAJOR",featuredPairs:featured});
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ assert.equal(card.matches.at(-1)?.championshipId,"world-title");
+ assert.equal(card.matches.at(-1)?.intent,"EPIC");
+ assert.ok(card.matches.at(-1)?.participants.some(x=>x.personId==="talent-01"));
+ const other=chooseAiWorldCard({...base,eventType:"MAJOR",featuredPairs:featured,
+  bookedShows:[{showId:"conflict",day:1,venueId:"a",personIds:["talent-01"]}],
+ });
+ if(other.status==="READY")
+  assert.ok(other.matches.every(m=>!m.championshipId)||
+   other.matches.at(-1)?.championshipId==="world-title");
+ assert.throws(()=>chooseAiWorldCard({...base,featuredPairs:[
+  {aId:"talent-01",bId:"talent-02",kind:"SINGLES_TITLE" as const,
+   championshipId:"belt",holderId:"talent-02",heat:50}]}),/Invalid canonical/);
+});

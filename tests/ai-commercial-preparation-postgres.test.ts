@@ -20,6 +20,28 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
  try{
   const source=originalGenesisFixture(world,120);
   await importOriginalGenesis(db.pool,source);
+  // Canonical rival programme and a world-owned tag identity. The AI may
+  // use the rivalry as a singles main; tag members must not be invented
+  // as a four-person match before the result simulator supports tags.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_programmes
+    (world_id,promotion_id,programme_id,status,heat,repetition)
+    VALUES($1,'promotion-0','feud-1','ACTIVE',96,0)`,[world]);
+   await tx.query(`INSERT INTO ppw_programme_participants
+    (world_id,promotion_id,programme_id,person_id,side)
+    VALUES($1,'promotion-0','feud-1','person-8','A'),
+          ($1,'promotion-0','feud-1','person-16','B')`,[world]);
+   await tx.query(`INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
+    VALUES($1,'tag-partners','The Partners','ACTIVE')`,[world]);
+   await tx.query(`INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
+    VALUES($1,'tag-partners','person-0'),($1,'tag-partners','person-24')`,[world]);
+   await tx.query(`INSERT INTO ppw_championships
+    (world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
+    VALUES($1,'promotion-0','singles-title','World Championship','SINGLES','ACTIVE',95,'reign-1')`,[world]);
+   await tx.query(`INSERT INTO ppw_championship_reigns
+    (world_id,promotion_id,championship_id,reign_id,holder_type,person_id,status,start_week_index)
+    VALUES($1,'promotion-0','singles-title','reign-1','PERSON','person-8','ACTIVE',0)`,[world]);
+  });
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[world]));
   assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock",expectedRevision:0})).status,"APPLIED");
@@ -53,6 +75,15 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     group.push(row);byCard.set(row.draft_id,group);
   }
   assert.equal(byCard.size,8);
+  const mainProgramme=byCard.get("ai-week-1-1-promotion-0")?.at(-1);
+  assert.equal(mainProgramme?.payload.mainEvent,true);
+  assert.deepEqual(mainProgramme?.payload.participants.map(p=>p.personId).sort(),
+    ["person-8","person-16"]);
+  const links=await withWorldTransaction(db.pool,tx=>tx.query<{
+    programme_id:string;slot_id:string}>(`
+    SELECT programme_id,slot_id FROM ppw_programme_match_activities
+     WHERE world_id=$1`,[world]));
+  assert.deepEqual(links,[{programme_id:"feud-1",slot_id:mainProgramme!.slot_id}]);
   for(const slots of byCard.values()){
     assert.ok(slots.length>=2&&slots.length<=5);
     assert.deepEqual(slots.map(x=>x.position),slots.map((_,i)=>i));
@@ -126,7 +157,12 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   assert.equal((await planNextWorldResolutionAction(db.pool,world)).action,"CLEAR_RESOURCES");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const name of ["ppw_ledger_events","ppw_week_staff_fallback_runs",
+   for(const name of [
+    "ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_participants","ppw_programmes",
+    "ppw_championship_reigns","ppw_championships",
+    "ppw_tag_team_members","ppw_tag_teams",
+    "ppw_ledger_events","ppw_week_staff_fallback_runs",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
     "ppw_command_receipts","ppw_card_slots","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_venues",

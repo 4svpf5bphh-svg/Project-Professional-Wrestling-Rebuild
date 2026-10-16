@@ -373,7 +373,18 @@ export async function previewArchivedShowMatchScoresInTransaction(
       showFinishPreview!==null?
       combineArchivedShowMatchContext(showPacingPreview,
         showAlignmentPreview.matches,showProgrammePreview,showFinishPreview):null;
-    return {worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
+    const titleBookings=matches.flatMap(slot=>{
+      const payload=slot.payload as Record<string,unknown>;
+      if(payload.championshipId===undefined)return [];
+      if(typeof payload.championshipId!=="string"||
+       !payload.championshipId||payload.championshipId.length>200)
+       throw new Error("Invalid singles championship booking");
+      const ids=readCardParticipants(slot.payload);
+      if(ids.length!==2)throw new Error("Title booking must be a singles match");
+      return [{slotId:slot.slot_id,championshipId:payload.championshipId,
+       participants:[ids[0]!.personId,ids[1]!.personId] as [string,string]}];
+    });
+    return {titleBookings,worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
       projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
 }

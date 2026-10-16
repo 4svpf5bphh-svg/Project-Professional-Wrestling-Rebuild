@@ -16,6 +16,9 @@ export interface AiCardInput{
  activeVenues:readonly string[];eventType:EventType;
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  recentPairs?:readonly string[];
+ establishedPartners?:readonly {aId:string;bId:string}[];
+ featuredPairs?:readonly {aId:string;bId:string;kind:"PROGRAMME"|"SINGLES_TITLE";
+  programmeId?:string;championshipId?:string;holderId?:string;heat:number}[];
 }
 export type AiCardMatch={
  participants:[{personId:string;contractId:string},{personId:string;contractId:string}];
@@ -23,6 +26,7 @@ export type AiCardMatch={
  intent:"COMPETITIVE"|"STORY"|"PROTECTIVE"|"SHOWCASE"|"TECHNICAL"|"HIGH_RISK"|"EPIC";
  plannedFinish:"CLEAN_PIN"|"SUBMISSION"|"FLASH_PIN"|"PROTECTED_FINISH";
  plannedLengthMinutes:number;mainEvent:boolean;
+ programmeId?:string;championshipId?:string;
 };
 export type AiCardResult=
  |{status:"READY";schedule:{day:number;venueId:string};matches:AiCardMatch[]}
@@ -67,7 +71,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   !["REGULAR","MAJOR"].includes(input.eventType)||
   ![input.riskTolerance,input.matchQualityPreference,input.starPreference].every(isStat)||
   input.roster.length>256||input.activeVenues.length>256||
-  input.bookedShows.length>128||(input.recentPairs?.length??0)>1024)
+  input.bookedShows.length>128||(input.recentPairs?.length??0)>1024||
+  (input.featuredPairs?.length??0)>256||
+  (input.establishedPartners?.length??0)>512)
    throw new Error("Invalid World AI card context");
  const used=new Map<string,number>();
  for(const x of input.bookedShows)for(const id of new Set(x.personIds))
@@ -101,7 +107,23 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  if(men.length<2&&women.length<2)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
  // Original booking ranks the appearances; give both divisions a reasonable
  // showcase when roster allows, even if men's absolute ranking dominates.
+ const featured=(input.featuredPairs??[]).filter(f=>
+   f.aId&&f.bId&&f.aId!==f.bId&&isStat(f.heat)&&
+   (f.kind==="PROGRAMME"?!!f.programmeId:
+    f.kind==="SINGLES_TITLE"&&!!f.championshipId&&
+       f.holderId===f.aId));
+ if(featured.length!==(input.featuredPairs?.length??0))
+  throw new Error("Invalid canonical featured programme or title");
+ const byId=new Map(available.map(p=>[p.personId,p]));
+ const priority=[...featured].filter(f=>
+   byId.has(f.aId)&&byId.has(f.bId)&&
+   byId.get(f.aId)!.bookingDivision===byId.get(f.bId)!.bookingDivision)
+  .sort((a,b)=>
+   (a.kind==="SINGLES_TITLE"?0:1)-(b.kind==="SINGLES_TITLE"?0:1)||
+   b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
+ const reserve=priority[0]??null;
  const chosen:AiRosterCandidate[]=[];
+ if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(men.length>=2&&women.length>=2&&available.length>=4){
   chosen.push(...men.slice(0,2),...women.slice(0,2));
  }
@@ -113,7 +135,18 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  // the same performer twice or mixing the divisions.
  const pool=[...chosen].sort(best);
  const recent=new Set(input.recentPairs??[]);
+ const teammates=new Set((input.establishedPartners??[]).map(x=>{
+  if(!x.aId||!x.bId||x.aId===x.bId)
+   throw new Error("Invalid established tag identity");
+  return key(x.aId,x.bId);
+ }));
  const cards:Array<[AiRosterCandidate,AiRosterCandidate]>=[];
+ if(reserve){
+  const a=pool.find(p=>p.personId===reserve.aId)!;
+  const b=pool.find(p=>p.personId===reserve.bId)!;
+  pool.splice(pool.indexOf(a),1);pool.splice(pool.indexOf(b),1);
+  cards.push([a,b]);
+ }
  while(pool.length>=2&&cards.length<5){
   const head=pool.shift()!;
   const candidates=pool.filter(p=>p.bookingDivision===head.bookingDivision);
@@ -121,7 +154,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   candidates.sort((a,b)=>{
    const ar=recent.has(key(head.personId,a.personId))?1:0;
    const br=recent.has(key(head.personId,b.personId))?1:0;
-   return ar-br||Math.abs(push(head)-push(a))-Math.abs(push(head)-push(b))||
+   const at=teammates.has(key(head.personId,a.personId))?1:0;
+   const bt=teammates.has(key(head.personId,b.personId))?1:0;
+   return at-bt||ar-br||Math.abs(push(head)-push(a))-Math.abs(push(head)-push(b))||
     rank(b)-rank(a)||a.personId.localeCompare(b.personId,"en");
   });
   const opponent=candidates[0]!;
@@ -134,6 +169,14 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   (push(b[0])+push(b[1]))/2||
   key(a[0].personId,a[1].personId).localeCompare(
    key(b[0].personId,b[1].personId),"en"));
+ if(reserve){
+  const idx=cards.findIndex(pair=>pair.some(p=>p.personId===reserve.aId)&&
+   pair.some(p=>p.personId===reserve.bId));
+  if(idx<0)throw new Error("Featured booking was displaced");
+  // The title match or established hot programme closes in this small
+  // simulation slice, not as a hidden random undercard bout.
+  cards.push(cards.splice(idx,1)[0]!);
+ }
  const matches:AiCardMatch[]=cards.map(([a,b],i)=>{
   const order=i+1,main=i===cards.length-1;
   const intent=style(input,order,main);
@@ -148,6 +191,8 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    scriptedWinner:fav.personId,bookingDivision:a.bookingDivision,
    intent,plannedFinish:finish(intent,finalRng.next()),
    plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
+   ...(main&&reserve?.kind==="PROGRAMME"?{programmeId:reserve.programmeId}:{}),
+   ...(main&&reserve?.kind==="SINGLES_TITLE"?{championshipId:reserve.championshipId}:{}),
   };
  });
  return {status:"READY",schedule,matches};

@@ -13,6 +13,7 @@ import {assembleArchivedShowResolution}
 import {recordCompletedShowInTransaction}
  from "./completed-show-results.js";
 import {settleCompletedShowEconomics} from "./show-economics.js";
+import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -43,6 +44,8 @@ export async function resolveCanonicalShow(
   const segments=await readCanonicalSegmentContextsInTransaction(tx,input);
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
   const recorded=await recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
+  if(recorded==="RECORDED"&&projection.titleBookings.length)
+   await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{
      ...input,averageMatchRating:Math.round(
