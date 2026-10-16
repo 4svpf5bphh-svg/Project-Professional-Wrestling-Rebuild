@@ -29,10 +29,12 @@ export function deriveArchivedMatchEvidence(
     family:"INDIVIDUAL",participants:layout.participants.map(x=>x.personId),
     scriptedWinnerSide:layout.scriptedWinnerSide,
     plannedFinish:p.plannedFinish,
+    ruleset:layout.ruleset,eliminationOrder:layout.eliminationOrder,
    };
    const resolution:ResolvedMultiIndividualEvidence={
     actualWinnerSide:result.actualWinnerSide,actualFinish:result.actualFinish,
     ...(result.medical?{medical:result.medical}:{}),
+    completedEliminationOrder:result.completedEliminationOrder,
    };
    const verified=verifyMultiIndividualEvidence(booking,resolution);
    return {evidence:{matchId:p.slotId,booking,resolution},
@@ -55,10 +57,12 @@ export function deriveArchivedMatchEvidence(
       sideId:s.sideId,participants:s.participants.map(x=>x.personId)})),
     scriptedWinnerSide:layout.scriptedWinnerSide,
     plannedFinish:injury.plannedFinish,
+    ruleset:layout.ruleset,eliminationOrder:layout.eliminationOrder,
     ...(interference?{interferencePlannedOutcome:interference.plannedOutcome}:{})
    };
    const resolution:ResolvedTeamEvidence={
     actualWinnerSide:result.actualWinnerSide,actualFinish:final.actualFinish,
+    completedEliminationOrder:result.completedEliminationOrder,
     ...(serious?{medical:{injuredPersonId:serious.personId,
       severity:serious.severity as "MAJOR"|"SEVERE",
       stoppage:true as const}}:{}),

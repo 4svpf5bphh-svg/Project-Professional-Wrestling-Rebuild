@@ -199,14 +199,16 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const projections=matches.map((slot,index)=>{
       const layout=layouts[index]!;
       const format=requireSupportedScoringLayout(layout);
-      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"||format==="BATTLE_ROYAL"){
         const raw=slot.payload as Record<string,unknown>;
         const intent=raw.intent??"COMPETITIVE";
-        const finish=raw.plannedFinish??"CLEAN_PIN";
+        const finish=raw.plannedFinish??(format==="BATTLE_ROYAL"?
+          "OVER_THE_TOP_ROPE":"CLEAN_PIN");
         const length=raw.plannedLengthMinutes??18;
         if(!["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
          "HIGH_RISK","STORY","PROTECTIVE","EPIC"].includes(String(intent))||
-          !["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"].includes(String(finish))||
+          !(format==="BATTLE_ROYAL"?finish==="OVER_THE_TOP_ROPE":
+            ["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"].includes(String(finish)))||
           raw.interference!==undefined||raw.style!==undefined||
           typeof length!=="number"||!Number.isInteger(length)||length<3||length>60)
          throw new Error("Unsupported multi-person intent, finish, run-in or length");
@@ -221,7 +223,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
           layout,wrestlers:talent,worldSeed:String(show.seed),
           matchId:`${input.showId}:${slot.slot_id}`,
           order:index+1,eventImportance:show.event_importance!,
-          intent:intent as MatchIntent,plannedFinish:finish as
+          intent:intent as MatchIntent,plannedFinish:
+           (format==="BATTLE_ROYAL"?"CLEAN_PIN":finish) as
            "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
           plannedLengthMinutes:length,
           injuryRateMultiplier:Number(show.injury_rate_multiplier),
@@ -237,13 +240,13 @@ export async function previewArchivedShowMatchScoresInTransaction(
          finishCheaterId:null,readiness:"READY" as const,chemistryModifier:0,
          score:result.score,injuryPreview:null,interferencePreview:{
           crowdResponse:result.score.crowdResponse,actualFinish:result.actualFinish,
-          actualWinnerId:ids[result.actualWinnerSide.charCodeAt(0)-65]!,
+          actualWinnerId:ids[layout.sides.findIndex(s=>s.sideId===result.actualWinnerSide)]!,
           injuryStoppage:result.injuryStoppage,
           plannedWinnerId:ids[winningIndex]!,plannedFinish:finish,
           interference:null,stage:"POST_INTERFERENCE_PRE_SHOW_FLOW" as const,
          },consequencesPreview:null};
       }
-      if(format==="TAG"){
+      if(format==="TAG"||format==="MULTI_TEAM"){
         const participantIds=layout.participants.map(x=>x.personId);
         if(new Set(participantIds.map(id=>divisions.get(id))).size!==1)
           throw new Error("Mixed booking divisions cannot form a team match");
@@ -281,9 +284,11 @@ export async function previewArchivedShowMatchScoresInTransaction(
           }
           // Normalise each side by its pairs: 5v5 must not earn 10 times
           // as much chemistry simply for having 10 teammate pairs.
-          modifier+=sideSum/pairCount;
+          modifier+=sideSum/pairCount*2/layout.sides.length;
         }
         const interruption=readBookedInterference(slot.payload);
+        if(format==="MULTI_TEAM"&&interruption)
+          throw new Error("Multi-team interference is not yet bookable");
         const profile=interruption?interfererProfiles.get(interruption.personId):null;
         const rate=show.injury_rate_multiplier===null?null:
           Number(show.injury_rate_multiplier);
@@ -547,14 +552,20 @@ export async function previewArchivedShowMatchScoresInTransaction(
           [{sideId:"A";personIds:string[]},{sideId:"B";personIds:string[]}]}];
     });
     const titleBookings=matches.flatMap((slot,index)=>{
-      if(requireSupportedScoringLayout(layouts[index]!)==="TAG")return [];
+      const kind=requireSupportedScoringLayout(layouts[index]!);
+      if(kind==="TAG"||kind==="MULTI_TEAM"){
+       if((matches[index]!.payload as Record<string,unknown>).championshipId!==undefined &&
+        kind==="MULTI_TEAM")throw new Error("Multi-team title rules not yet supported");
+       return [];
+      }
       const payload=slot.payload as Record<string,unknown>;
       if(payload.championshipId===undefined)return [];
       if(typeof payload.championshipId!=="string"||
        !payload.championshipId||payload.championshipId.length>200)
        throw new Error("Invalid singles championship booking");
       const ids=readCardParticipants(slot.payload);
-      if(![2,3,4].includes(ids.length))throw new Error("Title booking must be an individual match");
+      if(![2,3,4].includes(ids.length))
+        throw new Error("Battle royal title changes need explicit championship rules");
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
        participants:ids.map(x=>x.personId)}];
     });

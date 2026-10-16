@@ -132,7 +132,7 @@ export function scoreArchivedFieldBeforeInjuriesWithRng(
      input.plannedLengthMinutes<3||input.plannedLengthMinutes>60||
      !Number.isFinite(input.chemistryModifier)||input.chemistryModifier < -25||
      input.chemistryModifier>25||input.people.length<2||
-     input.people.length>4)throw new Error("Invalid match scoring context");
+     input.people.length>30)throw new Error("Invalid match scoring context");
   for(const p of input.people){
     for(const v of [...Object.values(p.skills),p.popularity,p.recognition,p.momentum,p.fatigue,p.wear]){
       if(typeof v!=="number"||!Number.isFinite(v)||v<0||v>100)

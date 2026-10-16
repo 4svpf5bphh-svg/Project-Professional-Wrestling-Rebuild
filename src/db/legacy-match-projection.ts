@@ -83,11 +83,11 @@ export async function previewLegacyShowMatchStyles(pool:TransactionPool,input:Le
       if(new Set(identities.map(id=>divisions.get(id))).size!==1)
         throw new Error("Mixed booking divisions are not supported");
       const format=requireSupportedScoringLayout(layout);
-      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+      if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"||format==="BATTLE_ROYAL"){
        const match=adaptBookedMultiIndividualReadiness(slot.payload,talents);
        return {slotId:slot.slot_id,position:slot.position,...match};
       }
-      if(format==="TAG"){
+      if(format==="TAG"||format==="MULTI_TEAM"){
         const match=adaptBookedTagReadiness(slot.payload,talents);
         return {slotId:slot.slot_id,position:slot.position,...match};
       }

@@ -1,6 +1,7 @@
 /** Archived PPW booking.ts / matches.ts adapted for the current singles-
  * capable resolver. Schedules full 2-5 match shows without exceeding the
- * existing 10-performer resource limit or fabricating tag/title logic.
+ * existing modest AI card-size target or fabricating tag/title logic.
+ * This AI target is not a human show limit (100 unique appearances allowed).
  */
 import {createHash} from "node:crypto";
 import {DeterministicRng,deterministicSeedFromText} from "../simulation/legacy/rng.js";

@@ -1,4 +1,4 @@
-/** 3/4 independent opponents, no elimination or time stagger.
+/** Independent opponent fields (3/4-way and 6–30-person battle royals).
  * ALL athletes contribute to the archived scoring averages, with an
  * additional deterministic per-wrestler medical exposure and career result.
  * No two-sided run-in is interpreted as a three/four-way interference.
@@ -21,12 +21,15 @@ export interface MultiIndividualInput{
 export function simulateMultiIndividualMatch(input:MultiIndividualInput){
  const {layout}=input;
  if(layout.family!=="INDIVIDUAL"||
-  ![3,4].includes(layout.sides.length)||
+  !([3,4].includes(layout.sides.length)||
+    (layout.sides.length>=6&&layout.sides.length<=30&&
+     layout.ruleset==="ELIMINATION"&&
+     layout.eliminationOrder.length===layout.sides.length-1))||
   layout.sides.some(s=>s.participants.length!==1)||
   !Number.isFinite(input.injuryRateMultiplier)||
   input.injuryRateMultiplier<0||input.injuryRateMultiplier>10||
   !Number.isFinite(input.mediaReach)||input.mediaReach<0||input.mediaReach>1000000)
-  throw new Error("Multi-person scoring accepts only three/four solo competitors");
+  throw new Error("Individual scoring requires 3/4-way or authored battle royal");
  const ids=layout.participants.map(p=>p.personId);
  const people=ids.map(id=>{
   const p=input.wrestlers.get(id);
@@ -36,7 +39,7 @@ export function simulateMultiIndividualMatch(input:MultiIndividualInput){
  const {score,rng}=scoreArchivedFieldBeforeInjuriesWithRng({
   worldSeed:input.worldSeed,matchId:input.matchId,order:input.order,
   eventImportance:input.eventImportance,intent:input.intent,
-  style:null,plannedFinish:input.plannedFinish,
+  style:null,plannedFinish:layout.sides.length>4?"CLEAN_PIN":input.plannedFinish,
   plannedLengthMinutes:input.plannedLengthMinutes,chemistryModifier:0,people,
  });
  const injuries: {personId:string;severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";
@@ -69,7 +72,8 @@ export function simulateMultiIndividualMatch(input:MultiIndividualInput){
   .sort((a,b)=>b.rank-a.rank||a.i-b.i)[0]!;
  const actualIndex=injuredWinner?strongest.i:plannedIndex;
  const actualWinnerSide=layout.sides[actualIndex]!.sideId;
- const actualFinish=injuredWinner?"INJURY_STOPPAGE":input.plannedFinish;
+ const actualFinish=injuredWinner?"INJURY_STOPPAGE":layout.sides.length>4?
+  "OVER_THE_TOP_ROPE":input.plannedFinish;
  const crowdResponse=injuredWinner?round1(clamp(score.crowdResponse-4,0,100)):
   score.crowdResponse;
  const members=people.map((p,i)=>{
@@ -106,6 +110,7 @@ export function simulateMultiIndividualMatch(input:MultiIndividualInput){
  return {score:{...score,crowdResponse},members,injuries,
   plannedWinnerSide:plannedSide,actualWinnerSide,actualFinish,
   injuryStoppage:Boolean(injuredWinner),
+  completedEliminationOrder:injuredWinner?[]:[...layout.eliminationOrder],
   medical:injuredWinner?{injuredPersonId:injuredWinner.personId,
    severity:injuredWinner.severity as "MAJOR"|"SEVERE",stoppage:true as const}:null};
 }

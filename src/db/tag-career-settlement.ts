@@ -27,8 +27,8 @@ export async function settleCanonicalTagCareerConsequences(
    projection.projections.some(p=>p.tag!==null&&
     (p.tag.result.members.length!==p.tag.layout.participants.length||
      p.tag.result.members.length<4||
-     p.tag.result.members.length>10))||
-   effects.length<4*tagCount||effects.length>10*tagCount)
+     p.tag.result.members.length>30))||
+   effects.length<4*tagCount||effects.length>30*tagCount)
   throw new Error("Tag career batch exceeds bounded unique performer capacity");
  const values=effects.map(e=>({
   person_id:e.person_id,

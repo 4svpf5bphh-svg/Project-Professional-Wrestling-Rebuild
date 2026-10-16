@@ -120,18 +120,22 @@ export async function recordCompletedShowInTransaction(
      }
     }
     const ev=evidenceByMatch.get(slot.slot_id);
-    if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"){
+    if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"||
+       format==="BATTLE_ROYAL"){
       if(!ev||!("family" in ev.booking)||ev.booking.family!=="INDIVIDUAL")
        throw new Error("Verified multi-person winner evidence required");
       const book=ev.booking as BookedMultiIndividualOutcome;
       if(JSON.stringify(book.participants)!==
        JSON.stringify(layout!.participants.map(x=>x.personId))||
        book.scriptedWinnerSide!==layout!.scriptedWinnerSide||
-       book.plannedFinish!==p.plannedFinish)
+       book.plannedFinish!==p.plannedFinish||
+       (book.ruleset??"STANDARD")!==layout!.ruleset||
+       JSON.stringify(book.eliminationOrder??[])!==
+        JSON.stringify(layout!.eliminationOrder))
        throw new Error("Multi-person result differs from submitted card");
       continue;
     }
-    if(format==="TAG"){
+    if(format==="TAG"||format==="MULTI_TEAM"){
       if(!ev||!("family" in ev.booking)||ev.booking.family!=="TEAMS")
        throw new Error("Authoritative tag evidence required for every four-person match");
       const booking=ev.booking as BookedTeamOutcome;
@@ -139,6 +143,9 @@ export async function recordCompletedShowInTransaction(
         sideId:side.sideId,participants:side.participants.map(x=>x.personId)})))||
        booking.scriptedWinnerSide!==layout!.scriptedWinnerSide||
        booking.plannedFinish!==p.plannedFinish||
+       (booking.ruleset??"STANDARD")!==layout!.ruleset||
+       JSON.stringify(booking.eliminationOrder??[])!==
+        JSON.stringify(layout!.eliminationOrder)||
        booking.interferencePlannedOutcome!==
          ((p.interference as {plannedOutcome?:string}|undefined)?.plannedOutcome))
        throw new Error("Completed tag evidence differs from the authored sides");

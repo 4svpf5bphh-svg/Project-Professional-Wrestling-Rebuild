@@ -4,7 +4,7 @@
  * Reuses archived PPW quality/crowd equations on both side-average profiles.
  */
 import type {CanonicalMatchLayout} from "../domain/match-sides.js";
-import {scoreArchivedSinglesBeforeInjuriesWithRng,type ScoredWrestler,
+import {scoreArchivedFieldBeforeInjuriesWithRng,type ScoredWrestler,
  type ScoringInput} from "./legacy/match-scoring.js";
 import type {MatchIntent} from "./legacy/types.js";
 import type {MatchFinish} from "./legacy/match-finishes.js";
@@ -37,14 +37,14 @@ function average(team:readonly ScoredWrestler[]):ScoredWrestler{
 }
 export function simulateBookedTagMatch(input:TagSimulationInput){
  const {layout}=input;
- if(layout.family!=="TEAMS"||layout.sides.length!==2||
+ if(layout.family!=="TEAMS"||layout.sides.length<2||layout.sides.length>6||
   layout.sides.some(x=>x.participants.length<2||
    x.participants.length>5||
    x.participants.length!==layout.sides[0]!.participants.length)||
   !Number.isFinite(input.injuryRateMultiplier)||input.injuryRateMultiplier<0||
   input.injuryRateMultiplier>10||
   !Number.isFinite(input.mediaReach)||input.mediaReach<0||input.mediaReach>1000000)
-  throw new Error("Team simulator supports two equal sides of 2 to 5 wrestlers");
+  throw new Error("Team simulator supports 2–6 equal sides of 2 to 5 wrestlers");
  const ids=layout.sides.flatMap(x=>x.participants.map(p=>p.personId));
  const people=ids.map(id=>{
   const person=input.wrestlers.get(id);
@@ -52,16 +52,17 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
   return person;
  });
  const teamSize=layout.sides[0]!.participants.length;
- const teams=[people.slice(0,teamSize),people.slice(teamSize)] as
-  [ScoredWrestler[],ScoredWrestler[]];
+ const teams=layout.sides.map((_,i)=>people.slice(i*teamSize,(i+1)*teamSize));
+ if(layout.sides.length>2&&input.interference)
+  throw new Error("Multi-team run-ins require separate authored rules");
  const scoring:ScoringInput={
   worldSeed:input.worldSeed,matchId:input.matchId,order:input.order,
   eventImportance:input.eventImportance,intent:input.intent,style:null,
   plannedFinish:input.plannedFinish,plannedLengthMinutes:input.plannedLengthMinutes,
   chemistryModifier:input.chemistryModifier,
-  people:[average(teams[0]),average(teams[1])],
+  people:teams.map(average) as [ScoredWrestler,ScoredWrestler],
  };
- const {score,rng}=scoreArchivedSinglesBeforeInjuriesWithRng(scoring);
+ const {score,rng}=scoreArchivedFieldBeforeInjuriesWithRng(scoring);
  const avgSafety=mean(people.map(p=>p.skills.safety));
  const injuries:InjuryRecordPreview[]=[];
  for(let index=0;index<people.length;index++){
@@ -83,7 +84,11 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
   injuries.push({personId,severity,weeksOut,probability});
  }
  const plannedSide=layout.scriptedWinnerSide;
- const opponentSide=layout.sides.find(x=>x.sideId!==plannedSide)!;
+ const opponentSide=layout.sides.filter(x=>x.sideId!==plannedSide)
+  .map(s=>({s,quality:mean(s.participants.map(p=>
+    input.wrestlers.get(p.personId)!.skills.inRingQuality))}))
+  .sort((a,b)=>b.quality-a.quality||
+    a.s.sideId.localeCompare(b.s.sideId,"en"))[0]!.s;
  const actualSide=injuries.some(i=>["MAJOR","SEVERE"].includes(i.severity)&&
    layout.sides.find(x=>x.sideId===plannedSide)!.participants
     .some(p=>p.personId===i.personId))?opponentSide.sideId:plannedSide;
@@ -147,5 +152,6 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
    won,injury:injuryRecord,before,after};
  });
  return {score,injury,final,members,actualWinnerSide:actualSide,
-  plannedWinnerSide:plannedSide};
+  plannedWinnerSide:plannedSide,
+  completedEliminationOrder:injuryStoppage?[]:[...layout.eliminationOrder]};
 }

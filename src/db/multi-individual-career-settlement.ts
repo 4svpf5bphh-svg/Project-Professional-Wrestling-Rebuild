@@ -24,8 +24,10 @@ export async function settleMultiIndividualCareerConsequences(
  if(effects.length>100||matchCount>100||
    new Set(effects.map(e=>e.person_id)).size!==effects.length||
    projection.projections.some(p=>p.multi!==null&&
-    ![3,4].includes(p.multi.result.members.length))||
-   effects.length<matchCount*3||effects.length>matchCount*4)
+    !([3,4].includes(p.multi.result.members.length)||
+      (p.multi.result.members.length>=6&&
+       p.multi.result.members.length<=30)))||
+   effects.length<matchCount*3||effects.length>matchCount*30)
   throw new Error("Multi-person career batch exceeds bounded unique performer capacity");
  const values=effects.map(e=>({
   person_id:e.person_id,

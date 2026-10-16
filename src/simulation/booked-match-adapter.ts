@@ -87,8 +87,8 @@ export function adaptBookedSinglesMatch(payload:unknown,
 export function adaptBookedTagReadiness(payload:unknown,
  talent:ReadonlyMap<string,WrestlerSimReadiness>){
  const layout=readCanonicalMatchLayout(payload);
- if(requireSupportedScoringLayout(layout)!=="TAG")
-  throw new Error("Teams readmodel requires 2v2 through 5v5 format");
+ if(!["TAG","MULTI_TEAM"].includes(requireSupportedScoringLayout(layout)))
+  throw new Error("Teams readmodel requires equal sides of 2–5");
  const p=payload as Record<string,unknown>;
  const intent=p.intent??"COMPETITIVE";
  if(typeof intent!=="string"||!INTENTS.has(intent as MatchIntent))
@@ -118,8 +118,9 @@ export function adaptBookedMultiIndividualReadiness(payload:unknown,
  talent:ReadonlyMap<string,WrestlerSimReadiness>){
  const layout=readCanonicalMatchLayout(payload);
  const kind=requireSupportedScoringLayout(layout);
- if(kind!=="TRIPLE_THREAT"&&kind!=="FOUR_WAY")
-  throw new Error("Multi-person readiness requires three or four opponents");
+ if(kind!=="TRIPLE_THREAT"&&kind!=="FOUR_WAY"&&
+    kind!=="BATTLE_ROYAL")
+  throw new Error("Individual field readiness requires 3/4-way or battle royal");
  const p=payload as Record<string,unknown>;
  const intent=p.intent??"COMPETITIVE";
  const length=p.plannedLengthMinutes??18;
