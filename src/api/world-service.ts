@@ -4,7 +4,7 @@ import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
-import {requestAdditionalDates} from "../db/contract-date-requests.js";
+import {requestAdditionalDates,readPendingDateRequests} from "../db/contract-date-requests.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
@@ -86,4 +86,13 @@ export async function requestAdditionalDatesAsActor(
  validate(input.promotionId,"promotion");
  validate(input.contractId,"contract");
  return requestAdditionalDates(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function pendingDateRequestsAsActor(
+ context:WorldApiContext,worldId:string,promotionId:string,
+){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readPendingDateRequests(context.pool,worldId,context.actor.playerId,promotionId);
 }
