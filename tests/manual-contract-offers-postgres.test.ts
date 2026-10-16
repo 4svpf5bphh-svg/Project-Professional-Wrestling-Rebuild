@@ -11,6 +11,7 @@ import {submitManualContractOffer,readPendingContractOffers,
 import {requestAdditionalDates} from "../src/db/contract-date-requests.js";
 import {resolveDateRequest} from "../src/db/contract-date-decisions.js";
 import {readContractDesk} from "../src/db/contract-desk-workspace.js";
+import {settlePendingWorldContracts} from "../src/db/world-contract-desk-resolution.js";
 import type {OfferTerms} from "../src/domain/contract-economics.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -121,6 +122,34 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
     SELECT promotion_id,cash FROM ppw_promotions WHERE world_id=$1 ORDER BY promotion_id`,[world]));
   assert.equal(Number(cash.find(c=>c.promotion_id===pA)!.cash),200000-1000-2000);
   assert.equal(Number(cash.find(c=>c.promotion_id===pB)!.cash),200000-5000);
+  // No player or second cron needs to answer the next pending negotiation:
+  // the trusted World RESOLVING stage reuses exactly the same acceptance rule.
+  const autoId="auto-dates-"+id;
+  const requested=await requestAdditionalDates(db.pool,{worldId:world,playerId:playerA,
+   promotionId:pA,contractId:source,requestId:autoId,expectedRevision:11,
+   additionalDates:1,additionalPayment:1500});
+  assert.equal(requested.status,"APPLIED");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[world]));
+  const settled=await settlePendingWorldContracts(db.pool,{
+   worldId:world,year:1,week:1,resolutionId:"contract-stage-"+id});
+  assert.equal(settled.answered,1);
+  assert.equal(settled.accepted,1);
+  const autoRows=await withWorldTransaction(db.pool,tx=>tx.query<{
+   status:string;remaining_dates:number;date_entitlement:number;cash:string}>(`
+   SELECT q.status,c.remaining_dates,c.date_entitlement,p.cash
+   FROM ppw_contract_date_requests q JOIN ppw_contracts c
+    ON c.world_id=q.world_id AND c.contract_id=q.contract_id
+   JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+   WHERE q.world_id=$1 AND q.request_id=$2`,[world,autoId]));
+  assert.equal(autoRows[0]!.status,"ACCEPTED");
+  assert.equal(autoRows[0]!.remaining_dates,3);
+  assert.equal(autoRows[0]!.date_entitlement,8);
+  assert.equal(Number(autoRows[0]!.cash),200000-1000-2000-1500);
+  const again=await settlePendingWorldContracts(db.pool,{
+   worldId:world,year:1,week:1,resolutionId:"contract-stage-"+id});
+  assert.equal(again.answered,0);
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
