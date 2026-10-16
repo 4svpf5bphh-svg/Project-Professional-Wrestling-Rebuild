@@ -12,7 +12,7 @@ test("heel object cheating lifts crowd only with valid winning-side culprit",()=
  assert.deepEqual(run(),{matchId:"main",modifier:1.8,
   reason:"HEEL_CHEATING_HEAT",repeatCount:0,programmeLinked:true});
  assert.equal(run({...m,finishCheaterPersonId:"face"}).modifier,0);
- assert.equal(run({...m,actualFinish:"PIN"}).modifier,0);
+ assert.equal(run({...m,actualFinish:"CLEAN_PIN"}).modifier,0);
  assert.equal(run({...m,actualWinnerSide:null}).modifier,0);
 });
 test("DQ cheater is the losing side; face cheating causes backlash",()=>{
