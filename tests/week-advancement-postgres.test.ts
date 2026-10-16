@@ -10,13 +10,17 @@ const url=process.env.PPW_NEON_TEST_URL;
 test("week cannot advance until each active promotion is resolved and certified; 52-week rollover and retries",
   {skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),id=randomUUID(),worldId="rollover-"+id;
-  const promoA="a-"+id,promoB="b-"+id,showA="show-a-"+id,showB="show-b-"+id;
+  const promoA="a-"+id,promoB="b-"+id,promoDormant="d-"+id,showA="show-a-"+id,showB="show-b-"+id;
   const advance=(requestId:string,expectedRevision=0)=>advanceResolvedWorldWeek(db.pool,{worldId,requestId,expectedRevision});
   try {
     await withWorldTransaction(db.pool,async tx=>{
       await createWorld(tx,{id:worldId,name:"Rollover Fixture",seed:1,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:promoA,name:"Promotion A",tier:"LOCAL"});
       await addPromotion(tx,worldId,{id:promoB,name:"Promotion B",tier:"LOCAL"});
+      await addPromotion(tx,worldId,{id:promoDormant,name:"Dormant",tier:"LOCAL"});
+      await tx.query(`UPDATE ppw_promotions SET lifecycle='DORMANT',cash=12345,
+       weekly_media_income=999,weekly_sponsor_income=999,weekly_fixed_overhead=10
+       WHERE world_id=$1 AND promotion_id=$2`,[worldId,promoDormant]);
       await tx.query(`UPDATE ppw_promotions SET
        weekly_media_income=CASE WHEN promotion_id=$2 THEN 1000 ELSE 400 END,
        weekly_sponsor_income=CASE WHEN promotion_id=$2 THEN 300 ELSE 100 END,
@@ -124,6 +128,7 @@ test("week cannot advance until each active promotion is resolved and certified;
     });
     assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoA)!.cash),1100);
     assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoB)!.cash),-400);
+    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoDormant)!.cash),12345);
     assert.equal(finance.contracts[0]!.status,"EXPIRED");
     assert.equal(finance.contracts[1]!.status,"SIGNED");
     assert.equal(finance.contracts[1]!.start_week_index,52);

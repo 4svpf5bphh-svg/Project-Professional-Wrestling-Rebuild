@@ -33,6 +33,9 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  const past=originalGenesisFixture("genesis-old");
  past.world.currentDate.week=8;
  assert.throws(()=>projectOriginalGenesis(past),/fresh 52-week/);
+ const maxSeed=originalGenesisFixture("genesis-unsigned-seed",3);
+ maxSeed.world.seed=4294967295;
+ assert.equal(projectOriginalGenesis(maxSeed).world.seed,4294967295);
  const corrupt=originalGenesisFixture("genesis-bad-skills",3);
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);

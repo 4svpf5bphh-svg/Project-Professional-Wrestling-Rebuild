@@ -70,7 +70,7 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  if(!source||!source.world||!source.ruleset
  ||!isText(source.world.id)||!isText(source.world.name)
  ||!isText(source.world.rulesetVersion)||source.world.rulesetVersion!==source.ruleset.version
- ||!int(source.world.seed,0,2147483647)||source.ruleset.weeksPerYear!==52
+ ||!int(source.world.seed,0,4294967295)||source.ruleset.weeksPerYear!==52
  ||weekIndex(source.world.currentDate)!==0||source.world.currentDate.day!==1
  ||!stat(source.ruleset.offerAcceptanceThreshold)
  ||!Number.isFinite(source.ruleset.injuryRateMultiplier)
