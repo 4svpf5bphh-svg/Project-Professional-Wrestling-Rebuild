@@ -44,7 +44,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
    {...receipt,segments:[{...receipt.segments[0]!,position:2}]},
    {...receipt,matches:[{...receipt.matches[0]!,position:1}],
     segments:[{...receipt.segments[0]!,position:0}]},
-  ]){
+  ] as CompletedShowReceipt[])){
    await assert.rejects(recordCompletedShow(db.pool,invalid),
     /does not match submitted card|differs from submitted booking|differs from submitted card/);
    const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
