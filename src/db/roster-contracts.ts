@@ -27,15 +27,15 @@ export async function readRosterContracts(
     const rows=await tx.query<{
       contract_id:string;person_id:string;name:string;
       family:ContractAvailabilityInput["family"];status:ContractAvailabilityInput["status"];
-      remaining_dates:number|null;expires_week_index:number;
+      remaining_dates:number|null;expires_week_index:number;start_week_index:number;
     }>(
-      "SELECT c.contract_id,c.person_id,p.name,c.family,c.status,c.remaining_dates,c.expires_week_index FROM ppw_contracts c JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED' ORDER BY p.name,c.contract_id LIMIT $3",
+      "SELECT c.contract_id,c.person_id,p.name,c.family,c.status,c.remaining_dates,c.expires_week_index,c.start_week_index FROM ppw_contracts c JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED' ORDER BY p.name,c.contract_id LIMIT $3",
       [worldId,promotionId,limit],
     );
     return rows.map(r=>contractDeskEntry({
       contractId:r.contract_id,personId:r.person_id,name:r.name,
       family:r.family,status:r.status,remainingDates:r.remaining_dates,
-      expiresWeekIndex:r.expires_week_index,currentWeekIndex,
+      expiresWeekIndex:r.expires_week_index,startWeekIndex:r.start_week_index,currentWeekIndex,
     }));
   });
 }

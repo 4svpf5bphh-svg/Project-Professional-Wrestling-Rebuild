@@ -19,6 +19,7 @@ import {recordWorldWeekArbitration} from "./recorded-week-arbitration.js";
 import {applyAiWeekRemediation} from "./apply-ai-remediation.js";
 import {applyHumanLogisticsRemediation} from "./apply-human-logistics-remediation.js";
 import {inspectWorldArbitrationRecovery} from "./world-arbitration-coordinator.js";
+import {settlePendingWorldContracts} from "./world-contract-desk-resolution.js";
 import type {RemediationChoice} from "../domain/resource-remediation.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
@@ -80,7 +81,7 @@ export type WorldResolutionAction=
  |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
  |"RECORD_ARBITRATION"|"REMEDIATE_AI_CLAIM"|"REMEDIATE_HUMAN_LOGISTICS"
  |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
- |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"PUBLISH_WEEK";
+ |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"RESOLVE_CONTRACTS"|"PUBLISH_WEEK";
 export interface WorldResolutionPlan {
  year:number;week:number;action:WorldResolutionAction;
  blockers:string[];ready:ResolutionReadiness;
@@ -166,7 +167,18 @@ export async function planNextWorldResolutionAction(
    action="RESOLVE_DETAILED_SHOWS";
   else if(ready.certified!==ready.active)
    action="CERTIFY_WEEK";
-  else action="PUBLISH_WEEK";
+  else{
+   const pending=await withWorldTransaction(pool,async tx=>{
+    const rows=await tx.query<{outstanding:boolean}>(`
+      SELECT (
+       EXISTS(SELECT 1 FROM ppw_contract_offers WHERE world_id=$1 AND status='PENDING')
+       OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND status='PENDING')
+       OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING')
+      ) AS outstanding`,[worldId]);
+    return rows[0]!.outstanding;
+   });
+   action=pending?"RESOLVE_CONTRACTS":"PUBLISH_WEEK";
+  }
  }else{
   action="WAIT_FOR_WORLD_LOCK";
   blockers.push("UNKNOWN_WORLD_PHASE");
@@ -290,6 +302,10 @@ export async function executeNextWorldResolutionStage(
  if(plan.action==="CERTIFY_WEEK"){
   const result=await certifyResolvedWorldWeek(pool,{worldId,requestId,expectedRevision});
   return commandStage(plan.action,result);
+ }
+ if(plan.action==="RESOLVE_CONTRACTS"){
+  const result=await settlePendingWorldContracts(pool,{worldId,year:plan.year,week:plan.week,resolutionId});
+  return {action:plan.action,status:"EXECUTED" as const,result};
  }
  if(plan.action==="PUBLISH_WEEK"){
   const result=await publishResolvedWorldWeek(pool,{

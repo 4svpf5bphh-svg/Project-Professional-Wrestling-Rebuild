@@ -23,12 +23,12 @@ export async function readContractDesk(
   const contracts=await tx.query<{
    contract_id:string;person_id:string;name:string;
    family:ContractAvailabilityInput["family"];status:ContractAvailabilityInput["status"];
-   remaining_dates:number|null;expires_week_index:number;
+   remaining_dates:number|null;expires_week_index:number;start_week_index:number;
    date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
    creative_control:string;role_expectation:string;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
-     c.remaining_dates,c.expires_week_index,c.date_entitlement,c.weekly_guarantee,
+     c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation
    FROM ppw_contracts c JOIN ppw_people p
      ON p.world_id=c.world_id AND p.person_id=c.person_id
@@ -53,7 +53,7 @@ export async function readContractDesk(
   const roster=contracts.map(c=>contractDeskEntry({
    contractId:c.contract_id,personId:c.person_id,name:c.name,
    family:c.family,status:c.status,remainingDates:c.remaining_dates,
-   expiresWeekIndex:c.expires_week_index,currentWeekIndex,
+   expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex,
   }));
   const pendingIds=new Set(requests.map(q=>q.contract_id));
   const renewalIds=new Set(renewals.map(q=>q.contract_id));

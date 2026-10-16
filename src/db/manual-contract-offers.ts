@@ -205,7 +205,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
      family text,start_week integer,term_weeks integer,entitlement integer,weekly bigint,
      appearance bigint,bonus bigint,role text,creative text)`,[input.worldId,JSON.stringify(contractsToSign.map(c=>({
       id:c.id,person:c.person,promotion:c.promotion,family:c.terms.family,
-      start_week:c.terms.startWeekIndex,term_weeks:c.terms.termWeeks,
+      start_week:Math.max(c.terms.startWeekIndex,current+1),term_weeks:c.terms.termWeeks,
       entitlement:c.terms.dateEntitlement,weekly:c.terms.weeklyGuarantee,
       appearance:c.terms.appearanceFee,bonus:c.terms.signingBonus,
       role:c.terms.roleExpectation,creative:c.terms.creativeControl})))]);

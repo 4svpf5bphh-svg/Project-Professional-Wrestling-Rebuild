@@ -102,6 +102,13 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       const conflicts=await inspectWeekConflicts(tx,input.worldId);
       if(!conflicts.provisionalClear || conflicts.activePromotions!==required)
         throw new Error("World week has unresolved schedule conflicts");
+      // No certified World can bypass unsettled wrestler negotiations.
+      const outstanding=await tx.query<{pending:boolean}>(`
+       SELECT (EXISTS(SELECT 1 FROM ppw_contract_offers WHERE world_id=$1 AND status='PENDING')
+        OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND status='PENDING')
+        OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING'))
+        AS pending`,[input.worldId]);
+      if(outstanding[0]!.pending)throw new Error("Contract desk negotiations must resolve before World rollover");
       // Retain the canonical daily cadence (a 52-week year, 1 real day/week).
       // If the resolver misses a whole day, do not reopen with a deadline
       // already in the past; this needs an explicit recovery policy.

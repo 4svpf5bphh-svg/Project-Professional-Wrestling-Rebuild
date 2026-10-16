@@ -16,3 +16,9 @@ test("one-off requires a date and inactive contract cannot book",()=>{
   assert.equal(contractAvailability({...base,family:"ONE_OFF",remainingDates:null}).reason,"INVALID_CONTRACT");
   assert.equal(contractAvailability({...base,status:"TERMINATED"}).reason,"NOT_SIGNED");
 });
+
+test("signed future agreements do not grant early appearance rights",()=>{
+ assert.equal(contractAvailability({...base,startWeekIndex:12}).reason,"NOT_STARTED");
+ assert.equal(contractAvailability({...base,startWeekIndex:10}).available,true);
+ assert.equal(contractAvailability({...base,startWeekIndex:21}).reason,"INVALID_CONTRACT");
+});
