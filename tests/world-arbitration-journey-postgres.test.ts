@@ -12,17 +12,18 @@ import type {TransactionPool} from "../src/db/transaction.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
-async function fixture(pool:TransactionPool,worldId:string,kind:"VENUE"|"WRESTLER"){
- const promotions=[0,1].map(i=>"promo-"+i+"-"+worldId);
- const shows=[0,1].map(i=>"show-"+i+"-"+worldId);
+async function fixture(pool:TransactionPool,worldId:string,kind:"VENUE"|"WRESTLER",count=2){
+ if(kind==="WRESTLER"&&count!==2)throw new Error("Wrestler conflict fixture supports two promotions");
+ const promotions=Array.from({length:count},(_,i)=>"promo-"+i+"-"+worldId);
+ const shows=Array.from({length:count},(_,i)=>"show-"+i+"-"+worldId);
  const people=kind==="VENUE"
-  ?[0,1,2,3].map(i=>"person-"+i+"-"+worldId)
+  ?Array.from({length:count*2},(_,i)=>"person-"+i+"-"+worldId)
   :["shared-"+worldId,"one-"+worldId,"two-"+worldId];
- const bookings=kind==="VENUE"?[[0,1],[2,3]]:[[0,1],[0,2]];
- const contracts=[0,1,2,3].map(i=>"contract-"+i+"-"+worldId);
+ const bookings=kind==="VENUE"?Array.from({length:count},(_,i)=>[i*2,i*2+1]):[[0,1],[0,2]];
+ const contracts=Array.from({length:count*2},(_,i)=>"contract-"+i+"-"+worldId);
  await withWorldTransaction(pool,async tx=>{
   await createWorld(tx,{id:worldId,name:"Arbitrated World",seed:979,rulesetVersion:"test"});
-  for(let i=0;i<2;i++){
+  for(let i=0;i<count;i++){
    await addPromotion(tx,worldId,{id:promotions[i]!,name:"Promotion "+i,tier:"LOCAL"});
    await tx.query("UPDATE ppw_promotions SET management_mode='AI',media_reach=70 WHERE world_id=$1 AND promotion_id=$2",
     [worldId,promotions[i]!]);
@@ -33,7 +34,7 @@ async function fixture(pool:TransactionPool,worldId:string,kind:"VENUE"|"WRESTLE
   for(const id of people)await tx.query(
    "INSERT INTO ppw_people(world_id,person_id,name,booking_division,weekly_service_capacity,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum) VALUES($1,$2,'Talent','MEN',2,80,80,75,85,95,5,5,65,65,70)",
    [worldId,id]);
-  for(let i=0;i<2;i++){
+  for(let i=0;i<count;i++){
    const [a,b]=bookings[i]!;
    const personIds=[people[a]!,people[b]!];
    for(let j=0;j<2;j++)await tx.query(
@@ -159,5 +160,57 @@ test("human-controlled same-day wrestler loss blocks after deterministic proposa
   const again=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:8});
   assert.equal(again.status,"BLOCKED");
   assert.deepEqual(again.steps.map(s=>s.action),["ARBITRATE_OR_REMEDIATE"]);
+ }finally{await cleanup(db.pool,worldId).finally(()=>db.close());}
+});
+
+
+test("three AI venue claimants resume after the first remedial edit with distinct receipts",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,4),worldId="triple-arb-"+randomUUID();
+ const resolutionId="resolution-"+worldId;
+ try{
+  await fixture(db.pool,worldId,"VENUE",3);
+  const preview=await previewWorldWeekArbitration(db.pool,worldId);
+  assert.equal(preview.outcomes.length,2);
+  assert.ok(preview.outcomes.every(x=>x.kind==="VENUE"));
+  const interrupted=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:2});
+  assert.equal(interrupted.status,"LIMIT_REACHED");
+  assert.deepEqual(interrupted.steps.map(x=>x.action),[
+   "RECORD_ARBITRATION","REMEDIATE_AI_CLAIM",
+  ]);
+  const one=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type='AI_BOOKING_REMEDIATED'",
+   [worldId]));
+  assert.equal(one[0]!.n,"1");
+  const continued=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:3});
+  assert.equal(continued.status,"LIMIT_REACHED");
+  assert.deepEqual(continued.steps.map(x=>x.action),[
+   "REMEDIATE_AI_CLAIM","CLEAR_RESOURCES","RESOLVE_LEGACY_SHOWS",
+  ]);
+  const remaining=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type='AI_BOOKING_REMEDIATED'",
+   [worldId]));
+  assert.equal(remaining[0]!.n,"2");
+  const finished=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:3});
+  assert.equal(finished.status,"PUBLISHED");
+  assert.deepEqual(finished.steps.map(x=>x.action),[
+   "RESOLVE_DETAILED_SHOWS","CERTIFY_WEEK","PUBLISH_WEEK",
+  ]);
+  const state=await withWorldTransaction(db.pool,tx=>tx.query<{year:number;week:number;phase:string}>(
+   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]));
+  assert.deepEqual(state,[{year:1,week:2,phase:"OPEN"}]);
+  const dates=await withWorldTransaction(db.pool,tx=>tx.query<{remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1",[worldId]));
+  assert.equal(dates.length,6);
+  assert.ok(dates.every(x=>x.remaining_dates===0));
+  const results=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]));
+  assert.equal(results[0]!.n,"3");
+  // The first remediation cannot be replayed under the next loser identity.
+  const receipts=await withWorldTransaction(db.pool,tx=>tx.query<{request_id:string}>(
+   "SELECT request_id FROM ppw_command_receipts WHERE world_id=$1 AND command_type='APPLY_AI_WEEK_REMEDIATION' ORDER BY request_id",
+   [worldId]));
+  assert.equal(receipts.length,2);
+  assert.notEqual(receipts[0]!.request_id,receipts[1]!.request_id);
  }finally{await cleanup(db.pool,worldId).finally(()=>db.close());}
 });
