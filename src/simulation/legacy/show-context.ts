@@ -48,3 +48,36 @@ export function combineArchivedShowMatchContext(
   adjustment:round1(crowdResponse-pacing.baseMatchCrowd),
   segmentReactions:"NOT_PROJECTED" as const,matches};
 }
+
+/** Incorporate only *recorded* segment crowd scores. No invented segment
+ * reactions, no show resolution, and no state mutation. Archived segments
+ * contribute weight 0.65 each, as in the original pacing calculation.
+ */
+export function combineRecordedSegmentCrowd(
+ context:ReturnType<typeof combineArchivedShowMatchContext>,
+ segments:readonly {position:number;crowdResponse:number}[],
+){
+ if(context.phase!=="MATCH_CONTEXT_ONLY_NOT_FINAL"||
+   context.segmentReactions!=="NOT_PROJECTED"||
+   !Array.isArray(segments)||segments.length>100||
+   segments.some(s=>!Number.isSafeInteger(s.position)||s.position<0||
+     !Number.isFinite(s.crowdResponse)||s.crowdResponse<0||s.crowdResponse>100)||
+   new Set(segments.map(s=>s.position)).size!==segments.length||
+   context.matches.some(m=>segments.some(s=>s.position===m.position)))
+  throw new Error("Invalid recorded show segment context");
+ const segmentWeight=0.65;
+ const matchWeight=context.matches.reduce((n,m)=>n+m.weight,0);
+ const totalWeight=matchWeight+segments.length*segmentWeight;
+ if(totalWeight<=0)throw new Error("Empty show context");
+ const crowdResponse=round1((
+   context.matches.reduce((n,m)=>n+m.adjustedCrowdResponse*m.weight,0)+
+   segments.reduce((n,s)=>n+s.crowdResponse*segmentWeight,0))/totalWeight);
+ const baseCrowdResponse=round1((
+   context.matches.reduce((n,m)=>n+m.originalCrowd*m.weight,0)+
+   segments.reduce((n,s)=>n+s.crowdResponse*segmentWeight,0))/totalWeight);
+ return {...context,phase:"RECORDED_SEGMENT_CROWD_NOT_FINAL" as const,
+  crowdResponse,baseCrowdResponse,
+  adjustment:round1(crowdResponse-baseCrowdResponse),
+  segmentReactions:"RECORDED_CROWD_ONLY" as const,
+  segments:segments.map(x=>({...x}))};
+}
