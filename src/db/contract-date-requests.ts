@@ -74,3 +74,34 @@ export async function readPendingDateRequests(
     ORDER BY created_week_index,request_id LIMIT 100`,[worldId,promotionId]);
  });
 }
+
+/** Player can withdraw an unanswered proposal. No wrestler terms change. */
+export async function cancelDateRequest(pool:TransactionPool,input:{
+ worldId:string;playerId:string;promotionId:string;dateRequestId:string;
+ requestId:string;expectedRevision:number;
+}){
+ if(!input.promotionId||input.promotionId.length>200||
+    !input.dateRequestId||input.dateRequestId.length>200)throw new Error("Invalid request");
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,commandType:"CANCEL_DATE_REQUEST",
+  requiresOpenWeek:true,
+  execute:async tx=>{
+   const owner=await tx.query<{promotion_id:string}>(`
+    SELECT c.promotion_id FROM ppw_promotion_controls c
+    JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+    WHERE c.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3
+      AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
+    [input.worldId,input.playerId,input.promotionId]);
+   if(owner.length!==1)throw new Error("Promotion access denied");
+   const updated=await tx.query<{request_id:string}>(`
+    UPDATE ppw_contract_date_requests SET status='CANCELLED'
+    WHERE world_id=$1 AND promotion_id=$2 AND request_id=$3 AND status='PENDING'
+    RETURNING request_id`,
+    [input.worldId,input.promotionId,input.dateRequestId]);
+   if(updated.length!==1)throw new Error("Pending date request not found");
+   return {dateRequestId:input.dateRequestId,status:"CANCELLED" as const};
+  },
+ });
+}

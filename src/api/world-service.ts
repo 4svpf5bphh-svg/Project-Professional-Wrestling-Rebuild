@@ -4,7 +4,8 @@ import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
-import {requestAdditionalDates,readPendingDateRequests} from "../db/contract-date-requests.js";
+import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
+import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
@@ -95,4 +96,21 @@ export async function pendingDateRequestsAsActor(
  validate(worldId,"World");
  validate(promotionId,"promotion");
  return readPendingDateRequests(context.pool,worldId,context.actor.playerId,promotionId);
+}
+
+/** Single authenticated Contract Desk snapshot from the canonical World clock. */
+export async function contractDeskAsActor(
+ context:WorldApiContext,worldId:string,promotionId:string,
+){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readContractDesk(context.pool,worldId,context.actor.playerId,promotionId);
+}
+export async function cancelDateRequestAsActor(
+ context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;dateRequestId:string},
+){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.dateRequestId,"date request");
+ return cancelDateRequest(context.pool,{...input,playerId:context.actor.playerId});
 }
