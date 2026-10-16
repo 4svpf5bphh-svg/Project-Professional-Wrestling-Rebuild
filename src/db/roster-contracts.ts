@@ -1,15 +1,9 @@
 import type { TransactionPool } from "./transaction.js";
 import { withSqlClient } from "./postgres.js";
-import { contractAvailability, type ContractAvailabilityReason, type ContractAvailabilityInput } from "../domain/contract-availability.js";
+import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
+import {contractDeskEntry, type ContractDeskEntry} from "../domain/contract-desk.js";
 
-export interface RosterContractRow {
-  contractId:string; personId:string; name:string;
-  family:ContractAvailabilityInput["family"];
-  remainingDates:number|null; expiresWeekIndex:number;
-  availableForBooking:boolean; reason:ContractAvailabilityReason;
-  weeksRemaining:number;expiringSoon:boolean;needsAttention:boolean;
-  renewalEligible:boolean;additionalDatesEligible:boolean;
-}
+export type RosterContractRow=ContractDeskEntry;
 
 /** Only the authenticated promotion controller may read its contracts.
  * Never infer promotion ownership from a client-provided promotion ID.
@@ -38,17 +32,10 @@ export async function readRosterContracts(
       "SELECT c.contract_id,c.person_id,p.name,c.family,c.status,c.remaining_dates,c.expires_week_index FROM ppw_contracts c JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED' ORDER BY p.name,c.contract_id LIMIT $3",
       [worldId,promotionId,limit],
     );
-    return rows.map(r=>{
-      const a=contractAvailability({family:r.family,status:r.status,remainingDates:r.remaining_dates,expiresWeekIndex:r.expires_week_index,currentWeekIndex});
-      const weeksRemaining=Math.max(0,r.expires_week_index-currentWeekIndex+1);
-      const expiringSoon=weeksRemaining<=4;
-      const additionalDatesEligible=r.family!=="EXCLUSIVE" && weeksRemaining>0 && r.remaining_dates!==null;
-      const renewalEligible=r.family!=="ONE_OFF" && weeksRemaining>0;
-      const needsAttention=expiringSoon || a.reason==="NO_DATES";
-      return {contractId:r.contract_id,personId:r.person_id,name:r.name,family:r.family,
-        remainingDates:r.remaining_dates,expiresWeekIndex:r.expires_week_index,
-        availableForBooking:a.available,reason:a.reason,weeksRemaining,expiringSoon,
-        needsAttention,renewalEligible,additionalDatesEligible};
-    });
+    return rows.map(r=>contractDeskEntry({
+      contractId:r.contract_id,personId:r.person_id,name:r.name,
+      family:r.family,status:r.status,remainingDates:r.remaining_dates,
+      expiresWeekIndex:r.expires_week_index,currentWeekIndex,
+    }));
   });
 }
