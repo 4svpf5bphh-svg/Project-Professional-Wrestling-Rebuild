@@ -21,7 +21,8 @@ const talent=new Map(["a","b","c","d"].map((id,i)=>[id,
 const args={layout:readCanonicalMatchLayout(p),wrestlers:talent,worldSeed:"9",
  matchId:"tag-show:match-1",order:1,eventImportance:77,
  intent:"COMPETITIVE" as const,plannedFinish:"CLEAN_PIN" as const,
- plannedLengthMinutes:19,chemistryModifier:4.5,injuryRateMultiplier:1};
+ plannedLengthMinutes:19,chemistryModifier:4.5,injuryRateMultiplier:1,
+ mediaReach:75,isMainEvent:true};
 test("individual legacy booking upgrades losslessly and 2v2 uses real side contract",()=>{
  const legacy=readCanonicalMatchLayout({participants:[person("a"),person("b")],
   scriptedWinner:"b",matchType:"SINGLES"});

@@ -35,6 +35,10 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     VALUES($1,'tag-partners','The Partners','ACTIVE')`,[world]);
    await tx.query(`INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
     VALUES($1,'tag-partners','person-0'),($1,'tag-partners','person-24')`,[world]);
+   await tx.query(`INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
+    VALUES($1,'tag-next','The Next','ACTIVE')`,[world]);
+   await tx.query(`INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
+    VALUES($1,'tag-next','person-48'),($1,'tag-next','person-72')`,[world]);
    await tx.query(`INSERT INTO ppw_championships
     (world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
     VALUES($1,'promotion-0','singles-title','World Championship','SINGLES','ACTIVE',95,'reign-1')`,[world]);
@@ -65,6 +69,8 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     draft_id:string;slot_id:string;position:number;payload:{
       participants:{personId:string;contractId:string}[];
       scriptedWinner:string;intent:string;plannedFinish:string;
+      matchType?:"SINGLES"|"TAG";family?:string;scriptedWinnerSide?:string;
+      sides?:{sideId:string;participants:{personId:string;contractId:string}[]}[];
       plannedLengthMinutes:number;mainEvent:boolean;scriptedBy:string;
     }}>(`
     SELECT draft_id,slot_id,position,payload FROM ppw_card_slots
@@ -75,6 +81,12 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     group.push(row);byCard.set(row.draft_id,group);
   }
   assert.equal(byCard.size,8);
+  const tagMatches=(byCard.get("ai-week-1-1-promotion-0")??[])
+   .filter(x=>x.payload.matchType==="TAG");
+  assert.equal(tagMatches.length,1,"AI must use two available established tag teams");
+  assert.deepEqual(tagMatches[0]!.payload.sides?.map(side=>
+   side.participants.map(p=>p.personId).sort()),[
+    ["person-0","person-24"],["person-48","person-72"]]);
   const mainProgramme=byCard.get("ai-week-1-1-promotion-0")?.at(-1);
   assert.equal(mainProgramme?.payload.mainEvent,true);
   assert.deepEqual(mainProgramme?.payload.participants.map(p=>p.personId).sort(),
@@ -90,12 +102,20 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     assert.equal(slots.at(-1)!.payload.mainEvent,true);
     assert.ok(slots.slice(0,-1).every(x=>!x.payload.mainEvent));
     const ids=slots.flatMap(s=>s.payload.participants.map(p=>p.personId));
-    assert.equal(ids.length,slots.length*2);
+    assert.ok(ids.length>=slots.length*2);
+    assert.equal(ids.length,slots.reduce((sum,slot)=>sum+
+      slot.payload.participants.length,0));
     assert.equal(new Set(ids).size,ids.length);
     assert.ok(ids.length<=10);
     for(const slot of slots){
       assert.equal(slot.payload.scriptedBy,"AI_WORLD_BOOKER");
       assert.ok(slot.payload.participants.some(x=>x.personId===slot.payload.scriptedWinner));
+      if(slot.payload.matchType==="TAG"){
+       assert.equal(slot.payload.family,"TEAMS");
+       assert.equal(slot.payload.participants.length,4);
+       assert.deepEqual(slot.payload.sides?.map(x=>x.participants.length),[2,2]);
+       assert.ok(["A","B"].includes(slot.payload.scriptedWinnerSide!));
+      }else assert.equal(slot.payload.participants.length,2);
       assert.ok(slot.payload.intent);
       assert.ok(slot.payload.plannedFinish);
       assert.ok(slot.payload.plannedLengthMinutes>=3);

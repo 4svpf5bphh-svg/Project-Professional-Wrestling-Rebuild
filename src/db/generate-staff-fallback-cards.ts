@@ -22,7 +22,7 @@ type SignedCandidate={
   presentation:number|null;match_craft:number|null;
 };
 type Generated={promotionId:string;showId:string;day:number;venueId:string;
-  participants:[{personId:string;contractId:string},{personId:string;contractId:string}];
+  participants:{personId:string;contractId:string}[];
   scriptedWinner:string;bookingDivision:"MEN"|"WOMEN";origin:"STAFF_FALLBACK"|"AI";
   matches?:AiCardMatch[]};
 type Unfilled={promotionId:string;reason:string};
@@ -245,6 +245,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             recentPairs:recent.get(promotionId)??[],
             featuredPairs:[...challengers,...rivals],
             establishedPartners,
+            establishedTeams:context?.teams,
+            tagTitles:context?.tagChampionships.get(promotionId),
           });
           if(card.status==="UNFILLED"){
             unfilled.push({promotionId,reason:card.reason});continue;
@@ -300,10 +302,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           showId:string;slotId:string;position:number;payload:unknown
         }>(show=>show.matches?
           show.matches.map((match,index)=>({
-            showId:show.showId,slotId:"ai-singles-"+String(index+1).padStart(2,"0"),
+            showId:show.showId,slotId:"ai-"+(match.matchType==="TAG"?"tag":"singles")+"-"+
+              String(index+1).padStart(2,"0"),
             position:index,payload:{
               participants:match.participants,scriptedWinner:match.scriptedWinner,
-              scriptedBy:"AI_WORLD_BOOKER",matchType:"SINGLES",
+              scriptedBy:"AI_WORLD_BOOKER",matchType:match.matchType??"SINGLES",
+              ...(match.matchType==="TAG"?{family:"TEAMS",sides:match.sides,
+                scriptedWinnerSide:match.scriptedWinnerSide}:{}),
               bookingDivision:match.bookingDivision,intent:match.intent,
               plannedFinish:match.plannedFinish,
               plannedLengthMinutes:match.plannedLengthMinutes,
@@ -364,7 +369,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         [input.worldId,year,week,JSON.stringify({
           generated:generated.map(x=>({promotionId:x.promotionId,showId:x.showId,
             day:x.day,venueId:x.venueId,origin:x.origin,winner:x.scriptedWinner,
-            participants:x.participants.map(p=>p.personId)})),
+            participants:x.matches?
+              x.matches.flatMap(m=>m.participants.map(p=>p.personId)):
+              x.participants.map(p=>p.personId)})),
           unfilled,staffAuthored:true,simulationConsequencesPending:true,
           matchCount:generated.reduce((sum,x)=>sum+(x.matches?.length??1),0),
         })],

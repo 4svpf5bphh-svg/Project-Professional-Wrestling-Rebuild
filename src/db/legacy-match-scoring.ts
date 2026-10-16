@@ -226,13 +226,18 @@ export async function previewArchivedShowMatchScoresInTransaction(
           Number(show.injury_rate_multiplier);
         // Strictly refuse unresolved injury settings; never fabricate them.
         if(rate===null)throw new Error("Tag medical ruleset not imported");
+        if(typeof show.media_reach!=="number"||
+          !Number.isFinite(show.media_reach))
+          throw new Error("Tag wrestler career progression requires imported promotion media reach");
         const result=simulateBookedTagMatch({
           layout,wrestlers:talent,worldSeed,
           matchId:`${input.showId}:${slot.slot_id}`,order:index+1,
           eventImportance:show.event_importance!,
           intent:intent as MatchIntent,plannedFinish,
           plannedLengthMinutes:length,chemistryModifier:modifier,
-          injuryRateMultiplier:rate,interference:interruption,
+          injuryRateMultiplier:rate,mediaReach:show.media_reach,
+          isMainEvent:index===matches.length-1,
+          interference:interruption,
           interferer:profile?{
             active:profile.status==="ACTIVE",
             appearanceCommitted:bookedForShow.has(interruption!.personId),
@@ -463,7 +468,21 @@ export async function previewArchivedShowMatchScoresInTransaction(
       showFinishPreview!==null?
       combineArchivedShowMatchContext(showPacingPreview,
         showAlignmentPreview.matches,showProgrammePreview,showFinishPreview):null;
-    const titleBookings=matches.flatMap(slot=>{
+    const tagTitleBookings=matches.flatMap((slot,index)=>{
+      const payload=slot.payload as Record<string,unknown>;
+      if(payload.championshipId===undefined ||
+        requireSupportedScoringLayout(layouts[index]!)!=="TAG")return [];
+      if(typeof payload.championshipId!=="string"||
+        !payload.championshipId||payload.championshipId.length>200)
+       throw new Error("Invalid canonical tag championship");
+      const layout=layouts[index]!;
+      return [{slotId:slot.slot_id,championshipId:payload.championshipId,
+       sides:layout.sides.map(side=>({sideId:side.sideId,
+        personIds:side.participants.map(x=>x.personId)})) as
+          [{sideId:"A";personIds:string[]},{sideId:"B";personIds:string[]}]}];
+    });
+    const titleBookings=matches.flatMap((slot,index)=>{
+      if(requireSupportedScoringLayout(layouts[index]!)==="TAG")return [];
       const payload=slot.payload as Record<string,unknown>;
       if(payload.championshipId===undefined)return [];
       if(typeof payload.championshipId!=="string"||
@@ -474,7 +493,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
        participants:[ids[0]!.personId,ids[1]!.personId] as [string,string]}];
     });
-    return {titleBookings,worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
+    return {titleBookings,tagTitleBookings,worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
       projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
 }

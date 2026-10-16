@@ -105,3 +105,48 @@ test("singles titles trump programmes on a major show only when the champion and
   {aId:"talent-01",bId:"talent-02",kind:"SINGLES_TITLE" as const,
    championshipId:"belt",holderId:"talent-02",heat:50}]}),/Invalid canonical/);
 });
+
+test("AI books two verified established teams together, without wrestler reuse or fabricated tag titles",()=>{
+ const teams=[
+  {teamId:"young-lions",aId:"talent-01",bId:"talent-02"},
+  {teamId:"veterans",aId:"talent-04",bId:"talent-05"},
+ ];
+ const input={...base,establishedTeams:teams};
+ const card=chooseAiWorldCard(input);
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const tag=card.matches.find(m=>m.matchType==="TAG");
+ assert.ok(tag);
+ assert.equal(tag.family,"TEAMS");
+ assert.equal(tag.participants.length,4);
+ assert.deepEqual(tag.sides!.map(x=>x.participants.map(p=>p.personId)),
+  [["talent-01","talent-02"],["talent-04","talent-05"]]);
+ const ids=card.matches.flatMap(m=>m.participants.map(p=>p.personId));
+ assert.equal(new Set(ids).size,ids.length);
+ assert.ok(ids.length<=10);
+ assert.ok(tag.sides![tag.scriptedWinnerSide==="A"?0:1]!.participants.some(
+  x=>x.personId===tag.scriptedWinner));
+ assert.deepEqual(card,chooseAiWorldCard({...input,
+  roster:[...roster].reverse(),establishedTeams:[...teams].reverse()}));
+});
+test("AI may defend a real tag championship on a major show",()=>{
+ const teams=[
+  {teamId:"champions",aId:"talent-01",bId:"talent-02"},
+  {teamId:"challengers",aId:"talent-04",bId:"talent-05"},
+ ];
+ const card=chooseAiWorldCard({...base,eventType:"MAJOR",
+  establishedTeams:teams,tagTitles:[{championshipId:"tag-belt",
+   holderTeamId:"champions",heat:92}]});
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const main=card.matches.at(-1)!;
+ assert.equal(main.matchType,"TAG");
+ assert.equal(main.championshipId,"tag-belt");
+ assert.equal(main.mainEvent,true);
+ assert.equal(main.intent,"EPIC");
+ const noDefender=chooseAiWorldCard({...base,eventType:"MAJOR",
+  establishedTeams:teams,
+  tagTitles:[{championshipId:"tag-belt",holderTeamId:"missing",heat:92}]});
+ if(noDefender.status==="READY")
+  assert.ok(noDefender.matches.every(m=>m.championshipId!=="tag-belt"));
+});

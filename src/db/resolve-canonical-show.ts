@@ -14,6 +14,8 @@ import {recordCompletedShowInTransaction}
  from "./completed-show-results.js";
 import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
+import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
+import {settleCanonicalTagCareerConsequences} from "./tag-career-settlement.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -44,8 +46,13 @@ export async function resolveCanonicalShow(
   const segments=await readCanonicalSegmentContextsInTransaction(tx,input);
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
   const recorded=await recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
-  if(recorded==="RECORDED"&&projection.titleBookings.length)
-   await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
+  if(recorded==="RECORDED"){
+   if(projection.titleBookings.length)
+    await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
+   if(projection.tagTitleBookings.length)
+    await settleCanonicalTagTitleContests(tx,completed.receipt,projection.tagTitleBookings);
+   await settleCanonicalTagCareerConsequences(tx,projection);
+  }
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{
      ...input,averageMatchRating:Math.round(

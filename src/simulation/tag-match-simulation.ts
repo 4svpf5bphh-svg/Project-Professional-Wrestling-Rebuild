@@ -16,6 +16,7 @@ export interface TagSimulationInput{
  worldSeed:string;matchId:string;order:number;eventImportance:number;
  intent:MatchIntent;plannedFinish:MatchFinish;plannedLengthMinutes:number;
  chemistryModifier:number;injuryRateMultiplier:number;
+ mediaReach:number;isMainEvent:boolean;
  interference?:BookedInterference|null;interferer?:InterfererReadiness|null;
 }
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -39,7 +40,8 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
  if(layout.family!=="TEAMS"||layout.sides.length!==2||
   layout.sides.some(x=>x.participants.length!==2)||
   !Number.isFinite(input.injuryRateMultiplier)||input.injuryRateMultiplier<0||
-  input.injuryRateMultiplier>10)
+  input.injuryRateMultiplier>10||
+  !Number.isFinite(input.mediaReach)||input.mediaReach<0||input.mediaReach>1000000)
   throw new Error("First team simulator only supports canonical 2v2");
  const ids=layout.sides.flatMap(x=>x.participants.map(p=>p.personId));
  const people=ids.map(id=>{
@@ -111,10 +113,34 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
    ({MINOR:35,MODERATE:50,MAJOR:65,SEVERE:80})[injuryRecord.severity]:0;
   const injuryWear=injuryRecord?
    ({MINOR:.5,MODERATE:1.5,MAJOR:3,SEVERE:5})[injuryRecord.severity]:0;
+  const momentumDelta=won?
+   ({SUBMISSION:1.55,CLEAN_PIN:1.4,FLASH_PIN:.95,PROTECTED_FINISH:.7,
+     DISQUALIFICATION:.55,FOREIGN_OBJECT:.95,INJURY_STOPPAGE:.35})[final.actualFinish]:
+    score.criticalRatingStars>=4?.35:
+    ({SUBMISSION:-.6,CLEAN_PIN:-.45,FLASH_PIN:-.15,PROTECTED_FINISH:0,
+      DISQUALIFICATION:-.05,FOREIGN_OBJECT:-.2,INJURY_STOPPAGE:-.05})[final.actualFinish];
+  const exposure=.025+input.mediaReach/3000+
+    input.eventImportance/5000+(input.isMainEvent?.015:0);
+  const recognitionGain=exposure*Math.max(.08,1-person.recognition/108);
+  const crowdGain=Math.max(0,final.crowdResponse-55)/800;
+  const performanceGain=Math.max(0,score.criticalRatingStars-2.5)*.035;
+  const winnerGain=won?
+    ({SUBMISSION:.013,CLEAN_PIN:.012,FLASH_PIN:.009,PROTECTED_FINISH:.006,
+      DISQUALIFICATION:.004,FOREIGN_OBJECT:.007,INJURY_STOPPAGE:.004})[final.actualFinish]:0;
+  const poorPenalty=score.criticalRatingStars<1.75?.02:
+    final.crowdResponse<32?.01:0;
+  const popularityDelta=(crowdGain+performanceGain+winnerGain)*
+    Math.max(.12,1-person.popularity/108)-poorPenalty;
+  const before={fatigue:person.fatigue,wear:person.wear,
+   momentum:person.momentum,recognition:person.recognition,
+   popularity:person.popularity};
+  const after={fatigue:round1(clamp(Math.max(person.fatigue,fatigueFloor)+load,0,100)),
+    wear:round1(clamp(person.wear+injuryWear+wear,0,100)),
+    momentum:round1(clamp(person.momentum+momentumDelta,0,100)),
+    recognition:Math.round(clamp(person.recognition+recognitionGain,0,100)*100)/100,
+    popularity:Math.round(clamp(person.popularity+popularityDelta,0,100)*100)/100};
   return {personId,sideId:layout.sides[Math.floor(i/2)]!.sideId,
-   won,injury:injuryRecord,
-   after:{fatigue:round1(clamp(Math.max(person.fatigue,fatigueFloor)+load,0,100)),
-    wear:round1(clamp(person.wear+injuryWear+wear,0,100))}};
+   won,injury:injuryRecord,before,after};
  });
  return {score,injury,final,members,actualWinnerSide:actualSide,
   plannedWinnerSide:plannedSide};

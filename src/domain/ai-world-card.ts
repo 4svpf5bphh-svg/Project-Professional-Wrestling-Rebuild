@@ -17,11 +17,16 @@ export interface AiCardInput{
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  recentPairs?:readonly string[];
  establishedPartners?:readonly {aId:string;bId:string}[];
+ establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
+ tagTitles?:readonly {championshipId:string;holderTeamId:string;heat:number}[];
  featuredPairs?:readonly {aId:string;bId:string;kind:"PROGRAMME"|"SINGLES_TITLE";
   programmeId?:string;championshipId?:string;holderId?:string;heat:number}[];
 }
 export type AiCardMatch={
- participants:[{personId:string;contractId:string},{personId:string;contractId:string}];
+ participants:{personId:string;contractId:string}[];
+ matchType?:"SINGLES"|"TAG";family?:"TEAMS";
+ sides?:readonly {sideId:"A"|"B";participants:{personId:string;contractId:string}[]}[];
+ scriptedWinnerSide?:"A"|"B";
  scriptedWinner:string;bookingDivision:"MEN"|"WOMEN";
  intent:"COMPETITIVE"|"STORY"|"PROTECTIVE"|"SHOWCASE"|"TECHNICAL"|"HIGH_RISK"|"EPIC";
  plannedFinish:"CLEAN_PIN"|"SUBMISSION"|"FLASH_PIN"|"PROTECTED_FINISH";
@@ -73,7 +78,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   input.roster.length>256||input.activeVenues.length>256||
   input.bookedShows.length>128||(input.recentPairs?.length??0)>1024||
   (input.featuredPairs?.length??0)>256||
-  (input.establishedPartners?.length??0)>512)
+  (input.establishedPartners?.length??0)>512||
+  (input.establishedTeams?.length??0)>512||
+  (input.tagTitles?.length??0)>256)
    throw new Error("Invalid World AI card context");
  const used=new Map<string,number>();
  for(const x of input.bookedShows)for(const id of new Set(x.personIds))
@@ -122,10 +129,39 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    (a.kind==="SINGLES_TITLE"?0:1)-(b.kind==="SINGLES_TITLE"?0:1)||
    b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
  const reserve=priority[0]??null;
+ const tagCandidates=(input.establishedTeams??[]).map(t=>{
+  if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
+   throw new Error("Invalid established tag team");
+  return {...t,a:byId.get(t.aId),b:byId.get(t.bId)};
+ }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
+  ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId))
+  .sort((a,b)=>push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
+   a.teamId.localeCompare(b.teamId,"en"));
+ const titleCandidates=(input.tagTitles??[]).filter(t=>{
+  if(!t.championshipId||!t.holderTeamId||!isStat(t.heat))
+   throw new Error("Invalid tag championship context");
+  return true;
+ }).sort((a,b)=>b.heat-a.heat||
+  a.championshipId.localeCompare(b.championshipId,"en"));
+ const eligibleTagTitle=input.eventType==="MAJOR"?
+   titleCandidates.find(t=>tagCandidates.some(x=>x.teamId===t.holderTeamId)):undefined;
+ const firstTeam=eligibleTagTitle?
+  tagCandidates.find(t=>t.teamId===eligibleTagTitle.holderTeamId):tagCandidates[0];
+ const secondTeam=firstTeam?tagCandidates.find(t=>t.teamId!==firstTeam.teamId&&
+  t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
+  ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
+  ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
+ const tagChoice=firstTeam&&secondTeam?{first:firstTeam,second:secondTeam,
+  titleId:eligibleTagTitle?.championshipId??null}:null;
+ const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
+  tagChoice.second.aId,tagChoice.second.bId]:[]);
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
+ if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
  if(men.length>=2&&women.length>=2&&available.length>=4){
-  chosen.push(...men.slice(0,2),...women.slice(0,2));
+  for(const p of [...men.slice(0,2),...women.slice(0,2)]){
+   if(chosen.length<10&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
+  }
  }
  for(const p of available){
   if(chosen.length>=10)break;
@@ -141,6 +177,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   return key(x.aId,x.bId);
  }));
  const cards:Array<[AiRosterCandidate,AiRosterCandidate]>=[];
+ if(tagChoice)for(const id of tagIds){
+  const idx=pool.findIndex(p=>p.personId===id);
+  if(idx<0)throw new Error("AI tag team was not reserved");
+  pool.splice(idx,1);
+ }
  if(reserve){
   const a=pool.find(p=>p.personId===reserve.aId)!;
   const b=pool.find(p=>p.personId===reserve.bId)!;
@@ -177,22 +218,69 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   // simulation slice, not as a hidden random undercard bout.
   cards.push(cards.splice(idx,1)[0]!);
  }
- const matches:AiCardMatch[]=cards.map(([a,b],i)=>{
-  const order=i+1,main=i===cards.length-1;
+ const cardEntries:Array<{people:AiRosterCandidate[];tag:boolean}> =
+   cards.map(([a,b])=>({people:[a,b],tag:false}));
+ if(tagChoice)cardEntries.push({people:[
+  byId.get(tagChoice.first.aId)!,byId.get(tagChoice.first.bId)!,
+  byId.get(tagChoice.second.aId)!,byId.get(tagChoice.second.bId)!],tag:true});
+ cardEntries.sort((a,b)=>
+  a.people.reduce((sum,p)=>sum+push(p),0)/a.people.length-
+  b.people.reduce((sum,p)=>sum+push(p),0)/b.people.length||
+  a.people.map(x=>x.personId).join(":").localeCompare(
+   b.people.map(x=>x.personId).join(":"),"en"));
+ // The most important canonical title gets the main event. An existing
+ // singles rivalry still closes when no title defense takes priority.
+ if(reserve){
+  const idx=cardEntries.findIndex(c=>!c.tag&&
+   c.people.some(p=>p.personId===reserve.aId)&&
+   c.people.some(p=>p.personId===reserve.bId));
+  if(idx<0)throw new Error("AI singles feature displaced");
+  if(reserve.kind==="SINGLES_TITLE"||!tagChoice?.titleId)
+   cardEntries.push(cardEntries.splice(idx,1)[0]!);
+ }
+ if(tagChoice?.titleId&&reserve?.kind!=="SINGLES_TITLE"){
+  const idx=cardEntries.findIndex(c=>c.tag);
+  cardEntries.push(cardEntries.splice(idx,1)[0]!);
+ }
+ const matches:AiCardMatch[]=cardEntries.map((entry,i)=>{
+  const [a,b]=entry.people as [AiRosterCandidate,AiRosterCandidate];
+  const order=i+1,main=i===cardEntries.length-1;
   const intent=style(input,order,main);
   const finalRng=new DeterministicRng(deterministicSeedFromText(
    `${input.worldSeed}:${input.showId}:finish:${order}`));
   const winnerRng=new DeterministicRng(deterministicSeedFromText(
    `${input.worldSeed}:${input.showId}:winner:${order}`));
   const fav=push(a)+winnerRng.float(-7,7)>=push(b)+winnerRng.float(-7,7)?a:b;
+  if(entry.tag){
+   const [t1a,t1b,t2a,t2b]=entry.people;
+   const scoreA=push(t1a!)+push(t1b!)+winnerRng.float(-7,7);
+   const scoreB=push(t2a!)+push(t2b!)+winnerRng.float(-7,7);
+   const winnerSide=scoreA>=scoreB?"A" as const:"B" as const;
+   const grouped=[{sideId:"A" as const,participants:[t1a!,t1b!].map(p=>({
+     personId:p.personId,contractId:p.contractId}))},
+    {sideId:"B" as const,participants:[t2a!,t2b!].map(p=>({
+     personId:p.personId,contractId:p.contractId}))}];
+   return {matchType:"TAG",family:"TEAMS",sides:grouped,
+    participants:grouped.flatMap(side=>side.participants),
+    scriptedWinnerSide:winnerSide,
+    scriptedWinner:winnerSide==="A"?t1a!.personId:t2a!.personId,
+    bookingDivision:t1a!.bookingDivision,intent,
+    plannedFinish:finish(intent,finalRng.next()),
+    plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
+    ...(tagChoice?.titleId?{championshipId:tagChoice.titleId}:{})};
+  }
   return {
    participants:[{personId:a.personId,contractId:a.contractId},
     {personId:b.personId,contractId:b.contractId}],
    scriptedWinner:fav.personId,bookingDivision:a.bookingDivision,
    intent,plannedFinish:finish(intent,finalRng.next()),
    plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
-   ...(main&&reserve?.kind==="PROGRAMME"?{programmeId:reserve.programmeId}:{}),
-   ...(main&&reserve?.kind==="SINGLES_TITLE"?{championshipId:reserve.championshipId}:{}),
+   ...(reserve&&[a.personId,b.personId].includes(reserve.aId)&&
+     [a.personId,b.personId].includes(reserve.bId)&&reserve.kind==="PROGRAMME"?
+     {programmeId:reserve.programmeId}:{}),
+   ...(reserve&&[a.personId,b.personId].includes(reserve.aId)&&
+     [a.personId,b.personId].includes(reserve.bId)&&reserve.kind==="SINGLES_TITLE"?
+     {championshipId:reserve.championshipId}:{}),
   };
  });
  return {status:"READY",schedule,matches};
