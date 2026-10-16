@@ -2,6 +2,9 @@
  * server-side from canonical submitted card; never expose this as player API.
  */
 import {createHash} from "node:crypto";
+import {readCanonicalMatchLayout,requireSupportedScoringLayout}
+ from "../domain/match-sides.js";
+import type {BookedTeamOutcome} from "../domain/verified-team-evidence.js";
 import {validateCompletedMatchEvidence,type CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
 import type {TransactionPool} from "./transaction.js";
@@ -87,7 +90,9 @@ export async function recordCompletedShowInTransaction(
    const p=raw as Record<string,unknown>;
    if(slot.kind==="MATCH"){
     const result=matchResults.get(slot.slot_id)!;
-    if(p.matchType==="SINGLES"){
+    const layout=readCanonicalMatchLayout(raw);
+    const format=requireSupportedScoringLayout(layout);
+    if(format==="SINGLES"){
      if(!Array.isArray(p.participants)||p.participants.length!==2||
       p.participants.some(x=>!x||typeof x!=="object"||
        typeof (x as Record<string,unknown>).personId!=="string")||
@@ -104,6 +109,23 @@ export async function recordCompletedShowInTransaction(
      }
     }
     const ev=evidenceByMatch.get(slot.slot_id);
+    if(format==="TAG"){
+      if(!ev||!("family" in ev.booking)||ev.booking.family!=="TEAMS")
+       throw new Error("Authoritative tag evidence required for every four-person match");
+      const booking=ev.booking as BookedTeamOutcome;
+      if(JSON.stringify(booking.sides)!==JSON.stringify(layout.sides.map(side=>({
+        sideId:side.sideId,participants:side.participants.map(x=>x.personId)})))||
+       booking.scriptedWinnerSide!==layout.scriptedWinnerSide||
+       booking.plannedFinish!==p.plannedFinish||
+       booking.interferencePlannedOutcome!==
+         ((p.interference as {plannedOutcome?:string}|undefined)?.plannedOutcome))
+       throw new Error("Completed tag evidence differs from the authored sides");
+      if(result.actualFinish!==booking.plannedFinish&&
+       result.actualFinish!=="INJURY_STOPPAGE"&&
+       result.actualFinish!=="PROTECTED_FINISH")
+       throw new Error("Completed tag finish differs from authored match");
+      continue;
+    }
     const exceptional=result.actualFinish==="INJURY_STOPPAGE"||
      result.actualFinish==="PROTECTED_FINISH";
     if(exceptional&&!ev)

@@ -10,6 +10,8 @@ import type {CompletedMatchReceipt}
  from "../domain/completed-show-receipt.js";
 import {verifyResolvedSinglesEvidence}
  from "../domain/verified-match-evidence.js";
+import {verifyResolvedTeamEvidence,type BookedTeamOutcome,
+ type ResolvedTeamEvidence} from "../domain/verified-team-evidence.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScores>>;
 export interface DerivedArchivedMatch {
  receipt:CompletedMatchReceipt;
@@ -19,6 +21,41 @@ export function deriveArchivedMatchEvidence(
  projection:Projection,
 ):DerivedArchivedMatch[]{
  return projection.projections.map(p=>{
+  if(p.tag){
+   const {layout,result}=p.tag;
+   const final=result.final,injury=result.injury;
+   const serious=injury.injuries.find(i=>
+    (i.severity==="MAJOR"||i.severity==="SEVERE")&&
+    layout.sides.find(s=>s.sideId===layout.scriptedWinnerSide)!
+      .participants.some(x=>x.personId===i.personId));
+   if(Boolean(serious)!==injury.injuryStoppage)
+    throw new Error("Tag medical evidence disagrees with actual stoppage");
+   const interference=final.interference;
+   const booking:BookedTeamOutcome={
+    family:"TEAMS",sides:layout.sides.map(s=>({
+      sideId:s.sideId,participants:s.participants.map(x=>x.personId)})),
+    scriptedWinnerSide:layout.scriptedWinnerSide,
+    plannedFinish:injury.plannedFinish,
+    ...(interference?{interferencePlannedOutcome:interference.plannedOutcome}:{})
+   };
+   const resolution:ResolvedTeamEvidence={
+    actualWinnerSide:result.actualWinnerSide,actualFinish:final.actualFinish,
+    ...(serious?{medical:{injuredPersonId:serious.personId,
+      severity:serious.severity as "MAJOR"|"SEVERE",
+      stoppage:true as const}}:{}),
+    ...(interference?{interference:{
+      plannedOutcome:interference.plannedOutcome,
+      actualOutcome:interference.outcome}}:{}),
+   };
+   if(final.actualWinnerId!==injury.actualWinnerId||
+      final.injuryStoppage!==injury.injuryStoppage)
+    throw new Error("Tag interference may not change scripted result");
+   const verified=verifyResolvedTeamEvidence(booking,resolution);
+   return {evidence:{matchId:p.slotId,booking,resolution},
+    receipt:{matchId:p.slotId,position:p.position,
+     crowdResponse:final.crowdResponse,
+     actualFinish:verified.actualFinish,actualWinnerSide:verified.actualWinnerSide}};
+  }
   const injury=p.injuryPreview,final=p.interferencePreview;
   if(!injury||!final)
    throw new Error("Cannot finalize an incomplete archived match preview");

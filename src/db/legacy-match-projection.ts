@@ -1,7 +1,9 @@
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
-import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
+import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
+import {adaptBookedSinglesMatch,adaptBookedTagReadiness,
+ type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
 
 export interface LegacyShowProjectionInput {
@@ -46,7 +48,8 @@ export async function previewLegacyShowMatchStyles(pool:TransactionPool,input:Le
     const ids=new Set<string>();
     for(const slot of matches){
       const participants=readCardParticipants(slot.payload);
-      if(participants.length!==2)throw new Error("Unsupported match cardinality in first legacy adapter");
+      const layout=readCanonicalMatchLayout(slot.payload);
+      requireSupportedScoringLayout(layout);
       for(const p of participants)ids.add(p.personId);
     }
     if(ids.size>100)throw new Error("Too many projected wrestler identities");
@@ -74,9 +77,15 @@ export async function previewLegacyShowMatchStyles(pool:TransactionPool,input:Le
       divisions.set(p.person_id,p.booking_division);
     }
     const projections=matches.map(slot=>{
+      const layout=readCanonicalMatchLayout(slot.payload);
+      const identities=layout.participants.map(x=>x.personId);
+      if(new Set(identities.map(id=>divisions.get(id))).size!==1)
+        throw new Error("Mixed booking divisions are not supported");
+      if(requireSupportedScoringLayout(layout)==="TAG"){
+        const match=adaptBookedTagReadiness(slot.payload,talents);
+        return {slotId:slot.slot_id,position:slot.position,...match};
+      }
       const match=adaptBookedSinglesMatch(slot.payload,talents);
-      if(divisions.get(match.personIds[0])!==divisions.get(match.personIds[1]))
-        throw new Error("Mixed booking divisions are not supported for singles matches");
       return {slotId:slot.slot_id,position:slot.position,...match};
     });
     return {worldId:input.worldId,year:show[0]!.year,week:show[0]!.week,

@@ -2,6 +2,10 @@ import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
+import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
+import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
+import {isBookableMatchFinish} from "../simulation/legacy/match-finishes.js";
+import type {MatchIntent} from "../simulation/legacy/types.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
 import {scoreArchivedSinglesBeforeInjuries,type ScoredWrestler}
@@ -103,15 +107,24 @@ export async function previewArchivedShowMatchScoresInTransaction(
       for(const p of readCardParticipants(slot.payload))bookedForShow.add(p.personId);
     }
     const pairMap=new Map<string,[string,string]>();
-    for(const slot of matches){
+    const tagPairs=new Map<string,[string,string]>();
+    const layouts=matches.map(m=>readCanonicalMatchLayout(m.payload));
+    for(const [i,slot] of matches.entries()){
+      const layout=layouts[i]!;
+      const kind=requireSupportedScoringLayout(layout);
       const interruption=readBookedInterference(slot.payload);
       if(interruption)interferers.add(interruption.personId);
       const ids=readCardParticipants(slot.payload);
-      if(ids.length!==2||ids[0]!.personId===ids[1]!.personId)
-        throw new Error("Original first-version scoring supports singles only");
-      const [a,b]=pairIds(ids[0]!.personId,ids[1]!.personId);
-      appearances.add(a);appearances.add(b);
-      pairMap.set(pairKey(a,b),[a,b]);
+      for(const p of ids)appearances.add(p.personId);
+      if(kind==="SINGLES"){
+        const [a,b]=pairIds(ids[0]!.personId,ids[1]!.personId);
+        pairMap.set(pairKey(a,b),[a,b]);
+      }else{
+        for(const side of layout.sides){
+          const [a,b]=pairIds(side.participants[0]!.personId,side.participants[1]!.personId);
+          tagPairs.set(pairKey(a,b),[a,b]);
+        }
+      }
     }
     if(appearances.size>100||pairMap.size>100||interferers.size>100)
       throw new Error("Original match scoring input too large");
@@ -157,9 +170,84 @@ export async function previewArchivedShowMatchScoresInTransaction(
         !assertStat(familiarity))throw new Error("Invalid historical chemistry record");
       mutableChem.set(pairKey(c.person_a_id,c.person_b_id),{compatibility,familiarity});
     }
+    const tags=[...tagPairs.values()].sort((a,b)=>
+      pairKey(...a).localeCompare(pairKey(...b),"en"));
+    const tagChemistry=tags.length?await tx.query<ChemistryRow>(`
+      SELECT c.person_a_id,c.person_b_id,c.compatibility,
+       c.familiarity,c.matches_together FROM ppw_working_chemistry c
+      JOIN unnest($2::text[],$3::text[]) AS asked(a,b)
+       ON c.person_a_id=asked.a AND c.person_b_id=asked.b
+      WHERE c.world_id=$1 AND c.context='TAG'`,
+      [input.worldId,tags.map(x=>x[0]),tags.map(x=>x[1])]):[];
+    if(tagChemistry.length>tags.length)throw new Error("Duplicate tag chemistry");
+    const mutableTagChem=new Map<string,{compatibility:number;familiarity:number}>();
+    for(const c of tagChemistry){
+      const compatibility=Number(c.compatibility),familiarity=Number(c.familiarity);
+      if(!Number.isFinite(compatibility)||compatibility< -12||compatibility>13||
+       !assertStat(familiarity))throw new Error("Invalid team chemistry");
+      mutableTagChem.set(pairKey(c.person_a_id,c.person_b_id),{compatibility,familiarity});
+    }
     const worldSeed=String(show.seed);
     const readiness=new Map<string,WrestlerSimReadiness>(talent);
     const projections=matches.map((slot,index)=>{
+      const layout=layouts[index]!;
+      if(requireSupportedScoringLayout(layout)==="TAG"){
+        const participantIds=layout.participants.map(x=>x.personId);
+        if(new Set(participantIds.map(id=>divisions.get(id))).size!==1)
+          throw new Error("Mixed booking divisions cannot form a 2v2 tag match");
+        const raw=slot.payload as Record<string,unknown>;
+        const allowed=["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
+          "HIGH_RISK","STORY","PROTECTIVE","EPIC"];
+        const intent=raw.intent??"COMPETITIVE";
+        const plannedFinish=raw.plannedFinish??"CLEAN_PIN";
+        const length=raw.plannedLengthMinutes??18;
+        if(typeof intent!=="string"||!allowed.includes(intent)||
+          !isBookableMatchFinish(plannedFinish)||
+          typeof length!=="number"||!Number.isInteger(length)||
+          length<3||length>60||raw.style!==undefined)
+          throw new Error("Unsupported tag match intent, duration, finish or style");
+        let modifier=0;
+        for(const side of layout.sides){
+          const [a,b]=pairIds(side.participants[0]!.personId,side.participants[1]!.personId);
+          const key=pairKey(a,b);
+          let chem=mutableTagChem.get(key);
+          if(!chem){
+            const rng=new DeterministicRng(deterministicSeedFromText(
+              `${worldSeed}:chemistry:TAG:${a}:${b}`));
+            chem={compatibility:Math.round(rng.float(-12,13)*10)/10,familiarity:0};
+            mutableTagChem.set(key,chem);
+          }
+          modifier+=chem.compatibility*.55+chem.familiarity*.04;
+          chem.familiarity=Math.min(100,chem.familiarity+4);
+        }
+        const interruption=readBookedInterference(slot.payload);
+        const profile=interruption?interfererProfiles.get(interruption.personId):null;
+        const rate=show.injury_rate_multiplier===null?null:
+          Number(show.injury_rate_multiplier);
+        // Strictly refuse unresolved injury settings; never fabricate them.
+        if(rate===null)throw new Error("Tag medical ruleset not imported");
+        const result=simulateBookedTagMatch({
+          layout,wrestlers:talent,worldSeed,
+          matchId:`${input.showId}:${slot.slot_id}`,order:index+1,
+          eventImportance:show.event_importance!,
+          intent:intent as MatchIntent,plannedFinish,
+          plannedLengthMinutes:length,chemistryModifier:modifier,
+          injuryRateMultiplier:rate,interference:interruption,
+          interferer:profile?{
+            active:profile.status==="ACTIVE",
+            appearanceCommitted:bookedForShow.has(interruption!.personId),
+            presentation:profile.presentation}:null,
+        });
+        return {tag:{layout,result},slotId:slot.slot_id,position:slot.position,
+          winnerId:result.injury.plannedWinnerId,
+          personIds:[layout.sides[0]!.participants[0]!.personId,
+            layout.sides[1]!.participants[0]!.personId] as [string,string],
+          finishCheaterId:null,plannedFinish,readiness:"READY" as const,
+          chemistryModifier:Math.round(modifier*1000)/1000,
+          score:result.score,injuryPreview:result.injury,
+          interferencePreview:result.final,
+          consequencesPreview:null};
+      }
       const match=adaptBookedSinglesMatch(slot.payload,readiness);
       if(divisions.get(match.personIds[0])!==divisions.get(match.personIds[1]))
         throw new Error("Mixed booking division cannot be scored as singles");
@@ -213,7 +301,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
           injury:injuryPreview!,final:interferencePreview,
           mediaReach:mediaReach!,isMainEvent:index===matches.length-1,
         }):null;
-      return {slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
+      return {tag:null,slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
         personIds:match.personIds,finishCheaterId:match.finishCheaterId,
         plannedFinish:match.plannedFinish,readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
@@ -237,7 +325,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
     // canonical promotion override and 8-week changed-history are batch
     // projected only after confirmed historical coverage and match scoring.
     let showAlignmentPreview:ReturnType<typeof combineArchivedPacingAndAlignments>|null=null;
-    if(showPacingPreview!==null && show.alignment_history_loaded){
+    if(showPacingPreview!==null && show.alignment_history_loaded &&
+       projections.every(p=>p.tag===null)){
       const ids=[...appearances].sort();
       const overrides=await tx.query<{person_id:string;alignment:WrestlerAlignment}>(
         `SELECT person_id,alignment FROM ppw_promotion_wrestler_alignments
@@ -317,7 +406,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
     let showFinishPreview:ReturnType<typeof evaluateArchivedFinishReactions>|null=null;
     // Actual, post-medical and post-interference finishes are authoritative
     // inputs. No guessed alignment or invented zero historical cheating.
-    if(showPacingPreview!==null&&show.dirty_finish_history_loaded&&
+    if(showPacingPreview!==null&&projections.every(p=>p.tag===null)&&
+       show.dirty_finish_history_loaded&&
        show.alignment_history_loaded&&showAlignmentPreview!==null){
       const currentWeekIndex=(show.year-1)*52+show.week-1;
       const history=await tx.query<{promotion_id:string;week_index:number;

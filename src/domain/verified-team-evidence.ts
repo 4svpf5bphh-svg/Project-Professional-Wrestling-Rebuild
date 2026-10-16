@@ -1,0 +1,55 @@
+/** Canonical tag result evidence. The World resolver, not a client,
+ * constructs medical/finish proofs from its own committed simulation.
+ */
+import type {MatchSideId} from "./match-sides.js";
+export interface BookedTeamOutcome{
+ family:"TEAMS";
+ sides:readonly {sideId:MatchSideId;participants:readonly string[]}[];
+ scriptedWinnerSide:MatchSideId;plannedFinish:string;
+ interferencePlannedOutcome?:"SUCCESS"|"THWARTED";
+}
+export interface ResolvedTeamEvidence{
+ actualWinnerSide:MatchSideId;actualFinish:string;
+ medical?:{injuredPersonId:string;severity:"MAJOR"|"SEVERE";stoppage:true};
+ interference?:{plannedOutcome:"SUCCESS"|"THWARTED";
+  actualOutcome:"SUCCESS"|"THWARTED"|"ABORTED"};
+}
+export function verifyResolvedTeamEvidence(
+ booking:BookedTeamOutcome,resolved:ResolvedTeamEvidence,
+):{actualWinnerSide:"A"|"B";actualFinish:string}{
+ if(booking.family!=="TEAMS"||booking.sides.length!==2||
+  booking.sides[0]?.sideId!=="A"||booking.sides[1]?.sideId!=="B"||
+  booking.sides.some(s=>s.participants.length!==2)||
+  !["A","B"].includes(booking.scriptedWinnerSide)||
+  !["A","B"].includes(resolved.actualWinnerSide)||
+  !booking.plannedFinish||
+  new Set(booking.sides.flatMap(s=>s.participants)).size!==4||
+  booking.sides.some(s=>s.participants.some(id=>!id)))
+  throw new Error("Invalid canonical 2v2 match evidence");
+ const medicallyStopped=resolved.medical?.stoppage===true;
+ if(resolved.medical&&
+  (!medicallyStopped||!["MAJOR","SEVERE"].includes(resolved.medical.severity)||
+   !booking.sides.find(s=>s.sideId===booking.scriptedWinnerSide)!
+    .participants.includes(resolved.medical.injuredPersonId)))
+  throw new Error("Medical evidence not from scripted winning team");
+ if(resolved.interference&&
+  (resolved.interference.plannedOutcome!==booking.interferencePlannedOutcome||
+   !["SUCCESS","THWARTED","ABORTED"].includes(resolved.interference.actualOutcome)))
+  throw new Error("Tag interference differs from scripted author outcome");
+ if(medicallyStopped){
+  if(resolved.actualWinnerSide===booking.scriptedWinnerSide||
+   resolved.actualFinish!=="INJURY_STOPPAGE"||
+   resolved.interference?.actualOutcome==="SUCCESS")
+    throw new Error("Medical stoppage must overturn injured winning team");
+ }else{
+  if(resolved.actualWinnerSide!==booking.scriptedWinnerSide)
+   throw new Error("Simulation cannot change a scripted winning team");
+  const protectedSpot=resolved.interference?.plannedOutcome==="SUCCESS"&&
+   resolved.interference.actualOutcome==="SUCCESS";
+  const expected=protectedSpot?"PROTECTED_FINISH":booking.plannedFinish;
+  if(resolved.actualFinish!==expected)
+   throw new Error("Tag finish differs from scripted outcome");
+ }
+ return {actualWinnerSide:resolved.actualWinnerSide as "A"|"B",
+  actualFinish:resolved.actualFinish};
+}

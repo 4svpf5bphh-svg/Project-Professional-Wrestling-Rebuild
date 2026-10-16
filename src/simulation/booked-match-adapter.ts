@@ -1,4 +1,6 @@
 import {readCardParticipants} from "../domain/card-participants.js";
+import {readCanonicalMatchLayout,requireSupportedScoringLayout}
+ from "../domain/match-sides.js";
 import {
   defaultMatchStyleForIntent,evaluateMatchStyleExecution,assessMatchStyleReadiness,
   normalizeMatchStyle,type MatchStyleSkillProfile,
@@ -32,12 +34,14 @@ export function adaptBookedSinglesMatch(payload:unknown,
   if(!payload||typeof payload!=="object"||Array.isArray(payload))
     throw new Error("Invalid booked match");
   const p=payload as Record<string,unknown>;
+  const layout=readCanonicalMatchLayout(payload);
+  if(requireSupportedScoringLayout(layout)!=="SINGLES")
+    throw new Error("Legacy singles adapter cannot score team matches");
   const people=readCardParticipants(payload);
-  if(people.length!==2||people[0]!.personId===people[1]!.personId ||
-    (p.matchType!==undefined&&p.matchType!=="SINGLES"))
-    throw new Error("Legacy adapter currently requires two distinct singles wrestlers");
   const ids=[people[0]!.personId,people[1]!.personId] as [string,string];
-  if(typeof p.scriptedWinner!=="string"||!ids.includes(p.scriptedWinner))
+  const authoredWinner=p.scriptedWinner??layout.sides.find(
+    x=>x.sideId===layout.scriptedWinnerSide)!.participants[0]!.personId;
+  if(typeof authoredWinner!=="string"||!ids.includes(authoredWinner))
     throw new Error("Player-authored scripted winner required; simulation may not choose it");
   const intent=p.intent===undefined?"COMPETITIVE":p.intent;
   if(typeof intent!=="string"||!INTENTS.has(intent as MatchIntent))
@@ -52,7 +56,7 @@ export function adaptBookedSinglesMatch(payload:unknown,
     p.plannedFinish;
   if(!isBookableMatchFinish(finish))
     throw new Error("Only original bookable finishes may be planned");
-  const winnerSide=p.scriptedWinner===ids[0]?"A":"B";
+  const winnerSide=authoredWinner===ids[0]?"A":"B";
   const cheater=resolveBookedFinishCheater(finish,winnerSide,[ids[0]],[ids[1]],
     typeof p.cheatingWrestlerId==="string"?p.cheatingWrestlerId:null);
   const records=ids.map(id=>{
@@ -71,9 +75,39 @@ export function adaptBookedSinglesMatch(payload:unknown,
   const readiness=records.map(r=>assessMatchStyleReadiness(style,r.skills,length,r.fatigue,r.wear));
   return {
     personIds:ids,contractIds:[people[0]!.contractId,people[1]!.contractId],
-    winnerId:p.scriptedWinner,intent:typedIntent,style,explicitStyle:p.style!==undefined,plannedFinish:finish,
+    winnerId:authoredWinner,intent:typedIntent,style,explicitStyle:p.style!==undefined,plannedFinish:finish,
     finishCheaterId:cheater,plannedLengthMinutes:length,
     styleEvaluations:evaluations,readiness,
     status:readiness.some(x=>x.status==="REFUSES")?"NEEDS_STYLE_REVIEW":"READY",
   };
+}
+
+/** Read-only team style readiness; preserves all four participants and
+ * never pretends that the first wrestler represents the whole team. */
+export function adaptBookedTagReadiness(payload:unknown,
+ talent:ReadonlyMap<string,WrestlerSimReadiness>){
+ const layout=readCanonicalMatchLayout(payload);
+ if(requireSupportedScoringLayout(layout)!=="TAG")
+  throw new Error("Tag readmodel requires 2v2 format");
+ const p=payload as Record<string,unknown>;
+ const intent=p.intent??"COMPETITIVE";
+ if(typeof intent!=="string"||!INTENTS.has(intent as MatchIntent))
+  throw new Error("Invalid tag match intent");
+ const length=p.plannedLengthMinutes??18;
+ if(typeof length!=="number"||!Number.isInteger(length)||length<3||length>60)
+  throw new Error("Invalid tag match duration");
+ const style=p.style===undefined?defaultMatchStyleForIntent(intent as MatchIntent):
+  normalizeMatchStyle(p.style as MatchStyleProfile);
+ const records=layout.participants.map(x=>{
+  const r=talent.get(x.personId);
+  if(!r)throw new Error("Missing contracted tag wrestler readiness");
+  return {personId:x.personId,
+   readiness:assessMatchStyleReadiness(style,r.skills,length,r.fatigue,r.wear),
+   execution:evaluateMatchStyleExecution(style,r.skills,length)};
+ });
+ return {family:"TEAMS" as const,sides:layout.sides,
+  scriptedWinnerSide:layout.scriptedWinnerSide,
+  status:records.some(x=>x.readiness.status==="REFUSES")?
+    "NEEDS_STYLE_REVIEW" as const:"READY" as const,
+  performers:records,plannedLengthMinutes:length};
 }
