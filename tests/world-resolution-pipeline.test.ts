@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek,planNextWorldResolutionAction,executeNextWorldResolutionStage}
+import {inspectWorldResolutionReadiness,runWorldShowResolutionPhase,publishResolvedWorldWeek,planNextWorldResolutionAction,executeNextWorldResolutionStage,driveWorldResolution}
  from "../src/db/world-resolution-pipeline.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 function fixture(config:{phase?:string;active?:number;submitted?:number;
@@ -89,4 +89,18 @@ test("executor refuses to bypass missing staff preparation",async()=>{
  const plan=await planNextWorldResolutionAction(db.pool,"world");
  assert.equal(plan.action,"GENERATE_STAFF_AND_AI_CARDS");
  assert.equal(plan.ready.submitted,1);
+});
+
+test("bounded driver halts at legacy accounting rather than advancing",async()=>{
+ const db=fixture({legacy:0});
+ const result=await driveWorldResolution(db.pool,{
+  worldId:"world",resolutionId:"resolution",maxStages:4});
+ assert.equal(result.status,"BLOCKED");
+ assert.equal(result.steps[0]!.action,"RESOLVE_LEGACY_SHOWS");
+ assert.equal(db.queries.some(x=>x.startsWith("UPDATE")),false);
+});
+test("driver rejects unbounded stage execution",async()=>{
+ const db=fixture();
+ await assert.rejects(driveWorldResolution(db.pool,{
+  worldId:"world",resolutionId:"resolution",maxStages:100}),/Invalid World driver scope/);
 });

@@ -209,3 +209,49 @@ export async function executeNextWorldResolutionStage(
   blockers:plan.blockers.length?plan.blockers:
    ["STAGE_REQUIRES_AUTHORITATIVE_PREPARATION_OR_CERTIFICATION"]};
 }
+
+/** Bounded server-side recovery driver. Executes a sequence of trusted
+ * stages and stops at the first unresolved decision. Each command has a
+ * unique week/stage request ID; World revision is reread before execution.
+ * No timer, HTTP route or background process is installed by this module.
+ */
+export async function driveWorldResolution(
+ pool:TransactionPool,input:{worldId:string;resolutionId:string;maxStages?:number},
+){
+ const maxStages=input.maxStages??8;
+ if(!input.worldId||!input.resolutionId||!Number.isSafeInteger(maxStages)||
+  maxStages<1||maxStages>16)throw new Error("Invalid World driver scope");
+ const steps:{action:WorldResolutionAction;status:"EXECUTED"|"BLOCKED"}[]=[];
+ for(let i=0;i<maxStages;i++){
+  const plan=await planNextWorldResolutionAction(pool,input.worldId);
+  const blocked=new Set<WorldResolutionAction>([
+   "WAIT_FOR_WORLD_LOCK","ARBITRATE_OR_REMEDIATE",
+   "RESOLVE_LEGACY_SHOWS","CERTIFY_WEEK",
+  ]);
+  if(blocked.has(plan.action)){
+   steps.push({action:plan.action,status:"BLOCKED"});
+   return {status:"BLOCKED" as const,steps,blockers:plan.blockers};
+  }
+  const revision=await withWorldTransaction(pool,async tx=>{
+   const rows=await tx.query<{revision:number|string;year:number;week:number}>(
+    "SELECT revision,year,week FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
+    [input.worldId]);
+   if(rows.length!==1||rows[0]!.year!==plan.year||
+    rows[0]!.week!==plan.week)throw new Error("World changed during resolution drive");
+   const n=Number(rows[0]!.revision);
+   if(!Number.isSafeInteger(n)||n<0)throw new Error("Invalid World revision");
+   return n;
+  });
+  const requestId=`${input.resolutionId}:${plan.year}:${plan.week}:${plan.action}`;
+  const result=await executeNextWorldResolutionStage(pool,{
+   worldId:input.worldId,resolutionId:input.resolutionId,
+   requestId,expectedRevision:revision,
+  });
+  steps.push({action:result.action,status:result.status});
+  if(result.status==="BLOCKED")
+   return {status:"BLOCKED" as const,steps,blockers:result.blockers};
+  if(result.action==="PUBLISH_WEEK")
+   return {status:"PUBLISHED" as const,steps,blockers:[]};
+ }
+ return {status:"LIMIT_REACHED" as const,steps,blockers:[]};
+}
