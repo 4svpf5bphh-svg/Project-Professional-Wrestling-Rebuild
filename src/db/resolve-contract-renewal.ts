@@ -1,11 +1,16 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {canAcceptTerms,offerUtility,requireEconomics,validateOfferTerms,
+ type OfferTerms,type PersonEconomics,type ExistingCommitment} from "../domain/contract-economics.js";
+
 export interface RenewalDecision {
  worldId:string;playerId:string;promotionId:string;proposalId:string;
  requestId:string;expectedRevision:number;decision:"ACCEPTED"|"REJECTED";
 }
-/** Server-side wrestler decision; not exposed to a player-controlled endpoint.
- * Never modify a contract on rejection, and never resolve twice. */
+/** Original wrestler utility also governs legacy same-terms renewal proposals.
+ * A trusted resolver may decline a deal but cannot rubber-stamp an underpaid,
+ * over-capacity or overlapping renewal. No current-term date reset.
+ */
 export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
  authorization:{source:"WORLD_RESOLUTION";worldId:string}){
  if(authorization.source!=="WORLD_RESOLUTION"||authorization.worldId!==input.worldId)
@@ -17,37 +22,85 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
   expectedRevision:input.expectedRevision,commandType:"RESOLVE_RENEWAL",
   execute:async tx=>{
    const rows=await tx.query<{contract_id:string;person_id:string;promotion_id:string;
-    proposed_terms:{family:string;termWeeks:number;dateEntitlement:number;
-    weeklyGuarantee:number;appearanceFee:number;roleExpectation:string;creativeControl:string};
+    proposed_terms:{family:OfferTerms["family"];termWeeks:number;dateEntitlement:number;
+     weeklyGuarantee:number;appearanceFee:number;roleExpectation:OfferTerms["roleExpectation"];
+     creativeControl:OfferTerms["creativeControl"];signingBonus:number};
    }>(`SELECT contract_id,person_id,promotion_id,proposed_terms
     FROM ppw_contract_renewal_proposals
     WHERE world_id=$1 AND proposal_id=$2 AND status='PENDING' FOR UPDATE`,
     [input.worldId,input.proposalId]);
    if(rows.length!==1)throw new Error("Pending renewal not found");
-   const p=rows[0]!;
-   if(p.promotion_id!==input.promotionId)throw new Error("Promotion mismatch");
-   const contracts=await tx.query<{status:string;expires_week_index:number}>(`
-    SELECT status,expires_week_index FROM ppw_contracts
+   const proposal=rows[0]!;
+   if(proposal.promotion_id!==input.promotionId)throw new Error("Promotion mismatch");
+   const contracts=await tx.query<{status:string;family:OfferTerms["family"];
+    expires_week_index:number}>(`SELECT status,family,expires_week_index FROM ppw_contracts
     WHERE world_id=$1 AND contract_id=$2 AND promotion_id=$3 FOR UPDATE`,
-    [input.worldId,p.contract_id,input.promotionId]);
+    [input.worldId,proposal.contract_id,input.promotionId]);
    if(contracts.length!==1)throw new Error("Contract missing");
-   const clock=await tx.query<{year:number;week:number}>(`
-    SELECT year,week FROM ppw_worlds WHERE world_id=$1`,[input.worldId]);
-   const current=(clock[0]!.year-1)*52+clock[0]!.week-1;
+   const clocks=await tx.query<{year:number;week:number;seed:string|number;offer_acceptance_threshold:number}>(`
+    SELECT year,week,seed,offer_acceptance_threshold FROM ppw_worlds WHERE world_id=$1`,[input.worldId]);
+   const {year,week}=clocks[0]!,current=(year-1)*52+week-1;
    const old=contracts[0]!;
-   const decision=old.status==="SIGNED"&&old.expires_week_index>=current?input.decision:"REJECTED";
-   // Acceptance reserves the NEXT term; never reset remaining dates during
-   // the paid current term. Activation occurs at the World week rollover.
+   let decision:RenewalDecision["decision"]=input.decision;
+   if(old.status!=="SIGNED"||old.expires_week_index<current)decision="REJECTED";
    if(decision==="ACCEPTED"){
-    const t=p.proposed_terms;
-    if(!Number.isSafeInteger(t.termWeeks)||t.termWeeks<1||t.termWeeks>52||
-       !Number.isSafeInteger(t.dateEntitlement)||t.dateEntitlement<1||t.dateEntitlement>104)
-      throw new Error("Invalid renewal terms");
+    const exists=await tx.query<{proposal_id:string}>(`SELECT proposal_id
+     FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND contract_id=$2
+     AND proposal_id<>$3 AND status='ACCEPTED' LIMIT 1`,
+     [input.worldId,proposal.contract_id,input.proposalId]);
+    if(exists.length)decision="REJECTED";
+   }
+   if(decision==="ACCEPTED"){
+    const t=proposal.proposed_terms;
+    const terms:OfferTerms={family:t.family,termWeeks:t.termWeeks,dateEntitlement:t.dateEntitlement,
+     startWeekIndex:old.expires_week_index+1,weeklyGuarantee:t.weeklyGuarantee,
+     appearanceFee:t.appearanceFee,signingBonus:0,roleExpectation:t.roleExpectation,
+     creativeControl:t.creativeControl};
+    validateOfferTerms(terms,current);
+    if(old.family!==t.family||old.family==="ONE_OFF")decision="REJECTED";
+    if(decision==="ACCEPTED"){
+     const pRows=await tx.query<{career_stage:PersonEconomics["careerStage"];
+      recognition:number;popularity:number;in_ring_quality:number;match_craft:number;
+      presentation:number;stamina:number;fatigue:number;morale:number;
+      contract_priorities:PersonEconomics["priorities"]}>(`
+      SELECT career_stage,recognition,popularity,in_ring_quality,match_craft,
+       presentation,stamina,fatigue,morale,contract_priorities FROM ppw_people
+       WHERE world_id=$1 AND person_id=$2`,[input.worldId,proposal.person_id]);
+     if(pRows.length!==1)throw new Error("Wrestler missing");
+     const r=pRows[0]!;
+     const person:PersonEconomics={careerStage:r.career_stage,recognition:r.recognition,
+      popularity:r.popularity,inRingQuality:r.in_ring_quality,matchCraft:r.match_craft,
+      presentation:r.presentation,stamina:r.stamina,fatigue:r.fatigue,morale:r.morale,
+      priorities:r.contract_priorities};
+     requireEconomics(person);
+     const signed=await tx.query<{contract_id:string;family:ExistingCommitment["family"];
+      status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number}>(`
+      SELECT contract_id,family,status,remaining_dates,start_week_index,expires_week_index
+      FROM ppw_contracts WHERE world_id=$1 AND person_id=$2 AND status='SIGNED'
+      ORDER BY contract_id LIMIT 100`,[input.worldId,proposal.person_id]);
+     const active:ExistingCommitment[]=signed.map(c=>({contractId:c.contract_id,
+      family:c.family,status:c.status,remainingDates:c.remaining_dates,
+      startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index}));
+     const invalid=canAcceptTerms(person,terms,active,current);
+     if(invalid)decision="REJECTED";
+     if(decision==="ACCEPTED"){
+      const promotions=await tx.query<{tier:string;media_reach:number|null}>(`
+       SELECT tier,media_reach FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$2`,
+       [input.worldId,input.promotionId]);
+      if(promotions.length!==1||promotions[0]!.media_reach===null)
+       throw new Error("Original promotion contract economics not imported");
+      const raw=offerUtility(person,terms,{tier:promotions[0]!.tier,
+       mediaReach:promotions[0]!.media_reach!,hasPriorRelationship:true,
+       trust:50,seed:String(clocks[0]!.seed),offerId:input.proposalId});
+      // Port of original renewalRelationshipPenalty(morale,trust).
+      const penalty=Math.round(Math.max(0,55-(person.morale+50)/2)*.2*10)/10;
+      if(raw-penalty<clocks[0]!.offer_acceptance_threshold)decision="REJECTED";
+     }
+    }
    }
    await tx.query(`UPDATE ppw_contract_renewal_proposals SET status=$3
-    WHERE world_id=$1 AND proposal_id=$2`,
+    WHERE world_id=$1 AND proposal_id=$2 AND status='PENDING'`,
     [input.worldId,input.proposalId,decision]);
-   return {proposalId:input.proposalId,contractId:p.contract_id,decision};
-  },
- });
+   return {proposalId:input.proposalId,contractId:proposal.contract_id,decision};
+  }});
 }

@@ -84,7 +84,7 @@ export async function availablePromotionsAsActor(
 /** Request only: no dates are added until a separate authoritative acceptance. */
 export async function requestAdditionalDatesAsActor(
  context:WorldApiContext,
- input:WorldMutationInput & {promotionId:string;contractId:string;additionalDates:number},
+ input:WorldMutationInput & {promotionId:string;contractId:string;additionalDates:number;additionalPayment?:number},
 ){
  validate(context.actor.playerId,"actor");
  validateMutation(input);

@@ -79,7 +79,7 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      const utility=addendumUtility(p,{
       roleExpectation:contract.role_expectation,appearanceFee:Number(contract.appearance_fee),
      },r.additional_dates,Number(r.additional_payment),
-       Math.max(1,contract.expires_week_index-current),{
+       Math.max(1,contract.expires_week_index-current+1),{
       tier:promotions[0]!.tier,mediaReach:promotions[0]!.media_reach!,
       trust:50,seed:String(clocks[0]!.seed),offerId:input.dateRequestId,
      });

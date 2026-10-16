@@ -43,9 +43,9 @@ export async function proposeSameTermsRenewal(pool:TransactionPool,input:Renewal
    if(!terms)throw new Error("Manual negotiation required for these terms");
    const previous=await tx.query<{proposal_id:string}>(`
     SELECT proposal_id FROM ppw_contract_renewal_proposals
-    WHERE world_id=$1 AND contract_id=$2 AND status='PENDING'`,
+    WHERE world_id=$1 AND contract_id=$2 AND status IN ('PENDING','ACCEPTED')`,
     [input.worldId,input.contractId]);
-   if(previous.length)throw new Error("Renewal already pending");
+   if(previous.length)throw new Error("Renewal already arranged");
    await tx.query(`INSERT INTO ppw_contract_renewal_proposals
     (world_id,proposal_id,contract_id,promotion_id,person_id,created_week_index,proposed_terms)
     VALUES($1,$2,$3,$4,$5,$6,$7::jsonb)`,
