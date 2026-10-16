@@ -1,7 +1,5 @@
-/** Trusted, resumable World resolution runner.
- * This phase intentionally starts AFTER continuity, staff/AI preparation,
- * arbitration and clearance. It cannot invent a show or certify a week.
- * A later phase will own certification and calendar advancement.
+/** Trusted, bounded World resolution with durable stage checkpoints.
+ * Never player callable, never advances without audited certification.
  */
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
@@ -15,6 +13,11 @@ import {inspectWeekConflicts} from "./week-conflicts.js";
 import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
 import {consumeWorldWeekAppearances} from "./world-week-appearance-coordinator.js";
 import {certifyResolvedWorldWeek} from "./week-certification.js";
+import {previewWorldWeekArbitration} from "./week-arbitration.js";
+import {recordWorldWeekArbitration} from "./recorded-week-arbitration.js";
+import {applyAiWeekRemediation} from "./apply-ai-remediation.js";
+import {inspectWorldArbitrationRecovery} from "./world-arbitration-coordinator.js";
+import type {RemediationChoice} from "../domain/resource-remediation.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -65,11 +68,13 @@ export async function inspectWorldResolutionReadiness(
 export type WorldResolutionAction=
  |"WAIT_FOR_WORLD_LOCK"|"BEGIN_RESOLUTION"|"ASSESS_CONTINUITY"|"FINALIZE_PREPARED_SHOWS"
  |"GENERATE_STAFF_AND_AI_CARDS"|"ARBITRATE_OR_REMEDIATE"
+ |"RECORD_ARBITRATION"|"REMEDIATE_AI_CLAIM"
  |"CLEAR_RESOURCES"|"RESOLVE_LEGACY_SHOWS"
  |"RESOLVE_DETAILED_SHOWS"|"CERTIFY_WEEK"|"PUBLISH_WEEK";
 export interface WorldResolutionPlan {
  year:number;week:number;action:WorldResolutionAction;
  blockers:string[];ready:ResolutionReadiness;
+ arbitration?:{showId:string;sourceFingerprint:string;choice:RemediationChoice};
 }
 export async function planNextWorldResolutionAction(
  pool:TransactionPool,worldId:string,
@@ -77,6 +82,7 @@ export async function planNextWorldResolutionAction(
  const ready=await inspectWorldResolutionReadiness(pool,worldId);
  let action:WorldResolutionAction;
  const blockers:string[]=[];
+ let arbitration:WorldResolutionPlan["arbitration"];
  if(ready.phase==="OPEN")action="WAIT_FOR_WORLD_LOCK";
  else if(ready.phase==="LOCKED"){
   const stages=await withWorldTransaction(pool,tx=>tx.query<{
@@ -98,9 +104,33 @@ export async function planNextWorldResolutionAction(
    action=run[0]!.done?"ARBITRATE_OR_REMEDIATE":"GENERATE_STAFF_AND_AI_CARDS";
    blockers.push(run[0]!.done?"MISSING_PROMOTION_SHOWS_AFTER_STAFF":"MISSING_PROMOTION_SHOWS");
   }else if(ready.cleared!==ready.active){
-   const report=await withWorldTransaction(pool,tx=>inspectWeekConflicts(tx,worldId));
-   action=report.provisionalClear?"CLEAR_RESOURCES":"ARBITRATE_OR_REMEDIATE";
-   if(!report.provisionalClear)blockers.push(...new Set(report.blockers.map(b=>b.code)));
+   if(ready.cleared!==null){
+    action="ARBITRATE_OR_REMEDIATE";
+    blockers.push("INCONSISTENT_RESOURCE_CLEARANCE");
+   }else{
+    const report=await withWorldTransaction(pool,tx=>inspectWeekConflicts(tx,worldId));
+    if(report.provisionalClear)action="CLEAR_RESOURCES";
+    else{
+     blockers.push(...new Set(report.blockers.map(b=>b.code)));
+     const arbitrable=new Set(["VENUE_DAY_CONFLICT","WRESTLER_DAY_CONFLICT",
+       "WRESTLER_WEEK_CAPACITY"]);
+     if(!report.blockers.length||report.blockers.some(b=>!arbitrable.has(b.code)))
+      action="ARBITRATE_OR_REMEDIATE";
+     else{
+      const recovery=await inspectWorldArbitrationRecovery(pool,worldId);
+      if(recovery.status==="NEEDS_PROPOSAL")action="RECORD_ARBITRATION";
+      else if(recovery.status==="AI_REMEDIATION"){
+       action="REMEDIATE_AI_CLAIM";
+       arbitration={showId:recovery.showId,
+        sourceFingerprint:recovery.sourceFingerprint,choice:recovery.choice};
+      }else{
+       action="ARBITRATE_OR_REMEDIATE";
+       blockers.push(recovery.status==="STALE_PROPOSAL"
+         ?"STALE_ARBITRATION_PROPOSAL":"HUMAN_OR_CREATIVE_REBOOK_REQUIRED");
+      }
+     }
+    }
+   }
   }else if(ready.legacyResolved!==ready.active)
    action="RESOLVE_LEGACY_SHOWS";
   else if(ready.detailedResolved!==ready.active)
@@ -113,7 +143,7 @@ export async function planNextWorldResolutionAction(
   blockers.push("UNKNOWN_WORLD_PHASE");
  }
  return {year:ready.year,week:ready.week,action,
-  blockers,ready};
+  blockers,ready,...(arbitration?{arbitration}:{})};
 }
 export interface RunWorldShowPhaseInput{
  worldId:string;year:number;week:number;resolutionId:string;
@@ -193,6 +223,24 @@ export async function executeNextWorldResolutionStage(
   const result=await generateWeekStaffFallbackCards(pool,{worldId,requestId,expectedRevision});
   return {action:plan.action,status:"EXECUTED" as const,result};
  }
+ if(plan.action==="RECORD_ARBITRATION"){
+  const preview=await previewWorldWeekArbitration(pool,worldId);
+  const result=await recordWorldWeekArbitration(pool,{worldId,requestId,
+   expectedRevision,expectedStateFingerprint:preview.stateFingerprint});
+  if(result.status==="STALE")return {action:plan.action,
+   status:"BLOCKED" as const,blockers:["WORLD_REVISION_CHANGED"]};
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="REMEDIATE_AI_CLAIM"){
+  if(!plan.arbitration)throw new Error("Missing authorized AI remedy");
+  const result=await applyAiWeekRemediation(pool,{worldId,requestId,
+   expectedRevision,showId:plan.arbitration.showId,
+   expectedStateFingerprint:plan.arbitration.sourceFingerprint,
+   choice:plan.arbitration.choice});
+  if(result.status==="STALE")return {action:plan.action,
+   status:"BLOCKED" as const,blockers:["WORLD_REVISION_CHANGED"]};
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
  if(plan.action==="CLEAR_RESOURCES"){
   const result=await clearWorldWeekResources(pool,{worldId,requestId,expectedRevision});
   return {action:plan.action,status:"EXECUTED" as const,result};
@@ -236,7 +284,6 @@ export async function driveWorldResolution(
   const plan=await planNextWorldResolutionAction(pool,input.worldId);
   const blocked=new Set<WorldResolutionAction>([
    "WAIT_FOR_WORLD_LOCK","ARBITRATE_OR_REMEDIATE",
-
   ]);
   if(blocked.has(plan.action)){
    steps.push({action:plan.action,status:"BLOCKED"});
@@ -252,7 +299,12 @@ export async function driveWorldResolution(
    if(!Number.isSafeInteger(n)||n<0)throw new Error("Invalid World revision");
    return n;
   });
-  const requestId=`${input.resolutionId}:${plan.year}:${plan.week}:${plan.action}`;
+  // Each AI remedy changes the evidence fingerprint. A fixed stage-only
+  // request ID would replay the FIRST remedy forever for later contenders.
+  const suffix=plan.action==="REMEDIATE_AI_CLAIM"
+    ?":"+plan.arbitration!.sourceFingerprint.slice(0,24):"";
+  const requestId=`${input.resolutionId}:${plan.year}:${plan.week}:${plan.action}${suffix}`;
+  if(requestId.length>200)throw new Error("World stage request ID exceeds limit");
   const result=await executeNextWorldResolutionStage(pool,{
    worldId:input.worldId,resolutionId:input.resolutionId,
    requestId,expectedRevision:revision,
