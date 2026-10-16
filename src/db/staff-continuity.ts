@@ -48,8 +48,7 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
         [input.worldId,input.promotionId,input.playerId,input.allowUnfinishedFallback,
          input.allowLogisticsFallback??false,days,venues],
       );
-      return {promotionId:input.promotionId,allowUnfinishedFallback:input.allowUnfinishedFallback,
-        allowLogisticsFallback:input.allowLogisticsFallback??false};
+      return {promotionId:input.promotionId,allowUnfinishedFallback:input.allowUnfinishedFallback};
     },
   });
 }
