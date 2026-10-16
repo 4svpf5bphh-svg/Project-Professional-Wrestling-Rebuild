@@ -64,7 +64,8 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
   const tag=projection.projections[0]!.tag;
   assert.ok(tag);
   assert.equal(tag?.result.members.length,4);
-  assert.equal(projection.projections[0]!.chemistryModifier,10*.55+40*.04+6*.55+20*.04);
+  assert.ok(Math.abs(projection.projections[0]!.chemistryModifier-
+    (10*.55+40*.04+6*.55+20*.04))<0.000001);
   assert.equal(projection.projections[0]!.score.stage,"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW");
   assert.equal(projection.projections[0]!.interferencePreview?.plannedWinnerId,"charlie");
   assert.equal(projection.showAlignmentPreview,null);
