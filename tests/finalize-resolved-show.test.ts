@@ -46,6 +46,6 @@ test("booked successful interference may protect the finish, not change winner",
  assert.throws(()=>finalizeResolvedShow({...input,matches:[{
   ...match,actualWinnerSide:"B"}]}),/Uncertified/);
  assert.throws(()=>finalizeResolvedShow({...input,matches:[{
-  ...match,interference:{plannedOutcome:"SUCCESS",actualOutcome:"ABORTED"}
-   as typeof match.interference}]}),/Uncertified/);
+  ...match,interference:{plannedOutcome:"SUCCESS" as const,
+   actualOutcome:"ABORTED" as const}}]}),/Uncertified/);
 });
