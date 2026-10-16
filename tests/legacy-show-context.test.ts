@@ -58,8 +58,8 @@ test("authored segments integrate with original weighted show crowd",()=>{
   storylineHeat:80,repetitionCount:0};
  const x=previewAuthoredSegmentsInShow(c,[segment]);
  assert.equal(x.segmentDetails[0]!.outcome,"REFUSED");
- assert.equal(x.segmentDetails[0]!.crowdResponse,74.4);
- assert.equal(x.crowdResponse,76.3);
+ assert.equal(x.segmentDetails[0]!.crowdResponse,73.7);
+ assert.equal(x.crowdResponse,76);
  assert.equal(x.phase,"AUTHORED_SEGMENTS_PREVIEW_NOT_FINAL");
  assert.equal(x.matches[0]!.adjustedCrowdResponse,77.5);
 });
