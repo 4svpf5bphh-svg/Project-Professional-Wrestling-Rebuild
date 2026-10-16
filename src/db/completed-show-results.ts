@@ -2,6 +2,12 @@
  * server-side from canonical submitted card; never expose this as player API.
  */
 import {createHash} from "node:crypto";
+/** PostgreSQL jsonb reorders object keys; compare JSON semantic values on
+ * retries, while the original deterministic digest protects write identity.
+ */
+const stableJson=(value:unknown):string=>JSON.stringify(value,(_key,v)=>
+ v&&typeof v==="object"&&!Array.isArray(v)?
+  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b,"en"))):v);
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../domain/match-sides.js";
 import type {BookedTeamOutcome} from "../domain/verified-team-evidence.js";
@@ -42,13 +48,13 @@ export async function recordCompletedShowInTransaction(
    [receipt.worldId,receipt.showId]);
   if(prior.length){
    if(prior.length!==1||prior[0]!.receipt_digest!==digest||
-    JSON.stringify(prior[0]!.receipt_json)!==JSON.stringify(JSON.parse(canonical)))
+    stableJson(prior[0]!.receipt_json)!==stableJson(JSON.parse(canonical)))
     throw new Error("Conflicting completed show resolution");
    const saved=await tx.query<{match_id:string;evidence_json:unknown}>(
     "SELECT match_id,evidence_json FROM ppw_completed_match_evidence WHERE world_id=$1 AND show_id=$2 ORDER BY match_id",
     [receipt.worldId,receipt.showId]);
-   if(JSON.stringify(saved.map(x=>x.evidence_json))!==
-    JSON.stringify([...evidence].sort((a,b)=>a.matchId.localeCompare(b.matchId))))
+   if(stableJson(saved.map(x=>x.evidence_json))!==
+    stableJson([...evidence].sort((a,b)=>a.matchId.localeCompare(b.matchId))))
     throw new Error("Conflicting completed match evidence");
    return "IDENTICAL_RETRY";
   }
