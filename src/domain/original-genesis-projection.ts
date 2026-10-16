@@ -106,7 +106,9 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  const people=source.people.map(p=>{
   if(!isText(p.id)||p.worldId!==worldId||!isText(p.name)
    ||!["ACTIVE","INJURED","RETIRED"].includes(p.status)||!p.skills
-   ||![p.skills.inRingQuality,p.skills.matchCraft,p.skills.presentation,\n      p.skills.stamina,p.skills.safety].every(v=>int(v,0,100))\n   ||![p.momentum,p.wear].every(stat)
+   ||![p.skills.inRingQuality,p.skills.matchCraft,p.skills.presentation,
+      p.skills.stamina,p.skills.safety].every(v=>int(v,0,100))
+   ||![p.momentum,p.wear].every(stat)
    ||(p.bookingDivision!=null&&!["MEN","WOMEN"].includes(p.bookingDivision))
    ||(p.defaultAlignment!=null&&!["FACE","HEEL","TWEENER"].includes(p.defaultAlignment))
    ||(p.portableGimmickId!=null&&(!isText(p.portableGimmickId)||p.portableGimmickId.length>120)))
