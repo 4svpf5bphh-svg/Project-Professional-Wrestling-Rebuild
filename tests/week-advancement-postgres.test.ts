@@ -131,10 +131,11 @@ test("week cannot advance until each active promotion is resolved and certified;
       "SELECT event_type,year,week FROM ppw_ledger_events WHERE world_id=$1",[worldId],
     ));
     assert.deepEqual(ledger.map(r=>r.event_type).sort(),
-      ["CONTRACT_GUARANTEE_PAID","CONTRACT_GUARANTEE_PAID",
-       "CONTRACT_SIGNED","CONTRACT_APPEARANCE_FEES","CONTRACT_EXTRA_DATES_ACCEPTED",
+      ["CONTRACT_APPEARANCE_FEES","CONTRACT_EXTRA_DATES_ACCEPTED",
+       "CONTRACT_GUARANTEE_PAID","CONTRACT_GUARANTEE_PAID","CONTRACT_SIGNED",
+       "FINANCIAL_DISTRESS_CHANGED",
        "PROMOTION_RECURRING_FINANCES","PROMOTION_RECURRING_FINANCES",
-       "FINANCIAL_DISTRESS_CHANGED","WORLD_WEEK_COMPLETED"]);
+       "WORLD_WEEK_COMPLETED"]);
     assert.ok(ledger.every(r=>r.year===1&&r.week===52));
     const finance=await withWorldTransaction(db.pool,async tx=>{
       const rows=await tx.query<{promotion_id:string;cash:string;last_weekly_net:string|null;
