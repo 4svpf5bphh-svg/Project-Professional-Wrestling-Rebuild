@@ -25,10 +25,11 @@ export function readCanonicalMatchLayout(payload:unknown):CanonicalMatchLayout{
   throw new Error("Invalid or repeated match performer");
  // Backwards-compatible original singles card.
  if(p.sides===undefined){
-  if((p.matchType!==undefined&&p.matchType!=="SINGLES")||flat.length!==2||
-   typeof p.scriptedWinner!=="string"||
+  if(p.matchType!==undefined&&p.matchType!=="SINGLES"||flat.length!==2)
+   throw new Error("Legacy adapter requires two distinct singles wrestlers");
+  if(typeof p.scriptedWinner!=="string"||
    !flat.some(x=>x.personId===p.scriptedWinner))
-   throw new Error("Unsupported legacy match layout");
+   throw new Error("Player-authored scripted winner required");
   return {family:"INDIVIDUAL",participants:flat,
    sides:flat.map((x,i)=>({sideId:(i===0?"A":"B") as MatchSideId,participants:[x]})),
    scriptedWinnerSide:flat[0]!.personId===p.scriptedWinner?"A":"B"};

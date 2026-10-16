@@ -91,8 +91,11 @@ export async function recordCompletedShowInTransaction(
    const p=raw as Record<string,unknown>;
    if(slot.kind==="MATCH"){
     const result=matchResults.get(slot.slot_id)!;
-    const layout=readCanonicalMatchLayout(raw);
-    const format=requireSupportedScoringLayout(layout);
+    // Historical receipt-only fixtures may lack complete optional booking
+    // metadata. A typed card, however, must ALWAYS pass complete side proof.
+    const typed=p.matchType!==undefined||p.sides!==undefined;
+    const layout=typed?readCanonicalMatchLayout(raw):null;
+    const format=layout?requireSupportedScoringLayout(layout):null;
     if(format==="SINGLES"){
      if(!Array.isArray(p.participants)||p.participants.length!==2||
       p.participants.some(x=>!x||typeof x!=="object"||
@@ -114,9 +117,9 @@ export async function recordCompletedShowInTransaction(
       if(!ev||!("family" in ev.booking)||ev.booking.family!=="TEAMS")
        throw new Error("Authoritative tag evidence required for every four-person match");
       const booking=ev.booking as BookedTeamOutcome;
-      if(JSON.stringify(booking.sides)!==JSON.stringify(layout.sides.map(side=>({
+      if(JSON.stringify(booking.sides)!==JSON.stringify(layout!.sides.map(side=>({
         sideId:side.sideId,participants:side.participants.map(x=>x.personId)})))||
-       booking.scriptedWinnerSide!==layout.scriptedWinnerSide||
+       booking.scriptedWinnerSide!==layout!.scriptedWinnerSide||
        booking.plannedFinish!==p.plannedFinish||
        booking.interferencePlannedOutcome!==
          ((p.interference as {plannedOutcome?:string}|undefined)?.plannedOutcome))
