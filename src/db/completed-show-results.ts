@@ -5,6 +5,7 @@ import {createHash} from "node:crypto";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../domain/match-sides.js";
 import type {BookedTeamOutcome} from "../domain/verified-team-evidence.js";
+import type {BookedSinglesOutcome} from "../domain/verified-match-evidence.js";
 import {validateCompletedMatchEvidence,type CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
 import type {TransactionPool} from "./transaction.js";
@@ -136,11 +137,13 @@ export async function recordCompletedShowInTransaction(
       typeof p.plannedFinish!=="string")
       throw new Error("Evidence requires complete canonical singles booking");
      const participants=p.participants as {personId:string}[];
-     if(JSON.stringify(ev.booking.participants)!==
+     if("family" in ev.booking)throw new Error("Team evidence on a singles match");
+     const singles=ev.booking as BookedSinglesOutcome;
+     if(JSON.stringify(singles.participants)!==
        JSON.stringify(participants.map(x=>x.personId))||
-      ev.booking.scriptedWinner!==p.scriptedWinner||
-      ev.booking.plannedFinish!==p.plannedFinish||
-      ev.booking.interferencePlannedOutcome!==
+      singles.scriptedWinner!==p.scriptedWinner||
+      singles.plannedFinish!==p.plannedFinish||
+      singles.interferencePlannedOutcome!==
        ((p.interference as {plannedOutcome?:string}|undefined)?.plannedOutcome))
       throw new Error("Evidence differs from canonical submitted booking");
     }

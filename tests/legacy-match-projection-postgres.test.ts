@@ -66,13 +66,15 @@ test("archived PPW style formulas run on bounded current-World wrestler rows wit
     const result=await previewLegacyShowMatchStyles(measured,input);
     assert.ok(statements.length<=6,"Unexpected SQL cost: "+statements.length);
     assert.equal(result.matchCount,1);
-    assert.equal(result.projections[0]!.winnerId,ids[1]);
-    assert.equal(result.projections[0]!.plannedFinish,"SUBMISSION");
+    const singles=result.projections[0]!;
+    if(!("winnerId" in singles))throw new Error("Expected a singles projection");
+    assert.equal(singles.winnerId,ids[1]);
+    assert.equal(singles.plannedFinish,"SUBMISSION");
     assert.equal(result.projections[0]!.status,"READY");
-    assert.equal(result.projections[0]!.style.technical,92);
+    assert.equal(singles.style.technical,92);
     const original=evaluateMatchStyleExecution(defaultMatchStyleForIntent("TECHNICAL"),{
       inRingQuality:85,matchCraft:80,presentation:70,stamina:75,safety:90},20);
-    assert.deepEqual(result.projections[0]!.styleEvaluations,[original,original]);
+    assert.deepEqual(singles.styleEvaluations,[original,original]);
 
     // Actual skill data, not guessed averages, determine who needs review.
     await withWorldTransaction(db.pool,tx=>tx.query(
@@ -81,6 +83,8 @@ test("archived PPW style formulas run on bounded current-World wrestler rows wit
     ));
     const fatigued=await previewLegacyShowMatchStyles(db.pool,input);
     assert.equal(fatigued.projections[0]!.status,"NEEDS_STYLE_REVIEW");
+    if(!("winnerId" in fatigued.projections[0]!))
+      throw new Error("Expected a singles projection");
     assert.equal(fatigued.projections[0]!.winnerId,ids[1]);
 
     await withWorldTransaction(db.pool,tx=>tx.query(
