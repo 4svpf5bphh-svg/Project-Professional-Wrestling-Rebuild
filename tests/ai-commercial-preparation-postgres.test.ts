@@ -78,7 +78,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   const mainProgramme=byCard.get("ai-week-1-1-promotion-0")?.at(-1);
   assert.equal(mainProgramme?.payload.mainEvent,true);
   assert.deepEqual(mainProgramme?.payload.participants.map(p=>p.personId).sort(),
-    ["person-8","person-16"]);
+    ["person-16","person-8"]);
   const links=await withWorldTransaction(db.pool,tx=>tx.query<{
     programme_id:string;slot_id:string}>(`
     SELECT programme_id,slot_id FROM ppw_programme_match_activities
