@@ -7,6 +7,8 @@ export interface RosterContractRow {
   family:ContractAvailabilityInput["family"];
   remainingDates:number|null; expiresWeekIndex:number;
   availableForBooking:boolean; reason:ContractAvailabilityReason;
+  weeksRemaining:number;expiringSoon:boolean;needsAttention:boolean;
+  renewalEligible:boolean;additionalDatesEligible:boolean;
 }
 
 /** Only the authenticated promotion controller may read its contracts.
@@ -20,7 +22,11 @@ export async function readRosterContracts(
   if (!Number.isSafeInteger(currentWeekIndex)||currentWeekIndex<0) throw new Error("Invalid week");
   return withSqlClient(pool,async tx=>{
     const ownership=await tx.query<{promotion_id:string}>(
-      "SELECT promotion_id FROM ppw_promotion_controls WHERE world_id=$1 AND player_id=$2 AND promotion_id=$3 AND active=true",
+      `SELECT c.promotion_id FROM ppw_promotion_controls c
+       JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+       JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+       WHERE c.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3
+         AND c.active=true AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
       [worldId,playerId,promotionId],
     );
     if (!ownership.length) throw new Error("Promotion access denied");
@@ -34,7 +40,15 @@ export async function readRosterContracts(
     );
     return rows.map(r=>{
       const a=contractAvailability({family:r.family,status:r.status,remainingDates:r.remaining_dates,expiresWeekIndex:r.expires_week_index,currentWeekIndex});
-      return {contractId:r.contract_id,personId:r.person_id,name:r.name,family:r.family,remainingDates:r.remaining_dates,expiresWeekIndex:r.expires_week_index,availableForBooking:a.available,reason:a.reason};
+      const weeksRemaining=Math.max(0,r.expires_week_index-currentWeekIndex+1);
+      const expiringSoon=weeksRemaining<=4;
+      const additionalDatesEligible=r.family!=="EXCLUSIVE" && weeksRemaining>0 && r.remaining_dates!==null;
+      const renewalEligible=r.family!=="ONE_OFF" && weeksRemaining>0;
+      const needsAttention=expiringSoon || a.reason==="NO_DATES";
+      return {contractId:r.contract_id,personId:r.person_id,name:r.name,family:r.family,
+        remainingDates:r.remaining_dates,expiresWeekIndex:r.expires_week_index,
+        availableForBooking:a.available,reason:a.reason,weeksRemaining,expiringSoon,
+        needsAttention,renewalEligible,additionalDatesEligible};
     });
   });
 }
