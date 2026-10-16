@@ -47,7 +47,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     }}>(`
     SELECT draft_id,slot_id,position,payload FROM ppw_card_slots
     WHERE world_id=$1 ORDER BY draft_id,position`,[world]));
-  const byCard=new Map<string,typeof cardRows>();
+  const byCard=new Map<string,Array<(typeof cardRows)[number]>>();
   for(const row of cardRows){
     const group=byCard.get(row.draft_id)??[];
     group.push(row);byCard.set(row.draft_id,group);
