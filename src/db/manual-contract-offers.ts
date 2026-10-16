@@ -234,8 +234,9 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     SELECT $1,$2,$3,'CONTRACT_SIGNED',v.payload::jsonb
     FROM jsonb_to_recordset($4::jsonb) AS v(payload text)`,
     [input.worldId,clock[0]!.year,clock[0]!.week,JSON.stringify(accepted.map(d=>({
-      payload:JSON.stringify({offerId:d.id,personId:input.personId,signingBonus:
-      rated.find(b=>b.offer_id===d.id)!.terms.signingBonus})})))]);
+      payload:JSON.stringify({offerId:d.id,personId:input.personId,
+      promotionId:rated.find(b=>b.offer_id===d.id)!.promotion_id,
+      signingBonus:rated.find(b=>b.offer_id===d.id)!.terms.signingBonus})})))]);
   return {personId:input.personId,accepted:accepted.length,rejected:decisions.length-accepted.length,
    decisions};
  }});

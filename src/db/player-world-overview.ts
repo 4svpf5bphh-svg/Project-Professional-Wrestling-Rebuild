@@ -5,7 +5,8 @@ import type { TransactionPool } from "./transaction.js";
 export interface PlayerWorldOverview {
   world: { id:string; name:string; year:number; week:number; day:number; phase:string; revision:number };
   membership: "ACTIVE" | "INACTIVE" | "NONE";
-  promotion: null | { id:string; name:string; tier:string; cash:number; debt:number };
+  promotion: null | { id:string; name:string; tier:string; cash:number; debt:number;
+    lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null };
 }
 
 /** Three bounded indexed reads; never load the full World or all promotions.
@@ -24,15 +25,18 @@ export async function readPlayerWorldOverview(
       "SELECT status FROM ppw_memberships WHERE world_id=$1 AND player_id=$2",[worldId,playerId]);
     const promotions=members[0]?.status==="ACTIVE" ? await tx.query<{
       promotion_id:string;name:string;tier:string;cash:string|number;debt:string|number;
+      last_weekly_net:string|number|null;runway_weeks:number|null;financial_distress:string|null;
     }>(
-      "SELECT p.promotion_id,p.name,p.tier,p.cash,p.debt FROM ppw_promotion_controls c JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id WHERE c.world_id=$1 AND c.player_id=$2 AND c.active=true",
+      "SELECT p.promotion_id,p.name,p.tier,p.cash,p.debt,p.last_weekly_net,p.runway_weeks,p.financial_distress FROM ppw_promotion_controls c JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id WHERE c.world_id=$1 AND c.player_id=$2 AND c.active=true",
       [worldId,playerId],
     ) : [];
     const p=promotions[0];
     return {
       world:{id:w.world_id,name:w.name,year:w.year,week:w.week,day:w.day,phase:w.phase,revision:Number(w.revision)},
       membership:members[0]?.status ?? "NONE",
-      promotion:p?{id:p.promotion_id,name:p.name,tier:p.tier,cash:Number(p.cash),debt:Number(p.debt)}:null,
+      promotion:p?{id:p.promotion_id,name:p.name,tier:p.tier,cash:Number(p.cash),debt:Number(p.debt),
+        lastWeeklyNet:p.last_weekly_net===null?null:Number(p.last_weekly_net),
+        runwayWeeks:p.runway_weeks,financialDistress:p.financial_distress}:null,
     };
   });
 }

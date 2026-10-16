@@ -17,6 +17,8 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     await withWorldTransaction(db.pool,async tx=>{
       await createWorld(tx,{id:worldId,name:"Overview World",seed:5,rulesetVersion:"test"});
       await addPromotion(tx,worldId,{id:first,name:"First Promotion",tier:"LOCAL"});
+      await tx.query(`UPDATE ppw_promotions SET last_weekly_net=-125,runway_weeks=9.5,
+       financial_distress='WATCH' WHERE world_id=$1 AND promotion_id=$2`,[worldId,first]);
       await addPromotion(tx,worldId,{id:second,name:"Second Promotion",tier:"REGIONAL"});
     });
     const before=await readPlayerWorldOverview(db.pool,worldId,playerId);
@@ -30,6 +32,9 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.equal(after?.membership,"ACTIVE");
     assert.equal(after?.world.revision,2);
     assert.equal(after?.promotion?.id,first);
+    assert.equal(after?.promotion?.lastWeeklyNet,-125);
+    assert.equal(after?.promotion?.runwayWeeks,9.5);
+    assert.equal(after?.promotion?.financialDistress,"WATCH");
     assert.deepEqual((await listAvailablePromotions(db.pool,worldId)).map(p=>p.id),[second]);
     await assert.rejects(listAvailablePromotions(db.pool,worldId,null,51),/page size/);
   } finally {

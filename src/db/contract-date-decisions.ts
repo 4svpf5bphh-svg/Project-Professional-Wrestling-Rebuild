@@ -106,8 +106,9 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
       [input.worldId,input.promotionId,payment]);
      await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
        VALUES($1,$2,$3,'CONTRACT_EXTRA_DATES_ACCEPTED',jsonb_build_object(
-         'contractId',$4::text,'additionalDates',$5::integer,'additionalPayment',$6::bigint))`,
-       [input.worldId,year,week,r.contract_id,r.additional_dates,payment]);
+         'contractId',$4::text,'additionalDates',$5::integer,'additionalPayment',$6::bigint,
+         'promotionId',$7::text))`,
+       [input.worldId,year,week,r.contract_id,r.additional_dates,payment,input.promotionId]);
     }
    }
    await tx.query(`UPDATE ppw_contract_date_requests SET status=$3

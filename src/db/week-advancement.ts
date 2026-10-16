@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
+import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -128,10 +129,13 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // One grouped debit and ledger insert, regardless of roster size.
       await tx.query(`
         WITH payroll AS (
-          SELECT promotion_id,sum(weekly_guarantee)::bigint AS amount
-          FROM ppw_contracts WHERE world_id=$1 AND status='SIGNED'
-            AND start_week_index<=$4 AND expires_week_index>=$4
-          GROUP BY promotion_id
+          SELECT c.promotion_id,sum(c.weekly_guarantee)::bigint AS amount
+          FROM ppw_contracts c JOIN ppw_promotions active_p
+            ON active_p.world_id=c.world_id AND active_p.promotion_id=c.promotion_id
+           WHERE c.world_id=$1 AND c.status='SIGNED'
+            AND active_p.lifecycle NOT IN ('DORMANT','CLOSED')
+            AND c.start_week_index<=$4 AND c.expires_week_index>=$4
+          GROUP BY c.promotion_id
         ), charged AS (
           UPDATE ppw_promotions p SET cash=p.cash-payroll.amount
           FROM payroll WHERE p.world_id=$1 AND p.promotion_id=payroll.promotion_id
@@ -165,6 +169,10 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
            'fixedOverhead',weekly_fixed_overhead,
            'net',weekly_media_income+weekly_sponsor_income-weekly_fixed_overhead)
          FROM credited`,[input.worldId,year,week]);
+      // Complete original week P&L after ALL monetary movements have been
+      // recorded. One indexed current-week aggregate and one batched update;
+      // no per-promotion historical ledger scan or added player polling.
+      await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
       // Apply accepted renewals only at the end of the paid current term.
       await tx.query(`UPDATE ppw_contracts c SET
           start_week_index=c.expires_week_index+1,

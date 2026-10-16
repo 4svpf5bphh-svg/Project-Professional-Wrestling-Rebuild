@@ -26,6 +26,24 @@ test("week cannot advance until each active promotion is resolved and certified;
        weekly_sponsor_income=CASE WHEN promotion_id=$2 THEN 300 ELSE 100 END,
        weekly_fixed_overhead=CASE WHEN promotion_id=$2 THEN 100 ELSE 700 END
        WHERE world_id=$1`,[worldId,promoA]);
+
+      // Current-week cash movements before rollover have ALREADY debited
+      // promotion cash. The finance rollup must include them without paying
+      // twice: booking appearance, signing bonus and date addendum.
+      await tx.query(`UPDATE ppw_promotions SET
+       cash=CASE WHEN promotion_id=$2 THEN -125 WHEN promotion_id=$3 THEN 4975 ELSE cash END,
+       financial_distress='HEALTHY',last_weekly_net=0
+       WHERE world_id=$1 AND promotion_id=ANY($4::text[])`,
+       [worldId,promoA,promoB,[promoA,promoB]]);
+      await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+       VALUES
+        ($1,1,52,'CONTRACT_SIGNED',
+          jsonb_build_object('promotionId',$2::text,'signingBonus',50)),
+        ($1,1,52,'CONTRACT_APPEARANCE_FEES',
+          jsonb_build_object('promotionId',$2::text,'amount',75)),
+        ($1,1,52,'CONTRACT_EXTRA_DATES_ACCEPTED',
+          jsonb_build_object('promotionId',$3::text,'additionalPayment',25))`,
+       [worldId,promoA,promoB]);
       await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,'renewing','R'),($1,'expiring','E')",[worldId]);
       await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
        family,status,remaining_dates,start_week_index,expires_week_index,date_entitlement,
@@ -114,11 +132,14 @@ test("week cannot advance until each active promotion is resolved and certified;
     ));
     assert.deepEqual(ledger.map(r=>r.event_type).sort(),
       ["CONTRACT_GUARANTEE_PAID","CONTRACT_GUARANTEE_PAID",
-       "PROMOTION_RECURRING_FINANCES","PROMOTION_RECURRING_FINANCES","WORLD_WEEK_COMPLETED"]);
+       "CONTRACT_SIGNED","CONTRACT_APPEARANCE_FEES","CONTRACT_EXTRA_DATES_ACCEPTED",
+       "PROMOTION_RECURRING_FINANCES","PROMOTION_RECURRING_FINANCES",
+       "FINANCIAL_DISTRESS_CHANGED","WORLD_WEEK_COMPLETED"]);
     assert.ok(ledger.every(r=>r.year===1&&r.week===52));
     const finance=await withWorldTransaction(db.pool,async tx=>{
-      const rows=await tx.query<{promotion_id:string;cash:string}>(
-        "SELECT promotion_id,cash FROM ppw_promotions WHERE world_id=$1 ORDER BY promotion_id",[worldId]);
+      const rows=await tx.query<{promotion_id:string;cash:string;last_weekly_net:string|null;
+       runway_weeks:number|null;financial_distress:string|null}>(
+        "SELECT promotion_id,cash,last_weekly_net,runway_weeks,financial_distress FROM ppw_promotions WHERE world_id=$1 ORDER BY promotion_id",[worldId]);
       const contracts=await tx.query<{contract_id:string;status:string;start_week_index:number;
        expires_week_index:number;remaining_dates:number|null;weekly_guarantee:string}>(
         "SELECT contract_id,status,start_week_index,expires_week_index,remaining_dates,weekly_guarantee FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
@@ -126,9 +147,20 @@ test("week cannot advance until each active promotion is resolved and certified;
         "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
       return {rows,contracts,status};
     });
-    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoA)!.cash),1100);
-    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoB)!.cash),-400);
+    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoA)!.cash),975);
+    assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoB)!.cash),4575);
     assert.equal(Number(finance.rows.find(r=>r.promotion_id===promoDormant)!.cash),12345);
+    const a=finance.rows.find(r=>r.promotion_id===promoA)!;
+    const b=finance.rows.find(r=>r.promotion_id===promoB)!;
+    const inactive=finance.rows.find(r=>r.promotion_id===promoDormant)!;
+    assert.equal(Number(a.last_weekly_net),975);
+    assert.equal(a.runway_weeks,null);
+    assert.equal(a.financial_distress,"HEALTHY");
+    assert.equal(Number(b.last_weekly_net),-425);
+    assert.equal(b.runway_weeks,10.8);
+    assert.equal(b.financial_distress,"WATCH");
+    assert.equal(inactive.last_weekly_net,null);
+    assert.equal(inactive.financial_distress,null);
     assert.equal(finance.contracts[0]!.status,"EXPIRED");
     assert.equal(finance.contracts[1]!.status,"SIGNED");
     assert.equal(finance.contracts[1]!.start_week_index,52);
