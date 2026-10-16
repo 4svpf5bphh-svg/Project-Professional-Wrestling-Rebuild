@@ -22,10 +22,11 @@ test("Canonical singles titles defend, transfer once on clean results and remain
        AND r.championship_id=c.championship_id AND r.reign_id=c.current_reign_id
     WHERE c.world_id=$1`,[world]));
  const setupBout=async(show:string,winner:"A"|"B",finish:string,participants:[string,string])=>{
+  const eventWeek=show==="defense"?1:show==="change"?2:3;
   await withWorldTransaction(pool.pool,async tx=>{
    await tx.query(`INSERT INTO ppw_booking_drafts
     (world_id,draft_id,promotion_id,year,week,status)
-    VALUES($1,$2,$3,1,1,'SUBMITTED')`,[world,show,promotion]);
+    VALUES($1,$2,$3,1,$4,'SUBMITTED')`,[world,show,promotion,eventWeek]);
    await tx.query(`INSERT INTO ppw_card_slots(
     world_id,draft_id,slot_id,position,kind,payload)
     VALUES($1,$2,'main',0,'MATCH',$3::jsonb)`,[world,show,JSON.stringify({
@@ -34,14 +35,14 @@ test("Canonical singles titles defend, transfer once on clean results and remain
    await tx.query(`INSERT INTO ppw_completed_shows(
     world_id,promotion_id,show_id,year,week,resolution_id,
     crowd_response,receipt_json,receipt_digest)
-    VALUES($1,$2,$3,1,1,$4,78,'{}'::jsonb,repeat('a',64))`,
-    [world,promotion,show,"resolve-"+show]);
+    VALUES($1,$2,$3,1,$5,$4,78,'{}'::jsonb,repeat('a',64))`,
+    [world,promotion,show,"resolve-"+show,eventWeek]);
    await tx.query(`INSERT INTO ppw_completed_show_matches(
     world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
     VALUES($1,$2,'main',0,78,$3,$4)`,[world,show,finish,winner]);
   });
   const receipt:CompletedShowReceipt={
-   worldId:world,promotionId:promotion,showId:show,year:1,week:1,
+   worldId:world,promotionId:promotion,showId:show,year:1,week:eventWeek,
    resolutionId:"resolve-"+show,crowdResponse:78,
    matches:[{matchId:"main",position:0,crowdResponse:78,
     actualFinish:finish,actualWinnerSide:winner}],segments:[],
