@@ -69,7 +69,7 @@ async function cleanup(pool:TransactionPool,worldId:string){
    "ppw_completed_shows","ppw_show_resolutions","ppw_week_resolution_seals",
    "ppw_week_resource_clearances","ppw_week_arbitration_proposals",
    "ppw_week_staff_fallback_runs","ppw_week_prepared_finalizations",
-   "ppw_week_continuity_assessments","ppw_ledger_events","ppw_command_receipts",
+   "ppw_week_logistics_authorizations","ppw_week_continuity_assessments","ppw_ledger_events","ppw_command_receipts",
    "ppw_booking_drafts","ppw_contracts","ppw_people","ppw_venues",
    "ppw_promotions","ppw_worlds",
   ]) await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
@@ -242,4 +242,50 @@ test("missing unassigned show cleanly blocks World after lock without running un
    "SELECT phase,year,week FROM ppw_worlds WHERE world_id=$1",[worldId]));
   assert.deepEqual(info,[{phase:"RESOLVING",year:1,week:1}]);
  }finally{await cleanup(db.pool,worldId).finally(()=>db.close());}
+});
+
+test("frozen human venue delegation resolves a conflict without rewriting creative booking",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,4),worldId="human-logistics-"+randomUUID();
+ const playerId="controller-"+randomUUID(),resolutionId="resolution-"+worldId;
+ try{
+  const {promotions,shows}=await fixture(db.pool,worldId,"VENUE");
+  const preview=await previewWorldWeekArbitration(db.pool,worldId);
+  assert.equal(preview.outcomes.length,1);
+  const denied=preview.outcomes[0]!.denied.promotionId;
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,denied]);
+   await tx.query("UPDATE ppw_promotions SET management_mode='HUMAN' WHERE world_id=$1 AND promotion_id=$2",[worldId,denied]);
+   await tx.query(`INSERT INTO ppw_week_logistics_authorizations
+    (world_id,year,week,promotion_id,controller_player_id,allow_logistics_fallback,permitted_days,permitted_venue_ids)
+    VALUES($1,1,1,$2,$3,true,ARRAY[1,2,3,4,5,6,7]::smallint[],ARRAY['venue-0','venue-1']::text[])`,
+    [worldId,denied,playerId]);
+  });
+  const first=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:2});
+  assert.equal(first.status,"LIMIT_REACHED");
+  assert.deepEqual(first.steps.map(x=>x.action),["RECORD_ARBITRATION","REMEDIATE_HUMAN_LOGISTICS"]);
+  const events=await withWorldTransaction(db.pool,tx=>tx.query<{event_type:string}>(
+   "SELECT event_type FROM ppw_ledger_events WHERE world_id=$1 AND event_type='AUTHORIZED_LOGISTICS_REMEDIATED'",[worldId]));
+  assert.equal(events.length,1);
+  const scripts=await withWorldTransaction(db.pool,tx=>tx.query<{draft_id:string;payload:{scriptedWinner:string;plannedFinish:string}}>(
+   "SELECT draft_id,payload FROM ppw_card_slots WHERE world_id=$1 ORDER BY draft_id",[worldId]));
+  assert.deepEqual(new Set(scripts.map(x=>x.draft_id)),new Set(shows));
+  assert.ok(scripts.every(x=>x.payload.plannedFinish==="SUBMISSION"));
+  const final=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:8});
+  assert.equal(final.status,"PUBLISHED");
+  const receipts=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_command_receipts WHERE world_id=$1 AND command_type='APPLY_HUMAN_LOGISTICS_REMEDIATION'",[worldId]));
+  assert.equal(receipts[0]!.n,"1");
+  assert.equal(promotions.length,2);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
+  });
+  await cleanup(db.pool,worldId);
+  await withWorldTransaction(db.pool,tx=>tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]));
+  await db.close();
+ }
 });
