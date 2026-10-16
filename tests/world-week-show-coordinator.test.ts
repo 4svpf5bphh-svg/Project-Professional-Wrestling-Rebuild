@@ -11,6 +11,7 @@ function fake(options:{phase?:string;duplicate?:boolean;missing?:boolean}={}){
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    if(sql.includes("FROM ppw_worlds"))return [{
     phase:options.phase??"RESOLVING"}] as unknown as T[];
+   if(sql.includes("FROM ppw_promotions"))return [{promotion_id:"p"}] as unknown as T[];
    if(sql.includes("FROM ppw_booking_drafts")&&
     !sql.includes("LEFT JOIN"))return (
     options.duplicate?[{promotion_id:"p",draft_id:"s"},
@@ -23,10 +24,9 @@ function fake(options:{phase?:string;duplicate?:boolean;missing?:boolean}={}){
  return {pool,calls};
 }
 const scope={worldId:"w",year:1,week:1,resolutionId:"resolution-1"};
-test("empty submitted-show set completes without inventing shows",async()=>{
+test("missing submitted shows block the week",async()=>{
  const db=fake();
- assert.deepEqual(await resolveWorldWeekShows(db.pool,scope),
-  {year:1,week:1,required:0,recorded:0,retried:0});
+ await assert.rejects(resolveWorldWeekShows(db.pool,scope),/every active promotion/);
 });
 test("duplicate promotion shows fail before any simulation",async()=>{
  const db=fake({duplicate:true});

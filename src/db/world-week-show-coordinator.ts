@@ -31,6 +31,24 @@ export async function resolveWorldWeekShows(
       ORDER BY promotion_id,draft_id`,
    [input.worldId,input.year,input.week]);
  });
+ // A submitted-only list is insufficient: missing AI/staff/player shows
+ // must block the whole week rather than silently count as completed.
+ const active=await withWorldTransaction(pool,async tx=>{
+  const world=await tx.query<{phase:string}>(
+   "SELECT phase FROM ppw_worlds WHERE world_id=$1 AND year=$2 AND week=$3 FOR UPDATE",
+   [input.worldId,input.year,input.week]);
+  if(world.length!==1||world[0]!.phase!=="RESOLVING")
+   throw new Error("World changed during show discovery");
+  return tx.query<{promotion_id:string}>(
+   "SELECT promotion_id FROM ppw_promotions WHERE world_id=$1 AND lifecycle='ACTIVE' ORDER BY promotion_id",
+   [input.worldId]);
+ });
+ if(active.length===0||active.length>128)
+  throw new Error("Invalid active promotion population");
+ const requiredIds=new Set(active.map(p=>p.promotion_id));
+ if(requiredIds.size!==active.length||shows.length!==active.length||
+  shows.some(x=>!requiredIds.has(x.promotion_id)))
+  throw new Error("World week incomplete: every active promotion needs a submitted show");
  const unique=new Set<string>();
  for(const show of shows){
   if(!show.promotion_id||!show.draft_id||
@@ -63,7 +81,7 @@ export async function resolveWorldWeekShows(
       WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
        AND d.status='SUBMITTED' ORDER BY d.promotion_id,d.draft_id`,
    [input.worldId,input.year,input.week]);
-  if(rows.length!==shows.length||rows.some((r,i)=>
+  if(rows.length!==active.length||rows.some((r,i)=>
    r.promotion_id!==shows[i]!.promotion_id||
    r.draft_id!==shows[i]!.draft_id||
    r.resolution_id!==input.resolutionId))

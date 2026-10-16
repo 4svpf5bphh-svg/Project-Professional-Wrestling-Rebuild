@@ -55,6 +55,25 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       if(resolved!==required) throw new Error("World week incomplete: active promotions need resolved shows");
       if(cleared!==required) throw new Error("World week has no valid pre-resolution resource clearance");
       if(certified!==required) throw new Error("World week has no valid resolution certification");
+      // The new detailed results are a second mandatory durable layer.
+      // Legacy date-charge receipts alone cannot certify published results.
+      const detailed=await tx.query<{completed_promotions:number;invalid_results:number}>(
+        `SELECT count(c.show_id)::integer AS completed_promotions,
+                count(*) FILTER (WHERE c.show_id IS NOT NULL AND
+                  (c.year<>$2 OR c.week<>$3 OR c.promotion_id<>p.promotion_id))::integer
+                  AS invalid_results
+           FROM ppw_promotions p
+           LEFT JOIN ppw_booking_drafts d
+             ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
+             AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
+           LEFT JOIN ppw_completed_shows c
+             ON c.world_id=d.world_id AND c.show_id=d.draft_id
+           WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+        [input.worldId,year,week],
+      );
+      if(detailed.length!==1||detailed[0]!.completed_promotions!==required||
+       detailed[0]!.invalid_results!==0)
+        throw new Error("World week incomplete: detailed show results missing or mismatched");
       // A certificate alone is not enough: re-check submitted cards in this
       // SAME locked World transaction, so stale approvals cannot skip collisions.
       const conflicts=await inspectWeekConflicts(tx,input.worldId);
