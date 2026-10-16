@@ -13,6 +13,7 @@ import {beginWorldResolution} from "./world-lock.js";
 import {clearWorldWeekResources} from "./week-clearance.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
+import {consumeWorldWeekAppearances} from "./world-week-appearance-coordinator.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -195,6 +196,10 @@ export async function executeNextWorldResolutionStage(
   const result=await clearWorldWeekResources(pool,{worldId,requestId,expectedRevision});
   return {action:plan.action,status:"EXECUTED" as const,result};
  }
+ if(plan.action==="RESOLVE_LEGACY_SHOWS"){
+  const result=await consumeWorldWeekAppearances(pool,{worldId,year:plan.year,week:plan.week,resolutionId});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
  if(plan.action==="RESOLVE_DETAILED_SHOWS"){
   const result=await runWorldShowResolutionPhase(pool,{
    worldId,year:plan.year,week:plan.week,resolutionId});
@@ -226,7 +231,7 @@ export async function driveWorldResolution(
   const plan=await planNextWorldResolutionAction(pool,input.worldId);
   const blocked=new Set<WorldResolutionAction>([
    "WAIT_FOR_WORLD_LOCK","ARBITRATE_OR_REMEDIATE",
-   "RESOLVE_LEGACY_SHOWS","CERTIFY_WEEK",
+   "CERTIFY_WEEK",
   ]);
   if(blocked.has(plan.action)){
    steps.push({action:plan.action,status:"BLOCKED"});
