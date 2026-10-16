@@ -20,6 +20,21 @@ export async function resolveCanonicalShow(
  pool:TransactionPool,input:ResolveCanonicalShowInput,
 ):Promise<"RECORDED"|"IDENTICAL_RETRY">{
  return withWorldTransaction(pool,async tx=>{
+  // World row serialization makes the prior-result check race-safe.
+  const world=await tx.query<{year:number;week:number;phase:string}>(
+   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",
+   [input.worldId]);
+  if(world.length!==1||world[0]!.year!==input.year||
+   world[0]!.week!==input.week||world[0]!.phase!=="RESOLVING")
+   throw new Error("World is not resolving the requested week");
+  const existing=await tx.query<{resolution_id:string}>(
+   "SELECT resolution_id FROM ppw_completed_shows WHERE world_id=$1 AND show_id=$2",
+   [input.worldId,input.showId]);
+  if(existing.length){
+   if(existing.length!==1||existing[0]!.resolution_id!==input.resolutionId)
+    throw new Error("Conflicting completed show resolution");
+   return "IDENTICAL_RETRY";
+  }
   const projection=await previewArchivedShowMatchScoresInTransaction(tx,input);
   if(projection.year!==input.year||projection.week!==input.week)
    throw new Error("Canonical show week differs from World resolution");
