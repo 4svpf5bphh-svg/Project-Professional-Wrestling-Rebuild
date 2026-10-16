@@ -75,11 +75,10 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
           const valid= c.status==="SIGNED"
             && typeof c.expires_week_index==="number" && c.expires_week_index>=weekIndex
             && (c.family==="EXCLUSIVE"
-              ? (c.remaining_dates===null || (typeof c.remaining_dates==="number" && c.remaining_dates>0))
-              : ((c.family==="ONE_OFF" || c.family==="LIMITED_NON_EXCLUSIVE")
+              || ((c.family==="ONE_OFF" || c.family==="LIMITED_NON_EXCLUSIVE")
                   && typeof c.remaining_dates==="number" && c.remaining_dates>0));
           if(!valid) throw new Error("Contract unavailable for show: "+c.contract_id);
-          if(c.remaining_dates!==null) finite.push(c.contract_id);
+          if(c.family!=="EXCLUSIVE" && c.remaining_dates!==null) finite.push(c.contract_id);
         }
         if(finite.length>0) {
           const updated=await tx.query<{contract_id:string}>(
