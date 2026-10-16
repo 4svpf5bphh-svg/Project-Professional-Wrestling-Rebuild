@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {combineArchivedShowMatchContext,combineRecordedSegmentCrowd} from "../src/simulation/legacy/show-context.js";
+import {combineArchivedShowMatchContext,combineRecordedSegmentCrowd,previewAuthoredSegmentsInShow} from "../src/simulation/legacy/show-context.js";
 import type {ArchivedPacingPreview} from "../src/simulation/legacy/show-pacing.js";
 import type {ArchivedAlignmentEvaluation} from "../src/simulation/legacy/show-alignment.js";
 const p:ArchivedPacingPreview={phase:"PACING_ONLY_NOT_FINAL",
@@ -47,4 +47,27 @@ test("recorded segments must have real bounded scores and distinct positions",()
  assert.throws(()=>combineRecordedSegmentCrowd(c,[{position:0,crowdResponse:50}]));
  assert.throws(()=>combineRecordedSegmentCrowd(c,[{position:1,crowdResponse:101}]));
  assert.throws(()=>combineRecordedSegmentCrowd(c,[{position:1,crowdResponse:50},{position:1,crowdResponse:60}]));
+});
+
+test("authored segments integrate with original weighted show crowd",()=>{
+ const c=combineArchivedShowMatchContext(p,[a],[g],[f]);
+ const segment={segment:{slotId:"angle",position:1,kind:"CONTRACT_SIGNING" as const,
+  actorIds:["a"],targetIds:["b"],outcome:"REFUSED" as const},
+  performers:[{personId:"a",popularity:70,presentation:80,momentum:60},
+   {personId:"b",popularity:60,presentation:70,momentum:50}],
+  storylineHeat:80,repetitionCount:0};
+ const x=previewAuthoredSegmentsInShow(c,[segment]);
+ assert.equal(x.segmentDetails[0]!.outcome,"REFUSED");
+ assert.equal(x.segmentDetails[0]!.crowdResponse,74.4);
+ assert.equal(x.crowdResponse,76.3);
+ assert.equal(x.phase,"AUTHORED_SEGMENTS_PREVIEW_NOT_FINAL");
+ assert.equal(x.matches[0]!.adjustedCrowdResponse,77.5);
+});
+test("provisional segments cannot collide with match positions",()=>{
+ const c=combineArchivedShowMatchContext(p,[a],[g],[f]);
+ assert.throws(()=>previewAuthoredSegmentsInShow(c,[{
+  segment:{slotId:"angle",position:0,kind:"DEBUT",actorIds:["a"],
+   targetIds:[],outcome:"HAPPENS"},
+  performers:[{personId:"a",popularity:70,presentation:80,momentum:60}],
+  storylineHeat:50,repetitionCount:0}]));
 });

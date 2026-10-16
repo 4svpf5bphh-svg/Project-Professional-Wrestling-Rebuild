@@ -1,3 +1,4 @@
+import {evaluateAuthoredSegmentCrowd,type SegmentCrowdContext} from "./segment-crowd.js";
 /** Read-only combination of archived show-flow match terms.
  * Segments remain unprojected. No official World result may use this preview.
  */
@@ -80,4 +81,20 @@ export function combineRecordedSegmentCrowd(
   adjustment:round1(crowdResponse-baseCrowdResponse),
   segmentReactions:"RECORDED_CROWD_ONLY" as const,
   segments:segments.map(x=>({...x}))};
+}
+
+/** Provisional authored-angle projection into archived weighted show flow.
+ * This is not an authoritative completed segment or durable show result.
+ */
+export function previewAuthoredSegmentsInShow(
+ context:ReturnType<typeof combineArchivedShowMatchContext>,
+ segments:readonly SegmentCrowdContext[],
+){
+ const reactions=evaluateAuthoredSegmentCrowd(segments);
+ const combined=combineRecordedSegmentCrowd(context,reactions.map(r=>({
+  position:r.position,crowdResponse:r.crowdResponse,
+ })));
+ return {...combined,phase:"AUTHORED_SEGMENTS_PREVIEW_NOT_FINAL" as const,
+  segmentReactions:"PROVISIONAL_AUTHOR_OUTCOMES" as const,
+  segmentDetails:reactions.map(r=>({...r,components:{...r.components}}))};
 }
