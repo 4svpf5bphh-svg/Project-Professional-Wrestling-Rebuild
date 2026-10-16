@@ -12,6 +12,7 @@ function fixture(config:{phase?:string;active?:number;submitted?:number;
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    if(sql.includes("FROM ppw_worlds"))return [{year:1,week:1,
     phase:config.phase??"RESOLVING"}] as unknown as T[];
+   if(sql.includes("AS done"))return [{done:false}] as unknown as T[];
    if(sql.includes("AS active"))return [{
     active:config.active??2,submitted:config.submitted??2,
     cleared:config.cleared===undefined?2:config.cleared,
@@ -83,10 +84,9 @@ test("executor does not fabricate legacy show receipts",async()=>{
  assert.equal(result.status,"BLOCKED");
  assert.equal(db.queries.some(x=>x.startsWith("INSERT")),false);
 });
-test("executor blocks staff preparation instead of inventing cards",async()=>{
+test("executor refuses to bypass missing staff preparation",async()=>{
  const db=fixture({submitted:1});
- const result=await executeNextWorldResolutionStage(db.pool,{
-  worldId:"world",requestId:"stage",expectedRevision:0,resolutionId:"resolve"});
- assert.equal(result.status,"BLOCKED");
- assert.equal(result.action,"GENERATE_STAFF_AND_AI_CARDS");
+ const plan=await planNextWorldResolutionAction(db.pool,"world");
+ assert.equal(plan.action,"GENERATE_STAFF_AND_AI_CARDS");
+ assert.equal(plan.ready.submitted,1);
 });

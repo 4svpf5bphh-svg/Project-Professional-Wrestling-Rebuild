@@ -12,6 +12,7 @@ import {finalizePreparedWorldShows} from "./finalize-prepared-shows.js";
 import {beginWorldResolution} from "./world-lock.js";
 import {clearWorldWeekResources} from "./week-clearance.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
+import {generateWeekStaffFallbackCards} from "./generate-staff-fallback-cards.js";
 export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;
  cleared:number|null;certified:number|null;legacyResolved:number;
@@ -90,8 +91,10 @@ export async function planNextWorldResolutionAction(
    "BEGIN_RESOLUTION";
  }else if(ready.phase==="RESOLVING"){
   if(ready.submitted!==ready.active){
-   action="GENERATE_STAFF_AND_AI_CARDS";
-   blockers.push("MISSING_PROMOTION_SHOWS");
+   const run=await withWorldTransaction(pool,tx=>tx.query<{done:boolean}>(`SELECT EXISTS(SELECT 1 FROM ppw_week_staff_fallback_runs WHERE world_id=$1 AND year=$2 AND week=$3) AS done`,[worldId,ready.year,ready.week]));
+   if(run.length!==1)throw new Error("Staff fallback checkpoint missing");
+   action=run[0]!.done?"ARBITRATE_OR_REMEDIATE":"GENERATE_STAFF_AND_AI_CARDS";
+   blockers.push(run[0]!.done?"MISSING_PROMOTION_SHOWS_AFTER_STAFF":"MISSING_PROMOTION_SHOWS");
   }else if(ready.cleared!==ready.active){
    const report=await withWorldTransaction(pool,tx=>inspectWeekConflicts(tx,worldId));
    action=report.provisionalClear?"CLEAR_RESOURCES":"ARBITRATE_OR_REMEDIATE";
@@ -182,6 +185,10 @@ export async function executeNextWorldResolutionStage(
  }
  if(plan.action==="BEGIN_RESOLUTION"){
   const result=await beginWorldResolution(pool,{worldId,requestId,expectedRevision});
+  return {action:plan.action,status:"EXECUTED" as const,result};
+ }
+ if(plan.action==="GENERATE_STAFF_AND_AI_CARDS"&&plan.ready.phase==="RESOLVING"){
+  const result=await generateWeekStaffFallbackCards(pool,{worldId,requestId,expectedRevision});
   return {action:plan.action,status:"EXECUTED" as const,result};
  }
  if(plan.action==="CLEAR_RESOURCES"){
