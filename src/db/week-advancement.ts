@@ -117,6 +117,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         [input.worldId,year,week],
       );
       if(moved.length!==1) throw new Error("World rollover deadline expired; recovery required");
+      // Apply accepted renewals only at the end of the paid current term.
+      await tx.query("UPDATE ppw_contracts c SET start_week_index=c.expires_week_index+1, expires_week_index=c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer, date_entitlement=(r.proposed_terms->>'dateEntitlement')::integer, remaining_dates=CASE WHEN c.family='EXCLUSIVE' THEN NULL ELSE (r.proposed_terms->>'dateEntitlement')::integer END, weekly_guarantee=(r.proposed_terms->>'weeklyGuarantee')::bigint, appearance_fee=(r.proposed_terms->>'appearanceFee')::bigint, role_expectation=r.proposed_terms->>'roleExpectation', creative_control=r.proposed_terms->>'creativeControl', signing_bonus=0, revision=c.revision+1 FROM ppw_contract_renewal_proposals r WHERE c.world_id=$1 AND c.expires_week_index=$2 AND c.status='SIGNED' AND r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED' AND (r.proposed_terms->>'termWeeks')::integer BETWEEN 1 AND 52 AND (r.proposed_terms->>'dateEntitlement')::integer BETWEEN 1 AND 104",[input.worldId,weekIndex]);
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],
