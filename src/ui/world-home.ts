@@ -67,7 +67,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(!promotion){
    root.append(el("p","ppw-home-small",
     "Join and claim a promotion through the World selection screen before managing your roster."));
-   root.append(control("Industry","Browse the World",port.industry,"◎"));
+   // A controller must claim a promotion before private Industry views open.
    return;
   }
   const stats=el("section","ppw-home-finances");

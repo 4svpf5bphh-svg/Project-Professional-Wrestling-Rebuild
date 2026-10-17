@@ -1,4 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
+import {overviewAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,businessAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,industryWorldAsActor,
@@ -20,8 +21,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer","business","staff","setStaffContinuity","industry"].includes(method)?
-  "":id("showId");
+ const showId=["load","talent","save","ready","results"].includes(method)?
+  id("showId"):"";
+ if(method==="overview")return overviewAsActor(context,worldId);
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);

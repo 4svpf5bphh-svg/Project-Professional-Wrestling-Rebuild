@@ -1,4 +1,6 @@
 import {mountPlanner,type PlannerPort} from "../ui/show-planner.js";
+import {mountWorldHome,type WorldHomePort} from "../ui/world-home.js";
+import "../ui/world-home.css";
 import {mountWorldCalendar,type CalendarPort} from "../ui/world-calendar.js";
 import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
@@ -33,6 +35,30 @@ import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 type Scope=CardSessionScope;
+/** One permanent iPhone-first entrance to every completed workspace.
+ * Navigating does not advance simulation or create a new World.
+ */
+export function mountWorldHomePage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ const port:WorldHomePort={
+  load:()=>call("overview"),
+  planner:()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope)),
+  roster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
+  market:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
+  contracts:()=>mountContractDesk(root,contractPort(call),
+   ()=>mountWorldHomePage(root,scope)),
+  backstage:()=>mountPersonaDesk(root,personaPort(call),
+   ()=>mountWorldHomePage(root,scope),
+   ()=>mountProgrammePage(root,scope)),
+  results:()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountWorldHomePage(root,scope));},
+  business:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
+  staff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
+  industry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
+  calendar:()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope))
+ };
+ return mountWorldHome(root,port);
+}
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
@@ -106,7 +132,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   openOwnResults:showId=>{void mountResultsPage(root,{...scope,showId},
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");},
   back:scope.showId?()=>mountBookingPage(root,scope):
-   ()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")
+   ()=>mountWorldHomePage(root,scope)
  };
 }
 export function mountIndustryPage(root:HTMLElement,scope:Scope){
@@ -118,7 +144,7 @@ function staffPort(root:HTMLElement,scope:Scope,
  return {load:()=>call("staff"),
   save:input=>call("setStaffContinuity",input),
   back:scope.showId?()=>mountBookingPage(root,scope):
-   ()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")
+   ()=>mountWorldHomePage(root,scope)
  };
 }
 export function mountStaffPage(root:HTMLElement,scope:Scope){
@@ -134,7 +160,8 @@ function businessPort(root:HTMLElement,scope:Scope,
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openContracts:()=>mountContractDesk(root,contractPort(call),
    ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
-  back:scope.showId?()=>mountBookingPage(root,scope):undefined
+  back:scope.showId?()=>mountBookingPage(root,scope):
+   ()=>mountWorldHomePage(root,scope)
  };
 }
 export function mountBusinessPage(root:HTMLElement,scope:Scope){
@@ -156,6 +183,7 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>open("ROSTER")),
   backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,
+  backToHome:()=>mountWorldHomePage(root,scope),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),

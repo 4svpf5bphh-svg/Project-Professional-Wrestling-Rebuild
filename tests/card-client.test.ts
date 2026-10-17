@@ -54,6 +54,19 @@ test("Global Industry view is a private authenticated session read, not a rival 
  assert.equal(bodies[0]!.playerId,undefined);
  assert.equal(bodies[0]!.showId,"");
 });
+test("Promotion-wide routes do not depend on a show draft",async()=>{
+ const seen:string[]=[];
+ const client=createCardClient({...scope,showId:""},async(_url,init)=>{
+  const body=JSON.parse(String(init?.body));
+  seen.push(body.method);
+  return new Response(JSON.stringify({}),{status:200});
+ });
+ for(const method of ["overview","programmes","tagTeams","stables",
+  "persona","resultsArchive","business","staff","industry","planner","calendar"])
+  await client(method);
+ assert.equal(seen.length,11);
+ await assert.rejects(client("results"),/booked show/);
+});
 test("a rejected session returns a user-visible error",async()=>{
  const client=createCardClient(scope,async()=>new Response("",{status:403}));
  await assert.rejects(client("results"),/session expired/i);
