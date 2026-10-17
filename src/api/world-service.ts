@@ -2,6 +2,7 @@ import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
+import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
  from "../db/portable-persona-change.js";
 import {readStableWorkspace,readActiveStableChoices,
@@ -311,4 +312,12 @@ export async function requestPersonaAsActor(context:WorldApiContext,
  validate(input.promotionId,"promotion");
  return requestPortablePersonaChange(context.pool,{
   ...input,playerId:context.actor.playerId});
+}
+
+/** A private, revision-guarded Backstage reply from the authenticated booker. */
+export async function backstageDecisionAsActor(context:WorldApiContext,
+ input:Omit<BackstageDecisionInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.conversationId,"conversation");
+ return decideBackstageRequest(context.pool,{...input,playerId:context.actor.playerId});
 }

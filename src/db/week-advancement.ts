@@ -4,6 +4,7 @@ import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
+import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -221,6 +222,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         FROM ppw_contracts c WHERE r.world_id=$1 AND r.status='PENDING'
         AND c.world_id=r.world_id AND c.contract_id=r.contract_id
         AND c.status='EXPIRED'`,[input.worldId]);
+      // One atomic, certified-week reconciliation. No background polling.
+      await settleBackstagePromises(tx,input.worldId,weekIndex);
+      await publishBackstageRequests(tx,input.worldId,weekIndex+1);
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],

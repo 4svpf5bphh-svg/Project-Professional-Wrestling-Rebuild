@@ -49,11 +49,22 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   const selected=s.personId??roster[0]?.person_id;
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
    throw new Error("Only a roster wrestler's identity may be inspected");
+  // One bounded read of the newest private message per roster member.
+  const incoming=roster.length?await tx.query<{
+   person_id:string;request_id:string;kind:string;status:string;
+   created_week_index:number}>([
+   "SELECT DISTINCT ON (person_id) person_id,request_id,kind,status,created_week_index",
+   "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
+   "AND person_id=ANY($3::text[])",
+   "ORDER BY person_id,created_week_index DESC,request_id DESC LIMIT 500"
+  ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id)]):[];
+  const incomingById=new Map(incoming.map(x=>[x.person_id,x]));
   const listed=roster.map(x=>({personId:x.person_id,name:x.name,
+   latestIncoming:incomingById.get(x.person_id)??null,
    morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
-   persona:null,history:[],recentRequests:[],archetypes:[],
+   persona:null,history:[],recentRequests:[],conversations:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
    worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
    canEdit:false,nextPitchWeek:0};
@@ -84,9 +95,25 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "WHERE world_id=$1 AND person_id=$2",
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected]);
+  const conversations=await tx.query<{
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"PARTNERSHIP";
+   related_person_id:string|null;status:string;
+   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"EXPLORE_RENEWAL"|"MEDIATE"|null;
+   created_week_index:number;responded_week_index:number|null;
+   due_week_index:number|null}>([
+   "SELECT request_id,kind,related_person_id,status,decision,",
+   "created_week_index,responded_week_index,due_week_index",
+   "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
+   "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
+  ].join(" "),[s.worldId,s.promotionId,selected]);
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
+   conversations:conversations.reverse().map(x=>({
+    conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
+    status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
+    respondedWeekIndex:x.responded_week_index,dueWeekIndex:x.due_week_index,
+   })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),
     startedWeekIndex:x.started_week_index,endedWeekIndex:x.ended_week_index,

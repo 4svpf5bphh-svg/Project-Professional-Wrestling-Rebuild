@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {portablePersonaAsActor,requestPersonaAsActor,
+import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
@@ -16,7 +16,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
- if(method==="persona"){
+ if(method==="persona"||method==="backstage"){
   if(p.personId!==undefined&&typeof p.personId!=="string")
    throw new Error("Invalid wrestler");
   return portablePersonaAsActor(context,worldId,promotionId,
@@ -44,6 +44,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="backstageDecision"){
+  const choices=["TALK","DECLINE","PROMISE_APPEARANCE","EXPLORE_RENEWAL","MEDIATE"] as const;
+  if(!choices.some(choice=>choice===p.decision))
+   throw new Error("Invalid Backstage decision");
+  return backstageDecisionAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,conversationId:id("conversationId"),
+   decision:p.decision as (typeof choices)[number]});
+ }
  if(method==="requestPersona")return requestPersonaAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,
   personId:id("personId"),gimmickId:id("gimmickId")});
