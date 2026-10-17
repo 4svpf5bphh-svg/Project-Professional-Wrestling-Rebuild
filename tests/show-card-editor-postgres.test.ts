@@ -139,9 +139,36 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     segments:[{slotId:"angle",payload:{...angle,participants:[
      {...members[0],contractId:"fake"},members[1]]}}],
     runningOrder:["angle","main"]}),/contract rights|Multiple contracts/);
+   // Storyline links are promotion-owned, authenticated, revision-gated and
+   // saved atomically with the angle rather than inferred at resolution.
+   await withWorldTransaction(db.pool,tx=>tx.query(
+    "INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition)"+
+    " VALUES($1,$2,'feud','ACTIVE',72,2)",[world,promotion]));
+   const linked=await saveCardEditorAsActor(context,{...identity,
+    requestId:"link-feud",expectedRevision:4,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:angle,programmeId:"feud"}],
+    runningOrder:["angle","main"]});
+   assert.equal(linked.status,"APPLIED");
+   const withLink=await showCardEditorAsActor(context,world,promotion,show);
+   assert.deepEqual(withLink.programmeLinks,[{slotId:"angle",programmeId:"feud"}]);
+   assert.equal(withLink.programmes[0]!.heat,72);
+   await assert.rejects(saveCardEditorAsActor(context,{...identity,
+    requestId:"invalid-feud",expectedRevision:5,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:angle,programmeId:"foreign"}],
+    runningOrder:["angle","main"]}),/Only active promotion programmes/);
+   assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,
+    [{slotId:"angle",programmeId:"feud"}]);
+   const remove=await saveCardEditorAsActor(context,{...identity,
+    requestId:"remove-angle",expectedRevision:5,
+    matches:[{slotId:"main",payload:raw}],segments:[],runningOrder:["main"]});
+   assert.equal(remove.status,"APPLIED");
+   assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,[]);
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
-    for(const table of ["ppw_command_receipts","ppw_card_slots",
+    for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
+     "ppw_programmes","ppw_card_slots",
      "ppw_booking_drafts","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",
      "ppw_promotions"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);

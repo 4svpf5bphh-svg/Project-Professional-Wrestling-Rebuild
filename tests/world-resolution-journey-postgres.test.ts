@@ -37,7 +37,7 @@ test("two promotions resolve, certify and publish after restart without double c
    // Make original match simulation ready without guessing any real wrestler attributes.
    await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[worldId]);
    for(let i=0;i<4;i++){
-    await tx.query("INSERT INTO ppw_people (world_id,person_id,name,booking_division,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum) VALUES($1,$2,$3,'MEN',80,80,75,85,95,5,5,65,65,70)",
+    await tx.query("INSERT INTO ppw_people (world_id,person_id,name,booking_division,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,default_alignment) VALUES($1,$2,$3,'MEN',80,80,75,85,95,5,5,65,65,70,'FACE')",
      [worldId,people[i]!,"Talent "+i]);
     await tx.query("INSERT INTO ppw_contracts (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',1,52)",
      [worldId,contracts[i]!,people[i]!,promotions[Math.floor(i/2)]!]);
@@ -60,6 +60,10 @@ test("two promotions resolve, certify and publish after restart without double c
     await tx.query("INSERT INTO ppw_card_slots (world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,1,'SEGMENT',$4::jsonb)",
      [worldId,shows[i]!,"angle-"+i,JSON.stringify(angle)]);
     if(i===0){
+     // A player-authored heel turn must survive resolution and alter portable identity.
+     await tx.query("INSERT INTO ppw_card_slots (world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'turn-0',2,'SEGMENT',$3::jsonb)",
+      [worldId,shows[i]!,JSON.stringify({kind:"TURN",participants:[booking.participants[0]],
+       actorIds:[people[a]],targetIds:[],outcome:"HAPPENS",turnTargetAlignment:"HEEL"})]);
      await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition) VALUES($1,$2,'feud','ACTIVE',50,0)",
       [worldId,promotions[i]]);
      await tx.query("INSERT INTO ppw_programme_match_activities(world_id,promotion_id,programme_id,draft_id,slot_id,kind) VALUES($1,$2,'feud',$3,'angle-0','SEGMENT')",
@@ -103,17 +107,27 @@ test("two promotions resolve, certify and publish after restart without double c
   assert.equal(results.length,2);
   assert.ok(results.every(r=>r.receipt_json.matches.length===1));
   assert.ok(results.every(r=>r.receipt_json.matches[0]!.actualWinnerSide==="B"));
-  assert.ok(results.every(r=>r.receipt_json.segments.length===1));
+  assert.deepEqual(results.map(r=>r.receipt_json.segments.length).sort(),[1,2]);
   const angleStories=await read<{slot_id:string;authored_outcome:string;
    story_json:{headline:string;summary:string;intent:string|null;actorIds:string[]}}>(`
    SELECT slot_id,authored_outcome,story_json FROM ppw_completed_show_segments
    WHERE world_id=$1 ORDER BY slot_id`,[worldId]);
-  assert.equal(angleStories.length,2);
-  assert.deepEqual(angleStories.map(s=>s.authored_outcome),["HAPPENS","REFUSED"]);
+  assert.equal(angleStories.length,3);
+  assert.deepEqual(angleStories.map(s=>s.authored_outcome),["HAPPENS","REFUSED","HAPPENS"]);
+  assert.equal(angleStories[2]!.story_json.intent,"TURN_OCCURRED");
+  assert.match(angleStories[2]!.story_json.summary,/heel/);
   assert.equal(angleStories[0]!.story_json.intent,"ATTACK_OCCURRED");
   assert.match(angleStories[0]!.story_json.summary,/attacks/);
   assert.equal(angleStories[1]!.story_json.intent,null);
   assert.match(angleStories[1]!.story_json.summary,/does not happen/);
+  const turned=await read<{default_alignment:string}>(`
+   SELECT default_alignment FROM ppw_people WHERE world_id=$1 AND person_id=$2`,
+   [worldId,people[0]!]);
+  assert.equal(turned[0]!.default_alignment,"HEEL");
+  const changes=await read<{method:string;changed:boolean}>(`
+   SELECT method,changed FROM ppw_promotion_alignment_changes WHERE world_id=$1`,
+   [worldId]);
+  assert.deepEqual(changes,[{method:"TURN",changed:true}]);
   const programmes=await read<{heat:number;repetition:number}>(`
    SELECT heat,repetition FROM ppw_programmes
    WHERE world_id=$1 AND promotion_id=$2`,[worldId,promotions[0]!]);
@@ -146,7 +160,7 @@ test("two promotions resolve, certify and publish after restart without double c
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
-    "ppw_ledger_events","ppw_command_receipts",
+    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_alignment_changes",
     "ppw_programme_match_activities","ppw_programmes","ppw_card_slots","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_venues","ppw_promotions","ppw_worlds",
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
