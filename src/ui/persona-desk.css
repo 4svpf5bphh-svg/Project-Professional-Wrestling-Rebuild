@@ -35,3 +35,20 @@
 .ppw-persona-chat{min-height:260px;display:flex;flex-direction:column}
 .ppw-persona-bubble{overflow-wrap:anywhere}
 @media(max-width:390px){.ppw-backstage-tabs .ppw-persona-button{font-size:12px}}
+
+/* Compact iPhone-style threaded requests and replies, no modal overlays. */
+.ppw-backstage-date{align-self:center;color:#9ab3c3;font-size:12px;
+ margin:14px 0 4px}
+.ppw-backstage-replies{display:flex;flex-direction:column;gap:8px;
+ margin:8px 0 16px;max-width:94%}
+.ppw-backstage-replies .ppw-persona-button{background:#19475c;
+ border:1px solid #4a8499;color:#eff9ff;min-height:46px}
+.ppw-backstage-replies .ppw-persona-button:last-child{background:#332f42;
+ border-color:#675d73}
+.ppw-backstage-promise{color:#b7d7e5;margin:0 0 16px;padding:7px;
+ border-left:3px solid #60b7d3;align-self:flex-end;max-width:84%}
+.ppw-backstage-inbox .ppw-backstage-contact{overflow-wrap:anywhere}
+.ppw-persona-chat,.ppw-backstage-inbox{min-width:0}
+.ppw-persona-chat .ppw-persona-button:disabled{opacity:.52}
+@media(max-width:480px){.ppw-persona-chat{padding:12px;border-radius:12px}
+ .ppw-persona-bubble{max-width:89%}.ppw-backstage-replies{max-width:100%}}

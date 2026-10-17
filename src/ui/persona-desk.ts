@@ -4,8 +4,12 @@
 import type {readPortablePersonaWorkspace}
  from "../db/portable-persona-workspace.js";
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
+import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageMessage,backstageReply,
+ type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
+ decide(input:{conversationId:string;decision:BackstageDecision;
+  requestId:string;expectedRevision:number}):Promise<unknown>;
  request(input:{personId:string;gimmickId:string;
   requestId:string;expectedRevision:number}):Promise<unknown>;
 }
@@ -25,6 +29,21 @@ export function mountPersonaDesk(root:HTMLElement,
   personId=id;loading=true;render();
   try{view=await port.load(id);chosen=null;search="";error="";}
   catch(e){error=e instanceof Error?e.message:"Unable to load wrestler identity";}
+  finally{loading=false;render();}
+ }
+ async function decide(conversationId:string,decision:BackstageDecision){
+  if(loading||!view?.personId||!view.canEdit)return;
+  const selected=view.personId,revision=view.worldRevision;
+  loading=true;error="";answer=null;render();
+  try{
+   const result=await port.decide({conversationId,decision,
+    requestId:crypto.randomUUID(),expectedRevision:revision});
+   if(!result||typeof result!=="object"||!("status" in result)||
+     (result as {status:string}).status==="STALE")
+    throw new Error("Backstage has changed. Reload the conversation.");
+   view=await port.load(selected);
+   answer=null;
+  }catch(e){error=e instanceof Error?e.message:"Unable to send reply";}
   finally{loading=false;render();}
  }
  async function request(){
@@ -80,10 +99,16 @@ export function mountPersonaDesk(root:HTMLElement,
     (a.lastMessage?.submitted_week_index??-1)||a.name.localeCompare(b.name))){
     const active=wrestler.personId===view.personId;
     const last=wrestler.lastMessage;
+    const incoming=wrestler.latestIncoming;
     const concern=wrestler.morale!==null&&wrestler.morale<35?
      " · Wants to talk":wrestler.momentum!==null&&wrestler.momentum<25?
      " · Career check-in":"";
-    const summary=last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
+    const summary=incoming?" · "+(incoming.status==="PENDING"?"New message":
+     incoming.status==="PROMISED"?"Awaiting your booking":
+     incoming.status==="FULFILLED"?"Promise kept":
+     incoming.status==="BROKEN"?"Promise broken":"Conversation history")+
+     " · "+incoming.kind.toLowerCase():
+     last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
      ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
     const item=button(wrestler.name+summary,()=>{
       pane="THREAD";if(active)render();else void load(wrestler.personId);
@@ -163,6 +188,34 @@ export function mountPersonaDesk(root:HTMLElement,
    wrestler.momentum<25)
    chat.append(el("div","ppw-persona-bubble ppw-persona-in",
     "I feel like I've lost momentum. Can we find a way to get things moving again?"));
+  // Store conversations as immutable World facts; UI renders only the last
+  // 30 selected messages and never generates messages on opening a thread.
+  for(const item of view.conversations){
+   const stamp="Y"+(Math.floor(item.createdWeekIndex/52)+1)+
+    " · W"+(item.createdWeekIndex%52+1);
+   chat.append(el("small","ppw-backstage-date",stamp),
+    el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind)));
+   if(item.decision){
+    chat.append(el("div","ppw-persona-bubble ppw-persona-out",
+     BACKSTAGE_LABELS[item.decision]));
+    chat.append(el("div","ppw-persona-bubble ppw-persona-in",
+     backstageReply(item.decision,item.status)));
+    if(item.status==="PROMISED"&&item.dueWeekIndex!==null){
+     const remaining=item.dueWeekIndex-((view.worldYear-1)*52+view.worldWeek-1);
+     chat.append(el("small","ppw-backstage-promise",
+      "In-ring appearance promised · "+Math.max(0,remaining)+" weeks remaining"));
+    }
+   }else if(view.canEdit){
+    const actions=el("div","ppw-backstage-replies");
+    for(const decision of BACKSTAGE_CHOICES[item.kind]){
+     actions.append(button(BACKSTAGE_LABELS[decision],()=>{
+      void decide(item.conversationId,decision);},loading));
+    }
+    chat.append(actions);
+   }else{
+    chat.append(el("p","ppw-muted","Reply when the next booking window opens."));
+   }
+  }
   for(const p of [...view.recentRequests].reverse()){
    const out=el("div","ppw-persona-bubble ppw-persona-out",
     "How about a "+p.requested_gimmick_id.replaceAll("_"," ")+
