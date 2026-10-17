@@ -1,3 +1,5 @@
+import {readTagTeamWorkspace,createTagTeam,type CreateTagTeam}
+ from "../db/tag-team-workspace.js";
 import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
 import type { TransactionPool } from "../db/transaction.js";
@@ -273,6 +275,19 @@ export async function endProgrammeAsActor(context:WorldApiContext,
 }
 
 /** Original stables belong to one verified promotion, never client actor JSON. */
+export async function tagTeamWorkspaceAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readTagTeamWorkspace(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+export async function createTagTeamAsActor(context:WorldApiContext,
+ input:Omit<CreateTagTeam,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createTagTeam(context.pool,{...input,playerId:context.actor.playerId});
+}
 export async function stableWorkspaceAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");
