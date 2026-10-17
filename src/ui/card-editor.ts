@@ -32,6 +32,7 @@ export interface CardEditorPort{
  openMarket?():void;
  openBusiness?():void;
  openStaff?():void;
+ openIndustry?():void;
  openStables?():void;
  openWorkingConnections?():void;
  openPersona?():void;
@@ -282,6 +283,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    extras.append(button("Business",()=>port.openBusiness?.(),dirty||saving));
   if(port.openStaff)
    extras.append(button("Staff",()=>port.openStaff?.(),dirty||saving));
+  if(port.openIndustry)
+   extras.append(button("Industry",()=>port.openIndustry?.(),dirty||saving));
   if(port.openStables)
    extras.append(button("Stables",()=>port.openStables?.(),dirty||saving));
   if(port.openWorkingConnections)

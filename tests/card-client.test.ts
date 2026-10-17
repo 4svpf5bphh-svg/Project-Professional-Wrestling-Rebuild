@@ -43,6 +43,17 @@ test("Staff settings are submitted with actorless CSRF-protected browser identit
  assert.ok(seen.every(p=>p.playerId===undefined));
  assert.deepEqual(seen[1]!.permittedDays,[2,5]);
 });
+test("Global Industry view is a private authenticated session read, not a rival draft fetch",async()=>{
+ const bodies:Record<string,unknown>[]=[];
+ const client=createCardClient({...scope,showId:""},async(_url,init)=>{
+  bodies.push(JSON.parse(String(init?.body)));
+  return new Response(JSON.stringify({worldName:"Public World"}),{status:200});
+ });
+ await client("industry");
+ assert.equal(bodies[0]!.method,"industry");
+ assert.equal(bodies[0]!.playerId,undefined);
+ assert.equal(bodies[0]!.showId,"");
+});
 test("a rejected session returns a user-visible error",async()=>{
  const client=createCardClient(scope,async()=>new Response("",{status:403}));
  await assert.rejects(client("results"),/session expired/i);

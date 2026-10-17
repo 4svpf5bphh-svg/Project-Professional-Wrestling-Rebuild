@@ -13,6 +13,7 @@ export interface RosterMarketPort{
  openWrestler(personId:string):void;
  openBusiness?():void;
  openStaff?():void;
+ openIndustry?():void;
  backToBooking?():void;
 }
 const el=(tag:string,cls="",value="")=>{
@@ -162,12 +163,13 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   navigation.setAttribute("aria-label","Roster navigation");
   for(const [kind,label] of [
    ["ROSTER","Singles"],["TEAMS","Tag Teams"],["STABLES","Stables"],
-   ["MARKET","Talent Market"],["CONTRACTS","Contracts"],["STAFF","Staff"],
+   ["MARKET","Talent Market"],["CONTRACTS","Contracts"],["STAFF","Staff"],["INDUSTRY","Industry"],
    ["BUSINESS","Business"]
   ] as const){
    const b=btn(label,()=>{
     if(kind==="ROSTER"||kind==="MARKET")pick({view:kind,availability:"ALL"});
     else if(kind==="STAFF")port.openStaff?.();
+    else if(kind==="INDUSTRY")port.openIndustry?.();
     else if(kind==="TEAMS")port.openTagTeams();
     else if(kind==="STABLES")port.openStables();
     else if(kind==="BUSINESS")port.openBusiness?.();

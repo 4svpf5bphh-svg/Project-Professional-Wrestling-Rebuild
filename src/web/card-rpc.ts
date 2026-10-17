@@ -1,7 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,businessAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,industryWorldAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -20,7 +20,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer","business","staff","setStaffContinuity"].includes(method)?
+ const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer","business","staff","setStaffContinuity","industry"].includes(method)?
   "":id("showId");
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
@@ -37,6 +37,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
  if(method==="business")return businessAsActor(context,worldId,promotionId);
  if(method==="wrestlerDirectory"){
   const f=p.filter;
