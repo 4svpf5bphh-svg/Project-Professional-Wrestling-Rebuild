@@ -1,0 +1,27 @@
+.ppw-industry{max-width:1020px;margin:auto;padding:18px 14px 90px;
+ color:#f0f8ff;box-sizing:border-box}.ppw-industry *{box-sizing:border-box}
+.ppw-industry-head{padding:10px 0 18px}
+.ppw-industry-kicker{font-size:11px;letter-spacing:.16em;font-weight:800;color:#78d8f9}
+.ppw-industry-head h1{font-size:clamp(27px,6vw,38px);margin:8px 0}
+.ppw-industry-muted{color:#aabed2;font-size:13px;line-height:1.5}
+.ppw-industry-status{display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;
+ background:#1d3247;border:1px solid rgba(117,207,245,.2);border-radius:16px;
+ padding:16px;margin-bottom:15px}
+.ppw-industry-status>span{font-size:10px;font-weight:750;letter-spacing:.08em;color:#91cfe4}
+.ppw-industry-status>strong{font-size:15px}
+.ppw-industry-status p{grid-column:1/-1;margin:0}
+.ppw-industry-actions,.ppw-industry-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.ppw-industry-button{min-height:44px;font:inherit;font-size:14px;font-weight:700;
+ background:#1d435c;border:1px solid rgba(142,213,245,.35);
+ border-radius:11px;padding:10px 14px;color:#eef8ff;cursor:pointer}
+.ppw-industry-button[aria-current=page]{background:#246b88;border-color:#71cef6}
+.ppw-industry-list h2{font-size:19px;margin:8px 0}
+.ppw-industry-company,.ppw-industry-broadcast{display:flex;flex-direction:column;gap:7px;
+ position:relative;background:linear-gradient(115deg,#1b3043,#162538);
+ border:1px solid rgba(142,213,245,.17);border-radius:14px;
+ padding:15px;margin-bottom:10px}
+.ppw-industry-rank{color:#87dff4;font-size:13px;font-weight:900}
+.ppw-industry-company-name{font-size:17px;font-weight:800}
+.ppw-industry-crowd{font-size:13px;font-weight:700;color:#a7f0d9}
+@media(min-width:680px){.ppw-industry{padding:25px 24px 90px}
+ .ppw-industry-company{display:grid;grid-template-columns:42px 1fr 1fr auto;align-items:center}}
