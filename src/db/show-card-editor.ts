@@ -8,6 +8,8 @@ import {withSqlClient} from "./postgres.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
+import {readCanonicalMatchLayout} from "../domain/match-sides.js";
+import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import {contractAvailability} from "../domain/contract-availability.js";
@@ -259,6 +261,30 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      !["MEN","WOMEN"].includes([...divisions][0]??""))
      throw new Error("Mixed or missing booking division in match");
    }
+   // Original PPW automatically ties a booked bout to an active rivalry
+   // only when its two sides fit exactly one orientation of that feud.
+   // Fetch all promotion-owned sides ONCE, never once per wrestler or match.
+   const programmePeople=await tx.query<{
+    programme_id:string;person_id:string;side:"A"|"B"}>([
+    "SELECT pp.programme_id,pp.person_id,pp.side FROM ppw_programme_participants pp",
+    "JOIN ppw_programmes p ON p.world_id=pp.world_id",
+    "AND p.promotion_id=pp.promotion_id AND p.programme_id=pp.programme_id",
+    "WHERE pp.world_id=$1 AND pp.promotion_id=$2 AND p.status='ACTIVE'",
+    "ORDER BY pp.programme_id,pp.person_id LIMIT 401"
+   ].join(" "),[input.worldId,input.promotionId]);
+   if(programmePeople.length>400)throw new Error("Too many active programme members");
+   const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
+    const layout=readCanonicalMatchLayout(m.payload);
+    return layout.sides.length===2?[{
+     slotId:m.slotId,sideA:layout.sides[0]!.participants.map(p=>p.personId),
+     sideB:layout.sides[1]!.participants.map(p=>p.personId),
+    }]:[];
+   }),programmePeople.map(p=>({programmeId:p.programme_id,
+    personId:p.person_id,side:p.side})));
+   // Release referenced matches and angles before deleting their card slots.
+   await tx.query("DELETE FROM ppw_programme_match_activities"+
+    " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3 AND kind='MATCH'",
+    [input.worldId,input.promotionId,input.showId]);
    // Release removed/changed angle links BEFORE touching their referenced slots.
    // Legacy match-only saves preserve existing links.
    if(authored!==undefined)
@@ -282,6 +308,19 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     JSON.stringify(matches.map(m=>({slot_id:m.slotId,position:order.get(m.slotId)!,
      payload:m.payload})))]);
    if(inserted.length!==matches.length)throw new Error("Incomplete match card write");
+   if(programmeMatchLinks.length){
+    const linked=await tx.query<{slot_id:string}>([
+     "INSERT INTO ppw_programme_match_activities",
+     "(world_id,promotion_id,programme_id,draft_id,slot_id,kind)",
+     "SELECT $1,$2,x.programme_id,$3,x.slot_id,'MATCH'",
+     "FROM jsonb_to_recordset($4::jsonb) AS x(programme_id text,slot_id text)",
+     "RETURNING slot_id"
+    ].join(" "),[input.worldId,input.promotionId,input.showId,
+     JSON.stringify(programmeMatchLinks.map(x=>({
+      programme_id:x.programmeId,slot_id:x.slotId})))]);
+    if(linked.length!==programmeMatchLinks.length)
+     throw new Error("Incomplete automatic rivalry match links");
+   }
    if(authored!==undefined){
     await tx.query("DELETE FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2"+
      " AND kind='SEGMENT' AND NOT(slot_id=ANY($3::text[]))",
