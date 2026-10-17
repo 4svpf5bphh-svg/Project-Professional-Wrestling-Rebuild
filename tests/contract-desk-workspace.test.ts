@@ -38,7 +38,7 @@ test("contract desk handles pending proposals, withdrawal and ownership",{
   const request=await dispatchCardRpc(actor,"requestContractDates",{
    worldId,promotionId,showId:"not-used",playerId:"spoofed",contractId,
    requestId,expectedRevision:2,additionalDates:3,additionalPayment:300});
-  assert.equal(request.status,"APPLIED");
+  assert.equal((request as {status:string}).status,"APPLIED");
   const pending=await readContractDesk(db.pool,worldId,playerId,promotionId);
   const throughBrowser=await dispatchCardRpc(actor,"contracts",{
    worldId,promotionId,showId:"not-used",playerId:"spoofed"}) as typeof pending;
