@@ -24,7 +24,7 @@ test("World-portable tag pairs form once, require signed talent and survive idem
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",
     [worldId,playerId,promotionId]);
    for(const [i,personId] of personIds.entries()){
-    await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,$3)",
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
      [worldId,personId,"Person "+i]);
     if(i<2)await tx.query(`INSERT INTO ppw_contracts(
       world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
