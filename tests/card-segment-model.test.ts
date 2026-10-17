@@ -55,3 +55,15 @@ test("new stable invitation keeps authored target and owned stable identity",()=
  assert.deepEqual(p.targetIds,["prospect"]);
  assert.equal(restoreEditorSegment("invite",p).stableId,"stable-one");
 });
+
+test("faction invitation requires a player-scripted answer before booking",()=>{
+ let s=newEditorSegment("story","STABLE_INVITATION");
+ s.stableId="stable-one";
+ s=addSegmentPerson(s,"actors",{personId:"leader",contractId:"leader-deal"});
+ s=addSegmentPerson(s,"targets",{personId:"prospect",contractId:"prospect-deal"});
+ assert.throws(()=>buildEditorSegment(s),/accepts or rejects/);
+ s.stableDecision="REJECTED";
+ const booked=buildEditorSegment(s);
+ assert.equal(booked.stableDecision,"REJECTED");
+ assert.equal(restoreEditorSegment("story",booked).stableDecision,"REJECTED");
+});

@@ -74,7 +74,8 @@ test("original PPW stable formation, ownership, roster limits, historic joins, d
     "VALUES($1,$2,'invite',0,'STABLE_INVITATION','HAPPENS',80,$3::jsonb)"
    ].join(" "),[worldId,"show-"+id,JSON.stringify({
     slotId:"invite",position:0,kind:"STABLE_INVITATION",outcome:"HAPPENS",
-    stableId,headline:"Invitation accepted",summary:"The prospect agrees to join.",
+    stableId,stableDecision:"ACCEPTED",
+    headline:"Invitation accepted",summary:"The prospect agrees to join.",
     actorIds:[people[0]!],targetIds:[people[3]!],
     intent:"STABLE_INVITATION_OCCURRED"})]);
   });

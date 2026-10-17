@@ -6,7 +6,8 @@ const stables=[{stableId:"one",name:"The Faction",status:"ACTIVE",members:["lead
 const roster=["leader","a","b","other-person"].map(personId=>({personId,name:personId}));
 const story=(slotId:string,kind:string,outcome:string,weekIndex:number,person="b")=>({
  showId:"show",slotId,kind,outcome,weekIndex,
- story:{stableId:"one",actorIds:["leader"],targetIds:[person]}});
+ story:{stableId:"one",stableDecision:"ACCEPTED",
+  actorIds:["leader"],targetIds:[person]}});
 test("completed invitations need author confirmation; rejected later stories cancel older tasks",()=>{
  const yes=stableStoryFollowThrough({stables,roster,
   recent:[story("a","STABLE_INVITATION","HAPPENS",1)]});
@@ -31,4 +32,12 @@ test("existing memberships and other factions prevent duplicate or conflicting i
  const r=stableStoryFollowThrough({stables,roster,recent:facts});
  assert.equal(r.length,1);
  assert.equal(r[0]!.status,"OTHER_STABLE");
+});
+
+test("an invitation that occurs but is refused, or has no scripted answer, never asks to add a wrestler",()=>{
+ const a=story("refused","STABLE_INVITATION","HAPPENS",5);
+ const b={...a,story:{...(a.story as Record<string,unknown>),stableDecision:"REJECTED"}};
+ const c={...a,story:{stableId:"one",actorIds:["leader"],targetIds:["b"]}};
+ assert.deepEqual(stableStoryFollowThrough({stables,roster,recent:[b]}),[]);
+ assert.deepEqual(stableStoryFollowThrough({stables,roster,recent:[c]}),[]);
 });
