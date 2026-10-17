@@ -5,13 +5,13 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 export type DirectoryView="ROSTER"|"MARKET";
-export type DirectorySort="NAME"|"POPULARITY"|"MOMENTUM"|"VALUE";
+export type DirectorySort="NAME"|"POPULARITY"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
 export type MarketAvailability="ALL"|"APPROACHABLE"|"FREE_AGENT";
 export interface DirectoryFilter{
  view:DirectoryView;search?:string;division?:DirectoryDivision;
  availability?:MarketAvailability;sort?:DirectorySort;minPopularity?:number;
- minRecognition?:number;minMomentum?:number;minCraft?:number;
+ minRecognition?:number;minMomentum?:number;minCraft?:number;minPresentation?:number;
  offset?:number;limit?:number;
 }
 type PersonRow={
@@ -23,18 +23,18 @@ type PersonRow={
  expires_week_index:number|null;weekly_guarantee:string|null;
  appearance_fee:string|null;
  exclusive_to:string|null;other_contracts:number;active_contracts:number;
- pending_offer:boolean;
+ pending_offer:boolean;estimated_value:number|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
  if(!f||!["ROSTER","MARKET"].includes(f.view)||
   !["ALL","MEN","WOMEN"].includes(f.division??"ALL")||
   !["ALL","APPROACHABLE","FREE_AGENT"].includes(f.availability??"ALL")||
-  !["NAME","POPULARITY","MOMENTUM","VALUE"].includes(f.sort??"NAME")||
+  !["NAME","POPULARITY","MOMENTUM","VALUE","PAY_LOW","PAY_HIGH"].includes(f.sort??"NAME")||
   !Number.isSafeInteger(f.offset??0)||(f.offset??0)<0||(f.offset??0)>1000||
   !Number.isSafeInteger(f.limit??25)||(f.limit??25)<1||(f.limit??25)>40||
   typeof (f.search??"")!=="string"||(f.search??"").length>70)
    throw new Error("Invalid wrestler directory filters");
- for(const n of [f.minPopularity,f.minRecognition,f.minMomentum,f.minCraft])
+ for(const n of [f.minPopularity,f.minRecognition,f.minMomentum,f.minCraft,f.minPresentation])
   if(n!==undefined&&(!Number.isSafeInteger(n)||n<0||n>100))
    throw new Error("Invalid talent attribute threshold");
  return {...f,search:(f.search??"").trim(),division:f.division??"ALL",
@@ -45,7 +45,9 @@ const sortSql:Record<DirectorySort,string>={
  NAME:"p.name ASC,p.person_id ASC",
  POPULARITY:"p.popularity DESC NULLS LAST,p.name ASC,p.person_id ASC",
  MOMENTUM:"p.momentum DESC NULLS LAST,p.name ASC,p.person_id ASC",
- VALUE:"p.recognition DESC NULLS LAST,p.name ASC,p.person_id ASC"
+ VALUE:"mv.estimated_value ASC NULLS LAST,p.name ASC,p.person_id ASC",
+ PAY_LOW:"mine.weekly_guarantee ASC NULLS LAST,p.name ASC,p.person_id ASC",
+ PAY_HIGH:"mine.weekly_guarantee DESC NULLS LAST,p.name ASC,p.person_id ASC"
 };
 export async function readWrestlerDirectory(
  pool:TransactionPool,who:{worldId:string;playerId:string;promotionId:string},
@@ -74,6 +76,7 @@ export async function readWrestlerDirectory(
     mine.contract_id,mine.family,mine.remaining_dates,mine.expires_week_index,
     mine.weekly_guarantee::text,mine.appearance_fee::text,
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
+    mv.estimated_value,
     EXISTS(SELECT 1 FROM ppw_contract_offers o
       WHERE o.world_id=p.world_id AND o.person_id=p.person_id
        AND o.promotion_id=$2 AND o.status='PENDING') AS pending_offer
@@ -86,6 +89,15 @@ export async function readWrestlerDirectory(
      AND c.status='SIGNED'
     ORDER BY c.expires_week_index DESC,c.contract_id DESC LIMIT 1
    ) mine ON true
+   CROSS JOIN LATERAL (
+    SELECT round((500 + p.recognition*50 + p.popularity*30 +
+      (p.in_ring_quality+p.match_craft+p.presentation)*25.0/3) *
+      CASE p.career_stage
+       WHEN 'SPECIAL_ATTRACTION' THEN 1.35
+       WHEN 'VETERAN' THEN 1.1
+       WHEN 'PROSPECT' THEN 0.75
+       ELSE 1 END)::integer AS estimated_value
+   ) mv
    CROSS JOIN LATERAL (
     SELECT (array_agg(c.promotion_id ORDER BY c.promotion_id)
       FILTER(WHERE c.family='EXCLUSIVE'))[1] AS exclusive_to,
@@ -102,17 +114,18 @@ export async function readWrestlerDirectory(
     AND ($7::integer IS NULL OR p.recognition >= $7)
     AND ($8::integer IS NULL OR p.momentum >= $8)
     AND ($9::integer IS NULL OR p.match_craft >= $9)
+    AND ($10::integer IS NULL OR p.presentation >= $10)
     AND (${f.view==="ROSTER"?
-     "mine.contract_id IS NOT NULL":
+     "mine.contract_id IS NOT NULL AND $11::text IS NOT NULL":
      "mine.contract_id IS NULL"})
     ${f.view==="MARKET"?
-     "AND ($10::text='ALL' OR ($10='APPROACHABLE' AND contracts.exclusive_to IS NULL) OR ($10='FREE_AGENT' AND contracts.active_contracts=0))":
+     "AND ($11::text='ALL' OR ($11='APPROACHABLE' AND contracts.exclusive_to IS NULL) OR ($11='FREE_AGENT' AND contracts.active_contracts=0))":
      ""}
    ORDER BY ${sortSql[f.sort]}
-   LIMIT $11 OFFSET $12`,
+   LIMIT $12 OFFSET $13`,
    [who.worldId,who.promotionId,now,f.division,f.search,
     f.minPopularity??null,f.minRecognition??null,f.minMomentum??null,
-    f.minCraft??null,f.availability,f.limit+1,f.offset]);
+    f.minCraft??null,f.minPresentation??null,f.availability,f.limit+1,f.offset]);
   const hasMore=rows.length>f.limit;
   return {year:auth[0]!.year,week:auth[0]!.week,
    currentWeekIndex:now,worldRevision:Number(auth[0]!.revision),
@@ -129,6 +142,7 @@ export async function readWrestlerDirectory(
     appearanceFee:p.appearance_fee===null?null:Number(p.appearance_fee),
     exclusiveToPromotionId:p.exclusive_to,otherContracts:p.other_contracts,
     activeContracts:p.active_contracts,pendingOffer:p.pending_offer,
+    estimatedWeeklyValue:p.estimated_value,
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.
     availability:p.exclusive_to&&p.exclusive_to!==who.promotionId?
