@@ -39,11 +39,12 @@ export async function prepareDelegatedSameTermsRenewals(tx:SqlRows,
    AND NOT EXISTS(
     SELECT 1 FROM ppw_contract_renewal_proposals prior
     WHERE prior.world_id=c.world_id AND prior.contract_id=c.contract_id)
-  ORDER BY c.expires_week_index,c.promotion_id,c.contract_id LIMIT 201
+  ORDER BY c.expires_week_index,c.promotion_id,c.contract_id LIMIT 1025
  `,[worldId,currentWeekIndex]);
+ if(due.length>1024)throw new Error("Talent Manager weekly proposal capacity exceeded; no renewals omitted");
  const planned:{proposal_id:string;contract_id:string;person_id:string;
   promotion_id:string;created_week_index:number;terms:unknown}[]=[];
- for(const c of due.slice(0,200)){
+ for(const c of due){
   const terms=sameTermsRenewal({
    family:c.family,status:c.status,
    startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index,
@@ -82,5 +83,5 @@ export async function prepareDelegatedSameTermsRenewals(tx:SqlRows,
    [worldId,year,week,planned.length]);
  }
  return {proposed:planned.length,candidateCount:due.length,
-  reachedBatchCap:due.length>200};
+  reachedBatchCap:false};
 }
