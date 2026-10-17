@@ -50,12 +50,10 @@ body{min-height:100dvh;min-width:280px;
  letter-spacing:-.09em;box-shadow:0 5px 18px rgba(72,199,205,.16)}
 .ppw-shell-logo{height:38px;width:44px;border-radius:10px;font-size:14px;padding-right:2px}
 .ppw-shell-brand{display:grid;gap:2px;min-width:0}
-.ppw-shell-brand strong{font-size:11px;letter-spacing:.13em;color:var(--ppw-ink)}
+.ppw-shell-brand strong{font-size:12px;letter-spacing:.015em;color:var(--ppw-ink);
+ overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:32ch}
 .ppw-shell-brand small{color:var(--ppw-secondary);font-size:11px;
  white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:26ch}
-.ppw-shell-promotion{min-width:0;max-width:35%;overflow:hidden;
- white-space:nowrap;text-overflow:ellipsis;color:var(--ppw-gold);
- font-size:12px;font-weight:800}
 .ppw-shell-signout{min-height:40px;flex:none;padding:7px 9px;
  background:transparent;border:1px solid #395364;border-radius:10px;
  color:#d7e8f0;font-size:12px;font-weight:700}
@@ -200,7 +198,7 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .ppw-home-arrow{font-weight:800}
 
 @media(max-width:520px){
- .ppw-shell-promotion{display:none}
+ .ppw-shell-brand strong{max-width:20ch}
  .ppw-shell-brand small{max-width:23ch}
  #game :is(.ppw-home,.ppw-business,.ppw-staff,.ppw-industry,
   .ppw-directory,.ppw-editor,.ppw-planner,.ppw-world-calendar){padding-left:13px;padding-right:13px}
@@ -218,6 +216,7 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 @media(max-width:345px){
  .ppw-shell-logo{height:35px;width:39px}
  .ppw-shell-brand small{max-width:16ch}
+ .ppw-shell-brand strong{max-width:16ch}
  .ppw-tab-icon{font-size:19px}
  .ppw-tab-label{font-size:9px}
  .ppw-home-stat strong{font-size:12px}

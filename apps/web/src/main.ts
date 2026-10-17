@@ -152,15 +152,13 @@ async function loadSession(){
   const identity=el("div","ppw-shell-identity");
   const logo=el("span","ppw-shell-logo","PPW");
   const brand=el("span","ppw-shell-brand");
-  brand.append(el("strong","","WORLD CONTROL"),
-   el("small","",session.overview.world.name+"  /  Y"+
-    session.overview.world.year+" W"+session.overview.world.week));
+  brand.append(el("strong","",session.overview.promotion?.name??"WORLD CONTROL"),
+   el("small","","Y"+session.overview.world.year+" W"+
+    session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
-  const promoter=el("span","ppw-shell-promotion",
-   session.overview.promotion?.name??"Select promotion");
   const signout=button("Sign out",()=>void signOut());
   signout.className="ppw-shell-signout";
-  banner.append(identity,promoter,signout);
+  banner.append(identity,signout);
   account.append(banner);
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}

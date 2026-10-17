@@ -84,6 +84,7 @@ test("compact iPhones retain legible touch navigation and no horizontal shell ov
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
+ await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
  await expect(nav.locator(".ppw-tab")).toHaveCount(5);
  const audit=()=>page.evaluate(()=>{
   const tabs=[...document.querySelectorAll<HTMLElement>(".ppw-navigation .ppw-tab")];
