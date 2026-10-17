@@ -53,7 +53,7 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
    maxQueries:4,maxResultBytes:16_384}).queryCount,4);
   const before=await readPromotionCalendar(db.pool,scope);
   assert.equal(before.series.length,2);
-  assert.equal(before.weeks.length,26);
+  assert.equal(before.weeks.length,52);
   assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
    e.promotionId==="rival"&&e.name==="Monday Night Raw")));
   assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
