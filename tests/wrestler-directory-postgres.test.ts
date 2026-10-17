@@ -55,6 +55,16 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",limit:500}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",offset:-1}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPopularity:101}),/threshold/);
+  assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPresentation:-1}),/threshold/);
+  const affordable=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
+   {view:"MARKET",limit:7,sort:"VALUE",minPresentation:70});
+  assert.ok(affordable.people.every(p=>p.presentation!==null&&p.presentation>=70));
+  assert.ok(affordable.people.every(p=>p.estimatedWeeklyValue!==null));
+  assert.ok(affordable.people[0]!.estimatedWeeklyValue! <=
+   affordable.people[affordable.people.length-1]!.estimatedWeeklyValue!);
+  const salaries=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",limit:40,sort:"PAY_HIGH"});
+  assert.ok(salaries.people[0]!.weeklyGuarantee! >= salaries.people[1]!.weeklyGuarantee!);
   await assert.rejects(readWrestlerDirectory(db.pool,{
    worldId:world,playerId:"someone-else",promotionId},{view:"ROSTER"}),/access denied/);
   const meter=new MeasuredQuerySession("mobile-roster-page");
