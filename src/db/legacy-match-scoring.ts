@@ -70,10 +70,14 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
       media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean;
-      dirty_finish_history_loaded:boolean}>(
+      dirty_finish_history_loaded:boolean;linked_programme_matches:boolean}>(
       `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
           w.alignment_history_loaded,w.programme_history_loaded,
-          w.dirty_finish_history_loaded,p.media_reach
+          w.dirty_finish_history_loaded,p.media_reach,
+          EXISTS(SELECT 1 FROM ppw_programme_match_activities a
+            WHERE a.world_id=d.world_id AND a.draft_id=d.draft_id
+              AND a.promotion_id=d.promotion_id AND a.kind='MATCH')
+          AS linked_programme_matches
         FROM ppw_booking_drafts d
         JOIN ppw_worlds w ON w.world_id=d.world_id
           AND w.year=d.year AND w.week=d.week AND w.phase='RESOLVING'
@@ -441,7 +445,10 @@ export async function previewArchivedShowMatchScoresInTransaction(
       }
     }
     let showProgrammePreview:ReturnType<typeof evaluateArchivedProgrammeReactions>|null=null;
-    if(showPacingPreview!==null&&show.programme_history_loaded){
+    // A genuinely booked rivalry has its own canonical history even when
+    // historical Genesis imports are incomplete. Unlinked shows remain neutral.
+    if(showPacingPreview!==null&&
+      (show.programme_history_loaded||show.linked_programme_matches)){
       const links=await tx.query<{slot_id:string;programme_id:string}>(
         `SELECT a.slot_id,a.programme_id
          FROM ppw_programme_match_activities a
