@@ -94,3 +94,17 @@ test("championship directory and paged lineage use signed browser session only",
  assert.equal(actions[1]!.promotionId,"promotion","Viewer ownership is scoped to session");
  assert.equal(actions[1]!.titlePromotionId,"other-promotion");
 });
+
+test("World tag team roster and new pairing use authenticated browser path",async()=>{
+ const seen:string[]=[];
+ const call=createCardClient(scope,async(_url,init)=>{
+  const body=JSON.parse(String(init?.body));
+  seen.push(body.method);
+  assert.equal(body.playerId,undefined);
+  return new Response(JSON.stringify({ok:true}),{status:200});
+ });
+ await call("tagTeams");
+ await call("createTagTeam",{requestId:"team-created",
+  expectedRevision:7,name:"New Blood",personIds:["w-1","w-2"]});
+ assert.deepEqual(seen,["tagTeams","createTagTeam"]);
+});
