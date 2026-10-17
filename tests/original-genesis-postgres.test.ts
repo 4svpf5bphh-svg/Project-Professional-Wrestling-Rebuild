@@ -43,7 +43,7 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);
 });
-test("Original 643-person/8-promotion Genesis imports markets with 10 PostgreSQL statements",{
+test("Original 643-person/8-promotion Genesis imports markets and championships with 11 PostgreSQL statements",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
@@ -59,10 +59,10 @@ test("Original 643-person/8-promotion Genesis imports markets with 10 PostgreSQL
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,sqlStatements:8});
-  const sample=meter.assertBudget({maxQueries:10,maxResultBytes:2_000});
-  assert.equal(sample.queryCount,10);
-  assert.equal(sample.resultRows,7);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,sqlStatements:9});
+  const sample=meter.assertBudget({maxQueries:11,maxResultBytes:2_000});
+  assert.equal(sample.queryCount,11);
+  assert.equal(sample.resultRows,8);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
@@ -83,19 +83,21 @@ test("Original 643-person/8-promotion Genesis imports markets with 10 PostgreSQL
    const venue=await tx.query<{capacity:number;weekly_hire_cost:string}>(`
     SELECT capacity,weekly_hire_cost FROM ppw_venues
     WHERE world_id=$1 AND venue_id='venue-0'`,[world]);
+   const titleCount=await tx.query<{count:number}>(`SELECT count(*)::integer AS count FROM ppw_championships WHERE world_id=$1`,[world]);
    const promotion=await tx.query<{management_mode:string;weekly_media_income:string;
     weekly_sponsor_income:string;weekly_fixed_overhead:string}>(`
     SELECT management_mode,weekly_media_income,weekly_sponsor_income,weekly_fixed_overhead
     FROM ppw_promotions WHERE world_id=$1 AND promotion_id='promotion-0'`,[world]);
    const imports=await tx.query<{payload:{wrestlers:number;contracts:number}}>(`
     SELECT payload FROM ppw_ledger_events WHERE world_id=$1 AND event_type='WORLD_GENESIS_IMPORTED'`,[world]);
-   return {worldRow,rows,values,contract,venue,promotion,imports};
+   return {worldRow,rows,values,contract,venue,promotion,titleCount,imports};
   });
   assert.equal(Number(state.worldRow[0]!.seed),7);
   assert.equal(state.worldRow[0]!.year,1);
   assert.equal(state.worldRow[0]!.week,1);
   assert.equal(Number(state.worldRow[0]!.revision),0);
   assert.equal(state.rows[0]!.count,643);
+  assert.equal(state.titleCount[0]!.count,16);
   assert.equal(state.values[0]!.career_stage,"PRIME");
   assert.equal(state.values[0]!.in_ring_quality,61);
   assert.equal(state.values[0]!.contract_priorities.money,65);
@@ -131,7 +133,7 @@ test("Original 643-person/8-promotion Genesis imports markets with 10 PostgreSQL
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
-    "ppw_contracts","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
+    "ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
     await tx.query(`DELETE FROM ${name} WHERE world_id=$1`,[world]);
    }
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
@@ -151,16 +153,16 @@ test("Concurrent bootstraps cannot create duplicate or partial Genesis Worlds",{
   assert.equal(attempts.filter(a=>a.status==="fulfilled").length,1);
   assert.equal(attempts.filter(a=>a.status==="rejected").length,1);
   const counts=await withWorldTransaction(db.pool,async tx=>tx.query<{
-   worlds:number;people:number;contracts:number;promotions:number;venues:number}>(`
+   worlds:number;people:number;contracts:number;promotions:number;venues:number;championships:number}>(`
     SELECT (SELECT count(*)::integer FROM ppw_worlds WHERE world_id=$1) AS worlds,
      (SELECT count(*)::integer FROM ppw_people WHERE world_id=$1) AS people,
      (SELECT count(*)::integer FROM ppw_contracts WHERE world_id=$1) AS contracts,
      (SELECT count(*)::integer FROM ppw_promotions WHERE world_id=$1) AS promotions,
      (SELECT count(*)::integer FROM ppw_venues WHERE world_id=$1) AS venues`,[world]));
-  assert.deepEqual(counts[0],{worlds:1,people:15,contracts:15,promotions:8,venues:16});
+  assert.deepEqual(counts[0],{worlds:1,people:15,contracts:15,promotions:8,venues:16,championships:16});
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
+   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());

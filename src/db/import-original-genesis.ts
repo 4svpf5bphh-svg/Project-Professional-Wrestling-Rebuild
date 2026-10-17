@@ -63,6 +63,24 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
    })))]);
+  // Original PPW starts with a singles and a tag belt for every live promotion.
+  // An inaugural reign is never invented: the first title winner must be
+  // established by the verified title-booking/resolution path.
+  const titles=await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_championships(
+     world_id,promotion_id,championship_id,name,division,status,prestige)
+    SELECT p.world_id,p.promotion_id,'founding:'||lower(d.division),
+     p.name||CASE WHEN d.division='SINGLES' THEN ' World Championship'
+      ELSE ' Tag Team Championship' END,
+     d.division,CASE WHEN p.lifecycle='DORMANT' THEN 'INACTIVE' ELSE 'ACTIVE' END,
+     CASE p.tier WHEN 'GLOBAL' THEN 72 WHEN 'NATIONAL' THEN 58
+      WHEN 'RISING' THEN 45 WHEN 'INDEPENDENT' THEN 34 ELSE 25 END
+    FROM ppw_promotions p CROSS JOIN (VALUES('SINGLES'),('TAG')) d(division)
+    WHERE p.world_id=$1 AND p.lifecycle<>'CLOSED'
+    RETURNING championship_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id]);
   const promotionMarkets=await tx.query<{count:number}>(`
    WITH inserted AS (
     INSERT INTO ppw_promotion_market_states(world_id,promotion_id,market_id,
@@ -119,7 +137,8 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    [g.world.id,JSON.stringify(g.contracts)]);
   if(markets[0]?.count!==g.markets.length||
     promotionMarkets[0]?.count!==g.promotionMarketStates.length||
-    promotions[0]?.count!==g.promotions.length||people[0]?.count!==g.people.length
+    promotions[0]?.count!==g.promotions.length||titles[0]?.count!==
+     g.promotions.filter(p=>p.lifecycle!=='CLOSED').length*2||people[0]?.count!==g.people.length
    ||venues[0]?.count!==g.venues.length||contracts[0]?.count!==g.contracts.length)
    throw new Error("Incomplete relational Genesis import");
   await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
@@ -131,6 +150,6 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
   return {worldId:g.world.id,promotions:g.promotions.length,people:g.people.length,
    venues:g.venues.length,contracts:g.contracts.length,
    markets:g.markets.length,promotionMarketStates:g.promotionMarketStates.length,
-   sqlStatements:8};
+   championships:titles[0]!.count,sqlStatements:9};
  });
 }

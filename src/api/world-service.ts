@@ -1,3 +1,5 @@
+import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
+ from "../db/championship-history.js";
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-show-archive.js";
@@ -222,6 +224,17 @@ export async function saveCardEditorAsActor(context:WorldApiContext,
 }
 
 /** Authenticated, read-only final show broadcast. */
+/** Title lineage is shared history, but access requires a verified manager. */
+export async function championshipsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ return readChampionshipDirectory(context.pool,worldId,context.actor.playerId,promotionId);
+}
+export async function championshipHistoryAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,titlePromotionId:string,
+ championshipId:string,cursor:ReignCursor|null=null){
+ return readChampionshipHistory(context.pool,worldId,context.actor.playerId,
+  promotionId,titlePromotionId,championshipId,cursor);
+}
 export async function completedShowAsActor(context:WorldApiContext,
  worldId:string,promotionId:string,showId:string){
  validate(context.actor.playerId,"actor");
