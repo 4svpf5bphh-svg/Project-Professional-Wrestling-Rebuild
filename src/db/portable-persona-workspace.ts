@@ -1,0 +1,84 @@
+/** Roster-scoped, read-only wrestler-owned personas. The 643-roster guide is
+ * static application content: never transferred from Neon or mistaken for a
+ * wrestler's negotiated PPW career history.
+ */
+import {withSqlClient} from "./postgres.js";
+import type {TransactionPool} from "./transaction.js";
+import {originalPersonaBaseline,validatePortablePersona,wrestlerIdentityReference}
+ from "../domain/portable-persona.js";
+export interface PersonaScope{
+ worldId:string;promotionId:string;playerId:string;personId?:string;
+}
+export async function readPortablePersonaWorkspace(pool:TransactionPool,s:PersonaScope){
+ return withSqlClient(pool,async tx=>{
+  const owns=await tx.query<{year:number;week:number;booking_open:boolean}>([
+   "SELECT w.year,w.week,(w.phase='OPEN' AND",
+   "w.next_lock_at>clock_timestamp()) AS booking_open",
+   "FROM ppw_worlds w JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
+   "JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id",
+   "JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id",
+   "WHERE w.world_id=$1 AND c.promotion_id=$2 AND c.player_id=$3",
+   "AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'"
+  ].join(" "),[s.worldId,s.promotionId,s.playerId]);
+  if(owns.length!==1)throw new Error("Portable identity access denied");
+  const now=(owns[0]!.year-1)*52+owns[0]!.week-1;
+  const roster=await tx.query<{person_id:string;name:string;
+   portable_gimmick_id:string|null}>([
+   "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id",
+   "FROM ppw_people p JOIN ppw_contracts c",
+   "ON c.world_id=p.world_id AND c.person_id=p.person_id",
+   "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
+   "AND c.status='SIGNED' AND c.start_week_index<=$3",
+   "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501"
+  ].join(" "),[s.worldId,s.promotionId,now]);
+  if(roster.length>500)throw new Error("Too many roster identities");
+  const selected=s.personId??roster[0]?.person_id;
+  if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
+   throw new Error("Only a roster wrestler's identity may be inspected");
+  const listed=roster.map(x=>({personId:x.person_id,name:x.name}));
+  if(!selected)return {roster:listed,personId:null,
+   persona:null,history:[],recentRequests:[],archetypes:[],
+   documentedAlternates:[],worldYear:owns[0]!.year,
+   worldWeek:owns[0]!.week,worldRevision:null,
+   canEdit:false,nextPitchWeek:0};
+  const wrestler=roster.find(x=>x.person_id===selected)!;
+  const current=await tx.query<{persona:unknown;revision:number;
+   introduced_week_index:number}>([
+   "SELECT persona,revision,introduced_week_index FROM ppw_portable_personas",
+   "WHERE world_id=$1 AND person_id=$2"
+  ].join(" "),[s.worldId,selected]);
+  if(current.length>1)throw new Error("Ambiguous wrestler persona");
+  const persona=current.length?
+   validatePortablePersona(current[0]!.persona,wrestler.name):
+   originalPersonaBaseline(wrestler.name,wrestler.portable_gimmick_id);
+  const history=await tx.query<{revision:number;previous_persona:unknown;
+   started_week_index:number;ended_week_index:number;
+   changed_by_promotion_id:string|null}>([
+   "SELECT revision,previous_persona,started_week_index,ended_week_index,",
+   "changed_by_promotion_id FROM ppw_portable_persona_history",
+   "WHERE world_id=$1 AND person_id=$2",
+   "ORDER BY revision DESC LIMIT 51"
+  ].join(" "),[s.worldId,selected]);
+  if(history.length>50)throw new Error("Persona history exceeds bounded limit");
+  const recentRequests=await tx.query<{requested_gimmick_id:string;
+   status:string;reason:string;submitted_week_index:number;
+   assessed_resistance:number}>([
+   "SELECT requested_gimmick_id,status,reason,submitted_week_index,",
+   "assessed_resistance FROM ppw_persona_change_requests",
+   "WHERE world_id=$1 AND person_id=$2",
+   "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
+  ].join(" "),[s.worldId,selected]);
+  const reference=wrestlerIdentityReference(wrestler.name);
+  return {roster:listed,personId:selected,personName:wrestler.name,
+   persona,revision:current[0]?.revision??0,
+   history:history.slice(0,50).map(x=>({
+    revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),
+    startedWeekIndex:x.started_week_index,endedWeekIndex:x.ended_week_index,
+    changedByPromotionId:x.changed_by_promotion_id,
+   })),recentRequests,archetypes:reference.archetypes,
+   documentedAlternates:reference.documentedAlternates,
+   worldYear:owns[0]!.year,worldWeek:owns[0]!.week,worldRevision:null,
+   canEdit:owns[0]!.booking_open,
+   nextPitchWeek:recentRequests.length?recentRequests[0]!.submitted_week_index+12:0};
+ });
+}
