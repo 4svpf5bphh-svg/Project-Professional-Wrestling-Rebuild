@@ -17,7 +17,7 @@ test("evidence-led tag pitch: dates, consent, persistence and verified follow-th
   c1="first-"+uid,c2="second-"+uid;
  const matches=Array.from({length:3},(_,n)=>({
   showId:"tp-show-"+n+"-"+uid,matchId:"tp-match-"+n+"-"+uid,
-  week:n+1,weekIndex:n}));
+  week:n===2?4:n+1,weekIndex:n===2?3:n}));
  const run=<T>(fn:(tx:import("../src/db/world-operations.js").SqlRows)=>Promise<T>)=>
   withWorldTransaction(db.pool,fn);
  const read=<T extends Record<string,unknown>>(sql:string,params:unknown[]=[]) =>
@@ -88,7 +88,7 @@ test("evidence-led tag pitch: dates, consent, persistence and verified follow-th
   assert.equal((await run(tx=>settleBackstageTagFollowThrough(tx,worldId,3))).followedThrough,0);
   const completed=(await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!;
   assert.equal(completed.followThroughKind,"TAG_MATCH_BOOKED");
-  assert.equal(completed.followThroughWeekIndex,2);
+  assert.equal(completed.followThroughWeekIndex,3);
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_tag_teams WHERE world_id=$1",[worldId]))[0]?.n,"0");
   const morale=await read<{morale:number}>(
