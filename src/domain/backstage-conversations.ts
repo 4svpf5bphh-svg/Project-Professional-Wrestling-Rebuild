@@ -39,6 +39,7 @@ export function backstageDecisionEffect(kind:BackstageKind,decision:BackstageDec
 export function backstageMessage(kind:BackstageKind,evidence?:{
  observedMatchShows?:number|null;averageCrowd?:number|null;
  partnerName?:string;verifiedTagShows?:number|null;averageExecution?:number|null;
+ workingVerifiedShows?:number|null;workingTrustDelta?:number|null;
  verifiedSinglesShows?:number|null;professionalTrust?:number|null;
 }){
  switch(kind){
@@ -46,7 +47,10 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
   case "MORALE":return "I'm not happy with how things are going. I need to feel valued.";
   case "MOMENTUM":return "I've lost momentum. Can you get me back in the ring?";
   case "CREATIVE":return "I need more of a voice on this show. Can I get some mic time or an angle?";
-  case "PARTNERSHIP":return "There's tension backstage with someone I've worked with. Can you help us settle it?";
+  case "PARTNERSHIP":return "Our tag work has slipped with "+
+   (evidence?.partnerName??"my partner")+". After "+
+   (evidence?.workingVerifiedShows??"several")+" verified matches, "+
+   "our working trust took a hit. Can we sort it out?";
   case "ROLE_USAGE":return "My contract says I should feature near the top of the card. I've worked the matches, but where's that promised spot?";
   case "RIVALRY_PITCH":return "We have something with "+
    (evidence?.partnerName??"that opponent")+". The crowd has responded across "+

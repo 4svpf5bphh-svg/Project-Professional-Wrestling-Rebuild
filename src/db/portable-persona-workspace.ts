@@ -114,6 +114,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    due_week_index:number|null;promised_role:string|null;
    observed_match_shows:number|null;observed_featured_shows:number|null;
    assessment_reason:string|null;trust_delta:number;
+   working_verified_shows:number|null;working_trust_delta:number|null;
    observed_average_crowd:number|string|null;
    team_verified_matches:number|null;observed_execution_quality:number|string|null;
    rival_verified_matches:number|null;rival_professional_trust:number|string|null;
@@ -121,7 +122,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
-   "assessment_reason,trust_delta,observed_average_crowd,",
+   "assessment_reason,trust_delta,working_verified_shows,working_trust_delta,",
+   "observed_average_crowd,",
    "team_verified_matches,observed_execution_quality,",
    "rival_verified_matches,rival_professional_trust,",
    "follow_through_week_index,follow_through_kind",
@@ -138,6 +140,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     promisedRole:x.promised_role,observedMatchShows:x.observed_match_shows,
     observedFeaturedShows:x.observed_featured_shows,
     assessmentReason:x.assessment_reason,trustDelta:x.trust_delta,
+    workingVerifiedShows:x.working_verified_shows,
+    workingTrustDelta:x.working_trust_delta,
     averageCrowd:x.observed_average_crowd===null?
      null:Number(x.observed_average_crowd),
     verifiedSinglesShows:x.rival_verified_matches,
