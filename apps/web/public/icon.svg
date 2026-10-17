@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="45" fill="#102338"/><path d="M27 52h18l10 51 12-35h15l12 35 10-51h18l-18 88H87L74 101l-13 39H44Z" fill="#a1eaff"/><path d="M130 52h19l18 88h-19l-5-24h-20l-5 24h-19Zm4 24-8 25h14Z" fill="#7dd4fa"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+<defs><linearGradient id="a" x1="0" x2="1" y1="0" y2="1">
+<stop stop-color="#a2f0ff"/><stop offset="1" stop-color="#71e3ba"/>
+</linearGradient></defs>
+<rect width="192" height="192" rx="42" fill="#09111b"/>
+<rect x="9" y="9" width="174" height="174" rx="36" fill="#173043" stroke="#47809a" stroke-width="2"/>
+<path d="M27 44H165M27 149H165" stroke="url(#a)" stroke-width="4" stroke-linecap="round"/>
+<text x="96" y="112" text-anchor="middle" font-family="Arial,sans-serif" font-size="49" font-weight="900" letter-spacing="-4" fill="#f4fbff">PPW</text>
+<path d="M48 130H144" stroke="url(#a)" stroke-width="5" stroke-linecap="round"/>
+</svg>
