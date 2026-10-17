@@ -82,7 +82,8 @@ export async function prepareGeneratedWorldShowCommerce(
    for(const d of submitted){
     // Premium shows carry their own calendar identity, regardless of the
     // old promotion-wide normal-show importance cadence.
-    const eventType:EventType=d.booking_class==="PREMIUM"?"MAJOR":normalEventType;
+    const eventType:EventType=d.booking_class==="PREMIUM"?
+     "MAJOR":d.event_type??normalEventType;
     const hasSnapshot=d.booking_expected_demand!==null&&d.booking_ticket_yield!==null;
     if(hasSnapshot)continue;
     const ai=d.management_mode==="AI"&&d.controller_player_id===null;
