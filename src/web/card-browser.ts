@@ -4,11 +4,13 @@ import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
+import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
 import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
+import "../ui/championship-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/results-archive.css";
@@ -34,6 +36,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
   openProgrammes:()=>{openProgrammeDesk();},
+  openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -42,6 +45,17 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
  };
  return mountCardEditor(root,port);
+}
+
+/** Public World title records; each reign page is a separate, bounded read. */
+export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+ const call=createCardClient(scope);
+ const port:ChampionshipPort={
+  loadDirectory:()=>call("championships"),
+  loadHistory:(titlePromotionId,championshipId,cursor)=>
+   call("championshipHistory",{titlePromotionId,championshipId,cursor})
+ };
+ return mountChampionshipDesk(root,port,onBack);
 }
 
 /** A history route independent of particular rivalries or show cards. */
