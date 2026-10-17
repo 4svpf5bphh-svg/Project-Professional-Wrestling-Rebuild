@@ -476,7 +476,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const candidate of current.items){
     const taken=[...matches.values()].flatMap(x=>assignedIds(x)).includes(candidate.personId)&&
      chosen?.personId!==candidate.personId;
-    const name=candidate.name??candidate.personId;
+    const realName=candidate.name??candidate.personId;
+    const name=candidate.ringName&&candidate.ringName!==realName?
+     candidate.ringName+" ("+realName+")":realName;
+    const character=candidate.gimmickId?
+     " · "+candidate.gimmickId.replaceAll("_"," ").toLowerCase():"";
     rows.append(button(name+" · "+(candidate.division??"Unknown division")+
      (candidate.available?" · "+(candidate.remainingDates===null?
       "Unlimited dates":candidate.remainingDates+" dates"):" · "+candidate.reason),
