@@ -71,18 +71,18 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:18000}).queryCount,2);
   // Real card RPC uses the actor from auth, not a browser-provided ID.
   const rpc=await dispatchCardRpc(context,"wrestlerDirectory",{
-   worldId:world,promotionId,playerId:"attacker",filter:{view:"ROSTER",limit:5}});
+   worldId:world,promotionId,playerId:"attacker",filter:{view:"ROSTER",limit:5}}) as unknown as Awaited<ReturnType<typeof readWrestlerDirectory>>;
   assert.equal(rpc.people.length,5);
   const terms:OfferTerms={family:"LIMITED_NON_EXCLUSIVE",roleExpectation:"FEATURED",
    creativeControl:"CONSULTATION",startWeekIndex:0,termWeeks:8,
    dateEntitlement:4,weeklyGuarantee:0,appearanceFee:9000,signingBonus:1000};
   const offer=await dispatchCardRpc(context,"submitContractOffer",{
    worldId:world,promotionId,requestId:"directory-offer",expectedRevision:2,
-   personId:"person-87",terms});
+   personId:"person-87",terms}) as {status:string};
   assert.equal(offer.status,"APPLIED");
   assert.equal((await dispatchCardRpc(context,"submitContractOffer",{
    worldId:world,promotionId,requestId:"directory-offer",expectedRevision:2,
-   personId:"person-87",terms})).status,"REPLAYED");
+   personId:"person-87",terms}) as {status:string}).status,"REPLAYED");
   const refreshed=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",search:"Wrestler 87"});
   assert.equal(refreshed.people[0]!.pendingOffer,true);
