@@ -51,14 +51,41 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(budget.queryCount,3);
   assert.ok(budget.resultRows<=6);
   assert.equal((await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},"business",{
-   worldId:world,promotionId,playerId:"forged"})).name,"Promotion 0");
+   worldId:world,promotionId:promotion,playerId:"forged"})).name,"Promotion 0");
+  // A real economics receipt is displayed as an archived fact, not
+  // recomputed or applied twice to the promotion's cash.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_booking_drafts
+     (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
+     VALUES($1,'business-show','promotion-0',1,1,'SUBMITTED',2,'Saturday Spectacular','REGULAR')`,
+     [world]);
+   await tx.query(`INSERT INTO ppw_completed_shows
+     (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,'promotion-0','business-show',1,1,'business-fixture',77,'{}'::jsonb,repeat('b',64))`,
+     [world]);
+   await tx.query(`INSERT INTO ppw_show_economics
+     (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+      total_cost,net_result,incremental_cash)
+     VALUES($1,'business-show','promotion-0',1,1,900,1100,
+      150000,20000,30000,10000,20000,80000,70000,70000)`,[world]);
+  });
+  const settled=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.equal(settled.shows.length,1);
+  assert.equal(settled.shows[0]!.name,"Saturday Spectacular");
+  assert.equal(settled.shows[0]!.gateRevenue,150000);
+  assert.equal(settled.shows[0]!.totalCost,80000);
+  assert.equal(settled.shows[0]!.netResult,70000);
+  assert.equal(settled.cash,5_000_000,"Finance reporting does not settle money twice");
   await assert.rejects(readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:"unauthorised"}),/access denied/);
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"unauthorised"}},
    "business",{worldId:world,promotionId,playerId:owner}),/access denied/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals",
+   for(const name of ["ppw_show_economics","ppw_completed_shows",
+    "ppw_booking_drafts","ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
     "ppw_championships","ppw_people","ppw_venues",
