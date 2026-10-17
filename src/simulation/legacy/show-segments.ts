@@ -2,7 +2,7 @@
  * deliberately separate: simulation must not choose a scripted outcome.
  */
 export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
- "DEBUT"|"VIDEO_PACKAGE"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
+ "DEBUT"|"VIDEO_PACKAGE"|"STABLE_INVITATION"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
 export type VideoPurpose="DEBUT_HYPE"|"RETURN_HYPE"|"WRESTLER_HYPE"|
  "FEUD_RECAP"|"EVENT_PROMO";
 export type SegmentOutcome="HAPPENS"|"REFUSED"|"INTERRUPTED";
@@ -13,6 +13,8 @@ export interface AuthoredSegment {
  videoPurpose?:VideoPurpose;
  /** Optional for historical turns. New authored turns may choose a definite alignment. */
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
+ /** Promotion-owned faction for a player-authored stable story. Never mutates membership. */
+ stableId?:string;
 }
 export function validateAuthoredSegments(
  segments:readonly AuthoredSegment[],
@@ -24,7 +26,7 @@ export function validateAuthoredSegments(
   if(!s.slotId||slots.has(s.slotId)||!Number.isSafeInteger(s.position)||
    s.position<0||positions.has(s.position)||
    !["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE","CELEBRATION","ATTACK","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
-     "VIDEO_PACKAGE","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
+     "VIDEO_PACKAGE","STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
    !["HAPPENS","REFUSED","INTERRUPTED"].includes(s.outcome)||
    !Array.isArray(s.actorIds)||!Array.isArray(s.targetIds)||
    s.actorIds.length>20||s.targetIds.length>20||
@@ -32,6 +34,9 @@ export function validateAuthoredSegments(
    new Set(s.actorIds).size!==s.actorIds.length||
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
+   (s.stableId!==undefined&&(
+    !["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
+    typeof s.stableId!=="string"||!s.stableId.trim()||s.stableId.length>200))||
    (s.turnTargetAlignment!==undefined&&
     (s.kind!=="TURN"||!["FACE","HEEL","TWEENER"].includes(s.turnTargetAlignment)))||
    (s.kind==="VIDEO_PACKAGE")!==Boolean(s.videoPurpose)||
@@ -43,7 +48,7 @@ export function validateAuthoredSegments(
    (s.kind==="INTERFERENCE"&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="TURN"&&s.actorIds.length!==1)||
    (s.kind==="DEBUT"&&s.actorIds.length!==1)||
-   (s.kind==="STABLE_RECONCILIATION"&&s.targetIds.length===0))
+   (["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&s.targetIds.length===0))
    throw new Error("Invalid authored segment");
   slots.add(s.slotId);positions.add(s.position);
   return {...s,actorIds:[...s.actorIds],targetIds:[...s.targetIds]};

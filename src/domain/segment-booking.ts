@@ -14,13 +14,14 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  DEBUT:{minActors:1,minTargets:0,maxActors:1,allowTargets:false,purposes:[]},
  VIDEO_PACKAGE:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,
   purposes:["DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP","EVENT_PROMO"]},
+ STABLE_INVITATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  STABLE_EXIT:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  STABLE_RECONCILIATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
 };
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
- turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
+ turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
 }
 /** Shared authoring validation; never randomise or override the booked outcome. */
 export function normalizeBookedSegment(input:SegmentBookingInput,knownPeople:ReadonlySet<string>):AuthoredSegment{

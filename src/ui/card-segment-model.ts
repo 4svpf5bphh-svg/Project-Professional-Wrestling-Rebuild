@@ -7,7 +7,7 @@ export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
- turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;
+ turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -15,19 +15,20 @@ export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"CELEBRATION",label:"Celebration"},{value:"ATTACK",label:"Attack"},
  {value:"TURN",label:"Turn"},{value:"CONTRACT_SIGNING",label:"Contract signing"},
  {value:"INTERFERENCE",label:"Interference"},{value:"DEBUT",label:"Live debut"},
- {value:"VIDEO_PACKAGE",label:"Video package"},{value:"STABLE_EXIT",label:"Stable exit"},
+ {value:"VIDEO_PACKAGE",label:"Video package"},
+ {value:"STABLE_INVITATION",label:"Stable invitation"},{value:"STABLE_EXIT",label:"Stable exit"},
  {value:"STABLE_RECONCILIATION",label:"Stable reconciliation"},
 ];
 export const VIDEO_PURPOSES:readonly VideoPurpose[]=[
  "DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP","EVENT_PROMO",
 ];
 export const REQUIRED_TARGETS=new Set<SegmentKind>([
- "CONFRONTATION","CHALLENGE","ATTACK","INTERFERENCE","STABLE_RECONCILIATION"
+ "CONFRONTATION","CHALLENGE","ATTACK","INTERFERENCE","STABLE_INVITATION","STABLE_RECONCILIATION"
 ]);
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  turnTargetAlignment:"HEEL"};
+  turnTargetAlignment:"HEEL",stableId:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -42,6 +43,7 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   actors:find(Array.isArray(p.actorIds)?p.actorIds:
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
+  stableId:typeof p.stableId==="string"&&p.stableId.trim()?p.stableId:null,
   outcome:["HAPPENS","REFUSED","INTERRUPTED"].includes(String(p.outcome))?
    p.outcome as SegmentOutcome:"HAPPENS",
   turnTargetAlignment:["FACE","HEEL","TWEENER"].includes(String(p.turnTargetAlignment))?
@@ -65,6 +67,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   actorIds:s.actors.map(p=>p.personId),
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
+  ...(s.stableId?{stableId:s.stableId}:{}),
   ...(s.kind==="TURN"&&s.turnTargetAlignment?
    {turnTargetAlignment:s.turnTargetAlignment}:{}),
  },[...s.actors,...s.targets]);

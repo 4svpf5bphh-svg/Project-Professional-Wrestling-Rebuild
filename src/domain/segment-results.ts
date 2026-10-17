@@ -4,6 +4,7 @@ import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segment
 export interface SegmentResult{
  slotId:string;position:number;kind:SegmentKind;outcome:SegmentOutcome;
  headline:string;summary:string;actorIds:readonly string[];targetIds:readonly string[];
+ stableId?:string;
 }
 /** Narrative is a deterministic presentation of the author's locked decision.
  * No random success, rejection, membership change or alignment change.
@@ -21,7 +22,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  ATTACK:"Backstage attack",TURN:"A change of allegiance",
  CONTRACT_SIGNING:"Contract signing",INTERFERENCE:"Outside interference",
  DEBUT:"A new arrival",VIDEO_PACKAGE:"Video package",
- STABLE_EXIT:"Stable tension",STABLE_RECONCILIATION:"Stable reconciliation"};
+ STABLE_INVITATION:"Stable invitation",STABLE_EXIT:"Stable tension",STABLE_RECONCILIATION:"Stable reconciliation"};
  const purpose=segment.videoPurpose?segment.videoPurpose.replaceAll("_"," ").toLowerCase():"";
  const planned:Record<SegmentKind,string>={
  PROMO:`${subject} addresses the crowd`,
@@ -36,6 +37,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  INTERFERENCE:`${subject} interferes against ${object}`,
  DEBUT:`${subject} makes an in-person debut`,
  VIDEO_PACKAGE:`A ${purpose} package features ${subject}`,
+ STABLE_INVITATION:`${subject} invites ${object} to join the stable`,
  STABLE_EXIT:`${subject} leaves the stable`,
  STABLE_RECONCILIATION:`${subject} attempts to reconcile with ${object}`};
  const base=planned[segment.kind];
@@ -44,7 +46,8 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,
   outcome:segment.outcome,headline:labels[segment.kind],summary,
-  actorIds:[...segment.actorIds],targetIds:[...segment.targetIds]};
+  actorIds:[...segment.actorIds],targetIds:[...segment.targetIds],
+  ...(segment.stableId?{stableId:segment.stableId}:{})};
 }
 export function describeShowSegments(
  segments:readonly AuthoredSegment[],names:ReadonlyMap<string,string>,
