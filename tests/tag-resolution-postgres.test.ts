@@ -147,6 +147,8 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
    for(const table of ["ppw_tag_match_career_effects",
      "ppw_championship_contests","ppw_championship_reigns",
      "ppw_championships","ppw_ledger_events",
+     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
+     "ppw_wrestler_relationships",
      "ppw_completed_match_evidence","ppw_completed_show_matches",
      "ppw_completed_shows","ppw_working_chemistry","ppw_week_resource_clearances",
      "ppw_card_slots","ppw_booking_drafts","ppw_contracts",

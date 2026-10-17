@@ -170,6 +170,8 @@ test("two promotions resolve, certify and publish after restart without double c
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
     "ppw_programme_resolved_activities",
+    "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
+    "ppw_wrestler_relationships",
     "ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",

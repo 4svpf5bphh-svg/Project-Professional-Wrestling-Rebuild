@@ -65,7 +65,7 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
   // Establish realistic cooperation before poor subsequent shows. This is
   // explicit test seeding, NOT a fabricated result of the first tag bout.
   await withWorldTransaction(db.pool,tx=>tx.query(
-   "UPDATE ppw_wrestler_relationships SET familiarity=16,professional_trust=62",
+   "UPDATE ppw_wrestler_relationships SET familiarity=16,professional_trust=62 WHERE world_id=$1",
    [worldId]));
   for(const n of [14,15])assert.deepEqual(await addShow(n,30),
    {appearances:2,developments:0});
