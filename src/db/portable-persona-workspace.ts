@@ -23,17 +23,36 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   ].join(" "),[s.worldId,s.promotionId,s.playerId]);
   if(owns.length!==1)throw new Error("Portable identity access denied");
   const now=(owns[0]!.year-1)*52+owns[0]!.week-1;
+  // One bounded roster read: currently signed wrestlers and a private,
+  // read-only history for the latest 50 departed conversation contacts.
   const roster=await tx.query<{person_id:string;name:string;
    portable_gimmick_id:string|null;morale:number|null;
-   momentum:number|null}>([
-   "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id,p.morale,p.momentum",
+   momentum:number|null;is_current:boolean}>([
+   "WITH current_roster AS (",
+   "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id,p.morale,",
+   "p.momentum,true AS is_current",
    "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
-   "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501"
+   "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501",
+   "), former_ids AS (",
+   "SELECT r.person_id,max(r.created_week_index) AS last_contact",
+   "FROM ppw_backstage_requests r",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2",
+   "AND NOT EXISTS(SELECT 1 FROM current_roster live",
+   "WHERE live.person_id=r.person_id)",
+   "GROUP BY r.person_id ORDER BY last_contact DESC,r.person_id LIMIT 51",
+   "), former_roster AS (",
+   "SELECT p.person_id,p.name,p.portable_gimmick_id,p.morale,p.momentum,",
+   "false AS is_current FROM former_ids old JOIN ppw_people p",
+   "ON p.world_id=$1 AND p.person_id=old.person_id",
+   "), combined AS (SELECT * FROM current_roster UNION ALL",
+   "SELECT * FROM former_roster)",
+   "SELECT person_id,name,portable_gimmick_id,morale,momentum,is_current",
+   "FROM combined ORDER BY is_current DESC,name,person_id LIMIT 552"
   ].join(" "),[s.worldId,s.promotionId,now]);
-  if(roster.length>500)throw new Error("Too many roster identities");
+  if(roster.length>550)throw new Error("Too many Backstage contacts");
   // One bounded inbox read for the whole controlled roster, not a query per contact.
   const inbox=roster.length?await tx.query<{person_id:string;
    requested_gimmick_id:string;status:string;reason:string;
@@ -44,12 +63,12 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "WHERE r.world_id=$1 AND r.promotion_id=$2",
    "AND r.person_id=ANY($3::text[])",
    "ORDER BY r.person_id,r.submitted_week_index DESC,r.request_id DESC",
-   "LIMIT 500"
+   "LIMIT 551"
   ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id)]):[];
   const latestByPerson=new Map(inbox.map(x=>[x.person_id,x]));
   const selected=s.personId??roster[0]?.person_id;
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
-   throw new Error("Only a roster wrestler's identity may be inspected");
+   throw new Error("Only a current or historical promotion contact may be inspected");
   // One bounded read of the newest private message per roster member.
   const incoming=roster.length?await tx.query<{
    person_id:string;request_id:string;kind:string;status:string;
@@ -63,7 +82,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND a.person_id=r.person_id AND a.player_id=$4",
    "WHERE r.world_id=$1 AND r.promotion_id=$2",
    "AND r.person_id=ANY($3::text[])",
-   "ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC LIMIT 500"
+   "ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC LIMIT 551"
   ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id),
    s.playerId]):[];
   const incomingById=new Map(incoming.map(x=>[x.person_id,x]));
@@ -73,7 +92,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     archived:incomingById.get(x.person_id)!.created_week_index<=
      incomingById.get(x.person_id)!.archived_through_week_index,
    }:null,
-   morale:x.morale,momentum:x.momentum,
+   isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
    persona:null,history:[],recentRequests:[],conversations:[],archetypes:[],
@@ -160,7 +179,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    })),recentRequests,archetypes:reference.archetypes,
    documentedAlternates:reference.documentedAlternates,
    worldYear:owns[0]!.year,worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
-   canEdit:owns[0]!.booking_open,
+   canEdit:owns[0]!.booking_open&&wrestler.is_current,
    nextPitchWeek:recentRequests.length?recentRequests[0]!.submitted_week_index+12:0};
  });
 }

@@ -33,7 +33,7 @@ export function mountPersonaDesk(root:HTMLElement,
   try{
    view=await port.load(id);
    if(pane==="THREAD"&&view.personId&&
-    view.roster.some(x=>x.personId===view!.personId&&
+    view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
      x.latestIncoming?.read_week_index===null)){
     await port.markRead(view.personId);
     view=await port.load(id);
@@ -107,7 +107,7 @@ export function mountPersonaDesk(root:HTMLElement,
    ["PROFILE","Wrestler profile"]] as const){
    const tab=button(label,()=>{pane=id;
     if(id==="THREAD"&&view?.personId&&
-     view.roster.some(x=>x.personId===view!.personId&&
+     view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
       x.latestIncoming?.read_week_index===null))void load(view.personId);
     else render();
    });
@@ -156,10 +156,11 @@ export function mountPersonaDesk(root:HTMLElement,
      " · "+incoming.kind.replaceAll("_"," ").toLowerCase():
      last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
      ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
-    const unread=incoming?.read_week_index===null;
+    const unread=wrestler.isCurrent&&incoming?.read_week_index===null;
      const stamp=incoming?" · Y"+(Math.floor(incoming.created_week_index/52)+1)+
       " W"+(incoming.created_week_index%52+1):"";
-     const item=button((unread?"● ":"")+wrestler.name+stamp+summary,()=>{
+     const item=button((unread?"● ":"")+wrestler.name+
+      (wrestler.isCurrent?"":" · Former talent")+stamp+summary,()=>{
       pane="THREAD";if(active&&unread)void load(wrestler.personId);
        else if(active)render();else void load(wrestler.personId);
     });
@@ -225,12 +226,15 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   if(pane==="PROFILE")return;
   const contact=view.roster.find(x=>x.personId===view!.personId)?.latestIncoming;
-  if(contact){
+  if(contact&&view.roster.find(x=>x.personId===view!.personId)?.isCurrent){
    const archiveButton=button(contact.archived?"Restore conversation":"Archive conversation",
     ()=>void archive(view!.personId!,!contact.archived),loading);
    archiveButton.classList.add("ppw-backstage-archive");
    root.append(archiveButton);
   }
+  if(view.roster.find(x=>x.personId===view!.personId)?.isCurrent===false)
+   root.append(el("p","ppw-muted",
+    "Former talent · retained private conversation. No active contract or booking decisions."));
   const chat=el("section","ppw-persona-chat");
   chat.setAttribute("aria-label","Conversation with "+view.personName);
   chat.append(el("h2","",view.personName+" · private conversation"),
@@ -303,7 +307,9 @@ export function mountPersonaDesk(root:HTMLElement,
     }
     chat.append(actions);
    }else{
-    chat.append(el("p","ppw-muted","Reply when the next booking window opens."));
+    chat.append(el("p","ppw-muted",wrestler?.isCurrent===false?
+     "Read-only conversation: this wrestler is no longer under contract.":
+     "Reply when the next booking window opens."));
    }
   }
   for(const p of [...view.recentRequests].reverse()){
