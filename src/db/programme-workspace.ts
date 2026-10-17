@@ -69,6 +69,12 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "ORDER BY t.name,t.team_id LIMIT 151"
   ].join(" "),[scope.worldId]);
   if(teams.length>150)throw new Error("Too many tag teams for programme editor");
+  const championships=await tx.query<{championship_id:string;name:string;division:string}>([
+   "SELECT championship_id,name,division FROM ppw_championships",
+   "WHERE world_id=$1 AND promotion_id=$2 AND status='ACTIVE'",
+   "ORDER BY name,championship_id LIMIT 101"
+  ].join(" "),[scope.worldId,scope.promotionId]);
+  if(championships.length>100)throw new Error("Too many championships");
   const names=new Map(roster.map(p=>[p.person_id,p.name]));
   const teamOptions=teams.filter(t=>t.person_ids.every(id=>names.has(id)));
   const teamNames=new Map(teamOptions.map(t=>[t.team_id,t.name]));
@@ -86,6 +92,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   });
   return {year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
    canEdit:auth.booking_open,programmes:programmesView,
+   championships:championships.map(c=>({
+    championshipId:c.championship_id,name:c.name,division:c.division})),
    people:roster.map(p=>({kind:"PERSON" as const,refId:p.person_id,name:p.name})),
    teams:teamOptions.map(t=>({kind:"TEAM" as const,refId:t.team_id,name:t.name,
     memberIds:t.person_ids})),
