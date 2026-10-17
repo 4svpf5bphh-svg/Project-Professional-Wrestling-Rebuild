@@ -6,6 +6,9 @@ import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,assignedIds,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
+import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
+ restoreEditorSegment,addSegmentPerson,buildEditorSegment,type EditorSegment}
+ from "./card-segment-model.js";
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
@@ -17,7 +20,8 @@ export interface CardEditorPort{
  load():Promise<View>;
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
-  matches:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
+  matches:{slotId:string;payload:unknown}[];
+  segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
@@ -61,11 +65,12 @@ function nice(value:string){return value.replaceAll("_"," ").toLowerCase()
 export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let view:View|null=null;
  let matches=new Map<string,EditorMatch>();
+ let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
   division:string|null;available:boolean;reason:string}>();
  let expanded:string|null=null;
- let picker:{slotId:string;side:number;member:number;
+ let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"] }|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let pendingRequestId:string|null=null;
@@ -87,11 +92,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   loading=true;render();
   try{
    view=await port.load();
-   matches=new Map();
+   matches=new Map();segments=new Map();
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
      matches.set(slot.slotId,restoreEditorMatch(slot.slotId,slot.payload));
+    else segments.set(slot.slotId,restoreEditorSegment(slot.slotId,slot.payload));
    }
    for(const p of (view as View&{selectedPeople?:{
     personId:string;name:string;division:string}[]}).selectedPeople??[]){
@@ -123,6 +129,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function chooseTalent(p:TalentPage["talent"][number]){
   if(!picker||!p.available)return;
+  if(picker.role){
+   const current=segments.get(picker.slotId);
+   if(!current)return;
+   try{
+    segments.set(current.slotId,addSegmentPerson(current,picker.role,{
+     personId:p.personId,contractId:p.contractId}));
+    picker=null;markDirty();render();
+   }catch(e){error=errorText(e);render();}
+   return;
+  }
   const target=matches.get(picker.slotId);
   if(!target)return;
   const current=target.teams[picker.side]?.[picker.member];
@@ -136,12 +152,21 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    picker=null;render();
   }catch(e){error=errorText(e);render();}
  }
+ function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
+  picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[]};
+  render();void findTalent("");
+ }
+ function editSegment(s:EditorSegment,patch:Partial<EditorSegment>){
+  segments.set(s.slotId,{...s,...patch});markDirty();render();
+ }
  function edit(match:EditorMatch,patch:Partial<EditorMatch>){
   setMatch(match.slotId,{...match,...patch});
  }
  async function save(){
   if(!mutable()||!view)return;
   try{
+   const segmentPayloads=[...segments.values()].map(s=>({
+    slotId:s.slotId,payload:buildEditorSegment(s)}));
    const payloads=[...matches.values()].map(m=>({slotId:m.slotId,
     payload:buildBookedMatch(m)}));
    if(!payloads.length)throw new Error("Book at least one match");
@@ -151,7 +176,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    saving=true;error="";success="";render();
    const requestId=pendingRequestId??(pendingRequestId=crypto.randomUUID());
    const result=await port.save({requestId,expectedRevision:view.worldRevision,
-    matches:payloads,runningOrder:order});
+    matches:payloads,segments:segmentPayloads,runningOrder:order});
    if(result.status==="STALE"){
     await load();
     error="The World changed; review the reloaded booking before saving.";
@@ -195,6 +220,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   const summary=el("div","ppw-summary");
   summary.append(el("span","",matches.size+" matches"),
+    el("span","",segments.size+" angles"),
    el("span","",order.length+" card slots"),
    el("span","",dirty?"Unsaved changes":view.ready?"Ready for World Lock":"Not confirmed"));
   root.append(summary);
@@ -206,26 +232,72 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    matches.set(id,newEditorMatch(id,formatChoice));
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-primary"));
+  toolbar.append(button("+ Add angle",()=>{
+   const id="angle-"+crypto.randomUUID();
+   segments.set(id,newEditorSegment(id));
+   order.push(id);expanded=id;markDirty();render();
+  },!mutable()));
   root.append(toolbar);
   const list=el("section","ppw-card-list");
   for(const [i,slotId] of order.entries()){
    const m=matches.get(slotId);
+   const segment=segments.get(slotId);
    const card=el("article","ppw-card");
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"SEGMENT")),
-    el("strong","",m?matchLabel(m):"Existing segment"));
-   bar.append(button(m?(expanded===slotId?"▴":"▾"):"•",()=>{
+    el("strong","",m?matchLabel(m):segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"Angle"));
+   bar.append(button(expanded===slotId?"▴":"▾",()=>{
     expanded=expanded===slotId?null:slotId;render();
-   },!m,"ppw-expand"),label);
+   },false,"ppw-expand"),label);
    const arrows=el("div","ppw-actions");
    arrows.append(button("↑",()=>{order=moveRunningOrder(order,slotId,-1);markDirty();render();},
      !mutable()||i===0),
     button("↓",()=>{order=moveRunningOrder(order,slotId,1);markDirty();render();},
      !mutable()||i===order.length-1));
    bar.append(arrows);card.append(bar);
-   if(!m){card.append(el("p","ppw-muted","This existing angle is preserved when saving."));}
-   else if(expanded===slotId){
+   if(segment&&expanded===slotId){
+    const body=el("div","ppw-card-body");
+    const controls=el("div","ppw-control-grid");
+    controls.append(field("Angle",selector(segment.kind,
+     ANGLE_TYPES.map(x=>[x.value,x.label]),v=>{
+      const kind=v as EditorSegment["kind"];
+      editSegment(segment,{kind,actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
+       targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?[]:segment.targets});
+     },!mutable())));
+    controls.append(field("Scripted outcome",selector(segment.outcome,
+     [["HAPPENS","Goes ahead"],["REFUSED","Refused"],["INTERRUPTED","Interrupted"]],
+     v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
+    if(segment.kind==="VIDEO_PACKAGE")
+     controls.append(field("Video purpose",selector(segment.videoPurpose,
+      VIDEO_PURPOSES.map(v=>[v,nice(v)]),
+      v=>editSegment(segment,{videoPurpose:v as EditorSegment["videoPurpose"]}),!mutable())));
+    body.append(controls);
+    for(const role of ["actors","targets"] as const){
+     const section=el("div","ppw-side");
+     section.append(el("h3","",role==="actors"?"On-screen talent / initiators":"Targets / rivals"));
+     for(const person of segment[role]){
+      const line=el("div","ppw-elimination-row");
+      line.append(el("span","",selectedName(person)),
+       button("×",()=>editSegment(segment,{[role]:segment[role].filter(p=>p.personId!==person.personId)}),
+        !mutable()));
+      section.append(line);
+     }
+     const targetAllowed=!["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(segment.kind);
+     if(role==="actors"||targetAllowed)
+      section.append(button("+ Add "+(role==="actors"?"performer":"target"),()=>{
+       chooseSegmentTalent(slotId,role);
+      },!mutable()||(role==="actors"&&LIMITED_ACTORS.has(segment.kind)&&segment.actors.length===1)));
+     if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
+      section.append(el("p","ppw-muted","This angle needs a target."));
+     body.append(section);
+    }
+    body.append(button("Remove angle",()=>{
+     segments.delete(slotId);order=order.filter(x=>x!==slotId);
+     expanded=null;markDirty();render();
+    },!mutable(),"ppw-remove"));
+    card.append(body);
+   }else if(m&&expanded===slotId){
     const body=el("div","ppw-card-body");
     const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),
@@ -309,7 +381,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   root.append(list);
   const foot=el("div","ppw-save");
   foot.append(el("p","ppw-muted","Booking saves your choices only. It never advances World time."),
-   button(saving?"Saving…":"Save running order",()=>{void save();},
+   button(saving?"Saving…":"Save card",()=>{void save();},
     !mutable()||matches.size===0,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
    view.ready?"Show confirmed":"Confirm ready for World Lock",

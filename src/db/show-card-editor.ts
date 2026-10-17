@@ -271,7 +271,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      "AND s.slot_id=x.slot_id RETURNING s.slot_id"
     ].join(" "),[input.worldId,input.showId,
      JSON.stringify(segments.map(s=>({
-      slot_id:s.slot_id,position:order.get(s.slot_id)!})))]);
+      slot_id:s.slotId,position:order.get(s.slotId)!})))]);
     if(moved.length!==segments.length)throw new Error("Incomplete segment running order");
    }
    // Original ready-to-run confirmation cannot survive changed booking.
