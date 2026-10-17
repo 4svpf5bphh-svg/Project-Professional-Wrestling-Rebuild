@@ -208,7 +208,7 @@ export function mountPersonaDesk(root:HTMLElement,
    chat.append(filter);
    refreshOptions();chat.append(options);
    if(chosen)chat.append(el("p","ppw-muted",
-    "Selected · "+view.archetypes.find(x=>x.id===chosen)?.label));
+    "Selected · "+availableArchetypes.find(x=>x.id===chosen)?.label));
    chat.append(button(loading?"Asking wrestler…":"Suggest gimmick",()=>{
     void request();},loading||!chosen));
   }
