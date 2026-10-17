@@ -49,6 +49,7 @@ export function projectVerifiedBroadcastFallout(
  name:(personId:string)=>string,
  sideNames:ReadonlyMap<string,readonly string[]>,
  interfererId:string|null,
+ completedParticipantIds:readonly string[],
 ):BroadcastFallout{
  const result:BroadcastFallout={injuries:[],eliminations:[]};
  if(!row)return result;
@@ -78,7 +79,7 @@ export function projectVerifiedBroadcastFallout(
    throw new Error("Unsupported recorded finish cheater");
   const actor=row.report_finish_cheater_person_id;
   // Historical bookings/evidence can be absent; use only known card sides.
-  if(![...sideNames.values()].flat().includes(name(actor)))
+  if(!completedParticipantIds.includes(actor))
    throw new Error("Recorded finish cheater was not in the completed match");
   result.finishCheaterName=name(actor);
  }

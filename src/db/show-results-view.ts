@@ -202,7 +202,8 @@ export async function readCompletedShowView(
      receipt,match,name,new Map(matchContext?.sides.map((side,i)=>[
       i<26?String.fromCharCode(65+i):"A"+String.fromCharCode(65+i-26),side
      ])??[]),
-     (slot.payload as {interference?:{personId?:string}}).interference?.personId??null)});
+     (slot.payload as {interference?:{personId?:string}}).interference?.personId??null,
+     participants)});
   }
   for(const segment of receipt.segments){
    const slot=bySlot.get(segment.slotId);
