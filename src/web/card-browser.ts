@@ -1,6 +1,7 @@
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
 import {mountShowResults} from "../ui/show-results.js";
+import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
@@ -10,6 +11,7 @@ import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
+import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 type Scope=CardSessionScope;
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
@@ -19,7 +21,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   const openResults=(showId:string)=>{
    void mountResultsPage(root,{...scope,showId},()=>{openProgrammeDesk();});
   };
-  return mountProgrammeDesk(root,programmePort(call,openResults),
+  return mountProgrammeDesk(root,programmePort(call,openResults,
+   ()=>{void mountResultsArchivePage(root,scope,()=>{openProgrammeDesk();});}),
    ()=>{mountCardEditor(root,port);});
  }
  const port:CardEditorPort={
@@ -41,21 +44,38 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
  return mountCardEditor(root,port);
 }
 
+/** A history route independent of particular rivalries or show cards. */
+export async function mountResultsArchivePage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+ const call=createCardClient(scope);
+ return mountResultsArchive(root,{
+  load:(cursor)=>call("resultsArchive",cursor?{cursor}:{}),
+  open:(showId)=>{void mountResultsPage(root,{...scope,showId},
+   ()=>{void mountResultsArchivePage(root,scope,onBack);},"results archive");},
+  back:onBack,
+ });
+}
+
 /** Host may open the resolved-show broadcast without any write capability. */
-export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
+ backLabel="programmes"){
  await mountShowResults(root,{load:async()=>createCardClient(scope)("results")});
  if(onBack){
   const back=document.createElement("button");
-  back.type="button";back.textContent="← Back to programmes";
+  back.type="button";back.textContent="← Back to "+backLabel;
   back.className="ppw-programme-action";back.onclick=onBack;
   root.prepend(back);
  }
+ const archive=document.createElement("button");
+ archive.type="button";archive.textContent="View all results";
+ archive.className="ppw-programme-action";
+ archive.onclick=()=>{void mountResultsArchivePage(root,scope,onBack);};
+ root.prepend(archive);
 }
 
 function programmePort(call:ReturnType<typeof createCardClient>,
- openResults?:(showId:string)=>void):ProgrammeDeskPort{
+ openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
-  load:()=>call("programmes"),openResults,
+  load:()=>call("programmes"),openResults,openArchive,
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
@@ -66,7 +86,8 @@ export function mountProgrammePage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope));};
- return mountProgrammeDesk(root,programmePort(call,showResult));
+ return mountProgrammeDesk(root,programmePort(call,showResult,
+  ()=>{void mountResultsArchivePage(root,scope,()=>mountProgrammePage(root,scope));}));
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>):StableDeskPort{

@@ -10,6 +10,7 @@ export interface ProgrammeDeskPort{
   sideA:ProgrammeRef[];sideB:ProgrammeRef[];championshipId:string|null}):Promise<unknown>;
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
  openResults?(showId:string):void;
+ openArchive?():void;
 }
 const element=(tag:string,cls:string,text="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;};
@@ -78,6 +79,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   root.replaceChildren();
   const header=element("header","ppw-top");
   if(onBack)header.append(button("← Back to card",onBack));
+  if(port.openArchive)header.append(button("Past results",port.openArchive));
   header.append(element("span","ppw-eyebrow","PPW / CREATIVE"),
    element("h1","","Programmes"),
    element("p","ppw-muted","Build feuds with real roster members and teams. You decide the outcome on the card."));
