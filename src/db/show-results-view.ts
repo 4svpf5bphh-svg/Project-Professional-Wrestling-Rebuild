@@ -58,7 +58,7 @@ export async function readCompletedShowView(
    WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
    [input.worldId,ids]):[];
   const identities=projectBroadcastIdentities(people.map(p=>({
-   personId:p.person_id,name:p.name,portableGimmickId:p.portable_gimmick_id,
+   personId:p.person_id,name:p.name,portableGimmickId:p.portable_gimmick_id??null,
    personaRecord:p.persona_record??null,
   })));
   const names=new Map(people.map(p=>[p.person_id,p.name]));
