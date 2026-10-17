@@ -20,6 +20,7 @@ export function mountPersonaDesk(root:HTMLElement,
  port:PersonaDeskPort,onBack?:()=>void){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
+ let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
  async function load(id?:string){
   personId=id;loading=true;render();
   try{view=await port.load(id);chosen=null;search="";error="";}
@@ -50,15 +51,38 @@ export function mountPersonaDesk(root:HTMLElement,
   root.classList.add("ppw-editor","ppw-persona-desk");root.replaceChildren();
   const head=el("header","ppw-persona-header");
   if(onBack)head.append(button("← Back to card",onBack));
-  head.append(el("span","ppw-eyebrow","PPW · WRESTLER DIRECTORY"),
-   el("h1","","Character & identity"),
+  head.append(el("span","ppw-eyebrow","PPW · BACKSTAGE"),
+   el("h1","","Backstage messages"),
    el("p","ppw-muted",
-    "One wrestler. One portable identity. Their gimmick follows them across every promotion."));
+    "Your private locker-room conversations. Wrestlers own their characters; you decide what happens on screen."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){root.append(button(loading?"Loading…":"Retry",()=>void load(personId),loading));return;}
   if(!view.personId||!view.persona){
    root.append(el("p","ppw-muted","There are no current roster identities to inspect."));return;
+  }
+  const tabs=el("nav","ppw-backstage-tabs");
+  for(const [id,label] of [["INBOX","Inbox"],["THREAD","Conversation"],
+   ["PROFILE","Wrestler profile"]] as const){
+   const tab=button(label,()=>{pane=id;render();});
+   if(pane===id)tab.classList.add("ppw-persona-selected");
+   tabs.append(tab);
+  }
+  root.append(tabs);
+  if(pane==="INBOX"){
+   const inbox=el("section","ppw-backstage-inbox");
+   inbox.append(el("h2","","Locker room"),
+    el("p","ppw-muted","Open a wrestler's conversation or character history."));
+   for(const wrestler of view.roster){
+    const active=wrestler.personId===view.personId;
+    const item=button(wrestler.name+(active&&view.recentRequests.length?
+     " · "+view.recentRequests.length+" recent character discussions":""),()=>{
+      pane="THREAD";if(active)render();else void load(wrestler.personId);
+    });
+    item.classList.add("ppw-backstage-contact");
+    inbox.append(item);
+   }
+   root.append(inbox);return;
   }
   const choice=el("label","ppw-field");
   choice.append(el("span","","Select a roster wrestler"));
@@ -92,8 +116,8 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    live.append(section);
   }
-  root.append(live);
-  if(view.documentedAlternates.length){
+  if(pane==="PROFILE")root.append(live);
+  if(pane==="PROFILE"&&view.documentedAlternates.length){
    const alt=el("section","ppw-persona-alternates");
    alt.append(el("h2","","Documented real-world personas"),
     el("p","ppw-muted","Historical references only — not PPW career eras."));
@@ -101,7 +125,7 @@ export function mountPersonaDesk(root:HTMLElement,
     alt.append(el("p","",p.personaName+" · "+p.gimmickId.replaceAll("_"," ")));
    root.append(alt);
   }
-  if(view.history.length){
+  if(pane==="PROFILE"&&view.history.length){
    const history=el("section","ppw-persona-history");
    history.append(el("h2","","PPW identity history"));
    for(const row of view.history){
@@ -114,8 +138,9 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    root.append(history);
   }
+  if(pane==="PROFILE")return;
   const chat=el("section","ppw-persona-chat");
-  chat.append(el("h2","","Character conversation"),
+  chat.append(el("h2","",view.personName+" · private conversation"),
    el("p","ppw-muted",
     "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
   for(const p of [...view.recentRequests].reverse()){
