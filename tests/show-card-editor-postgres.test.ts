@@ -112,7 +112,33 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    await assert.rejects(saveCardEditorAsActor(context,{...identity,
     requestId:"forged",expectedRevision:3,
     matches:[{slotId:"main",payload:forged}],runningOrder:["main","angle"]}),/contract rights|Multiple contracts/);
+
    assert.equal((await showCardEditorAsActor(context,world,promotion,show)).slots[0]!.slotId,"angle");
+   // A complete angle is now authored and saved with its contracted cast,
+   // scripted refusal and precise slot order in one World revision.
+   const angle={kind:"ATTACK",participants:[members[0],members[1]],
+    actorIds:[ids[0]],targetIds:[ids[1]],outcome:"REFUSED"};
+   const angleSave=await saveCardEditorAsActor(context,{...identity,
+    requestId:"save-angle",expectedRevision:3,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:angle}],
+    runningOrder:["angle","main"]});
+   assert.equal(angleSave.status,"APPLIED");
+   const withAngle=await showCardEditorAsActor(context,world,promotion,show);
+   assert.deepEqual(withAngle.slots.map(s=>s.slotId),["angle","main"]);
+   assert.deepEqual((withAngle.slots[0]!.payload as typeof angle).actorIds,[ids[0]]);
+   assert.equal((withAngle.slots[0]!.payload as typeof angle).outcome,"REFUSED");
+   assert.equal((await saveCardEditorAsActor(context,{...identity,
+    requestId:"save-angle",expectedRevision:3,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:angle}],
+    runningOrder:["angle","main"]})).status,"REPLAYED");
+   await assert.rejects(saveCardEditorAsActor(context,{...identity,
+    requestId:"forged-angle",expectedRevision:4,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:{...angle,participants:[
+     {...members[0],contractId:"fake"},members[1]]}}],
+    runningOrder:["angle","main"]}),/contract rights/);
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
     for(const table of ["ppw_command_receipts","ppw_card_slots",

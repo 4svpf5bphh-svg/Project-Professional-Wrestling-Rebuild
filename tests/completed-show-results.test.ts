@@ -31,10 +31,12 @@ function fake(options:{existing?:boolean;conflict?:boolean;
     {slot_id:"m",position:0,kind:"MATCH",payload:{}},
     {slot_id:"angle",position:1,kind:"SEGMENT",payload:{}}] as unknown as T[];
    if(sql.includes("FROM ppw_booking_drafts"))return [{draft_id:"s"}] as unknown as T[];
-   if(sql.startsWith("INSERT")){
+   if(sql.trimStart().startsWith("INSERT")){
     writes++;
     if(options.failOnSegment&&sql.includes("ppw_completed_show_segments"))
      throw new Error("segment insert failed");
+    if(sql.includes("ppw_completed_show_segments"))
+     return [{slot_id:"angle"}] as unknown as T[];
     return [] as unknown as T[];
    }
    throw new Error("Unexpected query: "+sql);
