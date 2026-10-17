@@ -1,13 +1,32 @@
 .ppw-pair-hero{padding:12px 0 20px}
-.ppw-pair-hero h1{font-size:30px;margin:8px 0}
+.ppw-pair-hero h1{font-size:clamp(28px,7vw,36px);margin:8px 0}
 .ppw-pair-create,.ppw-pair-card{background:#102837;border:1px solid #315b68;
  border-radius:14px;padding:15px;margin:12px 0}
 .ppw-pair-create h2,.ppw-pair-list h2{font-size:19px;margin:5px 0 14px}
-.ppw-pair-create input,.ppw-pair-create select{box-sizing:border-box;display:block;
- width:100%;background:#0c2030;color:#f1f7f8;border:1px solid #45707e;
- border-radius:10px;padding:12px;margin:9px 0;font-size:16px;min-height:44px}
+.ppw-pair-create input,.ppw-pair-list input,.ppw-pair-details input{display:block;
+ width:100%;box-sizing:border-box;background:#0c2030;color:#f1f7f8;
+ border:1px solid #45707e;border-radius:10px;padding:12px;margin:9px 0;
+ font-size:16px;min-height:44px}
 .ppw-pair-button{min-height:44px;padding:10px 14px;background:#173c48;color:#fff;
- border:1px solid #547a83;border-radius:10px}
+ border:1px solid #547a83;border-radius:10px;text-align:left}
 .ppw-pair-button:disabled{opacity:.5}
 .ppw-pair-card strong{font-size:18px;color:#f2d999}
-.ppw-pair-card p{margin:7px 0 0}
+.ppw-pair-card summary{display:grid;gap:6px;cursor:pointer}
+.ppw-pair-card summary>span{font-size:13px}
+.ppw-pair-members,.ppw-pair-meta{color:#acc9d2}
+.ppw-pair-belt{color:#e9cb7f;font-weight:700}
+.ppw-pair-details{padding:11px 0 1px;border-top:1px solid #315b68;margin-top:12px}
+.ppw-pair-details p{margin:8px 0}
+.ppw-pair-overview{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.ppw-pair-stat{display:grid;gap:7px;border:1px solid #315b68;
+ border-radius:11px;background:#102837;padding:11px}
+.ppw-pair-stat span{font-size:10px;color:#afc8d0;letter-spacing:.08em}
+.ppw-pair-stat strong{font-size:24px;color:#f2d999}
+.ppw-pair-selected{display:grid;grid-template-columns:1fr 1fr;gap:8px;
+ font-size:12px;color:#d6e8ed;padding:10px 0}
+.ppw-pair-selected span{border:1px solid #547a83;border-radius:9px;padding:9px}
+.ppw-pair-picks{display:grid;grid-template-columns:1fr 1fr;gap:6px;
+ overflow-y:auto;max-height:285px;margin:9px 0 12px}
+.ppw-pair-pick{min-width:0;word-break:break-word;font-size:13px}
+.ppw-pair-pick[aria-pressed=true]{border-color:#f2d999;background:#424035}
+@media(max-width:520px){.ppw-pair-picks{grid-template-columns:1fr}}
