@@ -97,7 +97,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
      matches.set(slot.slotId,restoreEditorMatch(slot.slotId,slot.payload));
-    else segments.set(slot.slotId,restoreEditorSegment(slot.slotId,slot.payload));
+    else segments.set(slot.slotId,{
+     ...restoreEditorSegment(slot.slotId,slot.payload),
+     programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
+    });
    }
    for(const p of (view as View&{selectedPeople?:{
     personId:string;name:string;division:string}[]}).selectedPeople??[]){
@@ -166,7 +169,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(!mutable()||!view)return;
   try{
    const segmentPayloads=[...segments.values()].map(s=>({
-    slotId:s.slotId,payload:buildEditorSegment(s)}));
+    slotId:s.slotId,payload:buildEditorSegment(s),programmeId:s.programmeId}));
    const payloads=[...matches.values()].map(m=>({slotId:m.slotId,
     payload:buildBookedMatch(m)}));
    if(!payloads.length)throw new Error("Book at least one match");
@@ -268,6 +271,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Scripted outcome",selector(segment.outcome,
      [["HAPPENS","Goes ahead"],["REFUSED","Refused"],["INTERRUPTED","Interrupted"]],
      v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
+    if(view.programmes.length)
+     controls.append(field("Storyline / programme",selector(segment.programmeId??"",
+      [["","None"],...view.programmes.map(p=>[
+       p.programmeId,p.programmeId+" · Heat "+(p.heat??"—")])],
+      v=>editSegment(segment,{programmeId:v||null}),!mutable())));
     if(segment.kind==="VIDEO_PACKAGE")
      controls.append(field("Video purpose",selector(segment.videoPurpose,
       VIDEO_PURPOSES.map(v=>[v,nice(v)]),

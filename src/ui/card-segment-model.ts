@@ -6,7 +6,7 @@ import type {SegmentKind,SegmentOutcome,VideoPurpose}
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
- outcome:SegmentOutcome;videoPurpose:VideoPurpose;
+ outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -25,7 +25,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 ]);
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
- return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE"};
+ return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -34,7 +34,11 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  const participants=(Array.isArray(p.participants)?p.participants:[]) as SegmentPerson[];
  const find=(keys:unknown):SegmentPerson[]=>Array.isArray(keys)?
   keys.flatMap(id=>participants.filter(p=>p.personId===id).map(p=>({...p}))):[];
- return {...newEditorSegment(slotId,kind),actors:find(p.actorIds),
+ // Historical promo/interview drafts may have a contracted speaker but no
+ // explicit role list; preserve their identity in the editable model.
+ return {...newEditorSegment(slotId,kind),
+  actors:find(Array.isArray(p.actorIds)?p.actorIds:
+   ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
   outcome:["HAPPENS","REFUSED","INTERRUPTED"].includes(String(p.outcome))?
    p.outcome as SegmentOutcome:"HAPPENS",

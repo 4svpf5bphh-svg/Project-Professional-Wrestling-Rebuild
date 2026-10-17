@@ -28,3 +28,17 @@ test("original promo, interview and challenge book as real segments",()=>{
   assert.equal(buildEditorSegment(s).kind,kind);
  }
 });
+
+test("legacy promo with contracted speaker restores editable roles",()=>{
+ const legacy={kind:"PROMO",outcome:"HAPPENS",
+  participants:[{personId:"speaker",contractId:"signed"}]};
+ const restored=restoreEditorSegment("old",legacy);
+ assert.equal(restored.actors[0]!.personId,"speaker");
+ assert.equal(buildEditorSegment(restored).actorIds[0],"speaker");
+});
+test("programme selection belongs to angle editor and never alters scripted outcome",()=>{
+ const input={...newEditorSegment("promo"),programmeId:"rivalry"};
+ const participant=addSegmentPerson(input,"actors",{personId:"speaker",contractId:"signed"});
+ assert.equal(participant.programmeId,"rivalry");
+ assert.equal(buildEditorSegment(participant).outcome,"HAPPENS");
+});
