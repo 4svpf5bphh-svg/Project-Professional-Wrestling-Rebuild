@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
- for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE"] as const){
+ for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH"] as const){
   assert.ok(backstageMessage(kind).length>20);
-  assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
-  assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
+  if(kind!=="GIMMICK_PITCH")
+   assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
+  if(kind!=="GIMMICK_PITCH")
+   assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
   for(const decision of BACKSTAGE_CHOICES[kind])
    assert.ok(["ANSWERED","DECLINED","PROMISED"].includes(
     backstageDecisionEffect(kind,decision).status));
@@ -25,5 +27,8 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.deepEqual(backstageDecisionEffect("CREATIVE","PROMISE_SEGMENT"),
   {moraleDelta:0,promise:true,status:"PROMISED"});
  assert.match(backstageMessage("CREATIVE"),/mic time/);
+ assert.match(backstageMessage("GIMMICK_PITCH",{observedMatchShows:4,averageCrowd:48}),
+  /4 matches.*48\/100/);
+ assert.equal(backstageDecisionEffect("GIMMICK_PITCH","KEEP_CHARACTER").status,"DECLINED");
  assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/delivered/);
 });

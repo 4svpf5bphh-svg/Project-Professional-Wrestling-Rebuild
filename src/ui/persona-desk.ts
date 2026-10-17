@@ -224,7 +224,8 @@ export function mountPersonaDesk(root:HTMLElement,
    const stamp="Y"+(Math.floor(item.createdWeekIndex/52)+1)+
     " · W"+(item.createdWeekIndex%52+1);
    chat.append(el("small","ppw-backstage-date",stamp),
-    el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind)));
+    el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind,{observedMatchShows:item.observedMatchShows,
+     averageCrowd:item.averageCrowd})));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
      (item.promisedRole==="MAIN_EVENT"?"Main event":"Upper card")+
