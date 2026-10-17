@@ -66,3 +66,39 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  await page.goto("/");
  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/manifest.webmanifest");
 });
+
+test("compact iPhones retain legible touch navigation and no horizontal shell overflow",async({page})=>{
+ await page.setViewportSize({width:320,height:700});
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=route.request().postDataJSON().method;
+  await route.fulfill({json:method==="overview"?overview:{}});
+ });
+ await page.goto("/#/home");
+ const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
+ await expect(nav.locator(".ppw-tab")).toHaveCount(5);
+ const audit=()=>page.evaluate(()=>{
+  const tabs=[...document.querySelectorAll<HTMLElement>(".ppw-navigation .ppw-tab")];
+  return {overflow:document.documentElement.scrollWidth-innerWidth,
+   tabWidths:tabs.map(b=>Math.round(b.getBoundingClientRect().width)),
+   tabHeights:tabs.map(b=>Math.round(b.getBoundingClientRect().height))};
+ });
+ let sizes=await audit();
+ expect(sizes.overflow).toBeLessThanOrEqual(1);
+ expect(Math.min(...sizes.tabHeights)).toBeGreaterThanOrEqual(44);
+ await nav.getByRole("button",{name:"More"}).click();
+ await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Creative"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"The business"})).toBeVisible();
+ sizes=await audit();
+ expect(sizes.overflow).toBeLessThanOrEqual(1);
+ await page.getByRole("button",{name:"Contracts"}).click();
+ await expect(page).toHaveURL(/#\/contracts$/);
+ await expect(nav.getByRole("button",{name:"More"})).toHaveAttribute("aria-current","page");
+ await page.setViewportSize({width:390,height:844});
+ await nav.getByRole("button",{name:"Home"}).click();
+ await expect(nav.getByRole("button",{name:"Home"})).toHaveAttribute("aria-current","page");
+ expect((await audit()).overflow).toBeLessThanOrEqual(1);
+});
