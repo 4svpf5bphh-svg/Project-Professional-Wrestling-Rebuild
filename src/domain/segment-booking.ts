@@ -27,3 +27,25 @@ export function normalizeBookedSegment(input:SegmentBookingInput,knownPeople:Rea
    input.videoPurpose!==undefined))throw new Error("Invalid segment booking roles");
  return validateAuthoredSegments([input],knownPeople)[0]!;
 }
+
+export interface BookedSegmentParticipant {personId:string;contractId:string}
+export interface BookedSegmentPayload extends AuthoredSegment{
+ participants:BookedSegmentParticipant[];
+}
+/** Build canonical slot JSON from contracted participants, not free-form names.
+ * Only referenced roles are included; the resolver checks these identities again.
+ */
+export function buildBookedSegmentPayload(
+ input:SegmentBookingInput,people:readonly BookedSegmentParticipant[],
+):BookedSegmentPayload{
+ if(!Array.isArray(people)||people.length>30||
+  people.some(p=>!p||typeof p.personId!=="string"||!p.personId||
+   typeof p.contractId!=="string"||!p.contractId)||
+  new Set(people.map(p=>p.personId)).size!==people.length)
+  throw new Error("Invalid segment contracted participants");
+ const known=new Set(people.map(p=>p.personId));
+ const normalized=normalizeBookedSegment(input,known);
+ if(known.size!==new Set([...normalized.actorIds,...normalized.targetIds]).size)
+  throw new Error("Segment participant must have an authored role");
+ return {...normalized,participants:people.map(p=>({...p}))};
+}
