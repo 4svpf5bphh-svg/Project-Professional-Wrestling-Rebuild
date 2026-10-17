@@ -52,7 +52,9 @@ export async function readCanonicalSegmentContextsInTransaction(
    const segment=buildBookedSegmentPayload({slotId:slot.slot_id,position:slot.position,
     kind:p.kind as AuthoredSegment["kind"],actorIds,targetIds,
     outcome:p.outcome as AuthoredSegment["outcome"],
-    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]})},participants);
+    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
+    ...(p.turnTargetAlignment===undefined?{}:{
+     turnTargetAlignment:p.turnTargetAlignment as AuthoredSegment["turnTargetAlignment"]})},participants);
    segments.push(segment);
    for(const id of ids)allIds.add(id);
   }
@@ -70,7 +72,7 @@ export async function readCanonicalSegmentContextsInTransaction(
    "AND a.kind='SEGMENT' ORDER BY a.slot_id LIMIT 101",
   ].join(" "),[scope.worldId,scope.promotionId,scope.showId]);
   if(links.length>100)throw new Error("Excess segment programme links");
-  const linked=new Map<string,typeof links>();
+  const linked=new Map<string,Array<(typeof links)[number]>>();
   const segmentIds=new Set(segments.map(x=>x.slotId));
   for(const link of links){
    if(!segmentIds.has(link.slot_id))

@@ -171,6 +171,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
    outcome:p.outcome as SegmentOutcome,
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
+   ...(p.turnTargetAlignment===undefined?{}:{
+    turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
   },participants)};
  });
  const submitted=new Set(matches.map(x=>x.slotId));

@@ -276,6 +276,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       [["","None"],...view.programmes.map(p=>[
        p.programmeId,p.programmeId+" · Heat "+(p.heat??"—")])],
       v=>editSegment(segment,{programmeId:v||null}),!mutable())));
+    if(segment.kind==="TURN")
+     controls.append(field("New alignment",selector(segment.turnTargetAlignment??"",
+      [["","No alignment change"],["FACE","Face"],["HEEL","Heel"],
+       ["TWEENER","Tweener"]],
+      v=>editSegment(segment,{turnTargetAlignment:
+       v?v as "FACE"|"HEEL"|"TWEENER":null}),!mutable())));
     if(segment.kind==="VIDEO_PACKAGE")
      controls.append(field("Video purpose",selector(segment.videoPurpose,
       VIDEO_PURPOSES.map(v=>[v,nice(v)]),
