@@ -99,6 +99,7 @@ export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
 function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
  return {
   load:personId=>call("backstage",personId?{personId}:{}),
+  markRead:personId=>call("markBackstageRead",{personId}),
   decide:({conversationId,decision,requestId,expectedRevision})=>
    call("backstageDecision",{conversationId,decision,requestId,expectedRevision}),
   request:({personId,gimmickId,requestId,expectedRevision})=>

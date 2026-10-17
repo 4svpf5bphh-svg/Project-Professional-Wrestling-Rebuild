@@ -52,3 +52,12 @@
 .ppw-persona-chat .ppw-persona-button:disabled{opacity:.52}
 @media(max-width:480px){.ppw-persona-chat{padding:12px;border-radius:12px}
  .ppw-persona-bubble{max-width:89%}.ppw-backstage-replies{max-width:100%}}
+
+.ppw-backstage-filters{display:flex;gap:6px;overflow-x:auto;
+ padding:4px 0 12px;scrollbar-width:thin}
+.ppw-backstage-filters button{white-space:nowrap;min-height:44px;
+ font-size:13px;padding:8px 12px}
+.ppw-backstage-contact.ppw-backstage-unread{border-color:#69bcdc;
+ background:#1c4052;font-weight:700}
+.ppw-backstage-contact:focus-visible,.ppw-backstage-tabs button:focus-visible{
+ outline:2px solid #9ce4ff;outline-offset:2px}

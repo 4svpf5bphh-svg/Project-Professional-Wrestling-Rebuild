@@ -43,6 +43,15 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   assert.equal(inbox.conversations.length,1);
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{...scope,playerId:outsiderId}),/denied/);
   const context={pool:db.pool,actor:{playerId}};
+  const outsiderRead=await dispatchCardRpc({pool:db.pool,actor:{playerId:outsiderId}},
+   "markBackstageRead",{worldId,promotionId,showId,personId:inbox.personId});
+  assert.equal((outsiderRead as {readCount:number}).readCount,0);
+  assert.equal((await dispatchCardRpc(context,"markBackstageRead",
+   {worldId,promotionId,showId,personId:inbox.personId}) as {readCount:number}).readCount,1);
+  assert.equal((await dispatchCardRpc(context,"markBackstageRead",
+   {worldId,promotionId,showId,personId:inbox.personId}) as {readCount:number}).readCount,0);
+  assert.equal((await readPortablePersonaWorkspace(db.pool,scope)).
+   roster.find(x=>x.personId===inbox.personId)?.latestIncoming?.read_week_index,0);
   const conversationId=inbox.conversations[0]!.conversationId;
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:outsiderId}},
    "backstageDecision",{worldId,promotionId,showId,conversationId,

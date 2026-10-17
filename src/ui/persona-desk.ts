@@ -8,6 +8,7 @@ import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
+ markRead(personId:string):Promise<{readCount:number}>;
  decide(input:{conversationId:string;decision:BackstageDecision;
   requestId:string;expectedRevision:number}):Promise<unknown>;
  request(input:{personId:string;gimmickId:string;
@@ -25,9 +26,19 @@ export function mountPersonaDesk(root:HTMLElement,
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
+ let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"="ALL";
  async function load(id?:string){
   personId=id;loading=true;render();
-  try{view=await port.load(id);chosen=null;search="";error="";}
+  try{
+   view=await port.load(id);
+   if(pane==="THREAD"&&view.personId&&
+    view.roster.some(x=>x.personId===view!.personId&&
+     x.latestIncoming?.read_week_index===null)){
+    await port.markRead(view.personId);
+    view=await port.load(id);
+   }
+   chosen=null;search="";error="";
+  }
   catch(e){error=e instanceof Error?e.message:"Unable to load wrestler identity";}
   finally{loading=false;render();}
  }
@@ -83,7 +94,12 @@ export function mountPersonaDesk(root:HTMLElement,
   const tabs=el("nav","ppw-backstage-tabs");
   for(const [id,label] of [["INBOX","Inbox"],["THREAD","Conversation"],
    ["PROFILE","Wrestler profile"]] as const){
-   const tab=button(label,()=>{pane=id;render();});
+   const tab=button(label,()=>{pane=id;
+    if(id==="THREAD"&&view?.personId&&
+     view.roster.some(x=>x.personId===view!.personId&&
+      x.latestIncoming?.read_week_index===null))void load(view.personId);
+    else render();
+   });
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
@@ -92,7 +108,22 @@ export function mountPersonaDesk(root:HTMLElement,
    const inbox=el("section","ppw-backstage-inbox");
    inbox.append(el("h2","","Locker room"),
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
-   for(const wrestler of [...view.roster].sort((a,b)=>
+   const controls=el("div","ppw-backstage-filters");
+   for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
+    ["ACTIVE","Requests"],["HISTORY","History"]] as const){
+    const b=button(label,()=>{inboxFilter=filter;render();});
+    if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
+    controls.append(b);
+   }
+   inbox.append(controls);
+   for(const wrestler of [...view.roster].filter(w=>{
+    const latest=w.latestIncoming;
+    if(inboxFilter==="UNREAD")return !!latest&&latest.read_week_index===null;
+    if(inboxFilter==="ACTIVE")return latest?.status==="PENDING"||latest?.status==="PROMISED";
+    if(inboxFilter==="HISTORY")return !!latest&&
+     !["PENDING","PROMISED"].includes(latest.status);
+    return true;
+   }).sort((a,b)=>
     Number(b.latestIncoming?.status==="PENDING")-
     Number(a.latestIncoming?.status==="PENDING")||
     (b.latestIncoming?.created_week_index??-1)-
@@ -111,10 +142,15 @@ export function mountPersonaDesk(root:HTMLElement,
      " · "+incoming.kind.replaceAll("_"," ").toLowerCase():
      last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
      ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
-    const item=button(wrestler.name+summary,()=>{
-      pane="THREAD";if(active)render();else void load(wrestler.personId);
+    const unread=incoming?.read_week_index===null;
+     const stamp=incoming?" · Y"+(Math.floor(incoming.created_week_index/52)+1)+
+      " W"+(incoming.created_week_index%52+1):"";
+     const item=button((unread?"● ":"")+wrestler.name+stamp+summary,()=>{
+      pane="THREAD";if(active&&unread)void load(wrestler.personId);
+       else if(active)render();else void load(wrestler.personId);
     });
     item.classList.add("ppw-backstage-contact");
+     if(unread)item.classList.add("ppw-backstage-unread");
     inbox.append(item);
    }
    root.append(inbox);return;

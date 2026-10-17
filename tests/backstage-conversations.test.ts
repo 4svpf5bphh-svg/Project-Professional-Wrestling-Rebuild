@@ -25,5 +25,5 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.deepEqual(backstageDecisionEffect("CREATIVE","PROMISE_SEGMENT"),
   {moraleDelta:0,promise:true,status:"PROMISED"});
  assert.match(backstageMessage("CREATIVE"),/mic time/);
- assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/kept your word/);
+ assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/delivered/);
 });
