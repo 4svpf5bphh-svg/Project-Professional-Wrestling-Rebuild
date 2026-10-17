@@ -3,6 +3,7 @@ export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
  openCard(draftId:string):void;
+ openCalendar?():void;
 }
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
@@ -42,6 +43,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   root.replaceChildren();root.classList.add("ppw-planner");
   const header=node("header","","ppw-planner-header");
   if(onBack)header.append(button("← Back",onBack));
+  if(port.openCalendar)header.append(button("Show Calendar",()=>port.openCalendar?.()));
   header.append(node("h1","Show Planner"),node("p","Six PPW weeks ahead. Book your card when ready."));
   root.append(header);
   if(error)root.append(node("p",error,"ppw-planner-error"));
