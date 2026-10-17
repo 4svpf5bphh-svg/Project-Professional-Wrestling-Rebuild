@@ -45,7 +45,29 @@ test("World-portable tag pairs form once, require signed talent and survive idem
   assert.equal(added.status,"APPLIED");
   if(added.status!=="APPLIED")throw Error("Team command unexpected result");
   assert.equal((await createTagTeam(db.pool,request)).status,"REPLAYED");
+  // Chemistry is read from the canonical match-earned pair record, not
+  // awarded just because the player clicked Form team.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_working_chemistry(
+    world_id,person_a_id,person_b_id,context,compatibility,familiarity,matches_together)
+    VALUES($1,$2,$3,'TAG',5,37,9)`,
+    [worldId,personIds[0],personIds[1]]);
+   await tx.query(`INSERT INTO ppw_championships(
+    world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
+    VALUES($1,$2,'owned-belt','World Tag Title','TAG','ACTIVE',60,'team-reign')`,
+    [worldId,promotionId]);
+   await tx.query(`INSERT INTO ppw_championship_reigns(
+    world_id,promotion_id,championship_id,reign_id,
+    holder_type,team_id,status,start_week_index,defenses)
+    VALUES($1,$2,'owned-belt','team-reign','TEAM',$3,'ACTIVE',0,3)`,
+    [worldId,promotionId,added.result.teamId]);
+  });
   const view=await readTagTeamWorkspace(db.pool,actor);
+  assert.equal(view.teams[0]?.matchesTogether,9);
+  assert.equal(view.teams[0]?.familiarity,37);
+  assert.equal(view.teams[0]?.experience,"ESTABLISHED");
+  assert.deepEqual(view.teams[0]?.currentTitles.map(t=>t.name),["World Tag Title"]);
+  assert.equal(view.teams[0]?.totalTitleDefenses,3);
   assert.equal(view.worldRevision,1);
   assert.deepEqual(view.teams.map(t=>t.name),["The New Blood"]);
   assert.deepEqual(view.teams[0]?.members.map(m=>m.personId).sort(),
@@ -69,6 +91,7 @@ test("World-portable tag pairs form once, require signed talent and survive idem
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
+    "ppw_championship_reigns","ppw_championships","ppw_working_chemistry",
     "ppw_tag_team_members","ppw_tag_teams","ppw_contracts",
     "ppw_people","ppw_promotion_controls","ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
