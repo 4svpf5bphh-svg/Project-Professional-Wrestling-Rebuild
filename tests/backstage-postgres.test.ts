@@ -32,8 +32,11 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
     [worldId,contract1,one,promotionId,contract2,two]);
   });
   const generated=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,0));
-  assert.equal(generated.newMessages,2);
+  assert.equal(generated.newMessages,1);
   assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,0))).newMessages,0);
+  assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,1))).newMessages,1);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
   const scope={worldId,promotionId,playerId};
   const inbox=await readPortablePersonaWorkspace(db.pool,scope);
   assert.equal(inbox.roster.filter(p=>p.latestIncoming?.status==="PENDING").length,2);
@@ -63,23 +66,30 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
     requestId:"second-"+id,expectedRevision:1,decision:"PROMISE_APPEARANCE"});
   assert.equal((answered as {status:string}).status,"APPLIED");
   await withWorldTransaction(db.pool,async tx=>{
-   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,1)",
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,2)",
     [worldId,showId,promotionId]);
    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,1,'MATCH',$4::jsonb)",
     [worldId,showId,"slot-"+id,JSON.stringify({participants:[
      {personId:inbox.personId,contractId:inbox.personId===one?contract1:contract2}]})]);
-   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,1,$4,60,'{}'::jsonb,$5)",
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,2,$4,60,'{}'::jsonb,$5)",
     [worldId,promotionId,showId,"res-"+id,"a".repeat(64)]);
    await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,1,60,'PIN','A')",
     [worldId,showId,"slot-"+id]);
   });
-  const settled=await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,2));
+  const settled=await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,3));
   assert.equal(settled.settled,2);
   const statuses=await read<{person_id:string;status:string}>(
    "SELECT person_id,status FROM ppw_backstage_requests WHERE world_id=$1",[worldId]);
   assert.equal(statuses.find(x=>x.person_id===inbox.personId)!.status,"FULFILLED");
   assert.equal(statuses.find(x=>x.person_id!==inbox.personId)!.status,"BROKEN");
-  assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,3))).settled,0);
+  const penalties=await read<{person_id:string;trust:number}>(
+   "SELECT person_id,trust FROM ppw_backstage_promotion_trust WHERE world_id=$1",[worldId]);
+  assert.deepEqual(penalties.map(x=>[x.person_id,x.trust]),[
+   [inbox.roster.find(x=>x.personId!==inbox.personId)!.personId,47]]);
+  const morale=await read<{person_id:string;morale:number}>(
+   "SELECT person_id,morale FROM ppw_people WHERE world_id=$1",[worldId]);
+  assert.ok(morale.every(x=>x.morale===20),"Chat never earns global morale");
+  assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,4))).settled,0);
   const last=await readPortablePersonaWorkspace(db.pool,scope);
   assert.equal(last.conversations[0]!.status,"FULFILLED");
   // A wrestler-initiated creative request is fulfilled only by an authored,
@@ -88,7 +98,9 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
    "UPDATE ppw_people SET morale=65,momentum=42,recognition=80 WHERE world_id=$1 AND person_id=$2",
    [worldId,inbox.personId]));
   const again=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,9));
-  assert.equal(again.newMessages,2);
+  assert.equal(again.newMessages,1);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=10 WHERE world_id=$1",[worldId]));
   const creative=(await readPortablePersonaWorkspace(db.pool,scope)).conversations.at(-1)!;
   assert.equal(creative.kind,"CREATIVE");
   const replied=await dispatchCardRpc(context,"backstageDecision",
@@ -112,7 +124,7 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   assert.equal(final.status,"FULFILLED");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_backstage_requests","ppw_completed_show_matches",
+   for(const table of ["ppw_backstage_promotion_trust","ppw_backstage_requests","ppw_completed_show_matches",
     "ppw_completed_show_segments","ppw_completed_shows","ppw_card_slots",
     "ppw_booking_drafts","ppw_ledger_events","ppw_command_receipts",
     "ppw_contracts","ppw_people","ppw_promotion_controls",
