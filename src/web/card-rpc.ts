@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
+import {workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
  completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
@@ -15,6 +15,12 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="workingConnections"){
+  const personId=p.personId;
+  if(personId!==undefined&&typeof personId!=="string")
+   throw new Error("Invalid wrestler");
+  return workingConnectionsAsActor(context,worldId,promotionId,personId);
+ }
  if(method==="stableChoices")return stableChoicesAsActor(context,worldId,promotionId);
  if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);

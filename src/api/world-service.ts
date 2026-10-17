@@ -1,5 +1,6 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readStableWorkspace,readActiveStableChoices,
  createStable,addStableMember,removeStableMember,disbandStable,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
@@ -280,4 +281,14 @@ export async function stableChoicesAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readActiveStableChoices(context.pool,{
   worldId,promotionId,playerId:context.actor.playerId});
+}
+
+/** Global wrestler relationship evidence is visible only via a verified roster controller. */
+export async function workingConnectionsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,personId?:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ if(personId!==undefined)validate(personId,"wrestler");
+ return readWorkingConnections(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId,personId});
 }
