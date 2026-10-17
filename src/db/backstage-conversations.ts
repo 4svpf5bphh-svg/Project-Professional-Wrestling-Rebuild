@@ -44,6 +44,16 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
    if(found.length!==1)throw new Error("Wrestler request unavailable or already answered");
    const r=found[0]!,effect=backstageDecisionEffect(r.kind,i.decision);
    const weekIndex=(r.year-1)*52+r.week-1;
+   if(i.decision==="EXPLORE_TEAM"&&r.related_person_id){
+    const partner=await tx.query<{contract_id:string}>([
+     "SELECT c.contract_id FROM ppw_contracts c",
+     "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
+     "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.person_id=$3",
+     "AND c.status='SIGNED' AND p.status='ACTIVE'",
+     "AND c.start_week_index<=$4 AND c.expires_week_index>=$4 LIMIT 1"
+    ].join(" "),[i.worldId,i.promotionId,r.related_person_id,weekIndex]);
+    if(!partner.length)throw new Error("Proposed tag partner is no longer contracted");
+   }
    // A role-specific featured promise must be tied to the original active
    // contract, and must leave at least one World week to deliver.
    if(i.decision==="PROMISE_FEATURED"&&

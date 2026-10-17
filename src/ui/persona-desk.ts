@@ -246,7 +246,14 @@ export function mountPersonaDesk(root:HTMLElement,
     " · W"+(item.createdWeekIndex%52+1);
    chat.append(el("small","ppw-backstage-date",stamp),
     el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind,{observedMatchShows:item.observedMatchShows,
-     averageCrowd:item.averageCrowd})));
+     averageCrowd:item.averageCrowd,
+     partnerName:view.roster.find(x=>x.personId===item.relatedPersonId)?.name,
+     verifiedTagShows:item.verifiedTagShows,
+     averageExecution:item.averageExecution})));
+   if(item.followThroughWeekIndex!==null)
+    chat.append(el("small","ppw-backstage-promise",
+     "Booking follow-through · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
+     " W"+(item.followThroughWeekIndex%52+1)));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
      (item.promisedRole==="MAIN_EVENT"?"Main event":"Upper card")+
