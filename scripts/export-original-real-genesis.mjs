@@ -18,7 +18,7 @@ const state=createWorld(20261017,REAL_WORLD_ALPHA_RULESET,"PPW Rebuild Genesis",
 seedRealActiveTagTeams(state);
 seedRealWrestlerRelationships(state);
 validateWorldInvariants(state);
-const expectedPromotions=["WWE","AEW","NJPW","NXT","TNA","CMLL","ROH","STARDOM"];
+const expectedPromotions=["WWE","AEW","NJPW","NXT","TNA Wrestling","CMLL","ROH","STARDOM"];
 if(state.people.length!==643||state.promotions.length!==13||
  expectedPromotions.some(name=>!state.promotions.some(p=>p.name===name)))
  throw new Error("Original real-world Genesis roster/promotions mismatch");
