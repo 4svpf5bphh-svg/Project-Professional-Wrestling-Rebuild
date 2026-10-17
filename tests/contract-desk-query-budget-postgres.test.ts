@@ -45,6 +45,8 @@ test("Neon-efficiency proxy: own-roster desk is five bounded reads even with 480
    },
   };
   const result=await readContractDesk(measured,world,player,owned);
+  assert.equal(result.worldRevision,2);
+  assert.equal(result.canEdit,true);
   assert.equal(result.summary.signed,120);
   assert.equal(result.summary.weeklyGuarantees,12000);
   assert.equal(result.summary.backstageContractDiscussions,0);
