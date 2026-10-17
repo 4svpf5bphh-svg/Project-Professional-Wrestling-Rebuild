@@ -4,7 +4,7 @@ import type {TransactionPool} from "../src/db/transaction.js";
 import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
 const scope={worldId:"world",playerId:"owner",promotionId:"promotion"};
 function fixture(all:number,authorized=true){
- const calls:{sql:string;params:unknown[]}[]=[];
+ const calls:{sql:string;params:readonly unknown[]}[]=[];
  const pool:TransactionPool={async connect(){return {release(){},
   async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
