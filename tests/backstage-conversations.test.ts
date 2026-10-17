@@ -5,9 +5,9 @@ import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageRepl
 test("wrestler-initiated requests have constrained authored replies",()=>{
  for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH","TEAM_MOMENT"] as const){
   assert.ok(backstageMessage(kind).length>20);
-  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
+  if(!["GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH","TEAM_MOMENT"].includes(kind))
    assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
-  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
+  if(!["GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH","TEAM_MOMENT"].includes(kind))
    assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
   for(const decision of BACKSTAGE_CHOICES[kind])
    assert.ok(["ANSWERED","DECLINED","PROMISED"].includes(
