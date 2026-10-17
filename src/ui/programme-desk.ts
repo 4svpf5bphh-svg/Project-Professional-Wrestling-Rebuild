@@ -9,6 +9,7 @@ export interface ProgrammeDeskPort{
  start(input:{requestId:string;expectedRevision:number;
   sideA:ProgrammeRef[];sideB:ProgrammeRef[];championshipId:string|null}):Promise<unknown>;
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
+ openResults?(showId:string):void;
 }
 const element=(tag:string,cls:string,text="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;};
@@ -108,10 +109,15 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     for(const activity of p.recentActivity){
      const week=Math.floor(activity.weekIndex/52)+1;
      const number=activity.weekIndex%52+1;
-     history.append(element("p","ppw-muted",
+     const item=element("div","ppw-programme-history-entry");
+     item.append(element("span","ppw-muted",
       "Year "+week+" · Week "+number+" · "+
       (activity.kind==="MATCH"?"Match":"Angle")+" · Crowd "+
       Math.round(activity.crowdResponse)));
+     if(port.openResults)item.append(button("Open show results",()=>{
+      port.openResults?.(activity.showId);
+     },working));
+     history.append(item);
     }
     panel.append(history);
    }

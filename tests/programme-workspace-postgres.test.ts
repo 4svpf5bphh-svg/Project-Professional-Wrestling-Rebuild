@@ -8,6 +8,8 @@ import {readProgrammeWorkspace,startProgramme,endProgramme}
  from "../src/db/programme-workspace.js";
 import {saveCardEditorAsActor,showCardEditorAsActor}
  from "../src/api/world-service.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import type {TransactionPool} from "../src/db/transaction.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("a player creates, inspects and ends original two-sided wrestler and tag programmes with bounded PostgreSQL",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
@@ -84,6 +86,18 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   view=await readProgrammeWorkspace(db.pool,scope);
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.status,"COMPLETED");
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.endedWeekIndex,0);
+  const meter=new MeasuredQuerySession("feud-desk-active-and-concluded");
+  const scoped:TransactionPool={async connect(){
+   const connection=await db.pool.connect();
+   return {release(){connection.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]=[]){
+     return meter.execute(()=>connection.query<T>(sql,args));
+    }};
+  }};
+  const bounded=await readProgrammeWorkspace(scoped,scope);
+  assert.equal(bounded.programmes.length,2);
+  const usage=meter.assertBudget({maxQueries:7,maxResultBytes:80_000});
+  console.log("PPW rivalry desk budget:",JSON.stringify(usage));
   // The original PPW automatically binds a booked bout to a feud only when
   // its sides unambiguously fit that feud, including portable tag-team members.
   await withWorldTransaction(db.pool,tx=>tx.query(

@@ -11,7 +11,7 @@ This is an implementation inventory, not a claim of complete gameplay parity.
 | AI promotion booking | Backend foundation | Long-running simulation parity |
 | Singles, multi-person and team matches, battle royals | Backend engine | Complete show authoring and results |
 | Angles/segments | Authenticated mobile creation/edit/save of 13 segment types; World resolution scores and persists narratives and intents; linked programme progression | Confirm deeper wrestler/stable consequences and results presentation |
-| Programmes and storyline heat | Complete wrestler/team feud lifecycle, automatic match association, explicit segment links, ten-week indexed historical heat and repetition based on actual results | Full rivalry results history UI and cross-week decay |
+| Programmes and storyline heat | Promotion-owned wrestler/team feud lifecycle, automatic match linking, angle associations, factual win/draw records, original ten-week heat/repetition, mobile desk and recent-results navigation | Cross-week inactivity decay and deeper feud fallout |
 | Wrestler relationships, gimmicks, stables | Player-scripted turns now change shared alignment with durable history; other foundations partial | Relationship interactions, wrestler-owned gimmick choices, stable roster operations |
 | Results | Canonical receipts, persisted segment stories, varied verified match finishes, mobile broadcast and original-style factual highlights | Championships/injury-focused broadcasts, fuller fan response and complete results discovery |
 | Browser UI | Reusable card editor, adapters | New cohesive mobile-first app host |
