@@ -33,10 +33,23 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501"
   ].join(" "),[s.worldId,s.promotionId,now]);
   if(roster.length>500)throw new Error("Too many roster identities");
+  // One bounded inbox read for the whole controlled roster, not a query per contact.
+  const inbox=roster.length?await tx.query<{person_id:string;
+   requested_gimmick_id:string;status:string;reason:string;
+   submitted_week_index:number}>([
+   "SELECT DISTINCT ON (r.person_id) r.person_id,r.requested_gimmick_id,",
+   "r.status,r.reason,r.submitted_week_index",
+   "FROM ppw_persona_change_requests r",
+   "WHERE r.world_id=$1 AND r.person_id=ANY($2::text[])",
+   "ORDER BY r.person_id,r.submitted_week_index DESC,r.request_id DESC",
+   "LIMIT 500"
+  ].join(" "),[s.worldId,roster.map(x=>x.person_id)]):[];
+  const latestByPerson=new Map(inbox.map(x=>[x.person_id,x]));
   const selected=s.personId??roster[0]?.person_id;
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
    throw new Error("Only a roster wrestler's identity may be inspected");
-  const listed=roster.map(x=>({personId:x.person_id,name:x.name}));
+  const listed=roster.map(x=>({personId:x.person_id,name:x.name,
+   lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
    persona:null,history:[],recentRequests:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
