@@ -1,4 +1,4 @@
-import type {PlannerView,PlannerWeek,PlannerVenue,PlanWeekInput} from "../db/planner-workspace.js";
+import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -81,7 +81,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
     card.append(node("p",(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
-    card.append(button("Edit card",()=>port.openCard(show.draftId)));
+    if(week.offset===0)card.append(button("Edit card",()=>port.openCard(show.draftId)));
+    else card.append(node("p","Scheduled ahead · card editing opens in this PPW week."));
     if(week.canEdit&&show.status==="DRAFT")
      card.append(button("Change venue / date",()=>edit(week,show),busy));
    }

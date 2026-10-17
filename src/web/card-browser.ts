@@ -41,6 +41,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
+  openPlanner:()=>mountPlannerPage(root,scope,()=>mountCardEditor(root,port)),
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),

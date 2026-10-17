@@ -23,6 +23,7 @@ export interface CardEditorPort{
   matches:{slotId:string;payload:unknown}[];
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
+ openPlanner?():void;
  openProgrammes?():void;
  openChampionships?():void;
  openTagTeams?():void;
@@ -259,6 +260,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    order.push(id);expanded=id;markDirty();render();
   },!mutable()));
   const extras=el("div","ppw-management-links");
+  if(port.openPlanner)
+   extras.append(button("Show Planner",()=>port.openPlanner?.(),dirty||saving));
   if(port.openChampionships)
    extras.append(button("Championships",()=>port.openChampionships?.(),dirty||saving));
   if(port.openProgrammes)
