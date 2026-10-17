@@ -76,3 +76,13 @@ expands the original result without any further network request.
 It does not invent backstage opinions, unperformed moves, wrestler quotes,
 or crowd events. The future full social/Pulse feature can have its own
 simulation; this panel does not pretend to implement it.
+
+## Crowd Flow chart
+
+Ringside displays a compact, sideways-scrollable **Crowd Flow** chart when a
+show has at least two completed slots. Each bar is that item's **final,
+official audience score** (0–100), not its critic stars, not a claim to
+represent minute-by-minute reaction inside a match, and not a new simulation.
+The highest crowd response and cold spots have distinct visual treatments.
+Touching or keyboard-activating a bar opens its original result. The chart
+uses only the already-fetched receipt; it performs no additional SQL calls.

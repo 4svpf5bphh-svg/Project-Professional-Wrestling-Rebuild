@@ -6,6 +6,7 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
+import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
@@ -58,6 +59,45 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   metric(String(show.angleCount),"ANGLES"),
   metric(String(pulse.hotMoments),"HOT MOMENTS"));
  append(header,pulseRow);
+ const flowScores=showCrowdFlow(show);
+ const crowdFlow=node("section","ppw-crowd-flow");
+ if(flowScores.length>=2){
+  append(crowdFlow,node("span","ppw-eyebrow","PPW / AUDIENCE RESPONSE"),
+   node("h2","ppw-crowd-flow-heading","THE CROWD FLOW"),
+   node("p","ppw-crowd-flow-detail",
+    "Verified audience score after each card item. Not a minute-by-minute action replay."));
+  const bars=node("div","ppw-crowd-flow-bars");
+  bars.setAttribute("role","group");
+  bars.setAttribute("aria-label","Crowd response for each completed card item");
+  for(const point of flowScores){
+   const button=document.createElement("button");button.type="button";
+   button.className="ppw-crowd-flow-point"+
+    (point.standout?" ppw-flow-peak":"")+
+    (point.cold?" ppw-flow-cold":"");
+   const kind=point.kind==="MATCH"?"match":"angle";
+   button.setAttribute("aria-label","Card "+(point.position+1)+", "+kind+
+    ", audience response "+point.crowdResponse.toFixed(1)+
+    " out of 100. Open the completed report.");
+   button.title=point.title;
+   const graph=node("span","ppw-flow-track");
+   const fill=node("span","ppw-flow-fill");
+   fill.style.height=Math.max(2,point.crowdResponse)+"%";
+   append(graph,fill);
+   append(button,node("span","ppw-flow-score",
+    String(Math.round(point.crowdResponse))),
+    graph,
+    node("span","ppw-flow-slot",String(point.position+1)),
+    node("span","ppw-flow-kind",kind.toUpperCase()));
+   button.onclick=()=>{
+    setFilter("ALL");
+    const target=storyLinks.get(point.slotId);
+    if(target instanceof HTMLDetailsElement)target.open=true;
+    target?.scrollIntoView({behavior:"smooth",block:"center"});
+   };
+   append(bars,button);
+  }
+  append(crowdFlow,bars);
+ }
  const editorial=writeFinalBellEditorial(show);
  const feature=node("section","ppw-final-bell");
  append(feature,node("span","ppw-eyebrow",editorial.eyebrow),
@@ -214,7 +254,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
- root.replaceChildren(header,feature,...(reactions.length?[noise]:[]),
+ root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
+  feature,...(reactions.length?[noise]:[]),
   ...(featured.length?[highlights]:[]),timeline);
 }
 function metric(value:string,caption:string){
