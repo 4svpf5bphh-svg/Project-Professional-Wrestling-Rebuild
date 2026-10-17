@@ -112,18 +112,33 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"intruder"}},
    "submitContractOffer",{worldId:world,promotionId,requestId:"hijack",
     expectedRevision:3,personId:"person-87",terms}),/access denied/);
-  // Signed but not yet started is not an active roster appearance.
+  // Future signed talent stays visible to their own manager but cannot be
+  // booked yet. Rival future exclusives must not be called free agents.
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_contracts SET start_week_index=10 WHERE world_id=$1 AND contract_id='contract-8'",
    [world]));
   const futureRoster=await readWrestlerDirectory(db.pool,
    {worldId:world,playerId:player,promotionId},
    {view:"ROSTER",search:"Wrestler 8"});
-  assert.equal(futureRoster.people.some(p=>p.personId==="person-8"),false);
+  assert.equal(futureRoster.people.find(p=>p.personId==="person-8")?.availability,
+   "SIGNED_FUTURE_YOURS");
+  assert.equal(futureRoster.people.find(p=>p.personId==="person-8")?.startsInWeeks,10);
   const futureMarket=await readWrestlerDirectory(db.pool,
    {worldId:world,playerId:player,promotionId},
    {view:"MARKET",search:"Wrestler 8"});
-  assert.equal(futureMarket.people[0]!.personId,"person-8");
+  assert.equal(futureMarket.people.some(p=>p.personId==="person-8"),false);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET start_week_index=10 WHERE world_id=$1 AND person_id='person-5'",
+   [world]));
+  const futureExclusive=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",search:"Wrestler 5"});
+  assert.equal(futureExclusive.people.find(p=>p.personId==="person-5")?.availability,
+   "FUTURE_EXCLUSIVE_ELSEWHERE");
+  const free=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",search:"Wrestler 5",availability:"FREE_AGENT"});
+  assert.equal(free.people.some(p=>p.personId==="person-5"),false);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals",
