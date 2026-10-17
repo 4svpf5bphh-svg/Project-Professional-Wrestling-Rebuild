@@ -10,7 +10,7 @@ This is an implementation inventory, not a claim of complete gameplay parity.
 | Economy and show markets | Backend foundation | Booking presentation and balance |
 | AI promotion booking | Backend foundation | Long-running simulation parity |
 | Singles, multi-person and team matches, battle royals | Backend engine | Complete show authoring and results |
-| Angles/segments | Canonical evaluator, legacy scoring, authoring rules | Segment editing, persistence, consequences, results |
+| Angles/segments | Authenticated mobile creation/edit/save of 13 segment types; World resolution scores and persists narratives and intents; linked programme progression | Confirm deeper wrestler/stable consequences and results presentation |
 | Programmes and storyline heat | Legacy modules | Canonical World resolver projection |
 | Wrestler relationships, gimmicks, stables | Partial foundations | Restore original gameplay and durable consequences |
 | Results | Canonical receipt writer | Complete card narrative, visuals and fan reaction |

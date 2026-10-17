@@ -56,9 +56,9 @@ export async function readCanonicalSegmentContextsInTransaction(
   }
   validateAuthoredSegments(segments,allIds);
   if(!segments.length)return [];
-  const people=await tx.query<{person_id:string;popularity:number|null;
+  const people=await tx.query<{person_id:string;name:string;popularity:number|null;
    presentation:number|null;momentum:number|null}>(
-   "SELECT person_id,popularity,presentation,momentum FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
+   "SELECT person_id,name,popularity,presentation,momentum FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
    [scope.worldId,[...allIds]]);
   if(people.length!==allIds.size)throw new Error("Missing canonical segment performer");
   const byId=new Map(people.map(p=>[p.person_id,p]));
@@ -68,7 +68,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     const p=byId.get(id)!;
     if(p.popularity===null||p.presentation===null||p.momentum===null)
      throw new Error("Missing segment performer scoring context");
-    return {personId:id,popularity:p.popularity,
+    return {personId:id,name:p.name,popularity:p.popularity,
      presentation:p.presentation,momentum:p.momentum};
    }),
    // No invented storyline history: neutral baseline until programme and

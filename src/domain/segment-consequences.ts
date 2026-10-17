@@ -1,4 +1,4 @@
-import type {BookedSegmentPayload} from "./segment-booking.js";
+import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import {normalizeBookedSegment} from "./segment-booking.js";
 export type SegmentConsequenceIntent=
  "PROMO_DELIVERED"|"INTERVIEW_GIVEN"|"CONFRONTATION_OCCURRED"|
@@ -11,8 +11,8 @@ export interface AuthoredConsequence{
 /** Explicit event intents, not automatic roster/contract/stable mutations.
  * Consumers may apply only the effects supported by canonical World state.
  */
-export function authoredConsequenceIntents(payload:BookedSegmentPayload):AuthoredConsequence[]{
- const s=normalizeBookedSegment(payload,new Set(payload.participants.map(p=>p.personId)));
+export function authoredConsequenceIntents(payload:AuthoredSegment):AuthoredConsequence[]{
+ const s=normalizeBookedSegment(payload,new Set([...payload.actorIds,...payload.targetIds]));
  if(s.outcome!=="HAPPENS")return [];
  const intent:Record<typeof s.kind,SegmentConsequenceIntent>={
  PROMO:"PROMO_DELIVERED",INTERVIEW:"INTERVIEW_GIVEN",

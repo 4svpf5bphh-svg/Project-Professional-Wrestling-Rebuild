@@ -4,7 +4,7 @@
  */
 import {validateAuthoredSegments,type AuthoredSegment} from "./show-segments.js";
 export interface SegmentPerformerContext {
- personId:string;popularity:number;presentation:number;momentum:number;
+ personId:string;name?:string;popularity:number;presentation:number;momentum:number;
 }
 export interface SegmentCrowdContext {
  segment:AuthoredSegment;performers:readonly SegmentPerformerContext[];

@@ -8,6 +8,9 @@ import {previewArchivedShowMatchScoresInTransaction}
  from "./legacy-match-scoring.js";
 import {readCanonicalSegmentContextsInTransaction}
  from "./canonical-segment-evaluation.js";
+import {describeAuthoredSegment} from "../domain/segment-results.js";
+import {authoredConsequenceIntents} from "../domain/segment-consequences.js";
+import {settleCanonicalSegmentProgrammeEffects} from "./segment-programme-settlement.js";
 import {assembleArchivedShowResolution}
  from "../simulation/assemble-archived-show-resolution.js";
 import {recordCompletedShowInTransaction}
@@ -46,8 +49,16 @@ export async function resolveCanonicalShow(
    throw new Error("Canonical show week differs from World resolution");
   const segments=await readCanonicalSegmentContextsInTransaction(tx,input);
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
-  const recorded=await recordCompletedShowInTransaction(tx,completed.receipt,completed.evidence);
+  const stories=segments.map(({segment,performers})=>{
+   const names=new Map(performers.map(p=>[p.personId,p.name??p.personId]));
+   const story=describeAuthoredSegment(segment,names);
+   const intent=authoredConsequenceIntents(segment)[0]?.intent??null;
+   return {...story,intent};
+  });
+  const recorded=await recordCompletedShowInTransaction(
+   tx,completed.receipt,completed.evidence,stories);
   if(recorded==="RECORDED"){
+   await settleCanonicalSegmentProgrammeEffects(tx,input,completed.receipt);
    if(projection.titleBookings.length)
     await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
    if(projection.tagTitleBookings.length)

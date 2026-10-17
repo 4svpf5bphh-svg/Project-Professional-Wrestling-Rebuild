@@ -2,6 +2,11 @@
  * server-side from canonical submitted card; never expose this as player API.
  */
 import {createHash} from "node:crypto";
+import type {SegmentResult} from "../domain/segment-results.js";
+import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+export interface CompletedSegmentStory extends SegmentResult{
+ intent:SegmentConsequenceIntent|null;
+}
 /** PostgreSQL jsonb reorders object keys; compare JSON semantic values on
  * retries, while the original deterministic digest protects write identity.
  */
@@ -29,10 +34,24 @@ export async function recordCompletedShow(
 export async function recordCompletedShowInTransaction(
  tx:SqlRows,receipt:CompletedShowReceipt,
  evidence:readonly CompletedMatchEvidence[] = [],
+ stories:readonly CompletedSegmentStory[] = [],
 ):Promise<"RECORDED"|"IDENTICAL_RETRY">{
  const canonical=canonicalCompletedShowReceipt(receipt);
  validateCompletedMatchEvidence(receipt,evidence);
  const evidenceByMatch=new Map(evidence.map(e=>[e.matchId,e]));
+ const storyBySlot=new Map(stories.map(s=>[s.slotId,s]));
+ if(storyBySlot.size!==stories.length||
+  (stories.length!==0&&stories.length!==receipt.segments.length))
+  throw new Error("Segment narratives do not match the resolved card");
+ for(const row of receipt.segments){
+  const story=storyBySlot.get(row.slotId);
+  if(stories.length&&(!story||story.position!==row.position||
+   story.kind!==row.kind||story.outcome!==row.outcome||
+   story.actorIds.length>20||story.targetIds.length>20||
+   typeof story.headline!=="string"||story.headline.length>200||
+   typeof story.summary!=="string"||story.summary.length>1200))
+   throw new Error("Conflicting authored segment narrative");
+ }
  const evidenceCanonical=JSON.stringify([...evidence].sort((a,b)=>
   a.matchId.localeCompare(b.matchId)));
  const digest=createHash("sha256").update(canonical).update("\\0")
@@ -203,12 +222,25 @@ export async function recordCompletedShowInTransaction(
    `INSERT INTO ppw_completed_match_evidence(world_id,show_id,match_id,evidence_json)
     VALUES($1,$2,$3,$4::jsonb)`,
    [receipt.worldId,receipt.showId,e.matchId,JSON.stringify(e)]);
-  for(const s of receipt.segments)await tx.query(
-   `INSERT INTO ppw_completed_show_segments
-    (world_id,show_id,slot_id,position,kind,authored_outcome,crowd_response)
-    VALUES($1,$2,$3,$4,$5,$6,$7)`,
-   [receipt.worldId,receipt.showId,s.slotId,s.position,s.kind,s.outcome,
-    s.crowdResponse]);
+  if(receipt.segments.length){
+   const rows=receipt.segments.map(s=>({
+    slot_id:s.slotId,position:s.position,kind:s.kind,
+    authored_outcome:s.outcome,crowd_response:s.crowdResponse,
+    story_json:storyBySlot.get(s.slotId)??null,
+   }));
+   const written=await tx.query<{slot_id:string}>(`
+    INSERT INTO ppw_completed_show_segments(
+     world_id,show_id,slot_id,position,kind,authored_outcome,crowd_response,story_json)
+    SELECT $1,$2,x.slot_id,x.position,x.kind,x.authored_outcome,
+     x.crowd_response,x.story_json
+    FROM jsonb_to_recordset($3::jsonb) AS x(
+     slot_id text,position integer,kind text,authored_outcome text,
+     crowd_response numeric,story_json jsonb)
+    RETURNING slot_id`,
+    [receipt.worldId,receipt.showId,JSON.stringify(rows)]);
+   if(written.length!==rows.length)
+    throw new Error("Incomplete canonical segment result insert");
+  }
   return "RECORDED";
  }
 }

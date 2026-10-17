@@ -1,4 +1,5 @@
-import {normalizeBookedSegment, type BookedSegmentPayload} from "./segment-booking.js";
+import {normalizeBookedSegment} from "./segment-booking.js";
+import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segments.js";
 export interface SegmentResult{
  slotId:string;position:number;kind:SegmentKind;outcome:SegmentOutcome;
@@ -7,9 +8,9 @@ export interface SegmentResult{
 /** Narrative is a deterministic presentation of the author's locked decision.
  * No random success, rejection, membership change or alignment change.
  */
-export function describeAuthoredSegment(payload:BookedSegmentPayload,
+export function describeAuthoredSegment(payload:AuthoredSegment,
  names:ReadonlyMap<string,string>):SegmentResult{
- const segment=normalizeBookedSegment(payload,new Set(payload.participants.map(p=>p.personId)));
+ const segment=normalizeBookedSegment(payload,new Set([...payload.actorIds,...payload.targetIds]));
  const actors=segment.actorIds.map(id=>names.get(id)??"Unknown wrestler");
  const targets=segment.targetIds.map(id=>names.get(id)??"Unknown wrestler");
  const subject=actors.join(" & ")||"The promotion";
@@ -45,7 +46,7 @@ export function describeAuthoredSegment(payload:BookedSegmentPayload,
   actorIds:[...segment.actorIds],targetIds:[...segment.targetIds]};
 }
 export function describeShowSegments(
- segments:readonly BookedSegmentPayload[],names:ReadonlyMap<string,string>,
+ segments:readonly AuthoredSegment[],names:ReadonlyMap<string,string>,
 ):SegmentResult[]{
  if(segments.length>100)throw new Error("Too many segments");
  const seen=new Set<string>();
