@@ -9,12 +9,15 @@ import type {CompletedSegmentStory} from "./completed-show-results.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {describeMatchFinish} from "../domain/show-match-story.js";
+import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
+ from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
  headline:string;summary:string;crowdResponse:number;
  outcome:string;actorIds:string[];targetIds:string[];
  intent?:SegmentConsequenceIntent|null;
+ performerIdentities?:BroadcastIdentity[];
 }
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
@@ -46,11 +49,24 @@ export async function readCompletedShowView(
   if(slots.length>100)throw new Error("Completed card exceeds slot capacity");
   const ids=[...new Set(slots.flatMap(s=>readCardParticipants(s.payload).map(p=>p.personId)))];
   if(ids.length>100)throw new Error("Completed card exceeds talent capacity");
-  const people=ids.length?await tx.query<{person_id:string;name:string}>(`
-   SELECT person_id,name FROM ppw_people WHERE world_id=$1
-    AND person_id=ANY($2::text[])`,[input.worldId,ids]):[];
+  const people=ids.length?await tx.query<{person_id:string;name:string;
+   portable_gimmick_id:string|null;persona_record:unknown|null}>(`
+   SELECT p.person_id,p.name,p.portable_gimmick_id,
+    identity.persona AS persona_record
+   FROM ppw_people p LEFT JOIN ppw_portable_personas identity
+    ON identity.world_id=p.world_id AND identity.person_id=p.person_id
+   WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
+   [input.worldId,ids]):[];
+  const identities=projectBroadcastIdentities(people.map(p=>({
+   personId:p.person_id,name:p.name,portableGimmickId:p.portable_gimmick_id,
+   personaRecord:p.persona_record,
+  })));
   const names=new Map(people.map(p=>[p.person_id,p.name]));
-  const name=(id:string)=>names.get(id)??"Unknown wrestler";
+  const name=(id:string)=>broadcastNameplate(id,identities,
+   names.get(id)??"Unknown wrestler");
+  const personaFor=(ids:readonly string[])=>ids.flatMap(id=>{
+   const persona=identities.get(id);return persona?[persona]:[];
+  });
   const stories=receipt.segments.length?await tx.query<{slot_id:string;story_json:unknown}>(`
    SELECT slot_id,story_json FROM ppw_completed_show_segments
    WHERE world_id=$1 AND show_id=$2 ORDER BY position LIMIT 101`,
@@ -78,7 +94,8 @@ export async function readCompletedShowView(
    });
    entries.push({slotId:match.matchId,position:match.position,type:"MATCH",
     headline,summary,crowdResponse:match.crowdResponse,
-    outcome:match.actualFinish,actorIds:participants,targetIds:[]});
+    outcome:match.actualFinish,actorIds:participants,targetIds:[],
+    performerIdentities:personaFor(participants)});
   }
   for(const segment of receipt.segments){
    const slot=bySlot.get(segment.slotId);
@@ -93,7 +110,10 @@ export async function readCompletedShowView(
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
-    intent:story?.intent??null});
+    intent:story?.intent??null,
+    performerIdentities:personaFor(story?[
+     ...story.actorIds,...story.targetIds]:readCardParticipants(slot.payload)
+      .map(x=>x.personId))});
   }
   entries.sort((a,b)=>a.position-b.position);
   return {showId:input.showId,year:receipt.year,week:receipt.week,
