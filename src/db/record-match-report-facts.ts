@@ -6,7 +6,7 @@ import type {previewArchivedShowMatchScoresInTransaction}
  from "./legacy-match-scoring.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
 export interface RecordedMatchReportFact{
- matchId:string;ratingStars:number;actualMinutes:number;
+ matchId:string;ratingStars:number;executionQuality:number;actualMinutes:number;
  injuries:{personId:string;severity:string;weeksOut:number}[];
 }
 export function deriveCompletedMatchReportFacts(
@@ -17,7 +17,9 @@ export function deriveCompletedMatchReportFacts(
   const score=p.score;
   const injuries=p.multi?.result.injuries??
    p.tag?.result.injury.injuries??p.injuryPreview?.injuries??[];
-  if(!Number.isFinite(score.criticalRatingStars)||
+  if(!Number.isFinite(score.executionQuality)||
+    score.executionQuality<0||score.executionQuality>100||
+    !Number.isFinite(score.criticalRatingStars)||
     score.criticalRatingStars<0||score.criticalRatingStars>5||
     !Number.isSafeInteger(score.actualLengthMinutes)||
     score.actualLengthMinutes<3||score.actualLengthMinutes>120||
@@ -30,6 +32,7 @@ export function deriveCompletedMatchReportFacts(
    return {personId:injury.personId,severity:injury.severity,weeksOut:injury.weeksOut};
   });
   return {matchId:p.slotId,ratingStars:score.criticalRatingStars,
+   executionQuality:score.executionQuality,
    actualMinutes:score.actualLengthMinutes,injuries:verified};
  });
 }
@@ -40,15 +43,16 @@ export async function recordCompletedMatchReportFactsInTransaction(
  if(!facts.length)return;
  const sql=[
   "INSERT INTO ppw_completed_match_report_facts(",
-  "world_id,show_id,match_id,rating_stars,actual_minutes,injuries_json)",
-  "SELECT $1,$2,x.match_id,x.rating_stars,x.actual_minutes,x.injuries_json",
+  "world_id,show_id,match_id,rating_stars,execution_quality,actual_minutes,injuries_json)",
+  "SELECT $1,$2,x.match_id,x.rating_stars,x.execution_quality,x.actual_minutes,x.injuries_json",
   "FROM jsonb_to_recordset($3::jsonb) AS x(",
-  "match_id text,rating_stars numeric,actual_minutes integer,injuries_json jsonb)",
+  "match_id text,rating_stars numeric,execution_quality numeric,actual_minutes integer,injuries_json jsonb)",
   "RETURNING match_id",
  ].join(" ");
  const rows=await tx.query<{match_id:string}>(sql,[
   projection.worldId,projection.showId,JSON.stringify(facts.map(f=>({
-   match_id:f.matchId,rating_stars:f.ratingStars,actual_minutes:f.actualMinutes,
+   match_id:f.matchId,rating_stars:f.ratingStars,execution_quality:f.executionQuality,
+   actual_minutes:f.actualMinutes,
    injuries_json:f.injuries.map(x=>({person_id:x.personId,
     injury_severity:x.severity,injury_weeks_out:x.weeksOut})),
   }))),

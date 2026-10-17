@@ -3,6 +3,7 @@
 CREATE TABLE ppw_completed_match_report_facts (
  world_id text NOT NULL,show_id text NOT NULL,match_id text NOT NULL,
  rating_stars numeric(3,2) NOT NULL CHECK(rating_stars BETWEEN 0 AND 5),
+ execution_quality numeric(5,1) NOT NULL CHECK(execution_quality BETWEEN 0 AND 100),
  actual_minutes integer NOT NULL CHECK(actual_minutes BETWEEN 3 AND 120),
  injuries_json jsonb NOT NULL DEFAULT '[]'::jsonb
   CHECK(jsonb_typeof(injuries_json)='array'),

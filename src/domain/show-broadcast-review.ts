@@ -166,10 +166,17 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
   const format=context?formatTitle(context.format):"match";
   const minutes=entry.fallout?.actualMinutes;
   const rating=entry.fallout?.ratingStars;
+  const execution=entry.fallout?.executionQuality;
   const measured=minutes!==undefined?
    " Official running time: "+minutes+" minutes.":"";
   const critics=rating!==undefined?
-   " Critics gave this match "+rating.toFixed(2)+" out of 5 stars.":"";
+   " The official match rating was "+rating.toFixed(2)+" out of 5 stars.":"";
+  const delivery=execution!==undefined?
+   execution>=85?" The performers delivered exceptional in-ring execution.":
+   execution>=70?" The execution was strong enough to carry the contest.":
+   execution>=50?" The in-ring execution was uneven.":
+   " The contest struggled on execution, regardless of the booking's intentions.":
+   "";
   const contrast=rating!==undefined&&rating>=3.75&&entry.crowdResponse<50?
    " Technically well-rated wrestling met a stubborn crowd.":
    rating!==undefined&&rating<2.5&&entry.crowdResponse>=78?
@@ -178,7 +185,7 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
    (billing?billing+" met in a "+format+". ":"The contest took place. ")+opening+stakes+measured,
    finishColour(entry.outcome,key)+" "+entry.summary,
    "The crowd response was "+entry.crowdResponse.toFixed(1)+"/100."+critics+
-    contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
+    delivery+contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
     "This was one of the hotter reactions on the card.",
     "The numbers confirm it connected with the audience."]:tone==="FLAT"?[
     "The response reflected a difficult night in front of the crowd.",

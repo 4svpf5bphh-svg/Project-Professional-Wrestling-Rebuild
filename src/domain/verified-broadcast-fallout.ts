@@ -17,7 +17,7 @@ export interface BroadcastTitle{
 }
 export interface BroadcastFallout{
  /** Immutable critic score and actual running time from the World simulation. */
- ratingStars?:number;actualMinutes?:number;
+ ratingStars?:number;executionQuality?:number;actualMinutes?:number;
  title?:BroadcastTitle;
  injuries:BroadcastMedical[];
  interference?:{personName:string|null;outcome:"SUCCESS"|"THWARTED"|"ABORTED"};
@@ -25,7 +25,8 @@ export interface BroadcastFallout{
 }
 export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  match_id:string;evidence_json:unknown;
- report_rating_stars?:string|number|null;report_actual_minutes?:number|null;
+ report_rating_stars?:string|number|null;
+ report_execution_quality?:string|number|null;report_actual_minutes?:number|null;
  championship_name:string|null;title_changed:boolean|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;
  injuries:unknown;
@@ -49,6 +50,12 @@ export function projectVerifiedBroadcastFallout(
   const stars=Number(row.report_rating_stars);
   if(!Number.isFinite(stars)||stars<0||stars>5)throw new Error("Invalid match star rating");
   result.ratingStars=stars;
+ }
+ if(row.report_execution_quality!==null&&row.report_execution_quality!==undefined){
+  const execution=Number(row.report_execution_quality);
+  if(!Number.isFinite(execution)||execution<0||execution>100)
+   throw new Error("Invalid match execution quality");
+  result.executionQuality=execution;
  }
  if(row.report_actual_minutes!==null&&row.report_actual_minutes!==undefined){
   if(!Number.isSafeInteger(row.report_actual_minutes)||

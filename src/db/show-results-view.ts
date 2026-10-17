@@ -1,5 +1,5 @@
 /** Controller-scoped results, composed from persisted World-authoritative receipts.
- * Four bounded indexed reads; no World JSON, client-supplied scores or resimulation.
+ * At most five bounded indexed reads; no World JSON, client scores or resimulation.
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
@@ -92,6 +92,7 @@ export async function readCompletedShowView(
     COALESCE(winner.name,winner_team.name) AS title_winner_name,
     COALESCE(prior_person.name,prior_team.name) AS title_prior_holder_name,
     facts.rating_stars AS report_rating_stars,
+    facts.execution_quality AS report_execution_quality,
     facts.actual_minutes AS report_actual_minutes,
     COALESCE(facts.injuries_json,medical.injuries,'[]'::jsonb) AS injuries
    FROM ppw_completed_show_matches m
