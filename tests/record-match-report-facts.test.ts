@@ -57,11 +57,13 @@ test("one batch write persists all three bouts without per-match SQL",async()=>{
 test("malformed medical details and invalid critical scores fail before writes",()=>{
  const invalid={...projection,projections:[{
   slotId:"bad",score:{criticalRatingStars:5.5,executionQuality:60,actualLengthMinutes:18},
+  chemistryModifier:0,finishCheaterId:null,personIds:["a","b"],plannedFinish:"CLEAN_PIN",
   injuryPreview:{injuries:[]},
  }]} as unknown as Input;
  assert.throws(()=>deriveCompletedMatchReportFacts(invalid),/Invalid verified/);
  const badInjury={...projection,projections:[{
   slotId:"bad",score:{criticalRatingStars:3.25,executionQuality:60,actualLengthMinutes:18},
+  chemistryModifier:0,finishCheaterId:null,personIds:["a","b"],plannedFinish:"CLEAN_PIN",
   injuryPreview:{injuries:[{personId:"a",severity:"UNKNOWN",weeksOut:1}]},
  }]} as unknown as Input;
  assert.throws(()=>deriveCompletedMatchReportFacts(badInjury),/Invalid completed/);
@@ -83,4 +85,19 @@ test("certified programme heat and repetition are part of the immutable match sn
  ]} as unknown as Input;
  assert.throws(()=>deriveCompletedMatchReportFacts(malformed),
   /Incomplete certified programme context/);
+});
+
+test("dirty-finish actors are validated against actual booked participants",()=>{
+ const clean={...projection,projections:[{
+  slotId:"bad",score:{criticalRatingStars:3.25,executionQuality:60,actualLengthMinutes:18},
+  chemistryModifier:1,finishCheaterId:"outsider",personIds:["a","b"],
+  plannedFinish:"DISQUALIFICATION",injuryPreview:{injuries:[]},
+ }]} as unknown as Input;
+ assert.throws(()=>deriveCompletedMatchReportFacts(clean),/Invalid verified/);
+ const wrongFinish={...projection,projections:[{
+  slotId:"bad",score:{criticalRatingStars:3.25,executionQuality:60,actualLengthMinutes:18},
+  chemistryModifier:1,finishCheaterId:"a",personIds:["a","b"],
+  plannedFinish:"CLEAN_PIN",injuryPreview:{injuries:[]},
+ }]} as unknown as Input;
+ assert.throws(()=>deriveCompletedMatchReportFacts(wrongFinish),/Invalid verified/);
 });
