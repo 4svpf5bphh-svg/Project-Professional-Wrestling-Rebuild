@@ -6,6 +6,7 @@ import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
 import {settleBackstageMediations} from "./backstage-mediation.js";
+import {closeUnavailableBackstageRequests} from "./backstage-closure.js";
 import {settleBackstageContractDiscussions}
  from "./backstage-contract-followthrough.js";
 import {publishBackstageTagPitches,settleBackstageTagFollowThrough}
@@ -235,6 +236,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await settleBackstageMediations(tx,input.worldId,weekIndex);
       await settleBackstageTagFollowThrough(tx,input.worldId,weekIndex);
       await settleBackstageRivalryFollowThrough(tx,input.worldId,weekIndex);
+      // Expired unanswered requests become an automatic historical closure,
+      // not a forged booker decision or a permanent full inbox.
+      await closeUnavailableBackstageRequests(tx,input.worldId,weekIndex+1);
       // One evidence-led partnership pitch may occupy this week's slot.
       await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
       await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);

@@ -299,7 +299,10 @@ export function mountPersonaDesk(root:HTMLElement,
        item.decision==="PROMISE_FEATURED"?"Featured match":"Match")+
       " promised · "+Math.max(0,remaining)+" weeks remaining"));
     }
-   }else if(view.canEdit){
+   }else if(item.status==="EXCUSED"){
+    chat.append(el("div","ppw-persona-bubble ppw-persona-in",
+     "This conversation has closed because the wrestler is no longer available under this contract."));
+   }else if(view.canEdit&&wrestler?.isCurrent!==false){
     const actions=el("div","ppw-backstage-replies");
     for(const decision of BACKSTAGE_CHOICES[item.kind]){
      actions.append(button(BACKSTAGE_LABELS[decision],()=>{
