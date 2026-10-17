@@ -53,6 +53,18 @@ test("two promotions resolve, certify and publish after restart without double c
      plannedFinish:"SUBMISSION"};
     await tx.query("INSERT INTO ppw_card_slots (world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb)",
      [worldId,shows[i]!,"main-event-"+i,JSON.stringify(booking)]);
+    const angle={kind:i===0?"ATTACK":"PROMO",
+     participants:i===0?booking.participants:[booking.participants[0]],
+     actorIds:[people[a]],targetIds:i===0?[people[b]]:[],
+     outcome:i===0?"HAPPENS":"REFUSED"};
+    await tx.query("INSERT INTO ppw_card_slots (world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,1,'SEGMENT',$4::jsonb)",
+     [worldId,shows[i]!,"angle-"+i,JSON.stringify(angle)]);
+    if(i===0){
+     await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition) VALUES($1,$2,'feud','ACTIVE',50,0)",
+      [worldId,promotions[i]]);
+     await tx.query("INSERT INTO ppw_programme_match_activities(world_id,promotion_id,programme_id,draft_id,slot_id,kind) VALUES($1,$2,'feud',$3,'angle-0','SEGMENT')",
+      [worldId,promotions[i],shows[i]]);
+    }
    }
    // Only this disposable World clock is advanced; no background scheduler.
    await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
@@ -91,6 +103,23 @@ test("two promotions resolve, certify and publish after restart without double c
   assert.equal(results.length,2);
   assert.ok(results.every(r=>r.receipt_json.matches.length===1));
   assert.ok(results.every(r=>r.receipt_json.matches[0]!.actualWinnerSide==="B"));
+  assert.ok(results.every(r=>(r.receipt_json as {segments:unknown[]}).segments.length===1));
+  const angleStories=await read<{slot_id:string;authored_outcome:string;
+   story_json:{headline:string;summary:string;intent:string|null;actorIds:string[]}}>(`
+   SELECT slot_id,authored_outcome,story_json FROM ppw_completed_show_segments
+   WHERE world_id=$1 ORDER BY slot_id`,[worldId]);
+  assert.equal(angleStories.length,2);
+  assert.deepEqual(angleStories.map(s=>s.authored_outcome),["HAPPENS","REFUSED"]);
+  assert.equal(angleStories[0]!.story_json.intent,"ATTACK_OCCURRED");
+  assert.match(angleStories[0]!.story_json.summary,/attacks/);
+  assert.equal(angleStories[1]!.story_json.intent,null);
+  assert.match(angleStories[1]!.story_json.summary,/does not happen/);
+  const programmes=await read<{heat:number;repetition:number}>(`
+   SELECT heat,repetition FROM ppw_programmes
+   WHERE world_id=$1 AND promotion_id=$2`,[worldId,promotions[0]!]);
+  assert.equal(programmes.length,1);
+  assert.equal(programmes[0]!.repetition,1);
+  assert.ok(programmes[0]!.heat>50);
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_show_resolutions WHERE world_id=$1",[worldId]
   ))[0]!.n,"2");
@@ -103,6 +132,10 @@ test("two promotions resolve, certify and publish after restart without double c
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]
   ))[0]!.n,"2");
+  const finalProgramme=await read<{repetition:number}>(
+   "SELECT repetition FROM ppw_programmes WHERE world_id=$1 AND promotion_id=$2",
+   [worldId,promotions[0]!]);
+  assert.equal(finalProgramme[0]!.repetition,1,"World retry must never double-apply an angle");
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]
   )).map(x=>x.remaining_dates),[0,0,0,0]);
@@ -113,7 +146,8 @@ test("two promotions resolve, certify and publish after restart without double c
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
-    "ppw_ledger_events","ppw_command_receipts","ppw_booking_drafts",
+    "ppw_ledger_events","ppw_command_receipts",
+    "ppw_programme_match_activities","ppw_programmes","ppw_card_slots","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_venues","ppw_promotions","ppw_worlds",
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());

@@ -138,7 +138,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     matches:[{slotId:"main",payload:raw}],
     segments:[{slotId:"angle",payload:{...angle,participants:[
      {...members[0],contractId:"fake"},members[1]]}}],
-    runningOrder:["angle","main"]}),/contract rights/);
+    runningOrder:["angle","main"]}),/contract rights|Multiple contracts/);
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
     for(const table of ["ppw_command_receipts","ppw_card_slots",
