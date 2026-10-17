@@ -259,7 +259,9 @@ export function mountPersonaDesk(root:HTMLElement,
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
        "Rivalry programme started":
        item.followThroughKind==="MEDIATION_MATCH_COMPLETED"?
-       "Verified partnership recovery":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
+       "Verified partnership recovery":
+       item.followThroughKind==="CONTRACT_NEGOTIATION_STARTED"?
+       "Actual contract negotiation opened":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
