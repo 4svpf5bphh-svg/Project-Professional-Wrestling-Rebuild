@@ -44,6 +44,22 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
    if(found.length!==1)throw new Error("Wrestler request unavailable or already answered");
    const r=found[0]!,effect=backstageDecisionEffect(r.kind,i.decision);
    const weekIndex=(r.year-1)*52+r.week-1;
+   if(effect.promise){
+    // A promise is a choice with a real deliverable. Zero-date and expiring
+    // contracts cannot be used to manufacture an impossible booking debt.
+    // This narrow read runs only when the booker actually makes a promise.
+    const eligible=await tx.query<{contract_id:string}>([
+     "SELECT contract_id FROM ppw_contracts",
+     "WHERE world_id=$1 AND promotion_id=$2 AND person_id=$3",
+     "AND status='SIGNED' AND start_week_index<=$4",
+     "AND expires_week_index>$4",
+     "AND (family='EXCLUSIVE' OR remaining_dates>0)",
+     "AND ($5::text IS NULL OR contract_id=$5)",
+     "ORDER BY expires_week_index DESC,contract_id LIMIT 1"
+    ].join(" "),[i.worldId,i.promotionId,r.person_id,weekIndex,r.source_contract_id]);
+    if(eligible.length!==1)
+     throw new Error("Cannot promise a booking without remaining contracted dates and a future week");
+   }
    if((i.decision==="EXPLORE_TEAM"||i.decision==="EXPLORE_RIVALRY")&&
      r.related_person_id){
     const partner=await tx.query<{contract_id:string}>([
@@ -127,6 +143,8 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   "EXISTS(SELECT 1 FROM ppw_contracts c",
   "WHERE c.world_id=r.world_id AND c.promotion_id=r.promotion_id",
   "AND c.person_id=r.person_id AND c.status='SIGNED'",
+  "AND (r.source_contract_id IS NULL OR c.contract_id=r.source_contract_id)",
+  "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
   "AND c.start_week_index<=$2 AND c.expires_week_index>=$2) AS active_deal",
   "FROM ppw_backstage_requests r",
   "WHERE r.world_id=$1 AND r.status='PROMISED'",

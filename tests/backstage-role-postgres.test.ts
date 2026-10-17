@@ -98,6 +98,24 @@ test("Backstage featured-contract grievance requires four verified unfeatured ma
   assert.equal(contractDesk.summary.pendingRenewals,0);
   await assert.rejects(readContractDesk(db.pool,worldId,"stranger",promotionId),
    /access denied/);
+  // Player cannot promise an impossible match with a fully used
+  // non-exclusive deal. Hearing them out still does not change any dates.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_contracts SET family='LIMITED_NON_EXCLUSIVE',remaining_dates=0 WHERE world_id=$1 AND contract_id=$2",
+    [worldId,deal]);
+   await tx.query("INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,person_id,kind,created_week_index,source_contract_id) VALUES($1,$2,$3,$4,'MOMENTUM',4,$5)",
+    [worldId,"no-dates-"+id,promotionId,star,deal]);
+  });
+  await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "backstageDecision",{worldId,promotionId,showId:"ignored",
+    requestId:"impossible-promise-"+id,expectedRevision:2,
+    conversationId:"no-dates-"+id,decision:"PROMISE_APPEARANCE"}),
+   /without remaining contracted dates/);
+  const rows=await read<{remaining_dates:number;status:string}>(
+   "SELECT remaining_dates,status FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2",
+   [worldId,deal]);
+  assert.equal(rows[0]!.remaining_dates,0);
+  assert.equal(rows[0]!.status,"SIGNED");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust","ppw_backstage_requests",
