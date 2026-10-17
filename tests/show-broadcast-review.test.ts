@@ -46,6 +46,16 @@ test("pulse counts only scored completed entries and keeps the hottest",()=>{
   {topSlotId:"one",hotMoments:1,coldMoments:1});
 });
 
+test("actual match chemistry can colour reviews only when there is recorded evidence",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Result",
+  summary:"A clean fall.",outcome:"CLEAN_PIN",fallout:{
+   chemistryModifier:3.2,injuries:[],eliminations:[]}};
+ assert.match(reviewCompletedEntry(entry,"show").recap,/in-ring chemistry/);
+ entry.fallout!.chemistryModifier=-2;
+ assert.match(reviewCompletedEntry(entry,"show").recap,/worked against/);
+ entry.fallout!.chemistryModifier=0;
+ assert.doesNotMatch(reviewCompletedEntry(entry,"show").recap,/in-ring chemistry|worked against/);
+});
 test("non-AI review names a confirmed new champion and medical consequence",()=>{
  const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Result",
   summary:"The referee counted three.",outcome:"CLEAN_PIN",

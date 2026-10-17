@@ -38,6 +38,14 @@ test("planned spots are never misreported as interference that actually succeede
  entry.fallout.interference!.outcome="SUCCESS";
  assert.match(replayVerifiedMatchFinish(entry)!.description,/confirmed outside run-in/);
 });
+test("recorded dirty finish offender is named without inventing any moves",()=>{
+ const entry=match("DISQUALIFICATION");
+ entry.fallout={injuries:[],eliminations:[],finishCheaterName:"Bob"};
+ assert.match(replayVerifiedMatchFinish(entry)!.description,/Bob.*disqualified/);
+ const foreign=match("FOREIGN_OBJECT");
+ foreign.fallout={injuries:[],eliminations:[],finishCheaterName:"Alice"};
+ assert.match(replayVerifiedMatchFinish(foreign)!.description,/Alice.*foreign-object/);
+});
 test("angles and unknown finishes cannot invent recorded match action",()=>{
  assert.equal(replayVerifiedMatchFinish({...match("CLEAN_PIN"),type:"SEGMENT"}),null);
  assert.match(replayVerifiedMatchFinish(match("UNSUPPORTED"))!.description,

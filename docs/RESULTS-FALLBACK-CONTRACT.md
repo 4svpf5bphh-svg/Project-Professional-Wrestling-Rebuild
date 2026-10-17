@@ -42,3 +42,11 @@ author new winners, outcomes, injury reports, title holders or match times.
 The deterministic report remains available if AI is disabled, slow or fails.
 A future cached AI review should be keyed by show ID and immutable fact digest
 and must never trigger resimulation on reads.
+
+## Match credibility signals
+
+Where the resolver already records it, Ringside identifies the last booked
+match as the main event, names the actual recorded singles cheater on dirty
+finishes and differentiates positive or negative scored chemistry. Chemistry
+does **not** prove friendship, a backstage dispute or an unrecorded spot.
+Missing historical match metadata stays omitted instead of being guessed.

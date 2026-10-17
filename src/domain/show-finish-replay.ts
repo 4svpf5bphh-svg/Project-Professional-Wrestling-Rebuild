@@ -36,8 +36,13 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
   tone:"UNKNOWN" as const};
  const affected=method==="INJURY_STOPPAGE"&&injury?
   " Medical stoppage: "+injury.personName+" ("+injury.severity.toLowerCase()+" injury).":"";
+ const cheater=entry.fallout?.finishCheaterName;
+ const dirtyDetail=cheater&&method==="DISQUALIFICATION"?
+  " "+cheater+" was the recorded disqualified wrestler.":
+  cheater&&method==="FOREIGN_OBJECT"?
+  " "+cheater+" was the recorded foreign-object offender.":"";
  const runIn=entry.fallout?.interference?.outcome==="SUCCESS"?
   " A confirmed outside run-in also took place.":"";
- return {title:result.title,description:result.description+affected+runIn,
+ return {title:result.title,description:result.description+dirtyDetail+affected+runIn,
   tone:result.tone,winnerLabel:winner};
 }

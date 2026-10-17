@@ -167,6 +167,7 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
   const minutes=entry.fallout?.actualMinutes;
   const rating=entry.fallout?.ratingStars;
   const execution=entry.fallout?.executionQuality;
+  const chemistry=entry.fallout?.chemistryModifier;
   const measured=minutes!==undefined?
    " Official running time: "+minutes+" minutes.":"";
   const critics=rating!==undefined?
@@ -176,6 +177,11 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
    execution>=70?" The execution was strong enough to carry the contest.":
    execution>=50?" The in-ring execution was uneven.":
    " The contest struggled on execution, regardless of the booking's intentions.":
+   "";
+  const chemistryRead=chemistry!==undefined&&chemistry>=1.5?
+   " The scored compatibility contributed positively to the match's in-ring chemistry.":
+   chemistry!==undefined&&chemistry<=-1.5?
+   " The recorded chemistry modifier worked against this match's delivery.":
    "";
   const rivalry=entry.fallout?.linkedProgrammes?(()=>{
    const count=entry.fallout.linkedProgrammes;
@@ -200,7 +206,7 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
    ...(rivalry?[rivalry]:[]),
    finishColour(entry.outcome,key)+" "+entry.summary,
    "The crowd response was "+entry.crowdResponse.toFixed(1)+"/100."+critics+
-    delivery+contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
+    delivery+chemistryRead+contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
     "This was one of the hotter reactions on the card.",
     "The numbers confirm it connected with the audience."]:tone==="FLAT"?[
     "The response reflected a difficult night in front of the crowd.",

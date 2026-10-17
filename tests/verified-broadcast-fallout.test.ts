@@ -74,6 +74,20 @@ test("unsupported historic evidence is rejected rather than turned into fictitio
   show,m,name,sides,null),/Invalid historic medical/);
 });
 
+test("verified chemistry and dirty actor are recorded only for legitimate finishes",()=>{
+ const show=receipt("DISQUALIFICATION","A"),m=show.matches[0]!;
+ const row={...bare(),report_chemistry_modifier:"2.125",
+  report_finish_cheater_person_id:"b"};
+ const facts=projectVerifiedBroadcastFallout(row,show,m,name,sides,null);
+ assert.equal(facts.chemistryModifier,2.125);
+ assert.equal(facts.finishCheaterName,"Bob");
+ assert.throws(()=>projectVerifiedBroadcastFallout({...row,
+  report_finish_cheater_person_id:"outsider"},show,m,name,sides,null),
+  /not in the completed match/);
+ const clean=receipt("CLEAN_PIN","A");
+ assert.throws(()=>projectVerifiedBroadcastFallout(row,clean,clean.matches[0]!,
+  name,sides,null),/Unsupported recorded finish cheater/);
+});
 test("only an eligible clean match result can be called a title change",()=>{
  const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
  const title:RecordedMatchFalloutRow={...bare(),championship_name:"World Title",

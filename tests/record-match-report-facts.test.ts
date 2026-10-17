@@ -8,13 +8,17 @@ const projection={
  projections:[
   {slotId:"singles",score:{criticalRatingStars:4.25,executionQuality:89.5,actualLengthMinutes:17},
    injuryPreview:{injuries:[{personId:"a",severity:"MINOR",weeksOut:2}]},
+   chemistryModifier:2.5,finishCheaterId:null,personIds:["a","b"],
+   plannedFinish:"CLEAN_PIN",
    multi:null,tag:null},
   {slotId:"tag",score:{criticalRatingStars:3.25,executionQuality:73.2,actualLengthMinutes:24},
    tag:{result:{injury:{injuries:[
     {personId:"c",severity:"MODERATE",weeksOut:3}]}}},
-   multi:null,injuryPreview:null},
+   multi:null,injuryPreview:null,
+   chemistryModifier:3.1,finishCheaterId:null,personIds:["c","d"],plannedFinish:"CLEAN_PIN"},
   {slotId:"battle",score:{criticalRatingStars:2.75,executionQuality:53.1,actualLengthMinutes:38},
-   multi:{result:{injuries:[]}},tag:null,injuryPreview:null},
+   multi:{result:{injuries:[]}},tag:null,injuryPreview:null,
+   chemistryModifier:0,finishCheaterId:null,personIds:["a","c"],plannedFinish:"OVER_THE_TOP_ROPE"},
  ],
 } as unknown as Input;
 test("every match family generates factual non-AI ratings, time and injury records",()=>{
@@ -22,6 +26,8 @@ test("every match family generates factual non-AI ratings, time and injury recor
  assert.deepEqual(facts.map(f=>[f.matchId,f.ratingStars,f.actualMinutes]),
   [["singles",4.25,17],["tag",3.25,24],["battle",2.75,38]]);
  assert.equal(facts[0]!.executionQuality,89.5);
+ assert.equal(facts[0]!.chemistryModifier,2.5);
+ assert.equal(facts[0]!.finishCheaterPersonId,null);
  assert.deepEqual(facts[0]!.injuries,[{personId:"a",severity:"MINOR",weeksOut:2}]);
  assert.deepEqual(facts[1]!.injuries,[{personId:"c",severity:"MODERATE",weeksOut:3}]);
  assert.deepEqual(facts[2]!.injuries,[]);
@@ -38,6 +44,8 @@ test("one batch write persists all three bouts without per-match SQL",async()=>{
    const rows=JSON.parse(String(params[2]));
    assert.equal(rows.length,3);
    assert.equal(rows[0].execution_quality,89.5);
+   assert.equal(rows[0].chemistry_modifier,2.5);
+   assert.equal(rows[0].finish_cheater_person_id,null);
    assert.deepEqual(rows[0].injuries_json,[{person_id:"a",
     injury_severity:"MINOR",injury_weeks_out:2}]);
    return rows.map((row:{match_id:string})=>({match_id:row.match_id})) as unknown as T[];

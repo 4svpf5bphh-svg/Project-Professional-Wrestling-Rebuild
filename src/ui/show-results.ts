@@ -128,6 +128,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   append(meta,node("span","ppw-result-category",
    entryIcon(entry)+"  "+review.tag.toUpperCase()),
    node("span","ppw-result-meter",String(Math.round(entry.crowdResponse))+" / 100"));
+  if(entry.matchContext?.isMainEvent)
+   append(meta,node("span","ppw-result-main-event","MAIN EVENT"));
   if(entry.fallout?.ratingStars!==undefined)
    append(meta,node("span","ppw-result-rating",
     "★ "+entry.fallout.ratingStars.toFixed(2)+" / 5"));

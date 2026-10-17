@@ -17,6 +17,7 @@ import {projectVerifiedBroadcastFallout,type BroadcastFallout,
 export interface CompletedMatchBroadcastContext{
  /** Locked card context, not an invented account of the match action. */
  format:string;intent:string;plannedMinutes:number|null;
+ isMainEvent?:boolean;
  sides:string[][];winnerNames:string[];championshipContested:boolean;
 }
 export interface ShowResultEntry{
@@ -63,6 +64,10 @@ export async function readCompletedShowView(
    const spot=raw.interference as Record<string,unknown>|undefined;
    if(s.kind==="MATCH"&&spot&&typeof spot.personId==="string")
     participants.push(spot.personId);
+   // A booked finish cheater must belong to the card; older slots may
+   // omit the identity, in which case we must not invent one.
+   if(s.kind==="MATCH"&&typeof raw.cheatingWrestlerId==="string")
+    participants.push(raw.cheatingWrestlerId);
    return participants;
   }))];
   if(ids.length>200)throw new Error("Completed card exceeds talent capacity");
@@ -93,6 +98,8 @@ export async function readCompletedShowView(
     COALESCE(prior_person.name,prior_team.name) AS title_prior_holder_name,
     facts.rating_stars AS report_rating_stars,
     facts.execution_quality AS report_execution_quality,
+    facts.chemistry_modifier AS report_chemistry_modifier,
+    facts.finish_cheater_person_id AS report_finish_cheater_person_id,
     facts.actual_minutes AS report_actual_minutes,
     facts.linked_programmes AS report_linked_programmes,
     facts.programme_signal AS report_programme_signal,
@@ -153,6 +160,7 @@ export async function readCompletedShowView(
   if(slots.length!==receipt.matches.length+receipt.segments.length)
    throw new Error("Completed show card changed since resolution");
   const entries:ShowResultEntry[]=[];
+  const mainEventPosition=receipt.matches.reduce((n,m)=>Math.max(n,m.position),-1);
   for(const match of receipt.matches){
    const slot=bySlot.get(match.matchId);
    if(!slot||slot.kind!=="MATCH"||slot.position!==match.position)
@@ -172,7 +180,7 @@ export async function readCompletedShowView(
       String(layout.sides.length)+"-team "+String(size)+"v"+String(size)):
      payload.matchType==="BATTLE_ROYAL"?"BATTLE ROYAL":
      layout.sides.length===2?"SINGLES":String(layout.sides.length)+"-WAY";
-    matchContext={format,
+    matchContext={format,isMainEvent:match.position===mainEventPosition,
      intent:typeof payload.intent==="string"?payload.intent:"COMPETITIVE",
      plannedMinutes:typeof payload.plannedLengthMinutes==="number"?
       payload.plannedLengthMinutes:null,

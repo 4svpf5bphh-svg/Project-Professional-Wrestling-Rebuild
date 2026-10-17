@@ -4,6 +4,8 @@ CREATE TABLE ppw_completed_match_report_facts (
  world_id text NOT NULL,show_id text NOT NULL,match_id text NOT NULL,
  rating_stars numeric(3,2) NOT NULL CHECK(rating_stars BETWEEN 0 AND 5),
  execution_quality numeric(5,1) NOT NULL CHECK(execution_quality BETWEEN 0 AND 100),
+ chemistry_modifier numeric(7,3) NOT NULL CHECK(chemistry_modifier BETWEEN -100 AND 100),
+ finish_cheater_person_id text,
  actual_minutes integer NOT NULL CHECK(actual_minutes BETWEEN 3 AND 120),
  linked_programmes integer CHECK(linked_programmes BETWEEN 0 AND 100),
  programme_signal text CHECK(programme_signal IN

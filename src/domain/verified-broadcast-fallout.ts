@@ -18,6 +18,7 @@ export interface BroadcastTitle{
 export interface BroadcastFallout{
  /** Immutable critic score and actual running time from the World simulation. */
  ratingStars?:number;executionQuality?:number;actualMinutes?:number;
+ chemistryModifier?:number;finishCheaterName?:string;
  linkedProgrammes?:number;programmeSignal?:"HOT_PROGRAMME"|"COOL_PROGRAMME"|
   "PROGRAMME_REPETITION"|null;
  title?:BroadcastTitle;
@@ -29,6 +30,8 @@ export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  match_id:string;evidence_json:unknown;
  report_rating_stars?:string|number|null;
  report_execution_quality?:string|number|null;report_actual_minutes?:number|null;
+ report_chemistry_modifier?:string|number|null;
+ report_finish_cheater_person_id?:string|null;
  report_linked_programmes?:number|null;report_programme_signal?:string|null;
  championship_name:string|null;title_changed:boolean|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;
@@ -59,6 +62,25 @@ export function projectVerifiedBroadcastFallout(
   if(!Number.isFinite(execution)||execution<0||execution>100)
    throw new Error("Invalid match execution quality");
   result.executionQuality=execution;
+ }
+ if(row.report_chemistry_modifier!==null&&
+  row.report_chemistry_modifier!==undefined){
+  const chemistry=Number(row.report_chemistry_modifier);
+  if(!Number.isFinite(chemistry)||Math.abs(chemistry)>100)
+   throw new Error("Invalid historic match chemistry");
+  result.chemistryModifier=chemistry;
+ }
+ if(row.report_finish_cheater_person_id!==null&&
+  row.report_finish_cheater_person_id!==undefined){
+  if(!["DISQUALIFICATION","FOREIGN_OBJECT"].includes(match.actualFinish)||
+   !match.actualWinnerSide||typeof row.report_finish_cheater_person_id!=="string"||
+   !row.report_finish_cheater_person_id)
+   throw new Error("Unsupported recorded finish cheater");
+  const actor=row.report_finish_cheater_person_id;
+  // Historical bookings/evidence can be absent; use only known card sides.
+  if(![...sideNames.values()].flat().includes(name(actor)))
+   throw new Error("Recorded finish cheater was not in the completed match");
+  result.finishCheaterName=name(actor);
  }
  if(row.report_actual_minutes!==null&&row.report_actual_minutes!==undefined){
   if(!Number.isSafeInteger(row.report_actual_minutes)||

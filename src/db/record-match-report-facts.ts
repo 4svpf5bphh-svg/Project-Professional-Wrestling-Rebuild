@@ -7,6 +7,7 @@ import type {previewArchivedShowMatchScoresInTransaction}
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
 export interface RecordedMatchReportFact{
  matchId:string;ratingStars:number;executionQuality:number;actualMinutes:number;
+ chemistryModifier:number;finishCheaterPersonId:string|null;
  linkedProgrammes:number|null;programmeSignal:string|null;
  injuries:{personId:string;severity:string;weeksOut:number}[];
 }
@@ -28,7 +29,12 @@ export function deriveCompletedMatchReportFacts(
     score.criticalRatingStars<0||score.criticalRatingStars>5||
     !Number.isSafeInteger(score.actualLengthMinutes)||
     score.actualLengthMinutes<3||score.actualLengthMinutes>120||
-    injuries.length>30)
+    injuries.length>30||
+    !Number.isFinite(p.chemistryModifier)||Math.abs(p.chemistryModifier)>100||
+    (p.finishCheaterId!==null&&
+      (!p.personIds.includes(p.finishCheaterId)||
+       !["DISQUALIFICATION","FOREIGN_OBJECT"].includes(p.plannedFinish))))
+
    throw new Error("Invalid verified match report facts");
   const verified=injuries.map(injury=>{
    if(!injury.personId||!["MINOR","MODERATE","MAJOR","SEVERE"].includes(injury.severity)||
@@ -44,6 +50,8 @@ export function deriveCompletedMatchReportFacts(
    throw new Error("Invalid verified programme match context");
   return {matchId:p.slotId,ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
+   chemistryModifier:p.chemistryModifier,
+   finishCheaterPersonId:p.finishCheaterId,
    actualMinutes:score.actualLengthMinutes,injuries:verified,
    linkedProgrammes:storyline?.linkedActiveProgrammeCount??null,
    programmeSignal:storyline?.reason??null};
@@ -57,18 +65,22 @@ export async function recordCompletedMatchReportFactsInTransaction(
  const sql=[
   "INSERT INTO ppw_completed_match_report_facts(",
   "world_id,show_id,match_id,rating_stars,execution_quality,actual_minutes,",
-  "linked_programmes,programme_signal,injuries_json)",
+  "chemistry_modifier,finish_cheater_person_id,linked_programmes,programme_signal,injuries_json)",
   "SELECT $1,$2,x.match_id,x.rating_stars,x.execution_quality,x.actual_minutes,",
+  "x.chemistry_modifier,x.finish_cheater_person_id,",
   "x.linked_programmes,x.programme_signal,x.injuries_json",
   "FROM jsonb_to_recordset($3::jsonb) AS x(",
   "match_id text,rating_stars numeric,execution_quality numeric,actual_minutes integer,",
+  "chemistry_modifier numeric,finish_cheater_person_id text,",
   "linked_programmes integer,programme_signal text,injuries_json jsonb)",
   "RETURNING match_id",
  ].join(" ");
  const rows=await tx.query<{match_id:string}>(sql,[
   projection.worldId,projection.showId,JSON.stringify(facts.map(f=>({
    match_id:f.matchId,rating_stars:f.ratingStars,execution_quality:f.executionQuality,
-   actual_minutes:f.actualMinutes,linked_programmes:f.linkedProgrammes,
+   actual_minutes:f.actualMinutes,chemistry_modifier:f.chemistryModifier,
+   finish_cheater_person_id:f.finishCheaterPersonId,
+   linked_programmes:f.linkedProgrammes,
    programme_signal:f.programmeSignal,
    injuries_json:f.injuries.map(x=>({person_id:x.personId,
     injury_severity:x.severity,injury_weeks_out:x.weeksOut})),
