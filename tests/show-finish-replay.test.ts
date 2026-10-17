@@ -35,7 +35,7 @@ test("planned spots are never misreported as interference that actually succeede
  entry.fallout={injuries:[],eliminations:[],
   interference:{personName:"Manager",outcome:"ABORTED"}};
  assert.doesNotMatch(replayVerifiedMatchFinish(entry)!.description,/confirmed outside run-in/);
- entry.fallout.interference.outcome="SUCCESS";
+ entry.fallout.interference!.outcome="SUCCESS";
  assert.match(replayVerifiedMatchFinish(entry)!.description,/confirmed outside run-in/);
 });
 test("angles and unknown finishes cannot invent recorded match action",()=>{
