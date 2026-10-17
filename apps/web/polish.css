@@ -1,0 +1,229 @@
+/* PPW VISUAL SYSTEM — the broadcast desk, one identity across gameplay.
+   Presentation-only. No polling, overlays, external fonts or image downloads. */
+:root{
+ --ppw-canvas:#09111b;
+ --ppw-raised:#101f2f;
+ --ppw-surface:#15293b;
+ --ppw-deep:#0c1825;
+ --ppw-outline:rgba(141,190,214,.22);
+ --ppw-outline-strong:rgba(129,202,225,.48);
+ --ppw-ink:#f4f8ff;
+ --ppw-secondary:#b3c5d4;
+ --ppw-cyan:#77dcf0;
+ --ppw-green:#7ee5c0;
+ --ppw-gold:#f4cf82;
+ --ppw-radius:16px;
+ --ppw-shadow:0 12px 36px rgba(0,0,0,.2);
+ color-scheme:dark;
+ background:var(--ppw-canvas);
+ color:var(--ppw-ink)
+}
+html{scroll-padding-top:16px;-webkit-text-size-adjust:100%}
+body{min-height:100dvh;min-width:280px;
+ background:radial-gradient(ellipse 110% 350px at 50% -130px,rgba(48,115,144,.22),transparent 80%),
+ linear-gradient(180deg,#0b1724 0%,var(--ppw-canvas) 490px);
+ color:var(--ppw-ink);font-size:15px;line-height:1.45}
+#game{max-width:1180px;min-height:70vh;margin:0 auto;min-width:0}
+#game :is(h1,h2,h3){text-wrap:balance}
+#game :is(input,select,textarea){color-scheme:dark;max-width:100%}
+#game :is(input,select,textarea):not([type=checkbox]):not([type=radio]){
+ min-height:44px;font-size:16px}
+#game :is(button,[role=button],summary){touch-action:manipulation}
+#game :is(button,summary):focus-visible,.ppw-navigation button:focus-visible{
+ outline:3px solid var(--ppw-cyan);outline-offset:3px}
+#game :is(button,summary):disabled{cursor:not-allowed}
+#game :is(input,select,textarea):focus-visible{outline:2px solid var(--ppw-cyan);outline-offset:2px}
+#game a{color:var(--ppw-cyan)}
+#game :is(.ppw-muted,.ppw-home-small,.ppw-directory-muted,.ppw-business-muted,
+ .ppw-staff-muted,.ppw-industry-muted,.ppw-persona-moves p){line-height:1.55}
+
+/* Permanent broadcast status header is compact enough for the small iPhone. */
+#account{max-width:none;border-bottom:1px solid rgba(137,182,205,.12);
+ background:rgba(8,19,30,.7)}
+.ppw-account-banner{max-width:1100px;min-height:65px;margin:0 auto;
+ padding:10px max(14px,env(safe-area-inset-left));
+ display:flex;align-items:center;gap:10px;justify-content:space-between}
+.ppw-shell-identity{min-width:0;display:flex;align-items:center;gap:9px}
+.ppw-shell-logo,.ppw-access-mark{
+ display:grid;place-items:center;flex:none;font-weight:950;
+ color:#061420;background:linear-gradient(135deg,#a5f0ff 3%,#65d9e3 50%,#9cedbb 100%);
+ letter-spacing:-.09em;box-shadow:0 5px 18px rgba(72,199,205,.16)}
+.ppw-shell-logo{height:38px;width:44px;border-radius:10px;font-size:14px;padding-right:2px}
+.ppw-shell-brand{display:grid;gap:2px;min-width:0}
+.ppw-shell-brand strong{font-size:11px;letter-spacing:.13em;color:var(--ppw-ink)}
+.ppw-shell-brand small{color:var(--ppw-secondary);font-size:11px;
+ white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:26ch}
+.ppw-shell-promotion{min-width:0;max-width:35%;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;color:var(--ppw-gold);
+ font-size:12px;font-weight:800}
+.ppw-shell-signout{min-height:40px;flex:none;padding:7px 9px;
+ background:transparent;border:1px solid #395364;border-radius:10px;
+ color:#d7e8f0;font-size:12px;font-weight:700}
+.ppw-access-mark{width:66px;height:60px;font-size:21px;border-radius:16px;margin-bottom:19px}
+.ppw-access-panel{background:linear-gradient(140deg,#1d3647 0%,#101e2d 75%);
+ border:1px solid var(--ppw-outline-strong);box-shadow:0 24px 70px rgba(0,0,0,.34)}
+.ppw-access-panel h1{font-weight:850}
+.ppw-access-button{background:#24566b;border-color:#69c5db}
+.ppw-access-button:not(:disabled):active,.ppw-shell-signout:active{transform:scale(.99)}
+
+/* Real thumb-navigation, active section always visible — including More subpages. */
+.ppw-navigation{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+ background:rgba(10,22,34,.96);border-color:#3b5969;
+ padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom))
+ max(8px,env(safe-area-inset-left));gap:4px}
+.ppw-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:3px;min-height:55px;min-width:0;padding:6px 2px;border-radius:11px;
+ color:#9fb5c6;transition:background .12s ease,color .12s ease;
+ white-space:normal;overflow:visible}
+.ppw-tab-icon{display:block;font-size:22px;line-height:1;min-height:22px}
+.ppw-tab-label{font-size:10px;font-weight:800;letter-spacing:.012em;line-height:1.2;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.ppw-tab-active{background:linear-gradient(180deg,#25536a,#173b50);
+ box-shadow:inset 0 0 0 1px #70b7ce;color:#f2ffff}
+.ppw-tab:active{background:#254e62}
+body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+
+/* Every office desk uses the same canvas, panel edge, heading scale and rhythm. */
+#game:is(.ppw-editor,.ppw-home,.ppw-directory,.ppw-business,.ppw-staff,.ppw-industry,
+ .ppw-planner,.ppw-world-calendar){max-width:1100px;margin:0 auto;
+ padding:17px max(14px,env(safe-area-inset-left)) 112px;
+ min-width:0;box-sizing:border-box}
+#game.ppw-editor{--ppw-background:#0b1824;background:transparent;--ppw-panel:#142536;
+ --ppw-line:#334e60}
+#game :is(.ppw-home-head,.ppw-business-head,.ppw-staff-head,.ppw-industry-head,
+ .ppw-directory-header,.ppw-planner-header,.ppw-calendar-header,.ppw-contract-header,
+ .ppw-persona-header,.ppw-title-hero,.ppw-pair-hero,.ppw-stable-header){
+ margin-top:0;padding-top:4px;padding-bottom:10px}
+#game :is(.ppw-home-head,.ppw-business-head,.ppw-staff-head,.ppw-industry-head,
+ .ppw-directory-header,.ppw-planner-header,.ppw-calendar-header,.ppw-contract-header,
+ .ppw-persona-header,.ppw-title-hero,.ppw-pair-hero,.ppw-stable-header) h1{
+ font-size:clamp(26px,7vw,37px);line-height:1.08;letter-spacing:-.045em;
+ margin:8px 0 6px;color:#f4f9ff}
+#game :is(.ppw-home-brand,.ppw-business-kicker,.ppw-staff-kicker,.ppw-industry-kicker,
+ .ppw-directory-kicker,.ppw-eyebrow,.ppw-access-kicker){
+ color:var(--ppw-cyan);letter-spacing:.12em;font-weight:850}
+#game :is(.ppw-home-tile,.ppw-business-panel,.ppw-business-metric,.ppw-business-show,
+ .ppw-industry-company,.ppw-industry-broadcast,.ppw-staff-panel,.ppw-directory-card,
+ .ppw-contract-card,.ppw-contract-pending,.ppw-planner-week,.ppw-planner-form,
+ .ppw-calendar-panel,.ppw-belt-card,.ppw-pair-card,.ppw-pair-create,
+ .ppw-stable-card,.ppw-stable-create,.ppw-programme-card,.ppw-programme-create,
+ .ppw-result-entry,.ppw-archive-show){
+ border-color:var(--ppw-outline);border-radius:var(--ppw-radius);
+ box-shadow:0 1px 0 rgba(255,255,255,.025)}
+#game :is(.ppw-business-panel,.ppw-staff-panel,.ppw-contract-card,.ppw-directory-card,
+ .ppw-planner-week,.ppw-calendar-panel,.ppw-stable-card,.ppw-programme-card){
+ background:linear-gradient(145deg,#152a3c,#102131)}
+#game :is(.ppw-business-panel,.ppw-staff-panel,.ppw-calendar-panel,.ppw-planner-week,
+ .ppw-industry-company,.ppw-industry-broadcast){margin-bottom:13px}
+#game :is(.ppw-business-line,.ppw-contract-heading,.ppw-staff-toggle,
+ .ppw-directory-metric){font-variant-numeric:tabular-nums}
+#game :is(.ppw-business-metric strong,.ppw-home-stat strong,.ppw-result-score,
+ .ppw-contract-metric strong){font-variant-numeric:tabular-nums}
+#game :is(.ppw-directory-button,.ppw-business-action,.ppw-industry-button,
+ .ppw-staff-button,.ppw-contract-button,.ppw-calendar-button,
+ .ppw-planner-button,.ppw-programme-action,.ppw-pair-button,
+ .ppw-stable-action,.ppw-persona-button,.ppw-title-more,.ppw-title-back,
+ .ppw-home-refresh){min-height:44px;border-radius:11px}
+#game :is(.ppw-directory-nav,.ppw-business-nav,.ppw-industry-nav,.ppw-backstage-filters){
+ scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#game :is(.ppw-directory-nav,.ppw-business-nav,.ppw-industry-nav,.ppw-backstage-filters)::-webkit-scrollbar{display:none}
+#game :is(.ppw-directory-nav,.ppw-business-nav,.ppw-industry-nav,.ppw-backstage-filters)>*{flex:none}
+#game :is(.ppw-persona-bubble,.ppw-directory-name,.ppw-business-line strong){overflow-wrap:anywhere}
+
+/* Results are the big show: preserve their bright Ringside editorial treatment. */
+#game.ppw-results{max-width:960px;padding-top:12px}
+.ppw-result-hero,.ppw-archive-hero{border-color:var(--ppw-outline-strong)}
+.ppw-result-score{color:var(--ppw-green)}
+.ppw-broadcast-section-title{color:var(--ppw-cyan)}
+.ppw-archive-show:active,.ppw-broadcast-headline:active{border-color:var(--ppw-cyan)}
+.ppw-persona-chat{box-shadow:var(--ppw-shadow)}
+.ppw-persona-out{background:#235c70}
+.ppw-persona-in{background:#303e53}
+
+/* The card editor keeps its save action clear above the installed app navigation. */
+#game .ppw-save{bottom:calc(67px + env(safe-area-inset-bottom));
+ background:linear-gradient(180deg,rgba(9,17,27,.96),#0b1b29);
+ border:1px solid var(--ppw-outline-strong);border-radius:14px;
+ box-shadow:0 -12px 28px rgba(0,0,0,.2)}
+#game.ppw-editor .ppw-card-list{gap:10px}
+#game.ppw-editor .ppw-card{border-color:var(--ppw-outline);background:#142434}
+
+/* Management secondary navigation: no collision with wrestler directory styles. */
+.ppw-more{max-width:760px;margin:0 auto;padding:18px 14px 116px}
+.ppw-more h1{font-size:clamp(28px,8vw,38px);margin:8px 0 5px;letter-spacing:-.05em}
+.ppw-more-heading{margin:27px 0 9px}
+.ppw-more-heading h2{font-size:12px;letter-spacing:.15em;
+ color:var(--ppw-cyan);text-transform:uppercase;margin:0 0 3px}
+.ppw-more-heading p{color:var(--ppw-secondary);font-size:12px;margin:0}
+.ppw-more-links{border:1px solid var(--ppw-outline);
+ border-radius:17px;background:#102132;overflow:hidden}
+.ppw-more-link{display:flex;align-items:center;gap:12px;min-height:56px;
+ width:100%;padding:10px 14px;text-align:left;background:transparent;
+ color:var(--ppw-ink);border:0;border-bottom:1px solid var(--ppw-outline);
+ font:inherit;font-weight:750}
+.ppw-more-link:last-child{border-bottom:0}
+.ppw-more-link:active{background:#254557}
+.ppw-more-icon{height:34px;width:34px;display:grid;place-items:center;flex:none;
+ color:var(--ppw-cyan);border-radius:9px;background:#1d3b50;font-size:20px}
+.ppw-more-link-title{flex:1;min-width:0}
+.ppw-more-arrow{color:var(--ppw-cyan);font-size:22px}
+
+/* Cards may contain long name strings; grids must shrink on narrow screens. */
+#game [class^="ppw-"]{min-width:0}
+#game .ppw-home-hero{position:relative;overflow:hidden;
+ background:radial-gradient(ellipse at 95% -15%,rgba(91,205,216,.22),transparent 53%),
+ linear-gradient(125deg,#25495b,#142b40 70%,#102333);
+ border-color:var(--ppw-outline-strong);
+ box-shadow:0 14px 34px rgba(2,11,20,.22)}
+.ppw-home-hero:before{content:"";position:absolute;right:-47px;top:-56px;
+ width:160px;height:160px;border:1px solid rgba(119,220,240,.15);
+ border-radius:50%;pointer-events:none}
+.ppw-home-hero-top{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:8px}
+.ppw-home-phase{font-size:10px;font-weight:850;letter-spacing:.08em;
+ padding:5px 8px;background:rgba(15,30,44,.8);
+ border:1px solid #477d82;border-radius:999px;color:var(--ppw-green)}
+.ppw-home-phase-locked{color:var(--ppw-gold);border-color:#9c854d}
+.ppw-home-phase-resolving{color:#d1c4ff;border-color:#655982}
+.ppw-home-hero h2{font-size:clamp(25px,7vw,38px);letter-spacing:-.04em;line-height:1.05}
+.ppw-home-countdown{border:0;border-left:3px solid var(--ppw-green);
+ border-radius:4px 10px 10px 4px;background:rgba(4,18,29,.48);font-size:15px}
+.ppw-home-stat{background:#152b3c;border-color:var(--ppw-outline)}
+.ppw-home-finances{gap:7px;margin-bottom:23px}
+.ppw-home-stat strong{font-size:clamp(13px,3.5vw,21px)}
+.ppw-home-group h3{font-size:12px;letter-spacing:.13em;
+ color:var(--ppw-cyan);font-weight:850;margin-bottom:6px}
+.ppw-home-tile{min-height:67px;background:#15283a}
+.ppw-home-tile:active{background:#214053;border-color:var(--ppw-outline-strong)}
+.ppw-home-icon{background:#244559;color:var(--ppw-cyan)}
+.ppw-home-tile-copy strong{font-size:15px}
+.ppw-home-arrow{font-weight:800}
+
+@media(max-width:520px){
+ .ppw-shell-promotion{display:none}
+ .ppw-shell-brand small{max-width:23ch}
+ #game :is(.ppw-home,.ppw-business,.ppw-staff,.ppw-industry,
+  .ppw-directory,.ppw-editor,.ppw-planner,.ppw-world-calendar){padding-left:13px;padding-right:13px}
+ #game .ppw-home-hero{padding:16px}
+ .ppw-home-finances{gap:6px}
+ .ppw-home-stat{padding:11px 8px}
+ .ppw-home-stat span{font-size:9px}
+ .ppw-result-hero-main{gap:6px}
+ .ppw-contract-filters{grid-template-columns:minmax(0,1fr)}
+ .ppw-home-tile{padding:12px}
+ .ppw-business-grid{gap:7px}
+ .ppw-business-metric{padding:12px}
+ .ppw-directory-filters{padding:11px}
+}
+@media(max-width:345px){
+ .ppw-shell-logo{height:35px;width:39px}
+ .ppw-shell-brand small{max-width:16ch}
+ .ppw-tab-icon{font-size:19px}
+ .ppw-tab-label{font-size:9px}
+ .ppw-home-stat strong{font-size:12px}
+ .ppw-home-finances{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ppw-tab{transition:none}
+ #game *,#game *::before,#game *::after{scroll-behavior:auto!important}
+}

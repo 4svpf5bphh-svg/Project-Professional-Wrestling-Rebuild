@@ -8,6 +8,7 @@ import {HOST_SECTIONS,readHostSection,hostSectionHash,
  type HostSection} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
+import "../polish.css";
 
 type SessionView={
  worldId:string;playerId:string;csrfToken:string;
@@ -59,16 +60,24 @@ function renderSection(){
   csrfToken:session.csrfToken};
  navigation.replaceChildren();
  for(const item of HOST_SECTIONS.filter(x=>"primary" in x&&x.primary)){
-  const tab=button(item.glyph+" "+item.label,()=>openSection(item.id));
-  tab.className="ppw-tab"+(item.id===section?" ppw-tab-active":"");
+  const tab=button("",()=>openSection(item.id));
+  const active=item.id===section||(item.id==="more"&&
+   !["home","planner","roster","backstage"].includes(section));
+  tab.className="ppw-tab"+(active?" ppw-tab-active":"");
   tab.setAttribute("aria-label",item.label);
-  if(item.id===section)tab.setAttribute("aria-current","page");
+  if(active)tab.setAttribute("aria-current","page");
+  const glyph=el("span","ppw-tab-icon",item.glyph);
+  glyph.setAttribute("aria-hidden","true");
+  const caption=el("span","ppw-tab-label",item.label);
+  tab.append(glyph,caption);
   navigation.append(tab);
  }
  navigation.hidden=false;
+ document.documentElement.dataset.ppwScreen=section;
  game.className="";
  game.replaceChildren();
  const back=()=>openSection("home");
+ if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
   case "home":mountWorldHomePage(game,scope,openSection);break;
   case "planner":mountPlannerPage(game,scope,back);break;
@@ -87,13 +96,38 @@ function renderSection(){
   case "stables":mountStablesPage(game,scope);break;
   case "connections":mountWorkingConnectionsPage(game,scope);break;
   case "more":{
-   const panel=el("section","ppw-directory");
-   panel.append(el("span","ppw-access-kicker","PROMOTION OFFICE"),
-    el("h1","","Every corner of your World"),
-    el("p","ppw-access-muted","Open a desk without advancing the World."));
-   for(const item of HOST_SECTIONS.filter(x=>!("primary" in x&&x.primary))){
-    const link=button(item.glyph+"  "+item.label,()=>openSection(item.id));
-    link.className="ppw-directory-link";panel.append(link);
+   const panel=el("section","ppw-more");
+   panel.append(el("span","ppw-access-kicker","THE CONTROL ROOM"),
+    el("h1","","Promotion office"),
+    el("p","ppw-access-muted",
+     "Every department in one place. Choose where to take the show next."));
+   const groups:{title:string;description:string;routes:HostSection[]}[]=[
+    {title:"Creative",description:"Your people, titles and long-term stories",
+     routes:["programmes","championships","teams","stables","connections"]},
+    {title:"The business",description:"Money, contracts and industry intelligence",
+     routes:["market","contracts","business","staff","industry"]},
+    {title:"The schedule",description:"Upcoming events and the archive",
+     routes:["calendar","results"]}
+   ];
+   for(const group of groups){
+    const heading=el("div","ppw-more-heading");
+    heading.append(el("h2","",group.title),
+     el("p","",group.description));
+    const list=el("div","ppw-more-links");
+    for(const id of group.routes){
+     const item=HOST_SECTIONS.find(x=>x.id===id);
+     if(!item)continue;
+     const link=button("",()=>openSection(id));
+     link.className="ppw-more-link";
+     const glyph=el("span","ppw-more-icon",item.glyph);
+     glyph.setAttribute("aria-hidden","true");
+     const label=el("span","ppw-more-link-title",item.label);
+     const arrow=el("span","ppw-more-arrow","→");
+     arrow.setAttribute("aria-hidden","true");
+     link.append(glyph,label,arrow);
+     list.append(link);
+    }
+    panel.append(heading,list);
    }
    game.append(panel);break;
   }
@@ -104,6 +138,7 @@ window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
+ delete document.documentElement.dataset.ppwScreen;
  game.replaceChildren(el("p","ppw-access-loading","Opening the PPW World…"));
  try{
   const r=await fetch("/api/session",{credentials:"same-origin",
@@ -114,8 +149,18 @@ async function loadSession(){
   if(!session||!session.csrfToken||!session.worldId||!session.overview)
    throw new Error("Incomplete game session");
   const banner=el("div","ppw-account-banner");
-  banner.append(el("span","","Signed in · "+session.playerId),
-   button("Sign out",()=>void signOut()));
+  const identity=el("div","ppw-shell-identity");
+  const logo=el("span","ppw-shell-logo","PPW");
+  const brand=el("span","ppw-shell-brand");
+  brand.append(el("strong","","WORLD CONTROL"),
+   el("small","",session.overview.world.name+"  /  Y"+
+    session.overview.world.year+" W"+session.overview.world.week));
+  identity.append(logo,brand);
+  const promoter=el("span","ppw-shell-promotion",
+   session.overview.promotion?.name??"Select promotion");
+  const signout=button("Sign out",()=>void signOut());
+  signout.className="ppw-shell-signout";
+  banner.append(identity,promoter,signout);
   account.append(banner);
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
@@ -129,7 +174,9 @@ async function loadSession(){
 function showLogin(){
  game.replaceChildren();
  const card=el("section","ppw-access-panel");
- card.append(el("span","ppw-access-kicker","PPW / YOUR WORLD"),
+ const mark=el("div","ppw-access-mark","PPW");
+ mark.setAttribute("aria-hidden","true");
+ card.append(mark,el("span","ppw-access-kicker","PPW / YOUR WORLD"),
   el("h1","","Enter the locker room"),
   el("p","ppw-access-muted",
    "Sign in using your private wrestler-promoter access code. Each player manages a separate promotion in one shared World."));

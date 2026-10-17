@@ -54,9 +54,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  function draw(){
   clearClock();root.classList.add("ppw-home");root.replaceChildren();
   const masthead=el("header","ppw-home-head");
-  masthead.append(el("span","ppw-home-brand","PROJECT PROFESSIONAL WRESTLING"),
+  masthead.append(el("span","ppw-home-brand","THE LIVING WRESTLING WORLD"),
    el("h1","","Your World"),
-   el("p","ppw-home-small","Every promotion, every wrestler, one living calendar."));
+   el("p","ppw-home-small","Your promotion. Your decisions. One shared wrestling universe."));
   root.append(masthead);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!loaded){
@@ -73,7 +73,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   }
   const {world,promotion,membership}=overview;
   const hero=el("section","ppw-home-hero");
-  hero.append(el("span","ppw-home-kicker",world.name+" · YEAR "+world.year+" / WEEK "+world.week),
+  const heroTop=el("div","ppw-home-hero-top");
+  heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
+  const live=el("span","ppw-home-phase ppw-home-phase-"+world.phase.toLowerCase(),
+   world.phase==="OPEN"?"● BOOKING OPEN":world.phase==="LOCKED"?"● WORLD LOCKED":"● RESOLVING");
+  heroTop.append(live);
+  hero.append(heroTop,
    el("h2","",promotion?.name??"Choose a promotion"),
    el("p","ppw-home-small",world.phase==="OPEN"?
     "The booking window is open. Your creative choices remain yours.":
@@ -115,7 +120,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      ". Open Business to review cash and weekly commitments."));
   }
   const main=el("section","ppw-home-group");
-  main.append(el("h3","","Run your promotion"));
+  main.append(el("h3","","THE LOCKER ROOM"));
   main.append(control("Show Planner","Calendar, venues and cards",port.planner,"▣"),
    control("My Roster","Singles, teams and factions",port.roster,"♟"),
    control("Talent Market","Scout and negotiate contracts",port.market,"◇"),
@@ -123,7 +128,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    control("Results","Finished broadcasts and match reports",port.results,"★"));
   root.append(main);
   const office=el("section","ppw-home-group");
-  office.append(el("h3","","The front office"));
+  office.append(el("h3","","THE CONTROL ROOM"));
   office.append(control("Contracts","Renewals, dates and pending offers",port.contracts,"▤"),
    control("Business","Finances and regional audiences",port.business,"◫"),
    control("Staff","Delegate permissions before World Lock",port.staff,"◉"),
