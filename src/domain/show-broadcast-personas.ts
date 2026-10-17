@@ -19,8 +19,8 @@ export function projectBroadcastIdentities(
  const out=new Map<string,BroadcastIdentity>();
  for(const person of people){
   if(out.has(person.personId))throw new Error("Duplicate wrestler on results profile");
-  const p:PortablePersona=person.personaRecord===null?
-   originalPersonaBaseline(person.name,person.portableGimmickId):
+  const p:PortablePersona=person.personaRecord==null?
+   originalPersonaBaseline(person.name,person.portableGimmickId??null):
    validatePortablePersona(person.personaRecord,person.name);
   out.set(person.personId,{
    personId:person.personId,ringName:p.personaName,
@@ -28,7 +28,7 @@ export function projectBroadcastIdentities(
    style:p.primaryStyle,
    signatureMoves:p.signatureMoves.map(m=>m.name),
    finishingMoves:p.finishingMoves.map(m=>m.name),
-   source:person.personaRecord===null?"ROSTER_GUIDE":"WORLD_RECORD",
+   source:person.personaRecord==null?"ROSTER_GUIDE":"WORLD_RECORD",
   });
  }
  return out;
