@@ -1,7 +1,10 @@
 import type {ShowSeries,ShowRole} from "../domain/show-calendar.js";
 export interface CalendarPort{
  load():Promise<{promotionName:string;year:number;week:number;worldRevision:number;
- canEdit:boolean;series:ShowSeries[];weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[]}>;
+ canEdit:boolean;series:ShowSeries[];weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
+ worldWeeks?:{year:number;week:number;offset:number;events:{
+ promotionId:string;promotionName:string;seriesId:string;name:string;
+ role:ShowRole;eventType:string;importance:number}[]}[]}>;
  save(input:{requestId:string;expectedRevision:number;series:ShowSeries}):Promise<unknown>;
  archive(input:{requestId:string;expectedRevision:number;seriesId:string}):Promise<unknown>;
 }
@@ -13,6 +16,7 @@ const label=(role:ShowRole)=>role==="FLAGSHIP"?"A show · Flagship":
 export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>void){
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
  let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
+ let mode:"mine"|"world"="mine";
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -98,16 +102,30 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   root.append(manage);
   const upcoming=node("section","","ppw-calendar-panel");
   upcoming.append(node("h2","Upcoming PPW weeks"));
-  for(const w of data.weeks.slice(0,expanded?26:12)){
-   if(!w.shows.length)continue;
-   const article=node("article","","ppw-calendar-occurrence");
-   article.append(node("strong","Year "+w.year+" · Week "+w.week));
-   for(const s of w.shows)article.append(node("p",s.name+" · "+label(s.role)));
-   upcoming.append(article);
+  upcoming.append(button("My shows",()=>{mode="mine";render();},mode==="mine"),
+   button("Across the World",()=>{mode="world";render();},mode==="world"));
+  if(mode==="mine"){
+   for(const w of data.weeks.slice(0,expanded?26:12)){
+    if(!w.shows.length)continue;
+    const article=node("article","","ppw-calendar-occurrence");
+    article.append(node("strong","Year "+w.year+" · Week "+w.week));
+    for(const s of w.shows)article.append(node("p",s.name+" · "+label(s.role)));
+    upcoming.append(article);
+   }
+   upcoming.append(button(expanded?"Show fewer weeks":"Show 26 weeks",()=>{
+    expanded=!expanded;render();
+   }));
+  }else{
+   upcoming.append(node("p","Public event identities only; rival venues and unfinished cards remain private."));
+   for(const w of data.worldWeeks??[]){
+    if(!w.events.length)continue;
+    const article=node("article","","ppw-calendar-occurrence");
+    article.append(node("strong","Year "+w.year+" · Week "+w.week));
+    for(const e of w.events)article.append(node("p",
+     e.promotionName+" · "+e.name+" · "+label(e.role)));
+    upcoming.append(article);
+   }
   }
-  upcoming.append(button(expanded?"Show fewer weeks":"Show 26 weeks",()=>{
-   expanded=!expanded;render();
-  }));
   root.append(upcoming);
  }
  void load();
