@@ -34,6 +34,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  booking_division:string|null;person_status:string|null;family:string|null;
+ portable_gimmick_id:string|null;persona_record:unknown|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
  remaining_dates:number|null;exclusive_elsewhere:boolean};
 async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
@@ -130,6 +131,7 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
   const week=(show.year-1)*52+show.week-1;
   const rows=await tx.query<ContractRow>([
     "SELECT c.person_id,c.contract_id,p.name,p.booking_division,",
+    "p.portable_gimmick_id,identity.persona AS persona_record,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
     "c.expires_week_index,c.remaining_dates,",
     "EXISTS(SELECT 1 FROM ppw_contracts other",
@@ -139,6 +141,8 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "AS exclusive_elsewhere",
     "FROM ppw_contracts c JOIN ppw_people p",
     "ON p.world_id=c.world_id AND p.person_id=c.person_id",
+    "LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id",
+    "AND identity.person_id=p.person_id",
     "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'",
     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
@@ -153,7 +157,14 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     status:c.status as "SIGNED",startWeekIndex:c.start_week_index??undefined,
     expiresWeekIndex:c.expires_week_index??-1,remainingDates:c.remaining_dates,
     currentWeekIndex:week});
+   const persona=c.persona_record&&typeof c.persona_record==="object"?
+    c.persona_record as Record<string,unknown>:null;
+   const ringName=typeof persona?.personaName==="string"&&persona.personaName.trim()?
+    persona.personaName:c.name;
+   const gimmick=typeof persona?.gimmickId==="string"?
+    persona.gimmickId:c.portable_gimmick_id;
    return {personId:c.person_id,contractId:c.contract_id,name:c.name,
+    ringName,gimmickId:gimmick??null,
     division:c.booking_division,available:rights.available&&
      c.person_status==="ACTIVE"&&!c.exclusive_elsewhere,
     reason:c.person_status!=="ACTIVE"?"INACTIVE":
