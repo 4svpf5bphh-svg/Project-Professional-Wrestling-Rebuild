@@ -1,3 +1,5 @@
+import {mountPlanner,type PlannerPort} from "../ui/show-planner.js";
+import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
 import {mountShowResults} from "../ui/show-results.js";
@@ -182,4 +184,17 @@ function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
 export function mountPersonaPage(root:HTMLElement,scope:Scope){
  return mountPersonaDesk(root,personaPort(createCardClient(scope)),
   undefined,()=>mountProgrammePage(root,scope));
+}
+
+/** Host-level planner entry point. The existing card editor remains the
+ * authoritative booking surface, with the selected draft's ID in scope.
+ */
+export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+ const call=createCardClient(scope);
+ const port:PlannerPort={
+  load:()=>call("planner"),
+  save:input=>call("planShow",input),
+  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId})
+ };
+ return mountPlanner(root,port,onBack);
 }

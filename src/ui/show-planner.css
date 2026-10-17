@@ -1,0 +1,15 @@
+.ppw-planner{max-width:740px;margin:auto;padding:16px;color:#edf6f7}
+.ppw-planner-header h1{font-size:30px;margin:14px 0 6px}
+.ppw-planner-header p,.ppw-planner-summary{color:#acc7d0}
+.ppw-planner-week,.ppw-planner-form{border:1px solid #375c6a;background:#102938;
+border-radius:14px;margin:12px 0;padding:15px}
+.ppw-planner-week h2,.ppw-planner-form h2{font-size:19px;margin:0 0 8px}
+.ppw-planner-week p{color:#c0d3d8;font-size:14px}
+.ppw-planner-button{border:1px solid #698895;border-radius:10px;
+background:#174251;color:white;min-height:44px;padding:10px 14px;
+margin:5px 8px 5px 0;cursor:pointer}
+.ppw-planner-button:disabled{opacity:.5}
+.ppw-planner-form label{display:block;margin:12px 0 4px}
+.ppw-planner-form select{width:100%;font-size:16px;min-height:46px;
+border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;padding:8px}
+.ppw-planner-error{color:#ffb2aa}
