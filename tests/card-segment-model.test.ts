@@ -49,6 +49,7 @@ test("new stable invitation keeps authored target and owned stable identity",()=
  s=addSegmentPerson(s,"targets",{personId:"prospect",contractId:"prospect-deal"});
  assert.throws(()=>buildEditorSegment(s),/Choose a stable/);
  s.stableId="stable-one";
+ s.stableDecision="ACCEPTED";
  const p=buildEditorSegment(s);
  assert.equal(p.stableId,"stable-one");
  assert.equal(p.outcome,"HAPPENS");
