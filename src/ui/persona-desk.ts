@@ -74,12 +74,17 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(el("h2","","Locker room"),
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
    for(const wrestler of [...view.roster].sort((a,b)=>
+    Number(b.morale!==null&&b.morale<35)-
+    Number(a.morale!==null&&a.morale<35)||
     (b.lastMessage?.submitted_week_index??-1)-
     (a.lastMessage?.submitted_week_index??-1)||a.name.localeCompare(b.name))){
     const active=wrestler.personId===view.personId;
     const last=wrestler.lastMessage;
+    const concern=wrestler.morale!==null&&wrestler.morale<35?
+     " · Wants to talk":wrestler.momentum!==null&&wrestler.momentum<25?
+     " · Career check-in":"";
     const summary=last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
-     ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():"";
+     ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
     const item=button(wrestler.name+summary,()=>{
       pane="THREAD";if(active)render();else void load(wrestler.personId);
     });
@@ -147,6 +152,16 @@ export function mountPersonaDesk(root:HTMLElement,
   chat.append(el("h2","",view.personName+" · private conversation"),
    el("p","ppw-muted",
     "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
+  const wrestler=view.roster.find(p=>p.personId===view.personId);
+  if(wrestler?.morale!==null&&wrestler?.morale!==undefined&&wrestler.morale<35)
+   chat.append(el("div","ppw-persona-bubble ppw-persona-in",
+    wrestler.morale<15?
+     "I'm seriously unhappy with how things are going. We need to talk about my future.":
+     "I'm not happy with where things stand. I want a better direction."));
+  else if(wrestler?.momentum!==null&&wrestler?.momentum!==undefined&&
+   wrestler.momentum<25)
+   chat.append(el("div","ppw-persona-bubble ppw-persona-in",
+    "I feel like I've lost momentum. Can we find a way to get things moving again?"));
   for(const p of [...view.recentRequests].reverse()){
    const out=el("div","ppw-persona-bubble ppw-persona-out",
     "How about a "+p.requested_gimmick_id.replaceAll("_"," ")+
