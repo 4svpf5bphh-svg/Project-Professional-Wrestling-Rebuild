@@ -105,14 +105,14 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   upcoming.append(button("My shows",()=>{mode="mine";render();},mode==="mine"),
    button("Across the World",()=>{mode="world";render();},mode==="world"));
   if(mode==="mine"){
-   for(const w of data.weeks.slice(0,expanded?26:12)){
+   for(const w of data.weeks.slice(0,expanded?52:12)){
     if(!w.shows.length)continue;
     const article=node("article","","ppw-calendar-occurrence");
     article.append(node("strong","Year "+w.year+" · Week "+w.week));
     for(const s of w.shows)article.append(node("p",s.name+" · "+label(s.role)));
     upcoming.append(article);
    }
-   upcoming.append(button(expanded?"Show fewer weeks":"Show 26 weeks",()=>{
+   upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week PPW year",()=>{
     expanded=!expanded;render();
    }));
   }else{

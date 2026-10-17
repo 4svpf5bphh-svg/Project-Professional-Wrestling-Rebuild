@@ -42,10 +42,10 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
 async function load(tx:SqlRows,scope:CalendarScope,owned:Owner){
  const rows=await tx.query<Row>([
  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",
- "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2",
- "ORDER BY series_id LIMIT 25"
+ "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 AND active",
+ "ORDER BY series_id LIMIT 17"
  ].join(" "),[scope.worldId,scope.promotionId]);
- if(rows.length>24)throw new Error("Calendar identity limit exceeded");
+ if(rows.length>16)throw new Error("Calendar identity limit exceeded");
  return rows.length?rows.map(r=>({seriesId:r.series_id,name:r.name,role:r.role,
   eventType:r.event_type,cadenceWeeks:r.cadence_weeks,
   anchorWeek:r.anchor_week,importance:r.importance,active:r.active})):
@@ -56,14 +56,23 @@ async function bootstrap(tx:SqlRows,scope:CalendarScope,owned:Owner){
   "SELECT series_id FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 LIMIT 1",
   [scope.worldId,scope.promotionId]);
  if(existing.length)return;
- for(const s of defaults(owned.name,owned.cadence,owned.major_interval??4)){
-  await tx.query([
-   "INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,event_type,",
-   "cadence_weeks,anchor_week,importance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-   "ON CONFLICT (world_id,promotion_id,series_id) DO NOTHING"
-  ].join(" "),[scope.worldId,scope.promotionId,s.seriesId,s.name,s.role,
-   s.eventType,s.cadenceWeeks,s.anchorWeek,s.importance]);
- }
+ const seeded=defaults(owned.name,owned.cadence,owned.major_interval??4);
+ validateSchedule(seeded);
+ // The first edit persists every identity in ONE round-trip, not 2–13
+ // independent Neon INSERTs and their network/compute overhead.
+ await tx.query([
+  "INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,",
+  "event_type,cadence_weeks,anchor_week,importance)",
+  "SELECT $1,$2,x.series_id,x.name,x.role,x.event_type,x.cadence_weeks,",
+  "x.anchor_week,x.importance FROM unnest(",
+  "$3::text[],$4::text[],$5::text[],$6::text[],",
+  "$7::integer[],$8::integer[],$9::integer[]) AS x(",
+  "series_id,name,role,event_type,cadence_weeks,anchor_week,importance)",
+  "ON CONFLICT (world_id,promotion_id,series_id) DO NOTHING"
+ ].join(" "),[scope.worldId,scope.promotionId,
+  seeded.map(s=>s.seriesId),seeded.map(s=>s.name),seeded.map(s=>s.role),
+  seeded.map(s=>s.eventType),seeded.map(s=>s.cadenceWeeks),
+  seeded.map(s=>s.anchorWeek),seeded.map(s=>s.importance)]);
 }
 export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarScope){
  return withSqlClient(pool,async tx=>{
@@ -119,7 +128,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   return {worldWeeks,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
-   weeks:occurrences(series,weekIndex(owned.year,owned.week),26)};
+   weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};
  });
 }
 export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMutation){

@@ -20,17 +20,44 @@ export function seriesDue(series:ShowSeries,index:number){
  * WWE/AEW A/B television into alternating weeks rather than two normal
  * cards every week; special and crown PPVs retain separate identities.
  */
+type AnnualPpv={slug:string;name:string;week:number;importance:number;marquee?:boolean};
 type Profile={regular:{name:string;role:"FLAGSHIP"|"SECONDARY";every:number;
- anchor:number;importance:number}[];special:string;crown:string;crownImportance:number};
+ anchor:number;importance:number}[];special:string;crown:string;crownImportance:number;
+ annualPpvs?:readonly AnnualPpv[]};
 const profiles:Record<string,Profile>={
  WWE:{regular:[
   {name:"Monday Night Raw",role:"FLAGSHIP",every:2,anchor:0,importance:76},
   {name:"Friday Night SmackDown",role:"SECONDARY",every:2,anchor:1,importance:75}],
-  special:"WWE Premium Live Event",crown:"WrestleMania",crownImportance:100},
+  special:"WWE Premium Live Event",crown:"WrestleMania",crownImportance:100,
+  annualPpvs:[
+   {slug:"royal-rumble",name:"Royal Rumble",week:5,importance:96,marquee:true},
+   {slug:"elimination-chamber",name:"Elimination Chamber",week:9,importance:89},
+   {slug:"wrestlemania",name:"WrestleMania",week:16,importance:100,marquee:true},
+   {slug:"backlash",name:"Backlash",week:19,importance:86},
+   {slug:"clash-in-italy",name:"Clash in Italy",week:22,importance:85},
+   {slug:"night-of-champions",name:"Night of Champions",week:26,importance:89},
+   {slug:"summerslam",name:"SummerSlam",week:31,importance:98,marquee:true},
+   {slug:"money-in-the-bank",name:"Money in the Bank",week:41,importance:94},
+   {slug:"crown-jewel",name:"Crown Jewel",week:45,importance:91},
+   {slug:"survivor-series",name:"Survivor Series",week:48,importance:97,marquee:true},
+   {slug:"wrestlepalooza",name:"Wrestlepalooza",week:50,importance:86}
+  ]},
  AEW:{regular:[
   {name:"AEW Dynamite",role:"FLAGSHIP",every:2,anchor:0,importance:72},
   {name:"AEW Collision",role:"SECONDARY",every:2,anchor:1,importance:66}],
-  special:"AEW PPV",crown:"AEW All In",crownImportance:97},
+  special:"AEW PPV",crown:"All In",crownImportance:97,
+  annualPpvs:[
+   {slug:"revolution",name:"Revolution",week:11,importance:94,marquee:true},
+   {slug:"dynasty",name:"Dynasty",week:15,importance:88},
+   {slug:"double-or-nothing",name:"Double or Nothing",week:21,importance:95,marquee:true},
+   {slug:"forbidden-door",name:"Forbidden Door",week:26,importance:90},
+   {slug:"redemption",name:"Redemption",week:30,importance:87},
+   {slug:"all-in",name:"All In",week:35,importance:99,marquee:true},
+   {slug:"all-out",name:"All Out",week:39,importance:96,marquee:true},
+   {slug:"wrestledream",name:"WrestleDream",week:42,importance:91},
+   {slug:"full-gear",name:"Full Gear",week:46,importance:95,marquee:true},
+   {slug:"worlds-end",name:"Worlds End",week:51,importance:92}
+  ]},
  NJPW:{regular:[{name:"NJPW Road Series",role:"FLAGSHIP",every:1,anchor:0,importance:68}],
   special:"NJPW Major Event",crown:"Wrestle Kingdom",crownImportance:99},
  NXT:{regular:[{name:"NXT",role:"FLAGSHIP",every:1,anchor:0,importance:63}],
@@ -58,13 +85,20 @@ export function defaults(name:string,cadence:number,majorInterval:number):ShowSe
     cadenceWeeks:regular*show.every,anchorWeek:show.anchor,
     importance:show.importance,active:true
    })),
-   {seriesId:"calendar-default-special",name:profile.special,role:"SPECIAL",
-    eventType:"MAJOR",cadenceWeeks:specialEvery,
-    anchorWeek:Math.min(specialEvery-1,regular*3),
-    importance:87,active:true},
-   {seriesId:"calendar-default-crown",name:profile.crown,role:"PREMIUM",
-    eventType:"MAJOR",cadenceWeeks:52,anchorWeek:13,
-    importance:profile.crownImportance,active:true}
+   ...(profile.annualPpvs?
+    profile.annualPpvs.map((ppv):ShowSeries=>({
+     seriesId:"calendar-default-ppv-"+ppv.slug,name:ppv.name,
+     role:ppv.marquee?"PREMIUM":"SPECIAL",eventType:"MAJOR",
+     cadenceWeeks:52,anchorWeek:ppv.week-1,
+     importance:ppv.importance,active:true
+    })):
+    [{seriesId:"calendar-default-special",name:profile.special,role:"SPECIAL",
+      eventType:"MAJOR",cadenceWeeks:specialEvery,
+      anchorWeek:Math.min(specialEvery-1,regular*3),
+      importance:87,active:true} as ShowSeries,
+     {seriesId:"calendar-default-crown",name:profile.crown,role:"PREMIUM",
+      eventType:"MAJOR",cadenceWeeks:52,anchorWeek:13,
+      importance:profile.crownImportance,active:true} as ShowSeries])
   ];
  }
  return [
@@ -108,11 +142,17 @@ export function validateSchedule(series:readonly ShowSeries[]){
   if(names.has(key))throw new Error("Duplicate show names are not allowed");
   names.add(key);
  }
- const regular=active.filter(s=>regularRole(s.role));
- for(let i=0;i<regular.length;i++)for(let j=i+1;j<regular.length;j++){
-  const a=regular[i]!,b=regular[j]!;
-  if(Math.abs(a.anchorWeek-b.anchorWeek)%gcd(a.cadenceWeeks,b.cadenceWeeks)===0)
-   throw new Error("Only one normal A/B show may run per PPW week");
+ for(const [kind,shows] of [
+  ["normal",active.filter(s=>regularRole(s.role))],
+  ["premium",active.filter(s=>!regularRole(s.role))]
+ ] as const){
+  for(let i=0;i<shows.length;i++)for(let j=i+1;j<shows.length;j++){
+   const a=shows[i]!,b=shows[j]!;
+   if(Math.abs(a.anchorWeek-b.anchorWeek)%gcd(a.cadenceWeeks,b.cadenceWeeks)===0)
+    throw new Error(kind==="normal"?
+     "Only one normal A/B show may run per PPW week":
+     "Only one additional PPV or special may run per PPW week");
+  }
  }
 }
 export function occurrences(series:readonly ShowSeries[],start:number,weeks:number){

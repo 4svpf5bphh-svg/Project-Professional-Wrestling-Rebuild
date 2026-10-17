@@ -37,7 +37,7 @@ test("Original WWE/AEW calendar identities alternate A/B TV with annual crown PP
  assert.deepEqual(occurrences(aew,0,4).map(w=>
   w.shows.find(s=>s.eventType==="REGULAR")?.name),
   ["AEW Dynamite","AEW Collision","AEW Dynamite","AEW Collision"]);
- assert.ok(occurrences(wwe,13,1)[0]?.shows.some(s=>s.name==="WrestleMania"));
+ assert.ok(occurrences(wwe,15,1)[0]?.shows.some(s=>s.name==="WrestleMania"));
  for(const brand of ["WWE","AEW","NJPW","NXT","TNA Wrestling","CMLL","ROH","STARDOM"])
   validateSchedule(defaults(brand,1,4));
 });

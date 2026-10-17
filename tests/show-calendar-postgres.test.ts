@@ -105,3 +105,52 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
   }).finally(()=>db.close());
  }
 });
+
+test("WWE full 2026 PLE calendar persists atomically and AEW rivals remain visible",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,2),suffix=randomUUID();
+ const worldId="ppv-roster-"+suffix,promotionId="wwe",playerId="ppv-owner-"+suffix;
+ const scope={worldId,promotionId,playerId};
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"PPV fixture",seed:33,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:"wwe",name:"WWE",tier:"GLOBAL"});
+   await addPromotion(tx,worldId,{id:"aew",name:"AEW",tier:"GLOBAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotionId]);
+  });
+  const before=await readPromotionCalendar(db.pool,scope);
+  assert.equal(before.series.length,13);
+  assert.equal(before.series.filter(s=>s.eventType==="MAJOR").length,11);
+  assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
+   e.promotionId==="aew"&&e.name==="Revolution")));
+  assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
+   e.promotionId==="wwe"&&e.name==="Royal Rumble")));
+  const money=before.series.find(s=>s.name==="Money in the Bank")!;
+  const written=await upsertPromotionSeries(db.pool,{...scope,requestId:"seed-annual-ppvs",
+   expectedRevision:0,series:{...money,name:"Money in the Bank"}});
+  assert.equal(written.status,"APPLIED");
+  const after=await readPromotionCalendar(db.pool,scope);
+  assert.equal(after.series.length,13);
+  assert.equal(after.weeks.length,52);
+  const count=await withWorldTransaction(db.pool,tx=>tx.query<{count:number}>(
+   "SELECT count(*)::integer AS count FROM ppw_show_series WHERE world_id=$1",[worldId]));
+  assert.equal(count[0]!.count,13);
+  assert.ok(!after.series.some(s=>s.name==="WWE Premium Live Event"));
+  assert.equal((await readSixWeekPlanner(db.pool,scope)).weeks[4]!.scheduled
+   .find(s=>s.eventType==="MAJOR")?.name,"Royal Rumble");
+  assert.equal((await upsertPromotionSeries(db.pool,{...scope,
+   requestId:"seed-annual-ppvs",expectedRevision:0,
+   series:{...money,name:"Money in the Bank"}})).status,"REPLAYED");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_command_receipts","ppw_show_series",
+    "ppw_promotion_controls","ppw_memberships","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
