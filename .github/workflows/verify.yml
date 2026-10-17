@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
+      - name: Build iPhone-first PWA without publishing it
+        run: npm run web:build
       - run: npm test
       - name: Apply foundation schema to disposable PostgreSQL
         env:
