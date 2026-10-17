@@ -9,6 +9,7 @@ import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageMessage,backstageReply,
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
+ archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
   requestId:string;expectedRevision:number}):Promise<unknown>;
  request(input:{personId:string;gimmickId:string;
@@ -26,7 +27,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
- let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"="ALL";
+ let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"="ALL";
  async function load(id?:string){
   personId=id;loading=true;render();
   try{
@@ -40,6 +41,16 @@ export function mountPersonaDesk(root:HTMLElement,
    chosen=null;search="";error="";
   }
   catch(e){error=e instanceof Error?e.message:"Unable to load wrestler identity";}
+  finally{loading=false;render();}
+ }
+ async function archive(person:string,archived:boolean){
+  if(loading)return;
+  loading=true;render();
+  try{
+   await port.archiveThread(person,archived);
+   view=await port.load(person);error="";
+   pane="INBOX";inboxFilter=archived?"ARCHIVED":"ALL";
+  }catch(e){error=e instanceof Error?e.message:"Unable to update archive";}
   finally{loading=false;render();}
  }
  async function decide(conversationId:string,decision:BackstageDecision){
@@ -110,7 +121,8 @@ export function mountPersonaDesk(root:HTMLElement,
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
-    ["ACTIVE","Requests"],["HISTORY","History"]] as const){
+    ["ACTIVE","Requests"],["HISTORY","History"],
+    ["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{inboxFilter=filter;render();});
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
@@ -118,6 +130,8 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(controls);
    for(const wrestler of [...view.roster].filter(w=>{
     const latest=w.latestIncoming;
+    if(inboxFilter==="ARCHIVED")return latest?.archived===true;
+    if(latest?.archived)return false;
     if(inboxFilter==="UNREAD")return !!latest&&latest.read_week_index===null;
     if(inboxFilter==="ACTIVE")return latest?.status==="PENDING"||latest?.status==="PROMISED";
     if(inboxFilter==="HISTORY")return !!latest&&
@@ -210,6 +224,13 @@ export function mountPersonaDesk(root:HTMLElement,
    root.append(history);
   }
   if(pane==="PROFILE")return;
+  const contact=view.roster.find(x=>x.personId===view!.personId)?.latestIncoming;
+  if(contact){
+   const archiveButton=button(contact.archived?"Restore conversation":"Archive conversation",
+    ()=>void archive(view!.personId!,!contact.archived),loading);
+   archiveButton.classList.add("ppw-backstage-archive");
+   root.append(archiveButton);
+  }
   const chat=el("section","ppw-persona-chat");
   chat.setAttribute("aria-label","Conversation with "+view.personName);
   chat.append(el("h2","",view.personName+" · private conversation"),

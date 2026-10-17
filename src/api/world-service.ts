@@ -3,6 +3,7 @@ import {readCompletedShowView} from "../db/show-results-view.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
+import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
  from "../db/portable-persona-change.js";
@@ -328,5 +329,14 @@ export async function markBackstageReadAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validate(worldId,"World");
  validate(promotionId,"promotion");validate(personId,"wrestler");
  return markBackstageThreadRead(context.pool,{worldId,promotionId,personId,
+  playerId:context.actor.playerId});
+}
+
+/** Archive/restore is private presentation state, never a booking decision. */
+export async function backstageArchiveAsActor(context:WorldApiContext,
+ input:{worldId:string;promotionId:string;personId:string;archived:boolean}){
+ validate(context.actor.playerId,"actor");validate(input.worldId,"World");
+ validate(input.promotionId,"promotion");validate(input.personId,"wrestler");
+ return setBackstageThreadArchive(context.pool,{...input,
   playerId:context.actor.playerId});
 }

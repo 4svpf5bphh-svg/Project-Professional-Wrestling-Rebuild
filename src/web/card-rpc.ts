@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,
+import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
@@ -24,6 +24,11 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="markBackstageRead")return markBackstageReadAsActor(context,
   worldId,promotionId,id("personId"));
+ if(method==="backstageArchive"){
+  if(typeof p.archived!=="boolean")throw new Error("Invalid archive choice");
+  return backstageArchiveAsActor(context,{worldId,promotionId,
+   personId:id("personId"),archived:p.archived});
+ }
  if(method==="workingConnections"){
   const personId=p.personId;
   if(personId!==undefined&&typeof personId!=="string")

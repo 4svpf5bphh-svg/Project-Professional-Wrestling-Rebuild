@@ -77,7 +77,7 @@ test("Backstage featured-contract grievance requires four verified unfeatured ma
    "SELECT trust FROM ppw_backstage_promotion_trust WHERE world_id=$1",[worldId]))[0]!.trust,47);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_backstage_promotion_trust","ppw_backstage_requests",
+   for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust","ppw_backstage_requests",
     "ppw_completed_show_matches","ppw_completed_show_segments","ppw_completed_shows",
     "ppw_card_slots","ppw_booking_drafts","ppw_ledger_events","ppw_command_receipts",
     "ppw_contracts","ppw_people","ppw_promotion_controls","ppw_memberships","ppw_promotions"])

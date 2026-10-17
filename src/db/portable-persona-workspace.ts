@@ -52,16 +52,26 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   // One bounded read of the newest private message per roster member.
   const incoming=roster.length?await tx.query<{
    person_id:string;request_id:string;kind:string;status:string;
-   read_week_index:number|null;created_week_index:number}>([
-   "SELECT DISTINCT ON (person_id) person_id,request_id,kind,status,",
-   "read_week_index,created_week_index",
-   "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
-   "AND person_id=ANY($3::text[])",
-   "ORDER BY person_id,created_week_index DESC,request_id DESC LIMIT 500"
-  ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id)]):[];
+   read_week_index:number|null;created_week_index:number;
+   archived_through_week_index:number}>([
+   "SELECT DISTINCT ON (r.person_id) r.person_id,r.request_id,r.kind,r.status,",
+   "r.read_week_index,r.created_week_index,",
+   "coalesce(a.archived_through_week_index,-1) AS archived_through_week_index",
+   "FROM ppw_backstage_requests r LEFT JOIN ppw_backstage_thread_archives a",
+   "ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id",
+   "AND a.person_id=r.person_id AND a.player_id=$4",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2",
+   "AND r.person_id=ANY($3::text[])",
+   "ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC LIMIT 500"
+  ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id),
+   s.playerId]):[];
   const incomingById=new Map(incoming.map(x=>[x.person_id,x]));
   const listed=roster.map(x=>({personId:x.person_id,name:x.name,
-   latestIncoming:incomingById.get(x.person_id)??null,
+   latestIncoming:incomingById.get(x.person_id)?{
+    ...incomingById.get(x.person_id)!,
+    archived:incomingById.get(x.person_id)!.created_week_index<=
+     incomingById.get(x.person_id)!.archived_through_week_index,
+   }:null,
    morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,

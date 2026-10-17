@@ -131,9 +131,29 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,9))).settled,1);
   const final=(await readPortablePersonaWorkspace(db.pool,scope)).conversations.at(-1)!;
   assert.equal(final.status,"FULFILLED");
+  const archive=await dispatchCardRpc(context,"backstageArchive",
+   {worldId,promotionId,showId,personId:inbox.personId,archived:true});
+  assert.equal((archive as {archivedThroughWeekIndex:number}).archivedThroughWeekIndex,9);
+  assert.equal((await readPortablePersonaWorkspace(db.pool,scope)).roster
+   .find(x=>x.personId===inbox.personId)?.latestIncoming?.archived,true);
+  await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:outsiderId}},
+   "backstageArchive",{worldId,promotionId,showId,personId:inbox.personId,
+    archived:false}),/unavailable/);
+  await dispatchCardRpc(context,"backstageArchive",
+   {worldId,promotionId,showId,personId:inbox.personId,archived:false});
+  assert.equal((await readPortablePersonaWorkspace(db.pool,scope)).roster
+   .find(x=>x.personId===inbox.personId)?.latestIncoming?.archived,false);
+  await dispatchCardRpc(context,"backstageArchive",
+   {worldId,promotionId,showId,personId:inbox.personId,archived:true});
+  // New conversation revives a thread without polling or an archive reset.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,person_id,kind,created_week_index) VALUES($1,$2,$3,$4,'CREATIVE',20)",
+   [worldId,"reopened-"+id,promotionId,inbox.personId]));
+  assert.equal((await readPortablePersonaWorkspace(db.pool,scope)).roster
+   .find(x=>x.personId===inbox.personId)?.latestIncoming?.archived,false);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_backstage_promotion_trust","ppw_backstage_requests","ppw_completed_show_matches",
+   for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust","ppw_backstage_requests","ppw_completed_show_matches",
     "ppw_completed_show_segments","ppw_completed_shows","ppw_card_slots",
     "ppw_booking_drafts","ppw_ledger_events","ppw_command_receipts",
     "ppw_contracts","ppw_people","ppw_promotion_controls",

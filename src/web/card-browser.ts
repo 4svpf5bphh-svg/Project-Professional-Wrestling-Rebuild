@@ -100,6 +100,7 @@ function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
  return {
   load:personId=>call("backstage",personId?{personId}:{}),
   markRead:personId=>call("markBackstageRead",{personId}),
+  archiveThread:(personId,archived)=>call("backstageArchive",{personId,archived}),
   decide:({conversationId,decision,requestId,expectedRevision})=>
    call("backstageDecision",{conversationId,decision,requestId,expectedRevision}),
   request:({personId,gimmickId,requestId,expectedRevision})=>

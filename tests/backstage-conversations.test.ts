@@ -30,5 +30,5 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.match(backstageMessage("GIMMICK_PITCH",{observedMatchShows:4,averageCrowd:48}),
   /4 matches.*48\/100/);
  assert.equal(backstageDecisionEffect("GIMMICK_PITCH","KEEP_CHARACTER").status,"DECLINED");
- assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/delivered/);
+ assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/kept your word/);
 });
