@@ -91,8 +91,13 @@ export async function readCompletedShowView(
     championship.name AS championship_name,cc.title_changed,
     COALESCE(winner.name,winner_team.name) AS title_winner_name,
     COALESCE(prior_person.name,prior_team.name) AS title_prior_holder_name,
-    COALESCE(medical.injuries,'[]'::jsonb) AS injuries
+    facts.rating_stars AS report_rating_stars,
+    facts.actual_minutes AS report_actual_minutes,
+    COALESCE(facts.injuries_json,medical.injuries,'[]'::jsonb) AS injuries
    FROM ppw_completed_show_matches m
+   LEFT JOIN ppw_completed_match_report_facts facts
+    ON facts.world_id=m.world_id AND facts.show_id=m.show_id
+    AND facts.match_id=m.match_id
    LEFT JOIN ppw_completed_match_evidence e
     ON e.world_id=m.world_id AND e.show_id=m.show_id AND e.match_id=m.match_id
    LEFT JOIN ppw_championship_contests cc

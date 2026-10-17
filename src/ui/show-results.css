@@ -95,3 +95,8 @@
 .ppw-flag-gold{background:#59451c;color:#fff1c1}
 .ppw-flag-medical{background:#5a3033;color:#ffe1d9}
 .ppw-result-entry .ppw-result-meta{flex-wrap:wrap}
+
+.ppw-result-rating{font-size:12px;font-weight:850;color:#f6d37f;
+ letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.ppw-result-minutes{font-size:11px;font-weight:850;color:#a5e2ce;
+ letter-spacing:.08em}

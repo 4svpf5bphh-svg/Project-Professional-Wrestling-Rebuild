@@ -164,10 +164,21 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
   const opening=intentOpening(context?.intent??"COMPETITIVE",key);
   const stakes=context?.championshipContested?" A championship was on the line.":"";
   const format=context?formatTitle(context.format):"match";
+  const minutes=entry.fallout?.actualMinutes;
+  const rating=entry.fallout?.ratingStars;
+  const measured=minutes!==undefined?
+   " Official running time: "+minutes+" minutes.":"";
+  const critics=rating!==undefined?
+   " Critics gave this match "+rating.toFixed(2)+" out of 5 stars.":"";
+  const contrast=rating!==undefined&&rating>=3.75&&entry.crowdResponse<50?
+   " Technically well-rated wrestling met a stubborn crowd.":
+   rating!==undefined&&rating<2.5&&entry.crowdResponse>=78?
+   " The spectators enjoyed it more than the critical rating suggested.":"";
   paragraphs=[
-   (billing?billing+" met in a "+format+". ":"The contest took place. ")+opening+stakes,
+   (billing?billing+" met in a "+format+". ":"The contest took place. ")+opening+stakes+measured,
    finishColour(entry.outcome,key)+" "+entry.summary,
-   reactionText+" "+pick(tone==="RED_HOT"?[
+   "The crowd response was "+entry.crowdResponse.toFixed(1)+"/100."+critics+
+    contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
     "This was one of the hotter reactions on the card.",
     "The numbers confirm it connected with the audience."]:tone==="FLAT"?[
     "The response reflected a difficult night in front of the crowd.",

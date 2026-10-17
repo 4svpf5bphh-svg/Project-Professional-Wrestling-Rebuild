@@ -16,10 +16,10 @@ const receipt=(finish:string,side:string):CompletedShowReceipt=>({
  matches:[{matchId:"bout",position:0,crowdResponse:82,
   actualFinish:finish,actualWinnerSide:side}],segments:[],
 });
-test("completed title transfer and successful run-in are proven, not inferred",()=>{
+test("a protected finish records outside interference without inventing a belt transfer",()=>{
  const show=receipt("PROTECTED_FINISH","A"),m=show.matches[0]!;
  const row:RecordedMatchFalloutRow={...bare(),championship_name:"World Title",
-  title_changed:true,title_winner_name:"Alice",
+  title_changed:false,title_winner_name:"Alice",
   title_prior_holder_name:"Bob",
   evidence_json:{matchId:"bout",
    booking:{participants:["a","b"],scriptedWinner:"a",plannedFinish:"CLEAN_PIN",
@@ -28,7 +28,7 @@ test("completed title transfer and successful run-in are proven, not inferred",(
     interference:{plannedOutcome:"SUCCESS",actualOutcome:"SUCCESS"}}},
  };
  const fallout=projectVerifiedBroadcastFallout(row,show,m,name,sides,"c");
- assert.equal(fallout.title?.changed,true);
+ assert.equal(fallout.title?.changed,false);
  assert.equal(fallout.title?.winnerName,"Alice");
  assert.deepEqual(fallout.interference,{personName:"Carol",outcome:"SUCCESS"});
  assert.deepEqual(fallout.injuries,[]);
@@ -72,4 +72,19 @@ test("unsupported historic evidence is rejected rather than turned into fictitio
  assert.throws(()=>projectVerifiedBroadcastFallout({...bare(),
   injuries:[{person_id:"a",injury_severity:"IMPOSSIBLE",injury_weeks_out:2}]},
   show,m,name,sides,null),/Invalid historic medical/);
+});
+
+test("only an eligible clean match result can be called a title change",()=>{
+ const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
+ const title:RecordedMatchFalloutRow={...bare(),championship_name:"World Title",
+  title_changed:true,title_winner_name:"Alice",title_prior_holder_name:"Bob",
+  report_rating_stars:"4.25",report_actual_minutes:22};
+ const fact=projectVerifiedBroadcastFallout(title,show,m,name,sides,null);
+ assert.equal(fact.title?.changed,true);
+ assert.equal(fact.ratingStars,4.25);
+ assert.equal(fact.actualMinutes,22);
+ assert.throws(()=>projectVerifiedBroadcastFallout({...title},
+  receipt("PROTECTED_FINISH","A"),
+  receipt("PROTECTED_FINISH","A").matches[0]!,name,sides,null),
+  /Title change contradicts/);
 });

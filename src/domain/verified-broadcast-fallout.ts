@@ -16,6 +16,8 @@ export interface BroadcastTitle{
  changed:boolean;
 }
 export interface BroadcastFallout{
+ /** Immutable critic score and actual running time from the World simulation. */
+ ratingStars?:number;actualMinutes?:number;
  title?:BroadcastTitle;
  injuries:BroadcastMedical[];
  interference?:{personName:string|null;outcome:"SUCCESS"|"THWARTED"|"ABORTED"};
@@ -23,6 +25,7 @@ export interface BroadcastFallout{
 }
 export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  match_id:string;evidence_json:unknown;
+ report_rating_stars?:string|number|null;report_actual_minutes?:number|null;
  championship_name:string|null;title_changed:boolean|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;
  injuries:unknown;
@@ -42,10 +45,24 @@ export function projectVerifiedBroadcastFallout(
 ):BroadcastFallout{
  const result:BroadcastFallout={injuries:[],eliminations:[]};
  if(!row)return result;
+ if(row.report_rating_stars!==null&&row.report_rating_stars!==undefined){
+  const stars=Number(row.report_rating_stars);
+  if(!Number.isFinite(stars)||stars<0||stars>5)throw new Error("Invalid match star rating");
+  result.ratingStars=stars;
+ }
+ if(row.report_actual_minutes!==null&&row.report_actual_minutes!==undefined){
+  if(!Number.isSafeInteger(row.report_actual_minutes)||
+   row.report_actual_minutes<3||row.report_actual_minutes>120)
+   throw new Error("Invalid actual match duration");
+  result.actualMinutes=row.report_actual_minutes;
+ }
  if(row.match_id!==match.matchId)throw new Error("Wrong match evidence on broadcast");
  if(row.championship_name!==null){
   if(typeof row.title_changed!=="boolean"||!row.title_winner_name)
    throw new Error("Invalid historic championship contest");
+  if(row.title_changed&&
+   !["CLEAN_PIN","SUBMISSION","FLASH_PIN"].includes(match.actualFinish))
+   throw new Error("Title change contradicts verified match finish");
   result.title={name:row.championship_name,changed:row.title_changed,
    winnerName:row.title_winner_name,priorHolderName:row.title_prior_holder_name};
  }
