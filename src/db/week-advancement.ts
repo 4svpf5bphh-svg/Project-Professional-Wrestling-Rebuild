@@ -42,10 +42,11 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // bound this read to current shows, not the accumulated World history.
       // There is intentionally NO player-scoped access to these internals.
       const ready=await tx.query<{
-        required_promotions:number;resolved_promotions:number;
+        required_promotions:number;submitted_shows:number;resolved_promotions:number;
         certified_promotions:number|null;cleared_promotions:number|null;
       }>(
-        `SELECT count(*)::integer AS required_promotions,
+        `SELECT count(DISTINCT p.promotion_id)::integer AS required_promotions,
+                count(d.draft_id)::integer AS submitted_shows,
                 count(r.show_id)::integer AS resolved_promotions,
                 (SELECT s.certified_promotions FROM ppw_week_resolution_seals s
                   WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3) AS certified_promotions,
@@ -62,10 +63,11 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         [input.worldId,year,week,weekIndex],
       );
       if(ready.length!==1) throw new Error("World readiness lookup failed");
-      const {required_promotions:required,resolved_promotions:resolved,
+      const {required_promotions:required,submitted_shows:submitted,resolved_promotions:resolved,
         certified_promotions:certified,cleared_promotions:cleared}=ready[0]!;
       if(required<1) throw new Error("World has no active promotions");
-      if(resolved!==required) throw new Error("World week incomplete: active promotions need resolved shows");
+      if(submitted<required||submitted>required*2||resolved!==submitted)
+       throw new Error("World week incomplete: submitted shows require matching resolution receipts");
       if(cleared!==required) throw new Error("World week has no valid pre-resolution resource clearance");
       if(certified!==required) throw new Error("World week has no valid resolution certification");
       // The new detailed results are a second mandatory durable layer.
@@ -91,7 +93,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
            WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
         [input.worldId,year,week],
       );
-      if(detailed.length!==1||detailed[0]!.completed_promotions!==required||
+      if(detailed.length!==1||detailed[0]!.completed_promotions!==submitted||
        detailed[0]!.invalid_results!==0||
        detailed[0]!.missing_economics!==0)
         throw new Error("World week incomplete: detailed show results missing or mismatched");
@@ -115,7 +117,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
          WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
         [input.worldId,year,week,weekIndex],
       );
-      if(paired.length!==1||paired[0]!.paired_promotions!==required||
+      if(paired.length!==1||paired[0]!.paired_promotions!==submitted||
        paired[0]!.orphan_results!==0)
         throw new Error("World week incomplete: detailed results and resource receipts disagree");
       // A certificate alone is not enough: re-check submitted cards in this

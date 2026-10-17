@@ -25,10 +25,10 @@ export async function resolveWorldWeekShows(
    [input.worldId,input.year,input.week]);
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World must be resolving the requested week");
-  return tx.query<{promotion_id:string;draft_id:string}>(
-   `SELECT promotion_id,draft_id FROM ppw_booking_drafts
+  return tx.query<{promotion_id:string;draft_id:string;booking_class:"REGULAR"|"PREMIUM"}>(
+   `SELECT promotion_id,draft_id,booking_class FROM ppw_booking_drafts
       WHERE world_id=$1 AND year=$2 AND week=$3 AND status='SUBMITTED'
-      ORDER BY promotion_id,draft_id`,
+      ORDER BY promotion_id,booking_class DESC,draft_id`,
    [input.worldId,input.year,input.week]);
  });
  // A submitted-only list is insufficient: missing AI/staff/player shows
@@ -45,23 +45,21 @@ export async function resolveWorldWeekShows(
  });
  if(active.length===0||active.length>128)
   throw new Error("Invalid active promotion population");
- const submittedIds=new Set<string>();
+ const activeIds=new Set(active.map(p=>p.promotion_id));
+ if(activeIds.size!==active.length||shows.length<active.length||
+  shows.length>active.length*2||shows.some(x=>!activeIds.has(x.promotion_id)))
+  throw new Error("World week incomplete: every active promotion needs a weekly show");
+ const unique=new Set<string>(),regular=new Set<string>();
  for(const show of shows){
-  if(!show.promotion_id||!show.draft_id||submittedIds.has(show.promotion_id))
-   throw new Error("Multiple or invalid submitted shows for one promotion");
-  submittedIds.add(show.promotion_id);
- }
- const requiredIds=new Set(active.map(p=>p.promotion_id));
- if(requiredIds.size!==active.length||shows.length!==active.length||
-  shows.some(x=>!requiredIds.has(x.promotion_id)))
-  throw new Error("World week incomplete: every active promotion needs a submitted show");
- const unique=new Set<string>();
- for(const show of shows){
+  const key=show.promotion_id+"\u0000"+show.booking_class;
   if(!show.promotion_id||!show.draft_id||
-   unique.has(show.promotion_id))
-   throw new Error("Multiple or invalid submitted shows for one promotion");
-  unique.add(show.promotion_id);
+   !["REGULAR","PREMIUM"].includes(show.booking_class)||unique.has(key))
+   throw new Error("Duplicate or invalid submitted show class");
+  unique.add(key);
+  if(show.booking_class==="REGULAR")regular.add(show.promotion_id);
  }
+ if(regular.size!==active.length)
+  throw new Error("World week incomplete: a regular show is required for every promotion");
  let recorded=0,retried=0;
  for(const show of shows){
   const result=await resolveCanonicalShow(pool,{
@@ -85,9 +83,9 @@ export async function resolveWorldWeekShows(
       LEFT JOIN ppw_completed_shows r ON r.world_id=d.world_id
        AND r.show_id=d.draft_id AND r.promotion_id=d.promotion_id
       WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
-       AND d.status='SUBMITTED' ORDER BY d.promotion_id,d.draft_id`,
+       AND d.status='SUBMITTED' ORDER BY d.promotion_id,d.booking_class DESC,d.draft_id`,
    [input.worldId,input.year,input.week]);
-  if(rows.length!==active.length||rows.some((r,i)=>
+  if(rows.length!==shows.length||rows.some((r,i)=>
    r.promotion_id!==shows[i]!.promotion_id||
    r.draft_id!==shows[i]!.draft_id||
    r.resolution_id!==input.resolutionId))

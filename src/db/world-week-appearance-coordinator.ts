@@ -24,8 +24,8 @@ export async function consumeWorldWeekAppearances(
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World changed during appearance resolution");
   const rows=await tx.query<{
-   promotion_id:string;draft_id:string;resolved_show_id:string|null;
-  }>(`SELECT p.promotion_id,d.draft_id,r.show_id AS resolved_show_id
+   promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;resolved_show_id:string|null;
+  }>(`SELECT p.promotion_id,d.draft_id,d.booking_class,r.show_id AS resolved_show_id
     FROM ppw_promotions p
     LEFT JOIN ppw_booking_drafts d ON d.world_id=p.world_id
      AND d.promotion_id=p.promotion_id AND d.year=$2 AND d.week=$3
@@ -34,17 +34,24 @@ export async function consumeWorldWeekAppearances(
      AND r.show_id=d.draft_id AND r.promotion_id=p.promotion_id
      AND r.resolved_week_index=$4
     WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
-    ORDER BY p.promotion_id`,[input.worldId,input.year,input.week,weekIndex]);
-  if(rows.length<1||rows.length>128||
-   rows.some(r=>!r.draft_id)||
-   new Set(rows.map(r=>r.promotion_id)).size!==rows.length)
-   throw new Error("Every active promotion needs exactly one submitted show");
+    ORDER BY p.promotion_id,d.booking_class DESC`,[input.worldId,input.year,input.week,weekIndex]);
+  if(rows.length<1||rows.length>256||rows.some(r=>!r.draft_id))
+   throw new Error("Every active promotion needs a submitted weekly show");
+  const byPromotion=new Map<string,Set<string>>();
+  for(const row of rows){
+   const seen=byPromotion.get(row.promotion_id)??new Set<string>();
+   if(!row.booking_class||seen.has(row.booking_class))
+    throw new Error("Duplicate submitted show class");
+   seen.add(row.booking_class);byPromotion.set(row.promotion_id,seen);
+  }
+  if([...byPromotion.values()].some(k=>!k.has("REGULAR")))
+   throw new Error("Every active promotion needs a regular weekly show");
   const clearance=await tx.query<{eligible_promotions:number}>(
    "SELECT eligible_promotions FROM ppw_week_resource_clearances WHERE world_id=$1 AND year=$2 AND week=$3",
    [input.worldId,input.year,input.week]);
-  if(clearance.length!==1||clearance[0]!.eligible_promotions!==rows.length)
+  if(clearance.length!==1||clearance[0]!.eligible_promotions!==byPromotion.size)
    throw new Error("Week resources must be cleared before charging dates");
-  return rows;
+  return rows.map(r=>({...r,draft_id:r.draft_id!}));
  });
  let charged=0,retried=0;
  for(const show of shows){

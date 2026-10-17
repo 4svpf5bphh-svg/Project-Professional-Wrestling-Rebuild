@@ -15,7 +15,7 @@ export interface PlannerScope {worldId:string;promotionId:string;playerId:string
 export interface PlanWeekInput extends PlannerScope {
  requestId:string;expectedRevision:number;year:number;week:number;
  eventType:PlannedEventType;day:number;marketId:string;venueId:string;
- ticketStrategy:TicketStrategy;draftId?:string;
+ ticketStrategy:TicketStrategy;draftId?:string;showSeriesId?:string;
 }
 export interface PlannerVenue {
  venueId:string;marketId:string;marketName:string;name:string;capacity:number;
@@ -26,7 +26,7 @@ export interface PlannedShow {
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
- ready:boolean;slots:number;
+ ready:boolean;slots:number;bookingClass:"REGULAR"|"PREMIUM";showSeriesId:string|null;showName:string;
 }
 export interface PlannerWeek {
  year:number;week:number;offset:number;required:boolean;major:boolean;
@@ -70,13 +70,13 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,s),start=weekIndex(owned.year,owned.week);
   const drafts=await tx.query<{
-   draft_id:string;year:number;week:number;status:string;
+   draft_id:string;year:number;week:number;status:string;booking_class:"REGULAR"|"PREMIUM";show_series_id:string|null;
    event_type:PlannedEventType|null;show_day:number|null;market_id:string|null;
    venue_id:string|null;ticket_strategy:TicketStrategy|null;
    market_name:string|null;venue_name:string|null;
    lock_ready_fingerprint:string|null;slots:number;
   }>(`
- SELECT d.draft_id,d.year,d.week,d.status,d.event_type,d.show_day,
+ SELECT d.draft_id,d.year,d.week,d.status,d.booking_class,d.show_series_id,d.event_type,d.show_day,
    d.market_id,d.venue_id,d.ticket_strategy,
    m.name AS market_name,v.name AS venue_name,d.lock_ready_fingerprint,
    (SELECT count(*)::integer FROM ppw_card_slots c
@@ -131,9 +131,12 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   weeks:Array.from({length:6},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
    return {...when,offset,required:index%Math.max(1,owned.cadence)===0,
-    major:major(index,owned.major_interval),canEdit:owned.booking_open,
+    major:scheduled.some(x=>x.eventType==="MAJOR"&&seriesDue(x,index)),canEdit:owned.booking_open,
     scheduled:scheduled.filter(x=>seriesDue(x,index)),
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
+     bookingClass:d.booking_class,showSeriesId:d.show_series_id,
+     showName:scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
+      (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
      draftId:d.draft_id,year:d.year,week:d.week,status:d.status,
      eventType:d.event_type??(major(index,owned.major_interval)?"MAJOR":"REGULAR"),
      day:d.show_day,marketId:d.market_id,venueId:d.venue_id,
@@ -156,6 +159,7 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
   !Number.isSafeInteger(input.day)||input.day<1||input.day>7||
   !id(input.venueId)||!id(input.marketId)||
   (input.draftId!==undefined&&!id(input.draftId))||
+  (input.showSeriesId!==undefined&&!id(input.showSeriesId))||
   !["REGULAR","MAJOR"].includes(input.eventType)||
   !["ACCESSIBLE","STANDARD","PREMIUM","PRESTIGE"].includes(input.ticketStrategy))
   throw new Error("Invalid show planning selection");
@@ -167,9 +171,29 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const current=weekIndex(auth.year,auth.week),target=weekIndex(input.year,input.week);
    if(target<current||target>current+5)
     throw new Error("Show must be planned in the current six-week window");
-   const event:PlannedEventType=major(target,auth.major_interval)?"MAJOR":"REGULAR";
+   const configured=await tx.query<{series_id:string;name:string;role:ShowSeries["role"];
+    event_type:PlannedEventType;cadence_weeks:number;anchor_week:number;importance:number;active:boolean}>([
+    "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",
+    "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 AND active",
+    "ORDER BY series_id LIMIT 17"
+   ].join(" "),[input.worldId,input.promotionId]);
+   if(configured.length>16)throw new Error("Show calendar exceeds safe limit");
+   const series:ShowSeries[]=configured.length?configured.map(x=>({
+    seriesId:x.series_id,name:x.name,role:x.role,eventType:x.event_type,
+    cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
+    importance:x.importance,active:x.active
+   })):defaults(auth.promotion_name,auth.cadence,auth.major_interval??4);
+   const selected=input.showSeriesId?
+    series.find(s=>s.seriesId===input.showSeriesId):null;
+   if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
+   if(selected&&!seriesDue(selected,target))
+    throw new Error("This show is not scheduled for the chosen week");
+   const event:PlannedEventType=selected?.eventType??
+    (major(target,auth.major_interval)?"MAJOR":"REGULAR");
    if(input.eventType!==event)
-    throw new Error("Event importance follows the World calendar");
+    throw new Error("Show type must match the calendar event");
+   const bookingClass:"REGULAR"|"PREMIUM"=
+    selected?.eventType==="MAJOR"?"PREMIUM":"REGULAR";
    const eligible=await tx.query<{venue_id:string}>(`
     SELECT v.venue_id FROM ppw_venues v
     JOIN ppw_promotion_market_states local ON local.world_id=v.world_id
@@ -179,12 +203,15 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
      AND v.weekly_hire_cost IS NOT NULL`,
     [input.worldId,input.promotionId,input.venueId,input.marketId]);
    if(eligible.length!==1)throw new Error("Choose an available venue in that market");
-   const existing=await tx.query<{draft_id:string;status:string}>(`
-    SELECT draft_id,status FROM ppw_booking_drafts
+   const existing=await tx.query<{draft_id:string;status:string;show_series_id:string|null}>(`
+    SELECT draft_id,status,show_series_id FROM ppw_booking_drafts
     WHERE world_id=$1 AND promotion_id=$2 AND year=$3 AND week=$4
+      AND booking_class=$5 AND status IN ('DRAFT','SUBMITTED')
     ORDER BY draft_id LIMIT 3`,
-    [input.worldId,input.promotionId,input.year,input.week]);
+    [input.worldId,input.promotionId,input.year,input.week,bookingClass]);
    if(existing.length>1)throw new Error("Multiple show drafts need reconciliation");
+   if(existing.length&&existing[0]!.show_series_id!== (selected?.seriesId??null))
+    throw new Error("A different show identity already occupies this weekly slot");
    if(input.draftId){
     if(existing.length!==1||existing[0]!.draft_id!==input.draftId||
      existing[0]!.status!=="DRAFT")
@@ -208,11 +235,12 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const created=await tx.query<{draft_id:string}>(`
     INSERT INTO ppw_booking_drafts(
      world_id,draft_id,promotion_id,year,week,status,show_day,
-     event_type,market_id,venue_id,ticket_strategy)
-    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10)
+     event_type,market_id,venue_id,ticket_strategy,booking_class,show_series_id)
+    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12)
     RETURNING draft_id`,
     [input.worldId,draftId,input.promotionId,input.year,input.week,
-     input.day,event,input.marketId,input.venueId,input.ticketStrategy]);
+     input.day,event,input.marketId,input.venueId,input.ticketStrategy,
+     bookingClass,selected?.seriesId??null]);
    if(created.length!==1)throw new Error("Show draft was not created");
    return {draftId,year:input.year,week:input.week,status:"CREATED" as const};
   }});

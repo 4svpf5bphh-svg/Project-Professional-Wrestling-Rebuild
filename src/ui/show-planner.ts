@@ -10,6 +10,7 @@ const node=(tag:string,text="",className="")=>{
 export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void){
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
  let selectedDraft="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
+ let selectedSeriesId="";
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
@@ -27,7 +28,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   busy=true;draw();
   try{
    const result=await port.save({requestId,expectedRevision:data.worldRevision,
-    year:editing.year,week:editing.week,eventType:editing.major?"MAJOR":"REGULAR",
+    year:editing.year,week:editing.week,eventType:editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.eventType??
+      (editing.major?"MAJOR":"REGULAR"),showSeriesId:selectedSeriesId||undefined,
     day,venueId,marketId:venue.marketId,ticketStrategy:strategy,
     ...(selectedDraft?{draftId:selectedDraft}:{})});
    if(result&&typeof result==="object"&&"status" in result&&
@@ -39,8 +41,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}
   finally{busy=false;draw();}
  }
- function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number]){
+ function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],seriesId=""){
   editing=week;selectedDraft=draft?.draftId??"";
+  selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
   day=draft?.day??5;strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
@@ -66,6 +69,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
     venues.append(option);
    }
    venues.value=venueId;venues.onchange=()=>{venueId=venues.value;};
+   form.append(node("p","Booking: "+
+    (editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.name??
+    "Weekly show"),"ppw-planner-calendar-label"));
    form.append(node("label","Venue"),venues);
    const days=document.createElement("select");days.setAttribute("aria-label","Show day");
    for(let d=1;d<=7;d++){const opt=document.createElement("option");opt.value=String(d);opt.textContent=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][d-1];days.append(opt);}
@@ -89,7 +95,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
      (s.role==="FLAGSHIP"?"A":s.role==="SECONDARY"?"B":s.role==="PREMIUM"?"PPV":s.role)+")").join(" · "),
     "ppw-planner-calendar-label"));
    for(const show of week.shows){
-    card.append(node("p",(show.venueName??"Venue not chosen")+" · "+
+    card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
     if(week.offset===0)card.append(button("Edit card",()=>port.openCard(show.draftId)));
@@ -97,8 +103,17 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
     if(week.canEdit&&show.status==="DRAFT")
      card.append(button("Change venue / date",()=>edit(week,show),busy));
    }
-   if(!week.shows.length&&week.canEdit)
-    card.append(button("Plan show",()=>edit(week),busy||!data.venues.length));
+   if(week.canEdit){
+    for(const s of week.scheduled){
+     if(!week.shows.some(show=>show.bookingClass===
+       (s.eventType==="MAJOR"?"PREMIUM":"REGULAR")))
+      card.append(button(s.eventType==="MAJOR"?
+       "Book PPV · "+s.name:"Plan "+s.name,
+       ()=>edit(week,undefined,s.seriesId),busy||!data.venues.length));
+    }
+    if(!week.scheduled.length&&!week.shows.length)
+     card.append(button("Plan show",()=>edit(week),busy||!data.venues.length));
+   }
    root.append(card);
   }
  }

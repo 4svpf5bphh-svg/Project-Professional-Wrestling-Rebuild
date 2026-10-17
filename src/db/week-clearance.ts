@@ -19,7 +19,7 @@ export async function clearWorldWeekResources(pool:TransactionPool,input:ClearWo
       // The World is locked by applyWorldCommand. No player can change the
       // schedule through the booking mutation boundary after World Lock.
       const report=await inspectWeekConflicts(tx,input.worldId);
-      if(!report.provisionalClear || report.submittedShows!==report.activePromotions)
+      if(!report.provisionalClear || report.submittedShows<report.activePromotions)
         throw new Error("Week resources blocked: "+[...new Set(report.blockers.map(b=>b.code))].join(","));
       const weekIndex=(report.year-1)*52+report.week-1;
       if(!Number.isSafeInteger(weekIndex)||weekIndex<0) throw new Error("Invalid World week");

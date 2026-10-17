@@ -45,6 +45,7 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
             FROM ppw_booking_drafts
            WHERE world_id=p.world_id AND promotion_id=p.promotion_id
              AND year=$2 AND week=$3 AND status IN ('SUBMITTED','DRAFT')
+             AND booking_class='REGULAR'
            ORDER BY (status='SUBMITTED') DESC,revision DESC,draft_id ASC
            LIMIT 1
        ) d ON true

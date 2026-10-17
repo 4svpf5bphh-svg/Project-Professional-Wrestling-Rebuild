@@ -18,13 +18,14 @@ export async function certifyResolvedWorldWeek(
    const {year,week}=w[0]!;
    const index=(year-1)*52+week-1;
    const report=await inspectWeekConflicts(tx,input.worldId);
-   if(!report.provisionalClear||report.submittedShows!==report.activePromotions||
+   if(!report.provisionalClear||report.submittedShows<report.activePromotions||
     report.activePromotions<1||report.activePromotions>128)
     throw new Error("Cannot certify unresolved World conflicts or missing shows");
    const rows=await tx.query<{
-    required:number;paired:number;cleared:number|null;already:boolean;
+    required:number;submitted:number;paired:number;cleared:number|null;already:boolean;
    }>(`SELECT
-    count(*)::integer AS required,
+    count(DISTINCT p.promotion_id)::integer AS required,
+    count(d.draft_id)::integer AS submitted,
     count(*) FILTER(WHERE d.draft_id IS NOT NULL
       AND r.show_id IS NOT NULL AND c.show_id IS NOT NULL
       AND c.promotion_id=p.promotion_id AND c.year=$2 AND c.week=$3)::integer AS paired,
@@ -46,7 +47,8 @@ export async function certifyResolvedWorldWeek(
    if(rows.length!==1||rows[0]!.already)
     throw new Error("Week already certified or missing certification state");
    if(rows[0]!.required!==report.activePromotions||
-    rows[0]!.paired!==report.activePromotions||
+    rows[0]!.submitted!==report.submittedShows||
+    rows[0]!.paired!==report.submittedShows||
     rows[0]!.cleared!==report.activePromotions)
     throw new Error("Cannot certify: canonical date charges and completed results disagree");
    await tx.query(

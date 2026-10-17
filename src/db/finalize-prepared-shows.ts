@@ -52,7 +52,8 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
           JOIN ppw_worlds w ON w.world_id=d.world_id
           JOIN ppw_week_continuity_assessments a
             ON a.world_id=d.world_id AND a.promotion_id=d.promotion_id
-            AND a.year=d.year AND a.week=d.week AND a.show_id=d.draft_id
+            AND a.year=d.year AND a.week=d.week
+            AND (a.show_id=d.draft_id OR d.booking_class='PREMIUM')
           LEFT JOIN ppw_promotion_controls c ON c.world_id=d.world_id
             AND c.promotion_id=d.promotion_id AND c.active
           LEFT JOIN ppw_memberships m ON m.world_id=c.world_id
@@ -61,20 +62,20 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
             AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
           WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
             AND d.status='DRAFT' AND d.lock_ready_fingerprint IS NOT NULL
-            AND a.status='PREPARED_DRAFT'
-          ORDER BY d.promotion_id LIMIT 129`,
+            AND (a.status='PREPARED_DRAFT' OR d.booking_class='PREMIUM')
+          ORDER BY d.promotion_id,d.booking_class DESC LIMIT 257`,
         [input.worldId,year,week],
       );
-      if(candidates.length>128)throw new Error("Prepared show candidate limit exceeded");
+      if(candidates.length>256)throw new Error("Prepared show candidate limit exceeded");
       const slots=candidates.length?await tx.query<{
         draft_id:string;slot_id:string;position:number;kind:string;payload:unknown;
       }>(
         `SELECT s.draft_id,s.slot_id,s.position,s.kind,s.payload
            FROM ppw_card_slots s WHERE s.world_id=$1 AND s.draft_id=ANY($2::text[])
-           ORDER BY s.draft_id,s.position LIMIT 10001`,
+           ORDER BY s.draft_id,s.position LIMIT 20001`,
         [input.worldId,candidates.map(c=>c.draft_id)],
       ):[];
-      if(slots.length>10000)throw new Error("Prepared show slots exceed bounded limit");
+      if(slots.length>20000)throw new Error("Prepared show slots exceed bounded limit");
       const available=candidates.length?await tx.query<{venue_id:string}>(
         "SELECT venue_id FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' AND venue_id=ANY($2::text[])",
         [input.worldId,[...new Set(candidates.map(c=>c.venue_id).filter((x):x is string=>x!==null))]],

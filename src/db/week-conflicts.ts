@@ -46,9 +46,9 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
-    promotion_id:string;draft_id:string|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;
+    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;
   }>(
-    `SELECT p.promotion_id,d.draft_id,d.show_day,d.venue_id,
+    `SELECT p.promotion_id,d.draft_id,d.booking_class,d.show_day,d.venue_id,
             (r.show_id IS NOT NULL) AS already_resolved
        FROM ppw_promotions p LEFT JOIN ppw_booking_drafts d
          ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
@@ -56,20 +56,23 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
        LEFT JOIN ppw_show_resolutions r ON r.world_id=d.world_id
          AND r.show_id=d.draft_id AND r.resolved_week_index=(($2::integer-1)*52+$3::integer-1)
       WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
-      ORDER BY p.promotion_id LIMIT 129`,
+      ORDER BY p.promotion_id,d.booking_class DESC LIMIT 257`,
     [worldId,year,week],
   );
-  if(promotions.length>128) throw new Error("World has too many active promotions for weekly inspection");
+  if(promotions.length>256) throw new Error("World has too many submitted shows for weekly inspection");
+  const activePromotionIds=new Set(promotions.map(p=>p.promotion_id));
+  const regularPromotionIds=new Set(promotions.filter(p=>p.booking_class==="REGULAR")
+    .map(p=>p.promotion_id));
   const slots=await tx.query<{draft_id:string;slot_id:string;position:number;kind:string;payload:unknown}>(
     `SELECT s.draft_id,s.slot_id,s.position,s.kind,s.payload FROM ppw_card_slots s
         JOIN ppw_booking_drafts d ON d.world_id=s.world_id AND d.draft_id=s.draft_id
         JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
        WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
          AND p.lifecycle='ACTIVE'
-       ORDER BY s.draft_id,s.position LIMIT 10001`,
+       ORDER BY s.draft_id,s.position LIMIT 20001`,
     [worldId,year,week],
   );
-  if(slots.length>10000) throw new Error("World card slots exceed weekly inspection capacity");
+  if(slots.length>20000) throw new Error("World card slots exceed weekly inspection capacity");
   const blockers:WeekBlocker[]=[];
   const slotMap=new Map<string,unknown[]>();
   for(const slot of slots) {
@@ -92,9 +95,12 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     exclusive_elsewhere:boolean;
   }>=[];
   let submittedShows=0;
+  for(const id of activePromotionIds){
+    if(!regularPromotionIds.has(id))
+      blockers.push({code:"MISSING_SHOW",promotionIds:[id],showIds:[]});
+  }
   for(const p of promotions){
     if(p.draft_id===null){
-      blockers.push({code:"MISSING_SHOW",promotionIds:[p.promotion_id],showIds:[]});
       continue;
     }
     const showId=p.draft_id;
@@ -108,7 +114,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
         promotionId:p.promotion_id,showId});
       const key=p.show_day+"\u0000"+p.venue_id;
       const prev=venues.get(key);
-      if(prev && prev.promotionId!==p.promotion_id) blockers.push({
+      if(prev && prev.showId!==showId) blockers.push({
         code:"VENUE_DAY_CONFLICT",promotionIds:[prev.promotionId,p.promotion_id],
         showIds:[prev.showId,showId],resourceId:p.venue_id,day:p.show_day,
       });
@@ -131,7 +137,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
         contractId:a.contractId,alreadyResolved:p.already_resolved});
       const key=p.show_day+"\u0000"+a.personId;
       const prev=wrestlers.get(key);
-      if(prev && prev.promotionId!==p.promotion_id)blockers.push({
+      if(prev && prev.showId!==showId)blockers.push({
         code:"WRESTLER_DAY_CONFLICT",promotionIds:[prev.promotionId,p.promotion_id],
         showIds:[prev.showId,showId],resourceId:a.personId,day:p.show_day,
       });
@@ -228,7 +234,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     worldId,worldSeed,year,week,promotions,slots,venues:venueEvidence,
     contracts:contractEvidence,
   })).digest("hex");
-  return {year,week,activePromotions:promotions.length,submittedShows,
+  return {year,week,activePromotions:activePromotionIds.size,submittedShows,
     inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,stateFingerprint,
-    provisionalClear:promotions.length>0 && blockers.length===0};
+    provisionalClear:activePromotionIds.size>0 &&
+   submittedShows>=activePromotionIds.size&&blockers.length===0};
 }
