@@ -3,7 +3,7 @@ import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,ma
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
- completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+ completedShowAsActor,completedShowArchiveAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -37,6 +37,16 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="stableChoices")return stableChoicesAsActor(context,worldId,promotionId);
  if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
+ if(method==="resultsArchive"){
+  const cursor=p.cursor??null;
+  if(cursor!==null&&(typeof cursor!=="object"||Array.isArray(cursor)||
+   typeof (cursor as Record<string,unknown>).showId!=="string"||
+   !Number.isSafeInteger((cursor as Record<string,unknown>).year)||
+   !Number.isSafeInteger((cursor as Record<string,unknown>).week)))
+   throw new Error("Invalid results cursor");
+  return completedShowArchiveAsActor(context,worldId,promotionId,
+   cursor as {year:number;week:number;showId:string}|null);
+ }
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);
  if(method==="talent"){
   const search=p.search??"";

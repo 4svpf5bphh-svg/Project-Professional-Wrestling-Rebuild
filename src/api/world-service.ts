@@ -1,5 +1,6 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-show-archive.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
@@ -227,6 +228,15 @@ export async function completedShowAsActor(context:WorldApiContext,
  validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
  return readCompletedShowView(context.pool,{worldId,promotionId,showId,
   playerId:context.actor.playerId});
+}
+
+/** Past shows are a bounded, indexed one-read archive for this controller. */
+export async function completedShowArchiveAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,cursor:ShowArchiveCursor|null=null){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");
+ return readCompletedShowArchive(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId,cursor});
 }
 
 /** Promotion-scoped programme management, with the same verified actor as booking. */

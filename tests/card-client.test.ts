@@ -56,3 +56,22 @@ test("verified browser sessions can open global wrestler working connections rea
  await client("workingConnections",{personId:"wrestler-1"});
  assert.deepEqual(recorded,["workingConnections:wrestler-1"]);
 });
+
+test("Backstage messenger and Results archive actions reach the authenticated endpoint",async()=>{
+ const actions:string[]=[];
+ const client=createCardClient(scope,async(_url,init)=>{
+  const p=JSON.parse(String(init?.body));
+  actions.push(p.method);
+  assert.equal(p.playerId,undefined);
+  assert.equal((init?.headers as Record<string,string>)["x-ppw-csrf"],scope.csrfToken);
+  return new Response(JSON.stringify({ok:true}),{status:200});
+ });
+ await client("backstage");
+ await client("markBackstageRead",{personId:"w"});
+ await client("backstageArchive",{personId:"w",archived:true});
+ await client("backstageDecision",{conversationId:"c",decision:"NOT_NOW",
+  requestId:"id",expectedRevision:5});
+ await client("resultsArchive",{cursor:null});
+ assert.deepEqual(actions,["backstage","markBackstageRead","backstageArchive",
+  "backstageDecision","resultsArchive"]);
+});
