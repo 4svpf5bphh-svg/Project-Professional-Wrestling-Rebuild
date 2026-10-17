@@ -86,7 +86,7 @@ test("verified chemistry and dirty actor are recorded only for legitimate finish
   /not in the completed match/);
  const clean=receipt("CLEAN_PIN","A");
  assert.throws(()=>projectVerifiedBroadcastFallout(row,clean,clean.matches[0]!,
-  name,sides,null),/Unsupported recorded finish cheater/);
+  name,sides,null,["a","b"]),/Unsupported recorded finish cheater/);
 });
 test("identity, not duplicate display names, establishes the actual offender",()=>{
  const show=receipt("FOREIGN_OBJECT","A");
