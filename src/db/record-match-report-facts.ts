@@ -48,10 +48,17 @@ export function deriveCompletedMatchReportFacts(
    storyline.linkedActiveProgrammeCount<0||
    storyline.linkedActiveProgrammeCount>100))
    throw new Error("Invalid verified programme match context");
+  // A medical stoppage or run-in may supersede the originally booked dirty
+  // finish. Never attach the booked cheater to a different actual result.
+  const actualFinish=p.multi?.result.actualFinish??
+   p.tag?.result.final.actualFinish??p.interferencePreview?.actualFinish??
+   p.plannedFinish;
+  const recordedCheater=["DISQUALIFICATION","FOREIGN_OBJECT"].includes(actualFinish)?
+   p.finishCheaterId:null;
   return {matchId:p.slotId,ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
    chemistryModifier:p.chemistryModifier,
-   finishCheaterPersonId:p.finishCheaterId,
+   finishCheaterPersonId:recordedCheater,
    actualMinutes:score.actualLengthMinutes,injuries:verified,
    linkedProgrammes:storyline?.linkedActiveProgrammeCount??null,
    programmeSignal:storyline?.reason??null};
