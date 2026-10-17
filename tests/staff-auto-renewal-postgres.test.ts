@@ -7,6 +7,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {setStaffContinuityAsActor} from "../src/api/world-service.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {prepareDelegatedSameTermsRenewals} from "../src/db/staff-auto-renewals.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -79,6 +80,35 @@ test("Consent-based Talent Manager proposes unchanged expiring deals once, witho
   }>("SELECT payload FROM ppw_ledger_events WHERE world_id=$1 AND event_type='STAFF_SAME_TERMS_RENEWALS'",[world]));
   assert.deepEqual(ledger.map(x=>x.payload),
    [{proposalCount:1,scope:"CONSENTED_OWNER"}]);
+  // Past implementations silently dropped the 201st eligible renewal.
+  // Verify an entire promotion-sized batch is saved in one transaction.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`
+    INSERT INTO ppw_people(world_id,person_id,name)
+    SELECT $1,'additional-'||g,'Talent '||g FROM generate_series(1,205) AS g
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+      family,status,remaining_dates,start_week_index,expires_week_index,
+      date_entitlement,weekly_guarantee,appearance_fee,role_expectation,creative_control)
+    SELECT $1,'contract-extra-'||g,'additional-'||g,$2,
+     'LIMITED_NON_EXCLUSIVE','SIGNED',2,0,12,6,4000,7000,'FEATURED','CONSULTATION'
+    FROM generate_series(1,205) AS g
+   `,[world,promo]);
+  });
+  const batched=await withWorldTransaction(db.pool,tx=>
+   prepareDelegatedSameTermsRenewals(tx,world,10));
+  assert.equal(batched.proposed,205);
+  assert.equal(batched.candidateCount,205);
+  assert.equal(batched.reachedBatchCap,false);
+  const repeats=await withWorldTransaction(db.pool,tx=>
+   prepareDelegatedSameTermsRenewals(tx,world,10));
+  assert.equal(repeats.proposed,0);
+  const all=await withWorldTransaction(db.pool,tx=>
+   tx.query<{total:number}>(`
+    SELECT count(*)::integer AS total FROM ppw_contract_renewal_proposals
+     WHERE world_id=$1 AND status='PENDING'`,[world]));
+  assert.equal(all[0]!.total,206);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_contract_renewal_proposals","ppw_ledger_events",
