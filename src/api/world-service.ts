@@ -1,4 +1,4 @@
-import {readTagTeamWorkspace,createTagTeam,type CreateTagTeam}
+import {readTagTeamWorkspace,createTagTeam,nameTagTeam,type CreateTagTeam,type NameTagTeam}
  from "../db/tag-team-workspace.js";
 import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
@@ -287,6 +287,12 @@ export async function createTagTeamAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return createTagTeam(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function nameTagTeamAsActor(context:WorldApiContext,
+ input:Omit<NameTagTeam,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return nameTagTeam(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function stableWorkspaceAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
