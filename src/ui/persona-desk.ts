@@ -135,9 +135,10 @@ export function mountPersonaDesk(root:HTMLElement,
    filter.type="search";filter.placeholder="Search gimmicks or families";
    filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
    const options=el("div","ppw-persona-options");
+   const availableArchetypes=view.archetypes;
    const refreshOptions=()=>{
     options.replaceChildren();
-    const matches=view.archetypes.filter(x=>x.id!==persona.gimmickId&&(
+    const matches=availableArchetypes.filter(x=>x.id!==persona.gimmickId&&(
      !search||[x.label,x.familyLabel,x.description].some(y=>
       y.toLowerCase().includes(search.trim().toLowerCase())))).slice(0,24);
     for(const p of matches){
