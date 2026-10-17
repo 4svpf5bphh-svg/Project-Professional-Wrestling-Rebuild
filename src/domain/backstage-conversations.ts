@@ -1,5 +1,5 @@
 /** Text is presentation; request, decision and certified match evidence are gameplay. */
-export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH";
+export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
  "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
  "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW";
@@ -13,6 +13,7 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  GIMMICK_PITCH:["CONSIDER_REPACKAGE","KEEP_CHARACTER"],
  TAG_TEAM_PITCH:["EXPLORE_TEAM","NOT_NOW"],
  RIVALRY_PITCH:["EXPLORE_RIVALRY","NOT_NOW"],
+ TEAM_MOMENT:[],
 };
 export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  TALK:"Hear them out",DECLINE:"Turn down request",
@@ -58,6 +59,9 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
    (evidence?.averageCrowd!==null&&evidence?.averageCrowd!==undefined?
     " (average "+evidence.averageCrowd+"/100)":"")+
    ". We trust each other to make it work. Want to build a rivalry?";
+  case "TEAM_MOMENT":return "The tag chemistry with "+
+   (evidence?.partnerName??"my partner")+
+   " is clicking. Two strong shows together — the crowd and locker room can feel it.";
   case "TAG_TEAM_PITCH":return "We've got chemistry in the ring with "+
    (evidence?.partnerName??"my partner")+". Two or more strong tag matches ("+
    (evidence?.verifiedTagShows??"several")+" together). Could we build on that?";

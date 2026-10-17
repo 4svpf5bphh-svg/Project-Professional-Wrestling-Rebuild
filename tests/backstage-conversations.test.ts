@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
- for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH"] as const){
+ for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH","TEAM_MOMENT"] as const){
   assert.ok(backstageMessage(kind).length>20);
   if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
@@ -40,4 +40,6 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
   /4 matches.*48\/100/);
  assert.equal(backstageDecisionEffect("GIMMICK_PITCH","KEEP_CHARACTER").status,"DECLINED");
  assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/kept your word/);
+ assert.deepEqual(BACKSTAGE_CHOICES.TEAM_MOMENT,[]);
+ assert.match(backstageMessage("TEAM_MOMENT",{partnerName:"Partner"}),/Partner/);
 });

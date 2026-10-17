@@ -5,6 +5,7 @@ import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
+import {publishBackstageTeamMoments} from "./backstage-team-moments.js";
 import {settleBackstageMediations} from "./backstage-mediation.js";
 import {closeUnavailableBackstageRequests} from "./backstage-closure.js";
 import {settleBackstageContractDiscussions}
@@ -243,6 +244,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
       await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);
       await publishBackstageRequests(tx,input.worldId,weekIndex+1);
+      await publishBackstageTeamMoments(tx,input.worldId,weekIndex+1);
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],

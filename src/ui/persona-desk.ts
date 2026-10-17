@@ -162,6 +162,7 @@ export function mountPersonaDesk(root:HTMLElement,
     const summary=incoming?" · "+(incoming.status==="PENDING"?"New message":
      incoming.status==="PROMISED"?"Awaiting your booking":
      incoming.status==="FULFILLED"?"Promise kept":
+     incoming.status==="NOTED"?"Locker-room good news":
      incoming.status==="BROKEN"?"Promise broken":"Conversation history")+
      " · "+incoming.kind.replaceAll("_"," ").toLowerCase():
      last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
@@ -326,6 +327,9 @@ export function mountPersonaDesk(root:HTMLElement,
        item.decision==="PROMISE_FEATURED"?"Featured match":"Match")+
       " promised · "+Math.max(0,remaining)+" weeks remaining"));
     }
+   }else if(item.status==="NOTED"){
+    chat.append(el("small","ppw-muted",
+     "Locker-room update · no reply needed"));
    }else if(item.status==="EXCUSED"){
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      "This conversation has closed because the wrestler is no longer available under this contract."));
