@@ -74,7 +74,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    readCardParticipants(s.payload).map(p=>p.personId)))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
-   programme_id:string;heat:number|null;repetition:number;label:string}>(
+   programme_id:string;heat:number|null;repetition:number;label:string}>([
    "SELECT p.programme_id,p.heat,p.repetition,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
