@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 import { postgresPool } from "../src/db/postgres.js";
-import { withWorldTransaction } from "../src/db/transaction.js";
+import { withWorldTransaction,type TransactionPool } from "../src/db/transaction.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import { createWorld, addPromotion } from "../src/db/world-operations.js";
 import { joinWorld } from "../src/db/membership-operations.js";
 import { submitPromotionClaim } from "../src/db/promotion-commands.js";
@@ -21,20 +22,39 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
        financial_distress='WATCH' WHERE world_id=$1 AND promotion_id=$2`,[worldId,first]);
       await addPromotion(tx,worldId,{id:second,name:"Second Promotion",tier:"REGIONAL"});
     });
-    const before=await readPlayerWorldOverview(db.pool,worldId,playerId);
+    const meter=new MeasuredQuerySession("home-overview-one-SQL");
+    const measured:TransactionPool={async connect(){
+     const client=await db.pool.connect();
+     return {release(){client.release();},
+      async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+       return meter.execute(()=>client.query<T>(sql,params));
+      }};
+    }};
+    const before=await readPlayerWorldOverview(measured,worldId,playerId);
+    assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:1700}).queryCount,1);
+    assert.ok(Number.isFinite(before?.world.nextLockEpoch));
+    assert.ok(Number.isFinite(before?.world.serverEpoch));
+    assert.ok(before!.world.nextLockEpoch>before!.world.serverEpoch);
     assert.equal(before?.membership,"NONE");
     assert.equal(before?.promotion,null);
     assert.deepEqual((await listAvailablePromotions(db.pool,worldId,null,1)).map(p=>p.id),[first]);
     assert.deepEqual((await listAvailablePromotions(db.pool,worldId,first,1)).map(p=>p.id),[second]);
     await joinWorld(db.pool,{worldId,playerId,requestId:"join-"+id,expectedRevision:0});
     await submitPromotionClaim(db.pool,{worldId,playerId,promotionId:first,requestId:"claim-"+id,expectedRevision:1});
-    const after=await readPlayerWorldOverview(db.pool,worldId,playerId);
+    const after=await readPlayerWorldOverview(measured,worldId,playerId);
+    assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:3600}).queryCount,2);
     assert.equal(after?.membership,"ACTIVE");
     assert.equal(after?.world.revision,2);
     assert.equal(after?.promotion?.id,first);
     assert.equal(after?.promotion?.lastWeeklyNet,-125);
     assert.equal(after?.promotion?.runwayWeeks,9.5);
     assert.equal(after?.promotion?.financialDistress,"WATCH");
+    assert.equal(after?.membership,"ACTIVE");
+    assert.ok(after!.world.nextLockEpoch>after!.world.serverEpoch);
+    const outsider=await readPlayerWorldOverview(measured,worldId,"outsider-"+id);
+    assert.equal(outsider?.promotion,null);
+    assert.equal(outsider?.membership,"NONE");
+    assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:5400}).queryCount,3);
     assert.deepEqual((await listAvailablePromotions(db.pool,worldId)).map(p=>p.id),[second]);
     await assert.rejects(listAvailablePromotions(db.pool,worldId,null,51),/page size/);
   } finally {
