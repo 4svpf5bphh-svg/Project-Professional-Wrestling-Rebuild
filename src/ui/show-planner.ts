@@ -26,10 +26,15 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   const requestId=crypto.randomUUID();
   busy=true;draw();
   try{
-   await port.save({requestId,expectedRevision:data.worldRevision,
+   const result=await port.save({requestId,expectedRevision:data.worldRevision,
     year:editing.year,week:editing.week,eventType:editing.major?"MAJOR":"REGULAR",
     day,venueId,marketId:venue.marketId,ticketStrategy:strategy,
     ...(selectedDraft?{draftId:selectedDraft}:{})});
+   if(result&&typeof result==="object"&&"status" in result&&
+    result.status==="STALE"){
+    data=await port.load();
+    throw new Error("World changed. Review the updated Planner and save again.");
+   }
    editing=null;selectedDraft="";data=await port.load();error="";
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}
   finally{busy=false;draw();}

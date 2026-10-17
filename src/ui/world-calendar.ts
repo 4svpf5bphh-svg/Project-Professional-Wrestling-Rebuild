@@ -16,7 +16,7 @@ const label=(role:ShowRole)=>role==="FLAGSHIP"?"A show · Flagship":
 export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>void){
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
  let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
- let mode:"mine"|"world"="mine";
+ let mode:"mine"|"world"="mine",ppvOnly=false;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -35,8 +35,14 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   busy=true;render();
   try{
    const shared={requestId:crypto.randomUUID(),expectedRevision:data.worldRevision};
-   if(archiveId)await port.archive({...shared,seriesId:archiveId});
-   else await port.save({...shared,series:editing!});
+   const result=archiveId?
+    await port.archive({...shared,seriesId:archiveId}):
+    await port.save({...shared,series:editing!});
+   if(result&&typeof result==="object"&&"status" in result&&
+    result.status==="STALE"){
+    data=await port.load();
+    throw new Error("World changed. Review your calendar and save again.");
+   }
    data=await port.load();editing=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Calendar change failed";}
   finally{busy=false;render();}
@@ -105,14 +111,17 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   upcoming.append(button("My shows",()=>{mode="mine";render();},mode==="mine"),
    button("Across the World",()=>{mode="world";render();},mode==="world"));
   if(mode==="mine"){
-   for(const w of data.weeks.slice(0,expanded?52:12)){
-    if(!w.shows.length)continue;
+   upcoming.append(button("All events",()=>{ppvOnly=false;render();},!ppvOnly),
+    button("PPVs & specials",()=>{ppvOnly=true;render();},ppvOnly));
+   for(const w of (ppvOnly?data.weeks:data.weeks.slice(0,expanded?52:12))){
+    const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
+    if(!shows.length)continue;
     const article=node("article","","ppw-calendar-occurrence");
     article.append(node("strong","Year "+w.year+" · Week "+w.week));
-    for(const s of w.shows)article.append(node("p",s.name+" · "+label(s.role)));
+    for(const s of shows)article.append(node("p",s.name+" · "+label(s.role)));
     upcoming.append(article);
    }
-   upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week PPW year",()=>{
+   if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week PPW year",()=>{
     expanded=!expanded;render();
    }));
   }else{
