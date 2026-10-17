@@ -373,6 +373,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH",
        "DISQUALIFICATION","FOREIGN_OBJECT"]).map(x=>[x,nice(x)]),
       v=>edit(m,{plannedFinish:v}),!mutable())));
+    const titleDivision=["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(m.format)?
+     "SINGLES":m.format==="TAG"?"TAG":null;
+    if(titleDivision){
+     const choices:[string,string][]=[["","Non-title match"],
+      ...view.championships.filter(c=>c.division===titleDivision)
+       .map(c=>[c.championshipId,c.name+
+        (c.vacant?" · VACANT":c.holderName?" · "+c.holderName:"")] as [string,string])];
+     controls.append(field("Championship",selector(m.championshipId??"",choices,
+      value=>edit(m,{championshipId:value||undefined}),!mutable())));
+    }else if(m.championshipId){
+     controls.append(el("p","ppw-alert ppw-error",
+      "Championships require 2–4 singles wrestlers or a 2v2 tag match. Remove the title before saving."));
+    }
     controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     body.append(controls);
