@@ -77,6 +77,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
    const card=node("section","","ppw-planner-week");
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
+   if(week.scheduled?.length)card.append(node("p",
+    "On the calendar: "+week.scheduled.map(s=>s.name+" ("+
+     (s.role==="FLAGSHIP"?"A":s.role==="SECONDARY"?"B":s.role==="PREMIUM"?"PPV":s.role)+")").join(" · "),
+    "ppw-planner-calendar-label"));
    for(const show of week.shows){
     card.append(node("p",(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+

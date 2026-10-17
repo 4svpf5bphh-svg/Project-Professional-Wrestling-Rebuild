@@ -1,4 +1,6 @@
 import {mountPlanner,type PlannerPort} from "../ui/show-planner.js";
+import {mountWorldCalendar,type CalendarPort} from "../ui/world-calendar.js";
+import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
@@ -195,7 +197,19 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
-  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId})
+  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
+  openCalendar:()=>mountCalendarPage(root,scope,()=>mountPlannerPage(root,scope,onBack))
  };
  return mountPlanner(root,port,onBack);
+}
+
+/** Show identity recurrence editor; no private rival draft plans are exposed. */
+export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+ const call=createCardClient(scope);
+ const port:CalendarPort={
+  load:()=>call("calendar"),
+  save:input=>call("saveCalendar",input),
+  archive:input=>call("archiveCalendar",input)
+ };
+ return mountWorldCalendar(root,port,onBack??(()=>mountPlannerPage(root,scope)));
 }

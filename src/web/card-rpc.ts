@@ -1,5 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {plannerAsActor,planShowAsActor,contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
+import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
+ plannerAsActor,planShowAsActor,contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
@@ -17,9 +18,10 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["championships","championshipHistory","planner","planShow"].includes(method)?
+ const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar"].includes(method)?
   "":id("showId");
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
+ if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);
  if(method==="championshipHistory"){
   const cursor=p.cursor??null;
@@ -80,6 +82,16 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="saveCalendar"){
+  const series=p.series;
+  if(!series||typeof series!=="object"||Array.isArray(series))
+   throw new Error("Invalid calendar series");
+  return upsertCalendarAsActor(context,{worldId,promotionId,requestId,expectedRevision,
+   series:series as import("../domain/show-calendar.js").ShowSeries});
+ }
+ if(method==="archiveCalendar")
+  return archiveCalendarAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,seriesId:id("seriesId")});
  if(method==="planShow"){
   if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
    !Number.isSafeInteger(p.day)||typeof p.ticketStrategy!=="string"||

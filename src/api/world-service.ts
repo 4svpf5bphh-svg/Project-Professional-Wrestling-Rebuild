@@ -1,3 +1,5 @@
+import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
+ type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
 import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
  from "../db/planner-workspace.js";
 import {readTagTeamWorkspace,createTagTeam,nameTagTeam,type CreateTagTeam,type NameTagTeam}
@@ -180,6 +182,24 @@ export async function withdrawContractOfferAsActor(context:WorldApiContext,
 export async function pendingContractOffersAsActor(context:WorldApiContext,worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
  return readPendingContractOffers(context.pool,worldId,context.actor.playerId,promotionId);
+}
+
+/** Authenticated promotion show calendar. */
+export async function calendarAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readPromotionCalendar(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function upsertCalendarAsActor(context:WorldApiContext,
+ input:Omit<SeriesMutation,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return upsertPromotionSeries(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function archiveCalendarAsActor(context:WorldApiContext,
+ input:Omit<ArchiveSeries,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.seriesId,"series");
+ return archivePromotionSeries(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** A six-week controlled promotion planner; authenticated player is trusted. */

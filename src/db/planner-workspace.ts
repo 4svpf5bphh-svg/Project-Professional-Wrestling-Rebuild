@@ -3,6 +3,7 @@
  * Calendar dates are PPW weeks, not real local dates or scheduler activations.
  */
 import {randomUUID} from "node:crypto";
+import {defaults,seriesDue,type ShowSeries} from "../domain/show-calendar.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {SqlRows} from "./world-operations.js";
@@ -29,7 +30,7 @@ export interface PlannedShow {
 }
 export interface PlannerWeek {
  year:number;week:number;offset:number;required:boolean;major:boolean;
- canEdit:boolean;shows:PlannedShow[];
+ canEdit:boolean;shows:PlannedShow[];scheduled:ShowSeries[];
 }
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
@@ -103,6 +104,21 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  AND v.capacity IS NOT NULL AND v.weekly_hire_cost IS NOT NULL
  ORDER BY m.name,v.name,v.venue_id LIMIT 101`,[s.worldId,s.promotionId]);
  if(venues.length>100)throw new Error("Planner venue choices exceed safe limit");
+ const configured=await tx.query<{
+  series_id:string;name:string;role:ShowSeries["role"];
+  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
+  importance:number;active:boolean;
+ }>([
+  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",
+  "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2",
+  "ORDER BY series_id LIMIT 25"
+ ].join(" "),[s.worldId,s.promotionId]);
+ if(configured.length>24)throw new Error("Planner calendar series limit exceeded");
+ const scheduled:ShowSeries[]=configured.length?configured.map(x=>({
+  seriesId:x.series_id,name:x.name,role:x.role,eventType:x.event_type,
+  cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
+  importance:x.importance,active:x.active
+ })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
@@ -116,6 +132,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    const index=start+offset,when=dateAt(index);
    return {...when,offset,required:index%Math.max(1,owned.cadence)===0,
     major:major(index,owned.major_interval),canEdit:owned.booking_open,
+    scheduled:scheduled.filter(x=>seriesDue(x,index)),
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      draftId:d.draft_id,year:d.year,week:d.week,status:d.status,
      eventType:d.event_type??(major(index,owned.major_interval)?"MAJOR":"REGULAR"),

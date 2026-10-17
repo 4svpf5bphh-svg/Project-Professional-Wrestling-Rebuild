@@ -1,0 +1,15 @@
+.ppw-world-calendar{max-width:740px;margin:auto;padding:16px;color:#edf6f7}
+.ppw-calendar-header h1{font-size:29px;margin:12px 0 6px}
+.ppw-calendar-header p{color:#acc7d0}
+.ppw-calendar-panel{margin:14px 0;padding:15px;background:#102938;border:1px solid #375c6a;border-radius:14px}
+.ppw-calendar-panel h2{font-size:19px}
+.ppw-calendar-button{min-height:44px;border:1px solid #698895;border-radius:10px;background:#174251;color:#fff;padding:10px 14px;margin:4px;cursor:pointer}
+.ppw-calendar-button:disabled{opacity:.5}
+.ppw-calendar-series,.ppw-calendar-occurrence{padding:12px 0;border-top:1px solid #30505e}
+.ppw-calendar-series{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.ppw-calendar-series>div{flex:1 1 170px}
+.ppw-calendar-series p,.ppw-calendar-occurrence p{color:#acc7d0;font-size:14px}
+.ppw-calendar-field{display:block;margin:12px 0}
+.ppw-calendar-field span{display:block;margin-bottom:5px}
+.ppw-calendar-field input,.ppw-calendar-field select{box-sizing:border-box;width:100%;font-size:16px;min-height:44px;padding:8px;border-radius:9px;border:1px solid #658895;background:#10202d;color:#fff}
+.ppw-calendar-error{color:#ffb2aa}
