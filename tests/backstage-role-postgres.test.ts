@@ -90,7 +90,10 @@ test("Backstage featured-contract grievance requires four verified unfeatured ma
   const contractDesk=await readContractDesk(db.pool,worldId,playerId,promotionId);
   assert.equal(contractDesk.roster[0]!.backstageContractConversationId,talkId);
   assert.equal(contractDesk.summary.backstageContractDiscussions,1);
-  assert.equal(contractDesk.roster[0]!.status,"SIGNED");
+  assert.equal(contractDesk.summary.signed,1);
+   assert.equal((await read<{status:string}>(
+    "SELECT status FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2",
+    [worldId,deal]))[0]!.status,"SIGNED");
   assert.equal(contractDesk.roster[0]!.expiresWeekIndex,52);
   assert.equal(contractDesk.summary.pendingRenewals,0);
   await assert.rejects(readContractDesk(db.pool,worldId,"stranger",promotionId),
