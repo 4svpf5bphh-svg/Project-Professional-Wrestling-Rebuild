@@ -96,13 +96,17 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE";
    related_person_id:string|null;status:string;
-   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"EXPLORE_RENEWAL"|"MEDIATE"|null;
+   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|null;
    created_week_index:number;responded_week_index:number|null;
-   due_week_index:number|null}>([
+   due_week_index:number|null;promised_role:string|null;
+   observed_match_shows:number|null;observed_featured_shows:number|null;
+   assessment_reason:string|null;trust_delta:number}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
-   "created_week_index,responded_week_index,due_week_index",
+   "created_week_index,responded_week_index,due_week_index,",
+   "promised_role,observed_match_shows,observed_featured_shows,",
+   "assessment_reason,trust_delta",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
@@ -113,6 +117,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
     status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
     respondedWeekIndex:x.responded_week_index,dueWeekIndex:x.due_week_index,
+    promisedRole:x.promised_role,observedMatchShows:x.observed_match_shows,
+    observedFeaturedShows:x.observed_featured_shows,
+    assessmentReason:x.assessment_reason,trustDelta:x.trust_delta,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

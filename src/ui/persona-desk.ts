@@ -108,7 +108,7 @@ export function mountPersonaDesk(root:HTMLElement,
      incoming.status==="PROMISED"?"Awaiting your booking":
      incoming.status==="FULFILLED"?"Promise kept":
      incoming.status==="BROKEN"?"Promise broken":"Conversation history")+
-     " · "+incoming.kind.toLowerCase():
+     " · "+incoming.kind.replaceAll("_"," ").toLowerCase():
      last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
      ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
     const item=button(wrestler.name+summary,()=>{
@@ -189,15 +189,27 @@ export function mountPersonaDesk(root:HTMLElement,
     " · W"+(item.createdWeekIndex%52+1);
    chat.append(el("small","ppw-backstage-date",stamp),
     el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind)));
+   if(item.kind==="ROLE_USAGE"&&item.promisedRole)
+    chat.append(el("small","ppw-backstage-promise",
+     (item.promisedRole==="MAIN_EVENT"?"Main event":"Upper card")+
+     " · "+item.observedMatchShows+" verified matches; "+
+     item.observedFeaturedShows+" featured"));
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
      BACKSTAGE_LABELS[item.decision]));
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      backstageReply(item.decision,item.status)));
+    if(item.status==="BROKEN"&&item.trustDelta<0)
+     chat.append(el("small","ppw-backstage-promise",
+      "Broken promise · promotion trust "+item.trustDelta));
+    if(item.status==="EXCUSED")
+     chat.append(el("small","ppw-backstage-promise",
+      "No penalty · "+item.assessmentReason?.replaceAll("_"," ").toLowerCase()));
     if(item.status==="PROMISED"&&item.dueWeekIndex!==null){
      const remaining=item.dueWeekIndex-((view.worldYear-1)*52+view.worldWeek-1);
      chat.append(el("small","ppw-backstage-promise",
-      (item.decision==="PROMISE_SEGMENT"?"Promo/angle":"Match")+
+      (item.decision==="PROMISE_SEGMENT"?"Promo/angle":
+       item.decision==="PROMISE_FEATURED"?"Featured match":"Match")+
       " promised · "+Math.max(0,remaining)+" weeks remaining"));
     }
    }else if(view.canEdit){
