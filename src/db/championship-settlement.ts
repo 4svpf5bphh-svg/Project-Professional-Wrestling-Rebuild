@@ -40,25 +40,30 @@ export async function settleCanonicalSinglesTitleContests(
    FOR UPDATE OF c`,
    [receipt.worldId,receipt.promotionId,booking.championshipId]);
   const state=title[0];
+  const hasChampion=state?.reign_id!=null;
   if(title.length!==1||!state||state.division!=="SINGLES"||
-   !state.reign_id||state.holder_type!=="PERSON"||
-   state.reign_status!=="ACTIVE"||!state.person_id||
-   !booking.participants.includes(state.person_id))
-   throw new Error("Title contest lacks a valid defending singles champion");
+   (hasChampion&&(state.holder_type!=="PERSON"||
+    state.reign_status!=="ACTIVE"||!state.person_id||
+    !booking.participants.includes(state.person_id)))||
+   (!hasChampion&&(state.holder_type!==null||state.reign_status!==null||
+    state.person_id!==null)))
+   throw new Error("A singles title bout needs its champion or a vacant belt");
   const winner=booking.participants[winnerIndex]!;
   // A dirty finish, protected finish or referee's medical stoppage never
   // transfers the belt; clean, submission and flash victories can.
-  const transfer=winner!==state.person_id&&
+  const transfer=(!hasChampion||winner!==state.person_id)&&
    ["CLEAN_PIN","SUBMISSION","FLASH_PIN"].includes(bout.actualFinish);
   if(transfer){
-   const ended=await tx.query<{reign_id:string}>(`
+   if(hasChampion){
+    const ended=await tx.query<{reign_id:string}>(`
      UPDATE ppw_championship_reigns SET status='ENDED',
        ended_week_index=$5 WHERE world_id=$1 AND promotion_id=$2
        AND championship_id=$3 AND reign_id=$4 AND status='ACTIVE'
      RETURNING reign_id`,
      [receipt.worldId,receipt.promotionId,booking.championshipId,
       state.reign_id,(receipt.year-1)*52+receipt.week-1]);
-   if(ended.length!==1)throw new Error("Championship was already transferred");
+    if(ended.length!==1)throw new Error("Championship was already transferred");
+   }
    const nextId=receipt.showId+":"+booking.slotId+":new-reign";
    await tx.query(`
     INSERT INTO ppw_championship_reigns(
@@ -74,7 +79,7 @@ export async function settleCanonicalSinglesTitleContests(
   }else{
    // A successful defense is credited to the holder, not a losing
    // champion retaining the title through DQ or injury.
-   if(winner===state.person_id){
+   if(hasChampion&&winner===state.person_id){
     await tx.query(`
      UPDATE ppw_championship_reigns SET defenses=defenses+1
       WHERE world_id=$1 AND promotion_id=$2

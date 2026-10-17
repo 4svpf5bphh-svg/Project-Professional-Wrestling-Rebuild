@@ -66,23 +66,28 @@ export async function settleCanonicalTagTitleContests(
      AND c.championship_id=$3 AND c.status='ACTIVE'
    FOR UPDATE OF c`,[receipt.worldId,receipt.promotionId,booking.championshipId]);
   const current=state[0];
+  const hasChampion=current?.reign_id!=null;
   if(state.length!==1||!current||current.division!=="TAG"||
-    !current.reign_id||current.status!=="ACTIVE"||
+   (hasChampion&&(current.status!=="ACTIVE"||
     current.holder_type!=="TEAM"||!current.team_id||
-    !ids.includes(current.team_id))
-   throw new Error("Only the reigning active tag champions can defend");
+    !ids.includes(current.team_id)))||
+   (!hasChampion&&(current.status!==null||current.holder_type!==null||
+    current.team_id!==null)))
+   throw new Error("A tag title bout needs its champions or a vacant belt");
   const winner=ids[bout.actualWinnerSide==="A"?0:1]!;
-  const transfer=winner!==current.team_id&&
+  const transfer=(!hasChampion||winner!==current.team_id)&&
     ["CLEAN_PIN","FLASH_PIN","SUBMISSION"].includes(bout.actualFinish);
   if(transfer){
-   const updated=await tx.query<{reign_id:string}>(`
+   if(hasChampion){
+    const updated=await tx.query<{reign_id:string}>(`
     UPDATE ppw_championship_reigns SET status='ENDED',
       ended_week_index=$5
     WHERE world_id=$1 AND promotion_id=$2 AND championship_id=$3
       AND reign_id=$4 AND status='ACTIVE'
     RETURNING reign_id`,[receipt.worldId,receipt.promotionId,
      booking.championshipId,current.reign_id,(receipt.year-1)*52+receipt.week-1]);
-   if(updated.length!==1)throw new Error("Tag title reign was already ended");
+    if(updated.length!==1)throw new Error("Tag title reign was already ended");
+   }
    const nextReign=receipt.showId+":"+booking.slotId+":tag-reign";
    await tx.query(`
     INSERT INTO ppw_championship_reigns(
@@ -96,7 +101,7 @@ export async function settleCanonicalTagTitleContests(
     WHERE world_id=$1 AND promotion_id=$2 AND championship_id=$3`,
     [receipt.worldId,receipt.promotionId,booking.championshipId,nextReign]);
    transfers++;
-  }else if(winner===current.team_id){
+  }else if(hasChampion&&winner===current.team_id){
    await tx.query(`
     UPDATE ppw_championship_reigns SET defenses=defenses+1
     WHERE world_id=$1 AND promotion_id=$2 AND championship_id=$3
