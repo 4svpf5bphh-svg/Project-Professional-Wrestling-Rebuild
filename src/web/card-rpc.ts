@@ -1,5 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
+ tagTeamWorkspaceAsActor,createTagTeamAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
@@ -28,6 +29,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="tagTeams")return tagTeamWorkspaceAsActor(context,worldId,promotionId);
  if(method==="persona"||method==="backstage"){
   if(p.personId!==undefined&&typeof p.personId!=="string")
    throw new Error("Invalid wrestler");
@@ -84,6 +86,13 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="requestPersona")return requestPersonaAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,
   personId:id("personId"),gimmickId:id("gimmickId")});
+ if(method==="createTagTeam"){
+  if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
+   p.personIds.some(x=>typeof x!=="string"))
+   throw new Error("Invalid tag team pairing");
+  return createTagTeamAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,name:p.name,personIds:p.personIds as string[]});
+ }
  if(method==="createStable"){
   if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
    p.personIds.some(x=>typeof x!=="string"))
