@@ -41,10 +41,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "SELECT DISTINCT ON (r.person_id) r.person_id,r.requested_gimmick_id,",
    "r.status,r.reason,r.submitted_week_index",
    "FROM ppw_persona_change_requests r",
-   "WHERE r.world_id=$1 AND r.person_id=ANY($2::text[])",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2",
+   "AND r.person_id=ANY($3::text[])",
    "ORDER BY r.person_id,r.submitted_week_index DESC,r.request_id DESC",
    "LIMIT 500"
-  ].join(" "),[s.worldId,roster.map(x=>x.person_id)]):[];
+  ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id)]):[];
   const latestByPerson=new Map(inbox.map(x=>[x.person_id,x]));
   const selected=s.personId??roster[0]?.person_id;
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
@@ -103,9 +104,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    assessed_resistance:number}>([
    "SELECT requested_gimmick_id,status,reason,submitted_week_index,",
    "assessed_resistance FROM ppw_persona_change_requests",
-   "WHERE world_id=$1 AND person_id=$2",
+   "WHERE world_id=$1 AND person_id=$2 AND promotion_id=$3",
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
-  ].join(" "),[s.worldId,selected]);
+  ].join(" "),[s.worldId,selected,s.promotionId]);
   const conversations=await tx.query<{
    request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH";
    related_person_id:string|null;status:string;
