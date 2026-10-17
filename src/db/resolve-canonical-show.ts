@@ -11,6 +11,7 @@ import {readCanonicalSegmentContextsInTransaction}
 import {describeAuthoredSegment} from "../domain/segment-results.js";
 import {authoredConsequenceIntents} from "../domain/segment-consequences.js";
 import {settleCanonicalSegmentProgrammeEffects} from "./segment-programme-settlement.js";
+import {settleCanonicalAuthoredTurns} from "./segment-alignment-settlement.js";
 import {assembleArchivedShowResolution}
  from "../simulation/assemble-archived-show-resolution.js";
 import {recordCompletedShowInTransaction}
@@ -59,6 +60,7 @@ export async function resolveCanonicalShow(
    tx,completed.receipt,completed.evidence,stories);
   if(recorded==="RECORDED"){
    await settleCanonicalSegmentProgrammeEffects(tx,input,completed.receipt);
+   await settleCanonicalAuthoredTurns(tx,input,segments);
    if(projection.titleBookings.length)
     await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
    if(projection.tagTitleBookings.length)
