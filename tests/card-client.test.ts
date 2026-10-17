@@ -75,3 +75,22 @@ test("Backstage messenger and Results archive actions reach the authenticated en
  assert.deepEqual(actions,["backstage","markBackstageRead","backstageArchive",
   "backstageDecision","resultsArchive"]);
 });
+
+test("championship directory and paged lineage use signed browser session only",async()=>{
+ const actions:Record<string,unknown>[]=[];
+ const client=createCardClient(scope,async(_url,init)=>{
+  const data=JSON.parse(String(init?.body)) as Record<string,unknown>;
+  actions.push(data);
+  assert.equal(data.playerId,undefined);
+  assert.equal((init?.headers as Record<string,string>)["x-ppw-csrf"],scope.csrfToken);
+  return new Response(JSON.stringify({ok:true}),{status:200});
+ });
+ await client("championships");
+ await client("championshipHistory",{
+  titlePromotionId:"other-promotion",championshipId:"belt",
+  cursor:{startWeekIndex:33,reignId:"old-reign"}
+ });
+ assert.deepEqual(actions.map(x=>x.method),["championships","championshipHistory"]);
+ assert.equal(actions[1]!.promotionId,"promotion","Viewer ownership is scoped to session");
+ assert.equal(actions[1]!.titlePromotionId,"other-promotion");
+});
