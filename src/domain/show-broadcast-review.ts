@@ -58,7 +58,7 @@ function verdict(tone:BroadcastTone,key:string,isAngle:boolean):string{
 }
 function intentOpening(intent:string,key:string):string{
  const lines:Record<string,string[]>={
-  TECHNICAL:["A technical wrestling contest was the brief.",
+  TECHNICAL:["A technical contest was the brief.",
    "The card called for mat craft rather than spectacle."],
   HIGH_RISK:["High-risk wrestling was the booking.",
    "The creative plan asked the competitors to push the risk dial up."],
