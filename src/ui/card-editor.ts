@@ -85,6 +85,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
+ let managementOpen=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
  const mutable=()=>view?.canEdit===true&&!saving;
@@ -257,21 +258,28 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    segments.set(id,newEditorSegment(id));
    order.push(id);expanded=id;markDirty();render();
   },!mutable()));
+  const extras=el("div","ppw-management-links");
   if(port.openChampionships)
-   toolbar.append(button("Championships",()=>{port.openChampionships?.();},dirty||saving));
+   extras.append(button("Championships",()=>port.openChampionships?.(),dirty||saving));
   if(port.openProgrammes)
-   toolbar.append(button("Manage programmes",()=>{port.openProgrammes?.();},dirty||saving));
+   extras.append(button("Programmes",()=>port.openProgrammes?.(),dirty||saving));
   if(port.openTagTeams)
-   toolbar.append(button("Tag teams",()=>{port.openTagTeams?.();},dirty||saving));
+   extras.append(button("Tag teams",()=>port.openTagTeams?.(),dirty||saving));
   if(port.openContracts)
-   toolbar.append(button("Contract Desk",()=>port.openContracts?.(),dirty||saving));
+   extras.append(button("Contract Desk",()=>port.openContracts?.(),dirty||saving));
   if(port.openStables)
-   toolbar.append(button("Manage stables",()=>{port.openStables?.();},dirty||saving));
+   extras.append(button("Stables",()=>port.openStables?.(),dirty||saving));
   if(port.openWorkingConnections)
-   toolbar.append(button("Working connections",
-    ()=>port.openWorkingConnections?.(),dirty||saving));
+   extras.append(button("Working connections",()=>port.openWorkingConnections?.(),dirty||saving));
   if(port.openPersona)
-   toolbar.append(button("Wrestler identities",()=>port.openPersona?.(),dirty||saving));
+   extras.append(button("Wrestler identities",()=>port.openPersona?.(),dirty||saving));
+  if(extras.childElementCount){
+   const management=document.createElement("details");
+   management.className="ppw-management-menu";management.open=managementOpen;
+   management.ontoggle=()=>{managementOpen=management.open;};
+   management.append(el("summary","","Management tools · Titles, Contracts & Roster"),extras);
+   toolbar.append(management);
+  }
   root.append(toolbar);
   const list=el("section","ppw-card-list");
   for(const [i,slotId] of order.entries()){

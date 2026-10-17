@@ -94,3 +94,14 @@
  .ppw-card-bar strong{font-size:13px}
  .ppw-actions button{min-width:34px;width:34px}
 }
+
+/* Keep the card editor compact on iPhone: management navigation is available
+ * on demand instead of displaying seven tall buttons above the first match. */
+.ppw-management-menu{grid-column:1/-1;border:1px solid var(--ppw-line);
+ border-radius:11px;background:#102234;min-width:0}
+.ppw-management-menu>summary{min-height:44px;cursor:pointer;padding:11px 13px;
+ font-size:13px;font-weight:750;display:list-item;list-style-position:inside}
+.ppw-management-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;padding:0 10px 10px}
+.ppw-management-links>button{min-width:0;text-align:left;width:100%;font-size:13px}
+@media(max-width:450px){.ppw-management-links{grid-template-columns:1fr}}
