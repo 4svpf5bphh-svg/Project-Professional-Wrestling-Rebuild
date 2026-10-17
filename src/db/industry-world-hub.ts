@@ -37,7 +37,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    latest_show_week:number|null;recent_avg_crowd:string|null;
    completed_events:number;management_mode:string}>(`
    WITH recent AS (
-     SELECT p.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
+     SELECT c.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
       avg(c.crowd_response)::numeric(6,1)::text AS recent_avg_crowd,
       count(*)::integer AS completed_events
      FROM ppw_completed_shows c
