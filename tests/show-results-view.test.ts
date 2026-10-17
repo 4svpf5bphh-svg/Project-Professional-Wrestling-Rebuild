@@ -42,3 +42,9 @@ test("foreign player cannot read another promotion's private broadcast",async()=
  await assert.rejects(readCompletedShowView(pool,scope),/unavailable/);
  assert.equal(calls(),1);
 });
+
+test("completed match narrative is derived from the actual finish",async()=>{
+ const result=await readCompletedShowView(fake().pool,scope);
+ assert.match(result.entries[0]!.summary,/clean pinfall/);
+ assert.equal(result.entries[1]!.intent,null);
+});

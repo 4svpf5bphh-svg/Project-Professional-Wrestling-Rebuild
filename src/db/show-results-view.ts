@@ -8,10 +8,13 @@ import {validateCompletedShowReceipt,type CompletedShowReceipt}
 import type {CompletedSegmentStory} from "./completed-show-results.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
+import {describeMatchFinish} from "../domain/show-match-story.js";
+import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
  headline:string;summary:string;crowdResponse:number;
  outcome:string;actorIds:string[];targetIds:string[];
+ intent?:SegmentConsequenceIntent|null;
 }
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
@@ -69,11 +72,10 @@ export async function readCompletedShowView(
     winnerNames=winners?.participants.map(p=>name(p.personId))??[];
     participants=layout.participants.map(p=>p.personId);
    }catch{/* Older completed matches still retain their finish and score. */}
-   const finish=human(match.actualFinish);
-   const headline=winnerNames.length?winnerNames.join(" & ")+" win":
-    participants.length?participants.map(name).join(" vs "):"Match result";
-   const summary=winnerNames.length?
-    "Victory by "+finish.toLowerCase()+".":"Finished by "+finish.toLowerCase()+".";
+   const {headline,summary}=describeMatchFinish({
+    actualFinish:match.actualFinish,actualWinnerSide:match.actualWinnerSide,
+    winnerNames,participants:participants.map(name),
+   });
    entries.push({slotId:match.matchId,position:match.position,type:"MATCH",
     headline,summary,crowdResponse:match.crowdResponse,
     outcome:match.actualFinish,actorIds:participants,targetIds:[]});
@@ -90,7 +92,8 @@ export async function readCompletedShowView(
     headline:story?.headline??human(segment.kind),
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
-    actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[]});
+    actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
+    intent:story?.intent??null});
   }
   entries.sort((a,b)=>a.position-b.position);
   return {showId:input.showId,year:receipt.year,week:receipt.week,

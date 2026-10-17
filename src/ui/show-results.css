@@ -14,3 +14,14 @@
 .ppw-result-entry p{color:#bccbdb;line-height:1.55;margin:0 0 13px}
 .ppw-result-outcome{font-size:11px;font-weight:850;letter-spacing:.07em;
  border:1px solid #3d5366;border-radius:8px;padding:5px 8px;color:#e6ebf5}
+
+/* The original broadcast's two distinct cover stories, not duplicated noise. */
+.ppw-broadcast-highlights{display:grid;grid-template-columns:1fr 1fr;
+ gap:12px;margin:0 0 25px}
+.ppw-broadcast-section-title{grid-column:1/-1;font-size:14px;text-transform:uppercase;
+ letter-spacing:.09em;color:#c7d8eb;margin:0 0 1px}
+.ppw-broadcast-headline{background:linear-gradient(145deg,#172e40,#10212e);
+ border:1px solid #316776;border-radius:14px;padding:14px;min-width:0}
+.ppw-broadcast-headline strong{display:block;font-size:16px;line-height:1.3;margin:10px 0 6px}
+.ppw-broadcast-headline p{font-size:12px;color:#c3d3e1;margin:0;line-height:1.45}
+@media(max-width:520px){.ppw-broadcast-highlights{grid-template-columns:1fr}}

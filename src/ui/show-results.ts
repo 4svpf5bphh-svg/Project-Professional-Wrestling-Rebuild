@@ -1,5 +1,6 @@
 /** PPW mobile show broadcast; all finishes and outcomes come from the server receipt. */
 import type {CompletedShowView} from "../db/show-results-view.js";
+import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 export async function mountShowResults(root:HTMLElement,port:{load():Promise<CompletedShowView>}){
  root.classList.add("ppw-editor","ppw-results");
  const node=(tag:string,className:string,content:string)=>{
@@ -13,7 +14,19 @@ export async function mountShowResults(root:HTMLElement,port:{load():Promise<Com
    node("div","ppw-result-score",String(Math.round(show.crowdResponse))),
    node("p","ppw-muted","Audience reaction / 100 · "+show.matchCount+
     " matches · "+show.angleCount+" angles"));
+  const highlights=node("section","ppw-broadcast-highlights","");
+  const featured=showBroadcastHighlights(show.entries);
+  if(featured.length){
+   highlights.append(node("h2","ppw-broadcast-section-title","Tonight's headlines"));
+   for(const item of featured){
+    const card=node("article","ppw-broadcast-headline","");
+    card.append(node("span","ppw-eyebrow",item.category),
+     node("strong","",item.headline),node("p","",item.detail));
+    highlights.append(card);
+   }
+  }
   const timeline=node("section","ppw-result-timeline","");
+  timeline.append(node("h2","ppw-broadcast-section-title","The full card"));
   for(const entry of show.entries){
    const card=node("article","ppw-result-entry "+(entry.type==="MATCH"?
     "ppw-result-match":"ppw-result-angle"),"");
@@ -26,7 +39,7 @@ export async function mountShowResults(root:HTMLElement,port:{load():Promise<Com
     node("span","ppw-result-outcome",entry.outcome.replaceAll("_"," ")));
    timeline.append(card);
   }
-  root.replaceChildren(header,timeline);
+  root.replaceChildren(header,highlights,timeline);
  }catch(e){
   root.replaceChildren(node("p","ppw-alert ppw-error",
    e instanceof Error?e.message:"Unable to load show results"));
