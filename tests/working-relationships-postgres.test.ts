@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {settleWorkingPartnerships} from "../src/db/working-relationship-settlement.js";
+import {readWorkingConnections} from "../src/db/working-connections-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("PostgreSQL: original working chemistry develops across promotions, respects cooldown, and strains only established partners",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
@@ -12,6 +13,7 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
  const promos=["first-"+id,"second-"+id];
  const people=["a","b","c","d"].map(x=>x+"-"+id);
  const [a,b,c,d]=people as [string,string,string,string];
+ const playerId="controller-"+id;
  const read=<T extends Record<string,unknown>>(sql:string,params:unknown[]=[])=>withWorldTransaction(
   db.pool,tx=>tx.query<T>(sql,params));
  const addShow=async(n:number,quality:number)=>{
@@ -47,6 +49,16 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
    for(const personId of people)await tx.query(
     "INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,$3)",
     [worldId,personId,personId]);
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",
+    [worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",
+    [worldId,playerId,promos[0]!]);
+   for(const [i,personId] of [a,b].entries())await tx.query([
+    "INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,",
+    "family,status,remaining_dates,expires_week_index)",
+    "VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,52)"
+   ].join(" "),[worldId,"signed-"+i+"-"+id,personId,promos[0]!]);
   });
   assert.deepEqual(await addShow(1,84),{appearances:2,developments:0});
   assert.equal((await read<{n:string}>(
@@ -59,6 +71,20 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
   ].join(" "),[worldId]);
   assert.deepEqual(rel,Array.from({length:2},()=>({
    professional_trust:50.8,familiarity:2,affinity:0,rivalry_heat:0})));
+  const connections=await readWorkingConnections(db.pool,{
+   worldId,promotionId:promos[0]!,playerId,personId:a});
+  assert.equal(connections.roster.length,2);
+  assert.equal(connections.connections[0]!.personId,b);
+  assert.equal(connections.connections[0]!.recentTagMatches,2);
+  assert.equal(connections.connections[0]!.familiarity,2);
+  assert.equal(connections.connections[0]!.professionalTrust,50.8);
+  assert.equal(connections.connections[0]!.lastDevelopment?.kind,"IMPROVEMENT");
+  await assert.rejects(readWorkingConnections(db.pool,{
+   worldId,promotionId:promos[0]!,playerId:"not-controller",personId:a}),
+   /access denied/);
+  await assert.rejects(readWorkingConnections(db.pool,{
+   worldId,promotionId:promos[0]!,playerId,personId:c}),
+   /current roster/);
   assert.deepEqual(await addShow(3,89),{appearances:2,developments:0});
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_wrestler_relationship_changes WHERE world_id=$1",[worldId]))[0]!.n,"2");
@@ -89,8 +115,10 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
    for(const table of ["ppw_wrestler_relationship_changes",
     "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
     "ppw_completed_show_matches","ppw_completed_shows",
-    "ppw_ledger_events","ppw_people","ppw_promotions"])
+    "ppw_ledger_events","ppw_contracts","ppw_promotion_controls",
+    "ppw_memberships","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());
  }
