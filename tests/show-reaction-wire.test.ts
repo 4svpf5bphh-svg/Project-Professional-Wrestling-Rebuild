@@ -96,7 +96,8 @@ test("submission and flash-pin reactions never guess specific manoeuvres",()=>{
  const flash=match("flash",75);flash.outcome="FLASH_PIN";
  const wire=showReactionWire(show([tap,flash]));
  assert.deepEqual(wire.map(x=>x.source),["FINISH","FINISH"]);
- assert.match(wire[0]!.text,/submission/);
- assert.match(wire[1]!.text,/flash pin/);
+ const byId=new Map(wire.map(x=>[x.slotId,x.text]));
+ assert.match(byId.get("tap")!,/submission/);
+ assert.match(byId.get("flash")!,/flash pin/);
  assert.doesNotMatch(wire.map(x=>x.text).join(" "),/crossface|roll-up|cradle/);
 });
