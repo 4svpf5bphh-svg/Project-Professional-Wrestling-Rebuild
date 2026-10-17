@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
+import {stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
  completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
@@ -15,6 +15,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="stableChoices")return stableChoicesAsActor(context,worldId,promotionId);
  if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);
  if(method==="talent"){

@@ -1,6 +1,7 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
-import {readStableWorkspace,createStable,addStableMember,removeStableMember,disbandStable,
+import {readStableWorkspace,readActiveStableChoices,
+ createStable,addStableMember,removeStableMember,disbandStable,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
  from "../db/stable-workspace.js";
 import {readProgrammeWorkspace,startProgramme,endProgramme,
@@ -271,4 +272,12 @@ export async function disbandStableAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return disbandStable(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function stableChoicesAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readActiveStableChoices(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId});
 }

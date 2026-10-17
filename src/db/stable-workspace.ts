@@ -201,3 +201,17 @@ export async function disbandStable(pool:TransactionPool,input:DisbandStableInpu
     memberCount:former.length};
   }});
 }
+
+/** Load only on request while editing a faction angle, not on every card read. */
+export async function readActiveStableChoices(pool:TransactionPool,s:StableScope){
+ return withSqlClient(pool,async tx=>{
+  await controlledPromotion(tx,s);
+  const rows=await tx.query<{stable_id:string;name:string}>([
+   "SELECT stable_id,name FROM ppw_stables WHERE world_id=$1",
+   "AND promotion_id=$2 AND status='ACTIVE'",
+   "ORDER BY name,stable_id LIMIT 101"
+  ].join(" "),[s.worldId,s.promotionId]);
+  if(rows.length>100)throw new Error("Too many active stables");
+  return rows.map(x=>({stableId:x.stable_id,name:x.name}));
+ });
+}

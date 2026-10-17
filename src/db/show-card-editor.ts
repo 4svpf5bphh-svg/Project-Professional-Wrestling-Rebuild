@@ -183,6 +183,9 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
   const participants=readCardParticipants(p);
   if(s.programmeId!==undefined&&s.programmeId!==null&&!validId(s.programmeId))
    throw new Error("Invalid angle programme");
+  if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(String(p.kind))&&
+   (typeof p.stableId!=="string"||!validId(p.stableId)))
+   throw new Error("Book a stable before creating a faction story");
   return {slotId:s.slotId,programmeId:s.programmeId??null,
    payload:buildBookedSegmentPayload({
    slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
@@ -191,6 +194,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
+   ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),
   },participants)};
  });
  const submitted=new Set(matches.map(x=>x.slotId));
@@ -237,6 +241,16 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      [input.worldId,input.promotionId,linkedIds]);
     if(active.length!==linkedIds.length)
      throw new Error("Only active promotion programmes may be booked");
+   }
+   const stableIds=[...new Set(authored?.flatMap(s=>
+    s.payload.stableId?[s.payload.stableId]:[])??[])];
+   if(stableIds.length){
+    const active=await tx.query<{stable_id:string}>([
+     "SELECT stable_id FROM ppw_stables WHERE world_id=$1",
+     "AND promotion_id=$2 AND status='ACTIVE' AND stable_id=ANY($3::text[])"
+    ].join(" "),[input.worldId,input.promotionId,stableIds]);
+    if(active.length!==stableIds.length)
+     throw new Error("Faction angle must refer to an active owned stable");
    }
    const appearances=uniqueShowAppearances([
     ...booked,...segments.flatMap(s=>readCardParticipants(s.payload))]);
