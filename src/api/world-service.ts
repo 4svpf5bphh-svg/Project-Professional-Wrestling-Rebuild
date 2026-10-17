@@ -1,5 +1,7 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readProgrammeWorkspace,startProgramme,endProgramme,
+ type StartProgrammeInput,type EndProgrammeInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -214,4 +216,24 @@ export async function completedShowAsActor(context:WorldApiContext,
  validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
  return readCompletedShowView(context.pool,{worldId,promotionId,showId,
   playerId:context.actor.playerId});
+}
+
+/** Promotion-scoped programme management, with the same verified actor as booking. */
+export async function programmeWorkspaceAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");
+ return readProgrammeWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function startProgrammeAsActor(context:WorldApiContext,
+ input:Omit<StartProgrammeInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return startProgramme(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function endProgrammeAsActor(context:WorldApiContext,
+ input:Omit<EndProgrammeInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return endProgramme(context.pool,{...input,playerId:context.actor.playerId});
 }

@@ -1,5 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+import {programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
+ completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -10,6 +11,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
+ if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);
  if(method==="talent"){
@@ -25,6 +27,21 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="startProgramme"){
+  const check=(v:unknown):v is {kind:"PERSON"|"TEAM";refId:string}[]=>
+   Array.isArray(v)&&v.length>0&&v.length<=2&&v.every(x=>
+    x&&typeof x==="object"&&
+    (x.kind==="PERSON"||x.kind==="TEAM")&&typeof x.refId==="string");
+  if(!check(p.sideA)||!check(p.sideB)||!(
+   p.championshipId===undefined||p.championshipId===null||
+   typeof p.championshipId==="string"))
+   throw new Error("Invalid programme sides");
+  return startProgrammeAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,sideA:p.sideA,sideB:p.sideB,
+   championshipId:p.championshipId as string|null|undefined});
+ }
+ if(method==="endProgramme")return endProgrammeAsActor(context,{
+  worldId,promotionId,requestId,expectedRevision,programmeId:id("programmeId")});
  if(method==="save"){
   if(!Array.isArray(p.matches)||!Array.isArray(p.runningOrder)||
    (p.segments!==undefined&&!Array.isArray(p.segments)))
