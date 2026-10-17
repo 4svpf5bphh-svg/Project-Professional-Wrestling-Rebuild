@@ -66,11 +66,11 @@ function renderSection(){
   navigation.append(tab);
  }
  navigation.hidden=false;
- game.classList.remove("ppw-home");
+ game.className="";
  game.replaceChildren();
  const back=()=>openSection("home");
  switch(section){
-  case "home":mountWorldHomePage(game,scope);break;
+  case "home":mountWorldHomePage(game,scope,openSection);break;
   case "planner":mountPlannerPage(game,scope,back);break;
   case "roster":mountRosterPage(game,scope);break;
   case "backstage":mountPersonaPage(game,scope);break;
@@ -100,6 +100,7 @@ function renderSection(){
  }
 }
 window.addEventListener("hashchange",()=>renderSection());
+window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;

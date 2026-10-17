@@ -6,6 +6,7 @@ import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
+import type {HostSection} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
@@ -38,24 +39,27 @@ type Scope=CardSessionScope;
 /** One permanent iPhone-first entrance to every completed workspace.
  * Navigating does not advance simulation or create a new World.
  */
-export function mountWorldHomePage(root:HTMLElement,scope:Scope){
+export function mountWorldHomePage(root:HTMLElement,scope:Scope,
+ onNavigate?:(section:HostSection)=>void){
  const call=createCardClient(scope);
+ const go=(section:HostSection,fallback:()=>void)=>onNavigate?
+  ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
   load:()=>call("overview"),
-  planner:()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope)),
-  roster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
-  market:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
-  contracts:()=>mountContractDesk(root,contractPort(call),
-   ()=>mountWorldHomePage(root,scope)),
-  backstage:()=>mountPersonaDesk(root,personaPort(call),
+  planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
+  roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
+  market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
+  contracts:go("contracts",()=>mountContractDesk(root,contractPort(call),
+   ()=>mountWorldHomePage(root,scope))),
+  backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call),
    ()=>mountWorldHomePage(root,scope),
-   ()=>mountProgrammePage(root,scope)),
-  results:()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountWorldHomePage(root,scope));},
-  business:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
-  staff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
-  industry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
-  calendar:()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope))
+   ()=>mountProgrammePage(root,scope))),
+  results:go("results",()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountWorldHomePage(root,scope));}),
+  business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
+  industry:go("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
+  calendar:go("calendar",()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope)))
  };
  return mountWorldHome(root,port);
 }

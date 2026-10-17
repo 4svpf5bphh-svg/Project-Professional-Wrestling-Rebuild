@@ -30,6 +30,8 @@ export function createCardClient(scope:CardSessionScope,
    headers:{"content-type":"application/json","x-ppw-csrf":csrfToken},
    body:JSON.stringify({...extra,worldId,promotionId,showId,method}),
   });
+  if(response.status===401&&typeof window!=="undefined")
+   window.dispatchEvent(new Event("ppw:session-lost"));
   if(!response.ok)throw new Error(response.status===409?
    "The World changed. Reload and review your card.":
    response.status===401?"Please sign in again":
