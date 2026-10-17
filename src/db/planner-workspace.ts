@@ -213,6 +213,8 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    if(allDrafts.length>4)throw new Error("Too many weekly card drafts");
    const existing=allDrafts.filter(x=>x.booking_class===bookingClass);
    if(existing.length>1)throw new Error("Multiple show drafts need reconciliation");
+   if(existing.length&&!input.draftId)
+    throw new Error("This week already has a planned show");
    if(allDrafts.some(x=>x.booking_class!==bookingClass&&x.show_day===input.day))
     throw new Error("Your weekly show and PPV must run on different days");
    if(existing.length&&existing[0]!.show_series_id!== (selected?.seriesId??null))
