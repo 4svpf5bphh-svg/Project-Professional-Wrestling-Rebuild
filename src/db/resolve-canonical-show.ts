@@ -16,6 +16,8 @@ import {assembleArchivedShowResolution}
  from "../simulation/assemble-archived-show-resolution.js";
 import {recordCompletedShowInTransaction}
  from "./completed-show-results.js";
+import {recordCompletedMatchReportFactsInTransaction}
+ from "./record-match-report-facts.js";
 import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
@@ -60,6 +62,8 @@ export async function resolveCanonicalShow(
   const recorded=await recordCompletedShowInTransaction(
    tx,completed.receipt,completed.evidence,stories);
   if(recorded==="RECORDED"){
+   // One immutable batch in the same World transaction as completed results.
+   await recordCompletedMatchReportFactsInTransaction(tx,projection);
    await settleCompletedProgrammeHistory(tx,{
     ...input,eventImportance:projection.eventImportance,
     matches:projection.projections.map(p=>({
