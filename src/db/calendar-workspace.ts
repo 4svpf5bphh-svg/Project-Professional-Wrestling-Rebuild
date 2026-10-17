@@ -7,7 +7,7 @@ import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
-import {defaults,occurrences,validateSchedule,validateSeries,weekIndex,
+import {defaults,occurrences,seriesDue,dateAt,validateSchedule,validateSeries,weekIndex,
  type ShowSeries} from "../domain/show-calendar.js";
 export interface CalendarScope {worldId:string;promotionId:string;playerId:string}
 export interface SeriesMutation extends CalendarScope {
@@ -69,7 +69,54 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,scope);
   const series=await load(tx,scope,owned);
-  return {promotionName:owned.name,year:owned.year,week:owned.week,
+  // Public recurrence only. Never expose a rival promotion's private draft,
+  // intended venue, ticket strategy or planned wrestler appearances.
+  const rows=await tx.query<{
+   promotion_id:string;promotion_name:string;cadence:number;
+   major_interval:number|null;series_id:string|null;name:string|null;
+   role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
+   cadence_weeks:number|null;anchor_week:number|null;
+   importance:number|null;
+  }>([
+   "SELECT p.promotion_id,p.name AS promotion_name,",
+   "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
+   "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance",
+   "FROM ppw_promotions p JOIN ppw_worlds w ON w.world_id=p.world_id",
+   "LEFT JOIN ppw_show_series s ON s.world_id=p.world_id",
+   "AND s.promotion_id=p.promotion_id AND s.active",
+   "WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'",
+   "ORDER BY p.promotion_id,s.series_id LIMIT 513"
+  ].join(" "),[scope.worldId]);
+  if(rows.length>512)throw new Error("World calendar would exceed the read budget");
+  const promotions=new Map<string,{name:string;series:ShowSeries[]}>();
+  for(const row of rows){
+   let promotion=promotions.get(row.promotion_id);
+   if(!promotion){
+    promotion={name:row.promotion_name,series:[]};
+    promotions.set(row.promotion_id,promotion);
+   }
+   if(row.series_id&&row.name&&row.role&&row.event_type&&
+    row.cadence_weeks!==null&&row.anchor_week!==null&&row.importance!==null)
+    promotion.series.push({seriesId:row.series_id,name:row.name,role:row.role,
+     eventType:row.event_type,cadenceWeeks:row.cadence_weeks,
+     anchorWeek:row.anchor_week,importance:row.importance,active:true});
+   else if(!promotion.series.length)
+    promotion.series=defaults(row.promotion_name,row.cadence,row.major_interval??4);
+  }
+  const start=weekIndex(owned.year,owned.week);
+  const worldWeeks=Array.from({length:12},(_,offset)=>{
+   const index=start+offset;
+   const events=[...promotions].flatMap(([promotionId,promotion])=>
+    promotion.series.filter(s=>seriesDue(s,index)).map(s=>({
+     promotionId,promotionName:p.name,seriesId:s.seriesId,name:s.name,
+     role:s.role,eventType:s.eventType,importance:s.importance
+    }))).sort((a,b)=>b.importance-a.importance||
+     a.promotionName.localeCompare(b.promotionName)||a.name.localeCompare(b.name));
+   return {...dateAt(index),offset,events};
+  });
+  if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
+   throw new Error("World calendar occurrence budget exceeded");
+  return {worldWeeks,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
    weeks:occurrences(series,weekIndex(owned.year,owned.week),26)};
