@@ -20,6 +20,7 @@ import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
 import {settleCanonicalTagCareerConsequences} from "./tag-career-settlement.js";
+import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
@@ -71,6 +72,16 @@ export async function resolveCanonicalShow(
     await settleCanonicalTagTitleContests(tx,completed.receipt,projection.tagTitleBookings);
    await settleCanonicalTagCareerConsequences(tx,projection);
    await settleMultiIndividualCareerConsequences(tx,projection);
+   await settleWorkingPartnerships(tx,{
+    ...input,matches:projection.projections.flatMap(p=>{
+     const sides=p.tag?.layout.sides;
+     if(!sides||sides.length!==2||sides.some(s=>s.participants.length!==2))
+      return [];
+     return [{matchId:p.slotId,executionQuality:p.score.executionQuality,
+      sideA:sides[0]!.participants.map(x=>x.personId),
+      sideB:sides[1]!.participants.map(x=>x.personId)}];
+    })
+   });
   }
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{

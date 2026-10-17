@@ -25,3 +25,7 @@ This is an implementation inventory, not a claim of complete gameplay parity.
 
 Avoid full-World JSON loads. Use bounded reads/writes and preserve player-authored
 scripted outcomes. No production deployment or scheduled World Lock during development.
+
+## Verified working partnerships
+
+World Lock records only completed 2v2 teammate pairs. Two good shows in twelve weeks can develop professional familiarity and trust, on an eight-week cooldown. Three verified poor shows can strain **established** confidence, but a scripted rivalry, loss, attack or faction turn never invents personal dislike. Relationship changes are auditable and global to the wrestler, regardless of which promotion they worked for. All reads/writes are indexed and bounded.
