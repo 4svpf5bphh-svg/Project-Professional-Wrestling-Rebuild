@@ -95,6 +95,21 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "ORDER BY p.programme_id LIMIT 101"
    ].join(" "),[id.worldId,id.promotionId]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
+  const titles=await tx.query<{
+   championship_id:string;name:string;division:"SINGLES"|"TAG";
+   holder_name:string|null;current_reign_id:string|null;
+  }>([
+   "SELECT c.championship_id,c.name,c.division,c.current_reign_id,",
+   "COALESCE(p.name,t.name) AS holder_name FROM ppw_championships c",
+   "LEFT JOIN ppw_championship_reigns r ON r.world_id=c.world_id",
+   "AND r.promotion_id=c.promotion_id AND r.championship_id=c.championship_id",
+   "AND r.reign_id=c.current_reign_id AND r.status='ACTIVE'",
+   "LEFT JOIN ppw_people p ON p.world_id=r.world_id AND p.person_id=r.person_id",
+   "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id AND t.team_id=r.team_id",
+   "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='ACTIVE'",
+   "ORDER BY c.division,c.name,c.championship_id LIMIT 101"
+  ].join(" "),[id.worldId,id.promotionId]);
+  if(titles.length>100)throw new Error("Too many active championships");
   const links=await tx.query<{slot_id:string;programme_id:string}>(
    "SELECT slot_id,programme_id FROM ppw_programme_match_activities"+
    " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3"+
@@ -108,6 +123,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     [id.worldId,personIds]):[];
   return {selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division})),
+   championships:titles.map(c=>({championshipId:c.championship_id,
+    name:c.name,division:c.division,holderName:c.holder_name,
+    vacant:c.current_reign_id===null})),
    programmes:activeProgrammes.map(p=>({programmeId:p.programme_id,label:p.label,heat:p.heat,
     repetition:p.repetition})),
    programmeLinks:links.map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
@@ -306,6 +324,48 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     if(divisions.size!==1||
      !["MEN","WOMEN"].includes([...divisions][0]??""))
      throw new Error("Mixed or missing booking division in match");
+   }
+   // Only the controlled promotion's active championships may be booked.
+   // The original title champion must be in the bout. A vacant title may
+   // crown a winner through verified canonical World resolution instead.
+   const titleMatches=matches.filter(m=>m.payload.championshipId!==undefined);
+   if(titleMatches.length){
+    const titleIds=titleMatches.map(m=>m.payload.championshipId!);
+    if(new Set(titleIds).size!==titleIds.length)
+     throw new Error("A title may be contested only once on a card");
+    const titleRows=await tx.query<{championship_id:string;division:string;
+     person_id:string|null;team_id:string|null;champion_people:string[]}>([
+     "SELECT c.championship_id,c.division,r.person_id,r.team_id,",
+     "ARRAY(SELECT person_id FROM ppw_tag_team_members",
+     "WHERE world_id=c.world_id AND team_id=r.team_id AND active",
+     "ORDER BY person_id) AS champion_people",
+     "FROM ppw_championships c LEFT JOIN ppw_championship_reigns r",
+     "ON r.world_id=c.world_id AND r.promotion_id=c.promotion_id",
+     "AND r.championship_id=c.championship_id AND r.reign_id=c.current_reign_id",
+     "AND r.status='ACTIVE'",
+     "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='ACTIVE'",
+     "AND c.championship_id=ANY($3::text[])"
+    ].join(" "),[input.worldId,input.promotionId,titleIds]);
+    if(titleRows.length!==titleIds.length)
+     throw new Error("Title must belong to the active promotion");
+    const byTitle=new Map(titleRows.map(t=>[t.championship_id,t]));
+    for(const m of titleMatches){
+     const title=byTitle.get(m.payload.championshipId!)!;
+     const layout=readCanonicalMatchLayout(m.payload);
+     if(title.division==="SINGLES"){
+      if(layout.family!=="INDIVIDUAL"||layout.sides.length<2||
+       layout.sides.length>4||layout.ruleset==="ELIMINATION"||
+       (title.person_id&&!m.payload.participants.some(x=>x.personId===title.person_id)))
+       throw new Error("A singles title requires 2–4 wrestlers including its champion");
+     }else if(title.division==="TAG"){
+      if(layout.family!=="TEAMS"||layout.sides.length!==2||
+       layout.sides.some(side=>side.participants.length!==2)||
+       (title.team_id&&!layout.sides.some(side=>
+        side.participants.map(x=>x.personId).sort().join("|")===
+        [...title.champion_people].sort().join("|"))))
+       throw new Error("A tag title requires 2v2 with the reigning team");
+     }else throw new Error("Unsupported championship division");
+    }
    }
    // Original PPW automatically ties a booked bout to an active rivalry
    // only when its two sides fit exactly one orientation of that feud.
