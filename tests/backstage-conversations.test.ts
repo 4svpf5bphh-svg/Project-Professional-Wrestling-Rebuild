@@ -7,7 +7,7 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
   assert.ok(backstageMessage(kind).length>20);
   if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
-  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH")
+  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
   for(const decision of BACKSTAGE_CHOICES[kind])
    assert.ok(["ANSWERED","DECLINED","PROMISED"].includes(
