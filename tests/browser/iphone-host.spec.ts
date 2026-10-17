@@ -37,7 +37,7 @@ test("iPhone sign in, persistent navigation and deep-linked desks",async({page})
  const readsOnHome=methods.length;
  await nav.getByRole("button",{name:"More"}).click();
  await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
- expect(methods.length).toBe(readsOnHome,"Opening the local office menu never reads Neon");
+ expect(methods.length,"Opening the local office menu never reads Neon").toBe(readsOnHome);
  await nav.getByRole("button",{name:"Home"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await page.getByRole("button",{name:/Talent Market/}).click();
