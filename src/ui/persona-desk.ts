@@ -35,7 +35,14 @@ export function mountPersonaDesk(root:HTMLElement,
    if(!outcome||typeof outcome!=="object"||!("result" in outcome))
     throw new Error("Wrestler did not respond");
    const result=(outcome as {result:{accepted:boolean;reason:string}}).result;
-   view=await port.load(name);chosen=null;answer=null;
+   view=await port.load(name);chosen=null;
+   answer=result.accepted?
+    "Agreed. This is my character now — you'll see it wherever I work.":
+    result.reason==="ICONIC_PERSONA_PROTECTED"?
+     "That identity means too much to me. I'm keeping it.":
+    result.reason==="CREATIVE_APPROVAL_WITHHELD"?
+     "You need my approval for that, and I'm not giving it.":
+     "I hear the pitch, but I'm staying with the character I've built.";
   }catch(e){error=e instanceof Error?e.message:"Proposal could not be reviewed";}
   finally{loading=false;render();}
  }
