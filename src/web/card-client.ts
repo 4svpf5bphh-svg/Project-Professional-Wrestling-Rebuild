@@ -16,7 +16,8 @@ export function createCardClient(scope:CardSessionScope,
   if(!["load","talent","save","ready","results","programmes","startProgramme","endProgramme","stables","createStable",
    "addStableMember","removeStableMember","disbandStable","stableChoices",
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
-   "backstageArchive","backstageDecision","resultsArchive"].includes(method))
+   "backstageArchive","backstageDecision","resultsArchive",
+   "championships","championshipHistory"].includes(method))
    throw new Error("Unknown card action");
   const response=await transport("/api/card",{
    method:"POST",credentials:"same-origin",
