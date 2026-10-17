@@ -10,6 +10,7 @@ export interface StaffScheduleInput {
   personIds:readonly string[];
   availableVenueIds:readonly string[];
   bookedShows:readonly ExistingShowBooking[];
+  excludedDays?:readonly number[];
 }
 export interface StaffScheduleChoice {day:number;venueId:string}
 
@@ -22,7 +23,9 @@ export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffSched
   if(!worldId||!worldSeed||!promotionId||!showId ||
     !Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||
     input.personIds.length>100||input.bookedShows.length>128||
-    input.availableVenueIds.length>256)throw new Error("Invalid staff schedule scope");
+    input.availableVenueIds.length>256||(input.excludedDays?.length??0)>7||
+    input.excludedDays?.some(day=>!Number.isInteger(day)||day<1||day>7))
+    throw new Error("Invalid staff schedule scope");
   if(input.preferredDay!==null &&
       (!Number.isInteger(input.preferredDay)||input.preferredDay<1||input.preferredDay>7))
     throw new Error("Invalid requested day");
@@ -31,7 +34,8 @@ export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffSched
   const venues=[...new Set(input.availableVenueIds)].sort();
   if(venues.length!==input.availableVenueIds.length)throw new Error("Duplicate venue in staff catalogue");
   const personIds=new Set(input.personIds);
-  const days=input.preferredDay===null?[1,2,3,4,5,6,7]:[input.preferredDay];
+  const days=(input.preferredDay===null?[1,2,3,4,5,6,7]:[input.preferredDay])
+    .filter(day=>!input.excludedDays?.includes(day));
   const availableVenues=input.preferredVenueId===null?venues:
     venues.includes(input.preferredVenueId)?[input.preferredVenueId]:[];
   const candidates=days.flatMap(day=>availableVenues.map(venueId=>({day,venueId})));

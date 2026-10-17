@@ -15,6 +15,7 @@ export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
  roster:readonly AiRosterCandidate[];bookedShows:readonly ExistingShowBooking[];
  activeVenues:readonly string[];eventType:EventType;
+ excludedDays?:readonly number[];
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  recentPairs?:readonly string[];
  establishedPartners?:readonly {aId:string;bId:string}[];
@@ -108,6 +109,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   worldId:input.worldId,worldSeed:input.worldSeed,year:input.year,week:input.week,
   promotionId:input.promotionId,showId:input.showId,
   preferredDay:null,preferredVenueId:null,personIds:[],
+  excludedDays:input.excludedDays,
   availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
  if(!schedule)return {status:"UNFILLED",reason:"NO_VENUE_OR_DAY"};
  const available=eligible.filter(p=>!occupiedSameDay(schedule.day,p.personId));

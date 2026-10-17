@@ -102,7 +102,7 @@ export async function prepareGeneratedWorldShowCommerce(
       d.ai_financial_caution);
     const wrote=await tx.query<{draft_id:string}>(`
      UPDATE ppw_booking_drafts SET market_id=$4,
-       event_type=$5,ticket_strategy=$6,event_importance=$7,
+       event_type=$5,ticket_strategy=$6,event_importance=COALESCE(event_importance,$7),
        revision=revision+1
       WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3
        AND status='SUBMITTED' AND booking_expected_demand IS NULL

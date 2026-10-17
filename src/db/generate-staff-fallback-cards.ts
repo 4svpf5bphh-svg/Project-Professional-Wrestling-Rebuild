@@ -4,6 +4,7 @@ import {chooseEmergencyStaffCard,orderStaffPromotions,type StaffWrestlerCandidat
   from "../domain/staff-fallback-card.js";
 import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
+import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
 import {chooseAiWorldCard,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
 
@@ -14,17 +15,21 @@ type Delegated={
   promotion_id:string;show_id:string|null;controller_player_id:string|null;
   owner_player_id:string|null;current_controller:string|null;
   delegated:boolean|null;status:string;management_mode:string;
+  promotion_name:string;cadence:number;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
   booking_division:"MEN"|"WOMEN";weekly_service_capacity:number|null;
   momentum:number|null;recognition:number|null;popularity:number|null;
   presentation:number|null;match_craft:number|null;
+  remaining_dates:number|null;
 };
 type Generated={promotionId:string;showId:string;day:number;venueId:string;
   participants:{personId:string;contractId:string}[];
   scriptedWinner:string;bookingDivision:"MEN"|"WOMEN";origin:"STAFF_FALLBACK"|"AI";
-  matches?:AiCardMatch[]};
+  matches?:AiCardMatch[];bookingClass:"REGULAR"|"PREMIUM";
+  eventType:"REGULAR"|"MAJOR";importance:number;
+  seriesId:string|null;showName:string|null};
 type Unfilled={promotionId:string;reason:string};
 
 /** A single World-locked, server-only STAFF fallback BATCH.
@@ -65,7 +70,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const all=await tx.query<Delegated>(
         `SELECT a.promotion_id,a.show_id,a.controller_player_id,
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
-          m.player_id AS current_controller,p.management_mode,a.status
+          m.player_id AS current_controller,p.management_mode,a.status,
+           p.name AS promotion_name,p.event_cadence_weeks AS cadence
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
@@ -89,18 +95,19 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const priority=orderStaffPromotions(input.worldId,String(worlds[0]!.seed),year,week,
         all.map(x=>x.promotion_id));
       const delegations=new Map(all.map(x=>[x.promotion_id,x]));
-      const draftRows=await tx.query<{promotion_id:string}>(
-        `SELECT promotion_id FROM ppw_booking_drafts
+      const draftRows=await tx.query<{promotion_id:string;booking_class:"REGULAR"|"PREMIUM"}>(
+        `SELECT promotion_id,booking_class FROM ppw_booking_drafts
           WHERE world_id=$1 AND year=$2 AND week=$3 AND status IN ('DRAFT','SUBMITTED')
-            AND promotion_id=ANY($4::text[]) AND booking_class='REGULAR' LIMIT 129`,
+            AND promotion_id=ANY($4::text[]) LIMIT 257`,
         [input.worldId,year,week,priority],
       );
-      if(draftRows.length>128)throw new Error("Too many draft records");
-      const existingDrafts=new Set(draftRows.map(x=>x.promotion_id));
+      if(draftRows.length>256)throw new Error("Too many draft records");
+      const existingDrafts=new Set(draftRows.filter(x=>x.booking_class==="REGULAR").map(x=>x.promotion_id));
+      const existingPremiums=new Set(draftRows.filter(x=>x.booking_class==="PREMIUM").map(x=>x.promotion_id));
       const candidates=await tx.query<SignedCandidate>(
         `SELECT c.promotion_id,c.person_id,c.contract_id,p.booking_division,
                 p.weekly_service_capacity,p.momentum,p.recognition,p.popularity,
-                p.presentation,p.match_craft
+                p.presentation,p.match_craft,c.remaining_dates
            FROM ppw_contracts c
            JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
           WHERE c.world_id=$1 AND c.promotion_id=ANY($2::text[])
@@ -193,6 +200,17 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id)):null;
       const generated:Generated[]=[];
       const unfilled:Unfilled[]=[];
+      const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
+      const duePremium=new Map<string,ReturnType<typeof defaults>[number]>();
+      for(const d of all){
+        if(d.status!=="AI_MANAGED"||d.current_controller!==null||
+          !["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase()))continue;
+        const ppv=defaults(d.promotion_name,d.cadence,
+          worlds[0]!.major_event_interval_weeks??4).find(s=>
+            !regularRole(s.role)&&seriesDue(s,weekIndex));
+        if(ppv&&!existingPremiums.has(d.promotion_id))
+          duePremium.set(d.promotion_id,ppv);
+      }
       for(const promotionId of priority){
         const d=delegations.get(promotionId)!;
         const ai=d.status==="AI_MANAGED"&&d.management_mode==="AI"&&
@@ -215,7 +233,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const majorInterval=worlds[0]!.major_event_interval_weeks;
           if(worlds[0]!.show_economics_enabled&&!majorInterval)
             throw new Error("Original major-event schedule missing");
-          const eventType=majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
+          const branded=["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase());
+          const tv=branded?defaults(d.promotion_name,d.cadence,majorInterval??4)
+            .find(s=>regularRole(s.role)&&seriesDue(s,weekIndex)):undefined;
+          const eventType:"REGULAR"|"MAJOR"=branded?"REGULAR":
+            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
+          const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
           const roster=aiRoster.get(promotionId)??[];
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
@@ -255,7 +278,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           generated.push({promotionId,showId,day:card.schedule.day,
             venueId:card.schedule.venueId,participants:main.participants,
             scriptedWinner:main.scriptedWinner,bookingDivision:main.bookingDivision,
-            origin:"AI",matches:card.matches});
+            origin:"AI",matches:card.matches,bookingClass:"REGULAR",
+            eventType,importance,seriesId:tv?.seriesId??null,showName:tv?.name??null});
           booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
             personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
         }else{
@@ -273,30 +297,88 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             participants:[{personId:a.personId,contractId:a.contractId},
               {personId:b.personId,contractId:b.contractId}],
             scriptedWinner:choice.scriptedWinner,bookingDivision:a.bookingDivision,
-            origin:"STAFF_FALLBACK"});
+            origin:"STAFF_FALLBACK",bookingClass:"REGULAR",
+            eventType:worlds[0]!.major_event_interval_weeks&&
+             (weekIndex+1)%worlds[0]!.major_event_interval_weeks!===0?
+              "MAJOR":"REGULAR",
+            importance:worlds[0]!.major_event_interval_weeks&&
+             (weekIndex+1)%worlds[0]!.major_event_interval_weeks!===0?85:58,
+            seriesId:null,showName:null});
           booked.push({showId,day:choice.schedule.day,venueId:choice.schedule.venueId,
             personIds:[a.personId,b.personId]});
         }
       }
+      // The AI books its PPV after normal shows, with no second World Lock.
+      // Fallback to no PPV when there is no feasible roster or venue.
+      for(const [promotionId,ppv] of duePremium){
+        const profile=profilesByPromotion.get(promotionId);
+        if(!generated.some(g=>g.promotionId===promotionId&&g.bookingClass==="REGULAR")||
+          !profile||profile.ai_risk_tolerance===null||
+          profile.ai_match_quality_preference===null||profile.ai_star_preference===null)
+          continue;
+        const used=new Map<string,number>();
+        for(const g of generated.filter(g=>g.promotionId===promotionId))
+          for(const id of new Set(g.matches?
+            g.matches.flatMap(m=>m.participants.map(p=>p.personId)):
+            g.participants.map(p=>p.personId)))
+            used.set(id,(used.get(id)??0)+1);
+        const roster=(aiRoster.get(promotionId)??[]).filter(p=>{
+          const appearances=used.get(p.personId)??0;
+          const balance=contractBalances.get(p.contractId);
+          return balance!==undefined&&appearances<p.weeklyCapacity&&
+            (balance===null||balance>appearances);
+        });
+        const showId="ai-ppv-"+year+"-"+week+"-"+promotionId;
+        const card=chooseAiWorldCard({
+          worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
+          promotionId,showId,roster,bookedShows:booked,
+          excludedDays:booked.filter(x=>generated.some(g=>
+            g.showId===x.showId&&g.promotionId===promotionId)).map(x=>x.day),
+          activeVenues:venueRows.map(x=>x.venue_id),eventType:"MAJOR",
+          riskTolerance:profile.ai_risk_tolerance,
+          matchQualityPreference:profile.ai_match_quality_preference,
+          starPreference:profile.ai_star_preference,
+          recentPairs:recent.get(promotionId)??[],
+          featuredPairs:context?.programmes.get(promotionId)??[],
+          establishedTeams:context?.teams,
+          establishedPartners:roster.flatMap(p=>
+            (context?.partners.get(p.personId)??[])
+              .filter(bId=>p.personId<bId).map(bId=>({aId:p.personId,bId}))),
+          tagTitles:context?.tagChampionships.get(promotionId)
+        });
+        if(card.status==="UNFILLED"){
+          unfilled.push({promotionId,reason:"OPTIONAL_PPV_"+card.reason});
+          continue;
+        }
+        const main=card.matches[card.matches.length-1]!;
+        generated.push({promotionId,showId,day:card.schedule.day,
+          venueId:card.schedule.venueId,participants:main.participants,
+          scriptedWinner:main.scriptedWinner,bookingDivision:main.bookingDivision,
+          origin:"AI",matches:card.matches,bookingClass:"PREMIUM",
+          eventType:"MAJOR",importance:ppv.importance,
+          seriesId:ppv.seriesId,showName:ppv.name});
+        booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
+          personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
+      }
       if(generated.length){
-        const drafts=await tx.query<{draft_id:string}>(
-          `INSERT INTO ppw_booking_drafts
-             (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_origin,
-              event_type,event_importance)
-           SELECT $1,show_id,promotion_id,$2,$3,'SUBMITTED',day,venue_id,origin,
-              CASE WHEN $9::integer IS NOT NULL AND $8::integer%$9::integer=0
-                 THEN 'MAJOR' ELSE 'REGULAR' END,
-              CASE WHEN $9::integer IS NOT NULL AND $8::integer%$9::integer=0
-                 THEN 85 ELSE 58 END
-             FROM unnest($4::text[],$5::text[],$6::smallint[],$7::text[],$10::text[])
-               AS proposals(show_id,promotion_id,day,venue_id,origin)
-              RETURNING draft_id`,
-          [input.worldId,year,week,generated.map(x=>x.showId),
-            generated.map(x=>x.promotionId),generated.map(x=>x.day),
-            generated.map(x=>x.venueId),
-            weekIndex+1,worlds[0]!.major_event_interval_weeks,
-            generated.map(x=>x.origin)],
-        );
+        const drafts=await tx.query<{draft_id:string}>(`
+          INSERT INTO ppw_booking_drafts
+           (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,
+            booking_origin,booking_class,event_type,event_importance,show_series_id,show_name)
+          SELECT $1,x.show_id,x.promotion_id,$2,$3,'SUBMITTED',x.day,x.venue_id,
+           x.origin,x.booking_class,x.event_type,x.importance,x.series_id,x.show_name
+          FROM jsonb_to_recordset($4::jsonb) AS x(
+           show_id text,promotion_id text,day smallint,venue_id text,
+           origin text,booking_class text,event_type text,importance integer,
+           series_id text,show_name text)
+          RETURNING draft_id`,
+          [input.worldId,year,week,JSON.stringify(generated.map(g=>({
+           show_id:g.showId,promotion_id:g.promotionId,day:g.day,
+           venue_id:g.venueId,origin:g.origin,booking_class:g.bookingClass,
+           event_type:g.eventType,importance:g.importance,
+           series_id:g.seriesId,show_name:g.showName
+          })))]
+         );
         if(drafts.length!==generated.length)throw new Error("Staff draft batch insert mismatch");
         const slotRows=generated.flatMap<{
           showId:string;slotId:string;position:number;payload:unknown
