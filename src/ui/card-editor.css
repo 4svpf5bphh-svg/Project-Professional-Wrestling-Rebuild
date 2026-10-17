@@ -21,8 +21,14 @@
 .ppw-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 16px}
 .ppw-summary span{font-size:12px;border:1px solid var(--ppw-line);border-radius:999px;
  padding:4px 9px;color:#c5d3e6}
-.ppw-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;
+.ppw-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
  align-items:center;margin-bottom:16px}
+.ppw-toolbar>select{grid-column:1/-1;min-width:0}
+.ppw-toolbar>button{width:100%;min-width:0}
+@media(min-width:720px){
+ .ppw-toolbar{grid-template-columns:minmax(0,1fr) auto auto}
+ .ppw-toolbar>select{grid-column:auto}
+}
 .ppw-editor .ppw-primary{background:#086b62;color:white;border-color:#24a993;
  box-shadow:0 4px 18px rgba(18,191,152,.12)}
 .ppw-card-list{display:grid;gap:12px}
