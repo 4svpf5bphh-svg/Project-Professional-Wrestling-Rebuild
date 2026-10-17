@@ -1,0 +1,42 @@
+name: Export Genuine Original PPW Genesis
+on:
+  push:
+    branches:
+      - alpha/real-genesis-export
+    paths:
+      - scripts/export-original-real-genesis.mjs
+      - .github/workflows/export-real-genesis.yml
+permissions:
+  contents: read
+jobs:
+  original-genesis-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout frozen original PPW source
+        uses: actions/checkout@v4
+        with:
+          repository: 4svpf5bphh-svg/Project-Professional-Wrestling
+          ref: 039a76481412df289704a5710d1622dc20f74fec
+          path: original
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Compile original simulation without running the original server
+        working-directory: original
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Generate a deterministic fresh real-world Genesis
+        run: node scripts/export-original-real-genesis.mjs
+      - name: Upload non-sensitive Genesis export
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppw-real-genesis-20261017
+          path: out/
+          retention-days: 3
+          if-no-files-found: error
