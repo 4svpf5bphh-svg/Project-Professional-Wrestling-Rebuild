@@ -3,17 +3,21 @@ import assert from "node:assert/strict";
 import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
- for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH"] as const){
+ for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH"] as const){
   assert.ok(backstageMessage(kind).length>20);
-  if(kind!=="GIMMICK_PITCH")
+  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
-  if(kind!=="GIMMICK_PITCH")
+  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
   for(const decision of BACKSTAGE_CHOICES[kind])
    assert.ok(["ANSWERED","DECLINED","PROMISED"].includes(
     backstageDecisionEffect(kind,decision).status));
  }
  assert.throws(()=>backstageDecisionEffect("CONTRACT","MEDIATE"),/does not offer/);
+ assert.deepEqual(BACKSTAGE_CHOICES.TAG_TEAM_PITCH,["EXPLORE_TEAM","NOT_NOW"]);
+ assert.equal(backstageDecisionEffect("TAG_TEAM_PITCH","EXPLORE_TEAM").moraleDelta,0);
+ assert.equal(backstageDecisionEffect("TAG_TEAM_PITCH","NOT_NOW").status,"DECLINED");
+ assert.match(backstageMessage("TAG_TEAM_PITCH",{partnerName:"Partner",verifiedTagShows:2}),/Partner/);
  assert.throws(()=>backstageDecisionEffect("PARTNERSHIP","PROMISE_APPEARANCE"),/does not offer/);
  assert.deepEqual(backstageDecisionEffect("MORALE","PROMISE_APPEARANCE"),
   {moraleDelta:0,promise:true,status:"PROMISED"});
