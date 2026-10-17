@@ -32,7 +32,7 @@ export async function refreshWorldProgrammeSignals(
  ].join(" "),[worldId,Math.max(0,currentWeekIndex-9),currentWeekIndex]);
  if(recent.length>8000)throw new Error("Programme recency history exceeds safe batch");
  const key=(p:string,id:string)=>JSON.stringify([p,id]);
- const groups=new Map<string,typeof recent>();
+ const groups=new Map<string,Array<(typeof recent)[number]>>();
  for(const item of recent){
   const k=key(item.promotion_id,item.programme_id);
   const a=groups.get(k)??[];a.push(item);groups.set(k,a);
