@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {publishBackstageRequests} from "../src/db/backstage-conversations.js";
+import {settleBackstageTagFollowThrough} from "../src/db/backstage-tag-pitches.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -79,6 +80,16 @@ test("real wrestler-led working grievance needs audited strain and same-promotio
   assert.deepEqual((await query<{morale:number}>(
    "SELECT morale FROM ppw_people WHERE world_id=$1 ORDER BY person_id",[worldId])).map(x=>x.morale),[80,80]);
   assert.equal((await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!.status,"ANSWERED");
+  assert.equal((await run(tx=>settleBackstageTagFollowThrough(tx,worldId,3))).followedThrough,0);
+  await completedTag(5);
+  assert.equal((await run(tx=>settleBackstageTagFollowThrough(tx,worldId,4))).followedThrough,1,
+   "Only a later certified real team match records mediation follow-through");
+  assert.equal((await run(tx=>settleBackstageTagFollowThrough(tx,worldId,4))).followedThrough,0);
+  const final=(await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!;
+  assert.equal(final.followThroughKind,"TAG_MATCH_BOOKED");
+  assert.equal(final.followThroughWeekIndex,4);
+  assert.equal((await query<{professional_trust:number}>(
+   "SELECT professional_trust FROM ppw_wrestler_relationships WHERE world_id=$1",[worldId]))[0]!.professional_trust,18);
  }finally{
   await run(async tx=>{
    for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust",
