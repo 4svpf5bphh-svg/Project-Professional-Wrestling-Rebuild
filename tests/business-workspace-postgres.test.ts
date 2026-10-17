@@ -50,8 +50,10 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   const budget=meter.assertBudget({maxQueries:3,maxResultBytes:12000});
   assert.equal(budget.queryCount,3);
   assert.ok(budget.resultRows<=6);
-  assert.equal((await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},"business",{
-   worldId:world,promotionId:promotion,playerId:"forged"})).name,"Promotion 0");
+  const actorRead=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},"business",{
+   worldId:world,promotionId:promotion,playerId:"forged"}) as unknown as
+    Awaited<ReturnType<typeof readBusinessWorkspace>>;
+  assert.equal(actorRead.name,"Promotion 0");
   // A real economics receipt is displayed as an archived fact, not
   // recomputed or applied twice to the promotion's cash.
   await withWorldTransaction(db.pool,async tx=>{
@@ -81,7 +83,7 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   await assert.rejects(readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:"unauthorised"}),/access denied/);
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"unauthorised"}},
-   "business",{worldId:world,promotionId,playerId:owner}),/access denied/);
+   "business",{worldId:world,promotionId:promotion,playerId:owner}),/access denied/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_show_economics","ppw_completed_shows",
