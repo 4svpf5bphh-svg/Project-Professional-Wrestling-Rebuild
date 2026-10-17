@@ -109,7 +109,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
-   conversations:conversations.reverse().map(x=>({
+   conversations:[...conversations].reverse().map(x=>({
     conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
     status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
     respondedWeekIndex:x.responded_week_index,dueWeekIndex:x.due_week_index,

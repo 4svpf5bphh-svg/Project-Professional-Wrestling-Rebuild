@@ -178,7 +178,8 @@ export function mountPersonaDesk(root:HTMLElement,
   chat.append(el("h2","",view.personName+" · private conversation"),
    el("p","ppw-muted",
     "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
-  const wrestler=view.roster.find(p=>p.personId===view.personId);
+  const selectedPersonId=view.personId;
+  const wrestler=view.roster.find(p=>p.personId===selectedPersonId);
   if(wrestler?.morale!==null&&wrestler?.morale!==undefined&&wrestler.morale<35)
    chat.append(el("div","ppw-persona-bubble ppw-persona-in",
     wrestler.morale<15?
