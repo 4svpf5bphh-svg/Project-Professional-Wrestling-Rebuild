@@ -27,7 +27,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   if(clocks.length!==1)throw new Error("Industry access denied");
   const clock=clocks[0]!,now=(clock.year-1)*52+clock.week-1;
   const companies=await tx.query<{promotion_id:string;name:string;
-   tier:string;media_reach:number|null;financial_distress:string|null;
+   tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
    completed_events:number;management_mode:string}>(`
    WITH recent AS (
@@ -40,7 +40,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
      WHERE p.world_id=$1 GROUP BY p.promotion_id
    )
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
-    p.financial_distress,p.management_mode,r.latest_show_week,
+    p.management_mode,r.latest_show_week,
     r.recent_avg_crowd,coalesce(r.completed_events,0) AS completed_events
    FROM ppw_promotions p LEFT JOIN recent r ON r.promotion_id=p.promotion_id
    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
@@ -68,7 +68,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    promotions:companies.map((p,i)=>({
     promotionId:p.promotion_id,name:p.name,tier:p.tier,
     rank:i+1,mediaReach:p.media_reach,
-    financialDistress:p.financial_distress,managementMode:p.management_mode,
+    managementMode:p.management_mode,
     latestCompletedWeekIndex:p.latest_show_week,
     recentAverageCrowd:p.recent_avg_crowd===null?null:Number(p.recent_avg_crowd),
     recentShowCount:p.completed_events,
