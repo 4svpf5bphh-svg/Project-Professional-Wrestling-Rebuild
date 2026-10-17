@@ -73,7 +73,9 @@ export function mountPersonaDesk(root:HTMLElement,
    const inbox=el("section","ppw-backstage-inbox");
    inbox.append(el("h2","","Locker room"),
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
-   for(const wrestler of view.roster){
+   for(const wrestler of [...view.roster].sort((a,b)=>
+    (b.lastMessage?.submitted_week_index??-1)-
+    (a.lastMessage?.submitted_week_index??-1)||a.name.localeCompare(b.name))){
     const active=wrestler.personId===view.personId;
     const last=wrestler.lastMessage;
     const summary=last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
