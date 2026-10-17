@@ -22,6 +22,7 @@ export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
+ stableDecision?:"ACCEPTED"|"REJECTED";
 }
 /** Shared authoring validation; never randomise or override the booked outcome. */
 export function normalizeBookedSegment(input:SegmentBookingInput,knownPeople:ReadonlySet<string>):AuthoredSegment{

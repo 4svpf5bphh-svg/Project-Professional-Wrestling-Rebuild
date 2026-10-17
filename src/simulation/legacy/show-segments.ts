@@ -15,6 +15,8 @@ export interface AuthoredSegment {
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
  /** Promotion-owned faction for a player-authored stable story. Never mutates membership. */
  stableId?:string;
+ /** Explicit scripted answer; invitation happening does not imply accepting. */
+ stableDecision?:"ACCEPTED"|"REJECTED";
 }
 export function validateAuthoredSegments(
  segments:readonly AuthoredSegment[],
@@ -34,6 +36,9 @@ export function validateAuthoredSegments(
    new Set(s.actorIds).size!==s.actorIds.length||
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
+   (s.stableDecision!==undefined&&(
+    !["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)||
+    !["ACCEPTED","REJECTED"].includes(s.stableDecision)))||
    (s.stableId!==undefined&&(
     !["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
     typeof s.stableId!=="string"||!s.stableId.trim()||s.stableId.length>200))||

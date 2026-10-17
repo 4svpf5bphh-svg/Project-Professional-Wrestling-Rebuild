@@ -4,7 +4,7 @@ import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segment
 export interface SegmentResult{
  slotId:string;position:number;kind:SegmentKind;outcome:SegmentOutcome;
  headline:string;summary:string;actorIds:readonly string[];targetIds:readonly string[];
- stableId?:string;
+ stableId?:string;stableDecision?:"ACCEPTED"|"REJECTED";
 }
 /** Narrative is a deterministic presentation of the author's locked decision.
  * No random success, rejection, membership change or alignment change.
@@ -37,9 +37,13 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  INTERFERENCE:`${subject} interferes against ${object}`,
  DEBUT:`${subject} makes an in-person debut`,
  VIDEO_PACKAGE:`A ${purpose} package features ${subject}`,
- STABLE_INVITATION:`${subject} invites ${object} to join the stable`,
+ STABLE_INVITATION:`${subject} invites ${object} to join the stable${segment.stableDecision===
+   "ACCEPTED"?", and the invitation is accepted":
+   segment.stableDecision==="REJECTED"?", but the invitation is rejected":""}`,
  STABLE_EXIT:`${subject} leaves the stable`,
- STABLE_RECONCILIATION:`${subject} attempts to reconcile with ${object}`};
+ STABLE_RECONCILIATION:`${subject} attempts to reconcile with ${object}${segment.stableDecision===
+   "ACCEPTED"?", and the reconciliation succeeds":
+   segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
  const base=planned[segment.kind];
  const summary=segment.outcome==="HAPPENS"?base+".":
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
@@ -47,7 +51,8 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,
   outcome:segment.outcome,headline:labels[segment.kind],summary,
   actorIds:[...segment.actorIds],targetIds:[...segment.targetIds],
-  ...(segment.stableId?{stableId:segment.stableId}:{})};
+  ...(segment.stableId?{stableId:segment.stableId}:{}),
+  ...(segment.stableDecision?{stableDecision:segment.stableDecision}:{})};
 }
 export function describeShowSegments(
  segments:readonly AuthoredSegment[],names:ReadonlyMap<string,string>,

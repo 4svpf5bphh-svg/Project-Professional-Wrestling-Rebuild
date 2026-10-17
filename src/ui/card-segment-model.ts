@@ -8,6 +8,7 @@ export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
+ stableDecision:"ACCEPTED"|"REJECTED"|null;
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -28,7 +29,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  turnTargetAlignment:"HEEL",stableId:null};
+  turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -44,6 +45,8 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
   stableId:typeof p.stableId==="string"&&p.stableId.trim()?p.stableId:null,
+  stableDecision:p.stableDecision==="ACCEPTED"||p.stableDecision==="REJECTED"?
+   p.stableDecision:null,
   outcome:["HAPPENS","REFUSED","INTERRUPTED"].includes(String(p.outcome))?
    p.outcome as SegmentOutcome:"HAPPENS",
   turnTargetAlignment:["FACE","HEEL","TWEENER"].includes(String(p.turnTargetAlignment))?
@@ -64,12 +67,16 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
 export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
  if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)&&
   !s.stableId)throw new Error("Choose a stable for this faction story");
+ if(["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&
+  !s.stableDecision)throw new Error("Script whether the wrestler accepts or rejects");
  return buildBookedSegmentPayload({
   slotId:s.slotId,position:0,kind:s.kind,
   actorIds:s.actors.map(p=>p.personId),
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.stableId?{stableId:s.stableId}:{}),
+  ...(s.stableDecision&&["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)?
+    {stableDecision:s.stableDecision}:{}),
   ...(s.kind==="TURN"&&s.turnTargetAlignment?
    {turnTargetAlignment:s.turnTargetAlignment}:{}),
  },[...s.actors,...s.targets]);
