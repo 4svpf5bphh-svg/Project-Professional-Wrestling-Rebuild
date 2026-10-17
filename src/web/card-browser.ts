@@ -5,12 +5,14 @@ import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
+import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
 import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
 import "../ui/championship-desk.css";
+import "../ui/tag-team-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/results-archive.css";
@@ -37,6 +39,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    call("ready",{requestId,expectedRevision}),
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
+  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -56,6 +59,16 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack
    call("championshipHistory",{titlePromotionId,championshipId,cursor})
  };
  return mountChampionshipDesk(root,port,onBack);
+}
+
+function tagTeamPort(call:ReturnType<typeof createCardClient>):TagTeamPort{
+ return {load:()=>call("tagTeams"),
+  create:({requestId,expectedRevision,name,personIds})=>
+   call("createTagTeam",{requestId,expectedRevision,name,personIds})};
+}
+/** Independent tag-team roster route, without a current booking draft. */
+export function mountTagTeamsPage(root:HTMLElement,scope:Scope){
+ return mountTagTeamDesk(root,tagTeamPort(createCardClient(scope)));
 }
 
 /** A history route independent of particular rivalries or show cards. */
