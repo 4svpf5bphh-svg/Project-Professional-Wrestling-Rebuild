@@ -6,6 +6,7 @@ import {applyWorldCommand} from "./world-commands.js";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
+import {stableStoryFollowThrough} from "../domain/stable-story-followthrough.js";
 import {validateStableFounders,validateStableMemberId,STABLE_MAX_MEMBERS}
  from "../domain/stable-roster.js";
 export type StableScope={worldId:string;promotionId:string;playerId:string};
@@ -79,8 +80,30 @@ export async function readStableWorkspace(pool:TransactionPool,s:StableScope){
    "ORDER BY m.stable_id,m.joined_week_index DESC,m.membership_id LIMIT 1201"
   ].join(" "),[s.worldId,s.promotionId,stables.map(x=>x.stable_id)]):[];
   if(members.length>1200)throw new Error("Stable membership history is too large");
+  const stories=stables.length?await tx.query<{
+   show_id:string;slot_id:string;kind:string;authored_outcome:string;
+   week_index:number;story_json:unknown}>([
+   "SELECT c.show_id,s.slot_id,s.kind,s.authored_outcome,",
+   "(c.year-1)*52+c.week-1 AS week_index,s.story_json",
+   "FROM ppw_completed_show_segments s JOIN ppw_completed_shows c",
+   "ON c.world_id=s.world_id AND c.show_id=s.show_id",
+   "WHERE c.world_id=$1 AND c.promotion_id=$2",
+   "AND (c.year-1)*52+c.week-1 BETWEEN $3 AND $4",
+   "AND s.kind IN('STABLE_INVITATION','STABLE_EXIT','STABLE_RECONCILIATION')",
+   "ORDER BY c.year DESC,c.week DESC,s.position DESC,s.slot_id DESC LIMIT 101"
+  ].join(" "),[s.worldId,s.promotionId,Math.max(0,auth.weekIndex-6),
+   auth.weekIndex]):[];
+  if(stories.length>100)throw new Error("Too many recent stable story events");
   const assigned=new Map(members.filter(m=>m.active).map(m=>[m.person_id,m.stable_id]));
-  return {year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
+  const storyFollowThrough=stableStoryFollowThrough({
+   stables:stables.map(st=>({stableId:st.stable_id,name:st.name,status:st.status,
+    members:members.filter(x=>x.stable_id===st.stable_id&&x.active).map(x=>x.person_id)})),
+   roster:roster.map(p=>({personId:p.person_id,name:p.name})),
+   recent:stories.map(x=>({showId:x.show_id,slotId:x.slot_id,
+    weekIndex:x.week_index,kind:x.kind,outcome:x.authored_outcome,
+    story:x.story_json}))
+  });
+  return {storyFollowThrough,year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
    canEdit:auth.booking_open,
    roster:roster.map(p=>({personId:p.person_id,name:p.name,
     stableId:assigned.get(p.person_id)??null})),
