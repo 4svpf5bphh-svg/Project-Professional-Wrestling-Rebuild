@@ -1,0 +1,25 @@
+.ppw-stable-header{margin-bottom:20px}
+.ppw-stable-list,.ppw-stable-create,.ppw-stable-archive{margin:23px 0}
+.ppw-stable-desk h2{font-size:20px;margin:0 0 14px}
+.ppw-stable-card{background:#102434;border:1px solid #335b6a;padding:16px;
+ border-radius:16px;margin:0 0 13px}
+.ppw-stable-card h3{font-size:19px;margin:0 0 9px}
+.ppw-stable-member{display:flex;align-items:center;justify-content:space-between;
+ gap:10px;border-bottom:1px solid #284456;padding:8px 0}
+.ppw-stable-action{min-height:44px}
+.ppw-stable-join{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;
+ padding-top:12px;align-items:center}
+.ppw-stable-join select{min-width:0}
+.ppw-stable-card details{margin:12px 0}
+.ppw-stable-card details p{padding:6px 0;margin:0}
+.ppw-stable-create{background:#102434;border:1px solid #335b6a;
+ border-radius:16px;padding:16px}
+.ppw-stable-create>input{width:100%;box-sizing:border-box}
+.ppw-stable-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;max-height:330px;overflow:auto;margin:14px 0}
+.ppw-stable-pick{display:flex;align-items:center;gap:8px;min-width:0;
+ padding:9px 7px;border:1px solid #294656;border-radius:9px}
+.ppw-stable-pick input{width:18px;height:18px;flex:none}
+.ppw-stable-pick span{overflow:hidden;text-overflow:ellipsis;font-size:14px}
+@media(max-width:520px){.ppw-stable-picker{grid-template-columns:1fr}
+ .ppw-stable-join{grid-template-columns:1fr}}

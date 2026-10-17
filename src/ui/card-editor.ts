@@ -24,6 +24,7 @@ export interface CardEditorPort{
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  openProgrammes?():void;
+ openStables?():void;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
  const node=document.createElement(tag);
@@ -243,6 +244,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   },!mutable()));
   if(port.openProgrammes)
    toolbar.append(button("Manage programmes",()=>{port.openProgrammes?.();},dirty||saving));
+  if(port.openStables)
+   toolbar.append(button("Manage stables",()=>{port.openStables?.();},dirty||saving));
   root.append(toolbar);
   const list=el("section","ppw-card-list");
   for(const [i,slotId] of order.entries()){

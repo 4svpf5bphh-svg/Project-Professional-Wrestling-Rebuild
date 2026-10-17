@@ -2,6 +2,8 @@ import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
+import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
+import "../ui/stable-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/card-editor.css";
@@ -54,4 +56,22 @@ export function mountProgrammePage(root:HTMLElement,scope:Scope){
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope));};
  return mountProgrammeDesk(root,programmePort(call,showResult));
+}
+
+function stablePort(call:ReturnType<typeof createCardClient>):StableDeskPort{
+ return {
+  load:()=>call("stables"),
+  create:({requestId,expectedRevision,name,personIds})=>
+   call("createStable",{requestId,expectedRevision,name,personIds}),
+  add:({requestId,expectedRevision,stableId,personId})=>
+   call("addStableMember",{requestId,expectedRevision,stableId,personId}),
+  remove:({requestId,expectedRevision,stableId,personId})=>
+   call("removeStableMember",{requestId,expectedRevision,stableId,personId}),
+  disband:({requestId,expectedRevision,stableId})=>
+   call("disbandStable",{requestId,expectedRevision,stableId}),
+ };
+}
+/** Routed stable roster component for the eventual Roster > Stables tab. */
+export function mountStablesPage(root:HTMLElement,scope:Scope){
+ return mountStableDesk(root,stablePort(createCardClient(scope)));
 }
