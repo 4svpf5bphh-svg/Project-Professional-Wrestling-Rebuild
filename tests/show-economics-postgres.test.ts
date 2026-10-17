@@ -6,6 +6,9 @@ import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.j
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordCompletedShow} from "../src/db/completed-show-results.js";
+import {joinWorld} from "../src/db/membership-operations.js";
+import {submitPromotionClaim} from "../src/db/promotion-commands.js";
+import {readBusinessWorkspace} from "../src/db/business-workspace.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 import {settleCompletedShowEconomics} from "../src/db/show-economics.js";
 import {settleWeeklyPromotionHealth} from "../src/db/weekly-finance-health.js";
@@ -156,6 +159,20 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
    attendance:result.attendance,capacity:1000,averageMatchRating:3.5,crowdResponse:78});
   assert.deepEqual(state[0],{awareness:expectedMarket.awareness,
    live_strength:expectedMarket.liveStrength,loyalty:expectedMarket.loyalty});
+  const owner="finance-owner-"+id;
+  await joinWorld(db.pool,{worldId:world,playerId:owner,
+   requestId:"join-finance-"+id,expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:owner,promotionId:promoter,
+   requestId:"claim-finance-"+id,expectedRevision:1});
+  const desk=await readBusinessWorkspace(db.pool,{worldId:world,
+   promotionId:promoter,playerId:owner});
+  assert.equal(desk.shows.length,1);
+  assert.equal(desk.shows[0]!.showId,show);
+  assert.equal(desk.shows[0]!.gateRevenue,result.gateRevenue);
+  assert.equal(desk.shows[0]!.netResult,result.netResult);
+  assert.equal(desk.shows[0]!.incrementalCash,result.incrementalCash);
+  assert.equal(desk.lastWeeklyNet,result.incrementalCash-2000);
+  assert.equal(desk.territories[0]!.awareness,expectedMarket.awareness);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET phase='OPEN' WHERE world_id=$1",[world]));
   await assert.rejects(withWorldTransaction(db.pool,tx=>settleCompletedShowEconomics(tx,{
@@ -163,10 +180,11 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
    averageMatchRating:3.5})),/requires a submitted show/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_show_economics","ppw_completed_show_matches",
+   for(const table of ["ppw_command_receipts","ppw_promotion_controls","ppw_memberships","ppw_ledger_events","ppw_show_economics","ppw_completed_show_matches",
     "ppw_completed_shows","ppw_show_resolutions","ppw_card_slots","ppw_booking_drafts",
     "ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",["finance-owner-"+id]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());
  }
