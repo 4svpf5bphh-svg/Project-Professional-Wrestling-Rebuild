@@ -12,11 +12,18 @@ import {describeMatchFinish} from "../domain/show-match-story.js";
 import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+export interface CompletedMatchBroadcastContext{
+ /** Locked card context, not an invented account of the match action. */
+ format:string;intent:string;plannedMinutes:number|null;
+ sides:string[][];winnerNames:string[];championshipContested:boolean;
+}
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
  headline:string;summary:string;crowdResponse:number;
  outcome:string;actorIds:string[];targetIds:string[];
  intent?:SegmentConsequenceIntent|null;
+ matchContext?:CompletedMatchBroadcastContext;
+ segmentKind?:string;
  performerIdentities?:BroadcastIdentity[];
 }
 export interface CompletedShowView {
@@ -81,12 +88,28 @@ export async function readCompletedShowView(
    if(!slot||slot.kind!=="MATCH"||slot.position!==match.position)
     throw new Error("Completed match card changed since resolution");
    let winnerNames:string[]=[];
+   let matchContext:CompletedMatchBroadcastContext|undefined;
    let participants=readCardParticipants(slot.payload).map(p=>p.personId);
    try{
     const layout=readCanonicalMatchLayout(slot.payload);
     const winners=layout.sides.find(s=>s.sideId===match.actualWinnerSide);
     winnerNames=winners?.participants.map(p=>name(p.personId))??[];
     participants=layout.participants.map(p=>p.personId);
+    const payload=slot.payload as Record<string,unknown>;
+    const size=layout.sides[0]?.participants.length??1;
+    const format=layout.family==="TEAMS"?
+     (layout.sides.length===2?String(size)+"v"+String(size):
+      String(layout.sides.length)+"-team "+String(size)+"v"+String(size)):
+     payload.matchType==="BATTLE_ROYAL"?"BATTLE ROYAL":
+     layout.sides.length===2?"SINGLES":String(layout.sides.length)+"-WAY";
+    matchContext={format,
+     intent:typeof payload.intent==="string"?payload.intent:"COMPETITIVE",
+     plannedMinutes:typeof payload.plannedLengthMinutes==="number"?
+      payload.plannedLengthMinutes:null,
+     sides:layout.sides.map(side=>side.participants.map(p=>name(p.personId))),
+     winnerNames:[...winnerNames],
+     championshipContested:typeof payload.championshipId==="string"&&
+      payload.championshipId.length>0};
    }catch{/* Older completed matches still retain their finish and score. */}
    const {headline,summary}=describeMatchFinish({
     actualFinish:match.actualFinish,actualWinnerSide:match.actualWinnerSide,
@@ -95,7 +118,8 @@ export async function readCompletedShowView(
    entries.push({slotId:match.matchId,position:match.position,type:"MATCH",
     headline,summary,crowdResponse:match.crowdResponse,
     outcome:match.actualFinish,actorIds:participants,targetIds:[],
-    performerIdentities:personaFor(participants)});
+    performerIdentities:personaFor(participants),
+    ...(matchContext?{matchContext}:{})});
   }
   for(const segment of receipt.segments){
    const slot=bySlot.get(segment.slotId);
@@ -110,7 +134,7 @@ export async function readCompletedShowView(
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
-    intent:story?.intent??null,
+    intent:story?.intent??null,segmentKind:segment.kind,
     performerIdentities:personaFor(story?[
      ...story.actorIds,...story.targetIds]:readCardParticipants(slot.payload)
       .map(x=>x.personId))});
