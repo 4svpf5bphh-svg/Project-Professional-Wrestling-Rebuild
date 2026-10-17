@@ -328,6 +328,25 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           return balance!==undefined&&appearances<p.weeklyCapacity&&
             (balance===null||balance>appearances);
         });
+        // World-scoped title-holder context is already in the single AI
+        // preparation batch. A premium show should prioritize a defensible
+        // title challenge, not merely rebrand an ordinary television card.
+        const rosterById=new Map(roster.map(p=>[p.personId,p]));
+        const titleChallenges=(context?.championships.get(promotionId)??[])
+         .flatMap(title=>{
+          const champion=rosterById.get(title.holderId);
+          if(!champion)return [];
+          const challenger=roster.filter(x=>
+           x.personId!==title.holderId&&
+           x.bookingDivision===champion.bookingDivision)
+           .sort((a,b)=>(b.popularity+b.momentum+b.recognition)-
+            (a.popularity+a.momentum+a.recognition)||
+            a.personId.localeCompare(b.personId,"en"))[0];
+          return challenger?[{kind:"SINGLES_TITLE" as const,
+           aId:title.holderId,bId:challenger.personId,
+           holderId:title.holderId,championshipId:title.championshipId,
+           heat:title.heat}]:[];
+         });
         const showId="ai-ppv-"+year+"-"+week+"-"+promotionId;
         const card=chooseAiWorldCard({
           worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
@@ -339,7 +358,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           matchQualityPreference:profile.ai_match_quality_preference,
           starPreference:profile.ai_star_preference,
           recentPairs:recent.get(promotionId)??[],
-          featuredPairs:context?.programmes.get(promotionId)??[],
+          featuredPairs:[...titleChallenges,
+           ...(context?.programmes.get(promotionId)??[])],
           establishedTeams:context?.teams,
           establishedPartners:roster.flatMap(p=>
             (context?.partners.get(p.personId)??[])

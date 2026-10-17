@@ -30,6 +30,20 @@ test("WWE and AEW AI book Night of Champions and Forbidden Door alongside televi
   await importOriginalGenesis(db.pool,originalGenesisFixture(world,160));
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("UPDATE ppw_promotions SET name=CASE WHEN promotion_id='promotion-0' THEN 'WWE' WHEN promotion_id='promotion-1' THEN 'AEW' ELSE name END WHERE world_id=$1",[world]);
+   await tx.query(`
+    INSERT INTO ppw_championship_reigns
+      (world_id,promotion_id,championship_id,reign_id,holder_type,person_id,status,start_week_index)
+    VALUES
+      ($1,'promotion-0','founding:singles','wwe-reign','PERSON','person-0','ACTIVE',0),
+      ($1,'promotion-1','founding:singles','aew-reign','PERSON','person-1','ACTIVE',0)
+   `,[world]);
+   await tx.query(`
+    UPDATE ppw_championships
+     SET current_reign_id=CASE WHEN promotion_id='promotion-0'
+      THEN 'wwe-reign' ELSE 'aew-reign' END
+    WHERE world_id=$1 AND promotion_id IN ('promotion-0','promotion-1')
+     AND championship_id='founding:singles'
+   `,[world]);
    await tx.query("UPDATE ppw_worlds SET week=26,next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[world]);
   });
   assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock",expectedRevision:0})).status,"APPLIED");
@@ -71,6 +85,11 @@ test("WWE and AEW AI book Night of Champions and Forbidden Door alongside televi
     [world,premium.draft_id]);
    assert.equal(premiumMain[0]!.payload.mainEvent,true);
    assert.equal(premiumMain[0]!.payload.intent,"EPIC");
+   const titleMatches=await query<{payload:{championshipId?:string}}>(
+    "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2",
+    [world,premium.draft_id]);
+   assert.ok(titleMatches.some(x=>x.payload.championshipId==="founding:singles"),
+    "An active championship should have an AI-booked PPV title challenge");
   }
   const states=await query<{remaining:number;cash:string}>([
    "SELECT (SELECT sum(remaining_dates)::integer FROM ppw_contracts",
