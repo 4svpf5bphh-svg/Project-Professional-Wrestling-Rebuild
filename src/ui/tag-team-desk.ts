@@ -58,6 +58,13 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
    const row=el("article","ppw-pair-card");
    row.append(el("strong","",team.name),
     el("p","ppw-muted",team.members.map(p=>p.name).join(" & ")));
+   row.append(el("p","ppw-pair-stats",
+    team.experience+" · "+team.matchesTogether+" matches together"+
+    " · "+team.totalTitleReigns+" title reigns"));
+   for(const title of team.currentTitles)
+    row.append(el("p","ppw-pair-title",
+     "🏆 "+title.name+" · "+title.promotionName+" · "+
+     title.defenses+" defenses"));
    if(port.rename&&team.canRename&&view.canEdit){
     if(renaming===team.teamId){
      const edit=document.createElement("input");
