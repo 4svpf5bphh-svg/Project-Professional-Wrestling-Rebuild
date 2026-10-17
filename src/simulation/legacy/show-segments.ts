@@ -1,7 +1,7 @@
 /** Author-owned segment outcome contract. Scoring and durable resolution are
  * deliberately separate: simulation must not choose a scripted outcome.
  */
-export type SegmentKind="ATTACK"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
+export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
  "DEBUT"|"VIDEO_PACKAGE"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
 export type VideoPurpose="DEBUT_HYPE"|"RETURN_HYPE"|"WRESTLER_HYPE"|
  "FEUD_RECAP"|"EVENT_PROMO";
@@ -21,9 +21,10 @@ export function validateAuthoredSegments(
  return segments.map(s=>{
   if(!s.slotId||slots.has(s.slotId)||!Number.isSafeInteger(s.position)||
    s.position<0||positions.has(s.position)||
-   !["ATTACK","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
+   !["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE","CELEBRATION","ATTACK","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
      "VIDEO_PACKAGE","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
    !["HAPPENS","REFUSED","INTERRUPTED"].includes(s.outcome)||
+   !Array.isArray(s.actorIds)||!Array.isArray(s.targetIds)||
    s.actorIds.length>20||s.targetIds.length>20||
    ![...s.actorIds,...s.targetIds].every(id=>knownPeople.has(id))||
    new Set(s.actorIds).size!==s.actorIds.length||
@@ -34,7 +35,7 @@ export function validateAuthoredSegments(
     !["DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP",
       "EVENT_PROMO"].includes(s.videoPurpose))||
    (s.kind!=="VIDEO_PACKAGE"&&s.actorIds.length===0)||
-   (s.kind==="ATTACK"&&(s.actorIds.length===0||s.targetIds.length===0))||
+   (["ATTACK","CONFRONTATION","CHALLENGE"].includes(s.kind)&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="INTERFERENCE"&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="TURN"&&s.actorIds.length!==1)||
    (s.kind==="DEBUT"&&s.actorIds.length!==1)||

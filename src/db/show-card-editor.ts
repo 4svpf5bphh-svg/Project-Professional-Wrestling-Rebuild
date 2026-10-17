@@ -8,14 +8,19 @@ import {withSqlClient} from "./postgres.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
+import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
+import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import {contractAvailability} from "../domain/contract-availability.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
 export interface EditedMatchSlot{slotId:string;payload:unknown}
+export interface EditedSegmentSlot{slotId:string;payload:unknown}
 export interface SaveCardEditorInput extends CardEditorIdentity{
  requestId:string;expectedRevision:number;
  matches:readonly EditedMatchSlot[];
+ /** Omitted preserves existing segments for old match-only clients. [] removes all. */
+ segments?:readonly EditedSegmentSlot[];
  runningOrder:readonly string[];
 }
 const validId=(v:unknown):v is string=>
@@ -136,8 +141,25 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
   if(!m||!validId(m.slotId))throw new Error("Invalid match slot ID");
   return {slotId:m.slotId,payload:normalizeBookableMatch(m.payload)};
  });
+ if(input.segments!==undefined&&(!Array.isArray(input.segments)||
+  input.segments.length>100))throw new Error("Invalid segment card");
+ const authored=input.segments?.map(s=>{
+  if(!s||!validId(s.slotId)||!s.payload||typeof s.payload!=="object"||
+   Array.isArray(s.payload))throw new Error("Invalid segment card slot");
+  const p=s.payload as Record<string,unknown>;
+  const participants=readCardParticipants(p);
+  return {slotId:s.slotId,payload:buildBookedSegmentPayload({
+   slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
+   actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
+   outcome:p.outcome as SegmentOutcome,
+   ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
+  },participants)};
+ });
  const submitted=new Set(matches.map(x=>x.slotId));
  if(submitted.size!==matches.length)throw new Error("Duplicate match slot");
+ if(authored&&(new Set(authored.map(s=>s.slotId)).size!==authored.length||
+  authored.some(s=>submitted.has(s.slotId))))
+  throw new Error("Duplicate card slot");
  if(input.runningOrder.some(x=>!validId(x))||
   new Set(input.runningOrder).size!==input.runningOrder.length||
   matches.some(m=>!input.runningOrder.includes(m.slotId)))
@@ -157,11 +179,14 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
     " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
     [input.worldId,input.showId]));
-   const segments=current.filter(s=>s.kind==="SEGMENT");
+   const existingSegments=current.filter(s=>s.kind==="SEGMENT");
+   const segments=authored??existingSegments.map(s=>({
+    slotId:s.slot_id,payload:s.payload
+   }));
    if(matches.length+segments.length>100||
     input.runningOrder.length!==matches.length+segments.length)
     throw new Error("Show card slot capacity exceeded");
-   const expected=new Set([...submitted,...segments.map(s=>s.slot_id)]);
+   const expected=new Set([...submitted,...segments.map(s=>s.slotId)]);
    if(input.runningOrder.some(id=>!expected.has(id))||
     new Set(input.runningOrder).size!==expected.size)
     throw new Error("Running order must include each match and segment exactly once");
@@ -221,7 +246,24 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     JSON.stringify(matches.map(m=>({slot_id:m.slotId,position:order.get(m.slotId)!,
      payload:m.payload})))]);
    if(inserted.length!==matches.length)throw new Error("Incomplete match card write");
-   if(segments.length){
+   if(authored!==undefined){
+    await tx.query("DELETE FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2"+
+     " AND kind='SEGMENT' AND NOT(slot_id=ANY($3::text[]))",
+     [input.worldId,input.showId,authored.map(s=>s.slotId)]);
+    if(authored.length){
+     const written=await tx.query<{slot_id:string}>([
+      "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)",
+      "SELECT $1,$2,x.slot_id,x.position,'SEGMENT',x.payload FROM",
+      "jsonb_to_recordset($3::jsonb) AS x(slot_id text,position integer,payload jsonb)",
+      "ON CONFLICT(world_id,draft_id,slot_id) DO UPDATE",
+      "SET position=EXCLUDED.position,kind='SEGMENT',payload=EXCLUDED.payload",
+      "RETURNING slot_id",
+     ].join(" "),[input.worldId,input.showId,
+      JSON.stringify(authored.map(s=>({slot_id:s.slotId,position:order.get(s.slotId)!,
+       payload:{...s.payload,position:order.get(s.slotId)!}})))]);
+     if(written.length!==authored.length)throw new Error("Incomplete segment write");
+    }
+   }else if(segments.length){
     const moved=await tx.query<{slot_id:string}>([
      "UPDATE ppw_card_slots s SET position=x.position",
      "FROM jsonb_to_recordset($3::jsonb) AS x(slot_id text,position integer)",
@@ -241,7 +283,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     "WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3",
    ].join(" "),[input.worldId,input.showId,input.promotionId]);
    return {showId:input.showId,matchCount:matches.length,
-    slotCount:input.runningOrder.length,performers:appearances.length,
+    segmentCount:segments.length,slotCount:input.runningOrder.length,performers:appearances.length,
     preparedForLock:false};
   },
  });

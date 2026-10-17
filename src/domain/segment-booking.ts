@@ -2,12 +2,17 @@ import {validateAuthoredSegments,type AuthoredSegment,type SegmentKind,type Vide
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
+ PROMO:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ CONFRONTATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
+ CHALLENGE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
+ CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
  ATTACK:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  TURN:{minActors:1,minTargets:0,maxActors:1,allowTargets:true,purposes:[]},
  CONTRACT_SIGNING:{minActors:2,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
  INTERFERENCE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  DEBUT:{minActors:1,minTargets:0,maxActors:1,allowTargets:false,purposes:[]},
- VIDEO_PACKAGE:{minActors:0,minTargets:0,maxActors:20,allowTargets:true,
+ VIDEO_PACKAGE:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,
   purposes:["DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP","EVENT_PROMO"]},
  STABLE_EXIT:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  STABLE_RECONCILIATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},

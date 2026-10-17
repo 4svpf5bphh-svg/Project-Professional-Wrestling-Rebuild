@@ -25,10 +25,13 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
  if(method==="save"){
-  if(!Array.isArray(p.matches)||!Array.isArray(p.runningOrder))
+  if(!Array.isArray(p.matches)||!Array.isArray(p.runningOrder)||
+   (p.segments!==undefined&&!Array.isArray(p.segments)))
    throw new Error("Invalid booking card");
   return saveCardEditorAsActor(context,{worldId,promotionId,showId,requestId,
-   expectedRevision,matches:p.matches,runningOrder:p.runningOrder as string[]});
+   expectedRevision,matches:p.matches,
+   ...(p.segments===undefined?{}:{segments:p.segments as never[]}),
+   runningOrder:p.runningOrder as string[]});
  }
  if(method==="ready")return markPreparedShowReadyAsActor(context,{
   worldId,promotionId,showId,requestId,expectedRevision,confirmReadyToRun:true});

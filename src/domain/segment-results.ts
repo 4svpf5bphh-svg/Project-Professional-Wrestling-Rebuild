@@ -15,12 +15,19 @@ export function describeAuthoredSegment(payload:BookedSegmentPayload,
  const subject=actors.join(" & ")||"The promotion";
  const object=targets.join(" & ");
  const labels:Record<SegmentKind,string>={
+ PROMO:"In-ring promo",INTERVIEW:"Interview",CONFRONTATION:"Face to face",
+ CHALLENGE:"Challenge issued",CELEBRATION:"Celebration",
  ATTACK:"Backstage attack",TURN:"A change of allegiance",
  CONTRACT_SIGNING:"Contract signing",INTERFERENCE:"Outside interference",
  DEBUT:"A new arrival",VIDEO_PACKAGE:"Video package",
  STABLE_EXIT:"Stable tension",STABLE_RECONCILIATION:"Stable reconciliation"};
  const purpose=segment.videoPurpose?segment.videoPurpose.replaceAll("_"," ").toLowerCase():"";
  const planned:Record<SegmentKind,string>={
+ PROMO:`${subject} addresses the crowd`,
+ INTERVIEW:`${subject} is interviewed`,
+ CONFRONTATION:`${subject} confronts ${object}`,
+ CHALLENGE:`${subject} challenges ${object}`,
+ CELEBRATION:`${subject} celebrates in the ring`,
  ATTACK:`${subject} attacks ${object}`,
  TURN:`${subject} turns${object?" on "+object:""}`,
  CONTRACT_SIGNING:`${subject} meets for a contract signing`,

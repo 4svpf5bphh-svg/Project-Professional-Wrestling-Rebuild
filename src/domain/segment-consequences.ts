@@ -1,7 +1,8 @@
 import type {BookedSegmentPayload} from "./segment-booking.js";
 import {normalizeBookedSegment} from "./segment-booking.js";
 export type SegmentConsequenceIntent=
- "ATTACK_OCCURRED"|"TURN_OCCURRED"|"SIGNING_OCCURRED"|"INTERFERENCE_OCCURRED"|
+ "PROMO_DELIVERED"|"INTERVIEW_GIVEN"|"CONFRONTATION_OCCURRED"|
+ "CHALLENGE_ISSUED"|"CELEBRATION_OCCURRED"|"ATTACK_OCCURRED"|"TURN_OCCURRED"|"SIGNING_OCCURRED"|"INTERFERENCE_OCCURRED"|
  "DEBUT_OCCURRED"|"STABLE_EXIT_OCCURRED"|"RECONCILIATION_OCCURRED"|"VIDEO_AIRED";
 export interface AuthoredConsequence{
  slotId:string;intent:SegmentConsequenceIntent;
@@ -14,6 +15,9 @@ export function authoredConsequenceIntents(payload:BookedSegmentPayload):Authore
  const s=normalizeBookedSegment(payload,new Set(payload.participants.map(p=>p.personId)));
  if(s.outcome!=="HAPPENS")return [];
  const intent:Record<typeof s.kind,SegmentConsequenceIntent>={
+ PROMO:"PROMO_DELIVERED",INTERVIEW:"INTERVIEW_GIVEN",
+ CONFRONTATION:"CONFRONTATION_OCCURRED",CHALLENGE:"CHALLENGE_ISSUED",
+ CELEBRATION:"CELEBRATION_OCCURRED",
  ATTACK:"ATTACK_OCCURRED",TURN:"TURN_OCCURRED",
  CONTRACT_SIGNING:"SIGNING_OCCURRED",INTERFERENCE:"INTERFERENCE_OCCURRED",
  DEBUT:"DEBUT_OCCURRED",STABLE_EXIT:"STABLE_EXIT_OCCURRED",

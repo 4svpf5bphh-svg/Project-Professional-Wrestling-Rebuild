@@ -200,7 +200,7 @@ export async function cardTalentAsActor(context:WorldApiContext,
 }
 export async function saveCardEditorAsActor(context:WorldApiContext,
  input:WorldMutationInput & {promotionId:string;showId:string;
-  matches:readonly EditedMatchSlot[];runningOrder:readonly string[]}){
+  matches:readonly EditedMatchSlot[];segments?:readonly EditedSegmentSlot[];runningOrder:readonly string[]}){
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.showId,"show");
  return saveShowCardMatches(context.pool,{...input,playerId:context.actor.playerId});
