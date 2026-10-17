@@ -20,3 +20,18 @@
 .ppw-persona-button{min-height:44px;padding:10px;text-align:left;border-radius:10px}
 .ppw-persona-selected{outline:2px solid #62c2e6}
 @media(max-width:520px){.ppw-persona-options{grid-template-columns:1fr}}
+
+/* Mobile-first locker-room messenger shell. */
+.ppw-backstage-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;margin:16px 0;padding:5px;border-radius:14px;background:#122333}
+.ppw-backstage-tabs .ppw-persona-button{min-width:0;text-align:center;
+ font-size:13px;padding:10px 5px}
+.ppw-backstage-inbox{display:flex;flex-direction:column;gap:8px}
+.ppw-backstage-inbox h2{margin:5px 0}
+.ppw-backstage-contact{width:100%;min-height:54px;padding:14px 16px;
+ background:#152d3d;border:1px solid #355367;border-radius:14px;
+ text-align:left;font-size:15px}
+.ppw-backstage-contact:active{background:#21465a}
+.ppw-persona-chat{min-height:260px;display:flex;flex-direction:column}
+.ppw-persona-bubble{overflow-wrap:anywhere}
+@media(max-width:390px){.ppw-backstage-tabs .ppw-persona-button{font-size:12px}}
