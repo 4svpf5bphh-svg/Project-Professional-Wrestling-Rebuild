@@ -8,5 +8,5 @@ CREATE TABLE ppw_completed_match_report_facts (
   CHECK(jsonb_typeof(injuries_json)='array'),
  PRIMARY KEY(world_id,show_id,match_id),
  FOREIGN KEY(world_id,show_id,match_id)
-  REFERENCES ppw_completed_show_matches(world_id,show_id,match_id)
+  REFERENCES ppw_completed_show_matches(world_id,show_id,match_id) ON DELETE CASCADE
 );
