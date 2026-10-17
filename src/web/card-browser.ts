@@ -3,6 +3,8 @@ import {createCardClient,type CardSessionScope} from "./card-client.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
+import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
+import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
@@ -75,4 +77,13 @@ function stablePort(call:ReturnType<typeof createCardClient>):StableDeskPort{
 /** Routed stable roster component for the eventual Roster > Stables tab. */
 export function mountStablesPage(root:HTMLElement,scope:Scope){
  return mountStableDesk(root,stablePort(createCardClient(scope)));
+}
+
+function workingPort(call:ReturnType<typeof createCardClient>):WorkingConnectionsPort{
+ return {load:(personId)=>call("workingConnections",
+  personId?{personId}:{})};
+}
+/** The Roster > Singles / Working Connections page, without draft writes. */
+export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
+ return mountWorkingConnections(root,workingPort(createCardClient(scope)));
 }

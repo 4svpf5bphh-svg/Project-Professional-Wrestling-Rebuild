@@ -1,0 +1,10 @@
+.ppw-connections-header{margin-bottom:22px}
+.ppw-connections-button{min-height:44px;margin-bottom:12px}
+.ppw-working-connections h2{font-size:19px;margin:12px 0}
+.ppw-connections-list{margin:20px 0}
+.ppw-connection-card{background:#112633;border:1px solid #365469;border-radius:14px;
+ padding:16px;margin:0 0 12px}
+.ppw-connection-card h3{font-size:18px;margin:0 0 10px}
+.ppw-connection-facts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.ppw-connection-facts span{font-size:13px;padding:7px 10px;
+ border-radius:20px;background:#20374a}
