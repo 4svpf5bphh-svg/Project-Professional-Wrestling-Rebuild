@@ -132,7 +132,7 @@ test("two promotions resolve, certify and publish after restart without double c
    SELECT heat,repetition FROM ppw_programmes
    WHERE world_id=$1 AND promotion_id=$2`,[worldId,promotions[0]!]);
   assert.equal(programmes.length,1);
-  assert.equal(programmes[0]!.repetition,1);
+  assert.equal(programmes[0]!.repetition,0,"Original repeated-content pressure starts only after repetition");
   assert.ok(programmes[0]!.heat>50);
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_show_resolutions WHERE world_id=$1",[worldId]
@@ -149,7 +149,12 @@ test("two promotions resolve, certify and publish after restart without double c
   const finalProgramme=await read<{repetition:number}>(
    "SELECT repetition FROM ppw_programmes WHERE world_id=$1 AND promotion_id=$2",
    [worldId,promotions[0]!]);
-  assert.equal(finalProgramme[0]!.repetition,1,"World retry must never double-apply an angle");
+  assert.equal(finalProgramme[0]!.repetition,0,"World retry must never double-apply an angle");
+  const activity=await read<{kind:string;week_index:number;signature:string}>(
+   "SELECT kind,week_index,signature FROM ppw_programme_resolved_activities WHERE world_id=$1",
+   [worldId]);
+  assert.equal(activity.length,1);
+  assert.equal(activity[0]!.kind,"SEGMENT");
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]
   )).map(x=>x.remaining_dates),[0,0,0,0]);
@@ -161,6 +166,7 @@ test("two promotions resolve, certify and publish after restart without double c
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_alignment_changes",
+    "ppw_programme_resolved_activities",
     "ppw_programme_match_activities","ppw_programmes","ppw_card_slots","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_venues","ppw_promotions","ppw_worlds",
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);

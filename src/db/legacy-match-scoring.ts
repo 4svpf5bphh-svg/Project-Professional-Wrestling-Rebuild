@@ -570,7 +570,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
        participants:ids.map(x=>x.personId)}];
     });
-    return {titleBookings,tagTitleBookings,worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
+    return {titleBookings,tagTitleBookings,eventImportance:show.event_importance,
+     worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
       projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
 }
