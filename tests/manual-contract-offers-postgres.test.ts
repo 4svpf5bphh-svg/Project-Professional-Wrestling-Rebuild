@@ -168,7 +168,7 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
+   for(const table of ["ppw_backstage_promotion_trust","ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_people","ppw_promotions"]){
      await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
