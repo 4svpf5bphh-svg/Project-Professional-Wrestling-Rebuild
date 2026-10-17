@@ -132,20 +132,25 @@ export function mountPersonaDesk(root:HTMLElement,
    const filter=document.createElement("input");
    filter.type="search";filter.placeholder="Search gimmicks or families";
    filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
-   filter.oninput=()=>{search=filter.value;render();};
-   chat.append(filter);
-   const matches=view.archetypes.filter(x=>x.id!==persona.gimmickId&&(
-    !search||[x.label,x.familyLabel,x.description].some(y=>
-     y.toLowerCase().includes(search.trim().toLowerCase())))).slice(0,24);
    const options=el("div","ppw-persona-options");
-   for(const p of matches){
-    const item=button(p.label+" · "+p.familyLabel,()=>{
-     chosen=p.id;render();},loading);
-    if(chosen===p.id)item.classList.add("ppw-persona-selected");
-    item.title=p.description;options.append(item);
-   }
-   if(!matches.length)options.append(el("p","ppw-muted","No matching gimmicks."));
-   chat.append(options);
+   const refreshOptions=()=>{
+    options.replaceChildren();
+    const matches=view.archetypes.filter(x=>x.id!==persona.gimmickId&&(
+     !search||[x.label,x.familyLabel,x.description].some(y=>
+      y.toLowerCase().includes(search.trim().toLowerCase())))).slice(0,24);
+    for(const p of matches){
+     const item=button(p.label+" · "+p.familyLabel,()=>{
+      chosen=p.id;render();},loading);
+     if(chosen===p.id)item.classList.add("ppw-persona-selected");
+     item.title=p.description;options.append(item);
+    }
+    if(!matches.length)options.append(el("p","ppw-muted","No matching gimmicks."));
+   };
+   // Keep the actual input node mounted while searching. Replacing the page
+   // on every keystroke dismisses the keyboard in iPhone standalone PWAs.
+   filter.oninput=()=>{search=filter.value;refreshOptions();};
+   chat.append(filter);
+   refreshOptions();chat.append(options);
    if(chosen)chat.append(el("p","ppw-muted",
     "Selected · "+view.archetypes.find(x=>x.id===chosen)?.label));
    chat.append(button(loading?"Asking wrestler…":"Suggest gimmick",()=>{
