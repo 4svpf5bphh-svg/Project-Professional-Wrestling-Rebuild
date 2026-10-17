@@ -106,5 +106,7 @@ test("World tag team roster and new pairing use authenticated browser path",asyn
  await call("tagTeams");
  await call("createTagTeam",{requestId:"team-created",
   expectedRevision:7,name:"New Blood",personIds:["w-1","w-2"]});
- assert.deepEqual(seen,["tagTeams","createTagTeam"]);
+ await call("renameTagTeam",{requestId:"team-name",expectedRevision:8,
+  teamId:"tag-team",name:"A Better Name"});
+ assert.deepEqual(seen,["tagTeams","createTagTeam","renameTagTeam"]);
 });
