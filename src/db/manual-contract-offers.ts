@@ -15,7 +15,7 @@ type ContractRow={contract_id:string;person_id:string;promotion_id:string;family
  status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number};
 type PendingRow={offer_id:string;person_id:string;promotion_id:string;source_contract_id:string|null;
  submitted_week_index:number;terms:OfferTerms;tier:string;media_reach:number|null;
- has_history:boolean;};
+ has_history:boolean;backstage_trust:number;};
 function profile(row:ProfileRow):PersonEconomics{
  const p={recognition:row.recognition,popularity:row.popularity,inRingQuality:row.in_ring_quality,
  matchCraft:row.match_craft,presentation:row.presentation,stamina:row.stamina,
@@ -134,6 +134,9 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   const current=(clock[0]!.year-1)*52+clock[0]!.week-1;
   const bids=await tx.query<PendingRow>(`SELECT o.offer_id,o.person_id,o.promotion_id,o.source_contract_id,
    o.submitted_week_index,o.terms,p.tier,p.media_reach,
+   coalesce((SELECT t.trust FROM ppw_backstage_promotion_trust t
+    WHERE t.world_id=o.world_id AND t.promotion_id=o.promotion_id
+    AND t.person_id=o.person_id),50) AS backstage_trust,
    EXISTS(SELECT 1 FROM ppw_contracts h WHERE h.world_id=o.world_id
     AND h.person_id=o.person_id AND h.promotion_id=o.promotion_id) AS has_history
    FROM ppw_contract_offers o JOIN ppw_promotions p ON p.world_id=o.world_id
@@ -150,9 +153,11 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
    validateOfferTerms(b.terms,b.submitted_week_index);
    if(b.media_reach===null)throw new Error("Original promotion media reach not imported");
    const score=offerUtility(p,b.terms,{tier:b.tier,mediaReach:b.media_reach,
-    hasPriorRelationship:b.has_history,trust:50,seed:String(clock[0]!.seed),offerId:b.offer_id});
+    hasPriorRelationship:b.has_history,trust:b.backstage_trust,
+    seed:String(clock[0]!.seed),offerId:b.offer_id});
    // Original renewal resistance penalises low morale/trust near acceptance threshold.
-   const penalty=b.source_contract_id?Math.round(Math.max(0,55-(p.morale+50)/2)*.2*10)/10:0;
+   const penalty=b.source_contract_id?Math.round(
+    Math.max(0,55-(p.morale+b.backstage_trust)/2)*.2*10)/10:0;
    return {...b,score:Math.round((score-penalty)*10)/10};
   }).sort((a,b)=>b.score-a.score||a.offer_id.localeCompare(b.offer_id));
   const threshold=clock[0]!.offer_acceptance_threshold;

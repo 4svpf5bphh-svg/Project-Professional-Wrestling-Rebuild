@@ -12,7 +12,7 @@ import {requestAdditionalDates} from "../src/db/contract-date-requests.js";
 import {resolveDateRequest} from "../src/db/contract-date-decisions.js";
 import {readContractDesk} from "../src/db/contract-desk-workspace.js";
 import {settlePendingWorldContracts} from "../src/db/world-contract-desk-resolution.js";
-import type {OfferTerms} from "../src/domain/contract-economics.js";
+import {offerUtility,type OfferTerms} from "../src/domain/contract-economics.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal, secrecy and replay",{
@@ -61,6 +61,11 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   await assert.rejects(readPendingContractOffers(db.pool,world,playerB,pA),/access denied/);
   await assert.rejects(resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
    requestId:"forbidden-"+id,expectedRevision:6},{source:"WORLD_RESOLUTION",worldId:"wrong"}),/authority/);
+  // Broken promises or a falling-out belong to this one promotion, not
+  // to the wrestler globally. The existing bid resolver must price it in.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_backstage_promotion_trust(world_id,promotion_id,person_id,trust) VALUES($1,$2,$3,10)",
+   [world,pA,person]));
   const result=await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
    requestId:"resolve-"+id,expectedRevision:6},system);
   assert.equal(result.status,"APPLIED");
@@ -69,6 +74,17 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.ok(result.result.decisions);
   assert.equal(result.result.decisions.find(d=>d.id===offerB)?.status,"ACCEPTED");
   assert.equal(result.result.decisions.find(d=>d.id===offerA)?.status,"REJECTED");
+  const economicProfile={recognition:85,popularity:80,inRingQuality:85,
+   matchCraft:85,presentation:90,stamina:80,fatigue:0,careerStage:"PRIME" as const,
+   morale:80,priorities:{money:60,role:10,prestige:10,schedule:10,loyalty:5,exposure:5}};
+  const lowTrustScore=offerUtility(economicProfile,limited,{
+   tier:"INDEPENDENT",mediaReach:40,hasPriorRelationship:false,
+   trust:10,seed:"7",offerId:offerA});
+  const neutralScore=offerUtility(economicProfile,limited,{
+   tier:"INDEPENDENT",mediaReach:40,hasPriorRelationship:false,
+   trust:50,seed:"7",offerId:offerA});
+  assert.ok(lowTrustScore<neutralScore,"Bad backstage trust affects the actual offered terms");
+  assert.equal(result.result.decisions.find(d=>d.id===offerA)?.score,lowTrustScore);
   assert.equal((await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
    requestId:"resolve-"+id,expectedRevision:6},system)).status,"REPLAYED");
   const exclusiveRows=await withWorldTransaction(db.pool,tx=>tx.query<{promotion_id:string;family:string;

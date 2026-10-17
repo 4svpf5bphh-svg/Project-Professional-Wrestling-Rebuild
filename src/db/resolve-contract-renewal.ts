@@ -84,16 +84,22 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
      const invalid=canAcceptTerms(person,terms,active,current);
      if(invalid)decision="REJECTED";
      if(decision==="ACCEPTED"){
-      const promotions=await tx.query<{tier:string;media_reach:number|null}>(`
-       SELECT tier,media_reach FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$2`,
-       [input.worldId,input.promotionId]);
+      const promotions=await tx.query<{tier:string;media_reach:number|null;backstage_trust:number}>(`
+       SELECT p.tier,p.media_reach,coalesce(t.trust,50) AS backstage_trust
+       FROM ppw_promotions p LEFT JOIN ppw_backstage_promotion_trust t
+       ON t.world_id=p.world_id AND t.promotion_id=p.promotion_id
+       AND t.person_id=$3
+       WHERE p.world_id=$1 AND p.promotion_id=$2`,
+       [input.worldId,input.promotionId,proposal.person_id]);
       if(promotions.length!==1||promotions[0]!.media_reach===null)
        throw new Error("Original promotion contract economics not imported");
       const raw=offerUtility(person,terms,{tier:promotions[0]!.tier,
        mediaReach:promotions[0]!.media_reach!,hasPriorRelationship:true,
-       trust:50,seed:String(clocks[0]!.seed),offerId:input.proposalId});
+       trust:promotions[0]!.backstage_trust,
+       seed:String(clocks[0]!.seed),offerId:input.proposalId});
       // Port of original renewalRelationshipPenalty(morale,trust).
-      const penalty=Math.round(Math.max(0,55-(person.morale+50)/2)*.2*10)/10;
+      const penalty=Math.round(Math.max(0,
+       55-(person.morale+promotions[0]!.backstage_trust)/2)*.2*10)/10;
       if(raw-penalty<clocks[0]!.offer_acceptance_threshold)decision="REJECTED";
      }
     }
