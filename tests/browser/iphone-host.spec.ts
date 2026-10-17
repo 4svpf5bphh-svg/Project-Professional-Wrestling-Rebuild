@@ -40,7 +40,7 @@ test("iPhone sign in, persistent navigation and deep-linked desks",async({page})
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await nav.getByRole("button",{name:"More"}).click();
  await expect(page).toHaveURL(/#\/more$/);
- await expect(page.getByRole("heading",{name:"Every corner of your World"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
  await page.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
  await expect(nav.getByRole("button",{name:"Roster"})).toBeVisible();
