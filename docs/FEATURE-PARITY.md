@@ -13,7 +13,7 @@ This is an implementation inventory, not a claim of complete gameplay parity.
 | Angles/segments | Authenticated mobile creation/edit/save of 13 segment types; World resolution scores and persists narratives and intents; linked programme progression | Confirm deeper wrestler/stable consequences and results presentation |
 | Programmes and storyline heat | Legacy modules | Canonical World resolver projection |
 | Wrestler relationships, gimmicks, stables | Partial foundations | Restore original gameplay and durable consequences |
-| Results | Canonical receipt writer | Complete card narrative, visuals and fan reaction |
+| Results | Canonical receipt writer, persisted segment stories and mobile broadcast | Deeper match commentary, fan reaction |
 | Browser UI | Reusable card editor, adapters | New cohesive mobile-first app host |
 
 ## Prioritisation

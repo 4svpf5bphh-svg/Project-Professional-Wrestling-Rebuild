@@ -98,12 +98,12 @@ test("two promotions resolve, certify and publish after restart without double c
   assert.deepEqual(await read<{certified_promotions:number}>(
    "SELECT certified_promotions FROM ppw_week_resolution_seals WHERE world_id=$1",[worldId]
   ),[{certified_promotions:2}]);
-  const results=await read<{receipt_json:{matches:{actualWinnerSide:string}[]}}>(
+  const results=await read<{receipt_json:{matches:{actualWinnerSide:string}[];segments:{outcome:string}[]}}>(
    "SELECT receipt_json FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
   assert.equal(results.length,2);
   assert.ok(results.every(r=>r.receipt_json.matches.length===1));
   assert.ok(results.every(r=>r.receipt_json.matches[0]!.actualWinnerSide==="B"));
-  assert.ok(results.every(r=>(r.receipt_json as {segments:unknown[]}).segments.length===1));
+  assert.ok(results.every(r=>r.receipt_json.segments.length===1));
   const angleStories=await read<{slot_id:string;authored_outcome:string;
    story_json:{headline:string;summary:string;intent:string|null;actorIds:string[]}}>(`
    SELECT slot_id,authored_outcome,story_json FROM ppw_completed_show_segments

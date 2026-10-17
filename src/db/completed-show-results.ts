@@ -212,16 +212,32 @@ export async function recordCompletedShowInTransaction(
      VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
    [receipt.worldId,receipt.promotionId,receipt.showId,receipt.year,receipt.week,
     receipt.resolutionId,receipt.crowdResponse,canonical,digest]);
-  for(const m of receipt.matches)await tx.query(
-   `INSERT INTO ppw_completed_show_matches
-    (world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
-    VALUES($1,$2,$3,$4,$5,$6,$7)`,
-   [receipt.worldId,receipt.showId,m.matchId,m.position,m.crowdResponse,
-    m.actualFinish,m.actualWinnerSide]);
-  for(const e of evidence)await tx.query(
-   `INSERT INTO ppw_completed_match_evidence(world_id,show_id,match_id,evidence_json)
-    VALUES($1,$2,$3,$4::jsonb)`,
-   [receipt.worldId,receipt.showId,e.matchId,JSON.stringify(e)]);
+  // One PostgreSQL statement per result family regardless of card length.
+  // Large shows no longer consume two database round-trips per match.
+  if(receipt.matches.length){
+   await tx.query(`
+    INSERT INTO ppw_completed_show_matches
+     (world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
+    SELECT $1,$2,x.match_id,x.position,x.crowd_response,
+     x.actual_finish,x.actual_winner_side
+    FROM jsonb_to_recordset($3::jsonb) AS x(
+     match_id text,position integer,crowd_response numeric,
+     actual_finish text,actual_winner_side text)`,
+    [receipt.worldId,receipt.showId,JSON.stringify(receipt.matches.map(m=>({
+     match_id:m.matchId,position:m.position,crowd_response:m.crowdResponse,
+     actual_finish:m.actualFinish,actual_winner_side:m.actualWinnerSide,
+    })))]);
+  }
+  if(evidence.length){
+   await tx.query(`
+    INSERT INTO ppw_completed_match_evidence
+     (world_id,show_id,match_id,evidence_json)
+    SELECT $1,$2,x.match_id,x.evidence_json
+    FROM jsonb_to_recordset($3::jsonb) AS x(match_id text,evidence_json jsonb)`,
+    [receipt.worldId,receipt.showId,JSON.stringify(evidence.map(e=>({
+     match_id:e.matchId,evidence_json:e,
+    })))]);
+  }
   if(receipt.segments.length){
    const rows=receipt.segments.map(s=>({
     slot_id:s.slotId,position:s.position,kind:s.kind,
