@@ -28,6 +28,10 @@ function fake(authorized=true,canonical=false){
    if(sql.includes("FROM ppw_people"))return [
     {person_id:"a",name:"Star"},{person_id:"b",name:"Rival"},
    ] as unknown as T[];
+   if(sql.includes("FROM ppw_completed_show_matches m"))return [{
+    match_id:"m",evidence_json:null,championship_name:null,title_changed:null,
+    title_winner_name:null,title_prior_holder_name:null,injuries:[],
+   }] as unknown as T[];
    if(sql.includes("FROM ppw_completed_show_segments"))return [{
     slot_id:"a",story_json:{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",
      headline:"In-ring promo",summary:"The wrestler refuses the promo.",
@@ -44,7 +48,7 @@ test("published card is ordered, named, scored and does not change authored outc
  assert.equal(result.entries[0]!.crowdResponse,85);
  assert.equal(result.entries[1]!.outcome,"REFUSED");
  assert.equal(result.entries[1]!.headline,"In-ring promo");
- assert.equal(calls(),4);
+ assert.equal(calls(),5);
  assert.equal(result.entries[0]!.matchContext,undefined); // Legacy slot without sides is tolerated.
  assert.equal(result.entries[1]!.segmentKind,"PROMO");
 });
@@ -71,5 +75,5 @@ test("Ringside broadcast derives billing, intent and title-contest context from 
  assert.equal(match.matchContext?.plannedMinutes,18);
  assert.equal(match.matchContext?.championshipContested,true);
  assert.equal(match.crowdResponse,85);
- assert.equal(calls(),4); // Billing uses fetched roster + immutable slot; no new query.
+ assert.equal(calls(),5); // Single evidence+fallout read adds only one bounded query.
 });

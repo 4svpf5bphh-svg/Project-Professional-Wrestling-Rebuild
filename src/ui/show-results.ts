@@ -110,14 +110,25 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    entryIcon(entry)+"  "+review.tag.toUpperCase()),
    node("span","ppw-result-meter",String(Math.round(entry.crowdResponse))+" / 100"));
   const heading=node("span","ppw-result-headline",review.headline);
+  if(entry.fallout?.title?.changed)
+   append(meta,node("span","ppw-result-flag ppw-flag-gold","NEW CHAMPION"));
+  if(entry.fallout?.injuries.length)
+   append(meta,node("span","ppw-result-flag ppw-flag-medical","MEDICAL UPDATE"));
   const trail=node("span","ppw-result-trail",
    "CARD "+String(entry.position+1)+"  ·  "+label(entry.outcome));
   append(summary,meta,heading,trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
-  append(body,node("p","ppw-result-recap",review.recap),
-   node("p","ppw-result-reaction",review.reaction),
-   node("p","ppw-result-verdict","RINGSIDE VERDICT  /  "+review.verdict));
+  for(const paragraph of review.paragraphs)
+   append(body,node("p","ppw-result-recap",paragraph));
+  if(review.bulletins.length){
+   append(body,node("h3","ppw-result-fallout-title","CONFIRMED FALLOUT"));
+   const bullets=document.createElement("ul");bullets.className="ppw-result-fallout";
+   for(const bulletin of review.bulletins)
+    append(bullets,node("li","",bulletin));
+   append(body,bullets);
+  }
+  append(body,node("p","ppw-result-verdict","RINGSIDE VERDICT  /  "+review.verdict));
   if(entry.performerIdentities?.length){
    const profiles=node("div","ppw-result-personas");
    for(const person of entry.performerIdentities){

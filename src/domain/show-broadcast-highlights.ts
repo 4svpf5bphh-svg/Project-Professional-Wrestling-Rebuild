@@ -5,7 +5,7 @@
  */
 import type {ShowResultEntry} from "../db/show-results-view.js";
 export interface BroadcastHighlight{
- slotId:string;position:number;category:"TURN"|"ARRIVAL"|"ATTACK"|"MATCH"|"ANGLE";
+ slotId:string;position:number;category:"CHAMPIONSHIP"|"INJURY"|"TURN"|"ARRIVAL"|"ATTACK"|"MATCH"|"ANGLE";
  headline:string;detail:string;
 }
 type Rated=BroadcastHighlight&{priority:number};
@@ -19,6 +19,20 @@ export function showBroadcastHighlights(
   if(entry.type==="MATCH"){
    if(!strongest||entry.crowdResponse>strongest.crowdResponse)
     strongest=entry;
+   if(entry.fallout?.title?.changed){
+    const t=entry.fallout.title;
+    candidates.push({slotId:entry.slotId,position:entry.position,priority:110,
+     category:"CHAMPIONSHIP",headline:"A new champion is crowned",
+     detail:t.winnerName+" captures "+t.name+
+      (t.priorHolderName?" from "+t.priorHolderName:"")});
+   }
+   if(entry.fallout?.injuries.length){
+    const injured=entry.fallout.injuries.map(x=>x.personName).join(" & ");
+    candidates.push({slotId:entry.slotId,position:entry.position,priority:99,
+     category:"INJURY",headline:"Medical news from ringside",
+     detail:injured+" — "+entry.fallout.injuries.map(x=>
+      x.severity.toLowerCase()+" injury").join(", ")});
+   }
    continue;
   }
   // A refusal is an authored event, but never a successful attack,

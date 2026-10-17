@@ -89,7 +89,7 @@ function finishColour(outcome:string,key:string):string{
   CLEAN_PIN:["The referee counted three to make it official.",
    "A clean pinfall provided the final decision."],
   FLASH_PIN:["A flash pin made all the difference.",
-   "A quick cradle-style decision is not confirmed; the official finish was a flash pin."],
+   "The official result came from a sudden flash pin."],
   SUBMISSION:["The bout ended when the submission was recorded.",
    "The tap-out decided the contest."],
   DISQUALIFICATION:["The referee had seen enough and called the disqualification.",
@@ -175,7 +175,6 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
     "The crowd score tells its own story.",
     "The live response helps put the result in context."],key,14),
   ];
-  if(bulletins.length)paragraphs.push(bulletins.join(" "));
   if(entry.outcome==="INJURY_STOPPAGE")headline="The referee waves it off";
   else if(entry.fallout?.title?.changed)headline="NEW CHAMPION: "+
    entry.fallout.title.winnerName;
@@ -184,7 +183,7 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
   else if(entry.outcome==="OVER_THE_TOP_ROPE")headline="Last wrestler standing";
  }
  return {tone,tag,headline,paragraphs,bulletins,
-  recap:paragraphs.join(" "),reaction:reactionText,verdict:opinion};
+  recap:[...paragraphs,...bulletins].join(" "),reaction:reactionText,verdict:opinion};
 }
 /** Fully receipt-derived show overview; never a second database fetch. */
 export function broadcastShowPulse(entries:readonly ShowResultEntry[]){

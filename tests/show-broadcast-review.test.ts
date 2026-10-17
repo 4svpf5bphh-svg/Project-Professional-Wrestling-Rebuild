@@ -45,3 +45,40 @@ test("pulse counts only scored completed entries and keeps the hottest",()=>{
  assert.deepEqual(broadcastShowPulse([a,b]),
   {topSlotId:"one",hotMoments:1,coldMoments:1});
 });
+
+test("non-AI review names a confirmed new champion and medical consequence",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Result",
+  summary:"The referee counted three.",outcome:"CLEAN_PIN",
+  fallout:{
+   title:{name:"World Championship",winnerName:"Challenger",
+    priorHolderName:"Champion",changed:true},
+   injuries:[{personName:"Champion",severity:"MODERATE",weeksOut:4,stoppage:false}],
+   eliminations:[],interference:undefined,
+  }};
+ const result=reviewCompletedEntry(entry,"world");
+ assert.match(result.headline,/NEW CHAMPION.*Challenger/);
+ assert.match(result.recap,/World Championship/);
+ assert.match(result.recap,/4 PPW weeks/);
+ assert.equal(result.bulletins.length,2);
+ assert.ok(result.paragraphs.length>=3);
+});
+test("contested title stays with champion when the decision does not transfer it",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Result",
+  summary:"A DQ ends the match.",outcome:"DISQUALIFICATION",
+  fallout:{title:{name:"Tag Titles",winnerName:"Challengers",
+   priorHolderName:"Champions",changed:false},
+   injuries:[],eliminations:[]}};
+ const result=reviewCompletedEntry(entry,"world");
+ assert.match(result.recap,/Champions remained champion/);
+ assert.doesNotMatch(result.recap,/NEW CHAMPION|captured/);
+});
+test("verified run-in and battle royal eliminations enrich the report without inventing moves",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Winner",
+  summary:"The last elimination decided the bout.",outcome:"OVER_THE_TOP_ROPE",
+  fallout:{injuries:[],interference:{personName:"Manager",outcome:"ABORTED"},
+   eliminations:["First","Second","Third"]}};
+ const result=reviewCompletedEntry(entry,"world");
+ assert.match(result.recap,/never|did not materialise/);
+ assert.match(result.recap,/First → Second → Third/);
+ assert.doesNotMatch(result.recap,/powerbomb|suplex|signature finisher/i);
+});

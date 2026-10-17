@@ -21,7 +21,7 @@ export interface BroadcastFallout{
  interference?:{personName:string|null;outcome:"SUCCESS"|"THWARTED"|"ABORTED"};
  eliminations:string[];
 }
-export interface RecordedMatchFalloutRow{
+export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  match_id:string;evidence_json:unknown;
  championship_name:string|null;title_changed:boolean|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;

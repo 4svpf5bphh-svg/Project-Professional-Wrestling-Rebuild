@@ -83,3 +83,15 @@
  .ppw-result-headline{font-size:17px}
 }
 @media(prefers-reduced-motion:reduce){.ppw-results *{scroll-behavior:auto!important}}
+
+/* Verified outcome details remain visible, separate from editorial copy. */
+.ppw-result-fallout-title{font-size:12px;letter-spacing:.11em;
+ font-weight:850;color:#a9eed7;margin:9px 0 0}
+.ppw-result-fallout{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.ppw-result-fallout li{padding:11px 13px;background:#1b3041;
+ border-left:3px solid #d8bd79;border-radius:8px;line-height:1.55;font-size:13px}
+.ppw-result-flag{font-size:10px;letter-spacing:.06em;
+ padding:4px 7px;border-radius:6px;font-weight:850;white-space:nowrap}
+.ppw-flag-gold{background:#59451c;color:#fff1c1}
+.ppw-flag-medical{background:#5a3033;color:#ffe1d9}
+.ppw-result-entry .ppw-result-meta{flex-wrap:wrap}
