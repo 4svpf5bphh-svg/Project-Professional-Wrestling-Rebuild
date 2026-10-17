@@ -26,6 +26,12 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(clocks.length!==1)throw new Error("Industry access denied");
   const clock=clocks[0]!,now=(clock.year-1)*52+clock.week-1;
+  const cutoff=Math.max(0,now-12);
+  const lowerYear=Math.floor(cutoff/52)+1,lowerWeek=cutoff%52+1;
+  // The existing (world_id,year,week,promotion_id) index can perform a
+  // 13-week range scan even after decades of history. Avoid arithmetic
+  // on c.year/c.week inside WHERE, which would scan the whole archive.
+  const window=[worldId,lowerYear,lowerWeek,clock.year,clock.week];
   const companies=await tx.query<{promotion_id:string;name:string;
    tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
@@ -34,10 +40,11 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
      SELECT p.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
       avg(c.crowd_response)::numeric(6,1)::text AS recent_avg_crowd,
       count(*)::integer AS completed_events
-     FROM ppw_promotions p JOIN ppw_completed_shows c
-      ON c.world_id=p.world_id AND c.promotion_id=p.promotion_id
-      AND (c.year-1)*52+c.week-1 BETWEEN $2::integer-12 AND $2::integer
-     WHERE p.world_id=$1 GROUP BY p.promotion_id
+     FROM ppw_completed_shows c
+     WHERE c.world_id=$1
+       AND (c.year,c.week)>=($2::integer,$3::integer)
+       AND (c.year,c.week)<=($4::integer,$5::integer)
+     GROUP BY c.promotion_id
    )
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
     p.management_mode,r.latest_show_week,
@@ -45,7 +52,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    FROM ppw_promotions p LEFT JOIN recent r ON r.promotion_id=p.promotion_id
    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
    ORDER BY p.media_reach DESC NULLS LAST,p.name ASC,p.promotion_id ASC
-   LIMIT 129`,[worldId,now]);
+   LIMIT 129`,window);
   if(companies.length>128)throw new Error("Industry company bound exceeded");
   const broadcasts=await tx.query<{show_id:string;promotion_id:string;
    promotion_name:string;show_name:string|null;booking_class:string;
@@ -59,9 +66,10 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     AND p.promotion_id=c.promotion_id
    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
    WHERE c.world_id=$1 AND p.lifecycle='ACTIVE'
-    AND (c.year-1)*52+c.week-1 BETWEEN $2::integer-12 AND $2::integer
+    AND (c.year,c.week)>=($2::integer,$3::integer)
+    AND (c.year,c.week)<=($4::integer,$5::integer)
    ORDER BY c.year DESC,c.week DESC,c.show_day DESC NULLS LAST,
-    c.show_id DESC LIMIT 25`,[worldId,now]);
+    c.show_id DESC LIMIT 25`,window);
   return {worldName:clock.world_name,year:clock.year,week:clock.week,
    phase:clock.phase,nextLockEpoch:Number(clock.next_lock_epoch),
    ownPromotionId:promotionId,ownPromotionName:clock.own_name,
