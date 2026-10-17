@@ -18,7 +18,7 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:worldId,name:"Calendar World",seed:29,rulesetVersion:"test"});
    await addPromotion(tx,worldId,{id:promotionId,name:"Arena League",tier:"LOCAL"});
-   await addPromotion(tx,worldId,{id:"rival",name:"WWE",tier:"MAJOR"});
+   await addPromotion(tx,worldId,{id:"rival",name:"WWE",tier:"GLOBAL"});
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotionId]);
