@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
+import {showReactionWire} from "../src/domain/show-reaction-wire.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 const scope={worldId:"world",promotionId:"prom",showId:"show",playerId:"owner"};
 const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
@@ -78,4 +79,17 @@ test("Ringside broadcast derives billing, intent and title-contest context from 
  assert.equal(match.matchContext?.championshipContested,true);
  assert.equal(match.crowdResponse,85);
  assert.equal(calls(),5); // Single evidence+fallout read adds only one bounded query.
+});
+
+test("Crowd Noise is computed from the private five-read completed result, without polling",async()=>{
+ const {pool,calls}=fake(true,true);
+ const report=await readCompletedShowView(pool,scope);
+ const first=showReactionWire(report);
+ assert.deepEqual(showReactionWire(report),first);
+ assert.equal(calls(),5);
+ assert.equal(first.length,2);
+ assert.deepEqual(first.map(x=>x.slotId),["a","m"]);
+ assert.match(first[0]!.text,/refused/i);
+ assert.match(first[1]!.text,/crowd|building|audience/i);
+ assert.equal(calls(),5,"Opening generated reactions performs no extra database reads");
 });

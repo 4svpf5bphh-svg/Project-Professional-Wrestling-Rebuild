@@ -78,3 +78,25 @@ test("storyline fatigue versus heat is taken only from certified programme signa
  assert.match(wire[0]!.text,/repetition/i);
  assert.match(wire[1]!.text,/heat/i);
 });
+
+test("battle royal elimination order and named victory are factual",()=>{
+ const royal=match("royal",69);
+ royal.outcome="OVER_THE_TOP_ROPE";
+ royal.matchContext={...royal.matchContext!,format:"BATTLE ROYAL",
+  sides:[["A"],["B"],["C"]],winnerNames:["C"]};
+ royal.fallout!.eliminations=["A","B"];
+ const result=showReactionWire(show([royal]))[0]!;
+ assert.equal(result.source,"ELIMINATION");
+ assert.match(result.text,/B went out/);
+ assert.match(result.text,/C finished on top/);
+ assert.doesNotMatch(result.text,/eliminated by C|clothesline|powerbomb/i);
+});
+test("submission and flash-pin reactions never guess specific manoeuvres",()=>{
+ const tap=match("tap",74);tap.outcome="SUBMISSION";
+ const flash=match("flash",75);flash.outcome="FLASH_PIN";
+ const wire=showReactionWire(show([tap,flash]));
+ assert.deepEqual(wire.map(x=>x.source),["FINISH","FINISH"]);
+ assert.match(wire[0]!.text,/submission/);
+ assert.match(wire[1]!.text,/flash pin/);
+ assert.doesNotMatch(wire.map(x=>x.text).join(" "),/crossface|roll-up|cradle/);
+});
