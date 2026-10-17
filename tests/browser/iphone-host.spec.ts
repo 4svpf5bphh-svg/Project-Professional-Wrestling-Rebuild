@@ -34,6 +34,12 @@ test("iPhone sign in, persistent navigation and deep-linked desks",async({page})
  await page.getByRole("button",{name:"Sign in"}).click();
  await expect(nav.getByRole("button",{name:"Home"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ const readsOnHome=methods.length;
+ await nav.getByRole("button",{name:"More"}).click();
+ await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ expect(methods.length).toBe(readsOnHome,"Opening the local office menu never reads Neon");
+ await nav.getByRole("button",{name:"Home"}).click();
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await page.getByRole("button",{name:/Talent Market/}).click();
  await expect(page).toHaveURL(/#\/market$/);
  await nav.getByRole("button",{name:"Home"}).click();
@@ -101,4 +107,40 @@ test("compact iPhones retain legible touch navigation and no horizontal shell ov
  await nav.getByRole("button",{name:"Home"}).click();
  await expect(nav.getByRole("button",{name:"Home"})).toHaveAttribute("aria-current","page");
  expect((await audit()).overflow).toBeLessThanOrEqual(1);
+});
+
+test("verified player can join, claim and reach World without bypassing session authority",async({page})=>{
+ let stage=0;
+ const mutated:string[]=[];
+ await page.route("**/api/session",async route=>{
+  const snapshot={...current,overview:{...overview,
+   world:{...overview.world,revision:stage},
+   membership:stage===0?"NONE":"ACTIVE",
+   promotion:stage===2?overview.promotion:null},
+   availablePromotions:stage===1?[{id:"aew",name:"AEW",tier:"GLOBAL"}]:[]};
+  await route.fulfill({json:snapshot});
+ });
+ for(const path of ["/api/join","/api/claim"]){
+  await page.route("**"+path,async route=>{
+   const body=route.request().postDataJSON();
+   expect(route.request().headers()["x-ppw-csrf"]).toBe(current.csrfToken);
+   expect(body.expectedRevision).toBe(stage);
+   expect(body.playerId).toBeUndefined();
+   expect(body.requestId).toBeTruthy();
+   if(path==="/api/claim")expect(body.promotionId).toBe("aew");
+   mutated.push(path);
+   stage++;
+   await route.fulfill({json:{status:"APPLIED"}});
+  });
+ }
+ await page.route("**/api/card",async route=>route.fulfill({json:overview}));
+ await page.goto("/#/home");
+ await expect(page.getByRole("heading",{name:"Join Genesis"})).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await page.getByRole("button",{name:"Join World"}).click();
+ await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
+ expect(mutated).toEqual(["/api/join","/api/claim"]);
 });
