@@ -194,7 +194,7 @@ test("two independent calendar identities can be planned for the same week with 
    ["PREMIUM","REGULAR"]);
   await assert.rejects(planShowWeek(db.pool,{...input,requestId:"same-day",expectedRevision:2,
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
-   day:5,venueId:"arena-b",draftId:ppv.result.draftId}),/different days/);
+   day:5,venueId:"arena-b",draftId:(ppv as {result:{draftId:string}}).result.draftId}),/different days/);
   await assert.rejects(planShowWeek(db.pool,{...input,requestId:"bad",expectedRevision:2,
    showSeriesId:"calendar-default-ppv-wrestlemania",eventType:"MAJOR",
    venueId:"arena-b"}),/not scheduled/);
