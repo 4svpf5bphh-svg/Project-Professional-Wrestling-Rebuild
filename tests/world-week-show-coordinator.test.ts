@@ -14,8 +14,8 @@ function fake(options:{phase?:string;duplicate?:boolean;missing?:boolean}={}){
    if(sql.includes("FROM ppw_promotions"))return [{promotion_id:"p"}] as unknown as T[];
    if(sql.includes("FROM ppw_booking_drafts")&&
     !sql.includes("LEFT JOIN"))return (
-    options.duplicate?[{promotion_id:"p",draft_id:"s"},
-     {promotion_id:"p",draft_id:"s2"}]:[]) as unknown as T[];
+    options.duplicate?[{promotion_id:"p",draft_id:"s",booking_class:"REGULAR"},
+     {promotion_id:"p",draft_id:"s2",booking_class:"REGULAR"}]:[]) as unknown as T[];
    if(sql.includes("LEFT JOIN ppw_completed_shows"))return (
     options.missing?[{promotion_id:"p",draft_id:"s",resolution_id:null}]:[]) as unknown as T[];
    throw new Error("Unexpected query: "+sql);

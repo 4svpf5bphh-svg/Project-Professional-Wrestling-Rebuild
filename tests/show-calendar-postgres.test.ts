@@ -154,3 +154,60 @@ test("WWE full 2026 PLE calendar persists atomically and AEW rivals remain visib
   }).finally(()=>db.close());
  }
 });
+
+// Booking a PPV does not replace or steal that week's required normal card.
+test("two independent calendar identities can be planned for the same week with one World revision chain",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,2),suffix=randomUUID();
+ const worldId="dual-planner-"+suffix,promotionId="wwe",playerId="owner-"+suffix;
+ const scope={worldId,promotionId,playerId};
+ const {planShowWeek}=await import("../src/db/planner-workspace.js");
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Dual Planner",seed:31,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"WWE",tier:"GLOBAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotionId]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'midlands','Midlands',70,70,100)",[worldId]);
+   await tx.query("INSERT INTO ppw_promotion_market_states(world_id,promotion_id,market_id,awareness,live_strength,loyalty) VALUES($1,$2,'midlands',50,50,50)",[worldId,promotionId]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id,capacity,weekly_hire_cost) VALUES($1,'arena-a','Arena A','midlands',1000,3000),($1,'arena-b','Arena B','midlands',2000,5000)",[worldId]);
+  });
+  const input={...scope,year:1,week:5,day:5,marketId:"midlands",
+   ticketStrategy:"STANDARD" as const};
+  const regular=await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
+   showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"});
+  assert.equal(regular.status,"APPLIED");
+  const ppv=await planShowWeek(db.pool,{...input,requestId:"ppv",expectedRevision:1,
+   showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
+   day:7,venueId:"arena-b"});
+  assert.equal(ppv.status,"APPLIED");
+  const planned=await readSixWeekPlanner(db.pool,scope);
+  assert.equal(planned.weeks[4]!.shows.length,2);
+  assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
+   ["Monday Night Raw","Royal Rumble"]);
+  assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.bookingClass).sort(),
+   ["PREMIUM","REGULAR"]);
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"bad",expectedRevision:2,
+   showSeriesId:"calendar-default-ppv-wrestlemania",eventType:"MAJOR",
+   venueId:"arena-b"}),/not scheduled/);
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"double",expectedRevision:2,
+   showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
+   venueId:"arena-b"}),/already has a planned show/);
+  const stored=await withWorldTransaction(db.pool,tx=>tx.query<{booking_class:string;show_series_id:string}>(
+   "SELECT booking_class,show_series_id FROM ppw_booking_drafts WHERE world_id=$1 ORDER BY booking_class",[worldId]));
+  assert.equal(stored.length,2);
+  assert.equal((await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
+   showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"})).status,"REPLAYED");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_command_receipts","ppw_booking_drafts","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotion_controls","ppw_memberships",
+    "ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});

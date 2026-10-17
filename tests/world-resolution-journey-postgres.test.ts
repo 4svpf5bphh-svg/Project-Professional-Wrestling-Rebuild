@@ -183,3 +183,97 @@ test("two promotions resolve, certify and publish after restart without double c
   }).finally(()=>db.close());
  }
 });
+
+/** Regression: the calendar's premium event is a genuinely separate show,
+ * not a second name on television or a second World Lock. */
+test("a regular card plus an independently submitted PPV resolve and settle in one World week",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,4),id=randomUUID(),worldId="dual-journey-"+id;
+ const resolutionId="resolution-dual-"+id,promotions=["host-"+id,"visitor-"+id];
+ const showIds=["television-"+id,"premium-"+id,"rival-"+id];
+ const persons=Array.from({length:6},(_,i)=>"wrestler-"+i+"-"+id);
+ const contractIds=persons.map((_,i)=>"contract-"+i+"-"+id);
+ const read=<T extends Record<string,unknown>>(sql:string,params:unknown[]=[]) =>
+  withWorldTransaction(db.pool,tx=>tx.query<T>(sql,params));
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Premium Journey",seed:125,rulesetVersion:"test"});
+   for(let i=0;i<2;i++){
+    await addPromotion(tx,worldId,{id:promotions[i]!,name:"Promotion "+i,tier:"LOCAL"});
+    await tx.query("UPDATE ppw_promotions SET media_reach=70 WHERE world_id=$1 AND promotion_id=$2",
+     [worldId,promotions[i]!]);
+   }
+   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[worldId]);
+   for(let i=0;i<3;i++)await tx.query(
+    "INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,$2,$3)",
+    [worldId,"dual-venue-"+i,"Arena "+i]);
+   for(let i=0;i<6;i++){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,default_alignment) VALUES($1,$2,$3,'MEN',80,80,75,85,95,5,5,65,65,70,'FACE')",
+     [worldId,persons[i]!,"Wrestler "+i]);
+    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',1,52)",
+     [worldId,contractIds[i]!,persons[i]!,promotions[i>=4?1:0]!]);
+   }
+   for(let i=0;i<3;i++){
+    const promotionId=promotions[i===2?1:0]!;
+    const bookingClass=i===1?"PREMIUM":"REGULAR";
+    await tx.query(
+     "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,event_importance,event_type,booking_class,show_series_id) VALUES($1,$2,$3,1,1,'SUBMITTED',$4,$5,$6,$7,$8,$9)",
+     [worldId,showIds[i]!,promotionId,i+2,"dual-venue-"+i,i===1?99:65,
+      i===1?"MAJOR":"REGULAR",bookingClass,i===1?"calendar-default-ppv-royal-rumble":null]);
+    const a=i*2,b=a+1;
+    const payload={matchType:"SINGLES",participants:[
+     {personId:persons[a],contractId:contractIds[a]},
+     {personId:persons[b],contractId:contractIds[b]},
+    ],scriptedWinner:persons[b],intent:"TECHNICAL",
+     plannedLengthMinutes:15,plannedFinish:"SUBMISSION"};
+    await tx.query(
+     "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb)",
+     [worldId,showIds[i]!,"match-"+i,JSON.stringify(payload)]);
+   }
+   await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]);
+  });
+  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:0})).status,"APPLIED");
+  const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12});
+  assert.equal(stages.status,"PUBLISHED");
+  assert.deepEqual(stages.steps.map(s=>s.action),[
+   "ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
+   "CLEAR_RESOURCES","RESOLVE_LEGACY_SHOWS","RESOLVE_DETAILED_SHOWS",
+   "CERTIFY_WEEK","PUBLISH_WEEK"]);
+  const dates=await read<{show_id:string;dates_charged:number}>(
+   "SELECT show_id,dates_charged FROM ppw_show_resolutions WHERE world_id=$1 ORDER BY show_id",[worldId]);
+  assert.equal(dates.length,3);
+  assert.ok(dates.every(x=>x.dates_charged===2));
+  const results=await read<{show_id:string;receipt_json:{matches:unknown[]}}>(
+   "SELECT show_id,receipt_json FROM ppw_completed_shows WHERE world_id=$1 ORDER BY show_id",[worldId]);
+  assert.deepEqual(results.map(x=>x.show_id).sort(),[...showIds].sort());
+  assert.ok(results.every(x=>x.receipt_json.matches.length===1));
+  const contractBalances=await read<{remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
+  assert.ok(contractBalances.every(x=>x.remaining_dates===0));
+  const week=await read<{year:number;week:number;phase:string}>(
+   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  assert.deepEqual(week,[{year:1,week:2,phase:"OPEN"}]);
+  assert.deepEqual(await read<{certified_promotions:number}>(
+   "SELECT certified_promotions FROM ppw_week_resolution_seals WHERE world_id=$1",[worldId]),
+   [{certified_promotions:2}]);
+  const retry=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:2});
+  assert.equal(retry.status,"BLOCKED");
+  assert.equal((await read<{total:number}>(
+   "SELECT count(*)::integer AS total FROM ppw_completed_shows WHERE world_id=$1",[worldId]))[0]!.total,3);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_programme_resolved_activities",
+    "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
+    "ppw_wrestler_relationships","ppw_completed_match_evidence",
+    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_completed_shows","ppw_show_resolutions","ppw_week_resolution_seals",
+    "ppw_week_resource_clearances","ppw_week_prepared_finalizations",
+    "ppw_week_continuity_assessments","ppw_ledger_events","ppw_command_receipts",
+    "ppw_promotion_alignment_changes","ppw_programme_match_activities",
+    "ppw_programme_participants","ppw_programmes","ppw_card_slots",
+    "ppw_booking_drafts","ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotions","ppw_worlds"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});

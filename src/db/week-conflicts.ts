@@ -219,6 +219,25 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
       const arr=scheduled.get(a.personId)??[];
       arr.push(a);scheduled.set(a.personId,arr);
     }
+    const neededByContract=new Map<string,{bookings:typeof requested;balance:number|null;
+     family:string|null}>();
+    for(const a of requested){
+      const key=a.promotionId+"\u0000"+a.personId+"\u0000"+a.contractId;
+      const info=byContract.get(key)!;
+      const item=neededByContract.get(key)??{bookings:[],balance:info.remaining_dates,
+       family:info.family};
+      item.bookings.push(a);neededByContract.set(key,item);
+    }
+    for(const item of neededByContract.values()){
+      if(item.balance===null)continue;
+      const uncharged=item.bookings.filter(a=>!a.alreadyResolved);
+      if(uncharged.length>item.balance){
+        blockers.push({code:"CONTRACT_UNAVAILABLE",
+         promotionIds:[...new Set(uncharged.map(a=>a.promotionId))],
+         showIds:[...new Set(uncharged.map(a=>a.showId))],
+         resourceId:uncharged[0]!.personId});
+      }
+    }
     for(const [personId,bookings] of scheduled){
       if(bookings.length>(capacity.get(personId)??7)) blockers.push({
         code:"WRESTLER_WEEK_CAPACITY",

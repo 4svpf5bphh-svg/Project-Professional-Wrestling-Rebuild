@@ -92,7 +92,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const draftRows=await tx.query<{promotion_id:string}>(
         `SELECT promotion_id FROM ppw_booking_drafts
           WHERE world_id=$1 AND year=$2 AND week=$3 AND status IN ('DRAFT','SUBMITTED')
-            AND promotion_id=ANY($4::text[]) LIMIT 129`,
+            AND promotion_id=ANY($4::text[]) AND booking_class='REGULAR' LIMIT 129`,
         [input.worldId,year,week,priority],
       );
       if(draftRows.length>128)throw new Error("Too many draft records");

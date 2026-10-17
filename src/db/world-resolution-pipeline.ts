@@ -23,7 +23,7 @@ import {inspectWorldArbitrationRecovery} from "./world-arbitration-coordinator.j
 import {settlePendingWorldContracts} from "./world-contract-desk-resolution.js";
 import type {RemediationChoice} from "../domain/resource-remediation.js";
 export type ResolutionReadiness={
- year:number;week:number;phase:string;active:number;submitted:number;
+ year:number;week:number;phase:string;active:number;submitted:number;regularSubmitted:number;
  showEconomicsEnabled:boolean;
  cleared:number|null;certified:number|null;legacyResolved:number;
  detailedResolved:number;blockers:string[];
@@ -38,13 +38,18 @@ export async function inspectWorldResolutionReadiness(
   if(w.length!==1)throw new Error("World not found");
   const {year,week,phase}=w[0]!;
   const rows=await tx.query<{
-   active:number;submitted:number;cleared:number|null;
+   active:number;submitted:number;regular_submitted:number;cleared:number|null;
    certified:number|null;legacy_resolved:number;detailed_resolved:number;
   }>(`SELECT
      (SELECT count(*)::integer FROM ppw_promotions WHERE world_id=$1
         AND lifecycle='ACTIVE') AS active,
      (SELECT count(*)::integer FROM ppw_booking_drafts WHERE world_id=$1
         AND year=$2 AND week=$3 AND status='SUBMITTED') AS submitted,
+     (SELECT count(*)::integer FROM ppw_booking_drafts d
+       JOIN ppw_promotions p ON p.world_id=d.world_id
+        AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
+       WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
+        AND d.status='SUBMITTED' AND d.booking_class='REGULAR') AS regular_submitted,
      (SELECT eligible_promotions FROM ppw_week_resource_clearances
         WHERE world_id=$1 AND year=$2 AND week=$3) AS cleared,
      (SELECT certified_promotions FROM ppw_week_resolution_seals
@@ -58,12 +63,13 @@ export async function inspectWorldResolutionReadiness(
   const r=rows[0]!,blockers:string[]=[];
   if(phase!=="RESOLVING")blockers.push("WORLD_NOT_RESOLVING");
   if(r.active<1||r.active>128)blockers.push("INVALID_ACTIVE_PROMOTION_COUNT");
-  if(r.submitted!==r.active)blockers.push("SHOWS_NOT_SUBMITTED");
+  if(r.regular_submitted!==r.active||r.submitted<r.active||
+   r.submitted>r.active*2)blockers.push("SHOWS_NOT_SUBMITTED");
   if(r.cleared!==r.active)blockers.push("RESOURCES_NOT_CLEARED");
-  if(r.legacy_resolved>r.active||r.detailed_resolved>r.active)
+  if(r.legacy_resolved>r.submitted||r.detailed_resolved>r.submitted)
    blockers.push("EXCESS_RESOLUTION_RECEIPTS");
   return {year,week,phase,showEconomicsEnabled:w[0]!.show_economics_enabled===true,
-   active:r.active,submitted:r.submitted,
+   active:r.active,submitted:r.submitted,regularSubmitted:r.regular_submitted,
    cleared:r.cleared,certified:r.certified,legacyResolved:r.legacy_resolved,
    detailedResolved:r.detailed_resolved,blockers};
  });
@@ -112,7 +118,7 @@ export async function planNextWorldResolutionAction(
    !stages[0]!.finalized?"FINALIZE_PREPARED_SHOWS":
    "BEGIN_RESOLUTION";
  }else if(ready.phase==="RESOLVING"){
-  if(ready.submitted!==ready.active){
+  if(ready.regularSubmitted!==ready.active){
    const run=await withWorldTransaction(pool,tx=>tx.query<{
     done:boolean;eligible:number;
    }>(`SELECT
@@ -134,7 +140,7 @@ export async function planNextWorldResolutionAction(
       "MISSING_PROMOTION_SHOWS_NO_DELEGATED_STAFF_OR_AI");
    }
   }else if(ready.cleared===null&&ready.showEconomicsEnabled&&
-   ready.submitted===ready.active){
+   ready.regularSubmitted===ready.active){
    const missing=await withWorldTransaction(pool,tx=>tx.query<{
     automatic:number;player:number}>(`
     SELECT
@@ -235,9 +241,9 @@ export async function planNextWorldResolutionAction(
      }
     }
    }
-  }else if(ready.legacyResolved!==ready.active)
+  }else if(ready.legacyResolved!==ready.submitted)
    action="RESOLVE_LEGACY_SHOWS";
-  else if(ready.detailedResolved!==ready.active)
+  else if(ready.detailedResolved!==ready.submitted)
    action="RESOLVE_DETAILED_SHOWS";
   else if(ready.certified!==ready.active)
    action="CERTIFY_WEEK";
@@ -275,12 +281,12 @@ export async function runWorldShowResolutionPhase(
   throw new Error("World week changed before resolution");
  if(before.blockers.length)throw new Error(
   "World show resolution blocked: "+before.blockers.join(","));
- if(before.legacyResolved!==before.active)
+ if(before.legacyResolved!==before.submitted)
   throw new Error("Legacy date-charge resolution incomplete");
  const result=await resolveWorldWeekShows(pool,input);
  const after=await inspectWorldResolutionReadiness(pool,input.worldId);
  if(after.year!==input.year||after.week!==input.week||
-  after.detailedResolved!==after.active||after.blockers.length)
+  after.detailedResolved!==after.submitted||after.blockers.length)
   throw new Error("World show resolution did not complete cleanly");
  return {result,readiness:after};
 }
@@ -299,8 +305,8 @@ export async function publishResolvedWorldWeek(
   throw new Error("World week changed before publication");
  if(ready.blockers.length)throw new Error(
   "World publication blocked: "+ready.blockers.join(","));
- if(ready.legacyResolved!==ready.active||
-  ready.detailedResolved!==ready.active||
+ if(ready.legacyResolved!==ready.submitted||
+  ready.detailedResolved!==ready.submitted||
   ready.certified!==ready.active)
   throw new Error("World publication blocked: incomplete results or certification");
  return advanceResolvedWorldWeek(pool,{
