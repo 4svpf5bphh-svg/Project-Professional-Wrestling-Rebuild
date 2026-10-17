@@ -42,3 +42,8 @@
 @media(min-width:700px){.ppw-home{padding:28px 26px 90px}
  .ppw-home-group{grid-template-columns:repeat(2,minmax(0,1fr))}
  .ppw-home-finances{gap:14px}.ppw-home-stat{padding:16px}}
+
+.ppw-home-countdown{display:block;font-size:16px;font-weight:800;
+ color:#d2f7ff;font-variant-numeric:tabular-nums;
+ background:rgba(7,23,37,.42);border:1px solid rgba(146,220,245,.25);
+ border-radius:12px;padding:12px;margin:14px 0 0}

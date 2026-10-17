@@ -16,6 +16,26 @@ const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
  style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
+ let clockTimer:ReturnType<typeof setInterval>|null=null;
+ function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
+ function startClock(node:HTMLElement,world:PlayerWorldOverview["world"]){
+  if(world.phase!=="OPEN"||!Number.isFinite(world.nextLockEpoch)||
+   !Number.isFinite(world.serverEpoch))return;
+  const origin=Date.now(),serverStart=world.serverEpoch;
+  const tick=()=>{
+   if(!root.contains(node)){clearClock();return;}
+   const seconds=Math.max(0,Math.ceil(world.nextLockEpoch-
+    (serverStart+(Date.now()-origin)/1000)));
+   if(seconds===0){node.textContent="Lock deadline reached · refresh World";
+    clearClock();return;}
+   const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),
+    mins=Math.floor(seconds%3600/60),secs=seconds%60;
+   node.textContent="Next World Lock in "+(days?days+"d ":"")+
+    String(hours).padStart(2,"0")+":"+String(mins).padStart(2,"0")+
+    ":"+String(secs).padStart(2,"0");
+  };
+  tick();clockTimer=setInterval(tick,1000);
+ }
  const control=(title:string,summary:string,action:()=>void,icon:string)=>{
   const b=el("button","ppw-home-tile") as HTMLButtonElement;
   b.type="button";b.onclick=action;
@@ -32,7 +52,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   finally{loading=false;draw();}
  }
  function draw(){
-  root.classList.add("ppw-home");root.replaceChildren();
+  clearClock();root.classList.add("ppw-home");root.replaceChildren();
   const masthead=el("header","ppw-home-head");
   masthead.append(el("span","ppw-home-brand","PROJECT PROFESSIONAL WRESTLING"),
    el("h1","","Your World"),
@@ -63,7 +83,16 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   tags.append(el("span","",world.phase),
    el("span","",promotion?.tier??membership),
    el("span","","Server-authoritative World"));
-  hero.append(tags);root.append(hero);
+  hero.append(tags);
+  if(world.phase==="OPEN"){
+   const countdown=el("p","ppw-home-countdown","Loading lock deadline…");
+   countdown.setAttribute("aria-live","off");
+   hero.append(countdown);
+   startClock(countdown,world);
+  }else if(world.phase==="LOCKED"||world.phase==="RESOLVING"){
+   hero.append(el("p","ppw-home-countdown","Booking is closed until World resolution completes."));
+  }
+  root.append(hero);
   if(!promotion){
    root.append(el("p","ppw-home-small",
     "Join and claim a promotion through the World selection screen before managing your roster."));
