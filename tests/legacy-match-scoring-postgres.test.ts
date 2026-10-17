@@ -232,8 +232,8 @@ test("original match rating/crowd run from only current-week relational context"
     const previousCount=count.length;
     const aligned=await previewArchivedShowMatchScores(instrumented,input);
     assert.equal(aligned.showFinishPreview,null);
-    assert.equal(count.length-previousCount,8,
-      "Aligned scoring should use exactly two additional batched reads");
+    assert.equal(count.length-previousCount,10,
+      "Aligned scoring reads linked rivalry context and alignment with bounded queries");
     assert.equal(aligned.showAlignmentPreview!.phase,"PACING_AND_ALIGNMENT_NOT_FINAL");
     assert.equal(aligned.showAlignmentPreview!.matches[0]!.reason,"FACE_HEEL_CLARITY");
     assert.equal(aligned.showAlignmentPreview!.matches[0]!.modifier,2.2);
@@ -358,8 +358,8 @@ test("original match rating/crowd run from only current-week relational context"
     assert.ok(Math.abs(successful.interference!.delivery-1.8)<1e-12);
     assert.equal(successful.crowdResponse,Math.round(Math.min(100,
       withRunIn.projections[0]!.injuryPreview!.crowdResponse+3.3)*10)/10);
-    assert.equal(count.length-beforeRunInCount,6,
-      "Each preview must retain the six-query SQL budget");
+    assert.equal(count.length-beforeRunInCount,8,
+      "Linked feud adds two indexed reads to the six-query preview");
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_people SET status='INACTIVE' WHERE world_id=$1 AND person_id=$2",
       [worldId,"interferer-"+id],
