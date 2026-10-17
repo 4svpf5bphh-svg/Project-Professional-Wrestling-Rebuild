@@ -4,6 +4,7 @@ export type TagTeamView=Awaited<ReturnType<typeof readTagTeamWorkspace>>;
 export interface TagTeamPort{
  load():Promise<TagTeamView>;
  create(input:{requestId:string;expectedRevision:number;name:string;personIds:string[]}):Promise<unknown>;
+ rename?(input:{requestId:string;expectedRevision:number;teamId:string;name:string}):Promise<unknown>;
 }
 const el=(tag:string,cls="",text="")=>{
  const node=document.createElement(tag);node.className=cls;node.textContent=text;return node;};
@@ -12,7 +13,7 @@ const btn=(text:string,fn:()=>void)=>{
  b.type="button";b.onclick=fn;return b;};
 export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void){
  let view:TagTeamView|null=null,working=false,error="",success="";
- let name="",one="",two="";
+ let name="",one="",two="",renaming="",renameValue="";
  function render(){
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
   const head=el("header","ppw-pair-hero");
@@ -57,6 +58,18 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
    const row=el("article","ppw-pair-card");
    row.append(el("strong","",team.name),
     el("p","ppw-muted",team.members.map(p=>p.name).join(" & ")));
+   if(port.rename&&team.canRename&&view.canEdit){
+    if(renaming===team.teamId){
+     const edit=document.createElement("input");
+     edit.type="text";edit.maxLength=70;edit.value=renameValue;
+     edit.setAttribute("aria-label","New team name");
+     edit.oninput=()=>{renameValue=edit.value;};
+     row.append(edit,btn("Save name",()=>void renameTeam(team.teamId)),
+      btn("Cancel",()=>{renaming="";render();}));
+    }else row.append(btn("Rename",()=>{
+     renaming=team.teamId;renameValue=team.name;render();
+    }));
+   }
    section.append(row);
   }
   root.append(section);
@@ -65,6 +78,19 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   working=true;render();
   try{view=await port.load();error="";}
   catch(e){error=e instanceof Error?e.message:"Unable to load tag division";}
+  finally{working=false;render();}
+ }
+ async function renameTeam(teamId:string){
+  if(!view||!port.rename||working)return;
+  working=true;error="";success="";render();
+  try{
+   const result=await port.rename({requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision,teamId,name:renameValue});
+   if(result&&typeof result==="object"&&"status" in result&&
+    (result as {status:unknown}).status==="STALE")
+    throw new Error("The World changed. Reload before renaming.");
+   view=await port.load();renaming="";renameValue="";success="Team name saved.";
+  }catch(e){error=e instanceof Error?e.message:"Team name was not saved";}
   finally{working=false;render();}
  }
  async function createTeam(){
