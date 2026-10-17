@@ -28,6 +28,7 @@ export function mountPersonaDesk(root:HTMLElement,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"="ALL";
+ let inboxSearch="";
  async function load(id?:string){
   personId=id;loading=true;render();
   try{
@@ -128,6 +129,15 @@ export function mountPersonaDesk(root:HTMLElement,
     controls.append(b);
    }
    inbox.append(controls);
+   // Local filtering keeps the iPhone keyboard and focus in place.
+   const searchInput=document.createElement("input");
+   searchInput.type="search";searchInput.value=inboxSearch;
+   searchInput.placeholder="Find a conversation";
+   searchInput.setAttribute("aria-label","Search Backstage conversations");
+   searchInput.className="ppw-backstage-inbox-search";
+   const entries=el("div","ppw-backstage-contacts");
+   inbox.append(searchInput);
+   let count=0;
    for(const wrestler of [...view.roster].filter(w=>{
     const latest=w.latestIncoming;
     if(inboxFilter==="ARCHIVED")return latest?.archived===true;
@@ -136,7 +146,7 @@ export function mountPersonaDesk(root:HTMLElement,
     if(inboxFilter==="ACTIVE")return latest?.status==="PENDING"||latest?.status==="PROMISED";
     if(inboxFilter==="HISTORY")return !!latest&&
      !["PENDING","PROMISED"].includes(latest.status);
-    return true;
+    return !!latest||!!w.lastMessage;
    }).sort((a,b)=>
     Number(b.latestIncoming?.status==="PENDING")-
     Number(a.latestIncoming?.status==="PENDING")||
@@ -166,8 +176,25 @@ export function mountPersonaDesk(root:HTMLElement,
     });
     item.classList.add("ppw-backstage-contact");
      if(unread)item.classList.add("ppw-backstage-unread");
-    inbox.append(item);
+    entries.append(item);
+    count++;
    }
+   const empty=el("p","ppw-muted",count?
+    "No matching conversations.":"No messages yet. Use Wrestler profile to inspect your roster.");
+   const updateSearch=()=>{
+    const phrase=inboxSearch.trim().toLowerCase();
+    let visible=0;
+    for(const child of Array.from(entries.children)){
+     const contact=child as HTMLButtonElement;
+     const match=!phrase||contact.textContent?.toLowerCase().includes(phrase)===true;
+     contact.hidden=!match;
+     if(match)visible++;
+    }
+    empty.hidden=visible>0;
+   };
+   searchInput.oninput=()=>{inboxSearch=searchInput.value;updateSearch();};
+   updateSearch();
+   inbox.append(entries,empty);
    root.append(inbox);return;
   }
   const choice=el("label","ppw-field");

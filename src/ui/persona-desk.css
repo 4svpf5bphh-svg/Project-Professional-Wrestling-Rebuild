@@ -65,3 +65,9 @@
 .ppw-backstage-archive{display:block;min-height:44px;
  margin:12px 0 4px auto;background:#1b3545;color:#e1edf7;
  border:1px solid #476275}
+
+.ppw-backstage-inbox-search{width:100%;box-sizing:border-box;min-height:46px;
+ padding:10px 13px;font-size:16px;border:1px solid #48687e;border-radius:12px;
+ background:#102636;color:#f3f8fc;appearance:none;-webkit-appearance:none}
+.ppw-backstage-contacts{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ppw-backstage-contacts [hidden]{display:none!important}
