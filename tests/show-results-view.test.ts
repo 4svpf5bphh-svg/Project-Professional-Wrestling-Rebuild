@@ -51,6 +51,7 @@ test("published card is ordered, named, scored and does not change authored outc
  assert.equal(calls(),5);
  assert.equal(result.entries[0]!.matchContext,undefined); // Legacy slot without sides is tolerated.
  assert.equal(result.entries[1]!.segmentKind,"PROMO");
+ assert.deepEqual(result.entries[1]!.segmentContext?.actorNames,["Star"]);
 });
 test("foreign player cannot read another promotion's private broadcast",async()=>{
  const {pool,calls}=fake(false);

@@ -138,6 +138,69 @@ function falloutLines(entry:ShowResultEntry):string[]{
  }
  return lines;
 }
+
+/** Factual colour for the original 14 authored angle categories. There is no
+ * move log, spoken dialogue, automatic contract signing or simulated consent.
+ * Never use HAPPENS-only material for a refused or interrupted booking. */
+export function confirmedAngleColour(entry:ShowResultEntry,showId:string):string|null{
+ if(entry.type!=="SEGMENT"||entry.outcome!=="HAPPENS")return null;
+ const kind=entry.segmentKind??"";
+ const ctx=entry.segmentContext;
+ const who=ctx?.actorNames.join(" & ")||"The featured talent";
+ const whom=ctx?.targetNames.join(" & ")||"their intended opposition";
+ const key=showId+":"+entry.slotId;
+ switch(kind){
+  case "PROMO":return pick([
+   who+" held the microphone. The spoken words were not preserved in the result.",
+   "The microphone belonged to "+who+". The recorded crowd reaction tells us how the appearance landed.",
+  ],key,51);
+  case "INTERVIEW":return pick([
+   who+" faced the interview spotlight. No invented quotes are needed to read the crowd's reaction.",
+   "The booked interview put "+who+" on screen, with the outcome preserved but no fabricated dialogue.",
+  ],key,52);
+  case "CONFRONTATION":return who+" came face-to-face with "+whom+
+   ". The record confirms the confrontation, not an unbooked brawl.";
+  case "CHALLENGE":return who+" issued a challenge to "+whom+
+   ". A challenge is not proof that the opposition accepted.";
+  case "CELEBRATION":return who+" took the celebration spot. "+
+   "The recorded audience response measures how it was received.";
+  case "ATTACK":return who+" was the booked aggressor and "+whom+
+   " the target. No unrecorded injury is implied by the attack.";
+  case "TURN":return who+" completed the authored change of allegiance"+
+   (ctx?.turnTargetAlignment?" toward a "+ctx.turnTargetAlignment.toLowerCase()+" presentation":"")+
+   ". The player's scripted turn stands; the simulation did not choose a different outcome.";
+  case "CONTRACT_SIGNING":return "The signing scene involving "+who+
+   " was performed on the card. A television angle does not itself execute a wrestler contract.";
+  case "INTERFERENCE":return who+" carried out the scripted interference against "+
+   whom+". This angle cannot silently rewrite a recorded match winner.";
+  case "DEBUT":return who+" made the scheduled live debut. This was an actual "+
+   "authored appearance, not merely a video teaser.";
+  case "VIDEO_PACKAGE":{
+   const subjects:Record<string,string>={
+    DEBUT_HYPE:"an upcoming debut",RETURN_HYPE:"a return",
+    WRESTLER_HYPE:"the featured wrestler",FEUD_RECAP:"an ongoing feud",
+    EVENT_PROMO:"the event"};
+   const topic=ctx?.videoPurpose?subjects[ctx.videoPurpose]:undefined;
+   return "The video package spotlighted "+(topic??who)+
+    ". A promotional video is not proof that the advertised event already occurred.";
+  }
+  case "STABLE_INVITATION":return ctx?.stableDecision==="ACCEPTED"?
+   whom+" accepted the faction invitation on camera. A story beat is "+
+    "not by itself a transfer of real membership.":
+   ctx?.stableDecision==="REJECTED"?
+    whom+" rejected the faction's approach. The booker's decision is the one on record.":
+    who+" invited "+whom+" to the faction. No acceptance was recorded.";
+  case "STABLE_EXIT":return who+" played out the faction departure. "+
+   "The scene cannot silently edit the World roster.";
+  case "STABLE_RECONCILIATION":return ctx?.stableDecision==="ACCEPTED"?
+   "The attempted reconciliation between "+who+" and "+whom+" was accepted on screen.":
+   ctx?.stableDecision==="REJECTED"?
+    whom+" rebuffed the overture from "+who+". The authored rejection remains decisive.":
+    who+" tried to reconcile with "+whom+". No acceptance was recorded.";
+  default:return null;
+ }
+}
+
 export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):BroadcastReview{
  const key=showId+":"+entry.slotId;
  const tone=broadcastTone(entry.crowdResponse);
@@ -152,12 +215,14 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
  if(isAngle){
   if(entry.outcome==="REFUSED")headline="Didn't go to plan: "+entry.headline;
   else if(entry.outcome==="INTERRUPTED")headline="Cut short: "+entry.headline;
-  paragraphs=[entry.summary,reactionText,
+  const performed=confirmedAngleColour(entry,showId);
+  paragraphs=[entry.summary,
    entry.outcome==="REFUSED"?
-    "The booked moment was refused. It cannot be treated as a successful angle.":
+    "The planned moment was refused; the advertised action did not take place.":
     entry.outcome==="INTERRUPTED"?
-    "The planned moment was interrupted before completion.":
-    "The segment went ahead as authored."];
+    "The planned moment was interrupted before completion; the full booked action was not performed.":
+    performed??"The segment went ahead as authored.",
+   reactionText+" "+opinion];
  }else{
   const context=entry.matchContext;
   const billing=context?.sides.map(side=>side.join(" & ")).join(" vs ");

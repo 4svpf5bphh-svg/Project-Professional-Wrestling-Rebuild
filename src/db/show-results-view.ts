@@ -20,6 +20,11 @@ export interface CompletedMatchBroadcastContext{
  isMainEvent?:boolean;
  sides:string[][];winnerNames:string[];championshipContested:boolean;
 }
+export interface CompletedAngleContext{
+ actorNames:string[];targetNames:string[];
+ videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
+ turnTargetAlignment:string|null;
+}
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
  headline:string;summary:string;crowdResponse:number;
@@ -28,6 +33,7 @@ export interface ShowResultEntry{
  matchContext?:CompletedMatchBroadcastContext;
  fallout?:BroadcastFallout;
  segmentKind?:string;
+ segmentContext?:CompletedAngleContext;
  performerIdentities?:BroadcastIdentity[];
 }
 export interface CompletedShowView {
@@ -213,12 +219,23 @@ export async function readCompletedShowView(
    if(story&&(story.kind!==segment.kind||story.outcome!==segment.outcome||
     story.position!==segment.position))
     throw new Error("Segment story differs from World resolution");
+   const angle=slot.payload as Record<string,unknown>;
+   const actorNames=(story?.actorIds??[]).map(name);
+   const targetNames=(story?.targetIds??[]).map(name);
+   const decision=story?.stableDecision??angle.stableDecision;
+   const segmentContext:CompletedAngleContext={
+    actorNames,targetNames,
+    videoPurpose:typeof angle.videoPurpose==="string"?angle.videoPurpose:null,
+    stableDecision:decision==="ACCEPTED"||decision==="REJECTED"?decision:null,
+    turnTargetAlignment:typeof angle.turnTargetAlignment==="string"?
+     angle.turnTargetAlignment:null,
+   };
    entries.push({slotId:segment.slotId,position:segment.position,type:"SEGMENT",
     headline:story?.headline??human(segment.kind),
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
-    intent:story?.intent??null,segmentKind:segment.kind,
+    intent:story?.intent??null,segmentKind:segment.kind,segmentContext,
     performerIdentities:personaFor(story?[
      ...story.actorIds,...story.targetIds]:readCardParticipants(slot.payload)
       .map(x=>x.personId))});

@@ -111,3 +111,47 @@ test("ongoing rivalries enrich the match report only when a certified programme 
  assert.doesNotMatch(reviewCompletedEntry(entry,"rivalry").recap,
   /chapter in|repetition/);
 });
+
+test("completed segments get detailed, evidence-only copy for all authored angle types",()=>{
+ const kinds=["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE",
+  "CELEBRATION","ATTACK","TURN","CONTRACT_SIGNING","INTERFERENCE",
+  "DEBUT","VIDEO_PACKAGE","STABLE_INVITATION","STABLE_EXIT",
+  "STABLE_RECONCILIATION"] as const;
+ for(const kind of kinds){
+  const entry:ShowResultEntry={...basic,type:"SEGMENT",slotId:kind,
+   segmentKind:kind,outcome:"HAPPENS",headline:kind,
+   summary:"Authorised event took place.",
+   segmentContext:{actorNames:["Alpha"],targetNames:["Bravo"],
+    videoPurpose:"DEBUT_HYPE",stableDecision:"REJECTED",
+    turnTargetAlignment:"HEEL"}};
+  const first=reviewCompletedEntry(entry,"show");
+  assert.equal(first.paragraphs.length,3);
+  assert.ok(first.paragraphs[1]!.length>65,kind+" must have meaningful copy");
+  assert.deepEqual(first,reviewCompletedEntry(entry,"show"));
+  assert.doesNotMatch(first.recap,/a surprise finisher|was pinned with|powerbomb/i);
+ }
+});
+test("refused or interrupted scripted angles cannot falsely claim their intended effect",()=>{
+ for(const outcome of ["REFUSED","INTERRUPTED"]){
+  for(const kind of ["TURN","DEBUT","STABLE_INVITATION","ATTACK","VIDEO_PACKAGE"]){
+   const entry:ShowResultEntry={...basic,type:"SEGMENT",segmentKind:kind,
+    headline:"Booked angle",summary:"The intended action did not complete.",
+    outcome,segmentContext:{actorNames:["Alpha"],targetNames:["Bravo"],
+     stableDecision:"ACCEPTED",videoPurpose:"DEBUT_HYPE",
+     turnTargetAlignment:"HEEL"}};
+   const narrative=reviewCompletedEntry(entry,"show");
+   assert.doesNotMatch(narrative.recap,
+    /completed the authored change|made the scheduled live debut|accepted the faction invitation|was the booked aggressor|video package spotlighted/i);
+  }
+ }
+});
+test("an accepted faction invitation remains a scripted answer, not a hidden roster mutation",()=>{
+ const entry:ShowResultEntry={...basic,type:"SEGMENT",
+  segmentKind:"STABLE_INVITATION",outcome:"HAPPENS",headline:"Faction",
+  summary:"The invitation was accepted.",
+  segmentContext:{actorNames:["Leader"],targetNames:["Prospect"],
+   stableDecision:"ACCEPTED",videoPurpose:null,turnTargetAlignment:null}};
+ const result=reviewCompletedEntry(entry,"show");
+ assert.match(result.recap,/accepted the faction invitation/);
+ assert.match(result.recap,/not by itself a transfer/);
+});

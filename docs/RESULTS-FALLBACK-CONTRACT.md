@@ -50,3 +50,12 @@ match as the main event, names the actual recorded singles cheater on dirty
 finishes and differentiates positive or negative scored chemistry. Chemistry
 does **not** prove friendship, a backstage dispute or an unrecorded spot.
 Missing historical match metadata stays omitted instead of being guessed.
+
+## Scripted-angle reports
+
+The same deterministic broadcast now covers every supported angle type with
+author-specific colour derived from completed outcome, recorded roles and
+locked purpose/decision. Refused or interrupted turns, attacks and arrivals
+never use copy implying successful execution. A staged faction invitation or
+television contract signing is not automatically a roster/contract write.
+No further Neon reads are required.
