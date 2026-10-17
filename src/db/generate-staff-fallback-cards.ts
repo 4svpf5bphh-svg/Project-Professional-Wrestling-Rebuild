@@ -298,11 +298,11 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
               {personId:b.personId,contractId:b.contractId}],
             scriptedWinner:choice.scriptedWinner,bookingDivision:a.bookingDivision,
             origin:"STAFF_FALLBACK",bookingClass:"REGULAR",
-            eventType:worlds[0]!.major_event_interval_weeks&&
-             (weekIndex+1)%worlds[0]!.major_event_interval_weeks!===0?
+            eventType:worlds[0]!.major_event_interval_weeks!==null&&
+             (weekIndex+1)%(worlds[0]!.major_event_interval_weeks??1)===0?
               "MAJOR":"REGULAR",
-            importance:worlds[0]!.major_event_interval_weeks&&
-             (weekIndex+1)%worlds[0]!.major_event_interval_weeks!===0?85:58,
+            importance:worlds[0]!.major_event_interval_weeks!==null&&
+             (weekIndex+1)%(worlds[0]!.major_event_interval_weeks??1)===0?85:58,
             seriesId:null,showName:null});
           booked.push({showId,day:choice.schedule.day,venueId:choice.schedule.venueId,
             personIds:[a.personId,b.personId]});
