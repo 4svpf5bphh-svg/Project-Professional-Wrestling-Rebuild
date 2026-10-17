@@ -9,7 +9,7 @@ open a saved result, understand its decisive moments, or revisit past shows.
 - The World resolver persists scripted match winners and completed finishes in
   the canonical show receipt. Simulation may only apply verified medical and
   interference outcomes permitted by those booking rules.
-- The original match kernel also produces critical rating stars, actual
+- The original match kernel also produces critical rating stars, execution quality, actual
   minutes worked and injuries, including mild singles injuries. The resolver
   writes these once, in one relational batch, to the completed match report
   facts table alongside the sealed completed-show receipt.
@@ -25,7 +25,7 @@ open a saved result, understand its decisive moments, or revisit past shows.
 
 Every match receives a deterministic multi-paragraph recap with billed
 competitors, format, booking intention, official finish and winner, critic
-rating, actual running time, audience response and a wrestling-style verdict.
+rating, execution quality, actual running time, audience response and a wrestling-style verdict.
 Confirmed championship transfers, injuries, run-ins and eliminations receive
 distinct factual bulletins and may lead the headlines. Player-scripted
 angle refusals are never rewritten as successes.
