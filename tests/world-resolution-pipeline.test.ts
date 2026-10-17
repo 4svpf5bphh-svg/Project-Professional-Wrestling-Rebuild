@@ -15,6 +15,7 @@ function fixture(config:{phase?:string;active?:number;submitted?:number;
    if(sql.includes("AS done"))return [{done:false,eligible:config.eligible??1}] as unknown as T[];
    if(sql.includes("AS active"))return [{
     active:config.active??2,submitted:config.submitted??2,
+    regular_submitted:Math.min(config.active??2,config.submitted??2),
     cleared:config.cleared===undefined?2:config.cleared,
     certified:null,legacy_resolved:config.legacy??0,
     detailed_resolved:config.detailed??0}] as unknown as T[];

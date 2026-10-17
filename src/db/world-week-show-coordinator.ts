@@ -54,7 +54,7 @@ export async function resolveWorldWeekShows(
   const key=show.promotion_id+"\u0000"+show.booking_class;
   if(!show.promotion_id||!show.draft_id||
    !["REGULAR","PREMIUM"].includes(show.booking_class)||unique.has(key))
-   throw new Error("Duplicate or invalid submitted show class");
+   throw new Error("Multiple or invalid submitted show classes");
   unique.add(key);
   if(show.booking_class==="REGULAR")regular.add(show.promotion_id);
  }
