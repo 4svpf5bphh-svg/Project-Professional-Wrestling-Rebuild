@@ -37,6 +37,18 @@ export async function mountShowResults(root:HTMLElement,port:{load():Promise<Com
    card.append(top,node("h2","",entry.headline),
     node("p","",entry.summary),
     node("span","ppw-result-outcome",entry.outcome.replaceAll("_"," ")));
+   if(entry.performerIdentities?.length){
+    const profiles=node("div","ppw-result-personas","");
+    for(const person of entry.performerIdentities){
+     const tag=node("div","ppw-result-persona","");
+     tag.append(node("strong","",person.ringName),
+      node("span","",person.character.replaceAll("_"," ")));
+     if(person.style)tag.append(node("small","",
+      person.style.replaceAll("_"," ")));
+     profiles.append(tag);
+    }
+    card.append(profiles);
+   }
    timeline.append(card);
   }
   root.replaceChildren(header,highlights,timeline);
