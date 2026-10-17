@@ -75,8 +75,10 @@ export function mountPersonaDesk(root:HTMLElement,
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
    for(const wrestler of view.roster){
     const active=wrestler.personId===view.personId;
-    const item=button(wrestler.name+(active&&view.recentRequests.length?
-     " · "+view.recentRequests.length+" recent character discussions":""),()=>{
+    const last=wrestler.lastMessage;
+    const summary=last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
+     ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():"";
+    const item=button(wrestler.name+summary,()=>{
       pane="THREAD";if(active)render();else void load(wrestler.personId);
     });
     item.classList.add("ppw-backstage-contact");
