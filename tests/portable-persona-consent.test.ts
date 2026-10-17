@@ -11,8 +11,10 @@ test("iconic wrestler-owned gimmick has meaningful resistance",()=>{
  assert.ok(first.assessedResistance>=80);
 });
 test("creative rights increase resistance but cannot rewrite authored results",()=>{
- const full=evaluatePersonaConsent(input).assessedResistance;
- assert.ok(full>evaluatePersonaConsent({...input,creativeControl:"NONE"}).assessedResistance);
+ const ordinary={...input,realName:"Newcomer",currentGimmickId:"SPORTING",
+  popularity:62,recognition:58,weeksSinceChange:8};
+ const full=evaluatePersonaConsent(ordinary).assessedResistance;
+ assert.ok(full>evaluatePersonaConsent({...ordinary,creativeControl:"NONE"}).assessedResistance);
  assert.throws(()=>evaluatePersonaConsent({...input,popularity:NaN}),/Missing/);
 });
 test("character proposals never reroll within the same World week",()=>{
