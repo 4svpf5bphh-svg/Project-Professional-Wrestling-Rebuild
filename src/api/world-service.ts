@@ -2,6 +2,7 @@ import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
+import {markBackstageThreadRead} from "../db/backstage-conversations.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
  from "../db/portable-persona-change.js";
@@ -320,4 +321,12 @@ export async function backstageDecisionAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.conversationId,"conversation");
  return decideBackstageRequest(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function markBackstageReadAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,personId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(personId,"wrestler");
+ return markBackstageThreadRead(context.pool,{worldId,promotionId,personId,
+  playerId:context.actor.playerId});
 }

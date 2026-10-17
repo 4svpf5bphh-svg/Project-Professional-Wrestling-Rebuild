@@ -52,8 +52,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   // One bounded read of the newest private message per roster member.
   const incoming=roster.length?await tx.query<{
    person_id:string;request_id:string;kind:string;status:string;
-   created_week_index:number}>([
-   "SELECT DISTINCT ON (person_id) person_id,request_id,kind,status,created_week_index",
+   read_week_index:number|null;created_week_index:number}>([
+   "SELECT DISTINCT ON (person_id) person_id,request_id,kind,status,",
+   "read_week_index,created_week_index",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=ANY($3::text[])",
    "ORDER BY person_id,created_week_index DESC,request_id DESC LIMIT 500"

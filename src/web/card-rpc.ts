@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,
+import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
@@ -22,6 +22,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return portablePersonaAsActor(context,worldId,promotionId,
    p.personId as string|undefined);
  }
+ if(method==="markBackstageRead")return markBackstageReadAsActor(context,
+  worldId,promotionId,id("personId"));
  if(method==="workingConnections"){
   const personId=p.personId;
   if(personId!==undefined&&typeof personId!=="string")

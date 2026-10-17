@@ -2,6 +2,7 @@
 import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {withSqlClient} from "./postgres.js";
 import {backstageDecisionEffect,type BackstageKind,type BackstageDecision}
  from "../domain/backstage-conversations.js";
 export interface BackstageDecisionInput {
@@ -268,4 +269,34 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
  ].join(" "),[worldId,weekIndex]);
  if(rows.length>128)throw new Error("Backstage inbox generation exceeds promotion bound");
  return {newMessages:rows.length};
+}
+
+/** Private read receipt. Idempotent display state; no World revision or game power. */
+export async function markBackstageThreadRead(pool:TransactionPool,s:{
+ worldId:string;promotionId:string;playerId:string;personId:string;
+}){
+ if(![s.worldId,s.promotionId,s.playerId,s.personId]
+  .every(x=>typeof x==="string"&&!!x&&x.length<=200))
+  throw new Error("Invalid Backstage read scope");
+ return withSqlClient(pool,async tx=>{
+  const marked=await tx.query<{request_id:string}>([
+   "UPDATE ppw_backstage_requests r SET read_week_index=(w.year-1)*52+w.week-1",
+   "FROM ppw_worlds w JOIN ppw_promotion_controls c",
+   "ON c.world_id=w.world_id AND c.promotion_id=$2 AND c.player_id=$3",
+   "AND c.active JOIN ppw_memberships m ON m.world_id=c.world_id",
+   "AND m.player_id=c.player_id AND m.status='ACTIVE'",
+   "JOIN ppw_promotions promo ON promo.world_id=c.world_id",
+   "AND promo.promotion_id=c.promotion_id AND promo.lifecycle='ACTIVE'",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.person_id=$4",
+   "AND w.world_id=r.world_id AND r.read_week_index IS NULL",
+   "AND r.created_week_index>=greatest(0,(w.year-1)*52+w.week-105)",
+   "AND EXISTS(SELECT 1 FROM ppw_contracts deal",
+   "WHERE deal.world_id=r.world_id AND deal.promotion_id=r.promotion_id",
+   "AND deal.person_id=r.person_id AND deal.status='SIGNED'",
+   "AND deal.start_week_index<=(w.year-1)*52+w.week-1",
+   "AND deal.expires_week_index>=(w.year-1)*52+w.week-1)",
+   "RETURNING r.request_id"
+  ].join(" "),[s.worldId,s.promotionId,s.playerId,s.personId]);
+  return {readCount:marked.length};
+ });
 }
