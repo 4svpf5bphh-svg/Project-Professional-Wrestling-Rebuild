@@ -7,7 +7,7 @@ const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
  resolutionId:"res",crowdResponse:77,
  matches:[{matchId:"m",position:0,crowdResponse:85,actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],
  segments:[{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",crowdResponse:64}]};
-function fake(authorized=true){
+function fake(authorized=true,canonical=false){
  let calls=0;
  const pool:TransactionPool={async connect(){return {release(){},
   async query<T extends Record<string,unknown>>(sql:string){
@@ -15,10 +15,19 @@ function fake(authorized=true){
    calls++;
    if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:receipt}]:[]) as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [
-    {slot_id:"m",kind:"MATCH",position:0,payload:{participants:[{personId:"a",contractId:"c"}]}},
+    {slot_id:"m",kind:"MATCH",position:0,payload:canonical?{
+     matchType:"SINGLES",family:"INDIVIDUAL",
+     scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"TECHNICAL",
+     plannedLengthMinutes:18,championshipId:"world-title",
+     participants:[{personId:"a",contractId:"c"},{personId:"b",contractId:"d"}],
+     sides:[{sideId:"A",participants:[{personId:"a",contractId:"c"}]},
+      {sideId:"B",participants:[{personId:"b",contractId:"d"}]}],
+    }:{participants:[{personId:"a",contractId:"c"}]}},
     {slot_id:"a",kind:"SEGMENT",position:1,payload:{participants:[{personId:"a",contractId:"c"}]}},
    ] as unknown as T[];
-   if(sql.includes("FROM ppw_people"))return [{person_id:"a",name:"Star"}] as unknown as T[];
+   if(sql.includes("FROM ppw_people"))return [
+    {person_id:"a",name:"Star"},{person_id:"b",name:"Rival"},
+   ] as unknown as T[];
    if(sql.includes("FROM ppw_completed_show_segments"))return [{
     slot_id:"a",story_json:{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",
      headline:"In-ring promo",summary:"The wrestler refuses the promo.",
@@ -49,4 +58,18 @@ test("completed match narrative is derived from the actual finish",async()=>{
  const result=await readCompletedShowView(fake().pool,scope);
  assert.match(result.entries[0]!.summary,/clean pinfall/);
  assert.equal(result.entries[1]!.intent,null);
+});
+
+test("Ringside broadcast derives billing, intent and title-contest context from locked card",async()=>{
+ const {pool,calls}=fake(true,true);
+ const show=await readCompletedShowView(pool,scope);
+ const match=show.entries[0]!;
+ assert.equal(match.matchContext?.format,"SINGLES");
+ assert.deepEqual(match.matchContext?.sides,[["Star"],["Rival"]]);
+ assert.deepEqual(match.matchContext?.winnerNames,["Star"]);
+ assert.equal(match.matchContext?.intent,"TECHNICAL");
+ assert.equal(match.matchContext?.plannedMinutes,18);
+ assert.equal(match.matchContext?.championshipContested,true);
+ assert.equal(match.crowdResponse,85);
+ assert.equal(calls(),4); // Billing uses fetched roster + immutable slot; no new query.
 });
