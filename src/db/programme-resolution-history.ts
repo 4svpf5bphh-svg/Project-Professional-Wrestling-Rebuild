@@ -6,6 +6,8 @@ import {createHash} from "node:crypto";
 import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import {readCardParticipants} from "../domain/card-participants.js";
+import {readCanonicalMatchLayout} from "../domain/match-sides.js";
+import {programmeResultSide} from "../domain/programme-match-winners.js";
 import {evaluateProgrammeSignals} from "../domain/programme-signals.js";
 export interface ProgrammeResolutionInput {
  worldId:string;promotionId:string;showId:string;year:number;week:number;
@@ -49,6 +51,16 @@ export async function settleCompletedProgrammeHistory(
  ].join(" "),[input.worldId,input.showId,slotIds]);
  if(cards.length!==slotIds.length)throw new Error("Completed programme slot was removed");
  const bySlot=new Map(cards.map(c=>[c.slot_id,c.payload]));
+ const matchLinks=included.filter(x=>x.kind==="MATCH");
+ const programmeIds=[...new Set(matchLinks.map(x=>x.programme_id))];
+ const programmePeople=programmeIds.length?await tx.query<{
+  programme_id:string;person_id:string;side:"A"|"B"}>([
+  "SELECT programme_id,person_id,side FROM ppw_programme_participants",
+  "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
+  "ORDER BY programme_id,person_id LIMIT 401"
+ ].join(" "),[input.worldId,input.promotionId,programmeIds]):[];
+ if(programmePeople.length>400)throw new Error("Programme participant projection exceeded");
+ const resolvedMatches=new Map(receipt.matches.map(m=>[m.matchId,m]));
  const execution=new Map(input.matches.map(m=>[m.slotId,m.executionQuality]));
  const mainEvent=Math.max(...receipt.matches.map(m=>m.position),-1);
  const records=included.map(link=>{
@@ -68,19 +80,32 @@ export async function settleCompletedProgrammeHistory(
    Math.max(0,Math.min(100,quality!*.42+result.crowd*.38+
     input.eventImportance*.2+(result.position===mainEvent?4:0))):
    Math.max(0,Math.min(100,result.crowd*.9+input.eventImportance*.1));
+  const winner_side=link.kind==="MATCH"?(()=>{
+   const layout=readCanonicalMatchLayout(payload);
+   if(layout.sides.length!==2)throw new Error("Linked match must have two sides");
+   const match=resolvedMatches.get(link.slot_id);
+   if(!match)throw new Error("Missing completed linked match");
+   return programmeResultSide({
+    slotId:link.slot_id,
+    sideA:layout.sides[0]!.participants.map(p=>p.personId),
+    sideB:layout.sides[1]!.participants.map(p=>p.personId),
+   },programmePeople.map(p=>({programmeId:p.programme_id,
+    personId:p.person_id,side:p.side})),link.programme_id,match.actualWinnerSide);
+  })():null;
   return {programme_id:link.programme_id,slot_id:link.slot_id,
-   week_index:index,kind:link.kind,signature,
+   week_index:index,kind:link.kind,signature,winner_side,
    crowd_response:result.crowd,impact:Math.round(impact*100)/100};
  });
  const inserted=await tx.query<{slot_id:string}>([
   "INSERT INTO ppw_programme_resolved_activities",
   "(world_id,promotion_id,programme_id,show_id,slot_id,week_index,",
-  "kind,signature,crowd_response,impact)",
+  "kind,signature,crowd_response,impact,winner_side)",
   "SELECT $1,$2,x.programme_id,$3,x.slot_id,x.week_index,",
-  "x.kind,x.signature,x.crowd_response,x.impact",
+  "x.kind,x.signature,x.crowd_response,x.impact,x.winner_side",
   "FROM jsonb_to_recordset($4::jsonb) AS x(",
   "programme_id text,slot_id text,week_index integer,kind text,",
-  "signature text,crowd_response double precision,impact double precision)",
+  "signature text,crowd_response double precision,impact double precision,",
+  "winner_side text)",
   "RETURNING slot_id"
  ].join(" "),[input.worldId,input.promotionId,input.showId,JSON.stringify(records)]);
  if(inserted.length!==records.length)throw new Error("Incomplete programme history");
@@ -100,12 +125,25 @@ export async function settleCompletedProgrammeHistory(
    programmeId:programme_id,weekIndex:x.week_index,
    signature:x.signature,impact:x.impact}));
   const signal=evaluateProgrammeSignals(active,index);
-  return {programme_id,heat:signal.heat,repetition:signal.repetition};
+  const matches=records.filter(r=>r.programme_id===programme_id&&r.kind==="MATCH");
+  const segments=records.filter(r=>r.programme_id===programme_id&&r.kind==="SEGMENT");
+  return {programme_id,heat:signal.heat,repetition:signal.repetition,
+   match_count:matches.length,segment_count:segments.length,
+   side_a_wins:matches.filter(r=>r.winner_side==="A").length,
+   side_b_wins:matches.filter(r=>r.winner_side==="B").length,
+   draws:matches.filter(r=>r.winner_side===null).length};
  });
  const updated=await tx.query<{programme_id:string}>([
-  "UPDATE ppw_programmes p SET heat=x.heat,repetition=x.repetition",
+  "UPDATE ppw_programmes p SET heat=x.heat,repetition=x.repetition,",
+  "activity_count=p.activity_count+x.match_count+x.segment_count,",
+  "match_count=p.match_count+x.match_count,",
+  "segment_count=p.segment_count+x.segment_count,",
+  "side_a_wins=p.side_a_wins+x.side_a_wins,",
+  "side_b_wins=p.side_b_wins+x.side_b_wins,draws=p.draws+x.draws",
   "FROM jsonb_to_recordset($3::jsonb) AS x(",
-  "programme_id text,heat double precision,repetition double precision)",
+  "programme_id text,heat double precision,repetition double precision,",
+  "match_count integer,segment_count integer,side_a_wins integer,",
+  "side_b_wins integer,draws integer)",
   "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
   "AND p.programme_id=x.programme_id RETURNING p.programme_id"
  ].join(" "),[input.worldId,input.promotionId,JSON.stringify(signals)]);

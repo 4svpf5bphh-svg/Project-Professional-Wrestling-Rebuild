@@ -93,6 +93,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     element("h3","",p.sideA.map(x=>x.name).join(" & ")+"  vs  "+
      p.sideB.map(x=>x.name).join(" & ")));
    panel.append(element("p","ppw-muted",
+    p.matchCount+" matches · "+p.segmentCount+" angles · "+
+    "A "+p.sideAWins+"–"+p.sideBWins+" B"+
+    (p.draws?" · "+p.draws+" draws":"")));
+   panel.append(element("p","ppw-muted",
     "Week "+(p.startedWeekIndex===null?"—":Math.floor(p.startedWeekIndex/52)+1+
      " / "+(p.startedWeekIndex%52+1))+
     (p.championshipId?" · Championship rivalry":"")));

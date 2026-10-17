@@ -66,7 +66,9 @@ test("two promotions resolve, certify and publish after restart without double c
        actorIds:[people[a]],targetIds:[],outcome:"HAPPENS",turnTargetAlignment:"HEEL"})]);
      await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition) VALUES($1,$2,'feud','ACTIVE',50,0)",
       [worldId,promotions[i]]);
-     await tx.query("INSERT INTO ppw_programme_match_activities(world_id,promotion_id,programme_id,draft_id,slot_id,kind) VALUES($1,$2,'feud',$3,'angle-0','SEGMENT')",
+     await tx.query("INSERT INTO ppw_programme_participants(world_id,promotion_id,programme_id,person_id,side) VALUES ($1,$2,'feud',$3,'A'),($1,$2,'feud',$4,'B')",
+      [worldId,promotions[i],people[a],people[b]]);
+     await tx.query("INSERT INTO ppw_programme_match_activities(world_id,promotion_id,programme_id,draft_id,slot_id,kind) VALUES($1,$2,'feud',$3,'angle-0','SEGMENT'),($1,$2,'feud',$3,'main-event-0','MATCH')",
       [worldId,promotions[i],shows[i]]);
     }
    }
@@ -153,8 +155,14 @@ test("two promotions resolve, certify and publish after restart without double c
   const activity=await read<{kind:string;week_index:number;signature:string}>(
    "SELECT kind,week_index,signature FROM ppw_programme_resolved_activities WHERE world_id=$1",
    [worldId]);
-  assert.equal(activity.length,1);
-  assert.equal(activity[0]!.kind,"SEGMENT");
+  assert.equal(activity.length,2);
+  assert.deepEqual(activity.map(x=>x.kind).sort(),["MATCH","SEGMENT"]);
+  const totals=await read<{activity_count:number;match_count:number;
+   segment_count:number;side_a_wins:number;side_b_wins:number;draws:number}>(`
+   SELECT activity_count,match_count,segment_count,side_a_wins,side_b_wins,draws
+   FROM ppw_programmes WHERE world_id=$1 AND programme_id='feud'`,[worldId]);
+  assert.deepEqual(totals,[{activity_count:2,match_count:1,
+   segment_count:1,side_a_wins:0,side_b_wins:1,draws:0}]);
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]
   )).map(x=>x.remaining_dates),[0,0,0,0]);

@@ -33,10 +33,13 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
  return withSqlClient(pool,async tx=>{
   const auth=await assertPromotion(tx,scope),currentWeek=(auth.year-1)*52+auth.week-1;
   const rows=await tx.query<{programme_id:string;status:string;heat:number|null;
-   repetition:number;championship_id:string|null;started_week_index:number|null;
+   repetition:number;activity_count:number;match_count:number;segment_count:number;
+   side_a_wins:number;side_b_wins:number;draws:number;
+   championship_id:string|null;started_week_index:number|null;
    ended_week_index:number|null}>([
    "SELECT programme_id,status,heat,repetition,championship_id,",
-   "started_week_index,ended_week_index FROM ppw_programmes",
+   "started_week_index,ended_week_index,activity_count,match_count,",
+   "segment_count,side_a_wins,side_b_wins,draws FROM ppw_programmes",
    "WHERE world_id=$1 AND promotion_id=$2",
    "ORDER BY CASE WHEN status='ACTIVE' THEN 0 ELSE 1 END,",
    "started_week_index DESC NULLS LAST,programme_id LIMIT 101"
@@ -98,7 +101,10 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      teamNames.get(x.ref_id)??x.ref_id,
    }));
    return {programmeId:p.programme_id,status:p.status,heat:p.heat,
-    repetition:p.repetition,championshipId:p.championship_id,
+    repetition:p.repetition,activityCount:p.activity_count,
+    matchCount:p.match_count,segmentCount:p.segment_count,
+    sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
+    championshipId:p.championship_id,
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
