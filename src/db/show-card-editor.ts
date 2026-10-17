@@ -281,16 +281,12 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     }]:[];
    }),programmePeople.map(p=>({programmeId:p.programme_id,
     personId:p.person_id,side:p.side})));
-   // Release referenced matches and angles before deleting their card slots.
+   // Single indexed delete for all changed links; legacy match-only clients
+   // still keep the segment associations untouched. No extra round trip.
    await tx.query("DELETE FROM ppw_programme_match_activities"+
-    " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3 AND kind='MATCH'",
-    [input.worldId,input.promotionId,input.showId]);
-   // Release removed/changed angle links BEFORE touching their referenced slots.
-   // Legacy match-only saves preserve existing links.
-   if(authored!==undefined)
-    await tx.query("DELETE FROM ppw_programme_match_activities"+
-     " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3 AND kind='SEGMENT'",
-     [input.worldId,input.promotionId,input.showId]);
+    " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3"+
+    " AND (kind='MATCH' OR ($4::boolean AND kind='SEGMENT'))",
+    [input.worldId,input.promotionId,input.showId,authored!==undefined]);
    // Protect unique running-order index while rearranging existing positions.
    await tx.query("UPDATE ppw_card_slots SET position=position+10000"+
     " WHERE world_id=$1 AND draft_id=$2",[input.worldId,input.showId]);
