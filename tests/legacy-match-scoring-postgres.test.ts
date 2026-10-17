@@ -184,7 +184,10 @@ test("original match rating/crowd run from only current-week relational context"
       "UPDATE ppw_worlds SET programme_history_loaded=false WHERE world_id=$1",
       [worldId],
     ));
-    assert.equal((await previewArchivedShowMatchScores(db.pool,input)).showProgrammePreview,null);
+    // Authored current-world feud evidence remains valid even if the old
+    // all-historical-data-imported marker is deliberately false.
+    assert.equal((await previewArchivedShowMatchScores(db.pool,input))
+     .showProgrammePreview?.[0]?.reason,"PROGRAMME_REPETITION");
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query(
         "UPDATE ppw_people SET default_alignment='FACE' WHERE world_id=$1 AND person_id=$2",
