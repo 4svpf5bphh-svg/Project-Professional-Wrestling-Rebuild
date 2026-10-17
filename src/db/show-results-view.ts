@@ -59,7 +59,7 @@ export async function readCompletedShowView(
    [input.worldId,ids]):[];
   const identities=projectBroadcastIdentities(people.map(p=>({
    personId:p.person_id,name:p.name,portableGimmickId:p.portable_gimmick_id,
-   personaRecord:p.persona_record,
+   personaRecord:p.persona_record??null,
   })));
   const names=new Map(people.map(p=>[p.person_id,p.name]));
   const name=(id:string)=>broadcastNameplate(id,identities,
