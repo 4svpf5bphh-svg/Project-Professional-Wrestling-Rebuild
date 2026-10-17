@@ -66,6 +66,25 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
    worldId:world,promotionId:promotion,playerId:"spoofed"}) as unknown as
     Awaited<ReturnType<typeof readIndustryWorldHub>>;
   assert.equal(rpc.broadcasts.length,2);
+  // The compact 13-week window crosses the year boundary without scanning
+  // older full-season broadcasts or leaking future drafts.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1",[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts
+    (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
+    VALUES($1,'year-end','promotion-1',1,52,'SUBMITTED',6,'Year-End Rival Night','MAJOR')`,
+    [world]);
+   await tx.query(`INSERT INTO ppw_completed_shows
+    (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,'promotion-1','year-end',1,52,'year-end-resolution',91,'{}'::jsonb,repeat('c',64))`,
+    [world]);
+  });
+  const rollover=await readIndustryWorldHub(db.pool,{
+   worldId:world,promotionId:promotion,playerId:player});
+  assert.equal(rollover.year,2);assert.equal(rollover.week,1);
+  assert.deepEqual(rollover.broadcasts.map(s=>s.showName),["Year-End Rival Night"]);
+  assert.equal(rollover.promotions.find(x=>x.promotionId==="promotion-1")!.recentAverageCrowd,91);
+  assert.ok(!JSON.stringify(rollover).includes("PRIVATE FUTURE PLANS"));
   await assert.rejects(readIndustryWorldHub(db.pool,{
    worldId:world,promotionId:promotion,playerId:"outsider"}),/access denied/);
  }finally{
