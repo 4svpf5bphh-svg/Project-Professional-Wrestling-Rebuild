@@ -53,7 +53,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    show_day:number|null}>(`
    SELECT c.show_id,c.promotion_id,p.name AS promotion_name,
     d.show_name,d.booking_class,c.year,c.week,
-    c.crowd_response,c.show_day
+    c.crowd_response,d.show_day
    FROM ppw_completed_shows c
    JOIN ppw_promotions p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id
