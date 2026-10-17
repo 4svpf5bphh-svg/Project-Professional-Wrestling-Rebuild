@@ -33,6 +33,11 @@ jobs:
           npm run build
       - name: Generate a deterministic fresh real-world Genesis
         run: node scripts/export-original-real-genesis.mjs
+      - name: Present deterministic non-sensitive export to the import connector
+        run: |
+          echo PPW_GENESIS_EXPORT_START
+          cat out/ppw-real-genesis.json
+          echo PPW_GENESIS_EXPORT_END
       - name: Upload non-sensitive Genesis export
         uses: actions/upload-artifact@v4
         with:
