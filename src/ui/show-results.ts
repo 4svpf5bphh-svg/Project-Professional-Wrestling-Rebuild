@@ -46,8 +46,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
-  node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"),
-  node("h1","","THE NIGHT IN REVIEW"),
+  node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
+   (show.bookingClass==="PREMIUM"?" · PPV":"")),
+  node("h1","",show.showName??"THE NIGHT IN REVIEW"),
   node("p","ppw-result-edition","Year "+show.year+" · Week "+show.week));
  const scoreWrap=node("div","ppw-result-score-wrap");
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),

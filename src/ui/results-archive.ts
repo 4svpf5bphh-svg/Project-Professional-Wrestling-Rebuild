@@ -40,7 +40,9 @@ export async function mountResultsArchive(root:HTMLElement,port:ArchivePort){
     const score=el("span","ppw-archive-score",String(Math.round(show.crowdResponse))+"/100");
     const meta=el("span","ppw-archive-meta",
      show.matchCount+" matches  ·  "+show.angleCount+" angles");
-    card.append(caption,score,meta,el("span","ppw-archive-open","Read ringside report  ↗"));
+    card.append(caption,el("strong","ppw-archive-show-name",
+     show.showName??"Weekly show"),score,meta,
+     el("span","ppw-archive-open","Read ringside report  ↗"));
     card.onclick=()=>port.open(show.showId);
     list.append(card);
    }

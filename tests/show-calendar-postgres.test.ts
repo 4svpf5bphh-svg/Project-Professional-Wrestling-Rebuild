@@ -198,6 +198,8 @@ test("two independent calendar identities can be planned for the same week with 
   const stored=await withWorldTransaction(db.pool,tx=>tx.query<{booking_class:string;show_series_id:string}>(
    "SELECT booking_class,show_series_id FROM ppw_booking_drafts WHERE world_id=$1 ORDER BY booking_class",[worldId]));
   assert.equal(stored.length,2);
+  assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
+   ["Monday Night Raw","Royal Rumble"]);
   assert.equal((await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
    showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"})).status,"REPLAYED");
  }finally{

@@ -38,6 +38,7 @@ export interface ShowResultEntry{
 }
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
+ showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
  matchCount:number;angleCount:number;entries:ShowResultEntry[];
 }
 const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
@@ -49,8 +50,10 @@ export async function readCompletedShowView(
  if(!Object.values(input).every(x=>typeof x==="string"&&x.trim()&&x.length<=200))
   throw new Error("Invalid results scope");
  return withSqlClient(pool,async tx=>{
-  const rows=await tx.query<{receipt_json:unknown}>(`
-   SELECT c.receipt_json FROM ppw_completed_shows c
+  const rows=await tx.query<{receipt_json:unknown;show_name:string|null;
+    booking_class:"REGULAR"|"PREMIUM"}>(`
+   SELECT c.receipt_json,d.show_name,d.booking_class FROM ppw_completed_shows c
+   JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
    JOIN ppw_promotion_controls p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
    JOIN ppw_memberships m ON m.world_id=p.world_id
@@ -242,6 +245,8 @@ export async function readCompletedShowView(
   }
   entries.sort((a,b)=>a.position-b.position);
   return {showId:input.showId,year:receipt.year,week:receipt.week,
+   showName:rows[0]!.show_name??(rows[0]!.booking_class==="PREMIUM"?
+    "Premium event":"Weekly show"),bookingClass:rows[0]!.booking_class,
    crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries};
  });

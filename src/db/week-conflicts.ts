@@ -231,7 +231,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     for(const item of neededByContract.values()){
       if(item.balance===null)continue;
       const uncharged=item.bookings.filter(a=>!a.alreadyResolved);
-      if(uncharged.length>item.balance){
+      if(uncharged.length>1&&uncharged.length>item.balance){
         blockers.push({code:"CONTRACT_UNAVAILABLE",
          promotionIds:[...new Set(uncharged.map(a=>a.promotionId))],
          showIds:[...new Set(uncharged.map(a=>a.showId))],

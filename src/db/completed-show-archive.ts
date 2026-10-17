@@ -6,6 +6,7 @@ import {withSqlClient} from "./postgres.js";
 export interface ShowArchiveCursor{year:number;week:number;showId:string}
 export interface ShowArchiveItem{
  showId:string;year:number;week:number;crowdResponse:number;
+ showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
  matchCount:number;angleCount:number;
 }
 export interface ShowArchivePage{
@@ -23,11 +24,13 @@ export async function readCompletedShowArchive(pool:TransactionPool,
   !valid(cursor.showId)))throw new Error("Invalid results cursor");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{show_id:string;year:number;week:number;
-   crowd_response:string|number;match_count:number;angle_count:number}>([
-   "SELECT c.show_id,c.year,c.week,c.crowd_response,",
+   crowd_response:string|number;match_count:number;angle_count:number;
+   show_name:string|null;booking_class:"REGULAR"|"PREMIUM"}>([
+   "SELECT c.show_id,c.year,c.week,c.crowd_response,d.show_name,d.booking_class,",
    "jsonb_array_length(c.receipt_json->'matches') AS match_count,",
    "jsonb_array_length(c.receipt_json->'segments') AS angle_count",
-   "FROM ppw_completed_shows c",
+   "FROM ppw_completed_shows c JOIN ppw_booking_drafts d",
+   "ON d.world_id=c.world_id AND d.draft_id=c.show_id",
    "WHERE c.world_id=$1 AND c.promotion_id=$3",
    "AND EXISTS (SELECT 1 FROM ppw_promotion_controls p",
    "JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id",
@@ -40,6 +43,8 @@ export async function readCompletedShowArchive(pool:TransactionPool,
    cursor?.year??null,cursor?.week??null,cursor?.showId??null]);
   const page=rows.slice(0,12).map(row=>({
    showId:row.show_id,year:row.year,week:row.week,
+   showName:row.show_name??(row.booking_class==="PREMIUM"?
+    "Premium event":"Weekly show"),bookingClass:row.booking_class,
    crowdResponse:Number(row.crowd_response),
    matchCount:row.match_count,angleCount:row.angle_count,
   }));

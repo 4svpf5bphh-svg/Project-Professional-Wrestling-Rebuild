@@ -145,6 +145,17 @@ export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMut
    const seriesId=requested.seriesId==="NEW"?"calendar-"+randomUUID():requested.seriesId;
    const record={...requested,seriesId,name:requested.name.trim(),active:true};
    const old=before.find(s=>s.seriesId===seriesId);
+   const future=old?await tx.query<{year:number;week:number;booking_class:string}>([
+    "SELECT year,week,booking_class FROM ppw_booking_drafts",
+    "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",
+    "AND status IN ('DRAFT','SUBMITTED')",
+    "AND ((year-1)*52+week-1)>=$4 ORDER BY year,week LIMIT 9"
+   ].join(" "),[input.worldId,input.promotionId,seriesId,
+    weekIndex(owned.year,owned.week)]):[];
+   if(future.length>8)throw new Error("Too many linked future show bookings");
+   if(future.some(d=>!seriesDue(record,weekIndex(d.year,d.week))||
+     d.booking_class!==(record.eventType==="MAJOR"?"PREMIUM":"REGULAR")))
+    throw new Error("Existing planned cards prevent changing this show recurrence or role");
    if(old?.role==="FLAGSHIP"&&record.role!=="FLAGSHIP")
     throw new Error("Flagship cannot be demoted");
    if(!old&&record.role==="FLAGSHIP")
@@ -182,6 +193,14 @@ export async function archivePromotionSeries(pool:TransactionPool,input:ArchiveS
    const existing=before.find(s=>s.seriesId===input.seriesId&&s.active);
    if(!existing)throw new Error("Active show series not found");
    if(existing.role==="FLAGSHIP")throw new Error("Flagship cannot be archived");
+   const booked=await tx.query<{draft_id:string}>([
+    "SELECT draft_id FROM ppw_booking_drafts",
+    "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",
+    "AND status IN ('DRAFT','SUBMITTED')",
+    "AND ((year-1)*52+week-1)>=$4 LIMIT 1"
+   ].join(" "),[input.worldId,input.promotionId,input.seriesId,
+    weekIndex(owned.year,owned.week)]);
+   if(booked.length)throw new Error("Cannot archive a show with booked future cards");
    await tx.query([
     "UPDATE ppw_show_series SET active=FALSE WHERE world_id=$1",
     "AND promotion_id=$2 AND series_id=$3 AND active"

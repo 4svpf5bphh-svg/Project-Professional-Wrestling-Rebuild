@@ -5,6 +5,8 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
+import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
+import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {driveWorldResolution,planNextWorldResolutionAction}
  from "../src/db/world-resolution-pipeline.js";
 
@@ -190,6 +192,7 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
  const db=postgresPool(url!,4),id=randomUUID(),worldId="dual-journey-"+id;
  const resolutionId="resolution-dual-"+id,promotions=["host-"+id,"visitor-"+id];
+ const playerId="producer-"+id;
  const showIds=["television-"+id,"premium-"+id,"rival-"+id];
  const persons=Array.from({length:6},(_,i)=>"wrestler-"+i+"-"+id);
  const contractIds=persons.map((_,i)=>"contract-"+i+"-"+id);
@@ -203,6 +206,9 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
     await tx.query("UPDATE ppw_promotions SET media_reach=70 WHERE world_id=$1 AND promotion_id=$2",
      [worldId,promotions[i]!]);
    }
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotions[0]!]);
    await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[worldId]);
    for(let i=0;i<3;i++)await tx.query(
     "INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,$2,$3)",
@@ -217,9 +223,10 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
     const promotionId=promotions[i===2?1:0]!;
     const bookingClass=i===1?"PREMIUM":"REGULAR";
     await tx.query(
-     "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,event_importance,event_type,booking_class,show_series_id) VALUES($1,$2,$3,1,1,'SUBMITTED',$4,$5,$6,$7,$8,$9)",
+     "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,event_importance,event_type,booking_class,show_series_id,show_name) VALUES($1,$2,$3,1,1,'SUBMITTED',$4,$5,$6,$7,$8,$9,$10)",
      [worldId,showIds[i]!,promotionId,i+2,"dual-venue-"+i,i===1?99:65,
-      i===1?"MAJOR":"REGULAR",bookingClass,i===1?"calendar-default-ppv-royal-rumble":null]);
+      i===1?"MAJOR":"REGULAR",bookingClass,i===1?"calendar-default-ppv-royal-rumble":null,
+      i===1?"Royal Rumble":i===0?"Monday Night Raw":"Visitor Wrestling"]);
     const a=i*2,b=a+1;
     const payload={matchType:"SINGLES",participants:[
      {personId:persons[a],contractId:contractIds[a]},
@@ -247,6 +254,15 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
    "SELECT show_id,receipt_json FROM ppw_completed_shows WHERE world_id=$1 ORDER BY show_id",[worldId]);
   assert.deepEqual(results.map(x=>x.show_id).sort(),[...showIds].sort());
   assert.ok(results.every(x=>x.receipt_json.matches.length===1));
+  const archive=await readCompletedShowArchive(db.pool,{worldId,playerId,
+   promotionId:promotions[0]!});
+  assert.equal(archive.items.length,2);
+  assert.deepEqual(archive.items.map(x=>x.showName).sort(),
+   ["Monday Night Raw","Royal Rumble"]);
+  const ppvView=await readCompletedShowView(db.pool,{worldId,playerId,
+   promotionId:promotions[0]!,showId:showIds[1]!});
+  assert.equal(ppvView.showName,"Royal Rumble");
+  assert.equal(ppvView.bookingClass,"PREMIUM");
   const contractBalances=await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
   assert.ok(contractBalances.every(x=>x.remaining_dates===0));
@@ -272,8 +288,9 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
     "ppw_promotion_alignment_changes","ppw_programme_match_activities",
     "ppw_programme_participants","ppw_programmes","ppw_card_slots",
     "ppw_booking_drafts","ppw_contracts","ppw_people","ppw_venues",
-    "ppw_promotions","ppw_worlds"])
+    "ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_worlds"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
   }).finally(()=>db.close());
  }
 });

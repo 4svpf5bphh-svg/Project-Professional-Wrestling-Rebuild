@@ -70,13 +70,13 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,s),start=weekIndex(owned.year,owned.week);
   const drafts=await tx.query<{
-   draft_id:string;year:number;week:number;status:string;booking_class:"REGULAR"|"PREMIUM";show_series_id:string|null;
+   draft_id:string;year:number;week:number;status:string;booking_class:"REGULAR"|"PREMIUM";show_series_id:string|null;show_name:string|null;
    event_type:PlannedEventType|null;show_day:number|null;market_id:string|null;
    venue_id:string|null;ticket_strategy:TicketStrategy|null;
    market_name:string|null;venue_name:string|null;
    lock_ready_fingerprint:string|null;slots:number;
   }>(`
- SELECT d.draft_id,d.year,d.week,d.status,d.booking_class,d.show_series_id,d.event_type,d.show_day,
+ SELECT d.draft_id,d.year,d.week,d.status,d.booking_class,d.show_series_id,d.show_name,d.event_type,d.show_day,
    d.market_id,d.venue_id,d.ticket_strategy,
    m.name AS market_name,v.name AS venue_name,d.lock_ready_fingerprint,
    (SELECT count(*)::integer FROM ppw_card_slots c
@@ -135,7 +135,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     scheduled:scheduled.filter(x=>seriesDue(x,index)),
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
-     showName:scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
+     showName:d.show_name??scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
       (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
      draftId:d.draft_id,year:d.year,week:d.week,status:d.status,
      eventType:d.event_type??(major(index,owned.major_interval)?"MAJOR":"REGULAR"),
@@ -235,12 +235,12 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const created=await tx.query<{draft_id:string}>(`
     INSERT INTO ppw_booking_drafts(
      world_id,draft_id,promotion_id,year,week,status,show_day,
-     event_type,market_id,venue_id,ticket_strategy,booking_class,show_series_id)
-    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12)
+     event_type,market_id,venue_id,ticket_strategy,booking_class,show_series_id,show_name)
+    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12,$13)
     RETURNING draft_id`,
     [input.worldId,draftId,input.promotionId,input.year,input.week,
      input.day,event,input.marketId,input.venueId,input.ticketStrategy,
-     bookingClass,selected?.seriesId??null]);
+     bookingClass,selected?.seriesId??null,selected?.name??null]);
    if(created.length!==1)throw new Error("Show draft was not created");
    return {draftId,year:input.year,week:input.week,status:"CREATED" as const};
   }});
