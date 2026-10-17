@@ -31,7 +31,9 @@ export async function readCanonicalSegmentContextsInTransaction(
    [scope.worldId,scope.promotionId,scope.showId,scope.year,scope.week]);
   if(show.length!==1)throw new Error("Canonical submitted show required");
   const slots=await tx.query<{slot_id:string;position:number;kind:string;payload:unknown}>(
-   "SELECT slot_id,position,kind,payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
+   "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
+    " WHERE world_id=$1 AND draft_id=$2 AND kind='SEGMENT'"+
+    " ORDER BY position LIMIT 101",
    [scope.worldId,scope.showId]);
   if(slots.length>100)throw new Error("Card exceeds maximum slots");
   const segments:AuthoredSegment[]=[],allIds=new Set<string>();

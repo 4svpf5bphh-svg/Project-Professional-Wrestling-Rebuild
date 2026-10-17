@@ -33,6 +33,23 @@ test("rejects uncontracted actors and missing role declarations",async()=>{
  await assert.rejects(readCanonicalSegmentContexts(fake({...payload,
   actorIds:undefined}),scope),/contracted/);
 });
+test("canonical segment projection does not transfer large match payloads",async()=>{
+ const pool=fake(payload);
+ const instrumented:TransactionPool={async connect(){
+  const connection=await pool.connect();
+  return {
+   release(){connection.release();},
+   async query<T extends Record<string,unknown>>(sql:string,params?:readonly unknown[]){
+    if(sql.includes("FROM ppw_card_slots")){
+     assert.match(sql,/kind='SEGMENT'/);
+     assert.match(sql,/LIMIT 101/);
+    }
+    return connection.query<T>(sql,params);
+   },
+  };
+ }};
+ assert.equal((await readCanonicalSegmentContexts(instrumented,scope)).length,1);
+});
 test("refuses non-resolving world",async()=>{
  await assert.rejects(readCanonicalSegmentContexts(fake(payload,"OPEN"),scope),
   /not resolving/);
