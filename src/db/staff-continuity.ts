@@ -5,6 +5,7 @@ export interface SetStaffContinuityInput {
   worldId:string;playerId:string;promotionId:string;
   requestId:string;expectedRevision:number;allowUnfinishedFallback:boolean;
   allowLogisticsFallback?:boolean;permittedDays?:number[];permittedVenueIds?:string[];
+  autoRenewSameTerms?:boolean;
 }
 /** Player-authored BEFORE Lock; actor ID comes from verified middleware.
  * Staff cannot rewrite existing card scripts, negotiate or create authority
@@ -13,6 +14,8 @@ export interface SetStaffContinuityInput {
 export async function setStaffContinuity(pool:TransactionPool,input:SetStaffContinuityInput){
   if(!input.promotionId||input.promotionId.length>200 ||
       typeof input.allowUnfinishedFallback!=="boolean")throw new Error("Invalid staff continuity setting");
+  if(input.autoRenewSameTerms!==undefined&&typeof input.autoRenewSameTerms!=="boolean")
+   throw new Error("Invalid Talent Manager consent");
   const days=input.permittedDays??[],venues=input.permittedVenueIds??[];
   const changeLogistics=input.allowLogisticsFallback!==undefined||input.permittedDays!==undefined||input.permittedVenueIds!==undefined;
   if(input.allowLogisticsFallback!==undefined&&typeof input.allowLogisticsFallback!=="boolean"||
@@ -38,16 +41,23 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
       await tx.query(
         `INSERT INTO ppw_staff_continuity_settings
            (world_id,promotion_id,owner_player_id,allow_unfinished_fallback,
-            allow_logistics_fallback,permitted_days,permitted_venue_ids)
-         VALUES($1,$2,$3,$4,$5,$6::smallint[],$7::text[])
+            allow_logistics_fallback,permitted_days,permitted_venue_ids,
+            auto_renew_same_terms)
+         VALUES($1,$2,$3,$4,$5,$6::smallint[],$7::text[],$9)
          ON CONFLICT(world_id,promotion_id) DO UPDATE
            SET owner_player_id=EXCLUDED.owner_player_id,
                allow_unfinished_fallback=EXCLUDED.allow_unfinished_fallback,
                allow_logistics_fallback=CASE WHEN $8::boolean THEN EXCLUDED.allow_logistics_fallback ELSE ppw_staff_continuity_settings.allow_logistics_fallback END,
                permitted_days=CASE WHEN $8::boolean THEN EXCLUDED.permitted_days ELSE ppw_staff_continuity_settings.permitted_days END,
-               permitted_venue_ids=CASE WHEN $8::boolean THEN EXCLUDED.permitted_venue_ids ELSE ppw_staff_continuity_settings.permitted_venue_ids END`,
+               permitted_venue_ids=CASE WHEN $8::boolean THEN EXCLUDED.permitted_venue_ids ELSE ppw_staff_continuity_settings.permitted_venue_ids END,
+               auto_renew_same_terms=CASE
+                 WHEN ppw_staff_continuity_settings.owner_player_id<>EXCLUDED.owner_player_id
+                  THEN EXCLUDED.auto_renew_same_terms
+                 WHEN $10::boolean THEN EXCLUDED.auto_renew_same_terms
+                 ELSE ppw_staff_continuity_settings.auto_renew_same_terms END`,
         [input.worldId,input.promotionId,input.playerId,input.allowUnfinishedFallback,
-         input.allowLogisticsFallback??false,days,venues,changeLogistics],
+         input.allowLogisticsFallback??false,days,venues,changeLogistics,
+         input.autoRenewSameTerms??false,input.autoRenewSameTerms!==undefined],
       );
       return {promotionId:input.promotionId,allowUnfinishedFallback:input.allowUnfinishedFallback};
     },

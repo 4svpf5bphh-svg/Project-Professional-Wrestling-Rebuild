@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {prepareDelegatedSameTermsRenewals} from "./staff-auto-renewals.js";
 
 export type ContinuityStatus =
   |"SUBMITTED_READY"|"SUBMITTED_REVIEW"|"PREPARED_DRAFT"
@@ -121,6 +122,8 @@ export async function recordWeekContinuity(pool:TransactionPool,input:RecordWeek
            AND s.allow_logistics_fallback=true`,
         [input.worldId,state.year,state.week],
       );
+      await prepareDelegatedSameTermsRenewals(tx,input.worldId,
+       (state.year-1)*52+state.week-1);
       const counts:Record<ContinuityStatus,number>={
         SUBMITTED_READY:0,SUBMITTED_REVIEW:0,PREPARED_DRAFT:0,
         STAFF_FALLBACK_ELIGIBLE:0,PLAYER_ACTION_REQUIRED:0,AI_MANAGED:0,UNASSIGNED:0,

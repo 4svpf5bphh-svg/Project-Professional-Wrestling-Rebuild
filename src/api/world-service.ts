@@ -71,6 +71,7 @@ export interface WorldMutationInput { worldId:string; requestId:string; expected
 export interface ClaimInput extends WorldMutationInput { promotionId:string }
 export interface StaffContinuityInput extends ClaimInput {
   allowUnfinishedFallback:boolean;
+  autoRenewSameTerms?:boolean;
   allowLogisticsFallback?:boolean;
   permittedDays?:number[];
   permittedVenueIds?:string[];

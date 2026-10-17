@@ -123,14 +123,16 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="setStaffContinuity"){
   const fallback=p.allowUnfinishedFallback,logistics=p.allowLogisticsFallback;
+  const renew=p.autoRenewSameTerms;
   const days=p.permittedDays,venues=p.permittedVenueIds;
   if(typeof fallback!=="boolean"||typeof logistics!=="boolean"||
+   (renew!==undefined&&typeof renew!=="boolean")||
    !Array.isArray(days)||days.some(x=>!Number.isSafeInteger(x))||
    !Array.isArray(venues)||venues.some(x=>typeof x!=="string"))
    throw new Error("Invalid staff delegation");
   return setStaffContinuityAsActor(context,{worldId,promotionId,
    requestId,expectedRevision,allowUnfinishedFallback:fallback,
-   allowLogisticsFallback:logistics,
+   allowLogisticsFallback:logistics,autoRenewSameTerms:renew as boolean|undefined,
    permittedDays:days as number[],permittedVenueIds:venues as string[]});
  }
  if(method==="submitContractOffer"){

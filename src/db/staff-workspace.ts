@@ -16,12 +16,12 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    can_edit:boolean;allow_unfinished_fallback:boolean|null;
    allow_logistics_fallback:boolean|null;
    permitted_days:number[]|null;permitted_venue_ids:string[]|null;
-   frozen_logistics:boolean|null;
+   frozen_logistics:boolean|null;auto_renew_same_terms:boolean|null;
   }>(`
    SELECT w.year,w.week,w.revision,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit,
     s.allow_unfinished_fallback,s.allow_logistics_fallback,
-    s.permitted_days,s.permitted_venue_ids,
+    s.permitted_days,s.permitted_venue_ids,s.auto_renew_same_terms,
     l.allow_logistics_fallback AS frozen_logistics
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
@@ -46,6 +46,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
   return {year:current.year,week:current.week,
    worldRevision:Number(current.revision),canEdit:current.can_edit,
    allowUnfinishedFallback:current.allow_unfinished_fallback===true,
+   autoRenewSameTerms:current.auto_renew_same_terms===true,
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
    permittedVenueIds:current.permitted_venue_ids??[],
