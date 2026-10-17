@@ -1,0 +1,22 @@
+.ppw-persona-header{margin:0 0 20px}.ppw-persona-active{padding:19px;
+ background:#0e2838;border:1px solid #3c6879;border-radius:18px;margin:18px 0}
+.ppw-persona-active h2{font-size:22px;margin:7px 0}
+.ppw-persona-gimmick{display:inline-block;padding:7px 12px;
+ background:#1d5160;border-radius:16px}
+.ppw-persona-moves{margin-top:13px;border-top:1px solid #355264;padding-top:10px}
+.ppw-persona-moves h3{font-size:15px;margin:0 0 7px}
+.ppw-persona-moves p{margin:6px 0;font-size:14px}
+.ppw-persona-alternates,.ppw-persona-history,.ppw-persona-chat{margin:25px 0}
+.ppw-persona-chat{background:#122332;border:1px solid #345469;border-radius:18px;padding:15px}
+.ppw-persona-chat h2{font-size:20px;margin:0 0 10px}
+.ppw-persona-bubble{border-radius:17px;padding:12px;margin:11px 0;
+ max-width:86%;font-size:14px;line-height:1.5}
+.ppw-persona-out{background:#235c75;margin-left:auto;border-bottom-right-radius:5px}
+.ppw-persona-in{background:#3c4159;margin-right:auto;border-bottom-left-radius:5px}
+.ppw-persona-chat input[type=search]{width:100%;box-sizing:border-box;
+ min-height:44px;font-size:16px}
+.ppw-persona-options{max-height:320px;overflow:auto;display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.ppw-persona-button{min-height:44px;padding:10px;text-align:left;border-radius:10px}
+.ppw-persona-selected{outline:2px solid #62c2e6}
+@media(max-width:520px){.ppw-persona-options{grid-template-columns:1fr}}
