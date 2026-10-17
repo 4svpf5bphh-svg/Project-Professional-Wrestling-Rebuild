@@ -130,7 +130,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    home:v.market_id===owned.home_market_id})),
   weeks:Array.from({length:6},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
-   return {...when,offset,required:index%Math.max(1,owned.cadence)===0,
+   return {...when,offset,required:true,
     major:scheduled.some(x=>x.eventType==="MAJOR"&&seriesDue(x,index)),canEdit:owned.booking_open,
     scheduled:scheduled.filter(x=>seriesDue(x,index)),
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
@@ -188,8 +188,7 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
    if(selected&&!seriesDue(selected,target))
     throw new Error("This show is not scheduled for the chosen week");
-   const event:PlannedEventType=selected?.eventType??
-    (major(target,auth.major_interval)?"MAJOR":"REGULAR");
+   const event:PlannedEventType=selected?.eventType??"REGULAR";
    if(input.eventType!==event)
     throw new Error("Show type must match the calendar event");
    const bookingClass:"REGULAR"|"PREMIUM"=
@@ -203,13 +202,19 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
      AND v.weekly_hire_cost IS NOT NULL`,
     [input.worldId,input.promotionId,input.venueId,input.marketId]);
    if(eligible.length!==1)throw new Error("Choose an available venue in that market");
-   const existing=await tx.query<{draft_id:string;status:string;show_series_id:string|null}>(`
-    SELECT draft_id,status,show_series_id FROM ppw_booking_drafts
+   const allDrafts=await tx.query<{draft_id:string;status:string;show_series_id:string|null;
+    booking_class:"REGULAR"|"PREMIUM";show_day:number|null;venue_id:string|null}>(`
+    SELECT draft_id,status,show_series_id,booking_class,show_day,venue_id
+    FROM ppw_booking_drafts
     WHERE world_id=$1 AND promotion_id=$2 AND year=$3 AND week=$4
-      AND booking_class=$5 AND status IN ('DRAFT','SUBMITTED')
-    ORDER BY draft_id LIMIT 3`,
-    [input.worldId,input.promotionId,input.year,input.week,bookingClass]);
+      AND status IN ('DRAFT','SUBMITTED')
+    ORDER BY booking_class,draft_id LIMIT 5`,
+    [input.worldId,input.promotionId,input.year,input.week]);
+   if(allDrafts.length>4)throw new Error("Too many weekly card drafts");
+   const existing=allDrafts.filter(x=>x.booking_class===bookingClass);
    if(existing.length>1)throw new Error("Multiple show drafts need reconciliation");
+   if(allDrafts.some(x=>x.booking_class!==bookingClass&&x.show_day===input.day))
+    throw new Error("Your weekly show and PPV must run on different days");
    if(existing.length&&existing[0]!.show_series_id!== (selected?.seriesId??null))
     throw new Error("A different show identity already occupies this weekly slot");
    if(input.draftId){
@@ -235,12 +240,13 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const created=await tx.query<{draft_id:string}>(`
     INSERT INTO ppw_booking_drafts(
      world_id,draft_id,promotion_id,year,week,status,show_day,
-     event_type,market_id,venue_id,ticket_strategy,booking_class,show_series_id,show_name)
-    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12,$13)
+     event_type,market_id,venue_id,ticket_strategy,booking_class,show_series_id,show_name,event_importance)
+    VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12,$13,$14)
     RETURNING draft_id`,
     [input.worldId,draftId,input.promotionId,input.year,input.week,
      input.day,event,input.marketId,input.venueId,input.ticketStrategy,
-     bookingClass,selected?.seriesId??null,selected?.name??null]);
+     bookingClass,selected?.seriesId??null,selected?.name??null,
+     selected?.importance??70]);
    if(created.length!==1)throw new Error("Show draft was not created");
    return {draftId,year:input.year,week:input.week,status:"CREATED" as const};
   }});

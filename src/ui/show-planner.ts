@@ -29,7 +29,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   try{
    const result=await port.save({requestId,expectedRevision:data.worldRevision,
     year:editing.year,week:editing.week,eventType:editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.eventType??
-      (editing.major?"MAJOR":"REGULAR"),showSeriesId:selectedSeriesId||undefined,
+      "REGULAR",showSeriesId:selectedSeriesId||undefined,
     day,venueId,marketId:venue.marketId,ticketStrategy:strategy,
     ...(selectedDraft?{draftId:selectedDraft}:{})});
    if(result&&typeof result==="object"&&"status" in result&&
@@ -111,8 +111,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
        "Book PPV · "+s.name:"Plan "+s.name,
        ()=>edit(week,undefined,s.seriesId),busy||!data.venues.length));
     }
-    if(!week.scheduled.length&&!week.shows.length)
-     card.append(button("Plan show",()=>edit(week),busy||!data.venues.length));
+    if(!week.scheduled.some(s=>s.eventType==="REGULAR")&&
+     !week.shows.some(s=>s.bookingClass==="REGULAR"))
+     card.append(button("Plan weekly show",()=>edit(week),
+      busy||!data.venues.length));
    }
    root.append(card);
   }

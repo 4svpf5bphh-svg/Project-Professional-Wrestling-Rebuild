@@ -183,12 +183,16 @@ test("two independent calendar identities can be planned for the same week with 
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
    day:7,venueId:"arena-b"});
   assert.equal(ppv.status,"APPLIED");
+  if(ppv.status!=="APPLIED")throw new Error("Expected completed premium booking");
   const planned=await readSixWeekPlanner(db.pool,scope);
   assert.equal(planned.weeks[4]!.shows.length,2);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
    ["Monday Night Raw","Royal Rumble"]);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.bookingClass).sort(),
    ["PREMIUM","REGULAR"]);
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"same-day",expectedRevision:2,
+   showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
+   day:5,venueId:"arena-b",draftId:ppv.result.draftId}),/different days/);
   await assert.rejects(planShowWeek(db.pool,{...input,requestId:"bad",expectedRevision:2,
    showSeriesId:"calendar-default-ppv-wrestlemania",eventType:"MAJOR",
    venueId:"arena-b"}),/not scheduled/);
@@ -198,6 +202,13 @@ test("two independent calendar identities can be planned for the same week with 
   const stored=await withWorldTransaction(db.pool,tx=>tx.query<{booking_class:string;show_series_id:string}>(
    "SELECT booking_class,show_series_id FROM ppw_booking_drafts WHERE world_id=$1 ORDER BY booking_class",[worldId]));
   assert.equal(stored.length,2);
+  const importance=await withWorldTransaction(db.pool,tx=>tx.query<{
+   booking_class:string;event_importance:number;show_name:string}>([
+    "SELECT booking_class,event_importance,show_name FROM ppw_booking_drafts",
+    "WHERE world_id=$1 ORDER BY booking_class"
+   ].join(" "),[worldId]));
+  assert.deepEqual(importance.map(x=>[x.booking_class,x.event_importance,x.show_name]),[
+   ["PREMIUM",96,"Royal Rumble"],["REGULAR",76,"Monday Night Raw"]]);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
    ["Monday Night Raw","Royal Rumble"]);
   assert.equal((await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
