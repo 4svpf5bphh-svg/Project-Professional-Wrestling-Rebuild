@@ -9,6 +9,13 @@ type Scope=CardSessionScope;
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
+ function openProgrammeDesk(){
+  const openResults=(showId:string)=>{
+   void mountResultsPage(root,{...scope,showId},()=>{openProgrammeDesk();});
+  };
+  return mountProgrammeDesk(root,programmePort(call,openResults),
+   ()=>{mountCardEditor(root,port);});
+ }
  const port:CardEditorPort={
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
@@ -16,12 +23,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
-  openProgrammes:()=>mountProgrammeDesk(root,
-   programmePort(call,showId=>{void mountResultsPage(root,{...scope,showId},
-    ()=>mountProgrammeDesk(root,programmePort(call,showId=>
-     {void mountResultsPage(root,{...scope,showId},()=>mountBookingPage(root,scope));}),
-     ()=>mountBookingPage(root,scope)));}),
-   ()=>{mountCardEditor(root,port);}),
+  openProgrammes:()=>{openProgrammeDesk();},
  };
  return mountCardEditor(root,port);
 }
