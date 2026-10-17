@@ -5,6 +5,7 @@
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
+import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
@@ -73,6 +74,31 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    selected?.scrollIntoView({behavior:"smooth",block:"center"});
   };
   append(feature,jump);
+ }
+ const reactions=showReactionWire(show);
+ const noise=node("section","ppw-crowd-noise");
+ if(reactions.length){
+  append(noise,node("span","ppw-eyebrow","PPW / CROWD NOISE"),
+   node("h2","ppw-crowd-noise-title","THE NOISE AFTER THE BELL"),
+   node("p","ppw-crowd-noise-disclaimer",
+    "Generated ringside reactions based on recorded results — editorial flavour, not actual fan posts."));
+  const wall=node("div","ppw-crowd-noise-wall");
+  for(const reaction of reactions){
+   const card=document.createElement("button");card.type="button";
+   card.className="ppw-crowd-noise-card ppw-reaction-"+reaction.mood.toLowerCase();
+   card.setAttribute("aria-label","Open source result for "+reaction.voice+": "+reaction.text);
+   append(card,node("span","ppw-crowd-noise-voice",reaction.voice),
+    node("span","ppw-crowd-noise-quote",reaction.text),
+    node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
+   card.onclick=()=>{
+    setFilter("ALL");
+    const target=storyLinks.get(reaction.slotId);
+    if(target instanceof HTMLDetailsElement)target.open=true;
+    target?.scrollIntoView({behavior:"smooth",block:"center"});
+   };
+   append(wall,card);
+  }
+  append(noise,wall);
  }
  const highlights=node("section","ppw-broadcast-highlights");
  const featured=showBroadcastHighlights(show.entries);
@@ -188,7 +214,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
- root.replaceChildren(header,feature,...(featured.length?[highlights]:[]),timeline);
+ root.replaceChildren(header,feature,...(reactions.length?[noise]:[]),
+  ...(featured.length?[highlights]:[]),timeline);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

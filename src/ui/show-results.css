@@ -136,3 +136,31 @@
 .ppw-result-main-event{font-size:11px;font-weight:900;letter-spacing:.08em;
  color:#f0d593;border:1px solid #97763d;border-radius:7px;padding:4px 7px;
  background:#392c1c}
+
+/* Crowd Noise is explicitly editorial flavour, NOT real social activity. */
+.ppw-crowd-noise{display:grid;gap:10px;margin:0 0 24px}
+.ppw-crowd-noise-title{font-size:clamp(19px,4vw,25px);line-height:1.2;
+ font-weight:900;letter-spacing:-.015em;color:#f2f8f5;margin:0}
+.ppw-crowd-noise-disclaimer{font-size:12px;line-height:1.4;
+ color:#aec8cc;margin:0}
+.ppw-crowd-noise-wall{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ppw-crowd-noise-card{display:grid;align-content:start;gap:10px;
+ border:1px solid #376878;border-top:3px solid #7cecd2;border-radius:15px;
+ padding:15px 14px;background:linear-gradient(140deg,#173744,#0d2432);
+ color:#e6f6f4;text-align:left;font:inherit;cursor:pointer;
+ min-height:151px;min-width:0}
+.ppw-reaction-debate{border-top-color:#ddb975;background:linear-gradient(140deg,#39301f,#242833)}
+.ppw-reaction-concern{border-top-color:#e3919a;background:linear-gradient(140deg,#3d2933,#232333)}
+.ppw-reaction-cold{border-top-color:#a2bbcb;background:linear-gradient(140deg,#263545,#182534)}
+.ppw-crowd-noise-voice{font-size:10px;letter-spacing:.13em;font-weight:900;
+ color:#a7e6d8}
+.ppw-reaction-debate .ppw-crowd-noise-voice{color:#f0d4a0}
+.ppw-reaction-concern .ppw-crowd-noise-voice{color:#ffbfc9}
+.ppw-crowd-noise-quote{font-size:14px;line-height:1.6;color:#f0f5f3;flex:1}
+.ppw-crowd-noise-read{font-size:10px;font-weight:900;letter-spacing:.08em;
+ color:#94eacf;margin-top:3px}
+.ppw-crowd-noise-card:focus-visible{outline:3px solid #b2f5dc;outline-offset:3px}
+@media(max-width:600px){
+ .ppw-crowd-noise-wall{grid-template-columns:1fr}
+ .ppw-crowd-noise-card{min-height:118px}
+}

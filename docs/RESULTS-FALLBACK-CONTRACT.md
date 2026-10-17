@@ -59,3 +59,20 @@ locked purpose/decision. Refused or interrupted turns, attacks and arrivals
 never use copy implying successful execution. A staged faction invitation or
 television contract signing is not automatically a roster/contract write.
 No further Neon reads are required.
+
+## Crowd Noise: fan and press-box reaction flavour
+
+The Ringside **Crowd Noise** panel presents short, varied, deterministic,
+clearly-labelled *editorial* reactions. It is **not** a feed of genuine users
+or verified third-party social posts. Every reaction links back to one
+certified result within the currently loaded broadcast, and reacts only to
+established facts: a title transfer, recorded medical consequence, booked
+angle outcome, dirty finish, critic–crowd disagreement, match rating, or
+certified programme heat/repetition.
+
+At most four reactions are displayed, chosen from distinct recorded card
+slots. Cards are mobile first and keyboard accessible, and opening one
+expands the original result without any further network request.
+It does not invent backstage opinions, unperformed moves, wrestler quotes,
+or crowd events. The future full social/Pulse feature can have its own
+simulation; this panel does not pretend to implement it.
