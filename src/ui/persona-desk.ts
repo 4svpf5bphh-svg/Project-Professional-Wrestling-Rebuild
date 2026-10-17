@@ -35,9 +35,7 @@ export function mountPersonaDesk(root:HTMLElement,
    if(!outcome||typeof outcome!=="object"||!("result" in outcome))
     throw new Error("Wrestler did not respond");
    const result=(outcome as {result:{accepted:boolean;reason:string}}).result;
-   answer=result.accepted?"I'm comfortable trying this new character.":
-    "I'd rather keep the character that I've built.";
-   view=await port.load(name);chosen=null;
+   view=await port.load(name);chosen=null;answer=null;
   }catch(e){error=e instanceof Error?e.message:"Proposal could not be reviewed";}
   finally{loading=false;render();}
  }
@@ -119,7 +117,11 @@ export function mountPersonaDesk(root:HTMLElement,
     " character?");
    const response=el("div","ppw-persona-bubble ppw-persona-in",
     p.status==="ACCEPTED"?"Yes — I'll make it mine.":
-    "No — this character is part of who I am.");
+    p.reason==="ICONIC_PERSONA_PROTECTED"?
+     "This character is my legacy. I'm not walking away from it.":
+    p.reason==="CREATIVE_APPROVAL_WITHHELD"?
+     "My creative approval matters. I won't agree to that change.":
+     "I'd rather keep the character that I've built.");
    chat.append(out,response);
   }
   if(answer)chat.append(el("div","ppw-persona-bubble ppw-persona-in",answer));
