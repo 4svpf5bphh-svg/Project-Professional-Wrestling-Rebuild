@@ -18,7 +18,7 @@ export async function listAvailablePromotions(
   if (!Number.isSafeInteger(limit) || limit<1 || limit>50) throw new Error("Invalid page size");
   return withSqlClient(pool,async tx=>{
     const rows=await tx.query<{promotion_id:string;name:string;tier:string;lifecycle:string}>(
-      "SELECT p.promotion_id,p.name,p.tier,p.lifecycle FROM ppw_promotions p WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND p.promotion_id>$2 AND NOT EXISTS (SELECT 1 FROM ppw_promotion_controls c WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id AND c.active=true) ORDER BY p.promotion_id LIMIT $3",
+      "SELECT p.promotion_id,p.name,p.tier,p.lifecycle FROM ppw_promotions p WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND p.takeover_eligibility='STANDARD' AND p.promotion_id>$2 AND NOT EXISTS (SELECT 1 FROM ppw_promotion_controls c WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id AND c.active=true) ORDER BY p.promotion_id LIMIT $3",
       [worldId,afterId??"",limit],
     );
     return rows.map(r=>({id:r.promotion_id,name:r.name,tier:r.tier,lifecycle:r.lifecycle}));
