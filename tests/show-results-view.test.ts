@@ -2,6 +2,7 @@ import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {showReactionWire} from "../src/domain/show-reaction-wire.js";
+import {showCrowdFlow} from "../src/domain/show-crowd-flow.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 const scope={worldId:"world",promotionId:"prom",showId:"show",playerId:"owner"};
 const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
@@ -92,4 +93,17 @@ test("Crowd Noise is computed from the private five-read completed result, witho
  assert.match(first[0]!.text,/refused/i);
  assert.match(first[1]!.text,/crowd|building|audience/i);
  assert.equal(calls(),5,"Opening generated reactions performs no extra database reads");
+});
+
+test("Crowd Flow reads the exact same certified five-query broadcast without extra traffic",async()=>{
+ const {pool,calls}=fake(true,true);
+ const view=await readCompletedShowView(pool,scope);
+ assert.equal(calls(),5);
+ const flow=showCrowdFlow(view);
+ assert.deepEqual(flow.map(x=>x.slotId),["m","a"]);
+ assert.deepEqual(flow.map(x=>x.crowdResponse),[85,64]);
+ assert.equal(flow.filter(x=>x.standout).length,1);
+ assert.equal(flow[0]!.standout,true);
+ assert.equal(flow[1]!.kind,"SEGMENT");
+ assert.equal(calls(),5);
 });
