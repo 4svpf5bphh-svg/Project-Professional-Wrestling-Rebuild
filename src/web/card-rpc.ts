@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
+import {plannerAsActor,planShowAsActor,contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
@@ -17,7 +17,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=method==="championships"||method==="championshipHistory"?"":id("showId");
+ const showId=["championships","championshipHistory","planner","planShow"].includes(method)?
+  "":id("showId");
+ if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);
  if(method==="championshipHistory"){
   const cursor=p.cursor??null;
@@ -78,6 +80,21 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="planShow"){
+  if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
+   !Number.isSafeInteger(p.day)||typeof p.ticketStrategy!=="string"||
+   !["ACCESSIBLE","STANDARD","PREMIUM","PRESTIGE"].includes(p.ticketStrategy)||
+   typeof p.eventType!=="string"||
+   !["REGULAR","MAJOR"].includes(p.eventType)||
+   (p.draftId!==undefined&&typeof p.draftId!=="string"))
+   throw new Error("Invalid planner request");
+  return planShowAsActor(context,{worldId,promotionId,requestId,expectedRevision,
+   year:p.year as number,week:p.week as number,day:p.day as number,
+   marketId:id("marketId"),venueId:id("venueId"),
+   ticketStrategy:p.ticketStrategy as "ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE",
+   eventType:p.eventType as "REGULAR"|"MAJOR",
+   ...(p.draftId===undefined?{}:{draftId:p.draftId as string})});
+ }
  if(method==="requestContractDates"){
   if(!Number.isSafeInteger(p.additionalDates)||typeof p.additionalDates!=="number"||
     !Number.isSafeInteger(p.additionalPayment??0)||typeof (p.additionalPayment??0)!=="number")

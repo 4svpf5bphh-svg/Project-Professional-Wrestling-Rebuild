@@ -1,3 +1,5 @@
+import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
+ from "../db/planner-workspace.js";
 import {readTagTeamWorkspace,createTagTeam,nameTagTeam,type CreateTagTeam,type NameTagTeam}
  from "../db/tag-team-workspace.js";
 import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
@@ -178,6 +180,19 @@ export async function withdrawContractOfferAsActor(context:WorldApiContext,
 export async function pendingContractOffersAsActor(context:WorldApiContext,worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
  return readPendingContractOffers(context.pool,worldId,context.actor.playerId,promotionId);
+}
+
+/** A six-week controlled promotion planner; authenticated player is trusted. */
+export async function plannerAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readSixWeekPlanner(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function planShowAsActor(context:WorldApiContext,
+ input:Omit<PlanWeekInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return planShowWeek(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** UI-facing choices: market/venue are paired, ticket price affects demand.

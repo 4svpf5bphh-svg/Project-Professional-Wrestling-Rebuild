@@ -18,7 +18,7 @@ export function createCardClient(scope:CardSessionScope,
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
    "backstageArchive","backstageDecision","resultsArchive",
    "championships","championshipHistory","tagTeams","createTagTeam","renameTagTeam",
-   "contracts","requestContractDates","cancelContractDates","renewContract",
+   "planner","planShow","contracts","requestContractDates","cancelContractDates","renewContract",
    "withdrawContractRenewal","withdrawContractOffer"].includes(method))
    throw new Error("Unknown card action");
   const response=await transport("/api/card",{
