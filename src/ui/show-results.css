@@ -25,3 +25,12 @@
 .ppw-broadcast-headline strong{display:block;font-size:16px;line-height:1.3;margin:10px 0 6px}
 .ppw-broadcast-headline p{font-size:12px;color:#c3d3e1;margin:0;line-height:1.45}
 @media(max-width:520px){.ppw-broadcast-highlights{grid-template-columns:1fr}}
+
+/* Wrestling broadcast nameplates: compact enough for iPhone results. */
+.ppw-result-personas{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}
+.ppw-result-persona{display:flex;flex-direction:column;gap:3px;min-width:110px;
+ padding:9px 12px;border-radius:11px;background:#1b3345;
+ border:1px solid #315569}
+.ppw-result-persona strong{font-size:13px}
+.ppw-result-persona span{font-size:12px;color:#b6d4e5;text-transform:capitalize}
+.ppw-result-persona small{font-size:11px;color:#a1b6c2;text-transform:capitalize}
