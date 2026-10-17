@@ -20,9 +20,12 @@ type PersonRow={
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;
  contract_id:string|null;family:string|null;remaining_dates:number|null;
+ start_week_index:number|null;
  expires_week_index:number|null;weekly_guarantee:string|null;
  appearance_fee:string|null;
  exclusive_to:string|null;other_contracts:number;active_contracts:number;
+ future_contracts:number;next_future_start:number|null;
+ future_exclusive_to:string|null;
  pending_offer:boolean;estimated_value:number|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
@@ -74,8 +77,10 @@ export async function readWrestlerDirectory(
    SELECT p.person_id,p.name,p.booking_division,p.popularity,p.recognition,
     p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
     mine.contract_id,mine.family,mine.remaining_dates,mine.expires_week_index,
+    mine.start_week_index,
     mine.weekly_guarantee::text,mine.appearance_fee::text,
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
+    contracts.future_contracts,contracts.next_future_start,contracts.future_exclusive_to,
     mv.estimated_value,
     EXISTS(SELECT 1 FROM ppw_contract_offers o
       WHERE o.world_id=p.world_id AND o.person_id=p.person_id
@@ -83,12 +88,13 @@ export async function readWrestlerDirectory(
    FROM ppw_people p
    LEFT JOIN LATERAL (
     SELECT c.contract_id,c.family,c.remaining_dates,c.expires_week_index,
+     c.start_week_index,
      c.weekly_guarantee,c.appearance_fee
     FROM ppw_contracts c WHERE c.world_id=p.world_id
      AND c.person_id=p.person_id AND c.promotion_id=$2
-     AND c.status='SIGNED' AND c.start_week_index <= $3
-     AND c.expires_week_index >= $3
-    ORDER BY c.expires_week_index DESC,c.contract_id DESC LIMIT 1
+     AND c.status='SIGNED' AND c.expires_week_index >= $3
+    ORDER BY (c.start_week_index<=$3) DESC,
+     c.expires_week_index DESC,c.contract_id DESC LIMIT 1
    ) mine ON true
    CROSS JOIN LATERAL (
     SELECT round((500 + p.recognition*50 + p.popularity*30 +
@@ -101,12 +107,20 @@ export async function readWrestlerDirectory(
    ) mv
    CROSS JOIN LATERAL (
     SELECT (array_agg(c.promotion_id ORDER BY c.promotion_id)
-      FILTER(WHERE c.family='EXCLUSIVE'))[1] AS exclusive_to,
-     count(*) FILTER(WHERE c.promotion_id<>$2)::integer AS other_contracts,
-     count(*)::integer AS active_contracts
+      FILTER(WHERE c.family='EXCLUSIVE' AND c.start_week_index<=$3))[1]
+       AS exclusive_to,
+     count(*) FILTER(WHERE c.promotion_id<>$2
+      AND c.start_week_index<=$3)::integer AS other_contracts,
+     count(*) FILTER(WHERE c.start_week_index<=$3)::integer AS active_contracts,
+     count(*) FILTER(WHERE c.start_week_index>$3)::integer AS future_contracts,
+     min(c.start_week_index) FILTER(WHERE c.start_week_index>$3)
+      AS next_future_start,
+     (array_agg(c.promotion_id ORDER BY c.start_week_index,c.promotion_id)
+      FILTER(WHERE c.family='EXCLUSIVE' AND c.start_week_index>$3))[1]
+      AS future_exclusive_to
     FROM ppw_contracts c WHERE c.world_id=p.world_id
      AND c.person_id=p.person_id AND c.status='SIGNED'
-     AND c.expires_week_index >= $3 AND c.start_week_index <= $3
+     AND c.expires_week_index >= $3
    ) contracts
    WHERE p.world_id=$1 AND p.status='ACTIVE'
     AND ($4::text='ALL' OR p.booking_division=$4)
@@ -120,7 +134,7 @@ export async function readWrestlerDirectory(
      "mine.contract_id IS NOT NULL AND $11::text IS NOT NULL":
      "mine.contract_id IS NULL"})
     ${f.view==="MARKET"?
-     "AND ($11::text='ALL' OR ($11='APPROACHABLE' AND contracts.exclusive_to IS NULL) OR ($11='FREE_AGENT' AND contracts.active_contracts=0))":
+     "AND ($11::text='ALL' OR ($11='APPROACHABLE' AND contracts.exclusive_to IS NULL) OR ($11='FREE_AGENT' AND contracts.active_contracts=0 AND contracts.future_contracts=0))":
      ""}
    ORDER BY ${sortSql[f.sort]}
    LIMIT $12 OFFSET $13`,
@@ -136,6 +150,8 @@ export async function readWrestlerDirectory(
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
     careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
+    startWeekIndex:p.start_week_index,
+    startsInWeeks:p.start_week_index===null?null:Math.max(0,p.start_week_index-now),
     remainingDates:p.remaining_dates,expiresWeekIndex:p.expires_week_index,
     weeksRemaining:p.expires_week_index===null?null:
      Math.max(0,p.expires_week_index-now+1),
@@ -143,11 +159,18 @@ export async function readWrestlerDirectory(
     appearanceFee:p.appearance_fee===null?null:Number(p.appearance_fee),
     exclusiveToPromotionId:p.exclusive_to,otherContracts:p.other_contracts,
     activeContracts:p.active_contracts,pendingOffer:p.pending_offer,
+    futureContracts:p.future_contracts,nextFutureStart:p.next_future_start,
+    futureExclusiveToPromotionId:p.future_exclusive_to,
     estimatedWeeklyValue:p.estimated_value,
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.
     availability:p.exclusive_to&&p.exclusive_to!==who.promotionId?
-     "EXCLUSIVE_ELSEWHERE":p.contract_id?"YOUR_ROSTER":
+     "EXCLUSIVE_ELSEWHERE":p.contract_id?
+      (p.start_week_index!==null&&p.start_week_index>now?
+       "SIGNED_FUTURE_YOURS":"YOUR_ROSTER"):
+     p.future_exclusive_to&&p.future_exclusive_to!==who.promotionId?
+      "FUTURE_EXCLUSIVE_ELSEWHERE":
+     p.future_contracts>0?"CONTRACTED_SOON":
      p.active_contracts===0?"FREE_AGENT":"NON_EXCLUSIVE" as const
    }))};
  });
