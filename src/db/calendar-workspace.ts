@@ -108,7 +108,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    const index=start+offset;
    const events=[...promotions].flatMap(([promotionId,promotion])=>
     promotion.series.filter(s=>seriesDue(s,index)).map(s=>({
-     promotionId,promotionName:p.name,seriesId:s.seriesId,name:s.name,
+     promotionId,promotionName:promotion.name,seriesId:s.seriesId,name:s.name,
      role:s.role,eventType:s.eventType,importance:s.importance
     }))).sort((a,b)=>b.importance-a.importance||
      a.promotionName.localeCompare(b.promotionName)||a.name.localeCompare(b.name));
