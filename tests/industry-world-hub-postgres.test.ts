@@ -66,6 +66,19 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
    worldId:world,promotionId:promotion,playerId:"spoofed"}) as unknown as
     Awaited<ReturnType<typeof readIndustryWorldHub>>;
   assert.equal(rpc.broadcasts.length,2);
+  // The same authenticated, show-free host scope must reach the Home and
+  // promotion desks. A pending show draft is not a login prerequisite.
+  const overview=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
+   "overview",{worldId:world,promotionId:promotion,showId:"",
+    playerId:"forged"}) as unknown as
+     Awaited<ReturnType<typeof import("../src/db/player-world-overview.js").readPlayerWorldOverview>>;
+  assert.equal(overview?.promotion?.id,promotion);
+  for(const method of ["programmes","contracts","tagTeams","stables"]){
+   const page=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
+    method,{worldId:world,promotionId:promotion,showId:""});
+   assert.ok(page!==undefined,"Standalone "+method+" page must open");
+  }
+
   // The compact 13-week window crosses the year boundary without scanning
   // older full-season broadcasts or leaking future drafts.
   await withWorldTransaction(db.pool,async tx=>{
