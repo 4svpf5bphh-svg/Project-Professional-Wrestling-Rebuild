@@ -1,0 +1,75 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {projectVerifiedBroadcastFallout,type RecordedMatchFalloutRow}
+ from "../src/domain/verified-broadcast-fallout.js";
+import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
+const names=new Map([["a","Alice"],["b","Bob"],["c","Carol"],["d","Dave"]]);
+const name=(id:string)=>names.get(id)??id;
+const sides=new Map<string,readonly string[]>([["A",["Alice"]],["B",["Bob"]]]);
+const bare=(matchId="bout"):RecordedMatchFalloutRow=>({
+ match_id:matchId,evidence_json:null,championship_name:null,
+ title_changed:null,title_winner_name:null,title_prior_holder_name:null,injuries:[],
+});
+const receipt=(finish:string,side:string):CompletedShowReceipt=>({
+ worldId:"world",promotionId:"promotion",showId:"show",year:1,week:1,
+ resolutionId:"resolution",crowdResponse:82,
+ matches:[{matchId:"bout",position:0,crowdResponse:82,
+  actualFinish:finish,actualWinnerSide:side}],segments:[],
+});
+test("completed title transfer and successful run-in are proven, not inferred",()=>{
+ const show=receipt("PROTECTED_FINISH","A"),m=show.matches[0]!;
+ const row:RecordedMatchFalloutRow={...bare(),championship_name:"World Title",
+  title_changed:true,title_winner_name:"Alice",
+  title_prior_holder_name:"Bob",
+  evidence_json:{matchId:"bout",
+   booking:{participants:["a","b"],scriptedWinner:"a",plannedFinish:"CLEAN_PIN",
+    interferencePlannedOutcome:"SUCCESS"},
+   resolution:{actualWinner:"a",actualFinish:"PROTECTED_FINISH",
+    interference:{plannedOutcome:"SUCCESS",actualOutcome:"SUCCESS"}}},
+ };
+ const fallout=projectVerifiedBroadcastFallout(row,show,m,name,sides,"c");
+ assert.equal(fallout.title?.changed,true);
+ assert.equal(fallout.title?.winnerName,"Alice");
+ assert.deepEqual(fallout.interference,{personName:"Carol",outcome:"SUCCESS"});
+ assert.deepEqual(fallout.injuries,[]);
+});
+test("stoppage names the verified injured wrestler without inventing recovery time",()=>{
+ const show=receipt("INJURY_STOPPAGE","B"),m=show.matches[0]!;
+ const row:RecordedMatchFalloutRow={...bare(),
+  evidence_json:{matchId:"bout",
+   booking:{participants:["a","b"],scriptedWinner:"a",plannedFinish:"CLEAN_PIN"},
+   resolution:{actualWinner:"b",actualFinish:"INJURY_STOPPAGE",
+    medical:{injuredPersonId:"a",severity:"SEVERE",stoppage:true}}},
+ };
+ const fallout=projectVerifiedBroadcastFallout(row,show,m,name,sides,null);
+ assert.deepEqual(fallout.injuries,[{personName:"Alice",severity:"SEVERE",
+  weeksOut:null,stoppage:true}]);
+ assert.equal(fallout.title,undefined);
+});
+test("tag career injury days merge with medical stoppage and verified eliminations",()=>{
+ const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
+ const row:RecordedMatchFalloutRow={...bare(),
+  evidence_json:{matchId:"bout",
+   booking:{family:"TEAMS",sides:[{sideId:"A",participants:["a","b"]},
+    {sideId:"B",participants:["c","d"]}],scriptedWinnerSide:"A",
+    ruleset:"ELIMINATION",eliminationOrder:["B"],plannedFinish:"CLEAN_PIN"},
+   resolution:{actualWinnerSide:"A",actualFinish:"CLEAN_PIN",
+    completedEliminationOrder:["B"]}},
+  injuries:[{person_id:"c",injury_severity:"MODERATE",injury_weeks_out:3}]};
+ const teamSides=new Map<string,readonly string[]>([
+  ["A",["Alice","Bob"]],["B",["Carol","Dave"]]]);
+ const fallout=projectVerifiedBroadcastFallout(row,show,m,name,teamSides,null);
+ assert.deepEqual(fallout.eliminations,["Carol & Dave"]);
+ assert.deepEqual(fallout.injuries,[{personName:"Carol",severity:"MODERATE",
+  weeksOut:3,stoppage:false}]);
+});
+test("unsupported historic evidence is rejected rather than turned into fictitious action",()=>{
+ const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
+ assert.deepEqual(projectVerifiedBroadcastFallout(undefined,show,m,name,sides,null),
+  {injuries:[],eliminations:[]});
+ assert.throws(()=>projectVerifiedBroadcastFallout({...bare(),
+  evidence_json:{matchId:"other"}},show,m,name,sides,null),/Invalid historic match/);
+ assert.throws(()=>projectVerifiedBroadcastFallout({...bare(),
+  injuries:[{person_id:"a",injury_severity:"IMPOSSIBLE",injury_weeks_out:2}]},
+  show,m,name,sides,null),/Invalid historic medical/);
+});
