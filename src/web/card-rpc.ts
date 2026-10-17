@@ -1,6 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,businessAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -19,7 +20,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer","business"].includes(method)?
+ const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer","business","staff","setStaffContinuity"].includes(method)?
   "":id("showId");
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
@@ -35,6 +36,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    cursor as {startWeekIndex:number;reignId:string}|null);
  }
  if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
+ if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
  if(method==="business")return businessAsActor(context,worldId,promotionId);
  if(method==="wrestlerDirectory"){
   const f=p.filter;
@@ -115,6 +117,18 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    ticketStrategy:p.ticketStrategy as "ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE",
    eventType:p.eventType as "REGULAR"|"MAJOR",
    ...(p.draftId===undefined?{}:{draftId:p.draftId as string})});
+ }
+ if(method==="setStaffContinuity"){
+  const fallback=p.allowUnfinishedFallback,logistics=p.allowLogisticsFallback;
+  const days=p.permittedDays,venues=p.permittedVenueIds;
+  if(typeof fallback!=="boolean"||typeof logistics!=="boolean"||
+   !Array.isArray(days)||days.some(x=>!Number.isSafeInteger(x))||
+   !Array.isArray(venues)||venues.some(x=>typeof x!=="string"))
+   throw new Error("Invalid staff delegation");
+  return setStaffContinuityAsActor(context,{worldId,promotionId,
+   requestId,expectedRevision,allowUnfinishedFallback:fallback,
+   allowLogisticsFallback:logistics,
+   permittedDays:days as number[],permittedVenueIds:venues as string[]});
  }
  if(method==="submitContractOffer"){
   const terms=p.terms;

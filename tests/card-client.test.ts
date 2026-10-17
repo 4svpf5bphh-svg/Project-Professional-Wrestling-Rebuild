@@ -28,6 +28,21 @@ test("unverified host cannot create booking bridge and bad actions are blocked",
  const client=createCardClient(scope,async()=>{throw Error("Network should not be reached");});
  await assert.rejects(client("advanceWorld"),/Unknown card action/);
 });
+test("Staff settings are submitted with actorless CSRF-protected browser identity",async()=>{
+ const seen:Record<string,unknown>[]=[];
+ const client=createCardClient({...scope,showId:""},async(_url,init)=>{
+  const p=JSON.parse(String(init?.body)) as Record<string,unknown>;
+  seen.push(p);
+  return new Response(JSON.stringify({status:"APPLIED"}),{status:200});
+ });
+ await client("staff");
+ await client("setStaffContinuity",{requestId:"staff-choice",expectedRevision:2,
+  allowUnfinishedFallback:true,allowLogisticsFallback:true,
+  permittedDays:[2,5],permittedVenueIds:["venue-1"]});
+ assert.deepEqual(seen.map(p=>p.method),["staff","setStaffContinuity"]);
+ assert.ok(seen.every(p=>p.playerId===undefined));
+ assert.deepEqual(seen[1]!.permittedDays,[2,5]);
+});
 test("a rejected session returns a user-visible error",async()=>{
  const client=createCardClient(scope,async()=>new Response("",{status:403}));
  await assert.rejects(client("results"),/session expired/i);

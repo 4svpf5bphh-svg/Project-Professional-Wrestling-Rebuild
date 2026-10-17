@@ -13,6 +13,8 @@ import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
 import {mountBusinessDesk,type BusinessPort} from "../ui/business-desk.js";
+import {mountStaffDesk,type StaffPort} from "../ui/staff-desk.js";
+import "../ui/staff-desk.css";
 import "../ui/business-desk.css";
 import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
 import "../ui/roster-market.css";
@@ -56,6 +58,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
+  openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -90,6 +93,18 @@ function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort
   withdrawOffer:({requestId,expectedRevision,offerId})=>
    call("withdrawContractOffer",{requestId,expectedRevision,offerId})};
 }
+function staffPort(root:HTMLElement,scope:Scope,
+ call:ReturnType<typeof createCardClient>):StaffPort{
+ return {load:()=>call("staff"),
+  save:input=>call("setStaffContinuity",input),
+  back:scope.showId?()=>mountBookingPage(root,scope):
+   ()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")
+ };
+}
+export function mountStaffPage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ return mountStaffDesk(root,staffPort(root,scope,call));
+}
 function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
@@ -122,6 +137,7 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
    ()=>open("ROSTER")),
   backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
+  openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openWrestler:(personId:string)=>mountPersonaDesk(root,{
    ...personaPort(call),load:(selected?:string)=>call("backstage",{personId:selected??personId})
   },()=>open("ROSTER"),()=>mountProgrammePage(root,scope))

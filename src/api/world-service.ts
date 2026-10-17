@@ -27,6 +27,7 @@ import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
+import {readStaffWorkspace} from "../db/staff-workspace.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
@@ -99,6 +100,13 @@ export async function claimPromotionAsActor(context:WorldApiContext,input:ClaimI
   return submitPromotionClaim(context.pool,{...input,playerId:context.actor.playerId});
 }
 /** The actor identity is injected from verified middleware, not client JSON. */
+export async function staffWorkspaceAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readStaffWorkspace(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
 export async function setStaffContinuityAsActor(context:WorldApiContext,input:StaffContinuityInput){
   validate(context.actor.playerId,"actor");
   validateMutation(input);
