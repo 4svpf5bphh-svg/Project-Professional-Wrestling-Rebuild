@@ -55,7 +55,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    WHERE e.world_id=$1 AND e.promotion_id=$2
    ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 13`,
    [worldId,promotionId]);
-  if(shows.length>12)shows.pop();
+  if(shows.length>13)throw new Error("Event receipt read exceeded limit");
   const territories=await tx.query<{
    market_id:string;name:string;
    awareness:number;live_strength:number;loyalty:number;is_home:boolean;
@@ -84,7 +84,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     weeklyMedia+weeklySponsor-weeklyOverhead-guarantees,
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
-   shows:shows.map(s=>({
+   shows:shows.slice(0,12).map(s=>({
     showId:s.show_id,year:s.year,week:s.week,
     name:s.show_name??(s.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
     bookingClass:s.booking_class,attendance:s.attendance,expectedDemand:s.expected_demand,
