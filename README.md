@@ -20,7 +20,12 @@
 > The Home clock is server-calibrated, and read screens use bounded indexed
 > queries rather than full World snapshots.
 >
-> **Still required before player playtesting:** Compose those screens and the
+> **Host integration update:** A Vite-powered, Vercel Node-compatible PWA host now
+> exists under `apps/web` and `api`, with independent invite-only player
+> sign-in, server-signed sessions, join/claim, CSRF, and a CI-built web bundle.
+> See `docs/alpha-pwa-host.md`. The previous hosting gap below is superseded:
+>
+> **Originally required before player playtesting:** Compose those screens and the
 > `handleCardHttp` boundary into a deployable, authenticated Next.js/PWA host;
 > configure its real player session/CSRF flow, private database connection and
 > an explicit existing World/promotion selection route. The original Next.js
