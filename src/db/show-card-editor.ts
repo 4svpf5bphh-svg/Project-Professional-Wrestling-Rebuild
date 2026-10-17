@@ -73,10 +73,26 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const personIds=[...new Set(slots.flatMap(s=>
    readCardParticipants(s.payload).map(p=>p.personId)))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
-  const activeProgrammes=await tx.query<{programme_id:string;heat:number|null;repetition:number}>(
-   "SELECT programme_id,heat,repetition FROM ppw_programmes"+
-   " WHERE world_id=$1 AND promotion_id=$2 AND status='ACTIVE'"+
-   " ORDER BY programme_id LIMIT 101",[id.worldId,id.promotionId]);
+  const activeProgrammes=await tx.query<{
+   programme_id:string;heat:number|null;repetition:number;label:string}>(
+   "SELECT p.programme_id,p.heat,p.repetition,",
+   "COALESCE(string_agg(CASE WHEN r.side='A'",
+   "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
+   "ORDER BY r.position),'Side A') || ' vs ' ||",
+   "COALESCE(string_agg(CASE WHEN r.side='B'",
+   "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
+   "ORDER BY r.position),'Side B') AS label",
+   "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
+   "ON r.world_id=p.world_id AND r.promotion_id=p.promotion_id",
+   "AND r.programme_id=p.programme_id",
+   "LEFT JOIN ppw_people person ON person.world_id=r.world_id",
+   "AND person.person_id=r.ref_id AND r.ref_kind='PERSON'",
+   "LEFT JOIN ppw_tag_teams team ON team.world_id=r.world_id",
+   "AND team.team_id=r.ref_id AND r.ref_kind='TEAM'",
+   "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
+   "GROUP BY p.programme_id,p.heat,p.repetition",
+   "ORDER BY p.programme_id LIMIT 101"
+   ].join(" "),[id.worldId,id.promotionId]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
   const links=await tx.query<{slot_id:string;programme_id:string}>(
    "SELECT slot_id,programme_id FROM ppw_programme_match_activities"+
@@ -91,7 +107,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     [id.worldId,personIds]):[];
   return {selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division})),
-   programmes:activeProgrammes.map(p=>({programmeId:p.programme_id,heat:p.heat,
+   programmes:activeProgrammes.map(p=>({programmeId:p.programme_id,label:p.label,heat:p.heat,
     repetition:p.repetition})),
    programmeLinks:links.map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,

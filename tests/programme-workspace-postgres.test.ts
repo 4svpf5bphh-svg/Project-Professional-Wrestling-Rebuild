@@ -6,6 +6,8 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {readProgrammeWorkspace,startProgramme,endProgramme}
  from "../src/db/programme-workspace.js";
+import {saveCardEditorAsActor,showCardEditorAsActor}
+ from "../src/api/world-service.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("a player creates, inspects and ends original two-sided wrestler and tag programmes with bounded PostgreSQL",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
@@ -82,6 +84,36 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   view=await readProgrammeWorkspace(db.pool,scope);
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.status,"COMPLETED");
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.endedWeekIndex,0);
+  // The original PPW automatically binds a booked bout to a feud only when
+  // its sides unambiguously fit that feud, including portable tag-team members.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)"+
+   " VALUES($1,'weekly',$2,1,1,'DRAFT')",[worldId,promotionId]));
+  const context={pool:db.pool,actor:{playerId}};
+  const makeMatch=(opponent:number)=>({
+   matchType:"SINGLES",participants:[
+    {personId:people[0]!,contractId:"contract-0-"+id},
+    {personId:people[opponent]!,contractId:"contract-"+opponent+"-"+id}],
+   scriptedWinner:people[0]!,plannedFinish:"CLEAN_PIN",
+   plannedLengthMinutes:15,intent:"COMPETITIVE"});
+  const save=async(revision:number,opponent:number,requestId:string)=>
+   saveCardEditorAsActor(context,{worldId,promotionId,showId:"weekly",
+    requestId,expectedRevision:revision,
+    matches:[{slotId:"main",payload:makeMatch(opponent)}],
+    segments:[],runningOrder:["main"]});
+  assert.equal((await save(3,2,"feud-match")).status,"APPLIED");
+  const linkedMatch=await withWorldTransaction(db.pool,tx=>tx.query<{programme_id:string}>(
+   "SELECT programme_id FROM ppw_programme_match_activities"+
+   " WHERE world_id=$1 AND draft_id='weekly' AND kind='MATCH'",[worldId]));
+  assert.deepEqual(linkedMatch,[{programme_id:
+   team.status==="APPLIED"?team.result.programmeId:""}]);
+  const linkedCard=await showCardEditorAsActor(context,worldId,promotionId,"weekly");
+  assert.ok(linkedCard.programmes.some(x=>x.label.includes("The Unit")));
+  assert.equal((await save(4,1,"different-opponent")).status,"APPLIED");
+  const unlinked=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_programme_match_activities"+
+   " WHERE world_id=$1 AND draft_id='weekly' AND kind='MATCH'",[worldId]));
+  assert.equal(unlinked[0]!.n,"0");
   assert.equal((await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type LIKE 'PROGRAMME_%'",
    [worldId])))[0]!.n,"3");
@@ -90,6 +122,7 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
     "ppw_programme_side_refs","ppw_programme_participants","ppw_programmes",
     "ppw_championship_contests","ppw_championship_reigns","ppw_championships",
+    "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
     "ppw_tag_team_members","ppw_tag_teams","ppw_contracts","ppw_people",
     "ppw_promotion_controls","ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
