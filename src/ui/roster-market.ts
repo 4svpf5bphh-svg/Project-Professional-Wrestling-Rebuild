@@ -245,8 +245,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum));
    const label=p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
+    p.availability==="SIGNED_FUTURE_YOURS"?
+      "STARTS IN "+p.startsInWeeks+" WEEKS":
     p.availability==="YOUR_ROSTER"?(p.remainingDates===null?"UNLIMITED DATES":
       p.remainingDates+" DATES LEFT"):
+    p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE STARTS SOON":
+    p.availability==="CONTRACTED_SOON"?"CONTRACTED SOON":
     p.availability==="FREE_AGENT"?"FREE AGENT":"NON-EXCLUSIVE";
    title.append(name,note,el("span","ppw-directory-status",label));
    card.append(title);
@@ -263,9 +267,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    if(filter.view==="ROSTER"){
     detail.append(el("p","ppw-directory-muted",
      (p.family??"Contract").replaceAll("_"," ")+" · "+
-     (p.weeksRemaining??0)+" weeks left · Weekly "+
+     (p.startsInWeeks&&p.startsInWeeks>0?
+      "Starts in "+p.startsInWeeks+" weeks":
+      (p.weeksRemaining??0)+" weeks left")+" · Weekly "+
      money(p.weeklyGuarantee??0)+" · Appearance "+money(p.appearanceFee??0)));
-    if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
+    if(p.startsInWeeks&&p.startsInWeeks>0)
+     detail.append(el("p","ppw-directory-warning",
+      "Already signed, but not eligible for booking until the contract starts."));
+    else if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
      "No dates remaining — negotiate an addendum before booking."));
     detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId)),
      btn("Manage contract →",()=>port.openContracts()));
@@ -276,8 +285,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       ". This is not an asking price or predicted acceptance."));
     detail.append(el("p","ppw-directory-muted",p.availability==="EXCLUSIVE_ELSEWHERE"?
      "Exclusive contract held elsewhere. Recruitment is currently blocked.":
+     p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?
+      "Another promotion's exclusive agreement begins in "+
+       Math.max(0,(p.nextFutureStart??view.currentWeekIndex)-view.currentWeekIndex)+
+       " weeks. Offers extending into it will be refused.":
+     p.availability==="CONTRACTED_SOON"?
+      "A signed commitment begins in "+
+       Math.max(0,(p.nextFutureStart??view.currentWeekIndex)-view.currentWeekIndex)+
+       " weeks. Longer offers may conflict with it.":
      p.availability==="FREE_AGENT"?
-      "No current contract. You can submit terms for consideration.":
+      "No current or future signed contract. You can submit terms for consideration.":
       "Works elsewhere on non-exclusive terms. Acceptance depends on scheduling, fit and your offer."));
     if(p.pendingOffer)detail.append(el("p","ppw-directory-muted",
      "Your offer is awaiting the next World resolution."));
