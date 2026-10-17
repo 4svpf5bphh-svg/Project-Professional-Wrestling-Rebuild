@@ -11,6 +11,7 @@ export interface RosterMarketPort{
   terms:OfferTerms}):Promise<unknown>;
  openContracts():void;openTagTeams():void;openStables():void;
  openWrestler(personId:string):void;
+ openBusiness?():void;
  backToBooking?():void;
 }
 const el=(tag:string,cls="",value="")=>{
@@ -160,12 +161,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   navigation.setAttribute("aria-label","Roster navigation");
   for(const [kind,label] of [
    ["ROSTER","Singles"],["TEAMS","Tag Teams"],["STABLES","Stables"],
-   ["MARKET","Talent Market"],["CONTRACTS","Contracts"]
+   ["MARKET","Talent Market"],["CONTRACTS","Contracts"],
+   ["BUSINESS","Business"]
   ] as const){
    const b=btn(label,()=>{
     if(kind==="ROSTER"||kind==="MARKET")pick({view:kind,availability:"ALL"});
     else if(kind==="TEAMS")port.openTagTeams();
     else if(kind==="STABLES")port.openStables();
+    else if(kind==="BUSINESS")port.openBusiness?.();
     else port.openContracts();
    });
    b.setAttribute("aria-current",filter.view===kind?"page":"false");

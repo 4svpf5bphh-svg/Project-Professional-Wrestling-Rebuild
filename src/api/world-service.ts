@@ -31,6 +31,7 @@ import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
+import {readBusinessWorkspace} from "../db/business-workspace.js";
 import {readWrestlerDirectory,type DirectoryFilter} from "../db/wrestler-directory.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {submitManualContractOffer,withdrawManualContractOffer,readPendingContractOffers} from "../db/manual-contract-offers.js";
@@ -41,6 +42,14 @@ import type {TicketStrategy} from "../domain/legacy-show-economics.js";
 import {readShowCardEditor,readBookableCardTalent,saveShowCardMatches,
  type EditedMatchSlot,type EditedSegmentSlot} from "../db/show-card-editor.js";
 
+/** Authenticated read-only finance and territory desk. No financial writes. */
+export async function businessAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readBusinessWorkspace(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
 /** Authenticated player-facing wrestler directory, never a global
  * unguarded market read. Filtering is validated inside the query module. */
 export async function wrestlerDirectoryAsActor(context:WorldApiContext,

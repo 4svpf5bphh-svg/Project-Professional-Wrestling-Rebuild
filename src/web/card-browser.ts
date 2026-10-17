@@ -12,6 +12,8 @@ import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-de
 import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
+import {mountBusinessDesk,type BusinessPort} from "../ui/business-desk.js";
+import "../ui/business-desk.css";
 import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
 import "../ui/roster-market.css";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
@@ -53,6 +55,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openContracts:()=>mountContractDesk(root,contractPort(call),()=>mountCardEditor(root,port)),
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
+  openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -87,6 +90,22 @@ function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort
   withdrawOffer:({requestId,expectedRevision,offerId})=>
    call("withdrawContractOffer",{requestId,expectedRevision,offerId})};
 }
+function businessPort(root:HTMLElement,scope:Scope,
+ call:ReturnType<typeof createCardClient>):BusinessPort{
+ return {
+  load:()=>call("business"),
+  openResults:showId=>{void mountResultsPage(root,{...scope,showId},
+    ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
+  openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
+  openContracts:()=>mountContractDesk(root,contractPort(call),
+   ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  back:scope.showId?()=>mountBookingPage(root,scope):undefined
+ };
+}
+export function mountBusinessPage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ return mountBusinessDesk(root,businessPort(root,scope,call));
+}
 function rosterMarketPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):RosterMarketPort{
  const open=(mode:DirectoryView)=>mountRosterMarket(root,
@@ -102,6 +121,7 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>open("ROSTER")),
   backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,
+  openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openWrestler:(personId:string)=>mountPersonaDesk(root,{
    ...personaPort(call),load:(selected?:string)=>call("backstage",{personId:selected??personId})
   },()=>open("ROSTER"),()=>mountProgrammePage(root,scope))
