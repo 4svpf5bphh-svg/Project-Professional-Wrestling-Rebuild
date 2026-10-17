@@ -17,8 +17,10 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
   commandType:"BACKSTAGE_DECISION",requiresOpenWeek:true,
   execute:async tx=>{
    const found=await tx.query<{person_id:string;related_person_id:string|null;
-    kind:BackstageKind;year:number;week:number;morale:number|null}>([
-    "SELECT r.person_id,r.related_person_id,r.kind,w.year,w.week,p.morale",
+    kind:BackstageKind;year:number;week:number;morale:number|null;
+    source_contract_id:string|null;expires_week_index:number|null}>([
+    "SELECT r.person_id,r.related_person_id,r.kind,w.year,w.week,p.morale,",
+    "r.source_contract_id,cdeal.expires_week_index",
     "FROM ppw_backstage_requests r JOIN ppw_worlds w ON w.world_id=r.world_id",
     "JOIN ppw_people p ON p.world_id=r.world_id AND p.person_id=r.person_id",
     "JOIN ppw_promotion_controls c ON c.world_id=r.world_id",
@@ -27,6 +29,8 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     "AND m.player_id=c.player_id AND m.status='ACTIVE'",
     "JOIN ppw_promotions promo ON promo.world_id=r.world_id",
     "AND promo.promotion_id=r.promotion_id AND promo.lifecycle='ACTIVE'",
+    "LEFT JOIN ppw_contracts cdeal ON cdeal.world_id=r.world_id",
+    "AND cdeal.contract_id=r.source_contract_id",
     "WHERE r.world_id=$1 AND r.request_id=$2 AND r.promotion_id=$3",
     "AND r.status='PENDING' AND p.status='ACTIVE'",
     "AND EXISTS(SELECT 1 FROM ppw_contracts deal",
@@ -39,26 +43,24 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
    if(found.length!==1)throw new Error("Wrestler request unavailable or already answered");
    const r=found[0]!,effect=backstageDecisionEffect(r.kind,i.decision);
    const weekIndex=(r.year-1)*52+r.week-1;
+   // A role-specific featured promise must be tied to the original active
+   // contract, and must leave at least one World week to deliver.
+   if(i.decision==="PROMISE_FEATURED"&&
+     (!r.source_contract_id||r.expires_week_index===null||
+      r.expires_week_index<=weekIndex))
+    throw new Error("Featured booking promise requires a continuing contract");
+   const deadline=i.decision==="PROMISE_FEATURED"?
+    Math.min(weekIndex+4,r.expires_week_index!):weekIndex+2;
    const changed=await tx.query<{request_id:string}>([
     "UPDATE ppw_backstage_requests SET status=$4,decision=$5,",
     "responded_week_index=$6,due_week_index=$7",
     "WHERE world_id=$1 AND request_id=$2 AND promotion_id=$3 AND status='PENDING'",
     "RETURNING request_id"
    ].join(" "),[i.worldId,i.conversationId,i.promotionId,
-    effect.status,i.decision,weekIndex,effect.promise?weekIndex+2:null]);
+    effect.status,i.decision,weekIndex,effect.promise?deadline:null]);
    if(changed.length!==1)throw new Error("Backstage request changed");
-   await tx.query([
-    "UPDATE ppw_people SET morale=greatest(0,least(100,morale+$3))",
-    "WHERE world_id=$1 AND person_id=$2 AND morale IS NOT NULL"
-   ].join(" "),[i.worldId,r.person_id,effect.moraleDelta]);
-   if(i.decision==="MEDIATE"&&r.related_person_id){
-    const [a,b]=[r.person_id,r.related_person_id].sort();
-    await tx.query([
-     "UPDATE ppw_wrestler_relationships SET",
-     "professional_trust=least(100,professional_trust+3)",
-     "WHERE world_id=$1 AND person_a_id=$2 AND person_b_id=$3"
-    ].join(" "),[i.worldId,a,b]);
-   }
+   // No instant morale/chemistry reward for selecting a reply. Only a
+   // verified broken promise can affect promotion-scoped trust later.
    await tx.query([
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
     "VALUES($1,$2,$3,'BACKSTAGE_RESPONSE',",
@@ -68,79 +70,100 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     i.conversationId,i.decision]);
    return {conversationId:i.conversationId,personId:r.person_id,
     status:effect.status,decision:i.decision,
-    dueWeekIndex:effect.promise?weekIndex+2:null,
-    moraleDelta:r.morale===null?0:effect.moraleDelta};
+    dueWeekIndex:effect.promise?deadline:null,
+    moraleDelta:0};
   }});
 }
-/** Promise fulfillment is checked against completed card MATCH slots of this
- * promotion only; the match result and outcome remain player-authored.
+/** Match/promo commitments only resolve against authoritative completed
+ * results. Stat progression from the actual show already happened elsewhere.
+ * A broken word affects only promotion-specific trust; no global morale bonus.
  */
 export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekIndex:number){
- const rows=await tx.query<{person_id:string;status:string;
-  promotion_id:string;request_id:string}>([
-  "UPDATE ppw_backstage_requests r SET status=CASE WHEN EXISTS(",
-  "SELECT 1 FROM ppw_completed_shows sh",
+ const rows=await tx.query<{request_id:string;promotion_id:string;person_id:string;
+  status:string;assessment_reason:string;trust_delta:number}>([
+  "WITH promises AS (",
+  "SELECT r.request_id,r.promotion_id,r.person_id,r.decision,r.responded_week_index,",
+  "r.due_week_index,r.source_contract_id,r.promised_role,",
+  "EXISTS(SELECT 1 FROM ppw_completed_shows sh",
   "JOIN ppw_card_slots s ON s.world_id=sh.world_id AND s.draft_id=sh.show_id",
+  "LEFT JOIN ppw_completed_show_matches match ON match.world_id=sh.world_id",
+  "AND match.show_id=sh.show_id AND match.match_id=s.slot_id",
+  "LEFT JOIN ppw_completed_show_segments segment ON segment.world_id=sh.world_id",
+  "AND segment.show_id=sh.show_id AND segment.slot_id=s.slot_id",
   "WHERE sh.world_id=r.world_id AND sh.promotion_id=r.promotion_id",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index AND $2",
-  "AND ((r.decision='PROMISE_APPEARANCE' AND s.kind='MATCH' AND EXISTS(",
-  "SELECT 1 FROM ppw_completed_show_matches played",
-  "WHERE played.world_id=s.world_id AND played.show_id=sh.show_id",
-  "AND played.match_id=s.slot_id))",
-  "OR (r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT' AND EXISTS(",
-  "SELECT 1 FROM ppw_completed_show_segments played",
-  "WHERE played.world_id=s.world_id AND played.show_id=sh.show_id",
-  "AND played.slot_id=s.slot_id)))",
-  "AND s.payload->'participants' @>",
-  "jsonb_build_array(jsonb_build_object('personId',r.person_id)))",
-  "THEN 'FULFILLED' ELSE 'BROKEN' END",
-  "WHERE r.world_id=$1 AND r.status='PROMISED' AND",
-  "(r.due_week_index<=$2 OR EXISTS(",
-  "SELECT 1 FROM ppw_completed_shows sh",
-  "JOIN ppw_card_slots s ON s.world_id=sh.world_id AND s.draft_id=sh.show_id",
+  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index",
+  "AND least($2,r.due_week_index)",
+  "AND s.payload->'participants' @> jsonb_build_array(",
+  "CASE WHEN r.decision='PROMISE_FEATURED' THEN",
+  "jsonb_build_object('personId',r.person_id,'contractId',r.source_contract_id)",
+  "ELSE jsonb_build_object('personId',r.person_id) END)",
+  "AND CASE WHEN r.decision='PROMISE_SEGMENT' THEN",
+  "s.kind='SEGMENT' AND segment.slot_id IS NOT NULL",
+  "AND segment.authored_outcome='HAPPENS'",
+  "WHEN r.decision='PROMISE_FEATURED' THEN",
+  "s.kind='MATCH' AND match.match_id IS NOT NULL AND",
+  "match.position >= (SELECT max(other.position) -",
+  "CASE WHEN r.promised_role='MAIN_EVENT' THEN 0 ELSE 1 END",
+  "FROM ppw_completed_show_matches other",
+  "WHERE other.world_id=sh.world_id AND other.show_id=sh.show_id)",
+  "ELSE s.kind='MATCH' AND match.match_id IS NOT NULL END",
+  ") AS fulfilled,",
+  "EXISTS(SELECT 1 FROM ppw_completed_shows sh",
   "WHERE sh.world_id=r.world_id AND sh.promotion_id=r.promotion_id",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index AND $2",
-  "AND ((r.decision='PROMISE_APPEARANCE' AND s.kind='MATCH' AND EXISTS(",
-  "SELECT 1 FROM ppw_completed_show_matches played",
-  "WHERE played.world_id=s.world_id AND played.show_id=sh.show_id",
-  "AND played.match_id=s.slot_id))",
-  "OR (r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT' AND EXISTS(",
-  "SELECT 1 FROM ppw_completed_show_segments played",
-  "WHERE played.world_id=s.world_id AND played.show_id=sh.show_id",
-  "AND played.slot_id=s.slot_id)))",
-  "AND s.payload->'participants' @>",
-  "jsonb_build_array(jsonb_build_object('personId',r.person_id))))",
-  "RETURNING r.person_id,r.status,r.promotion_id,r.request_id"
+  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index",
+  "AND least($2,r.due_week_index)) AS had_show,",
+  "EXISTS(SELECT 1 FROM ppw_contracts c",
+  "WHERE c.world_id=r.world_id AND c.promotion_id=r.promotion_id",
+  "AND c.person_id=r.person_id AND c.status='SIGNED'",
+  "AND c.start_week_index<=$2 AND c.expires_week_index>=$2) AS active_deal",
+  "FROM ppw_backstage_requests r",
+  "WHERE r.world_id=$1 AND r.status='PROMISED'",
+  "AND r.responded_week_index<=$2",
+  "), settled AS (",
+  "UPDATE ppw_backstage_requests r SET",
+  "status=CASE WHEN p.fulfilled THEN 'FULFILLED'",
+  "WHEN NOT p.had_show OR NOT p.active_deal THEN 'EXCUSED'",
+  "ELSE 'BROKEN' END,",
+  "assessment_reason=CASE WHEN p.fulfilled THEN 'VERIFIED_BOOKING'",
+  "WHEN NOT p.had_show THEN 'NO_COMPLETED_SHOW'",
+  "WHEN NOT p.active_deal THEN 'CONTRACT_UNAVAILABLE'",
+  "ELSE 'UNFULFILLED_COMMITMENT' END,",
+  "trust_delta=CASE WHEN NOT p.fulfilled AND p.had_show AND p.active_deal",
+  "THEN -3 ELSE 0 END",
+  "FROM promises p WHERE r.world_id=$1 AND r.request_id=p.request_id",
+  "AND (p.fulfilled OR r.due_week_index<=$2)",
+  "RETURNING r.request_id,r.promotion_id,r.person_id,r.status,",
+  "r.assessment_reason,r.trust_delta",
+  ") SELECT * FROM settled LIMIT 513"
  ].join(" "),[worldId,weekIndex]);
  if(rows.length>512)throw new Error("Backstage promise settlement overflow");
- if(!rows.length)return {settled:0};
- const byPerson=new Map<string,{person_id:string;morale_delta:number;momentum_delta:number}>();
- for(const row of rows){
-  const entry=byPerson.get(row.person_id)??{person_id:row.person_id,
-   morale_delta:0,momentum_delta:0};
-  entry.morale_delta+=row.status==="FULFILLED"?6:-6;
-  entry.momentum_delta+=row.status==="FULFILLED"?4:-4;
-  byPerson.set(row.person_id,entry);
+ if(!rows.length)return {settled:0,broken:0};
+ const penalties=rows.filter(row=>row.trust_delta<0);
+ if(penalties.length){
+  // One batched upsert keyed by promotion AND person. The same wrestler can
+  // work in several feds without an unrelated promoter's trust suffering.
+  await tx.query([
+   "INSERT INTO ppw_backstage_promotion_trust(world_id,promotion_id,person_id,trust)",
+   "SELECT $1,x.promotion_id,x.person_id,",
+   "greatest(0,50+sum(x.trust_delta))",
+   "FROM jsonb_to_recordset($2::jsonb) AS x(",
+   "promotion_id text,person_id text,trust_delta integer)",
+   "GROUP BY x.promotion_id,x.person_id",
+   "ON CONFLICT(world_id,promotion_id,person_id) DO UPDATE",
+   "SET trust=greatest(0,ppw_backstage_promotion_trust.trust+EXCLUDED.trust-50)"
+  ].join(" "),[worldId,JSON.stringify(penalties)]);
  }
- await tx.query([
-  "UPDATE ppw_people p SET",
-  "morale=CASE WHEN p.morale IS NULL THEN NULL ELSE",
-  "greatest(0,least(100,p.morale+x.morale_delta)) END,",
-  "momentum=CASE WHEN p.momentum IS NULL THEN NULL ELSE",
-  "greatest(0,least(100,p.momentum+x.momentum_delta)) END",
-  "FROM jsonb_to_recordset($2::jsonb) AS x(",
-  "person_id text,morale_delta integer,momentum_delta integer)",
-  "WHERE p.world_id=$1 AND p.person_id=x.person_id"
- ].join(" "),[worldId,JSON.stringify([...byPerson.values()])]);
  await tx.query([
   "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
   "SELECT $1,$2,$3,'BACKSTAGE_PROMISE_'||x.status,",
   "jsonb_build_object('promotionId',x.promotion_id,'personId',x.person_id,",
-  "'conversationId',x.request_id)",
+  "'conversationId',x.request_id,'reason',x.assessment_reason,",
+  "'trustDelta',x.trust_delta)",
   "FROM jsonb_to_recordset($4::jsonb) AS x(",
-  "person_id text,status text,promotion_id text,request_id text)"
+  "person_id text,status text,promotion_id text,request_id text,",
+  "assessment_reason text,trust_delta integer)"
  ].join(" "),[worldId,Math.floor(weekIndex/52)+1,weekIndex%52+1,JSON.stringify(rows)]);
- return {settled:rows.length};
+ return {settled:rows.length,broken:penalties.length};
 }
 /** One batched INSERT for all human promotions, at most two conversations each.
  * Eight-week per-person cooldown; no messages for uncontracted wrestlers.
