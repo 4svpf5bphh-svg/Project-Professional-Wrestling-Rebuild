@@ -14,7 +14,7 @@ export function deriveCompletedMatchReportFacts(
  projection:Projection,
 ):RecordedMatchReportFact[]{
  if(projection.projections.length>100)throw new Error("Match report limit exceeded");
- const links=projection.showProgrammePreview===null?null:
+ const links=projection.showProgrammePreview==null?null:
   new Map(projection.showProgrammePreview.map(x=>[x.matchId,x]));
  if(links!==null&&links.size!==projection.projections.length)
   throw new Error("Incomplete certified programme context");

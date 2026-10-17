@@ -82,3 +82,22 @@ test("verified run-in and battle royal eliminations enrich the report without in
  assert.match(result.recap,/First → Second → Third/);
  assert.doesNotMatch(result.recap,/powerbomb|suplex|signature finisher/i);
 });
+
+test("ongoing rivalries enrich the match report only when a certified programme is linked",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",headline:"Booked feud",
+  summary:"A clean pinfall.",outcome:"CLEAN_PIN",
+  fallout:{injuries:[],eliminations:[],linkedProgrammes:1,
+   programmeSignal:"HOT_PROGRAMME",ratingStars:4.5,executionQuality:89,
+   actualMinutes:28}};
+ const reviewed=reviewCompletedEntry(entry,"rivalry");
+ assert.match(reviewed.recap,/certified chapter in 1 active rivalry/);
+ assert.match(reviewed.recap,/meaningful heat/);
+ assert.match(reviewed.recap,/exceptional in-ring execution/);
+ assert.match(reviewed.recap,/28 minutes/);
+ entry.fallout!.programmeSignal="PROGRAMME_REPETITION";
+ assert.match(reviewCompletedEntry(entry,"rivalry").recap,
+  /enough repetition/);
+ entry.fallout!.linkedProgrammes=0;
+ assert.doesNotMatch(reviewCompletedEntry(entry,"rivalry").recap,
+  /chapter in|repetition/);
+});

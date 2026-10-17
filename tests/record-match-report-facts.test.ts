@@ -58,3 +58,21 @@ test("malformed medical details and invalid critical scores fail before writes",
  }]} as unknown as Input;
  assert.throws(()=>deriveCompletedMatchReportFacts(badInjury),/Invalid completed/);
 });
+
+test("certified programme heat and repetition are part of the immutable match snapshot",()=>{
+ const contextual={...projection,showProgrammePreview:[
+  {matchId:"singles",linkedActiveProgrammeCount:1,reason:"HOT_PROGRAMME"},
+  {matchId:"tag",linkedActiveProgrammeCount:2,reason:"PROGRAMME_REPETITION"},
+  {matchId:"battle",linkedActiveProgrammeCount:0,reason:null},
+ ]} as unknown as Input;
+ const facts=deriveCompletedMatchReportFacts(contextual);
+ assert.deepEqual(facts.map(x=>[x.linkedProgrammes,x.programmeSignal]),
+  [[1,"HOT_PROGRAMME"],[2,"PROGRAMME_REPETITION"],[0,null]]);
+ const noEvidence=deriveCompletedMatchReportFacts(projection);
+ assert.ok(noEvidence.every(x=>x.linkedProgrammes===null));
+ const malformed={...contextual,showProgrammePreview:[
+  {matchId:"singles",linkedActiveProgrammeCount:101,reason:null},
+ ]} as unknown as Input;
+ assert.throws(()=>deriveCompletedMatchReportFacts(malformed),
+  /Incomplete certified programme context/);
+});

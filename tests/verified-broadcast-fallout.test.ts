@@ -88,3 +88,19 @@ test("only an eligible clean match result can be called a title change",()=>{
   receipt("PROTECTED_FINISH","A").matches[0]!,name,sides,null),
   /Title change contradicts/);
 });
+
+test("match programme facts are validated and never assumed from the booking",()=>{
+ const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
+ const row:RecordedMatchFalloutRow={...bare(),report_linked_programmes:2,
+  report_programme_signal:"PROGRAMME_REPETITION",
+  report_execution_quality:83.5};
+ const f=projectVerifiedBroadcastFallout(row,show,m,name,sides,null);
+ assert.equal(f.linkedProgrammes,2);
+ assert.equal(f.programmeSignal,"PROGRAMME_REPETITION");
+ assert.equal(f.executionQuality,83.5);
+ assert.throws(()=>projectVerifiedBroadcastFallout({...row,
+  report_linked_programmes:0},show,m,name,sides,null),/Invalid certified/);
+ assert.throws(()=>projectVerifiedBroadcastFallout({...row,
+  report_programme_signal:"MADE_UP_PLOT"},show,m,name,sides,null),
+  /Invalid certified programme signal/);
+});
