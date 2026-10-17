@@ -15,7 +15,8 @@ export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
 export interface EditedMatchSlot{slotId:string;payload:unknown}
-export interface EditedSegmentSlot{slotId:string;payload:unknown}
+export interface EditedSegmentSlot{slotId:string;payload:unknown;
+ programmeId?:string|null}
 export interface SaveCardEditorInput extends CardEditorIdentity{
  requestId:string;expectedRevision:number;
  matches:readonly EditedMatchSlot[];
@@ -70,6 +71,17 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const personIds=[...new Set(slots.flatMap(s=>
    readCardParticipants(s.payload).map(p=>p.personId)))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
+  const activeProgrammes=await tx.query<{programme_id:string;heat:number|null;repetition:number}>(
+   "SELECT programme_id,heat,repetition FROM ppw_programmes"+
+   " WHERE world_id=$1 AND promotion_id=$2 AND status='ACTIVE'"+
+   " ORDER BY programme_id LIMIT 101",[id.worldId,id.promotionId]);
+  if(activeProgrammes.length>100)throw new Error("Too many active programmes");
+  const links=await tx.query<{slot_id:string;programme_id:string}>(
+   "SELECT slot_id,programme_id FROM ppw_programme_match_activities"+
+   " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3"+
+   " AND kind='SEGMENT' ORDER BY slot_id LIMIT 101",
+   [id.worldId,id.promotionId,id.showId]);
+  if(links.length>100)throw new Error("Too many linked angles");
   const selectedPeople=personIds.length?await tx.query<{
    person_id:string;name:string;booking_division:string|null}>(
     "SELECT person_id,name,booking_division FROM ppw_people"+
@@ -77,6 +89,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     [id.worldId,personIds]):[];
   return {selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division})),
+   programmes:activeProgrammes.map(p=>({programmeId:p.programme_id,heat:p.heat,
+    repetition:p.repetition})),
+   programmeLinks:links.map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,
    worldRevision:Number(show.revision),canEdit:show.booking_open&&show.status==="DRAFT",
    ready:show.lock_ready_fingerprint!==null,
@@ -148,7 +163,10 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    Array.isArray(s.payload))throw new Error("Invalid segment card slot");
   const p=s.payload as Record<string,unknown>;
   const participants=readCardParticipants(p);
-  return {slotId:s.slotId,payload:buildBookedSegmentPayload({
+  if(s.programmeId!==undefined&&s.programmeId!==null&&!validId(s.programmeId))
+   throw new Error("Invalid angle programme");
+  return {slotId:s.slotId,programmeId:s.programmeId??null,
+   payload:buildBookedSegmentPayload({
    slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
    actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
    outcome:p.outcome as SegmentOutcome,
@@ -190,6 +208,16 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    if(input.runningOrder.some(id=>!expected.has(id))||
     new Set(input.runningOrder).size!==expected.size)
     throw new Error("Running order must include each match and segment exactly once");
+   const linkedIds=[...new Set(authored?.flatMap(s=>s.programmeId?[s.programmeId]:[])??[])];
+   if(linkedIds.length>100)throw new Error("Too many linked programmes");
+   if(linkedIds.length){
+    const active=await tx.query<{programme_id:string}>(
+     "SELECT programme_id FROM ppw_programmes WHERE world_id=$1 AND promotion_id=$2"+
+     " AND status='ACTIVE' AND programme_id=ANY($3::text[])",
+     [input.worldId,input.promotionId,linkedIds]);
+    if(active.length!==linkedIds.length)
+     throw new Error("Only active promotion programmes may be booked");
+   }
    const appearances=uniqueShowAppearances([
     ...booked,...segments.flatMap(s=>readCardParticipants(s.payload))]);
    if(appearances.length>100)throw new Error("Show exceeds 100 unique wrestlers");
@@ -229,6 +257,12 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      !["MEN","WOMEN"].includes([...divisions][0]??""))
      throw new Error("Mixed or missing booking division in match");
    }
+   // Release removed/changed angle links BEFORE touching their referenced slots.
+   // Legacy match-only saves preserve existing links.
+   if(authored!==undefined)
+    await tx.query("DELETE FROM ppw_programme_match_activities"+
+     " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3 AND kind='SEGMENT'",
+     [input.worldId,input.promotionId,input.showId]);
    // Protect unique running-order index while rearranging existing positions.
    await tx.query("UPDATE ppw_card_slots SET position=position+10000"+
     " WHERE world_id=$1 AND draft_id=$2",[input.worldId,input.showId]);
@@ -273,6 +307,20 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      JSON.stringify(segments.map(s=>({
       slot_id:s.slotId,position:order.get(s.slotId)!})))]);
     if(moved.length!==segments.length)throw new Error("Incomplete segment running order");
+   }
+   if(authored!==undefined){
+    const links=authored.flatMap(s=>s.programmeId?[{
+     programme_id:s.programmeId,slot_id:s.slotId}]:[]);
+    if(links.length){
+     const inserted=await tx.query<{slot_id:string}>([
+      "INSERT INTO ppw_programme_match_activities",
+      "(world_id,promotion_id,programme_id,draft_id,slot_id,kind)",
+      "SELECT $1,$2,x.programme_id,$3,x.slot_id,'SEGMENT'",
+      "FROM jsonb_to_recordset($4::jsonb) AS x(programme_id text,slot_id text)",
+      "RETURNING slot_id",
+     ].join(" "),[input.worldId,input.promotionId,input.showId,JSON.stringify(links)]);
+     if(inserted.length!==links.length)throw new Error("Incomplete angle programme links");
+    }
    }
    // Original ready-to-run confirmation cannot survive changed booking.
    await tx.query([
