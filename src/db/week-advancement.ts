@@ -3,6 +3,7 @@ import {applyWorldCommand} from "./world-commands.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
+import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -119,6 +120,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING'))
         AS pending`,[input.worldId]);
       if(outstanding[0]!.pending)throw new Error("Contract desk negotiations must resolve before World rollover");
+      // The original simulator decays inactive rivalries every week, not only
+      // when a segment was booked. One indexed, bounded global history read.
+      await refreshWorldProgrammeSignals(tx,input.worldId,weekIndex);
       // Market response must update while the World is still RESOLVING;
       // the eventual clock move/payroll/health writes share this transaction.
       await settleWeekLocalMarkets(tx,input.worldId,year,week);
