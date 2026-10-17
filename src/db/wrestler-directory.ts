@@ -86,7 +86,8 @@ export async function readWrestlerDirectory(
      c.weekly_guarantee,c.appearance_fee
     FROM ppw_contracts c WHERE c.world_id=p.world_id
      AND c.person_id=p.person_id AND c.promotion_id=$2
-     AND c.status='SIGNED'
+     AND c.status='SIGNED' AND c.start_week_index <= $3
+     AND c.expires_week_index >= $3
     ORDER BY c.expires_week_index DESC,c.contract_id DESC LIMIT 1
    ) mine ON true
    CROSS JOIN LATERAL (
