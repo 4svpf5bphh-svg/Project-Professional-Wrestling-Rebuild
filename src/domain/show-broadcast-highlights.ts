@@ -15,10 +15,15 @@ export function showBroadcastHighlights(
  if(!Number.isSafeInteger(limit)||limit<0||limit>5)throw new Error("Invalid broadcast highlight limit");
  const candidates:Rated[]=[];
  let strongest:ShowResultEntry|undefined;
+ let strongestScore=-1;
  for(const entry of entries){
   if(entry.type==="MATCH"){
-   if(!strongest||entry.crowdResponse>strongest.crowdResponse)
-    strongest=entry;
+   // A rated match is chosen by the simulation's critical score, not
+   // the potentially contradictory audience reaction. Legacy receipts use
+   // audience score until there is a persisted critic rating.
+   const score=entry.fallout?.ratingStars===undefined?
+    entry.crowdResponse/20:entry.fallout.ratingStars;
+   if(score>strongestScore){strongest=entry;strongestScore=score;}
    if(entry.fallout?.title?.changed){
     const t=entry.fallout.title;
     candidates.push({slotId:entry.slotId,position:entry.position,priority:110,
@@ -55,8 +60,11 @@ export function showBroadcastHighlights(
  if(strongest)
   candidates.push({slotId:strongest.slotId,position:strongest.position,
    category:"MATCH",priority:strongest.crowdResponse>=75?86:55,
-   headline:strongest.crowdResponse>=75?"Match of the night":"Tonight's standout match",
-   detail:strongest.headline});
+   headline:strongest.fallout?.ratingStars!==undefined?
+    "Top-rated match":strongest.crowdResponse>=75?
+     "Match of the night":"Tonight's standout match",
+   detail:(strongest.fallout?.ratingStars===undefined?"":("★ "+
+    strongest.fallout.ratingStars.toFixed(2)+" · "))+strongest.headline});
  const used=new Set<string>();
  return candidates.sort((a,b)=>b.priority-a.priority||a.position-b.position)
   .filter(c=>{if(used.has(c.slotId))return false;used.add(c.slotId);return true;})

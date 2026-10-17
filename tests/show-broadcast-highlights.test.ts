@@ -27,3 +27,17 @@ test("winner and medically stopped match descriptions use verified finish",()=>{
  assert.match(injury.summary,/stopped because of an injury/);
  assert.doesNotMatch(injury.summary,/winner/);
 });
+
+test("the highest verified critical star rating wins the match highlight, not crowd noise",()=>{
+ const rated=(slotId:string,stars:number,crowdResponse:number):ShowResultEntry=>({
+  slotId,position:slotId==="technical"?0:1,type:"MATCH",
+  headline:slotId,summary:slotId,outcome:"CLEAN_PIN",
+  actorIds:[],targetIds:[],crowdResponse,
+  fallout:{ratingStars:stars,injuries:[],eliminations:[]},
+ });
+ const featured=showBroadcastHighlights([
+  rated("technical",4.75,64),rated("popular",2.25,92)]);
+ assert.equal(featured.length,1);
+ assert.equal(featured[0]?.slotId,"technical");
+ assert.match(featured[0]?.detail??"",/★ 4.75/);
+});
