@@ -15,7 +15,7 @@ import {chooseShowMarketAndTickets,readShowMarketOptions}
  from "../db/show-booking-commerce.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
 import {readShowCardEditor,readBookableCardTalent,saveShowCardMatches,
- type EditedMatchSlot} from "../db/show-card-editor.js";
+ type EditedMatchSlot,type EditedSegmentSlot} from "../db/show-card-editor.js";
 
 /** Authenticated identity comes from trusted middleware, NEVER request JSON.
  * This module is framework-neutral; HTTP handlers should map exceptions to
