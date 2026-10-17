@@ -42,7 +42,8 @@ export function stableStoryFollowThrough(input:{
   // REFUSED and INTERRUPTED cancel older pending tasks for this person/faction.
   if(event.outcome!=="HAPPENS")continue;
   const action=event.kind==="STABLE_EXIT"?"REMOVE":
-   event.kind==="STABLE_INVITATION"||event.kind==="STABLE_RECONCILIATION"?"ADD":null;
+   (event.kind==="STABLE_INVITATION"||event.kind==="STABLE_RECONCILIATION")&&
+    p.stableDecision==="ACCEPTED"?"ADD":null;
   if(!action)continue;
   const stable=stables.get(p.stableId)!;
   const isMember=stable.members.includes(who);

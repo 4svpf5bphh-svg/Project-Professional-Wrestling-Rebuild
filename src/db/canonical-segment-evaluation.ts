@@ -55,7 +55,9 @@ export async function readCanonicalSegmentContextsInTransaction(
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
     ...(p.turnTargetAlignment===undefined?{}:{
      turnTargetAlignment:p.turnTargetAlignment as AuthoredSegment["turnTargetAlignment"]}),
-    ...(p.stableId===undefined?{}:{stableId:p.stableId as string})},participants);
+    ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),
+    ...(p.stableDecision===undefined?{}:{
+     stableDecision:p.stableDecision as AuthoredSegment["stableDecision"]})},participants);
    segments.push(segment);
    for(const id of ids)allIds.add(id);
   }

@@ -186,6 +186,9 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
   if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(String(p.kind))&&
    (typeof p.stableId!=="string"||!validId(p.stableId)))
    throw new Error("Book a stable before creating a faction story");
+  if(["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(String(p.kind))&&
+   !["ACCEPTED","REJECTED"].includes(String(p.stableDecision)))
+   throw new Error("Script the wrestler's faction decision");
   return {slotId:s.slotId,programmeId:s.programmeId??null,
    payload:buildBookedSegmentPayload({
    slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
@@ -195,6 +198,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
    ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),
+   ...(p.stableDecision===undefined?{}:{
+    stableDecision:p.stableDecision as "ACCEPTED"|"REJECTED"}),
   },participants)};
  });
  const submitted=new Set(matches.map(x=>x.slotId));

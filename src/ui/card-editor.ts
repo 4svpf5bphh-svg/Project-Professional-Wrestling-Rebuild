@@ -304,6 +304,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        ...(stableChoices??[]).map(x=>[x.stableId,x.name])],
       v=>editSegment(segment,{stableId:v||null}),!mutable()||stableChoices===null)));
     }
+    if(["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(segment.kind))
+     controls.append(field(segment.kind==="STABLE_INVITATION"?
+      "Invitation decision":"Reconciliation decision",
+      selector(segment.stableDecision??"",
+      [["","Choose scripted decision"],["ACCEPTED",
+       segment.kind==="STABLE_INVITATION"?"Joins faction":"Reconciles"],
+       ["REJECTED",segment.kind==="STABLE_INVITATION"?"Rejects invitation":"Rebuffs the offer"]],
+      v=>editSegment(segment,{stableDecision:
+       v?v as "ACCEPTED"|"REJECTED":null}),!mutable())));
     if(segment.kind==="TURN")
      controls.append(field("New alignment",selector(segment.turnTargetAlignment??"",
       [["","No alignment change"],["FACE","Face"],["HEEL","Heel"],
