@@ -145,7 +145,7 @@ export async function createTagTeam(pool:TransactionPool,input:CreateTagTeam){
     "AND m.person_id=ANY($2::text[]) GROUP BY t.team_id",
     "HAVING count(*)=2 AND",
     "(SELECT count(*) FROM ppw_tag_team_members allm WHERE",
-    "allm.world_id=t.world_id AND allm.team_id=t.team_id AND allm.active)=2",
+    "allm.world_id=$1 AND allm.team_id=t.team_id AND allm.active)=2",
     "LIMIT 1"
    ].join(" "),[input.worldId,ids]);
    if(existing.length)throw new Error("This pairing already has an active World tag team");
