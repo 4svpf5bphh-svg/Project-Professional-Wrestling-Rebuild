@@ -36,7 +36,7 @@ export async function claimPromotion(
   if (existing.some(row => row.player_id === playerId)) return { claimed:false, reason:"PLAYER_HAS_PROMOTION" };
   if (existing.length) return { claimed:false, reason:"PROMOTION_TAKEN" };
   const result = await sql.query<{ promotion_id: string }>(
-    "INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) SELECT $1,$2,promotion_id FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$3 RETURNING promotion_id",
+    "INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) SELECT $1,$2,promotion_id FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$3 AND takeover_eligibility='STANDARD' AND lifecycle='ACTIVE' RETURNING promotion_id",
     [worldId,playerId,promotionId],
   );
   if (!result.length) throw new Error("Promotion not found");
