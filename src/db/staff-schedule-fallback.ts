@@ -97,10 +97,10 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
           LEFT JOIN ppw_card_slots s ON s.world_id=d.world_id AND s.draft_id=d.draft_id
           WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
             AND p.lifecycle='ACTIVE'
-          ORDER BY d.draft_id,s.position LIMIT 10001`,
+          ORDER BY d.draft_id,s.position LIMIT 20001`,
         [input.worldId,year,week],
       );
-      if(taken.length>10000)throw new Error("Submitted card size exceeds bound");
+      if(taken.length>20000)throw new Error("Submitted card size exceeds bound");
       const existing=new Map<string,{showId:string;day:number;venueId:string;personIds:string[]}>();
       for(const row of taken){
         let booking=existing.get(row.show_id);

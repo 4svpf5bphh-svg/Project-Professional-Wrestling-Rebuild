@@ -14,6 +14,7 @@ export interface PrepareGeneratedShowCommerceInput{
 }
 type Candidate={
  draft_id:string;promotion_id:string;status:string;booking_origin:string;
+ booking_class:"REGULAR"|"PREMIUM";
  market_id:string|null;venue_id:string|null;event_type:EventType|null;
  ticket_strategy:TicketStrategy|null;booking_expected_demand:number|null;
  booking_ticket_yield:string|null;management_mode:string;tier:ShowTier;
@@ -52,7 +53,7 @@ export async function prepareGeneratedWorldShowCommerce(
    if(gates.length!==1||gates[0]!.cleared||gates[0]!.resolved||gates[0]!.certified)
     throw new Error("Commercial preparation must precede World resource clearance");
    const submitted=await tx.query<Candidate>(`
-    SELECT d.draft_id,d.promotion_id,d.status,d.booking_origin,d.market_id,d.show_day,
+    SELECT d.draft_id,d.promotion_id,d.status,d.booking_origin,d.booking_class,d.market_id,d.show_day,
       d.venue_id,d.event_type,d.ticket_strategy,d.booking_expected_demand,
       d.booking_ticket_yield::text,p.management_mode,p.tier,p.ai_financial_caution,
       w.major_event_interval_weeks,v.market_id AS venue_market_id,
@@ -73,12 +74,15 @@ export async function prepareGeneratedWorldShowCommerce(
       AND c.promotion_id=d.promotion_id AND c.active
     LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id
     WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
-    ORDER BY d.promotion_id LIMIT 129`,
+    ORDER BY d.promotion_id,d.booking_class DESC LIMIT 257`,
     [input.worldId,year,week]);
-   if(submitted.length>128)throw new Error("World submission population exceeds bound");
+   if(submitted.length>256)throw new Error("World submission population exceeds bound");
    const updated:string[]=[];
-   const eventType:EventType=((year-1)*52+week)%majorInterval===0?"MAJOR":"REGULAR";
+   const normalEventType:EventType=((year-1)*52+week)%majorInterval===0?"MAJOR":"REGULAR";
    for(const d of submitted){
+    // Premium shows carry their own calendar identity, regardless of the
+    // old promotion-wide normal-show importance cadence.
+    const eventType:EventType=d.booking_class==="PREMIUM"?"MAJOR":normalEventType;
     const hasSnapshot=d.booking_expected_demand!==null&&d.booking_ticket_yield!==null;
     if(hasSnapshot)continue;
     const ai=d.management_mode==="AI"&&d.controller_player_id===null;

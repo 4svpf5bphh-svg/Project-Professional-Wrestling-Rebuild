@@ -36,9 +36,9 @@ export async function settleWeekLocalMarkets(
  LEFT JOIN ppw_promotion_market_states s ON s.world_id=d.world_id
   AND s.promotion_id=e.promotion_id AND s.market_id=d.market_id
  WHERE e.world_id=$1 AND e.year=$2 AND e.week=$3
- ORDER BY d.show_day,e.promotion_id,e.show_id LIMIT 129`,
+ ORDER BY d.show_day,e.promotion_id,e.show_id LIMIT 257`,
  [worldId,year,week]);
- if(shows.length>128)throw new Error("World market response batch limit exceeded");
+ if(shows.length>256)throw new Error("World market response batch limit exceeded");
  const map=new Map<string,{promotion:string;market:string;local:LocalAudience}>();
  for(const show of shows){
   if(!show.market_id||!show.home_market_id||!show.event_type||
