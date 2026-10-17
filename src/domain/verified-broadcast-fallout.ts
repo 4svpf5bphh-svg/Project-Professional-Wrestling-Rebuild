@@ -18,6 +18,8 @@ export interface BroadcastTitle{
 export interface BroadcastFallout{
  /** Immutable critic score and actual running time from the World simulation. */
  ratingStars?:number;executionQuality?:number;actualMinutes?:number;
+ linkedProgrammes?:number;programmeSignal?:"HOT_PROGRAMME"|"COOL_PROGRAMME"|
+  "PROGRAMME_REPETITION"|null;
  title?:BroadcastTitle;
  injuries:BroadcastMedical[];
  interference?:{personName:string|null;outcome:"SUCCESS"|"THWARTED"|"ABORTED"};
@@ -27,6 +29,7 @@ export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  match_id:string;evidence_json:unknown;
  report_rating_stars?:string|number|null;
  report_execution_quality?:string|number|null;report_actual_minutes?:number|null;
+ report_linked_programmes?:number|null;report_programme_signal?:string|null;
  championship_name:string|null;title_changed:boolean|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;
  injuries:unknown;
@@ -62,6 +65,20 @@ export function projectVerifiedBroadcastFallout(
    row.report_actual_minutes<3||row.report_actual_minutes>120)
    throw new Error("Invalid actual match duration");
   result.actualMinutes=row.report_actual_minutes;
+ }
+ if(row.report_linked_programmes!==null&&
+  row.report_linked_programmes!==undefined){
+  if(!Number.isSafeInteger(row.report_linked_programmes)||
+   row.report_linked_programmes<0||row.report_linked_programmes>100||
+   (row.report_linked_programmes===0&&
+    row.report_programme_signal!==null&&row.report_programme_signal!==undefined))
+   throw new Error("Invalid certified programme count");
+  const signal=row.report_programme_signal??null;
+  if(signal!==null&&!["HOT_PROGRAMME","COOL_PROGRAMME",
+   "PROGRAMME_REPETITION"].includes(signal))
+   throw new Error("Invalid certified programme signal");
+  result.linkedProgrammes=row.report_linked_programmes;
+  result.programmeSignal=signal as typeof result.programmeSignal;
  }
  if(row.match_id!==match.matchId)throw new Error("Wrong match evidence on broadcast");
  if(row.championship_name!==null){

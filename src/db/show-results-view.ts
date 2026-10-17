@@ -94,6 +94,8 @@ export async function readCompletedShowView(
     facts.rating_stars AS report_rating_stars,
     facts.execution_quality AS report_execution_quality,
     facts.actual_minutes AS report_actual_minutes,
+    facts.linked_programmes AS report_linked_programmes,
+    facts.programme_signal AS report_programme_signal,
     COALESCE(facts.injuries_json,medical.injuries,'[]'::jsonb) AS injuries
    FROM ppw_completed_show_matches m
    LEFT JOIN ppw_completed_match_report_facts facts

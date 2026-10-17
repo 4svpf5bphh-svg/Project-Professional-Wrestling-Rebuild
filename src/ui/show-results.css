@@ -129,3 +129,6 @@
 .ppw-finish-elimination{background:#252846;border-color:#535ba1;border-left-color:#9eaaff}
 .ppw-finish-unknown{background:#283242;border-color:#4f5c67;border-left-color:#a6b7c2}
 .ppw-finish-replay p{margin:0}
+
+.ppw-result-programme{font-size:11px;font-weight:850;color:#c6b2fb;
+ border:1px solid #625e88;padding:3px 7px;border-radius:7px}

@@ -7,12 +7,17 @@ import type {previewArchivedShowMatchScoresInTransaction}
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
 export interface RecordedMatchReportFact{
  matchId:string;ratingStars:number;executionQuality:number;actualMinutes:number;
+ linkedProgrammes:number|null;programmeSignal:string|null;
  injuries:{personId:string;severity:string;weeksOut:number}[];
 }
 export function deriveCompletedMatchReportFacts(
  projection:Projection,
 ):RecordedMatchReportFact[]{
  if(projection.projections.length>100)throw new Error("Match report limit exceeded");
+ const links=projection.showProgrammePreview===null?null:
+  new Map(projection.showProgrammePreview.map(x=>[x.matchId,x]));
+ if(links!==null&&links.size!==projection.projections.length)
+  throw new Error("Incomplete certified programme context");
  return projection.projections.map(p=>{
   const score=p.score;
   const injuries=p.multi?.result.injuries??
@@ -31,9 +36,17 @@ export function deriveCompletedMatchReportFacts(
     injury.weeksOut>52)throw new Error("Invalid completed match injury detail");
    return {personId:injury.personId,severity:injury.severity,weeksOut:injury.weeksOut};
   });
+  const storyline=links?.get(p.slotId)??null;
+  if(links!==null&&(!storyline||
+   !Number.isSafeInteger(storyline.linkedActiveProgrammeCount)||
+   storyline.linkedActiveProgrammeCount<0||
+   storyline.linkedActiveProgrammeCount>100))
+   throw new Error("Invalid verified programme match context");
   return {matchId:p.slotId,ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
-   actualMinutes:score.actualLengthMinutes,injuries:verified};
+   actualMinutes:score.actualLengthMinutes,injuries:verified,
+   linkedProgrammes:storyline?.linkedActiveProgrammeCount??null,
+   programmeSignal:storyline?.reason??null};
  });
 }
 export async function recordCompletedMatchReportFactsInTransaction(
@@ -43,16 +56,20 @@ export async function recordCompletedMatchReportFactsInTransaction(
  if(!facts.length)return;
  const sql=[
   "INSERT INTO ppw_completed_match_report_facts(",
-  "world_id,show_id,match_id,rating_stars,execution_quality,actual_minutes,injuries_json)",
-  "SELECT $1,$2,x.match_id,x.rating_stars,x.execution_quality,x.actual_minutes,x.injuries_json",
+  "world_id,show_id,match_id,rating_stars,execution_quality,actual_minutes,",
+  "linked_programmes,programme_signal,injuries_json)",
+  "SELECT $1,$2,x.match_id,x.rating_stars,x.execution_quality,x.actual_minutes,",
+  "x.linked_programmes,x.programme_signal,x.injuries_json",
   "FROM jsonb_to_recordset($3::jsonb) AS x(",
-  "match_id text,rating_stars numeric,execution_quality numeric,actual_minutes integer,injuries_json jsonb)",
+  "match_id text,rating_stars numeric,execution_quality numeric,actual_minutes integer,",
+  "linked_programmes integer,programme_signal text,injuries_json jsonb)",
   "RETURNING match_id",
  ].join(" ");
  const rows=await tx.query<{match_id:string}>(sql,[
   projection.worldId,projection.showId,JSON.stringify(facts.map(f=>({
    match_id:f.matchId,rating_stars:f.ratingStars,execution_quality:f.executionQuality,
-   actual_minutes:f.actualMinutes,
+   actual_minutes:f.actualMinutes,linked_programmes:f.linkedProgrammes,
+   programme_signal:f.programmeSignal,
    injuries_json:f.injuries.map(x=>({person_id:x.personId,
     injury_severity:x.severity,injury_weeks_out:x.weeksOut})),
   }))),

@@ -134,6 +134,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   if(entry.fallout?.actualMinutes!==undefined)
    append(meta,node("span","ppw-result-minutes",
     entry.fallout.actualMinutes+" MIN"));
+  if(entry.fallout?.linkedProgrammes)
+   append(meta,node("span","ppw-result-programme",
+    "● "+entry.fallout.linkedProgrammes+" "+(entry.fallout.linkedProgrammes===1?
+     "RIVALRY":"RIVALRIES")));
   const heading=node("span","ppw-result-headline",review.headline);
   if(entry.fallout?.title?.changed)
    append(meta,node("span","ppw-result-flag ppw-flag-gold","NEW CHAMPION"));

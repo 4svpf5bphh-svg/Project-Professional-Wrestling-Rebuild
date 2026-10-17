@@ -177,12 +177,27 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
    execution>=50?" The in-ring execution was uneven.":
    " The contest struggled on execution, regardless of the booking's intentions.":
    "";
+  const rivalry=entry.fallout?.linkedProgrammes?(()=>{
+   const count=entry.fallout.linkedProgrammes;
+   const start="This match was a certified chapter in "+count+" active "+
+    (count===1?"rivalry":"rivalries")+". ";
+   switch(entry.fallout.programmeSignal){
+    case "HOT_PROGRAMME":return start+
+     "The ongoing programme carried meaningful heat into the audience response.";
+    case "COOL_PROGRAMME":return start+
+     "The rivalry was running cold, making it harder to win over the audience.";
+    case "PROGRAMME_REPETITION":return start+
+     "The audience had seen enough repetition for it to weigh on the reaction.";
+    default:return start+"The next chapter remains in the booker's hands.";
+   }
+  })():null;
   const contrast=rating!==undefined&&rating>=3.75&&entry.crowdResponse<50?
    " Technically well-rated wrestling met a stubborn crowd.":
    rating!==undefined&&rating<2.5&&entry.crowdResponse>=78?
    " The spectators enjoyed it more than the critical rating suggested.":"";
   paragraphs=[
    (billing?billing+" met in a "+format+". ":"The contest took place. ")+opening+stakes+measured,
+   ...(rivalry?[rivalry]:[]),
    finishColour(entry.outcome,key)+" "+entry.summary,
    "The crowd response was "+entry.crowdResponse.toFixed(1)+"/100."+critics+
     delivery+contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[

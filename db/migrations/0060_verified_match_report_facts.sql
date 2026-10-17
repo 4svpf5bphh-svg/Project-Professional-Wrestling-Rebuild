@@ -5,6 +5,9 @@ CREATE TABLE ppw_completed_match_report_facts (
  rating_stars numeric(3,2) NOT NULL CHECK(rating_stars BETWEEN 0 AND 5),
  execution_quality numeric(5,1) NOT NULL CHECK(execution_quality BETWEEN 0 AND 100),
  actual_minutes integer NOT NULL CHECK(actual_minutes BETWEEN 3 AND 120),
+ linked_programmes integer CHECK(linked_programmes BETWEEN 0 AND 100),
+ programme_signal text CHECK(programme_signal IN
+  ('HOT_PROGRAMME','COOL_PROGRAMME','PROGRAMME_REPETITION')),
  injuries_json jsonb NOT NULL DEFAULT '[]'::jsonb
   CHECK(jsonb_typeof(injuries_json)='array'),
  PRIMARY KEY(world_id,show_id,match_id),
