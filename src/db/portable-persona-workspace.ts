@@ -24,8 +24,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   if(owns.length!==1)throw new Error("Portable identity access denied");
   const now=(owns[0]!.year-1)*52+owns[0]!.week-1;
   const roster=await tx.query<{person_id:string;name:string;
-   portable_gimmick_id:string|null}>([
-   "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id",
+   portable_gimmick_id:string|null;morale:number|null;
+   momentum:number|null}>([
+   "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id,p.morale,p.momentum",
    "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
@@ -49,6 +50,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
    throw new Error("Only a roster wrestler's identity may be inspected");
   const listed=roster.map(x=>({personId:x.person_id,name:x.name,
+   morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
    persona:null,history:[],recentRequests:[],archetypes:[],
