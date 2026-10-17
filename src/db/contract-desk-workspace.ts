@@ -10,8 +10,11 @@ export async function readContractDesk(
 ){
  if(!worldId||!playerId||!promotionId)throw new Error("Invalid contract desk identity");
  return withSqlClient(pool,async tx=>{
-  const auth=await tx.query<{year:number;week:number}>(`
-   SELECT w.year,w.week FROM ppw_worlds w
+  const auth=await tx.query<{year:number;week:number;
+   revision:string|number;can_edit:boolean}>(`
+   SELECT w.year,w.week,w.revision,
+    (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
+   FROM ppw_worlds w
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
    JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
@@ -46,9 +49,10 @@ export async function readContractDesk(
    [worldId,promotionId,currentWeekIndex]);
   const requests=await tx.query<{
    request_id:string;contract_id:string;person_id:string;
-   additional_dates:number;status:string;created_week_index:number;
+   additional_dates:number;additional_payment:string|number;
+   status:string;created_week_index:number;
   }>(`
-   SELECT request_id,contract_id,person_id,additional_dates,status,created_week_index
+   SELECT request_id,contract_id,person_id,additional_dates,additional_payment,status,created_week_index
    FROM ppw_contract_date_requests
    WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
    ORDER BY created_week_index,request_id LIMIT 200`,
@@ -67,7 +71,8 @@ export async function readContractDesk(
   const pendingIds=new Set(requests.map(q=>q.contract_id));
   const renewalIds=new Set(renewals.map(q=>q.contract_id));
   return {
-   currentWeekIndex,
+   currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
+   worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
