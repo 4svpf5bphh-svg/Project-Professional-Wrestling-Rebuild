@@ -99,6 +99,24 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
   const again=await resolveCanonicalShow(db.pool,{...input,year:1,week:1,
     resolutionId:"world-tag-resolve"});
   assert.equal(again,"IDENTICAL_RETRY");
+  // The non-AI report uses immutable facts from the exact resolved simulation.
+  const reports=await withWorldTransaction(db.pool,tx=>tx.query<{
+   match_id:string;rating_stars:string;actual_minutes:number;
+   injuries_json:unknown}>(`
+   SELECT match_id,rating_stars,actual_minutes,injuries_json
+   FROM ppw_completed_match_report_facts
+   WHERE world_id=$1 AND show_id=$2`,[worldId,showId]));
+  assert.equal(reports.length,1,"Retry must not duplicate match report facts");
+  assert.equal(reports[0]!.match_id,"tag-main");
+  assert.equal(Number(reports[0]!.rating_stars),
+   projection.projections[0]!.score.criticalRatingStars);
+  assert.equal(reports[0]!.actual_minutes,
+   projection.projections[0]!.score.actualLengthMinutes);
+  assert.deepEqual(reports[0]!.injuries_json,
+   tag!.result.injury.injuries.map(injury=>({
+    person_id:injury.personId,injury_severity:injury.severity,
+    injury_weeks_out:injury.weeksOut,
+   })));
   const stored=await withWorldTransaction(db.pool,tx=>tx.query<{evidence_json:{
    booking:{family:string;sides:{participants:string[]}[]}}}>(`
    SELECT evidence_json FROM ppw_completed_match_evidence
