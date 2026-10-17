@@ -7,6 +7,7 @@ import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {validateAuthoredSegments,type AuthoredSegment}
  from "../simulation/legacy/show-segments.js";
+import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentCrowdContext}
  from "../simulation/legacy/segment-crowd.js";
 export interface CanonicalSegmentScope {
@@ -46,9 +47,10 @@ export async function readCanonicalSegmentContextsInTransaction(
     !actorIds.every(x=>typeof x==="string"&&ids.has(x))||
     !targetIds.every(x=>typeof x==="string"&&ids.has(x)))
     throw new Error("Segment roles must reference contracted card participants");
-   const segment={slotId:slot.slot_id,position:slot.position,kind:p.kind,
-    actorIds,targetIds,outcome:p.outcome,
-    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose})} as AuthoredSegment;
+   const segment=buildBookedSegmentPayload({slotId:slot.slot_id,position:slot.position,
+    kind:p.kind as AuthoredSegment["kind"],actorIds,targetIds,
+    outcome:p.outcome as AuthoredSegment["outcome"],
+    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]})},participants);
    segments.push(segment);
    for(const id of ids)allIds.add(id);
   }
