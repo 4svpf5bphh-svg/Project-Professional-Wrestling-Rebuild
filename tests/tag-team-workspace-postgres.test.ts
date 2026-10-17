@@ -58,6 +58,14 @@ test("World-portable tag pairs form once, require signed talent and survive idem
    worldId,promotionId,showId:"none",playerId:"impostor"});
   assert.equal((rpc as {teams:unknown[]}).teams.length,1);
   assert.equal((await readTagTeamWorkspace(db.pool,actor)).worldRevision,1);
+  const renamed=await dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "renameTagTeam",{worldId,promotionId,showId:"none",playerId:"impostor",
+    teamId:added.result.teamId,name:"Renamed New Blood",
+    requestId:"rename",expectedRevision:1});
+  assert.equal((renamed as {status:string}).status,"APPLIED");
+  assert.equal((await readTagTeamWorkspace(db.pool,actor)).teams[0]?.name,
+   "Renamed New Blood");
+  assert.equal((await readTagTeamWorkspace(db.pool,actor)).worldRevision,2);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
