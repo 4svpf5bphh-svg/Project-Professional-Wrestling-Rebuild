@@ -96,9 +96,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"PARTNERSHIP";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP";
    related_person_id:string|null;status:string;
-   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"EXPLORE_RENEWAL"|"MEDIATE"|null;
+   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"EXPLORE_RENEWAL"|"MEDIATE"|null;
    created_week_index:number;responded_week_index:number|null;
    due_week_index:number|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",

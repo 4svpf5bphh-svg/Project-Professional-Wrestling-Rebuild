@@ -197,7 +197,8 @@ export function mountPersonaDesk(root:HTMLElement,
     if(item.status==="PROMISED"&&item.dueWeekIndex!==null){
      const remaining=item.dueWeekIndex-((view.worldYear-1)*52+view.worldWeek-1);
      chat.append(el("small","ppw-backstage-promise",
-      "In-ring appearance promised · "+Math.max(0,remaining)+" weeks remaining"));
+      (item.decision==="PROMISE_SEGMENT"?"Promo/angle":"Match")+
+      " promised · "+Math.max(0,remaining)+" weeks remaining"));
     }
    }else if(view.canEdit){
     const actions=el("div","ppw-backstage-replies");

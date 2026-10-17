@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
- for(const kind of ["CONTRACT","MORALE","MOMENTUM","PARTNERSHIP"] as const){
+ for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP"] as const){
   assert.ok(backstageMessage(kind).length>20);
   assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
   assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
@@ -16,6 +16,9 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.deepEqual(backstageDecisionEffect("MORALE","PROMISE_APPEARANCE"),
   {moraleDelta:1,promise:true,status:"PROMISED"});
  assert.equal(backstageDecisionEffect("CONTRACT","DECLINE").moraleDelta,-4);
- assert.match(backstageReply("PROMISE_APPEARANCE","BROKEN"),/never booked/);
+ assert.match(backstageReply("PROMISE_APPEARANCE","BROKEN"),/didn't deliver/);
+ assert.deepEqual(backstageDecisionEffect("CREATIVE","PROMISE_SEGMENT"),
+  {moraleDelta:1,promise:true,status:"PROMISED"});
+ assert.match(backstageMessage("CREATIVE"),/mic time/);
  assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/kept your word/);
 });

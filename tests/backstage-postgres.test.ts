@@ -82,6 +82,34 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,3))).settled,0);
   const last=await readPortablePersonaWorkspace(db.pool,scope);
   assert.equal(last.conversations[0]!.status,"FULFILLED");
+  // A wrestler-initiated creative request is fulfilled only by an authored,
+  // actually completed promo/angle. A match cannot satisfy that promise.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET morale=65,momentum=42,recognition=80 WHERE world_id=$1 AND person_id=$2",
+   [worldId,inbox.personId]));
+  const again=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,9));
+  assert.equal(again.newMessages,2);
+  const creative=(await readPortablePersonaWorkspace(db.pool,scope)).conversations.at(-1)!;
+  assert.equal(creative.kind,"CREATIVE");
+  const replied=await dispatchCardRpc(context,"backstageDecision",
+   {worldId,promotionId,showId,conversationId:creative.conversationId,
+    requestId:"creative-"+id,expectedRevision:2,decision:"PROMISE_SEGMENT"});
+  assert.equal((replied as {status:string}).status,"APPLIED");
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,10)",
+    [worldId,"creative-show-"+id,promotionId]);
+   await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,1,'SEGMENT',$4::jsonb)",
+    [worldId,"creative-show-"+id,"creative-slot-"+id,
+     JSON.stringify({participants:[{personId:inbox.personId,contractId:
+      inbox.personId===one?contract1:contract2}]})]);
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,10,$4,60,'{}'::jsonb,$5)",
+    [worldId,promotionId,"creative-show-"+id,"creative-resolution-"+id,"b".repeat(64)]);
+   await tx.query("INSERT INTO ppw_completed_show_segments(world_id,show_id,slot_id,position,kind,authored_outcome,crowd_response) VALUES($1,$2,$3,1,'PROMO','HAPPENS',60)",
+    [worldId,"creative-show-"+id,"creative-slot-"+id]);
+  });
+  assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,9))).settled,1);
+  const final=(await readPortablePersonaWorkspace(db.pool,scope)).conversations.at(-1)!;
+  assert.equal(final.status,"FULFILLED");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_backstage_requests","ppw_completed_show_matches",

@@ -2,12 +2,12 @@
 CREATE TABLE ppw_backstage_requests (
  world_id text NOT NULL,request_id text NOT NULL,
  promotion_id text NOT NULL,person_id text NOT NULL,related_person_id text,
- kind text NOT NULL CHECK(kind IN ('CONTRACT','MORALE','MOMENTUM','PARTNERSHIP')),
+ kind text NOT NULL CHECK(kind IN ('CONTRACT','MORALE','MOMENTUM','CREATIVE','PARTNERSHIP')),
  created_week_index integer NOT NULL CHECK(created_week_index>=0),
  status text NOT NULL DEFAULT 'PENDING' CHECK(status IN
  ('PENDING','ANSWERED','DECLINED','PROMISED','FULFILLED','BROKEN')),
  decision text CHECK(decision IN
- ('TALK','DECLINE','PROMISE_APPEARANCE','EXPLORE_RENEWAL','MEDIATE')),
+ ('TALK','DECLINE','PROMISE_APPEARANCE','PROMISE_SEGMENT','EXPLORE_RENEWAL','MEDIATE')),
  responded_week_index integer CHECK(responded_week_index>=0),
  due_week_index integer CHECK(due_week_index>=0),
  PRIMARY KEY(world_id,request_id),

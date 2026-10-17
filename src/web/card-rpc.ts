@@ -45,7 +45,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
  if(method==="backstageDecision"){
-  const choices=["TALK","DECLINE","PROMISE_APPEARANCE","EXPLORE_RENEWAL","MEDIATE"] as const;
+  const choices=["TALK","DECLINE","PROMISE_APPEARANCE","PROMISE_SEGMENT","EXPLORE_RENEWAL","MEDIATE"] as const;
   if(!choices.some(choice=>choice===p.decision))
    throw new Error("Invalid Backstage decision");
   return backstageDecisionAsActor(context,{worldId,promotionId,requestId,
