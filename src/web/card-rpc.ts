@@ -1,6 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
- tagTeamWorkspaceAsActor,createTagTeamAsActor,
+ tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
@@ -86,6 +86,11 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="requestPersona")return requestPersonaAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,
   personId:id("personId"),gimmickId:id("gimmickId")});
+ if(method==="renameTagTeam"){
+  if(typeof p.name!=="string")throw new Error("Invalid tag team name");
+  return nameTagTeamAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,name:p.name,teamId:id("teamId")});
+ }
  if(method==="createTagTeam"){
   if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
    p.personIds.some(x=>typeof x!=="string"))
