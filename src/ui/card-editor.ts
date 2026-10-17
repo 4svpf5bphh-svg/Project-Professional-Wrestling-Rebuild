@@ -24,6 +24,7 @@ export interface CardEditorPort{
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  openProgrammes?():void;
+ openChampionships?():void;
  openStables?():void;
  openWorkingConnections?():void;
  openPersona?():void;
@@ -254,6 +255,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    segments.set(id,newEditorSegment(id));
    order.push(id);expanded=id;markDirty();render();
   },!mutable()));
+  if(port.openChampionships)
+   toolbar.append(button("Championships",()=>{port.openChampionships?.();},dirty||saving));
   if(port.openProgrammes)
    toolbar.append(button("Manage programmes",()=>{port.openProgrammes?.();},dirty||saving));
   if(port.openStables)
