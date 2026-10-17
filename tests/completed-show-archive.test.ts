@@ -6,13 +6,13 @@ const scope={worldId:"world",playerId:"owner",promotionId:"promotion"};
 function fixture(all:number,authorized=true){
  const calls:{sql:string;params:unknown[]}[]=[];
  const pool:TransactionPool={async connect(){return {release(){},
-  async query<T extends Record<string,unknown>>(sql:string,params?:unknown[]){
+  async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    calls.push({sql,params:params??[]});
    return (!authorized?[]:Array.from({length:all},(_,i)=>({
     show_id:"show-"+(20-i),year:1,week:20-i,crowd_response:"71.5",
     match_count:3,angle_count:2,
-   }))) as T[];
+   }))) as unknown as T[];
   }};}};
  return {pool,calls};
 }
