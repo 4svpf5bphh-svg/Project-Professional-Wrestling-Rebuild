@@ -12,6 +12,8 @@ import {describeMatchFinish} from "../domain/show-match-story.js";
 import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+import {projectVerifiedBroadcastFallout,type BroadcastFallout,
+ type RecordedMatchFalloutRow} from "../domain/verified-broadcast-fallout.js";
 export interface CompletedMatchBroadcastContext{
  /** Locked card context, not an invented account of the match action. */
  format:string;intent:string;plannedMinutes:number|null;
@@ -23,6 +25,7 @@ export interface ShowResultEntry{
  outcome:string;actorIds:string[];targetIds:string[];
  intent?:SegmentConsequenceIntent|null;
  matchContext?:CompletedMatchBroadcastContext;
+ fallout?:BroadcastFallout;
  segmentKind?:string;
  performerIdentities?:BroadcastIdentity[];
 }
@@ -54,8 +57,15 @@ export async function readCompletedShowView(
    WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101`,
    [input.worldId,input.showId]);
   if(slots.length>100)throw new Error("Completed card exceeds slot capacity");
-  const ids=[...new Set(slots.flatMap(s=>readCardParticipants(s.payload).map(p=>p.personId)))];
-  if(ids.length>100)throw new Error("Completed card exceeds talent capacity");
+  const ids=[...new Set(slots.flatMap(s=>{
+   const participants=readCardParticipants(s.payload).map(p=>p.personId);
+   const raw=s.payload as Record<string,unknown>;
+   const spot=raw.interference as Record<string,unknown>|undefined;
+   if(s.kind==="MATCH"&&spot&&typeof spot.personId==="string")
+    participants.push(spot.personId);
+   return participants;
+  }))];
+  if(ids.length>200)throw new Error("Completed card exceeds talent capacity");
   const people=ids.length?await tx.query<{person_id:string;name:string;
    portable_gimmick_id:string|null;persona_record:unknown|null}>(`
    SELECT p.person_id,p.name,p.portable_gimmick_id,
@@ -74,6 +84,58 @@ export async function readCompletedShowView(
   const personaFor=(ids:readonly string[])=>ids.flatMap(id=>{
    const persona=identities.get(id);return persona?[persona]:[];
   });
+  // Fifth bounded read. Match evidence, settled title contests and saved
+  // career injuries share a single indexed scan; no per-bout round-trips.
+  const falloutRows=receipt.matches.length?await tx.query<RecordedMatchFalloutRow>(`
+   SELECT m.match_id,e.evidence_json,
+    championship.name AS championship_name,cc.title_changed,
+    COALESCE(winner.name,winner_team.name) AS title_winner_name,
+    COALESCE(prior_person.name,prior_team.name) AS title_prior_holder_name,
+    COALESCE(medical.injuries,'[]'::jsonb) AS injuries
+   FROM ppw_completed_show_matches m
+   LEFT JOIN ppw_completed_match_evidence e
+    ON e.world_id=m.world_id AND e.show_id=m.show_id AND e.match_id=m.match_id
+   LEFT JOIN ppw_championship_contests cc
+    ON cc.world_id=m.world_id AND cc.show_id=m.show_id AND cc.slot_id=m.match_id
+   LEFT JOIN ppw_championships championship
+    ON championship.world_id=cc.world_id
+     AND championship.promotion_id=cc.promotion_id
+     AND championship.championship_id=cc.championship_id
+   LEFT JOIN ppw_people winner ON winner.world_id=cc.world_id
+     AND winner.person_id=cc.winner_person_id
+   LEFT JOIN ppw_tag_teams winner_team ON winner_team.world_id=cc.world_id
+     AND winner_team.team_id=cc.winner_team_id
+   LEFT JOIN ppw_championship_reigns prior ON prior.world_id=cc.world_id
+     AND prior.promotion_id=cc.promotion_id
+     AND prior.championship_id=cc.championship_id AND prior.reign_id=cc.prior_reign_id
+   LEFT JOIN ppw_people prior_person ON prior_person.world_id=prior.world_id
+     AND prior_person.person_id=prior.person_id
+   LEFT JOIN ppw_tag_teams prior_team ON prior_team.world_id=prior.world_id
+     AND prior_team.team_id=prior.team_id
+   LEFT JOIN LATERAL (
+    SELECT jsonb_agg(jsonb_build_object('person_id',inj.person_id,
+      'injury_severity',inj.injury_severity,
+      'injury_weeks_out',inj.injury_weeks_out) ORDER BY inj.person_id) AS injuries
+    FROM (
+     SELECT person_id,injury_severity,injury_weeks_out
+      FROM ppw_tag_match_career_effects
+      WHERE world_id=m.world_id AND show_id=m.show_id AND match_id=m.match_id
+       AND injury_severity IS NOT NULL
+     UNION ALL
+     SELECT person_id,injury_severity,injury_weeks_out
+      FROM ppw_individual_field_career_effects
+      WHERE world_id=m.world_id AND show_id=m.show_id AND match_id=m.match_id
+       AND injury_severity IS NOT NULL
+    ) inj
+   ) medical ON TRUE
+   WHERE m.world_id=$1 AND m.show_id=$2
+   ORDER BY m.position LIMIT 101`,
+   [input.worldId,input.showId]):[];
+  if(falloutRows.length>100)throw new Error("Historic match evidence exceeds show capacity");
+  const byFallout=new Map(falloutRows.map(row=>[row.match_id,row]));
+  if(byFallout.size!==falloutRows.length||
+   falloutRows.length!==receipt.matches.length)
+   throw new Error("Completed match evidence disagrees with results ledger");
   const stories=receipt.segments.length?await tx.query<{slot_id:string;story_json:unknown}>(`
    SELECT slot_id,story_json FROM ppw_completed_show_segments
    WHERE world_id=$1 AND show_id=$2 ORDER BY position LIMIT 101`,
@@ -119,7 +181,12 @@ export async function readCompletedShowView(
     headline,summary,crowdResponse:match.crowdResponse,
     outcome:match.actualFinish,actorIds:participants,targetIds:[],
     performerIdentities:personaFor(participants),
-    ...(matchContext?{matchContext}:{})});
+    ...(matchContext?{matchContext}:{}),
+    fallout:projectVerifiedBroadcastFallout(byFallout.get(match.matchId),
+     receipt,match,name,new Map(matchContext?.sides.map((side,i)=>[
+      i<26?String.fromCharCode(65+i):"A"+String.fromCharCode(65+i-26),side
+     ])??[]),
+     (slot.payload as {interference?:{personId?:string}}).interference?.personId??null)});
   }
   for(const segment of receipt.segments){
    const slot=bySlot.get(segment.slotId);
