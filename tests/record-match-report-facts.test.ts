@@ -9,15 +9,15 @@ const projection={
   {slotId:"singles",score:{criticalRatingStars:4.25,executionQuality:89.5,actualLengthMinutes:17},
    injuryPreview:{injuries:[{personId:"a",severity:"MINOR",weeksOut:2}]},
    chemistryModifier:2.5,finishCheaterId:null,personIds:["a","b"],
-   plannedFinish:"CLEAN_PIN",
+   plannedFinish:"CLEAN_PIN",interferencePreview:{actualFinish:"CLEAN_PIN"},
    multi:null,tag:null},
   {slotId:"tag",score:{criticalRatingStars:3.25,executionQuality:73.2,actualLengthMinutes:24},
-   tag:{result:{injury:{injuries:[
+   tag:{result:{final:{actualFinish:"CLEAN_PIN"},injury:{injuries:[
     {personId:"c",severity:"MODERATE",weeksOut:3}]}}},
    multi:null,injuryPreview:null,
    chemistryModifier:3.1,finishCheaterId:null,personIds:["c","d"],plannedFinish:"CLEAN_PIN"},
   {slotId:"battle",score:{criticalRatingStars:2.75,executionQuality:53.1,actualLengthMinutes:38},
-   multi:{result:{injuries:[]}},tag:null,injuryPreview:null,
+   multi:{result:{actualFinish:"OVER_THE_TOP_ROPE",injuries:[]}},tag:null,injuryPreview:null,
    chemistryModifier:0,finishCheaterId:null,personIds:["a","c"],plannedFinish:"OVER_THE_TOP_ROPE"},
  ],
 } as unknown as Input;
