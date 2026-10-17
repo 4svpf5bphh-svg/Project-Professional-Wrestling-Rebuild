@@ -1,6 +1,6 @@
 /** Vercel Node functions pass IncomingMessage/ServerResponse, not web Request. */
 import type {IncomingMessage,ServerResponse} from "node:http";
-import {handlePpwHostApi} from "../src/web/ppw-host-api.js";
+import {handlePpwHostApi} from "./ppw-host-api.js";
 
 export async function handleVercelNodeRequest(req:IncomingMessage,res:ServerResponse):Promise<void>{
  try{
