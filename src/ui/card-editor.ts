@@ -481,7 +481,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      candidate.ringName+" ("+realName+")":realName;
     const character=candidate.gimmickId?
      " · "+candidate.gimmickId.replaceAll("_"," ").toLowerCase():"";
-    rows.append(button(name+" · "+(candidate.division??"Unknown division")+
+    rows.append(button(name+character+" · "+(candidate.division??"Unknown division")+
      (candidate.available?" · "+(candidate.remainingDates===null?
       "Unlimited dates":candidate.remainingDates+" dates"):" · "+candidate.reason),
      ()=>chooseTalent(candidate),!candidate.available||taken,"ppw-talent"));
