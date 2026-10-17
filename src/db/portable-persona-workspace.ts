@@ -107,21 +107,23 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH";
    related_person_id:string|null;status:string;
-   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"NOT_NOW"|null;
+   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
    created_week_index:number;responded_week_index:number|null;
    due_week_index:number|null;promised_role:string|null;
    observed_match_shows:number|null;observed_featured_shows:number|null;
    assessment_reason:string|null;trust_delta:number;
    observed_average_crowd:number|string|null;
    team_verified_matches:number|null;observed_execution_quality:number|string|null;
+   rival_verified_matches:number|null;rival_professional_trust:number|string|null;
    follow_through_week_index:number|null;follow_through_kind:string|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
    "assessment_reason,trust_delta,observed_average_crowd,",
    "team_verified_matches,observed_execution_quality,",
+   "rival_verified_matches,rival_professional_trust,",
    "follow_through_week_index,follow_through_kind",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
@@ -138,6 +140,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     assessmentReason:x.assessment_reason,trustDelta:x.trust_delta,
     averageCrowd:x.observed_average_crowd===null?
      null:Number(x.observed_average_crowd),
+    verifiedSinglesShows:x.rival_verified_matches,
+    professionalTrust:x.rival_professional_trust===null?
+     null:Number(x.rival_professional_trust),
     verifiedTagShows:x.team_verified_matches,
     averageExecution:x.observed_execution_quality===null?null:Number(x.observed_execution_quality),
     followThroughWeekIndex:x.follow_through_week_index,

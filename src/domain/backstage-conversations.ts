@@ -1,8 +1,8 @@
 /** Text is presentation; request, decision and certified match evidence are gameplay. */
-export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH";
+export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
  "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
- "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"NOT_NOW";
+ "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW";
 export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]>={
  CONTRACT:["EXPLORE_RENEWAL","TALK","DECLINE"],
  MORALE:["PROMISE_APPEARANCE","TALK","DECLINE"],
@@ -12,6 +12,7 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  ROLE_USAGE:["PROMISE_FEATURED","TALK","DECLINE"],
  GIMMICK_PITCH:["CONSIDER_REPACKAGE","KEEP_CHARACTER"],
  TAG_TEAM_PITCH:["EXPLORE_TEAM","NOT_NOW"],
+ RIVALRY_PITCH:["EXPLORE_RIVALRY","NOT_NOW"],
 };
 export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  TALK:"Hear them out",DECLINE:"Turn down request",
@@ -20,7 +21,9 @@ export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  PROMISE_FEATURED:"Promise a featured match",
  CONSIDER_REPACKAGE:"Explore a different character",
  KEEP_CHARACTER:"Keep the current character",
- EXPLORE_TEAM:"Explore a tag partnership",NOT_NOW:"Not right now",
+ EXPLORE_TEAM:"Explore a tag partnership",
+ EXPLORE_RIVALRY:"Explore a rivalry programme",
+ NOT_NOW:"Not right now",
  EXPLORE_RENEWAL:"Discuss new contract terms",MEDIATE:"Mediate backstage",
 };
 export function backstageDecisionEffect(kind:BackstageKind,decision:BackstageDecision){
@@ -36,6 +39,7 @@ export function backstageDecisionEffect(kind:BackstageKind,decision:BackstageDec
 export function backstageMessage(kind:BackstageKind,evidence?:{
  observedMatchShows?:number|null;averageCrowd?:number|null;
  partnerName?:string;verifiedTagShows?:number|null;averageExecution?:number|null;
+ verifiedSinglesShows?:number|null;professionalTrust?:number|null;
 }){
  switch(kind){
   case "CONTRACT":return "My deal is nearly up. Can we talk about what happens next?";
@@ -44,6 +48,12 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
   case "CREATIVE":return "I need more of a voice on this show. Can I get some mic time or an angle?";
   case "PARTNERSHIP":return "There's tension backstage with someone I've worked with. Can you help us settle it?";
   case "ROLE_USAGE":return "My contract says I should feature near the top of the card. I've worked the matches, but where's that promised spot?";
+  case "RIVALRY_PITCH":return "We have something with "+
+   (evidence?.partnerName??"that opponent")+". The crowd has responded across "+
+   (evidence?.verifiedSinglesShows??"multiple")+" singles shows"+
+   (evidence?.averageCrowd!==null&&evidence?.averageCrowd!==undefined?
+    " (average "+evidence.averageCrowd+"/100)":"")+
+   ". We trust each other to make it work. Want to build a rivalry?";
   case "TAG_TEAM_PITCH":return "We've got chemistry in the ring with "+
    (evidence?.partnerName??"my partner")+". Two or more strong tag matches ("+
    (evidence?.verifiedTagShows??"several")+" together). Could we build on that?";
@@ -69,6 +79,7 @@ export function backstageReply(decision:BackstageDecision,status:string){
   case "CONSIDER_REPACKAGE":return "I'm open to a new direction. Pitch a specific character below; I still need to agree.";
   case "KEEP_CHARACTER":return "Fair enough. We'll keep the character for now.";
   case "EXPLORE_TEAM":return "Love it. Book us together and let's see where this goes.";
+  case "EXPLORE_RIVALRY":return "Let's tell this story right. Start the programme when you're ready; you call the shots.";
   case "NOT_NOW":return "No worries. We'll keep doing our own thing.";
  }
 }

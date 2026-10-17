@@ -7,6 +7,8 @@ import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
 import {publishBackstageTagPitches,settleBackstageTagFollowThrough}
  from "./backstage-tag-pitches.js";
+import {publishBackstageRivalryPitches,settleBackstageRivalryFollowThrough}
+ from "./backstage-rivalry-pitches.js";
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
@@ -227,8 +229,10 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // One atomic, certified-week reconciliation. No background polling.
       await settleBackstagePromises(tx,input.worldId,weekIndex);
       await settleBackstageTagFollowThrough(tx,input.worldId,weekIndex);
+      await settleBackstageRivalryFollowThrough(tx,input.worldId,weekIndex);
       // One evidence-led partnership pitch may occupy this week's slot.
       await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
+      await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);
       await publishBackstageRequests(tx,input.worldId,weekIndex+1);
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",

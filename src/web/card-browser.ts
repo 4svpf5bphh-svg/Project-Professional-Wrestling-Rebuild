@@ -36,7 +36,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
    ()=>mountCardEditor(root,port)),
   openPersona:()=>mountPersonaDesk(root,personaPort(call),
-   ()=>mountCardEditor(root,port)),
+   ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
  };
  return mountCardEditor(root,port);
 }
@@ -109,5 +109,6 @@ function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope){
- return mountPersonaDesk(root,personaPort(createCardClient(scope)));
+ return mountPersonaDesk(root,personaPort(createCardClient(scope)),
+  undefined,()=>mountProgrammePage(root,scope));
 }

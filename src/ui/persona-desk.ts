@@ -23,7 +23,7 @@ const button=(title:string,action:()=>void,disabled=false)=>{
  x.type="button";x.onclick=action;x.disabled=disabled;return x;
 };
 export function mountPersonaDesk(root:HTMLElement,
- port:PersonaDeskPort,onBack?:()=>void){
+ port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
@@ -248,11 +248,14 @@ export function mountPersonaDesk(root:HTMLElement,
     el("div","ppw-persona-bubble ppw-persona-in",backstageMessage(item.kind,{observedMatchShows:item.observedMatchShows,
      averageCrowd:item.averageCrowd,
      partnerName:view.roster.find(x=>x.personId===item.relatedPersonId)?.name,
+     verifiedSinglesShows:item.verifiedSinglesShows,
+     professionalTrust:item.professionalTrust,
      verifiedTagShows:item.verifiedTagShows,
      averageExecution:item.averageExecution})));
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
-     "Booking follow-through · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
+     (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
+       "Rivalry programme started":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
@@ -264,6 +267,11 @@ export function mountPersonaDesk(root:HTMLElement,
      BACKSTAGE_LABELS[item.decision]));
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      backstageReply(item.decision,item.status)));
+    if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
+     item.followThroughWeekIndex===null&&onOpenProgrammes){
+     chat.append(button("Create rivalry in Programme Desk →",
+      onOpenProgrammes,loading));
+    }
     if(item.status==="BROKEN"&&item.trustDelta<0)
      chat.append(el("small","ppw-backstage-promise",
       "Broken promise · promotion trust "+item.trustDelta));

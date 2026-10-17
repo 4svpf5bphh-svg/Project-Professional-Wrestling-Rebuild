@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
- for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH"] as const){
+ for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH"] as const){
   assert.ok(backstageMessage(kind).length>20);
-  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH")
+  if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH"&&kind!=="RIVALRY_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("DECLINE"));
   if(kind!=="GIMMICK_PITCH"&&kind!=="TAG_TEAM_PITCH")
    assert.ok(BACKSTAGE_CHOICES[kind].includes("TALK"));
@@ -31,6 +31,11 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.deepEqual(backstageDecisionEffect("CREATIVE","PROMISE_SEGMENT"),
   {moraleDelta:0,promise:true,status:"PROMISED"});
  assert.match(backstageMessage("CREATIVE"),/mic time/);
+ assert.match(backstageMessage("RIVALRY_PITCH",
+  {partnerName:"Rival",verifiedSinglesShows:3,averageCrowd:84}),
+  /Rival.*3 singles shows.*84\/100/);
+ assert.equal(backstageDecisionEffect("RIVALRY_PITCH","EXPLORE_RIVALRY").status,"ANSWERED");
+ assert.throws(()=>backstageDecisionEffect("RIVALRY_PITCH","PROMISE_SEGMENT"),/does not offer/);
  assert.match(backstageMessage("GIMMICK_PITCH",{observedMatchShows:4,averageCrowd:48}),
   /4 matches.*48\/100/);
  assert.equal(backstageDecisionEffect("GIMMICK_PITCH","KEEP_CHARACTER").status,"DECLINED");
