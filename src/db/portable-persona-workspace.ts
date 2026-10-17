@@ -114,11 +114,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    due_week_index:number|null;promised_role:string|null;
    observed_match_shows:number|null;observed_featured_shows:number|null;
    assessment_reason:string|null;trust_delta:number;
-   observed_match_shows:number|null;observed_average_crowd:number|null}>([
+   observed_average_crowd:number|string|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
-   "assessment_reason,trust_delta,observed_match_shows,observed_average_crowd",
+   "assessment_reason,trust_delta,observed_average_crowd",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
@@ -132,7 +132,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     promisedRole:x.promised_role,observedMatchShows:x.observed_match_shows,
     observedFeaturedShows:x.observed_featured_shows,
     assessmentReason:x.assessment_reason,trustDelta:x.trust_delta,
-    observedMatchShows:x.observed_match_shows,averageCrowd:x.observed_average_crowd,
+    averageCrowd:x.observed_average_crowd===null?
+     null:Number(x.observed_average_crowd),
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),
