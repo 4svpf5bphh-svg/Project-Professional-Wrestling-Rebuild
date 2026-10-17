@@ -11,8 +11,9 @@ export interface PersonaScope{
 }
 export async function readPortablePersonaWorkspace(pool:TransactionPool,s:PersonaScope){
  return withSqlClient(pool,async tx=>{
-  const owns=await tx.query<{year:number;week:number;booking_open:boolean}>([
-   "SELECT w.year,w.week,(w.phase='OPEN' AND",
+  const owns=await tx.query<{year:number;week:number;revision:string|number;
+   booking_open:boolean}>([
+   "SELECT w.year,w.week,w.revision,(w.phase='OPEN' AND",
    "w.next_lock_at>clock_timestamp()) AS booking_open",
    "FROM ppw_worlds w JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
    "JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id",
@@ -39,7 +40,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   if(!selected)return {roster:listed,personId:null,
    persona:null,history:[],recentRequests:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
-   worldWeek:owns[0]!.week,worldRevision:null,
+   worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
    canEdit:false,nextPitchWeek:0};
   const wrestler=roster.find(x=>x.person_id===selected)!;
   const current=await tx.query<{persona:unknown;revision:number;
@@ -77,7 +78,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     changedByPromotionId:x.changed_by_promotion_id,
    })),recentRequests,archetypes:reference.archetypes,
    documentedAlternates:reference.documentedAlternates,
-   worldYear:owns[0]!.year,worldWeek:owns[0]!.week,worldRevision:null,
+   worldYear:owns[0]!.year,worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
    canEdit:owns[0]!.booking_open,
    nextPitchWeek:recentRequests.length?recentRequests[0]!.submitted_week_index+12:0};
  });

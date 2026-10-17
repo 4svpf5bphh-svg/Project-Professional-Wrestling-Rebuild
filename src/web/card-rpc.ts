@@ -1,5 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
+import {portablePersonaAsActor,requestPersonaAsActor,
+ workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
  completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
@@ -15,6 +16,12 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="persona"){
+  if(p.personId!==undefined&&typeof p.personId!=="string")
+   throw new Error("Invalid wrestler");
+  return portablePersonaAsActor(context,worldId,promotionId,
+   p.personId as string|undefined);
+ }
  if(method==="workingConnections"){
   const personId=p.personId;
   if(personId!==undefined&&typeof personId!=="string")
@@ -37,6 +44,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="requestPersona")return requestPersonaAsActor(context,{
+  worldId,promotionId,requestId,expectedRevision,
+  personId:id("personId"),gimmickId:id("gimmickId")});
  if(method==="createStable"){
   if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
    p.personIds.some(x=>typeof x!=="string"))

@@ -1,6 +1,9 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
+import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
+import {requestPortablePersonaChange,type PersonaChangeInput}
+ from "../db/portable-persona-change.js";
 import {readStableWorkspace,readActiveStableChoices,
  createStable,addStableMember,removeStableMember,disbandStable,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
@@ -291,4 +294,21 @@ export async function workingConnectionsAsActor(context:WorldApiContext,
  if(personId!==undefined)validate(personId,"wrestler");
  return readWorkingConnections(context.pool,{
   worldId,promotionId,playerId:context.actor.playerId,personId});
+}
+
+/** Original PPW wrestler-owned career persona. Actor is verified by the host. */
+export async function portablePersonaAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,personId?:string){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");
+ if(personId!==undefined)validate(personId,"wrestler");
+ return readPortablePersonaWorkspace(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId,personId});
+}
+export async function requestPersonaAsActor(context:WorldApiContext,
+ input:Omit<PersonaChangeInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return requestPortablePersonaChange(context.pool,{
+  ...input,playerId:context.actor.playerId});
 }
