@@ -28,7 +28,7 @@ export function createCardClient(scope:CardSessionScope,
   const response=await transport("/api/card",{
    method:"POST",credentials:"same-origin",
    headers:{"content-type":"application/json","x-ppw-csrf":csrfToken},
-   body:JSON.stringify({worldId,promotionId,showId,...extra,method}),
+   body:JSON.stringify({...extra,worldId,promotionId,showId,method}),
   });
   if(!response.ok)throw new Error(response.status===409?
    "The World changed. Reload and review your card.":

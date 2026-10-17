@@ -40,3 +40,24 @@ button:focus-visible,input:focus-visible,select:focus-visible{
  border:1px solid rgba(247,136,83,.35);border-radius:10px;
  padding:11px;font-size:13px;line-height:1.4}
 @media(max-width:520px){.ppw-access-panel{margin:20px 12px 65px}}
+
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.ppw-navigation[hidden]{display:none}
+.ppw-navigation{position:fixed;bottom:0;left:0;right:0;z-index:100;
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;
+ border-top:1px solid #34536c;background:rgba(12,21,34,.97);
+ padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+ max(8px,env(safe-area-inset-left));box-shadow:0 -10px 36px rgba(0,0,0,.3)}
+.ppw-tab{border:0;border-radius:10px;background:transparent;color:#a7c5d7;
+ min-height:47px;padding:9px 2px;font-size:12px;font-weight:650;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ppw-tab-active{color:#fff;background:#265b7c;box-shadow:inset 0 0 0 1px #60bde5}
+.ppw-directory{max-width:700px;margin:0 auto;padding:22px 16px 35px}
+.ppw-directory h1{margin:10px 0 7px;font-size:clamp(24px,6vw,35px)}
+.ppw-directory-link{display:block;width:100%;min-height:50px;text-align:left;
+ margin:9px 0;padding:13px 16px;color:#e8f5ff;background:#162d43;
+ border:1px solid #375b75;border-radius:12px;font-size:16px;font-weight:600}
+.ppw-directory-link:active,.ppw-tab:active{background:#2b6689}
+@media(min-width:800px){.ppw-navigation{left:50%;right:auto;
+ transform:translateX(-50%);width:min(700px,100%);border-left:1px solid #34536c;
+ border-right:1px solid #34536c;border-radius:14px 14px 0 0}}

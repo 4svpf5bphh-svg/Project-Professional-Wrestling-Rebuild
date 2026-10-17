@@ -1,4 +1,11 @@
-import {mountWorldHomePage} from "../../../src/web/card-browser.js";
+import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
+ mountTalentMarketPage,mountContractsPage,mountPersonaPage,
+ mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,
+ mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
+ mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage}
+ from "../../../src/web/card-browser.js";
+import {HOST_SECTIONS,readHostSection,hostSectionHash,
+ type HostSection} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
 
@@ -13,6 +20,7 @@ type SessionView={
 };
 const game=document.querySelector<HTMLElement>("#game")!;
 const account=document.querySelector<HTMLElement>("#account")!;
+const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
@@ -36,9 +44,66 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
   "Request rejected. Review and try again.");
  return r.json();
 }
+
+/** Mobile shell is independent of the workspace root and remains accessible. */
+function openSection(section:HostSection){
+ const target=hostSectionHash(section);
+ if(location.hash!==target)location.hash=target;
+ else renderSection();
+}
+function renderSection(){
+ if(!session?.overview?.promotion)return;
+ const section=readHostSection(location.hash);
+ const scope:CardSessionScope={worldId:session.worldId,
+  promotionId:session.overview.promotion.id,showId:"",
+  csrfToken:session.csrfToken};
+ navigation.replaceChildren();
+ for(const item of HOST_SECTIONS.filter(x=>x.primary)){
+  const tab=button(item.glyph+" "+item.label,()=>openSection(item.id));
+  tab.className="ppw-tab"+(item.id===section?" ppw-tab-active":"");
+  tab.setAttribute("aria-label",item.label);
+  if(item.id===section)tab.setAttribute("aria-current","page");
+  navigation.append(tab);
+ }
+ navigation.hidden=false;
+ game.classList.remove("ppw-home");
+ game.replaceChildren();
+ const back=()=>openSection("home");
+ switch(section){
+  case "home":mountWorldHomePage(game,scope);break;
+  case "planner":mountPlannerPage(game,scope,back);break;
+  case "roster":mountRosterPage(game,scope);break;
+  case "backstage":mountPersonaPage(game,scope);break;
+  case "market":mountTalentMarketPage(game,scope);break;
+  case "contracts":mountContractsPage(game,scope);break;
+  case "business":mountBusinessPage(game,scope);break;
+  case "staff":mountStaffPage(game,scope);break;
+  case "industry":mountIndustryPage(game,scope);break;
+  case "calendar":mountCalendarPage(game,scope,back);break;
+  case "results":void mountResultsArchivePage(game,scope,back);break;
+  case "programmes":mountProgrammePage(game,scope);break;
+  case "championships":void mountChampionshipsPage(game,scope,back);break;
+  case "teams":mountTagTeamsPage(game,scope);break;
+  case "stables":mountStablesPage(game,scope);break;
+  case "connections":mountWorkingConnectionsPage(game,scope);break;
+  case "more":{
+   const panel=el("section","ppw-directory");
+   panel.append(el("span","ppw-access-kicker","PROMOTION OFFICE"),
+    el("h1","","Every corner of your World"),
+    el("p","ppw-access-muted","Open a desk without advancing the World."));
+   for(const item of HOST_SECTIONS.filter(x=>!x.primary)){
+    const link=button(item.glyph+"  "+item.label,()=>openSection(item.id));
+    link.className="ppw-directory-link";panel.append(link);
+   }
+   game.append(panel);break;
+  }
+ }
+}
+window.addEventListener("hashchange",()=>renderSection());
+
 async function loadSession(){
- account.replaceChildren();game.replaceChildren(
-  el("p","ppw-access-loading","Opening the PPW World…"));
+ account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
+ game.replaceChildren(el("p","ppw-access-loading","Opening the PPW World…"));
  try{
   const r=await fetch("/api/session",{credentials:"same-origin",
    cache:"no-store"});
@@ -53,10 +118,7 @@ async function loadSession(){
   account.append(banner);
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
-  const scope:CardSessionScope={worldId:session.worldId,
-   promotionId:session.overview.promotion.id,showId:"",
-   csrfToken:session.csrfToken};
-  mountWorldHomePage(game,scope);
+  renderSection();
  }catch(e){
   game.replaceChildren();
   showError(game,e instanceof Error?e.message:"Could not open PPW");
@@ -142,3 +204,7 @@ async function signOut(){
  await loadSession();
 }
 void loadSession();
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{void navigator.serviceWorker.register("/sw.js")
+  .catch(()=>{/* Authenticated PPW still works when install caching is unavailable. */});});
+}

@@ -190,3 +190,16 @@ test("Roster and market can load without a drafted show, but match editing canno
  await assert.rejects(client("save",{matches:[]}),/booked show/);
  await assert.rejects(client("results"),/booked show/);
 });
+
+test("browser action cannot replace authenticated scope",async()=>{
+ let payload:any;
+ const call=createCardClient(scope,async(_url,init)=>{
+  payload=JSON.parse(String(init?.body));
+  return new Response("{}",{status:200});
+ });
+ await call("overview",{worldId:"other",promotionId:"other",showId:"other",method:"save"});
+ assert.equal(payload.worldId,scope.worldId);
+ assert.equal(payload.promotionId,scope.promotionId);
+ assert.equal(payload.showId,scope.showId);
+ assert.equal(payload.method,"overview");
+});

@@ -95,7 +95,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
  if(path==="/api/card"){
-  return handleCardHttp(req,{authenticate:async()=>({
+  return handleCardHttp(req,{expectedWorldId:cfg.worldId,authenticate:async()=>({
    context:actor,csrfToken:user.csrfToken
   }),allowRequest:async()=>allow("card:"+user.playerId,180,60_000)});
  }

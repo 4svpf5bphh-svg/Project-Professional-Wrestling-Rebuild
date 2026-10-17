@@ -5,6 +5,7 @@ export interface VerifiedCardSession {
  csrfToken:string;
 }
 export interface CardHttpDependencies {
+ expectedWorldId?:string;
  authenticate(request:Request):Promise<VerifiedCardSession|null>;
  allowRequest(session:VerifiedCardSession):Promise<boolean>;
 }
@@ -38,6 +39,8 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return json(400,{error:"Invalid request"});
   const data=parsed as Record<string,unknown>;
   if(typeof data.method!=="string")return json(400,{error:"Invalid request"});
+  if(deps.expectedWorldId&&data.worldId!==deps.expectedWorldId)
+   return json(403,{error:"World not available"});
   return json(200,await dispatchCardRpc(session.context,data.method,parsed));
  }catch(error){
   const message=error instanceof Error?error.message:"";
