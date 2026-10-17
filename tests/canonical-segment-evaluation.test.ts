@@ -44,7 +44,7 @@ test("canonical segment projection does not transfer large match payloads",async
      assert.match(sql,/kind='SEGMENT'/);
      assert.match(sql,/LIMIT 101/);
     }
-    return connection.query<T>(sql,params);
+    return connection.query<T>(sql,params??[]);
    },
   };
  }};
