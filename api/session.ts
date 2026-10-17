@@ -1,5 +1,5 @@
-import {handlePpwHostApi} from "../src/web/ppw-host-api.js";
-// Vercel Node.js web-standard Request/Response adapter; no scheduler.
-export default async function handler(request:Request):Promise<Response>{
- return handlePpwHostApi(request);
+import type {IncomingMessage,ServerResponse} from "node:http";
+import {handleVercelNodeRequest} from "../src/web/vercel-node-adapter.js";
+export default function handler(request:IncomingMessage,response:ServerResponse):Promise<void>{
+ return handleVercelNodeRequest(request,response);
 }
