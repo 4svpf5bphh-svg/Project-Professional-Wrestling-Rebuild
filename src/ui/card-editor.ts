@@ -26,6 +26,7 @@ export interface CardEditorPort{
  openProgrammes?():void;
  openChampionships?():void;
  openTagTeams?():void;
+ openContracts?():void;
  openStables?():void;
  openWorkingConnections?():void;
  openPersona?():void;
@@ -262,6 +263,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    toolbar.append(button("Manage programmes",()=>{port.openProgrammes?.();},dirty||saving));
   if(port.openTagTeams)
    toolbar.append(button("Tag teams",()=>{port.openTagTeams?.();},dirty||saving));
+  if(port.openContracts)
+   toolbar.append(button("Contract Desk",()=>port.openContracts?.(),dirty||saving));
   if(port.openStables)
    toolbar.append(button("Manage stables",()=>{port.openStables?.();},dirty||saving));
   if(port.openWorkingConnections)

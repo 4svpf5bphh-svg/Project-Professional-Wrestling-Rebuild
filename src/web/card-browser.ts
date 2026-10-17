@@ -6,6 +6,7 @@ import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
 import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
+import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
@@ -13,6 +14,7 @@ import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
 import "../ui/championship-desk.css";
 import "../ui/tag-team-desk.css";
+import "../ui/contract-desk.css";
 import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/results-archive.css";
@@ -40,6 +42,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),
+  openContracts:()=>mountContractDesk(root,contractPort(call),()=>mountCardEditor(root,port)),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -59,6 +62,24 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack
    call("championshipHistory",{titlePromotionId,championshipId,cursor})
  };
  return mountChampionshipDesk(root,port,onBack);
+}
+
+function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort{
+ return {load:()=>call("contracts"),
+  requestDates:({requestId,expectedRevision,contractId,additionalDates,additionalPayment})=>
+   call("requestContractDates",{requestId,expectedRevision,contractId,additionalDates,additionalPayment}),
+  cancelDates:({requestId,expectedRevision,dateRequestId})=>
+   call("cancelContractDates",{requestId,expectedRevision,dateRequestId}),
+  renewal:({requestId,expectedRevision,contractId})=>
+   call("renewContract",{requestId,expectedRevision,contractId}),
+  withdrawRenewal:({requestId,expectedRevision,proposalId})=>
+   call("withdrawContractRenewal",{requestId,expectedRevision,proposalId}),
+  withdrawOffer:({requestId,expectedRevision,offerId})=>
+   call("withdrawContractOffer",{requestId,expectedRevision,offerId})};
+}
+/** Contracts are promotion-private and require a real verified session. */
+export function mountContractsPage(root:HTMLElement,scope:Scope){
+ return mountContractDesk(root,contractPort(createCardClient(scope)));
 }
 
 function tagTeamPort(call:ReturnType<typeof createCardClient>):TagTeamPort{

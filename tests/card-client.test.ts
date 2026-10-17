@@ -110,3 +110,22 @@ test("World tag team roster and new pairing use authenticated browser path",asyn
   teamId:"tag-team",name:"A Better Name"});
  assert.deepEqual(seen,["tagTeams","createTagTeam","renameTagTeam"]);
 });
+
+test("contract desk reads and actions use the verified manager and same CSRF transport",async()=>{
+ const calls:Record<string,unknown>[]=[];
+ const client=createCardClient(scope,async(_url,init)=>{
+  calls.push(JSON.parse(String(init?.body)));
+  assert.equal((init?.headers as Record<string,string>)["x-ppw-csrf"],scope.csrfToken);
+  return new Response(JSON.stringify({status:"APPLIED"}),{status:200});
+ });
+ await client("contracts");
+ await client("requestContractDates",{requestId:"d",expectedRevision:2,
+  contractId:"contract",additionalDates:4,additionalPayment:100});
+ await client("cancelContractDates",{requestId:"dc",expectedRevision:3,dateRequestId:"d"});
+ await client("renewContract",{requestId:"r",expectedRevision:4,contractId:"contract"});
+ await client("withdrawContractRenewal",{requestId:"rc",expectedRevision:5,proposalId:"r"});
+ await client("withdrawContractOffer",{requestId:"oc",expectedRevision:6,offerId:"o"});
+ assert.deepEqual(calls.map(c=>c.method),["contracts","requestContractDates",
+  "cancelContractDates","renewContract","withdrawContractRenewal","withdrawContractOffer"]);
+ assert.ok(calls.every(c=>c.playerId===undefined&&c.promotionId==="promotion"));
+});

@@ -1,5 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
+import {contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
+ proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -27,6 +29,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    id("titlePromotionId"),id("championshipId"),
    cursor as {startWeekIndex:number;reignId:string}|null);
  }
+ if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
  if(method==="tagTeams")return tagTeamWorkspaceAsActor(context,worldId,promotionId);
@@ -75,6 +78,26 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="requestContractDates"){
+  if(!Number.isSafeInteger(p.additionalDates)||typeof p.additionalDates!=="number"||
+    !Number.isSafeInteger(p.additionalPayment??0)||typeof (p.additionalPayment??0)!=="number")
+   throw new Error("Invalid additional-dates proposal");
+  return requestAdditionalDatesAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,contractId:id("contractId"),additionalDates:p.additionalDates,
+   additionalPayment:(p.additionalPayment??0) as number});
+ }
+ if(method==="cancelContractDates")
+  return cancelDateRequestAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,dateRequestId:id("dateRequestId")});
+ if(method==="renewContract")
+  return proposeRenewalAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,contractId:id("contractId")});
+ if(method==="withdrawContractRenewal")
+  return withdrawRenewalAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,proposalId:id("proposalId")});
+ if(method==="withdrawContractOffer")
+  return withdrawContractOfferAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,offerId:id("offerId")});
  if(method==="backstageDecision"){
   const choices=["TALK","DECLINE","PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED","CONSIDER_REPACKAGE","KEEP_CHARACTER","EXPLORE_TEAM","EXPLORE_RIVALRY","NOT_NOW","EXPLORE_RENEWAL","MEDIATE"] as const;
   if(!choices.some(choice=>choice===p.decision))
