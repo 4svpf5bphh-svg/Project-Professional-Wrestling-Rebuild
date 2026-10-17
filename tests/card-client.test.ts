@@ -32,3 +32,15 @@ test("a rejected session returns a user-visible error",async()=>{
  const client=createCardClient(scope,async()=>new Response("",{status:403}));
  await assert.rejects(client("results"),/session expired/i);
 });
+
+test("programme desk works through verified browser boundary",async()=>{
+ const events:string[]=[];
+ const client=createCardClient(scope,async(_url,init)=>{
+  events.push(JSON.parse(String(init?.body)).method);
+  return new Response(JSON.stringify({status:"APPLIED"}),{status:200});
+ });
+ await client("programmes");
+ await client("startProgramme",{requestId:"a",expectedRevision:2,sideA:[],sideB:[]});
+ await client("endProgramme",{requestId:"b",expectedRevision:3,programmeId:"p"});
+ assert.deepEqual(events,["programmes","startProgramme","endProgramme"]);
+});
