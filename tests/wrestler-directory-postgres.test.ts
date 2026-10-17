@@ -34,6 +34,17 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   const exclusive=owned.people.find(x=>x.personId==="person-0")!;
   assert.equal(exclusive.availability,"YOUR_ROSTER");
   assert.equal(exclusive.remainingDates,null);
+  // A signed contract that begins in a future week is not part of the
+  // current roster. The contract desk can still display its future terms.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET start_week_index=2 WHERE world_id=$1 AND person_id='person-0'",
+   [world]));
+  const deferred=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",search:"Wrestler 0"});
+  assert.ok(!deferred.people.some(x=>x.personId==="person-0"));
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET start_week_index=0 WHERE world_id=$1 AND person_id='person-0'",
+   [world]));
   const young=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",search:"Wrestler 87",division:"WOMEN",limit:5});
   assert.deepEqual(young.people.map(x=>x.personId),["person-87"]);
