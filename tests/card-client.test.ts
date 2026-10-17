@@ -129,3 +129,23 @@ test("contract desk reads and actions use the verified manager and same CSRF tra
   "cancelContractDates","renewContract","withdrawContractRenewal","withdrawContractOffer"]);
  assert.ok(calls.every(c=>c.playerId===undefined&&c.promotionId==="promotion"));
 });
+
+
+test("Roster and market can load without a drafted show, but match editing cannot",async()=>{
+ const seen:Record<string,unknown>[]=[];
+ const client=createCardClient({...scope,showId:""},async(_url,init)=>{
+  seen.push(JSON.parse(String(init?.body)));
+  return new Response(JSON.stringify({status:"APPLIED"}),{status:200});
+ });
+ await client("wrestlerDirectory",{filter:{view:"MARKET",limit:25}});
+ await client("submitContractOffer",{personId:"w-1",requestId:"recruit",
+  expectedRevision:4,terms:{family:"ONE_OFF",roleExpectation:"REGULAR",
+   creativeControl:"NONE",startWeekIndex:0,termWeeks:1,dateEntitlement:1,
+   weeklyGuarantee:0,appearanceFee:5000,signingBonus:0}});
+ await client("contracts");
+ assert.deepEqual(seen.map(x=>x.method),[
+  "wrestlerDirectory","submitContractOffer","contracts"]);
+ assert.ok(seen.every(x=>x.showId===""&&x.playerId===undefined));
+ await assert.rejects(client("save",{matches:[]}),/booked show/);
+ await assert.rejects(client("results"),/booked show/);
+});

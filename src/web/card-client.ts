@@ -7,11 +7,13 @@ export interface CardSessionScope {
 }
 export function createCardClient(scope:CardSessionScope,
  transport:typeof fetch=fetch){
- if(!scope||!["worldId","promotionId","showId","csrfToken"].every(k=>{
+ if(!scope||!["worldId","promotionId","csrfToken"].every(k=>{
   const value=scope[k as keyof CardSessionScope];
   return typeof value==="string"&&value.trim().length>0&&value.length<=200;
  }))throw new Error("Authenticated booking session required");
  const {worldId,promotionId,showId,csrfToken}=scope;
+ if(typeof showId!=="string"||showId.length>200)
+  throw new Error("Invalid optional booking draft");
  return async function call(method:string,extra:Record<string,unknown>={}){
   if(!["load","talent","save","ready","results","programmes","startProgramme","endProgramme","stables","createStable",
    "addStableMember","removeStableMember","disbandStable","stableChoices",
@@ -21,6 +23,8 @@ export function createCardClient(scope:CardSessionScope,
    "planner","planShow","calendar","saveCalendar","archiveCalendar","contracts","wrestlerDirectory","submitContractOffer","requestContractDates","cancelContractDates","renewContract",
    "withdrawContractRenewal","withdrawContractOffer"].includes(method))
    throw new Error("Unknown card action");
+  if(["load","talent","save","ready","results"].includes(method)&&!showId)
+   throw new Error("A booked show is required for this action");
   const response=await transport("/api/card",{
    method:"POST",credentials:"same-origin",
    headers:{"content-type":"application/json","x-ppw-csrf":csrfToken},

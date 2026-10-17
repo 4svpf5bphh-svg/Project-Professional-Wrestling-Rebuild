@@ -11,6 +11,7 @@ export interface RosterMarketPort{
   terms:OfferTerms}):Promise<unknown>;
  openContracts():void;openTagTeams():void;openStables():void;
  openWrestler(personId:string):void;
+ backToBooking?():void;
 }
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
@@ -171,6 +172,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    navigation.append(b);
   }
   root.append(navigation);
+  if(port.backToBooking)root.append(btn("← Back to current card",
+   ()=>port.backToBooking?.()));
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
   const controls=el("section","ppw-directory-filters");

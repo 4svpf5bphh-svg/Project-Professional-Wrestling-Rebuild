@@ -101,8 +101,9 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
    ()=>open("ROSTER")),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>open("ROSTER")),
+  backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,
   openWrestler:(personId:string)=>mountPersonaDesk(root,{
-   ...personaPort(call),load:()=>call("backstage",{personId})
+   ...personaPort(call),load:(selected?:string)=>call("backstage",{personId:selected??personId})
   },()=>open("ROSTER"),()=>mountProgrammePage(root,scope))
  };
 }
