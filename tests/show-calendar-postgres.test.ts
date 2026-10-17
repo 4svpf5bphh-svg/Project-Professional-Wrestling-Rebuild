@@ -7,6 +7,9 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries}
  from "../src/db/calendar-workspace.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
+import type {TransactionPool} from "../src/db/transaction.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("A/B television show and extra annual PPV schedules are persistent and isolated",{
  skip:!url?"No disposable PostgreSQL":false
@@ -23,6 +26,31 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,playerId]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotionId]);
   });
+  // Real PostgreSQL queries and returned row bytes, not estimated costs.
+  // A dozen World fixtures may change the number of returned series but
+  // must not cause one-query-per-promotion or whole-world hydration.
+  const measure=(name:string)=>{
+   const meter=new MeasuredQuerySession(name);
+   const pool:TransactionPool={async connect(){
+    const connection=await db.pool.connect();
+    return {
+     query:<T extends Record<string,unknown>>(sql:string,params:readonly unknown[])=>
+      meter.execute(()=>connection.query<T>(sql,params)),
+     release:()=>connection.release()
+    };
+   }};
+   return {meter,pool};
+  };
+  const calendarMeasure=measure("calendar");
+  const inspected=await readPromotionCalendar(calendarMeasure.pool,scope);
+  assert.equal(inspected.worldWeeks.length,12);
+  assert.equal(calendarMeasure.meter.assertBudget({
+   maxQueries:3,maxResultBytes:16_384}).queryCount,3);
+  const plannerMeasure=measure("planner");
+  const planned=await readSixWeekPlanner(plannerMeasure.pool,scope);
+  assert.equal(planned.weeks.length,6);
+  assert.equal(plannerMeasure.meter.assertBudget({
+   maxQueries:4,maxResultBytes:16_384}).queryCount,4);
   const before=await readPromotionCalendar(db.pool,scope);
   assert.equal(before.series.length,2);
   assert.equal(before.weeks.length,26);
