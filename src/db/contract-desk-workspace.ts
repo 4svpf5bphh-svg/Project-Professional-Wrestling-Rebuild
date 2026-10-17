@@ -79,7 +79,7 @@ export async function readContractDesk(
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
     pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
     backstageContractConversationId:cost.backstage_contract_request_id};}),
-   requests,
+   requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
    renewals,offers,
    summary:{
     signed:roster.length,expiringSoon:roster.filter(c=>c.expiringSoon).length,
