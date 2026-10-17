@@ -186,7 +186,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   ] as const,filter.division??"ALL",division=>pick({division})));
   controls.append(selection("Sort by",[
    ["NAME","Name"],["POPULARITY","Popularity"],
-   ["MOMENTUM","Momentum"],["VALUE","Recognition"]
+   ["MOMENTUM","Momentum"],["VALUE","Estimated value: low first"],
+   ["PAY_LOW","Weekly pay: low first"],["PAY_HIGH","Weekly pay: high first"]
   ] as const,filter.sort??"NAME",sort=>pick({sort})));
   if(filter.view==="MARKET")controls.append(selection("Contract availability",[
    ["ALL","All wrestlers"],["APPROACHABLE","Eligible to approach"],
@@ -197,7 +198,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const thresholds=el("div","ppw-directory-thresholds");
   for(const [key,label] of [
    ["minPopularity","Min popularity"],["minRecognition","Min recognition"],
-   ["minMomentum","Min momentum"],["minCraft","Min match craft"]
+   ["minMomentum","Min momentum"],["minCraft","Min match craft"],
+   ["minPresentation","Min presentation"]
   ] as const)numbers(thresholds,label,filter[key]??0,0,100,n=>{
    filter[key]=n===0?undefined:n;
   });
@@ -220,7 +222,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const name=el("span","ppw-directory-name",p.name);
    const note=el("small","ppw-directory-muted",
     (p.division==="WOMEN"?"Women":p.division==="MEN"?"Men":"Division unknown")+
-    " · Popularity "+value(p.popularity)+" · Momentum "+value(p.momentum));
+    " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum));
    const label=p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="YOUR_ROSTER"?(p.remainingDates===null?"UNLIMITED DATES":
@@ -248,6 +250,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId)),
      btn("Manage contract →",()=>port.openContracts()));
    }else{
+    detail.append(el("p","ppw-directory-muted",
+     "Indicative weekly market value: "+
+      (p.estimatedWeeklyValue===null?"Unavailable":money(p.estimatedWeeklyValue))+
+      ". This is not an asking price or predicted acceptance."));
     detail.append(el("p","ppw-directory-muted",p.availability==="EXCLUSIVE_ELSEWHERE"?
      "Exclusive contract held elsewhere. Recruitment is currently blocked.":
      p.availability==="FREE_AGENT"?
