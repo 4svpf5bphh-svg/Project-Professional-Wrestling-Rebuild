@@ -5,6 +5,7 @@ import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
+import {settleBackstageMediations} from "./backstage-mediation.js";
 import {publishBackstageTagPitches,settleBackstageTagFollowThrough}
  from "./backstage-tag-pitches.js";
 import {publishBackstageRivalryPitches,settleBackstageRivalryFollowThrough}
@@ -228,6 +229,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         AND c.status='EXPIRED'`,[input.worldId]);
       // One atomic, certified-week reconciliation. No background polling.
       await settleBackstagePromises(tx,input.worldId,weekIndex);
+      await settleBackstageMediations(tx,input.worldId,weekIndex);
       await settleBackstageTagFollowThrough(tx,input.worldId,weekIndex);
       await settleBackstageRivalryFollowThrough(tx,input.worldId,weekIndex);
       // One evidence-led partnership pitch may occupy this week's slot.

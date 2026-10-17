@@ -79,7 +79,7 @@ export function backstageReply(decision:BackstageDecision,status:string){
   case "PROMISE_SEGMENT":return "Thanks. Give me a promo or an angle in the next two weeks.";
   case "PROMISE_FEATURED":return "Four weeks to put me in my contracted featured spot. I will remember.";
   case "EXPLORE_RENEWAL":return "Good. Let's talk terms at the Contract Desk.";
-  case "MEDIATE":return "I appreciate you trying to make things right backstage.";
+  case "MEDIATE":return "I'll try, but our trust needs to be rebuilt through working together.";
   case "CONSIDER_REPACKAGE":return "I'm open to a new direction. Pitch a specific character below; I still need to agree.";
   case "KEEP_CHARACTER":return "Fair enough. We'll keep the character for now.";
   case "EXPLORE_TEAM":return "Love it. Book us together and let's see where this goes.";

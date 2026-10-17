@@ -257,7 +257,9 @@ export function mountPersonaDesk(root:HTMLElement,
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
-       "Rivalry programme started":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
+       "Rivalry programme started":
+       item.followThroughKind==="MEDIATION_MATCH_COMPLETED"?
+       "Verified partnership recovery":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
@@ -269,6 +271,10 @@ export function mountPersonaDesk(root:HTMLElement,
      BACKSTAGE_LABELS[item.decision]));
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      backstageReply(item.decision,item.status)));
+    if(item.kind==="PARTNERSHIP"&&item.decision==="MEDIATE"&&
+     item.followThroughWeekIndex===null)
+     chat.append(el("small","ppw-backstage-promise",
+      "Mediation requires real follow-through. A strong completed tag match together can rebuild trust; you still author the outcome."));
     if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
      item.followThroughWeekIndex===null&&onOpenProgrammes){
      chat.append(button("Create rivalry in Programme Desk →",
