@@ -4,6 +4,7 @@ export interface StaffPort{
  load():Promise<StaffView>;
  save(input:{requestId:string;expectedRevision:number;
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
+  autoRenewSameTerms:boolean;
   permittedDays:number[];permittedVenueIds:string[]}):Promise<unknown>;
  back?():void;
 }
@@ -19,11 +20,12 @@ const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","S
  * guarded by the same verified actor and revision as booking decisions. */
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let view:StaffView|null=null,loading=false,saving=false,error="",notice="";
- let unfinished=false,logistics=false,days=new Set<number>(),
+ let unfinished=false,logistics=false,autoRenew=false,days=new Set<number>(),
   venues=new Set<string>(),requestId="";
  const changed=()=>{requestId="";};
  const hydrate=(next:StaffView)=>{
   view=next;unfinished=next.allowUnfinishedFallback;
+  autoRenew=next.autoRenewSameTerms;
   logistics=next.allowLogisticsFallback;days=new Set(next.permittedDays);
   venues=new Set(next.permittedVenueIds);
  };
@@ -45,6 +47,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    const result=await port.save({
     requestId:id,expectedRevision:view.worldRevision,
     allowUnfinishedFallback:unfinished,allowLogisticsFallback:logistics,
+    autoRenewSameTerms:autoRenew,
     permittedDays:logistics?[...days].sort():[],
     permittedVenueIds:logistics?[...venues].sort():[]
    });
@@ -87,6 +90,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     "Only when your show is missing or incomplete at the deadline. Staff never changes a player-scripted winner.",
     unfinished,v=>{unfinished=v;},!view.canEdit||saving));
   root.append(fallback);
+  const manager=el("section","ppw-staff-panel");
+  manager.append(el("h2","","Talent Manager"),
+   toggle("Offer same-terms renewals",
+    "Opt in to a renewal offer during the final three weeks of an eligible contract. The wrestler can still refuse.",
+    autoRenew,v=>{autoRenew=v;},!view.canEdit||saving));
+  manager.append(el("p","ppw-staff-muted",
+   "This never hires talent, changes terms or extends a contract without wrestler acceptance. Every proposal appears in your Contract Desk."));
+  root.append(manager);
   const support=el("section","ppw-staff-panel");
   support.append(el("h2","","Logistics authority"),
    toggle("Permit scheduling assistance",

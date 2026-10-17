@@ -17,10 +17,10 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
  const actor={pool:db.pool,actor:{playerId:player}};
  const request=(requestId:string,expectedRevision:number,extra:{
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
-  permittedDays:number[];permittedVenueIds:string[]
+  permittedDays:number[];permittedVenueIds:string[];autoRenewSameTerms?:boolean
  })=>dispatchCardRpc(actor,"setStaffContinuity",{
   worldId:world,promotionId:promotion,requestId,expectedRevision,...extra});
- const payload={allowUnfinishedFallback:true,
+ const payload={autoRenewSameTerms:true,allowUnfinishedFallback:true,
   allowLogisticsFallback:true,permittedDays:[2,5],permittedVenueIds:["main"]};
  try{
   await withWorldTransaction(db.pool,async tx=>{
@@ -43,6 +43,7 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
    playerId:player,promotionId:promotion});
   assert.equal(empty.allowUnfinishedFallback,false);
   assert.equal(empty.allowLogisticsFallback,false);
+  assert.equal(empty.autoRenewSameTerms,false);
   assert.deepEqual(empty.venues.map(v=>v.venueId),["main"]);
   assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:4500}).queryCount,2);
   assert.equal((await request("first",0,payload) as {status:string}).status,"APPLIED");
@@ -50,6 +51,7 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
   const visible=await readStaffWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:player});
   assert.equal(visible.allowUnfinishedFallback,true);
+  assert.equal(visible.autoRenewSameTerms,true);
   assert.equal(visible.allowLogisticsFallback,true);
   assert.deepEqual(visible.permittedDays,[2,5]);
   assert.deepEqual(visible.permittedVenueIds,["main"]);
@@ -60,12 +62,14 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
     requestId:"intruder",expectedRevision:1,...payload}),/controller/);
   await assert.rejects(request("bad-days",1,{...payload,
    permittedDays:[2,2]}),/Invalid logistics delegation/);
-  const off={allowUnfinishedFallback:false,allowLogisticsFallback:false,
+  const off={autoRenewSameTerms:false,
+   allowUnfinishedFallback:false,allowLogisticsFallback:false,
    permittedDays:[] as number[],permittedVenueIds:[] as string[]};
   assert.equal((await request("revoke",1,off) as {status:string}).status,"APPLIED");
   const changed=await readStaffWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:player});
   assert.equal(changed.allowLogisticsFallback,false);
+  assert.equal(changed.autoRenewSameTerms,false);
   assert.deepEqual(changed.permittedVenueIds,[]);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '2 seconds' WHERE world_id=$1",[world]));

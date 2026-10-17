@@ -38,10 +38,12 @@ test("Staff settings are submitted with actorless CSRF-protected browser identit
  await client("staff");
  await client("setStaffContinuity",{requestId:"staff-choice",expectedRevision:2,
   allowUnfinishedFallback:true,allowLogisticsFallback:true,
+  autoRenewSameTerms:true,
   permittedDays:[2,5],permittedVenueIds:["venue-1"]});
  assert.deepEqual(seen.map(p=>p.method),["staff","setStaffContinuity"]);
  assert.ok(seen.every(p=>p.playerId===undefined));
  assert.deepEqual(seen[1]!.permittedDays,[2,5]);
+ assert.equal(seen[1]!.autoRenewSameTerms,true);
 });
 test("Global Industry view is a private authenticated session read, not a rival draft fetch",async()=>{
  const bodies:Record<string,unknown>[]=[];
