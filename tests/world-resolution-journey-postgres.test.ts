@@ -161,12 +161,12 @@ test("two promotions resolve, certify and publish after restart without double c
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
+    "ppw_programme_resolved_activities",
     "ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_alignment_changes",
-    "ppw_programme_resolved_activities",
     "ppw_programme_match_activities","ppw_programmes","ppw_card_slots","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_venues","ppw_promotions","ppw_worlds",
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);

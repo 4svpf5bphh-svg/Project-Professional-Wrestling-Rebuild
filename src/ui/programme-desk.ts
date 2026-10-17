@@ -96,6 +96,21 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     "Week "+(p.startedWeekIndex===null?"—":Math.floor(p.startedWeekIndex/52)+1+
      " / "+(p.startedWeekIndex%52+1))+
     (p.championshipId?" · Championship rivalry":"")));
+   if(p.recentActivity.length){
+    const history=document.createElement("details");
+    const header=document.createElement("summary");
+    header.textContent="Recent show history · "+p.recentActivity.length;
+    history.append(header);
+    for(const activity of p.recentActivity){
+     const week=Math.floor(activity.weekIndex/52)+1;
+     const number=activity.weekIndex%52+1;
+     history.append(element("p","ppw-muted",
+      "Year "+week+" · Week "+number+" · "+
+      (activity.kind==="MATCH"?"Match":"Angle")+" · Crowd "+
+      Math.round(activity.crowdResponse)));
+    }
+    panel.append(history);
+   }
    panel.append(button("End programme",()=>{
     void run(()=>port.end({requestId:crypto.randomUUID(),
      expectedRevision:view!.worldRevision,programmeId:p.programmeId}),

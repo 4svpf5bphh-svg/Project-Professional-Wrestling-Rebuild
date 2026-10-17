@@ -78,6 +78,14 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   const names=new Map(roster.map(p=>[p.person_id,p.name]));
   const teamOptions=teams.filter(t=>t.person_ids.every(id=>names.has(id)));
   const teamNames=new Map(teamOptions.map(t=>[t.team_id,t.name]));
+  const recent=programmes.length?await tx.query<{programme_id:string;show_id:string;
+   slot_id:string;kind:string;week_index:number;crowd_response:number}>([
+   "SELECT programme_id,show_id,slot_id,kind,week_index,crowd_response",
+   "FROM ppw_programme_resolved_activities",
+   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
+   "ORDER BY week_index DESC,show_id,slot_id LIMIT 151"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+  if(recent.length>150)throw new Error("Programme history view limit exceeded");
   const programmesView=rows.map(p=>{
    const own=refs.filter(x=>x.programme_id===p.programme_id);
    const side=(which:"A"|"B")=>own.filter(x=>x.side===which).map(x=>({
@@ -88,6 +96,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    return {programmeId:p.programme_id,status:p.status,heat:p.heat,
     repetition:p.repetition,championshipId:p.championship_id,
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
+    recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
+     .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
+      kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response})),
     sideA:side("A"),sideB:side("B")};
   });
   return {year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
