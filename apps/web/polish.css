@@ -226,3 +226,27 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
  .ppw-tab{transition:none}
  #game *,#game *::before,#game *::after{scroll-behavior:auto!important}
 }
+
+
+/* Primary show action, with compact two-column office shortcuts on iPhone. */
+.ppw-home-main .ppw-home-featured{border-color:var(--ppw-outline-strong);
+ background:linear-gradient(112deg,#23576a,#16374e 66%,#143148);
+ box-shadow:0 8px 26px rgba(14,57,70,.19)}
+.ppw-home-main .ppw-home-featured .ppw-home-icon{background:#327386;color:#fff}
+.ppw-home-office{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ppw-home-office .ppw-home-tile{min-height:59px;padding:9px;gap:8px}
+.ppw-home-office .ppw-home-icon{height:30px;width:30px;border-radius:9px;font-size:17px}
+.ppw-home-office .ppw-home-tile-copy strong{font-size:13px;line-height:1.3}
+.ppw-home-office .ppw-home-tile-copy small{display:none}
+.ppw-home-office .ppw-home-arrow{font-size:16px}
+@media(min-width:700px){
+ .ppw-home-main .ppw-home-featured{grid-column:1/-1}
+ .ppw-home-office .ppw-home-tile-copy small{display:block}
+ .ppw-home-office .ppw-home-tile{min-height:68px;padding:12px}
+ .ppw-home-office .ppw-home-tile-copy strong{font-size:15px}
+}
+@media(max-width:345px){
+ .ppw-home-office .ppw-home-tile{gap:4px;padding:7px}
+ .ppw-home-office .ppw-home-icon{height:27px;width:27px;font-size:15px}
+ .ppw-home-office .ppw-home-arrow{font-size:14px}
+}
