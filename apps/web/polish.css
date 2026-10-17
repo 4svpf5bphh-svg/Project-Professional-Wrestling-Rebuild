@@ -82,11 +82,11 @@ body{min-height:100dvh;min-width:280px;
 body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 
 /* Every office desk uses the same canvas, panel edge, heading scale and rhythm. */
-#game:is(.ppw-editor,.ppw-home,.ppw-directory,.ppw-business,.ppw-staff,.ppw-industry,
- .ppw-planner,.ppw-world-calendar){max-width:1100px;margin:0 auto;
+#game > .ppw-workspace:is(.ppw-editor,.ppw-home,.ppw-directory,.ppw-business,
+ .ppw-staff,.ppw-industry,.ppw-planner,.ppw-world-calendar){max-width:1100px;margin:0 auto;
  padding:17px max(14px,env(safe-area-inset-left)) 112px;
  min-width:0;box-sizing:border-box}
-#game.ppw-editor{--ppw-background:#0b1824;background:transparent;--ppw-panel:#142536;
+#game > .ppw-workspace.ppw-editor{--ppw-background:#0b1824;background:transparent;--ppw-panel:#142536;
  --ppw-line:#334e60}
 #game :is(.ppw-home-head,.ppw-business-head,.ppw-staff-head,.ppw-industry-head,
  .ppw-directory-header,.ppw-planner-header,.ppw-calendar-header,.ppw-contract-header,
@@ -129,7 +129,7 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 #game :is(.ppw-persona-bubble,.ppw-directory-name,.ppw-business-line strong){overflow-wrap:anywhere}
 
 /* Results are the big show: preserve their bright Ringside editorial treatment. */
-#game.ppw-results{max-width:960px;padding-top:12px}
+#game > .ppw-workspace.ppw-results{max-width:960px;padding-top:12px}
 .ppw-result-hero,.ppw-archive-hero{border-color:var(--ppw-outline-strong)}
 .ppw-result-score{color:var(--ppw-green)}
 .ppw-broadcast-section-title{color:var(--ppw-cyan)}
@@ -143,8 +143,8 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
  background:linear-gradient(180deg,rgba(9,17,27,.96),#0b1b29);
  border:1px solid var(--ppw-outline-strong);border-radius:14px;
  box-shadow:0 -12px 28px rgba(0,0,0,.2)}
-#game.ppw-editor .ppw-card-list{gap:10px}
-#game.ppw-editor .ppw-card{border-color:var(--ppw-outline);background:#142434}
+#game > .ppw-workspace.ppw-editor .ppw-card-list{gap:10px}
+#game > .ppw-workspace.ppw-editor .ppw-card{border-color:var(--ppw-outline);background:#142434}
 
 /* Management secondary navigation: no collision with wrestler directory styles. */
 .ppw-more{max-width:760px;margin:0 auto;padding:18px 14px 116px}

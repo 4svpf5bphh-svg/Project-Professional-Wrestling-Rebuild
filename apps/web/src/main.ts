@@ -74,27 +74,29 @@ function renderSection(){
  }
  navigation.hidden=false;
  document.documentElement.dataset.ppwScreen=section;
- game.className="";
- game.replaceChildren();
+ // A fresh mounted viewport prevents slow replies from an abandoned desk
+ // replacing the next screen. No extra RPC or global store is involved.
+ const view=el("div","ppw-workspace");
+ game.replaceChildren(view);
  const back=()=>openSection("home");
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
-  case "home":mountWorldHomePage(game,scope,openSection);break;
-  case "planner":mountPlannerPage(game,scope,back);break;
-  case "roster":mountRosterPage(game,scope);break;
-  case "backstage":mountPersonaPage(game,scope);break;
-  case "market":mountTalentMarketPage(game,scope);break;
-  case "contracts":mountContractsPage(game,scope);break;
-  case "business":mountBusinessPage(game,scope);break;
-  case "staff":mountStaffPage(game,scope);break;
-  case "industry":mountIndustryPage(game,scope);break;
-  case "calendar":mountCalendarPage(game,scope,back);break;
-  case "results":void mountResultsArchivePage(game,scope,back);break;
-  case "programmes":mountProgrammePage(game,scope);break;
-  case "championships":void mountChampionshipsPage(game,scope,back);break;
-  case "teams":mountTagTeamsPage(game,scope);break;
-  case "stables":mountStablesPage(game,scope);break;
-  case "connections":mountWorkingConnectionsPage(game,scope);break;
+  case "home":mountWorldHomePage(view,scope,openSection);break;
+  case "planner":mountPlannerPage(view,scope,back);break;
+  case "roster":mountRosterPage(view,scope);break;
+  case "backstage":mountPersonaPage(view,scope);break;
+  case "market":mountTalentMarketPage(view,scope);break;
+  case "contracts":mountContractsPage(view,scope);break;
+  case "business":mountBusinessPage(view,scope);break;
+  case "staff":mountStaffPage(view,scope);break;
+  case "industry":mountIndustryPage(view,scope);break;
+  case "calendar":mountCalendarPage(view,scope,back);break;
+  case "results":void mountResultsArchivePage(view,scope,back);break;
+  case "programmes":mountProgrammePage(view,scope);break;
+  case "championships":void mountChampionshipsPage(view,scope,back);break;
+  case "teams":mountTagTeamsPage(view,scope);break;
+  case "stables":mountStablesPage(view,scope);break;
+  case "connections":mountWorkingConnectionsPage(view,scope);break;
   case "more":{
    const panel=el("section","ppw-more");
    panel.append(el("span","ppw-access-kicker","THE CONTROL ROOM"),
@@ -129,7 +131,7 @@ function renderSection(){
     }
     panel.append(heading,list);
    }
-   game.append(panel);break;
+   view.append(panel);break;
   }
  }
 }

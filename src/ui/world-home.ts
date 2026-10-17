@@ -23,7 +23,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    !Number.isFinite(world.serverEpoch))return;
   const origin=Date.now(),serverStart=world.serverEpoch;
   const tick=()=>{
-   if(!root.contains(node)){clearClock();return;}
+   if(!root.isConnected||!root.contains(node)){clearClock();return;}
    const seconds=Math.max(0,Math.ceil(world.nextLockEpoch-
     (serverStart+(Date.now()-origin)/1000)));
    if(seconds===0){node.textContent="Lock deadline reached · refresh World";

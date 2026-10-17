@@ -145,3 +145,39 @@ test("verified player can join, claim and reach World without bypassing session 
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
  expect(mutated).toEqual(["/api/join","/api/claim"]);
 });
+
+test("slow abandoned results cannot overwrite the next mobile workspace",async({page})=>{
+ let releaseShow!:()=>void;
+ const gate=new Promise<void>(resolve=>{releaseShow=resolve;});
+ let showStarted!:()=>void;
+ const requested=new Promise<void>(resolve=>{showStarted=resolve;});
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const p=route.request().postDataJSON();
+  if(p.method==="resultsArchive")return route.fulfill({json:{
+   items:[{showId:"show-one",year:1,week:4,
+    matchCount:2,angleCount:1,crowdResponse:72,showName:"Saturday Spectacle"}],
+   nextCursor:null
+  }});
+  if(p.method==="results"){
+   showStarted();
+   await gate;
+   return route.fulfill({json:{bad:"incomplete receipt"}});
+  }
+  return route.fulfill({json:p.method==="overview"?overview:{}});
+ });
+ await page.goto("/#/results");
+ await expect(page.getByRole("button",{name:/Saturday Spectacle/})).toBeVisible();
+ await page.getByRole("button",{name:/Saturday Spectacle/}).click();
+ await requested;
+ const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ await nav.getByRole("button",{name:"More"}).click();
+ await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ releaseShow();
+ await page.waitForTimeout(250);
+ await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await expect(page.locator("#game > .ppw-workspace")).toHaveCount(1);
+ await expect(page.locator("#game .ppw-archive-hero")).toHaveCount(0);
+ expect(await page.evaluate(()=>
+  document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
