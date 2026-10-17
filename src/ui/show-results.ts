@@ -4,6 +4,7 @@
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
+import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
 
@@ -55,6 +56,23 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   metric(String(show.angleCount),"ANGLES"),
   metric(String(pulse.hotMoments),"HOT MOMENTS"));
  append(header,pulseRow);
+ const editorial=writeFinalBellEditorial(show);
+ const feature=node("section","ppw-final-bell");
+ append(feature,node("span","ppw-eyebrow",editorial.eyebrow),
+  node("h2","ppw-final-bell-headline",editorial.headline));
+ for(const paragraph of editorial.paragraphs)
+  append(feature,node("p","ppw-final-bell-paragraph",paragraph));
+ if(editorial.standoutSlotId){
+  const jump=document.createElement("button");jump.type="button";
+  jump.className="ppw-final-bell-jump";jump.textContent="Read the standout match ↗";
+  jump.onclick=()=>{
+   setFilter("ALL");
+   const selected=storyLinks.get(editorial.standoutSlotId!);
+   if(selected instanceof HTMLDetailsElement)selected.open=true;
+   selected?.scrollIntoView({behavior:"smooth",block:"center"});
+  };
+  append(feature,jump);
+ }
  const highlights=node("section","ppw-broadcast-highlights");
  const featured=showBroadcastHighlights(show.entries);
  const storyLinks=new Map<string,HTMLElement>();
@@ -153,7 +171,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
- root.replaceChildren(header,...(featured.length?[highlights]:[]),timeline);
+ root.replaceChildren(header,feature,...(featured.length?[highlights]:[]),timeline);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

@@ -100,3 +100,18 @@
  letter-spacing:.02em;font-variant-numeric:tabular-nums}
 .ppw-result-minutes{font-size:11px;font-weight:850;color:#a5e2ce;
  letter-spacing:.08em}
+
+/* Full-show, non-AI editorial: a lead story, not an extra World read. */
+.ppw-final-bell{display:grid;gap:12px;padding:21px 19px;margin:0 0 23px;
+ border-radius:17px;background:linear-gradient(140deg,#152c3b,#0c1d29);
+ border:1px solid #385b6e}
+.ppw-final-bell-headline{font-size:clamp(20px,4.5vw,26px);
+ font-weight:880;line-height:1.2;letter-spacing:-.02em;margin:0;color:#f0f7f3}
+.ppw-final-bell-paragraph{font-size:14px;line-height:1.66;color:#cfe1e5;
+ margin:0}
+.ppw-final-bell-jump{font:inherit;font-size:13px;font-weight:800;
+ border:1px solid #4c8f91;background:#1c4b50;color:#b2ffea;
+ padding:10px 14px;border-radius:11px;min-height:44px;
+ cursor:pointer;justify-self:start;margin-top:4px}
+.ppw-final-bell-jump:focus-visible{outline:3px solid #7ce9d0;outline-offset:2px}
+@media(max-width:520px){.ppw-final-bell{padding:17px 15px}}
