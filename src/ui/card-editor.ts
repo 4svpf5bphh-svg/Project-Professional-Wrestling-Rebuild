@@ -25,6 +25,7 @@ export interface CardEditorPort{
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  openProgrammes?():void;
  openStables?():void;
+ stableChoices?():Promise<{stableId:string;name:string}[]>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
  const node=document.createElement(tag);
@@ -76,6 +77,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"] }|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let pendingRequestId:string|null=null;
+ let stableChoices:{stableId:string;name:string}[]|null=null;
+ let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
@@ -160,6 +163,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
   picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[]};
   render();void findTalent("");
+ }
+ async function loadStableChoices(){
+  if(stableChoices!==null||stableChoicesLoading||!port.stableChoices)return;
+  stableChoicesLoading=true;
+  try{stableChoices=await port.stableChoices();}
+  catch(e){error=errorText(e);stableChoices=[];}
+  finally{stableChoicesLoading=false;render();}
  }
  function editSegment(s:EditorSegment,patch:Partial<EditorSegment>){
   segments.set(s.slotId,{...s,...patch});markDirty();render();
@@ -271,7 +281,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Angle",selector(segment.kind,
      ANGLE_TYPES.map(x=>[x.value,x.label]),v=>{
       const kind=v as EditorSegment["kind"];
-      editSegment(segment,{kind,actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
+      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
+       void loadStableChoices();
+      editSegment(segment,{kind,
+       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
+        segment.stableId:null,
+       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
        targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?[]:segment.targets});
      },!mutable())));
     controls.append(field("Scripted outcome",selector(segment.outcome,
@@ -282,6 +297,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       [["","None"],...view.programmes.map(p=>[
        p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
       v=>editSegment(segment,{programmeId:v||null}),!mutable())));
+    if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(segment.kind)){
+     if(stableChoices===null&&!stableChoicesLoading)void loadStableChoices();
+     controls.append(field("Faction",selector(segment.stableId??"",
+      [["",stableChoicesLoading?"Loading stables…":"Choose a stable"],
+       ...(stableChoices??[]).map(x=>[x.stableId,x.name])],
+      v=>editSegment(segment,{stableId:v||null}),!mutable()||stableChoices===null)));
+    }
     if(segment.kind==="TURN")
      controls.append(field("New alignment",selector(segment.turnTargetAlignment??"",
       [["","No alignment change"],["FACE","Face"],["HEEL","Heel"],

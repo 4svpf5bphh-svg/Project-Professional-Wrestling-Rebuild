@@ -62,6 +62,8 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
  return {...s,[role]:[...s[role],{...person}]};
 }
 export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
+ if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)&&
+  !s.stableId)throw new Error("Choose a stable for this faction story");
  return buildBookedSegmentPayload({
   slotId:s.slotId,position:0,kind:s.kind,
   actorIds:s.actors.map(p=>p.personId),

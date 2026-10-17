@@ -42,3 +42,16 @@ test("programme selection belongs to angle editor and never alters scripted outc
  assert.equal(participant.programmeId,"rivalry");
  assert.equal(buildEditorSegment(participant).outcome,"HAPPENS");
 });
+
+test("new stable invitation keeps authored target and owned stable identity",()=>{
+ let s=newEditorSegment("invite","STABLE_INVITATION");
+ s=addSegmentPerson(s,"actors",{personId:"leader",contractId:"leader-deal"});
+ s=addSegmentPerson(s,"targets",{personId:"prospect",contractId:"prospect-deal"});
+ assert.throws(()=>buildEditorSegment(s),/Choose a stable/);
+ s.stableId="stable-one";
+ const p=buildEditorSegment(s);
+ assert.equal(p.stableId,"stable-one");
+ assert.equal(p.outcome,"HAPPENS");
+ assert.deepEqual(p.targetIds,["prospect"]);
+ assert.equal(restoreEditorSegment("invite",p).stableId,"stable-one");
+});

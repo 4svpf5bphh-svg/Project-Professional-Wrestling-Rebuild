@@ -21,6 +21,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
  const port:CardEditorPort={
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
+  stableChoices:()=>call("stableChoices"),
   save:({requestId,expectedRevision,matches,segments,runningOrder})=>
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
