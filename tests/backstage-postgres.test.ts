@@ -165,3 +165,67 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   }).finally(()=>db.close());
  }
 });
+
+test("Backstage character pitch uses four cold completed matches and never automatically edits gimmicks",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,3),key=randomUUID();
+ const worldId="gimmick-"+key,promotionId="promotion-"+key,
+  playerId="booker-"+key,personId="worker-"+key,contractId="contract-"+key;
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Creative concern",seed:64,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"The promotion",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[playerId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",
+    [worldId,playerId]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",
+    [worldId,playerId,promotionId]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,popularity,recognition,morale,momentum) VALUES($1,$2,'Wrestler','MEN',35,30,70,70)",
+    [worldId,personId]);
+   await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,52)",
+    [worldId,contractId,personId,promotionId]);
+   for(let week=3;week<=6;week++){
+    const showId="show-"+week+"-"+key,slotId="match-"+week+"-"+key;
+    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,$4)",
+     [worldId,showId,promotionId,week]);
+    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,1,'MATCH',$4::jsonb)",
+     [worldId,showId,slotId,JSON.stringify({participants:[{personId,contractId}]})]);
+    await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,$4,$5,42,'{}'::jsonb,$6)",
+     [worldId,promotionId,showId,week,"res-"+showId,"d".repeat(64)]);
+    await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,1,42,'PIN','A')",
+     [worldId,showId,slotId]);
+   }
+   await tx.query("UPDATE ppw_worlds SET week=10 WHERE world_id=$1",[worldId]);
+  });
+  assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,9))).newMessages,1);
+  const scope={worldId,promotionId,playerId};
+  const thread=(await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!;
+  assert.equal(thread.kind,"GIMMICK_PITCH");
+  assert.equal(thread.observedMatchShows,4);
+  assert.equal(thread.averageCrowd,42);
+  assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,9))).newMessages,0);
+  const command={worldId,promotionId,showId:"ignored",
+   conversationId:thread.conversationId,decision:"CONSIDER_REPACKAGE",
+   requestId:"gimmick-choice-"+key,expectedRevision:0};
+  const response=await dispatchCardRpc({pool:db.pool,actor:{playerId}},"backstageDecision",command);
+  assert.equal((response as {status:string}).status,"APPLIED");
+  const next=(await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!;
+  assert.equal(next.status,"ANSWERED");
+  assert.equal(next.decision,"CONSIDER_REPACKAGE");
+  const count=await withWorldTransaction(db.pool,tx=>tx.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM ppw_portable_personas WHERE world_id=$1",[worldId]));
+  assert.equal(Number(count[0]!.count),0,"Chat may not silently replace a wrestler's character");
+  assert.equal((await dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "backstageDecision",command) as {status:string}).status,"REPLAYED");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust",
+    "ppw_backstage_requests","ppw_completed_show_matches","ppw_completed_shows",
+    "ppw_card_slots","ppw_booking_drafts","ppw_ledger_events","ppw_command_receipts",
+    "ppw_contracts","ppw_people","ppw_promotion_controls","ppw_memberships",
+    "ppw_promotions"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
