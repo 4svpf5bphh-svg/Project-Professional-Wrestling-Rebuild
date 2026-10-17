@@ -119,15 +119,17 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "Financial outlook: "+promotion.financialDistress+
      ". Open Business to review cash and weekly commitments."));
   }
-  const main=el("section","ppw-home-group");
+  const main=el("section","ppw-home-group ppw-home-main");
   main.append(el("h3","","THE LOCKER ROOM"));
-  main.append(control("Show Planner","Calendar, venues and cards",port.planner,"▣"),
+  const book=control("Show Planner","Calendar, venues and cards",port.planner,"▣");
+  book.classList.add("ppw-home-featured");
+  main.append(book,
    control("My Roster","Singles, teams and factions",port.roster,"♟"),
    control("Talent Market","Scout and negotiate contracts",port.market,"◇"),
    control("Backstage","Wrestler conversations and creative proposals",port.backstage,"☷"),
    control("Results","Finished broadcasts and match reports",port.results,"★"));
   root.append(main);
-  const office=el("section","ppw-home-group");
+  const office=el("section","ppw-home-group ppw-home-office");
   office.append(el("h3","","THE CONTROL ROOM"));
   office.append(control("Contracts","Renewals, dates and pending offers",port.contracts,"▤"),
    control("Business","Finances and regional audiences",port.business,"◫"),
