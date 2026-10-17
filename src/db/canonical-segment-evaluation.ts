@@ -58,6 +58,26 @@ export async function readCanonicalSegmentContextsInTransaction(
   }
   validateAuthoredSegments(segments,allIds);
   if(!segments.length)return [];
+  // Only the submitted show's explicitly linked active stories affect its
+  // segment score. One indexed, capped read; never scan World-wide feuds.
+  const links=await tx.query<{slot_id:string;programme_id:string;heat:number|null;
+   repetition:number;status:string}>([
+   "SELECT a.slot_id,a.programme_id,p.heat,p.repetition,p.status",
+   "FROM ppw_programme_match_activities a",
+   "JOIN ppw_programmes p ON p.world_id=a.world_id",
+   "AND p.promotion_id=a.promotion_id AND p.programme_id=a.programme_id",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2 AND a.draft_id=$3",
+   "AND a.kind='SEGMENT' ORDER BY a.slot_id LIMIT 101",
+  ].join(" "),[scope.worldId,scope.promotionId,scope.showId]);
+  if(links.length>100)throw new Error("Excess segment programme links");
+  const linked=new Map<string,typeof links>();
+  const segmentIds=new Set(segments.map(x=>x.slotId));
+  for(const link of links){
+   if(!segmentIds.has(link.slot_id))
+    throw new Error("Orphan segment programme link");
+   const group=linked.get(link.slot_id)??[];
+   group.push(link);linked.set(link.slot_id,group);
+  }
   const people=await tx.query<{person_id:string;name:string;popularity:number|null;
    presentation:number|null;momentum:number|null}>(
    "SELECT person_id,name,popularity,presentation,momentum FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
@@ -73,8 +93,17 @@ export async function readCanonicalSegmentContextsInTransaction(
     return {personId:id,name:p.name,popularity:p.popularity,
      presentation:p.presentation,momentum:p.momentum};
    }),
-   // No invented storyline history: neutral baseline until programme and
-   // repetition projections are migrated into the World resolver.
-   storylineHeat:50,repetitionCount:0,
+   // Unknown historical heat remains neutral; known active heat and
+   // repetition are not silently discarded.
+   storylineHeat:(()=>{
+    const active=(linked.get(segment.slotId)??[])
+     .filter(x=>x.status==="ACTIVE"&&x.heat!==null);
+    return active.length?active.reduce((n,x)=>n+x.heat!,0)/active.length:50;
+   })(),
+   repetitionCount:(()=>{
+    const active=(linked.get(segment.slotId)??[]).filter(x=>x.status==="ACTIVE");
+    return active.length?Math.floor(
+     active.reduce((n,x)=>n+x.repetition,0)/active.length):0;
+   })(),
   }));
 }

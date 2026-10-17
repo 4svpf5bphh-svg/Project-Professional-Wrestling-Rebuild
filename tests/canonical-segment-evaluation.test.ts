@@ -11,6 +11,7 @@ function fake(payload:unknown,phase="RESOLVING"){
    if(sql.includes("FROM ppw_booking_drafts"))return [{draft_id:"s"}] as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [{slot_id:"angle",position:1,
     kind:"SEGMENT",payload}] as unknown as T[];
+   if(sql.includes("FROM ppw_programme_match_activities"))return [] as T[];
    if(sql.includes("FROM ppw_people"))return [{person_id:"a",popularity:60,
     presentation:70,momentum:50}] as unknown as T[];
    throw new Error("Unexpected SQL");
