@@ -55,11 +55,41 @@ test("original PPW stable formation, ownership, roster limits, historic joins, d
   await assert.rejects(createStable(db.pool,{...scope,requestId:"double",
    expectedRevision:1,name:"Second Stable",personIds:people.slice(1,4)}));
   assert.equal((await readStableWorkspace(db.pool,scope)).worldRevision,1);
+  // A completed stable invitation is a pending authored roster CHOICE, not
+  // automatic membership. The same submitted outcome survives World storage.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query([
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,",
+    "resolution_id,crowd_response,receipt_json,receipt_digest)",
+    "VALUES($1,$2,$3,1,1,$4,80,$5::jsonb,$6)"
+   ].join(" "),[worldId,promotionId,"show-"+id,"resolution-"+id,
+    JSON.stringify({worldId,promotionId,showId:"show-"+id,year:1,week:1,
+     resolutionId:"resolution-"+id,crowdResponse:80,matches:[],
+     segments:[{slotId:"invite",position:0,kind:"STABLE_INVITATION",
+      outcome:"HAPPENS",crowdResponse:80}]}),
+    "a".repeat(64)]);
+   await tx.query([
+    "INSERT INTO ppw_completed_show_segments(world_id,show_id,slot_id,position,",
+    "kind,authored_outcome,crowd_response,story_json)",
+    "VALUES($1,$2,'invite',0,'STABLE_INVITATION','HAPPENS',80,$3::jsonb)"
+   ].join(" "),[worldId,"show-"+id,JSON.stringify({
+    slotId:"invite",position:0,kind:"STABLE_INVITATION",outcome:"HAPPENS",
+    stableId,headline:"Invitation accepted",summary:"The prospect agrees to join.",
+    actorIds:[people[0]!],targetIds:[people[3]!],
+    intent:"STABLE_INVITATION_OCCURRED"})]);
+  });
+  view=await readStableWorkspace(db.pool,scope);
+  assert.deepEqual(view.storyFollowThrough.map(t=>[t.personId,t.action,t.status]),
+   [[people[3]!,"ADD","READY"]]);
+  assert.equal(view.stables[0]!.currentMembers.length,3,
+   "The World must never override a player's stable roster");
   const add=await addStableMember(db.pool,{...scope,requestId:"join",expectedRevision:1,
    stableId,personId:people[3]!});
   assert.equal(add.status,"APPLIED");
   view=await readStableWorkspace(db.pool,scope);
   assert.equal(view.stables[0]!.currentMembers.length,4);
+  assert.equal(view.storyFollowThrough.length,0,
+   "The scripted invitation is satisfied only after explicit member command");
   assert.equal(view.roster.find(p=>p.personId===people[3])?.stableId,stableId);
   const remove=await removeStableMember(db.pool,{...scope,requestId:"exit",
    expectedRevision:2,stableId,personId:people[1]!});
@@ -99,6 +129,7 @@ test("original PPW stable formation, ownership, roster limits, historic joins, d
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
+    "ppw_completed_show_segments","ppw_completed_shows",
     "ppw_stable_memberships","ppw_stables","ppw_contracts","ppw_people",
     "ppw_promotion_controls","ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
