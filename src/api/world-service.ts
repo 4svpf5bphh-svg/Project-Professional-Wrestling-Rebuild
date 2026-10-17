@@ -1,5 +1,8 @@
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readStableWorkspace,createStable,addStableMember,removeStableMember,disbandStable,
+ type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
+ from "../db/stable-workspace.js";
 import {readProgrammeWorkspace,startProgramme,endProgramme,
  type StartProgrammeInput,type EndProgrammeInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
@@ -236,4 +239,36 @@ export async function endProgrammeAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return endProgramme(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Original stables belong to one verified promotion, never client actor JSON. */
+export async function stableWorkspaceAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readStableWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function createStableAsActor(context:WorldApiContext,
+ input:Omit<CreateStableInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createStable(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function addStableMemberAsActor(context:WorldApiContext,
+ input:Omit<ChangeStableInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return addStableMember(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function removeStableMemberAsActor(context:WorldApiContext,
+ input:Omit<ChangeStableInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return removeStableMember(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function disbandStableAsActor(context:WorldApiContext,
+ input:Omit<DisbandStableInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return disbandStable(context.pool,{...input,playerId:context.actor.playerId});
 }

@@ -1,5 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
+import {stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
+ removeStableMemberAsActor,disbandStableAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
  completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -12,6 +14,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
  if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);
  if(method==="talent"){
@@ -27,6 +30,21 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="createStable"){
+  if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
+   p.personIds.some(x=>typeof x!=="string"))
+   throw new Error("Invalid stable founders");
+  return createStableAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,name:p.name,personIds:p.personIds as string[]});
+ }
+ if(method==="addStableMember"||method==="removeStableMember"){
+  const input={worldId,promotionId,requestId,expectedRevision,
+   stableId:id("stableId"),personId:id("personId")};
+  return method==="addStableMember"?
+   addStableMemberAsActor(context,input):removeStableMemberAsActor(context,input);
+ }
+ if(method==="disbandStable")return disbandStableAsActor(context,{
+  worldId,promotionId,requestId,expectedRevision,stableId:id("stableId")});
  if(method==="startProgramme"){
   const check=(v:unknown):v is {kind:"PERSON"|"TEAM";refId:string}[]=>
    Array.isArray(v)&&v.length>0&&v.length<=2&&v.every(x=>
