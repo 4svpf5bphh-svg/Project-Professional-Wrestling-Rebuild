@@ -1,0 +1,30 @@
+/** Browser transport for the authenticated PPW booking and results surface.
+ * The hosting app supplies a CSRF token from the verified session.
+ * Neither the actor identity nor World state comes from browser payloads.
+ */
+export interface CardSessionScope {
+ worldId:string;promotionId:string;showId:string;csrfToken:string;
+}
+export function createCardClient(scope:CardSessionScope,
+ transport:typeof fetch=fetch){
+ if(!scope||!["worldId","promotionId","showId","csrfToken"].every(k=>{
+  const value=scope[k as keyof CardSessionScope];
+  return typeof value==="string"&&value.trim().length>0&&value.length<=200;
+ }))throw new Error("Authenticated booking session required");
+ const {worldId,promotionId,showId,csrfToken}=scope;
+ return async function call(method:string,extra:Record<string,unknown>={}){
+  if(!["load","talent","save","ready","results"].includes(method))
+   throw new Error("Unknown card action");
+  const response=await transport("/api/card",{
+   method:"POST",credentials:"same-origin",
+   headers:{"content-type":"application/json","x-ppw-csrf":csrfToken},
+   body:JSON.stringify({worldId,promotionId,showId,...extra,method}),
+  });
+  if(!response.ok)throw new Error(response.status===409?
+   "The World changed. Reload and review your card.":
+   response.status===401?"Please sign in again":
+   response.status===403?"Booking session expired. Refresh and sign in again.":
+   "Booking request failed");
+  return response.json();
+ };
+}
