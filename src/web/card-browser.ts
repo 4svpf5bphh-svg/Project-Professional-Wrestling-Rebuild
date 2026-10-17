@@ -4,6 +4,8 @@ import {mountShowResults} from "../ui/show-results.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
+import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
+import "../ui/persona-desk.css";
 import "../ui/working-connections.css";
 import "../ui/stable-desk.css";
 import "../ui/programme-desk.css";
@@ -29,6 +31,12 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
   openProgrammes:()=>{openProgrammeDesk();},
+  openStables:()=>mountStableDesk(root,stablePort(call),
+   ()=>mountCardEditor(root,port)),
+  openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
+   ()=>mountCardEditor(root,port)),
+  openPersona:()=>mountPersonaDesk(root,personaPort(call),
+   ()=>mountCardEditor(root,port)),
  };
  return mountCardEditor(root,port);
 }
@@ -86,4 +94,16 @@ function workingPort(call:ReturnType<typeof createCardClient>):WorkingConnection
 /** The Roster > Singles / Working Connections page, without draft writes. */
 export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
  return mountWorkingConnections(root,workingPort(createCardClient(scope)));
+}
+
+function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
+ return {
+  load:personId=>call("persona",personId?{personId}:{}),
+  request:({personId,gimmickId,requestId,expectedRevision})=>
+   call("requestPersona",{personId,gimmickId,requestId,expectedRevision}),
+ };
+}
+/** Direct wrestler-directory route; display never edits a booked card. */
+export function mountPersonaPage(root:HTMLElement,scope:Scope){
+ return mountPersonaDesk(root,personaPort(createCardClient(scope)));
 }

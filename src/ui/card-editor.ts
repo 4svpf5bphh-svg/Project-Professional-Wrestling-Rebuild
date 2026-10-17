@@ -26,6 +26,7 @@ export interface CardEditorPort{
  openProgrammes?():void;
  openStables?():void;
  openWorkingConnections?():void;
+ openPersona?():void;
  stableChoices?():Promise<{stableId:string;name:string}[]>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
@@ -260,6 +261,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(port.openWorkingConnections)
    toolbar.append(button("Working connections",
     ()=>port.openWorkingConnections?.(),dirty||saving));
+  if(port.openPersona)
+   toolbar.append(button("Wrestler identities",()=>port.openPersona?.(),dirty||saving));
   root.append(toolbar);
   const list=el("section","ppw-card-list");
   for(const [i,slotId] of order.entries()){

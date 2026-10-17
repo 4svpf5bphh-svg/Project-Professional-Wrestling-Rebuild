@@ -29,3 +29,12 @@ scripted outcomes. No production deployment or scheduled World Lock during devel
 ## Verified working partnerships
 
 World Lock records only completed 2v2 teammate pairs. Two good shows in twelve weeks can develop professional familiarity and trust, on an eight-week cooldown. Three verified poor shows can strain **established** confidence, but a scripted rivalry, loss, attack or faction turn never invents personal dislike. Relationship changes are auditable and global to the wrestler, regardless of which promotion they worked for. All reads/writes are indexed and bounded.
+
+## Portable wrestler-owned identity
+Original PPW's complete 643-person move/gimmick editorial roster and alternate
+persona references are static application data. Current persona, negotiations
+and past eras are indexed per wrestler in PostgreSQL. Changes require signed
+roster authority, the wrestler's independent consent, and a 12-week cooldown;
+another human promotion's active contract blocks unilateral repackaging.
+Personal character choice does not rewrite the match results or finishing moves.
+The new mobile wrestler directory shows those distinctions explicitly.
