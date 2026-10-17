@@ -149,6 +149,7 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   if(pane==="PROFILE")return;
   const chat=el("section","ppw-persona-chat");
+  chat.setAttribute("aria-label","Conversation with "+view.personName);
   chat.append(el("h2","",view.personName+" · private conversation"),
    el("p","ppw-muted",
     "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
@@ -175,7 +176,8 @@ export function mountPersonaDesk(root:HTMLElement,
      "I'd rather keep the character that I've built.");
    chat.append(out,response);
   }
-  if(answer)chat.append(el("div","ppw-persona-bubble ppw-persona-in",answer));
+  if(answer){const reply=el("div","ppw-persona-bubble ppw-persona-in",answer);
+   reply.setAttribute("role","status");chat.append(reply);}
   const now=(view.worldYear-1)*52+view.worldWeek-1;
   const cooldown=view.nextPitchWeek>now;
   if(cooldown)chat.append(el("p","ppw-muted",
