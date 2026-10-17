@@ -68,7 +68,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    WHERE c.world_id=$1 AND p.lifecycle='ACTIVE'
     AND (c.year,c.week)>=($2::integer,$3::integer)
     AND (c.year,c.week)<=($4::integer,$5::integer)
-   ORDER BY c.year DESC,c.week DESC,c.show_day DESC NULLS LAST,
+   ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,
     c.show_id DESC LIMIT 25`,window);
   return {worldName:clock.world_name,year:clock.year,week:clock.week,
    phase:clock.phase,nextLockEpoch:Number(clock.next_lock_epoch),

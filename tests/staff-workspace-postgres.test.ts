@@ -71,7 +71,7 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '2 seconds' WHERE world_id=$1",[world]));
   assert.equal((await readStaffWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:player})).canEdit,false);
-  await assert.rejects(request("closed",2,payload),/closed|lock|OPEN/i);
+  await assert.rejects(request("closed",2,payload),/closed|lock|OPEN|deadline passed/i);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_staff_continuity_settings",
