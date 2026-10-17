@@ -1,0 +1,13 @@
+.ppw-pair-hero{padding:12px 0 20px}
+.ppw-pair-hero h1{font-size:30px;margin:8px 0}
+.ppw-pair-create,.ppw-pair-card{background:#102837;border:1px solid #315b68;
+ border-radius:14px;padding:15px;margin:12px 0}
+.ppw-pair-create h2,.ppw-pair-list h2{font-size:19px;margin:5px 0 14px}
+.ppw-pair-create input,.ppw-pair-create select{box-sizing:border-box;display:block;
+ width:100%;background:#0c2030;color:#f1f7f8;border:1px solid #45707e;
+ border-radius:10px;padding:12px;margin:9px 0;font-size:16px;min-height:44px}
+.ppw-pair-button{min-height:44px;padding:10px 14px;background:#173c48;color:#fff;
+ border:1px solid #547a83;border-radius:10px}
+.ppw-pair-button:disabled{opacity:.5}
+.ppw-pair-card strong{font-size:18px;color:#f2d999}
+.ppw-pair-card p{margin:7px 0 0}
