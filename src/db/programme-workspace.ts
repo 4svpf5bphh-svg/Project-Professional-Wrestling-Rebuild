@@ -65,9 +65,13 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "FROM ppw_tag_teams t JOIN ppw_tag_team_members m",
    "ON m.world_id=t.world_id AND m.team_id=t.team_id AND m.active",
    "WHERE t.world_id=$1 AND t.status='ACTIVE'",
-   "GROUP BY t.team_id,t.name HAVING count(*) BETWEEN 2 AND 5",
+   "AND m.person_id=ANY($2::text[])",
+   "GROUP BY t.world_id,t.team_id,t.name HAVING count(*) BETWEEN 2 AND 5",
+   "AND count(*)=(SELECT count(*) FROM ppw_tag_team_members whole",
+   "WHERE whole.world_id=t.world_id AND whole.team_id=t.team_id",
+   "AND whole.active)",
    "ORDER BY t.name,t.team_id LIMIT 151"
-  ].join(" "),[scope.worldId]);
+  ].join(" "),[scope.worldId,roster.map(x=>x.person_id)]);
   if(teams.length>150)throw new Error("Too many tag teams for programme editor");
   const championships=await tx.query<{championship_id:string;name:string;division:string}>([
    "SELECT championship_id,name,division FROM ppw_championships",
