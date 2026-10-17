@@ -28,3 +28,16 @@ test("Premium recurring series may share a week with a single A/B show",()=>{
  assert.throws(()=>validateSchedule([{...flagship!,role:"PREMIUM"}]),/mixed/);
  assert.throws(()=>validateSchedule([premium!]),/flagship/);
 });
+
+test("Original WWE/AEW calendar identities alternate A/B TV with annual crown PPVs",()=>{
+ const wwe=defaults("WWE",1,4),aew=defaults("AEW",1,4);
+ assert.deepEqual(occurrences(wwe,0,4).map(w=>
+  w.shows.find(s=>s.eventType==="REGULAR")?.name),
+  ["Monday Night Raw","Friday Night SmackDown","Monday Night Raw","Friday Night SmackDown"]);
+ assert.deepEqual(occurrences(aew,0,4).map(w=>
+  w.shows.find(s=>s.eventType==="REGULAR")?.name),
+  ["AEW Dynamite","AEW Collision","AEW Dynamite","AEW Collision"]);
+ assert.ok(occurrences(wwe,13,1)[0]?.shows.some(s=>s.name==="WrestleMania"));
+ for(const brand of ["WWE","AEW","NJPW","NXT","TNA Wrestling","CMLL","ROH","STARDOM"])
+  validateSchedule(defaults(brand,1,4));
+});

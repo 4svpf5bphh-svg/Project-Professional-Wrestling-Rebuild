@@ -16,9 +16,57 @@ export function seriesDue(series:ShowSeries,index:number){
  return series.active&&index>=series.anchorWeek&&
   (index-series.anchorWeek)%series.cadenceWeeks===0;
 }
+/** Adapted from the original real-show-series roster. PPW compresses
+ * WWE/AEW A/B television into alternating weeks rather than two normal
+ * cards every week; special and crown PPVs retain separate identities.
+ */
+type Profile={regular:{name:string;role:"FLAGSHIP"|"SECONDARY";every:number;
+ anchor:number;importance:number}[];special:string;crown:string;crownImportance:number};
+const profiles:Record<string,Profile>={
+ WWE:{regular:[
+  {name:"Monday Night Raw",role:"FLAGSHIP",every:2,anchor:0,importance:76},
+  {name:"Friday Night SmackDown",role:"SECONDARY",every:2,anchor:1,importance:75}],
+  special:"WWE Premium Live Event",crown:"WrestleMania",crownImportance:100},
+ AEW:{regular:[
+  {name:"AEW Dynamite",role:"FLAGSHIP",every:2,anchor:0,importance:72},
+  {name:"AEW Collision",role:"SECONDARY",every:2,anchor:1,importance:66}],
+  special:"AEW PPV",crown:"AEW All In",crownImportance:97},
+ NJPW:{regular:[{name:"NJPW Road Series",role:"FLAGSHIP",every:1,anchor:0,importance:68}],
+  special:"NJPW Major Event",crown:"Wrestle Kingdom",crownImportance:99},
+ NXT:{regular:[{name:"NXT",role:"FLAGSHIP",every:1,anchor:0,importance:63}],
+  special:"NXT Special Event",crown:"NXT Stand & Deliver",crownImportance:93},
+ TNA:{regular:[{name:"TNA iMPACT!",role:"FLAGSHIP",every:1,anchor:0,importance:64}],
+  special:"TNA Special Event",crown:"Bound For Glory",crownImportance:94},
+ CMLL:{regular:[{name:"CMLL Super Viernes",role:"FLAGSHIP",every:1,anchor:0,importance:66}],
+  special:"CMLL Major Event",crown:"CMLL Anniversary Show",crownImportance:96},
+ ROH:{regular:[{name:"ROH Wrestling",role:"FLAGSHIP",every:1,anchor:0,importance:60}],
+  special:"ROH Special Event",crown:"ROH Supercard of Honor",crownImportance:92},
+ STARDOM:{regular:[{name:"STARDOM Live",role:"FLAGSHIP",every:1,anchor:0,importance:64}],
+  special:"STARDOM Major Event",crown:"STARDOM Dream Queendom",crownImportance:95}
+};
 export function defaults(name:string,cadence:number,majorInterval:number):ShowSeries[]{
  const regular=Math.max(1,Math.floor(cadence||1));
  const interval=Math.max(2,Math.floor(majorInterval||4));
+ const profile=profiles[name.trim().toUpperCase()==="TNA WRESTLING"?
+  "TNA":name.trim().toUpperCase()];
+ if(profile){
+  const specialEvery=regular*interval;
+  return [
+   ...profile.regular.map((show,i):ShowSeries=>({
+    seriesId:i===0?"calendar-default-flagship":"calendar-default-secondary-"+i,
+    name:show.name,role:show.role,eventType:"REGULAR",
+    cadenceWeeks:regular*show.every,anchorWeek:show.anchor,
+    importance:show.importance,active:true
+   })),
+   {seriesId:"calendar-default-special",name:profile.special,role:"SPECIAL",
+    eventType:"MAJOR",cadenceWeeks:specialEvery,
+    anchorWeek:Math.min(specialEvery-1,regular*3),
+    importance:87,active:true},
+   {seriesId:"calendar-default-crown",name:profile.crown,role:"PREMIUM",
+    eventType:"MAJOR",cadenceWeeks:52,anchorWeek:13,
+    importance:profile.crownImportance,active:true}
+  ];
+ }
  return [
   {seriesId:"calendar-default-flagship",name:name+" Flagship",role:"FLAGSHIP",
    eventType:"REGULAR",cadenceWeeks:regular,anchorWeek:0,importance:58,active:true},
