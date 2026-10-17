@@ -1,5 +1,46 @@
 # Project Professional Wrestling — Rebuild
 
+> **Current rebuild checkpoint — 17 October 2026**  
+> The feature-by-feature narrative below is a historical implementation log, not a
+> statement of which features remain unimplemented. For the latest integrated
+> surface and remaining production gates, use this checkpoint instead.
+>
+> **Verified:** `main` commit `73937cec6a70be04be327c355b5568dd9053c0ce`,
+> GitHub Actions **CI #627 passed**. This includes the real PostgreSQL
+> regression suite, migrations 0001–0068 and an integrated 643-wrestler mobile
+> read-budget test. No production deployment or World reset has been performed.
+>
+> **Integrated gameplay and screens:** World Lock and resolution, signed contract
+> offers/renewals/appearances, emergency and AI show booking, named PPVs alongside
+> weekly TV, multi-person matches, segments, championships, programmes, portable
+> identities, wrestler relationships and private Backstage conversations. Mobile
+> Home, Planner/Calendar, Card Editor, Results/Archive, Roster/Market, Contracts,
+> Business, Staff (including opt-in same-terms Talent Manager) and Industry are
+> implemented as typed browser components with authenticated RPC services.
+> The Home clock is server-calibrated, and read screens use bounded indexed
+> queries rather than full World snapshots.
+>
+> **Still required before player playtesting:** Compose those screens and the
+> `handleCardHttp` boundary into a deployable, authenticated Next.js/PWA host;
+> configure its real player session/CSRF flow, private database connection and
+> an explicit existing World/promotion selection route. The original Next.js
+> application is a reference, not a safe plug-and-play auth system (its
+> Alpha environment selected a player ID server-side). **Do not silently
+> substitute unauthenticated test identity.** Then run the joined-up browser
+> smoke tests, multiplayer World Lock recovery test and measured real Neon
+> usage before a consciously authorized preview deployment.
+>
+> **Release safety:** Do not deploy or reset the World, connect the original
+> production Neon project, or enable any Vercel cron yet. When approved later,
+> test the one-week World Lock cron **once**, then disable it during playtesting
+> until scheduled advancement is explicitly desired.
+>
+> **Local verification:** `npm run typecheck`, `npm test`, and
+> `npm run test:postgres` against disposable PostgreSQL with all numbered
+> migrations applied. GitHub Actions performs the full migrated PostgreSQL
+> pipeline automatically.
+
+
 This repository is the clean-room rebuild of Project Professional Wrestling (PPW), a persistent multiplayer wrestling management game.
 
 ## Source of truth and preservation
