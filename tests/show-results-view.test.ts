@@ -73,6 +73,7 @@ test("Ringside broadcast derives billing, intent and title-contest context from 
  assert.deepEqual(match.matchContext?.winnerNames,["Star"]);
  assert.equal(match.matchContext?.intent,"TECHNICAL");
  assert.equal(match.matchContext?.plannedMinutes,18);
+ assert.equal(match.matchContext?.isMainEvent,true);
  assert.equal(match.matchContext?.championshipContested,true);
  assert.equal(match.crowdResponse,85);
  assert.equal(calls(),5); // Single evidence+fallout read adds only one bounded query.

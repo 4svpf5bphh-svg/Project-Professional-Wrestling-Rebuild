@@ -102,8 +102,9 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
   // The non-AI report uses immutable facts from the exact resolved simulation.
   const reports=await withWorldTransaction(db.pool,tx=>tx.query<{
    match_id:string;rating_stars:string;execution_quality:string;actual_minutes:number;
-   injuries_json:unknown}>(`
-   SELECT match_id,rating_stars,execution_quality,actual_minutes,injuries_json
+   chemistry_modifier:string;finish_cheater_person_id:string|null;injuries_json:unknown}>(`
+   SELECT match_id,rating_stars,execution_quality,actual_minutes,
+    chemistry_modifier,finish_cheater_person_id,injuries_json
    FROM ppw_completed_match_report_facts
    WHERE world_id=$1 AND show_id=$2`,[worldId,showId]));
   assert.equal(reports.length,1,"Retry must not duplicate match report facts");
@@ -114,6 +115,9 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
    projection.projections[0]!.score.executionQuality);
   assert.equal(reports[0]!.actual_minutes,
    projection.projections[0]!.score.actualLengthMinutes);
+  assert.equal(Number(reports[0]!.chemistry_modifier),
+   projection.projections[0]!.chemistryModifier);
+  assert.equal(reports[0]!.finish_cheater_person_id,null);
   assert.deepEqual(reports[0]!.injuries_json,
    tag!.result.injury.injuries.map(injury=>({
     person_id:injury.personId,injury_severity:injury.severity,
