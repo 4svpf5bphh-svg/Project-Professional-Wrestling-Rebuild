@@ -1,36 +1,85 @@
-.ppw-result-hero{padding:24px 18px;border-radius:20px;
- background:radial-gradient(circle at 85% 15%,#1d4250,#0b1d2a 55%,#09121c);
- border:1px solid #305c6a;margin:8px 0 20px}
-.ppw-result-hero h1{font-size:25px;margin:7px 0}
-.ppw-result-score{font-size:72px;font-weight:900;line-height:1.05;
- letter-spacing:-.05em;color:#55e8c0}
-.ppw-result-timeline{display:grid;gap:13px}
-.ppw-result-entry{background:#111d2b;border:1px solid #314455;border-radius:16px;
- padding:16px 15px;border-left:4px solid #e0a44d}
-.ppw-result-angle{border-left-color:#55e8c0}
-.ppw-result-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ppw-result-meter{font-weight:850;color:#eef3ff;font-size:15px}
-.ppw-result-entry h2{font-size:19px;line-height:1.25;margin:14px 0 9px}
-.ppw-result-entry p{color:#bccbdb;line-height:1.55;margin:0 0 13px}
-.ppw-result-outcome{font-size:11px;font-weight:850;letter-spacing:.07em;
- border:1px solid #3d5366;border-radius:8px;padding:5px 8px;color:#e6ebf5}
-
-/* The original broadcast's two distinct cover stories, not duplicated noise. */
-.ppw-broadcast-highlights{display:grid;grid-template-columns:1fr 1fr;
- gap:12px;margin:0 0 25px}
-.ppw-broadcast-section-title{grid-column:1/-1;font-size:14px;text-transform:uppercase;
- letter-spacing:.09em;color:#c7d8eb;margin:0 0 1px}
-.ppw-broadcast-headline{background:linear-gradient(145deg,#172e40,#10212e);
- border:1px solid #316776;border-radius:14px;padding:14px;min-width:0}
-.ppw-broadcast-headline strong{display:block;font-size:16px;line-height:1.3;margin:10px 0 6px}
-.ppw-broadcast-headline p{font-size:12px;color:#c3d3e1;margin:0;line-height:1.45}
-@media(max-width:520px){.ppw-broadcast-highlights{grid-template-columns:1fr}}
-
-/* Wrestling broadcast nameplates: compact enough for iPhone results. */
-.ppw-result-personas{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}
+/* PPW Ringside: the score sets the mood, while booking truths remain readable. */
+.ppw-results{--ring-bg:#0b1520;--ring-line:#31465a;--ring-ink:#f0f5fb;
+ --ring-muted:#b5c5d6;--ring-accent:#57e5ba;color:var(--ring-ink)}
+.ppw-result-hero{background:radial-gradient(ellipse at 80% 5%,#26576a 0%,#0d2537 56%,#09121d 100%);
+ border:1px solid #33596d;border-radius:21px;padding:23px 19px 0;
+ margin:8px 0 22px;overflow:hidden}
+.ppw-result-hero.ppw-tone-flat{background:linear-gradient(140deg,#261c2a,#111d2d)}
+.ppw-result-hero.ppw-tone-red_hot{background:radial-gradient(ellipse at 80% 5%,#265e53,#0b2633 62%,#09121d)}
+.ppw-result-hero-main{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.ppw-result-title-wrap{min-width:0}
+.ppw-result-title-wrap h1{font-size:clamp(21px,5vw,31px);line-height:1.07;
+ letter-spacing:-.02em;margin:11px 0}
+.ppw-result-edition{color:#bdcedf;margin:0 0 14px;font-size:14px}
+.ppw-result-score-wrap{display:flex;flex-direction:column;text-align:center;flex-shrink:0}
+.ppw-result-score{font-weight:900;font-size:clamp(47px,14vw,76px);
+ letter-spacing:-.075em;line-height:1;color:#58f0c5;font-variant-numeric:tabular-nums}
+.ppw-result-score-label{font-size:10px;letter-spacing:.12em;color:#bcdfdb;
+ font-weight:800;margin-top:5px}
+.ppw-result-pulse{margin:17px -19px 0;background:#0a1624aa;
+ border-top:1px solid #315063;padding:13px 19px;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ppw-result-pulse-stat{display:flex;flex-direction:column;gap:2px}
+.ppw-result-pulse-stat strong{font-size:21px;font-variant-numeric:tabular-nums}
+.ppw-result-pulse-stat span{font-size:10px;color:#b9c9da;letter-spacing:.1em}
+.ppw-broadcast-highlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:11px;margin:0 0 25px}
+.ppw-broadcast-section-title{grid-column:1/-1;font-size:13px;letter-spacing:.1em;
+ color:#d1dfe9;margin:0 0 5px;text-transform:uppercase}
+.ppw-broadcast-headline{font:inherit;text-align:left;color:inherit;
+ background:linear-gradient(145deg,#193244,#102332);border:1px solid #335d70;
+ border-radius:15px;padding:17px 15px;min-width:0;cursor:pointer;
+ display:flex;flex-direction:column;gap:8px}
+.ppw-broadcast-headline strong{font-size:16px;line-height:1.3}
+.ppw-broadcast-headline p{font-size:13px;line-height:1.55;
+ color:#c4d4e0;margin:0;flex:1}
+.ppw-result-read{font-size:11px;color:#79e9ce;letter-spacing:.07em;font-weight:850;
+ margin-top:5px}
+.ppw-broadcast-headline:focus-visible,.ppw-result-filter:focus-visible,
+.ppw-result-entry summary:focus-visible{outline:3px solid #7ce8d4;outline-offset:3px}
+.ppw-result-timeline{display:grid;gap:12px}
+.ppw-result-filters{display:flex;gap:7px;flex-wrap:wrap;margin:-1px 0 5px}
+.ppw-result-filter{min-height:42px;border:1px solid #40576b;border-radius:30px;
+ background:#172636;color:#cbdae8;font:inherit;font-weight:750;
+ padding:9px 15px;cursor:pointer}
+.ppw-result-filter[aria-pressed="true"]{background:#b4f5df;color:#102836;
+ border-color:#b4f5df}
+.ppw-result-entry{border:1px solid var(--ring-line);background:#111f2d;
+ border-radius:17px;overflow:hidden;border-left:5px solid #e9ae59}
+.ppw-result-entry.ppw-result-angle{border-left-color:#5ed8bb}
+.ppw-result-entry.ppw-tone-red_hot{box-shadow:inset 0 1px 0 #6c7d77}
+.ppw-result-entry[hidden]{display:none}
+.ppw-result-entry summary{cursor:pointer;padding:15px;
+ list-style:none;display:grid;gap:9px}
+.ppw-result-entry summary::-webkit-details-marker{display:none}
+.ppw-result-entry summary::after{content:"Read report  +";font-size:11px;
+ letter-spacing:.05em;color:#83ebca;font-weight:800;justify-self:end}
+.ppw-result-entry[open] summary::after{content:"Close report  −"}
+.ppw-result-meta{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ppw-result-category{font-size:11px;letter-spacing:.08em;color:#9fe7cf;font-weight:850}
+.ppw-result-match .ppw-result-category{color:#e5bc7e}
+.ppw-result-meter{font-size:15px;font-weight:850;font-variant-numeric:tabular-nums}
+.ppw-result-headline{font-size:19px;font-weight:840;line-height:1.28}
+.ppw-result-trail{font-size:11px;letter-spacing:.06em;color:#a9bacc}
+.ppw-result-story{border-top:1px solid #30465b;padding:16px;display:grid;gap:10px;
+ background:linear-gradient(155deg,#142535,#101e2c)}
+.ppw-result-story p{margin:0;font-size:14px;line-height:1.6}
+.ppw-result-recap{color:#e3eaf2}
+.ppw-result-reaction{color:#bfd4e4;font-style:italic}
+.ppw-result-verdict{padding:11px 12px;border-radius:10px;
+ border-left:3px solid #72d9be;background:#1b3541;color:#ecfaf5;font-weight:750}
+.ppw-result-personas{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .ppw-result-persona{display:flex;flex-direction:column;gap:3px;min-width:110px;
- padding:9px 12px;border-radius:11px;background:#1b3345;
- border:1px solid #315569}
+ padding:9px 11px;border-radius:11px;background:#1c3043;border:1px solid #35546a}
 .ppw-result-persona strong{font-size:13px}
-.ppw-result-persona span{font-size:12px;color:#b6d4e5;text-transform:capitalize}
-.ppw-result-persona small{font-size:11px;color:#a1b6c2;text-transform:capitalize}
+.ppw-result-persona span{font-size:12px;color:#b5d2e4}
+.ppw-result-persona small{font-size:11px;color:#a9bac9}
+@media(max-width:580px){
+ .ppw-broadcast-highlights{grid-template-columns:1fr}
+ .ppw-result-hero{padding:18px 14px 0}
+ .ppw-result-pulse{margin-left:-14px;margin-right:-14px;padding:12px 14px}
+ .ppw-result-score{font-size:clamp(42px,14vw,63px)}
+ .ppw-result-entry summary{padding:14px}
+ .ppw-result-headline{font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){.ppw-results *{scroll-behavior:auto!important}}

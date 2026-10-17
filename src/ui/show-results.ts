@@ -1,59 +1,144 @@
-/** PPW mobile show broadcast; all finishes and outcomes come from the server receipt. */
-import type {CompletedShowView} from "../db/show-results-view.js";
+/** PPW Ringside: a results broadcast, not a spreadsheet of resolution receipts.
+ * Player-authored finishes remain sovereign; editorial copy is derived from
+ * verified scores, written stories and the original locked card.
+ */
+import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
+import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
+ from "../domain/show-broadcast-review.js";
+
+type ResultFilter="ALL"|"MATCH"|"SEGMENT";
+const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
+ .replace(/(^|\s)\S/g,x=>x.toUpperCase());
+function node(tag:string,className:string,content=""):HTMLElement{
+ const el=document.createElement(tag);el.className=className;
+ if(content)el.textContent=content;return el;
+}
+function append(parent:HTMLElement,...children:HTMLElement[]){
+ parent.append(...children);return parent;
+}
+function showError(root:HTMLElement,e:unknown){
+ root.replaceChildren(node("p","ppw-alert ppw-error",
+  e instanceof Error?e.message:"Unable to load show results"));
+}
+function entryIcon(entry:ShowResultEntry){
+ if(entry.type==="MATCH")return "◈";
+ if(entry.outcome==="REFUSED")return "×";
+ if(entry.outcome==="INTERRUPTED")return "↯";
+ return "✦";
+}
+/** One async bounded read. Filtering, opening reviews and highlights never refetch. */
 export async function mountShowResults(root:HTMLElement,port:{load():Promise<CompletedShowView>}){
  root.classList.add("ppw-editor","ppw-results");
- const node=(tag:string,className:string,content:string)=>{
-  const el=document.createElement(tag);el.className=className;el.textContent=content;return el;};
- root.replaceChildren(node("p","ppw-muted","Loading the broadcast…"));
+ root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  const header=node("header","ppw-result-hero","");
-  header.append(node("span","ppw-eyebrow","PPW • SHOW BROADCAST"),
-   node("h1","","Year "+show.year+" · Week "+show.week),
-   node("div","ppw-result-score",String(Math.round(show.crowdResponse))),
-   node("p","ppw-muted","Audience reaction / 100 · "+show.matchCount+
-    " matches · "+show.angleCount+" angles"));
-  const highlights=node("section","ppw-broadcast-highlights","");
-  const featured=showBroadcastHighlights(show.entries);
-  if(featured.length){
-   highlights.append(node("h2","ppw-broadcast-section-title","Tonight's headlines"));
-   for(const item of featured){
-    const card=node("article","ppw-broadcast-headline","");
-    card.append(node("span","ppw-eyebrow",item.category),
-     node("strong","",item.headline),node("p","",item.detail));
-    highlights.append(card);
-   }
+  renderBroadcast(root,show);
+ }catch(e){showError(root,e);}
+}
+export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
+ const pulse=broadcastShowPulse(show.entries);
+ const tone=broadcastTone(show.crowdResponse);
+ const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
+ const titleWrap=node("div","ppw-result-title-wrap");
+ append(titleWrap,
+  node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"),
+  node("h1","","THE NIGHT IN REVIEW"),
+  node("p","ppw-result-edition","Year "+show.year+" · Week "+show.week));
+ const scoreWrap=node("div","ppw-result-score-wrap");
+ append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
+  node("span","ppw-result-score-label","CROWD / 100"));
+ append(header,append(node("div","ppw-result-hero-main"),titleWrap,scoreWrap));
+ const pulseRow=node("div","ppw-result-pulse");
+ append(pulseRow,
+  metric(String(show.matchCount),"MATCHES"),
+  metric(String(show.angleCount),"ANGLES"),
+  metric(String(pulse.hotMoments),"HOT MOMENTS"));
+ append(header,pulseRow);
+ const highlights=node("section","ppw-broadcast-highlights");
+ const featured=showBroadcastHighlights(show.entries);
+ const storyLinks=new Map<string,HTMLElement>();
+ if(featured.length){
+  append(highlights,node("h2","ppw-broadcast-section-title","TONIGHT'S HEADLINES"));
+  for(const item of featured){
+   const button=document.createElement("button");
+   button.type="button";button.className="ppw-broadcast-headline";
+   append(button,node("span","ppw-eyebrow",item.category),
+    node("strong","",item.headline),node("p","",item.detail),
+    node("span","ppw-result-read","READ THE STORY  ↗"));
+   button.addEventListener("click",()=>{
+    setFilter("ALL");
+    const target=storyLinks.get(item.slotId);
+    if(target instanceof HTMLDetailsElement)target.open=true;
+    target?.scrollIntoView({behavior:"smooth",block:"center"});
+   });
+   append(highlights,button);
   }
-  const timeline=node("section","ppw-result-timeline","");
-  timeline.append(node("h2","ppw-broadcast-section-title","The full card"));
-  for(const entry of show.entries){
-   const card=node("article","ppw-result-entry "+(entry.type==="MATCH"?
-    "ppw-result-match":"ppw-result-angle"),"");
-   const top=node("div","ppw-result-meta","");
-   top.append(node("span","ppw-eyebrow",
-    "SEGMENT "+(entry.position+1)+"  •  "+entry.type),
-    node("span","ppw-result-meter",Math.round(entry.crowdResponse)+" / 100"));
-   card.append(top,node("h2","",entry.headline),
-    node("p","",entry.summary),
-    node("span","ppw-result-outcome",entry.outcome.replaceAll("_"," ")));
-   if(entry.performerIdentities?.length){
-    const profiles=node("div","ppw-result-personas","");
-    for(const person of entry.performerIdentities){
-     const tag=node("div","ppw-result-persona","");
-     tag.append(node("strong","",person.ringName),
-      node("span","",person.character.replaceAll("_"," ")));
-     if(person.style)tag.append(node("small","",
-      person.style.replaceAll("_"," ")));
-     profiles.append(tag);
-    }
-    card.append(profiles);
-   }
-   timeline.append(card);
-  }
-  root.replaceChildren(header,highlights,timeline);
- }catch(e){
-  root.replaceChildren(node("p","ppw-alert ppw-error",
-   e instanceof Error?e.message:"Unable to load show results"));
  }
+ const timeline=node("section","ppw-result-timeline");
+ append(timeline,node("h2","ppw-broadcast-section-title","THE FULL CARD"));
+ const controls=node("div","ppw-result-filters");
+ const filters:Record<ResultFilter,HTMLButtonElement>={} as Record<ResultFilter,HTMLButtonElement>;
+ const entries:({element:HTMLElement;type:ShowResultEntry["type"]})[]=[];
+ let activeFilter:ResultFilter="ALL";
+ const setFilter=(filter:ResultFilter)=>{
+  activeFilter=filter;
+  for(const key of Object.keys(filters) as ResultFilter[]){
+   filters[key].setAttribute("aria-pressed",String(key===filter));
+  }
+  for(const row of entries)row.element.hidden=filter!=="ALL"&&row.type!==filter;
+ };
+ for(const [filter,buttonText] of [["ALL","Full show"],["MATCH","Matches"],["SEGMENT","Angles"]] as const){
+  const button=document.createElement("button");button.type="button";
+  button.className="ppw-result-filter";button.textContent=buttonText;
+  button.addEventListener("click",()=>setFilter(filter));
+  filters[filter]=button;
+  append(controls,button);
+ }
+ append(timeline,controls);
+ if(!show.entries.length)append(timeline,node("p","ppw-muted","There are no recorded card items."));
+ for(const [index,entry] of show.entries.entries()){
+  const review=reviewCompletedEntry(entry,show.showId);
+  const details=document.createElement("details");
+  details.className="ppw-result-entry "+(entry.type==="MATCH"?
+   "ppw-result-match":"ppw-result-angle")+
+   " ppw-tone-"+review.tone.toLowerCase();
+  if(index===0)details.open=true;
+  const summary=document.createElement("summary");
+  const meta=node("span","ppw-result-meta");
+  append(meta,node("span","ppw-result-category",
+   entryIcon(entry)+"  "+review.tag.toUpperCase()),
+   node("span","ppw-result-meter",String(Math.round(entry.crowdResponse))+" / 100"));
+  const heading=node("span","ppw-result-headline",review.headline);
+  const trail=node("span","ppw-result-trail",
+   "CARD "+String(entry.position+1)+"  ·  "+label(entry.outcome));
+  append(summary,meta,heading,trail);
+  append(details,summary);
+  const body=node("div","ppw-result-story");
+  append(body,node("p","ppw-result-recap",review.recap),
+   node("p","ppw-result-reaction",review.reaction),
+   node("p","ppw-result-verdict","RINGSIDE VERDICT  /  "+review.verdict));
+  if(entry.performerIdentities?.length){
+   const profiles=node("div","ppw-result-personas");
+   for(const person of entry.performerIdentities){
+    const tag=node("div","ppw-result-persona");
+    append(tag,node("strong","",person.ringName),
+     node("span","",label(person.character)));
+    if(person.style)append(tag,node("small","",label(person.style)));
+    append(profiles,tag);
+   }
+   append(body,profiles);
+  }
+  append(details,body);
+  storyLinks.set(entry.slotId,details);
+  entries.push({element:details,type:entry.type});
+  append(timeline,details);
+ }
+ setFilter("ALL");
+ // Re-rendering the report is fully client-side; caller controls the show scope.
+ root.replaceChildren(header,...(featured.length?[highlights]:[]),timeline);
+}
+function metric(value:string,caption:string){
+ return append(node("div","ppw-result-pulse-stat"),
+  node("strong","",value),node("span","",caption));
 }
