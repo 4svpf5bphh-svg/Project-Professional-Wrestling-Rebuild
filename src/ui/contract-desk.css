@@ -1,0 +1,41 @@
+.ppw-contract-header h1{font-size:clamp(27px,7vw,37px);margin:7px 0}
+.ppw-contract-header{margin:12px 0 20px}
+.ppw-contract-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;margin:14px 0}
+.ppw-contract-metric{background:#112b37;border:1px solid #315d6a;
+ border-radius:12px;padding:13px;display:grid;gap:6px}
+.ppw-contract-metric span{font-size:10px;color:#aacbd5;letter-spacing:.08em}
+.ppw-contract-metric strong{font-size:21px;color:#f2d392;overflow-wrap:anywhere}
+.ppw-contract-button{min-height:44px;text-align:left;background:#163744;color:#f0f8fb;
+ border:1px solid #487180;border-radius:10px;padding:10px 12px}
+.ppw-contract-button:disabled{opacity:.45}
+.ppw-contract-inbox,.ppw-contract-pending{margin:16px 0}
+.ppw-contract-pending{background:#102b36;border:1px solid #426977;
+ border-radius:12px;padding:12px}
+.ppw-contract-pending summary{font-weight:700;cursor:pointer;min-height:30px}
+.ppw-contract-request{display:grid;grid-template-columns:minmax(0,1fr) auto;
+ align-items:center;gap:9px;border-top:1px solid #325361;padding:12px 0}
+.ppw-contract-request span{font-size:13px}
+.ppw-contract-filters{display:grid;grid-template-columns:1fr auto;gap:9px;margin:17px 0}
+.ppw-contract-filters input,.ppw-contract-filters select,.ppw-contract-date-action input{
+ background:#0d2530;color:#f5fcff;border:1px solid #456d7a;border-radius:9px;
+ padding:10px;min-height:44px;min-width:0;box-sizing:border-box;font-size:16px}
+.ppw-contract-card{background:#102837;border:1px solid #315b68;
+ border-radius:13px;margin:10px 0;overflow:hidden}
+.ppw-contract-card summary{cursor:pointer;padding:14px}
+.ppw-contract-heading{display:grid;gap:6px}
+.ppw-contract-heading strong{color:#edf6f9;font-size:17px}
+.ppw-contract-heading span{color:#a5c4ce;font-size:13px}
+.ppw-contract-heading small{font-size:10px;font-weight:800;letter-spacing:.09em}
+.ppw-contract-urgent{border-color:#97764c}
+.ppw-contract-danger{color:#efbc76}
+.ppw-contract-pending-label{color:#91bce1}
+.ppw-contract-details{border-top:1px solid #315b68;padding:12px 15px;
+ display:grid;gap:8px}
+.ppw-contract-details p{margin:0 0 4px}
+.ppw-contract-date-action{display:grid;gap:8px;border-top:1px solid #315b68;
+ padding-top:12px}
+.ppw-contract-date-action span{font-weight:700}
+.ppw-contract-date-action label{font-size:12px;color:#a5c4ce}
+@media(max-width:600px){.ppw-contract-filters{grid-template-columns:1fr}
+ .ppw-contract-request{grid-template-columns:1fr}}
