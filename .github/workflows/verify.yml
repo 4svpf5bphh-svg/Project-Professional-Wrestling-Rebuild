@@ -28,6 +28,10 @@ jobs:
       - run: npm run typecheck
       - name: Build iPhone-first PWA without publishing it
         run: npm run web:build
+      - name: Install Chromium for iPhone host testing
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated browser host smoke tests
+        run: npm run test:browser
       - run: npm test
       - name: Apply foundation schema to disposable PostgreSQL
         env:

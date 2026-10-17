@@ -179,11 +179,13 @@ test("two independent calendar identities can be planned for the same week with 
   const regular=await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
    showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"});
   assert.equal(regular.status,"APPLIED");
-  const ppv=await planShowWeek(db.pool,{...input,requestId:"ppv",expectedRevision:1,
+  // Verify the browser RPC preserves PPV name and booking class.
+  const ppv=await dispatchCardRpc({pool:db.pool,actor:{playerId}},"planShow",{
+   ...input,requestId:"ppv",expectedRevision:1,
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
    day:7,venueId:"arena-b"});
-  assert.equal(ppv.status,"APPLIED");
-  if(ppv.status!=="APPLIED")throw new Error("Expected completed premium booking");
+  assert.equal((ppv as {status:string}).status,"APPLIED");
+  if((ppv as {status:string}).status!=="APPLIED")throw new Error("Expected completed premium booking");
   const planned=await readSixWeekPlanner(db.pool,scope);
   assert.equal(planned.weeks[4]!.shows.length,2);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),

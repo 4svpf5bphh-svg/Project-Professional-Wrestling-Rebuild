@@ -112,14 +112,17 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    !["ACCESSIBLE","STANDARD","PREMIUM","PRESTIGE"].includes(p.ticketStrategy)||
    typeof p.eventType!=="string"||
    !["REGULAR","MAJOR"].includes(p.eventType)||
-   (p.draftId!==undefined&&typeof p.draftId!=="string"))
+   (p.draftId!==undefined&&typeof p.draftId!=="string")||
+   (p.showSeriesId!==undefined&&(typeof p.showSeriesId!=="string"||
+    p.showSeriesId.length===0||p.showSeriesId.length>200)))
    throw new Error("Invalid planner request");
   return planShowAsActor(context,{worldId,promotionId,requestId,expectedRevision,
    year:p.year as number,week:p.week as number,day:p.day as number,
    marketId:id("marketId"),venueId:id("venueId"),
    ticketStrategy:p.ticketStrategy as "ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE",
    eventType:p.eventType as "REGULAR"|"MAJOR",
-   ...(p.draftId===undefined?{}:{draftId:p.draftId as string})});
+   ...(p.draftId===undefined?{}:{draftId:p.draftId as string}),
+   ...(p.showSeriesId===undefined?{}:{showSeriesId:p.showSeriesId as string})});
  }
  if(method==="setStaffContinuity"){
   const fallback=p.allowUnfinishedFallback,logistics=p.allowLogisticsFallback;
