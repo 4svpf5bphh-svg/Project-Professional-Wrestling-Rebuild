@@ -7,6 +7,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {publishBackstageRequests,settleBackstagePromises} from "../src/db/backstage-conversations.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
+import {readContractDesk} from "../src/db/contract-desk-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Backstage featured-contract grievance requires four verified unfeatured matches",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
@@ -75,6 +76,25 @@ test("Backstage featured-contract grievance requires four verified unfeatured ma
   assert.equal(record!.assessment_reason,"UNFULFILLED_COMMITMENT");
   assert.equal((await read<{trust:number}>(
    "SELECT trust FROM ppw_backstage_promotion_trust WHERE world_id=$1",[worldId]))[0]!.trust,47);
+  // An invited conversation appears in Contract Desk as a reference to the
+  // durable message; talking neither renews nor alters a deal.
+  const talkId="contract-conversation-"+id;
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,person_id,kind,created_week_index) VALUES($1,$2,$3,$4,'CONTRACT',4)",
+   [worldId,talkId,promotionId,star]));
+  const discussion=await dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "backstageDecision",{worldId,promotionId,showId:"ignored",
+    requestId:"contract-talk-"+id,expectedRevision:1,
+    conversationId:talkId,decision:"EXPLORE_RENEWAL"});
+  assert.equal((discussion as {status:string}).status,"APPLIED");
+  const contractDesk=await readContractDesk(db.pool,worldId,playerId,promotionId);
+  assert.equal(contractDesk.roster[0]!.backstageContractConversationId,talkId);
+  assert.equal(contractDesk.summary.backstageContractDiscussions,1);
+  assert.equal(contractDesk.roster[0]!.status,"SIGNED");
+  assert.equal(contractDesk.roster[0]!.expiresWeekIndex,52);
+  assert.equal(contractDesk.summary.pendingRenewals,0);
+  await assert.rejects(readContractDesk(db.pool,worldId,"stranger",promotionId),
+   /access denied/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_backstage_thread_archives","ppw_backstage_promotion_trust","ppw_backstage_requests",

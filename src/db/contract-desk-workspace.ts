@@ -26,15 +26,24 @@ export async function readContractDesk(
    remaining_dates:number|null;expires_week_index:number;start_week_index:number;
    date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
    creative_control:string;role_expectation:string;
+   backstage_contract_request_id:string|null;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
-     c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation
+     c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
+     (SELECT request_id FROM ppw_backstage_requests r
+      WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
+        AND r.person_id=c.person_id AND r.kind='CONTRACT'
+        AND r.decision='EXPLORE_RENEWAL' AND r.status='ANSWERED'
+        AND r.responded_week_index BETWEEN greatest(0,$3-12) AND $3
+        AND r.created_week_index>=greatest(0,$3-26)
+      ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 1)
+       AS backstage_contract_request_id
    FROM ppw_contracts c JOIN ppw_people p
      ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'
    ORDER BY c.expires_week_index,p.name,c.contract_id LIMIT 200`,
-   [worldId,promotionId]);
+   [worldId,promotionId,currentWeekIndex]);
   const requests=await tx.query<{
    request_id:string;contract_id:string;person_id:string;
    additional_dates:number;status:string;created_week_index:number;
@@ -63,12 +72,14 @@ export async function readContractDesk(
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
-    pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId)};}),
+    pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
+    backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests,
    renewals,offers,
    summary:{
     signed:roster.length,expiringSoon:roster.filter(c=>c.expiringSoon).length,
     noDates:roster.filter(c=>c.reason==="NO_DATES").length,
+    backstageContractDiscussions:contracts.filter(c=>c.backstage_contract_request_id!==null).length,
     pendingNegotiations:requests.length,
     pendingRenewals:renewals.length,pendingOffers:offers.length,
     weeklyGuarantees:contracts.reduce((sum,c)=>sum+Number(c.weekly_guarantee),0),
