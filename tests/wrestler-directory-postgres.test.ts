@@ -101,6 +101,18 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"intruder"}},
    "submitContractOffer",{worldId:world,promotionId,requestId:"hijack",
     expectedRevision:3,personId:"person-87",terms}),/access denied/);
+  // Signed but not yet started is not an active roster appearance.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET start_week_index=10 WHERE world_id=$1 AND contract_id='contract-8'",
+   [world]));
+  const futureRoster=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",search:"Wrestler 8"});
+  assert.equal(futureRoster.people.some(p=>p.personId==="person-8"),false);
+  const futureMarket=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",search:"Wrestler 8"});
+  assert.equal(futureMarket.people[0]!.personId,"person-8");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals",

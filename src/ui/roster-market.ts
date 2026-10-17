@@ -167,7 +167,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["BUSINESS","Business"]
   ] as const){
    const b=btn(label,()=>{
-    if(kind==="ROSTER"||kind==="MARKET")pick({view:kind,availability:"ALL"});
+    if(kind==="ROSTER"||kind==="MARKET")
+     pick({view:kind,availability:"ALL",
+      sort:kind==="ROSTER"?"NAME":filter.sort?.startsWith("PAY_")?"NAME":filter.sort});
     else if(kind==="STAFF")port.openStaff?.();
     else if(kind==="INDUSTRY")port.openIndustry?.();
     else if(kind==="TEAMS")port.openTagTeams();
@@ -194,11 +196,17 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   controls.append(selection("Division",[
    ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]
   ] as const,filter.division??"ALL",division=>pick({division})));
-  controls.append(selection("Sort by",[
+  const sortOptions=filter.view==="ROSTER"?[
    ["NAME","Name"],["POPULARITY","Popularity"],
-   ["MOMENTUM","Momentum"],["VALUE","Estimated value: low first"],
-   ["PAY_LOW","Weekly pay: low first"],["PAY_HIGH","Weekly pay: high first"]
-  ] as const,filter.sort??"NAME",sort=>pick({sort})));
+   ["MOMENTUM","Momentum"],["PAY_LOW","Weekly pay: low first"],
+   ["PAY_HIGH","Weekly pay: high first"]
+  ] as const:[
+   ["NAME","Name"],["POPULARITY","Popularity"],
+   ["MOMENTUM","Momentum"],["VALUE","Estimated value: low first"]
+  ] as const;
+  controls.append(selection("Sort by",sortOptions,
+   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":"NAME",
+   sort=>pick({sort})));
   if(filter.view==="MARKET")controls.append(selection("Contract availability",[
    ["ALL","All wrestlers"],["APPROACHABLE","Eligible to approach"],
    ["FREE_AGENT","Free agents"]
