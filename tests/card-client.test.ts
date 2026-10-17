@@ -44,3 +44,15 @@ test("programme desk works through verified browser boundary",async()=>{
  await client("endProgramme",{requestId:"b",expectedRevision:3,programmeId:"p"});
  assert.deepEqual(events,["programmes","startProgramme","endProgramme"]);
 });
+
+test("verified browser sessions can open global wrestler working connections read-only",async()=>{
+ const recorded:string[]=[];
+ const client=createCardClient(scope,async(_url,options)=>{
+  const body=JSON.parse(String(options?.body));
+  recorded.push(body.method+":"+body.personId);
+  assert.equal(body.playerId,undefined);
+  return new Response(JSON.stringify({roster:[],connections:[]}),{status:200});
+ });
+ await client("workingConnections",{personId:"wrestler-1"});
+ assert.deepEqual(recorded,["workingConnections:wrestler-1"]);
+});
