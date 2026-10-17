@@ -1,0 +1,18 @@
+{
+  "name": "Project Professional Wrestling",
+  "short_name": "PPW",
+  "description": "Persistent shared-world wrestling management",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1522",
+  "theme_color": "#0c1522",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
