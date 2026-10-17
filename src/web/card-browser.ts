@@ -11,6 +11,9 @@ import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
 import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
+import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
+import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
+import "../ui/roster-market.css";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
@@ -48,6 +51,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),
   openContracts:()=>mountContractDesk(root,contractPort(call),()=>mountCardEditor(root,port)),
+  openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
+  openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
   openStables:()=>mountStableDesk(root,stablePort(call),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
@@ -81,6 +86,36 @@ function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort
    call("withdrawContractRenewal",{requestId,expectedRevision,proposalId}),
   withdrawOffer:({requestId,expectedRevision,offerId})=>
    call("withdrawContractOffer",{requestId,expectedRevision,offerId})};
+}
+function rosterMarketPort(root:HTMLElement,scope:Scope,
+ call:ReturnType<typeof createCardClient>):RosterMarketPort{
+ const open=(mode:DirectoryView)=>mountRosterMarket(root,
+  rosterMarketPort(root,scope,call),mode);
+ return {
+  load:(filter:DirectoryFilter)=>call("wrestlerDirectory",{filter}),
+  offer:({personId,requestId,expectedRevision,terms})=>
+   call("submitContractOffer",{personId,requestId,expectedRevision,terms}),
+  openContracts:()=>mountContractDesk(root,contractPort(call),
+   ()=>open("ROSTER")),
+  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),
+   ()=>open("ROSTER")),
+  openStables:()=>mountStableDesk(root,stablePort(call),
+   ()=>open("ROSTER")),
+  openWrestler:(personId:string)=>mountPersonaDesk(root,{
+   ...personaPort(call),load:()=>call("backstage",{personId})
+  },()=>open("ROSTER"),()=>mountProgrammePage(root,scope))
+ };
+}
+/** Independent roster and recruitment routes. The hosting app can mount them
+ * directly, while the card editor provides discoverable navigation.
+ */
+export function mountRosterPage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ return mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER");
+}
+export function mountTalentMarketPage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ return mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET");
 }
 /** Contracts are promotion-private and require a real verified session. */
 export function mountContractsPage(root:HTMLElement,scope:Scope){

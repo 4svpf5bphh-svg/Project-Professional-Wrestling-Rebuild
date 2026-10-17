@@ -1,6 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
- plannerAsActor,planShowAsActor,contractDeskAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
+ plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,
+ submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
@@ -18,7 +19,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar"].includes(method)?
+ const showId=["championships","championshipHistory","planner","planShow","calendar","saveCalendar","archiveCalendar","wrestlerDirectory","submitContractOffer"].includes(method)?
   "":id("showId");
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
@@ -34,6 +35,13 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    cursor as {startWeekIndex:number;reignId:string}|null);
  }
  if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
+ if(method==="wrestlerDirectory"){
+  const f=p.filter;
+  if(!f||typeof f!=="object"||Array.isArray(f))
+   throw new Error("Invalid directory filter");
+  return wrestlerDirectoryAsActor(context,worldId,promotionId,
+   f as import("../db/wrestler-directory.js").DirectoryFilter);
+ }
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
  if(method==="tagTeams")return tagTeamWorkspaceAsActor(context,worldId,promotionId);
@@ -106,6 +114,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    ticketStrategy:p.ticketStrategy as "ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE",
    eventType:p.eventType as "REGULAR"|"MAJOR",
    ...(p.draftId===undefined?{}:{draftId:p.draftId as string})});
+ }
+ if(method==="submitContractOffer"){
+  const terms=p.terms;
+  if(!terms||typeof terms!=="object"||Array.isArray(terms))
+   throw new Error("Invalid contract offer");
+  return submitContractOfferAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,personId:id("personId"),
+   terms:terms as import("../domain/contract-economics.js").OfferTerms});
  }
  if(method==="requestContractDates"){
   if(!Number.isSafeInteger(p.additionalDates)||typeof p.additionalDates!=="number"||
