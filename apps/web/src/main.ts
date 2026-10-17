@@ -58,7 +58,7 @@ function renderSection(){
   promotionId:session.overview.promotion.id,showId:"",
   csrfToken:session.csrfToken};
  navigation.replaceChildren();
- for(const item of HOST_SECTIONS.filter(x=>x.primary)){
+ for(const item of HOST_SECTIONS.filter(x=>"primary" in x&&x.primary)){
   const tab=button(item.glyph+" "+item.label,()=>openSection(item.id));
   tab.className="ppw-tab"+(item.id===section?" ppw-tab-active":"");
   tab.setAttribute("aria-label",item.label);
@@ -91,7 +91,7 @@ function renderSection(){
    panel.append(el("span","ppw-access-kicker","PROMOTION OFFICE"),
     el("h1","","Every corner of your World"),
     el("p","ppw-access-muted","Open a desk without advancing the World."));
-   for(const item of HOST_SECTIONS.filter(x=>!x.primary)){
+   for(const item of HOST_SECTIONS.filter(x=>!("primary" in x&&x.primary))){
     const link=button(item.glyph+"  "+item.label,()=>openSection(item.id));
     link.className="ppw-directory-link";panel.append(link);
    }
