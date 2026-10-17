@@ -115,3 +115,17 @@
  cursor:pointer;justify-self:start;margin-top:4px}
 .ppw-final-bell-jump:focus-visible{outline:3px solid #7ce9d0;outline-offset:2px}
 @media(max-width:520px){.ppw-final-bell{padding:17px 15px}}
+
+/* Finish replay stays factual and in front of the editorial review. */
+.ppw-finish-replay{display:grid;gap:7px;border-radius:13px;
+ background:#112f34;border:1px solid #397a6c;border-left:5px solid #70e5b8;
+ padding:13px 15px;margin-bottom:4px}
+.ppw-finish-eyebrow{font-size:10px;letter-spacing:.12em;color:#96e9c7;font-weight:900}
+.ppw-finish-title{font-size:16px;letter-spacing:.025em;color:#f5faf3}
+.ppw-finish-description{color:#d8e5e3;font-size:13px;line-height:1.56}
+.ppw-finish-winner{font-weight:900;color:#b4f5d7;font-size:12px;letter-spacing:.035em}
+.ppw-finish-dirty{background:#34291f;border-color:#725a3b;border-left-color:#efb569}
+.ppw-finish-medical{background:#3b2430;border-color:#834956;border-left-color:#eb8588}
+.ppw-finish-elimination{background:#252846;border-color:#535ba1;border-left-color:#9eaaff}
+.ppw-finish-unknown{background:#283242;border-color:#4f5c67;border-left-color:#a6b7c2}
+.ppw-finish-replay p{margin:0}

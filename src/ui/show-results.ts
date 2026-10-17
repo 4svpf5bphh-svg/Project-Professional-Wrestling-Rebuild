@@ -5,6 +5,7 @@
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
+import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
 
@@ -143,6 +144,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   append(summary,meta,heading,trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
+  const finish=replayVerifiedMatchFinish(entry);
+  if(finish){
+   const replay=node("div","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
+   append(replay,node("span","ppw-finish-eyebrow","◉ FINISH REPLAY"),
+    node("strong","ppw-finish-title",finish.title),
+    node("p","ppw-finish-description",finish.description));
+   if(finish.winnerLabel)
+    append(replay,node("p","ppw-finish-winner","OFFICIAL WINNER: "+finish.winnerLabel));
+   append(body,replay);
+  }
   for(const paragraph of review.paragraphs)
    append(body,node("p","ppw-result-recap",paragraph));
   if(review.bulletins.length){
