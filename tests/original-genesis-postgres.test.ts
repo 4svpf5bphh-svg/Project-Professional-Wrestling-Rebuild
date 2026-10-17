@@ -158,7 +158,8 @@ test("Concurrent bootstraps cannot create duplicate or partial Genesis Worlds",{
      (SELECT count(*)::integer FROM ppw_people WHERE world_id=$1) AS people,
      (SELECT count(*)::integer FROM ppw_contracts WHERE world_id=$1) AS contracts,
      (SELECT count(*)::integer FROM ppw_promotions WHERE world_id=$1) AS promotions,
-     (SELECT count(*)::integer FROM ppw_venues WHERE world_id=$1) AS venues`,[world]));
+     (SELECT count(*)::integer FROM ppw_venues WHERE world_id=$1) AS venues,
+     (SELECT count(*)::integer FROM ppw_championships WHERE world_id=$1) AS championships`,[world]));
   assert.deepEqual(counts[0],{worlds:1,people:15,contracts:15,promotions:8,venues:16,championships:16});
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
