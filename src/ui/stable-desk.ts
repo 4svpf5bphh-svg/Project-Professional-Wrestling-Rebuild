@@ -66,6 +66,29 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
   if(!view){root.append(btn(working?"Loading…":"Retry",()=>void load(),working));return;}
+  if(view.storyFollowThrough.length){
+   const follow=el("section","ppw-stable-followthrough");
+   follow.append(el("h2","","Storyline follow-through"));
+   follow.append(el("p","ppw-muted",
+    "These angles already happened on-screen. You choose when to change the roster."));
+   for(const task of view.storyFollowThrough){
+    const card=el("article","ppw-stable-task");
+    const desc=task.action==="ADD"?"Invite into":"Remove from";
+    card.append(el("strong","",task.personName+" · "+desc+" "+task.stableName),
+     el("p","ppw-muted","Show week "+(task.weekIndex%52+1)+
+      " · "+(task.status==="READY"?"Ready for your decision":
+      task.status.replaceAll("_"," ").toLowerCase())));
+    if(task.status==="READY"&&view.canEdit){
+     card.append(btn(task.action==="ADD"?"Add to stable":"Confirm departure",
+      ()=>void run(()=>task.action==="ADD"?
+       port.add({...request(),stableId:task.stableId,personId:task.personId}):
+       port.remove({...request(),stableId:task.stableId,personId:task.personId}),
+      "Storyline roster change confirmed"),working));
+    }
+    follow.append(card);
+   }
+   root.append(follow);
+  }
   const active=view.stables.filter(s=>s.status==="ACTIVE");
   const list=el("section","ppw-stable-list");
   list.append(el("h2","","Your factions · "+active.length));

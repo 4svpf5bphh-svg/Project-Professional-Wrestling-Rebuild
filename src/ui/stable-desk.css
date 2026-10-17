@@ -23,3 +23,9 @@
 .ppw-stable-pick span{overflow:hidden;text-overflow:ellipsis;font-size:14px}
 @media(max-width:520px){.ppw-stable-picker{grid-template-columns:1fr}
  .ppw-stable-join{grid-template-columns:1fr}}
+
+.ppw-stable-followthrough{margin:20px 0 26px;border-top:1px solid #356a76;padding-top:16px}
+.ppw-stable-task{background:#112e36;border:1px solid #347978;border-radius:12px;
+ padding:13px;margin:10px 0}
+.ppw-stable-task strong{display:block;font-size:15px}
+.ppw-stable-task p{margin:8px 0;line-height:1.45}
