@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+import {completedShowAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -10,6 +10,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId"),showId=id("showId");
+ if(method==="results")return completedShowAsActor(context,worldId,promotionId,showId);
  if(method==="load")return showCardEditorAsActor(context,worldId,promotionId,showId);
  if(method==="talent"){
   const search=p.search??"";

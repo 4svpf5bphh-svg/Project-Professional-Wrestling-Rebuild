@@ -1,4 +1,5 @@
 import type { TransactionPool } from "../db/transaction.js";
+import {readCompletedShowView} from "../db/show-results-view.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -204,4 +205,13 @@ export async function saveCardEditorAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.showId,"show");
  return saveShowCardMatches(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Authenticated, read-only final show broadcast. */
+export async function completedShowAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,showId:string){
+ validate(context.actor.playerId,"actor");
+ validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
+ return readCompletedShowView(context.pool,{worldId,promotionId,showId,
+  playerId:context.actor.playerId});
 }

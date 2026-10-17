@@ -1,0 +1,16 @@
+.ppw-result-hero{padding:24px 18px;border-radius:20px;
+ background:radial-gradient(circle at 85% 15%,#1d4250,#0b1d2a 55%,#09121c);
+ border:1px solid #305c6a;margin:8px 0 20px}
+.ppw-result-hero h1{font-size:25px;margin:7px 0}
+.ppw-result-score{font-size:72px;font-weight:900;line-height:1.05;
+ letter-spacing:-.05em;color:#55e8c0}
+.ppw-result-timeline{display:grid;gap:13px}
+.ppw-result-entry{background:#111d2b;border:1px solid #314455;border-radius:16px;
+ padding:16px 15px;border-left:4px solid #e0a44d}
+.ppw-result-angle{border-left-color:#55e8c0}
+.ppw-result-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ppw-result-meter{font-weight:850;color:#eef3ff;font-size:15px}
+.ppw-result-entry h2{font-size:19px;line-height:1.25;margin:14px 0 9px}
+.ppw-result-entry p{color:#bccbdb;line-height:1.55;margin:0 0 13px}
+.ppw-result-outcome{font-size:11px;font-weight:850;letter-spacing:.07em;
+ border:1px solid #3d5366;border-radius:8px;padding:5px 8px;color:#e6ebf5}
