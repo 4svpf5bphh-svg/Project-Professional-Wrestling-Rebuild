@@ -101,3 +101,19 @@ test("dirty-finish actors are validated against actual booked participants",()=>
  }]} as unknown as Input;
  assert.throws(()=>deriveCompletedMatchReportFacts(wrongFinish),/Invalid verified/);
 });
+
+test("medical stoppage supersedes an originally booked dirty actor in completed facts",()=>{
+ const dirty={...projection,projections:[{
+  slotId:"dirty",score:{criticalRatingStars:3,executionQuality:67,actualLengthMinutes:12},
+  chemistryModifier:1.5,personIds:["a","b"],finishCheaterId:"b",
+  plannedFinish:"DISQUALIFICATION",
+  interferencePreview:{actualFinish:"INJURY_STOPPAGE"},
+  injuryPreview:{injuries:[{personId:"a",severity:"MAJOR",weeksOut:8}]},
+  tag:null,multi:null,
+ }]} as unknown as Input;
+ assert.equal(deriveCompletedMatchReportFacts(dirty)[0]!.finishCheaterPersonId,null);
+ const completed={...dirty,projections:[{
+  ...dirty.projections[0]!,interferencePreview:{actualFinish:"DISQUALIFICATION"},
+ }]} as unknown as Input;
+ assert.equal(deriveCompletedMatchReportFacts(completed)[0]!.finishCheaterPersonId,"b");
+});
