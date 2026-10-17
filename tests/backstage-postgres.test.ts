@@ -70,6 +70,8 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
      {personId:inbox.personId,contractId:inbox.personId===one?contract1:contract2}]})]);
    await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,1,$4,60,'{}'::jsonb,$5)",
     [worldId,promotionId,showId,"res-"+id,"a".repeat(64)]);
+   await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,1,60,'PIN','A')",
+    [worldId,showId,"slot-"+id]);
   });
   const settled=await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,2));
   assert.equal(settled.settled,2);

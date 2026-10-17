@@ -93,10 +93,11 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(el("h2","","Locker room"),
     el("p","ppw-muted","Open a wrestler's conversation or character history."));
    for(const wrestler of [...view.roster].sort((a,b)=>
-    Number(b.morale!==null&&b.morale<35)-
-    Number(a.morale!==null&&a.morale<35)||
-    (b.lastMessage?.submitted_week_index??-1)-
-    (a.lastMessage?.submitted_week_index??-1)||a.name.localeCompare(b.name))){
+    Number(b.latestIncoming?.status==="PENDING")-
+    Number(a.latestIncoming?.status==="PENDING")||
+    (b.latestIncoming?.created_week_index??-1)-
+    (a.latestIncoming?.created_week_index??-1)||
+    a.name.localeCompare(b.name))){
     const active=wrestler.personId===view.personId;
     const last=wrestler.lastMessage;
     const incoming=wrestler.latestIncoming;
@@ -180,15 +181,7 @@ export function mountPersonaDesk(root:HTMLElement,
     "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
   const selectedPersonId=view.personId;
   const wrestler=view.roster.find(p=>p.personId===selectedPersonId);
-  if(wrestler?.morale!==null&&wrestler?.morale!==undefined&&wrestler.morale<35)
-   chat.append(el("div","ppw-persona-bubble ppw-persona-in",
-    wrestler.morale<15?
-     "I'm seriously unhappy with how things are going. We need to talk about my future.":
-     "I'm not happy with where things stand. I want a better direction."));
-  else if(wrestler?.momentum!==null&&wrestler?.momentum!==undefined&&
-   wrestler.momentum<25)
-   chat.append(el("div","ppw-persona-bubble ppw-persona-in",
-    "I feel like I've lost momentum. Can we find a way to get things moving again?"));
+  // Only durable incoming correspondence appears as a wrestler bubble.
   // Store conversations as immutable World facts; UI renders only the last
   // 30 selected messages and never generates messages on opening a thread.
   for(const item of view.conversations){
