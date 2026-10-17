@@ -64,7 +64,9 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack
 function tagTeamPort(call:ReturnType<typeof createCardClient>):TagTeamPort{
  return {load:()=>call("tagTeams"),
   create:({requestId,expectedRevision,name,personIds})=>
-   call("createTagTeam",{requestId,expectedRevision,name,personIds})};
+   call("createTagTeam",{requestId,expectedRevision,name,personIds}),
+  rename:({requestId,expectedRevision,name,teamId})=>
+   call("renameTagTeam",{requestId,expectedRevision,name,teamId})};
 }
 /** Independent tag-team roster route, without a current booking draft. */
 export function mountTagTeamsPage(root:HTMLElement,scope:Scope){
