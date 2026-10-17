@@ -33,7 +33,7 @@ const denied=()=>json(401,{error:"Sign in required"});
 function sameOrigin(req:Request){
  const origin=req.headers.get("origin"),host=req.headers.get("host");
  if(!origin||!host)return false;
- try{return new URL(origin).origin===new URL(req.url).origin&&
+ try{return new URL(origin).origin===new URL(req.url,origin).origin&&
   new URL(origin).host===host;}
  catch{return false;}
 }
@@ -68,7 +68,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  let cfg:InviteConfig,pool:TransactionPool;
  try{({cfg,pool}=runtime());}
  catch{return json(503,{error:"Game host not configured"});}
- const path=new URL(req.url).pathname;
+ const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
  if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card"].includes(path))
   return json(404,{error:"Unknown game route"});

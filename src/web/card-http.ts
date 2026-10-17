@@ -20,7 +20,7 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
  if(!origin||!host)return json(403,{error:"Forbidden"});
  try{
   const url=new URL(origin);
-  if(url.origin!==new URL(request.url).origin||url.host!==host)
+  if(url.origin!==new URL(request.url,origin).origin||url.host!==host)
    return json(403,{error:"Forbidden"});
  }catch{return json(403,{error:"Forbidden"});}
  if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))
