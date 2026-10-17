@@ -10,7 +10,7 @@ export type ReactionMood="BUZZ"|"DEBATE"|"CONCERN"|"COLD";
 export interface ResultReaction {
  slotId:string;voice:ReactionVoice;mood:ReactionMood;
  text:string;source:"TITLE"|"MEDICAL"|"FINISH"|"CRITIC_CROWD"|
-  "RIVALRY"|"ANGLE"|"MATCH";
+  "RIVALRY"|"ELIMINATION"|"ANGLE"|"MATCH";
 }
 type Candidate=ResultReaction&{priority:number;position:number};
 function pick(lines:readonly string[],key:string,salt:number):string{
@@ -70,6 +70,25 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
      "A modest "+rating.toFixed(2)+"-star rating and a huge crowd response? "+
       "Sometimes the crowd just wants a good time.",
     ],key,3)};
+  }
+  if(entry.outcome==="OVER_THE_TOP_ROPE"&&f?.eliminations.length){
+   const last=f.eliminations[f.eliminations.length-1]!;
+   return {...base,voice:"THE BACK ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
+    text:"The battle royal went down to the last recorded elimination: "+
+     last+" went out, and "+(winner??"the officially recorded winner")+
+     " finished on top. That is the order in the books."};
+  }
+  if(entry.outcome==="SUBMISSION"&&entry.crowdResponse>=65){
+   return {...base,voice:"THE CROWD",mood:"BUZZ",source:"FINISH",priority:80,
+    text:(winner??"The recorded winner")+" got it done by submission. "+
+     "A clean decision, and the crowd gave it "+entry.crowdResponse.toFixed(1)+
+     " out of 100."};
+  }
+  if(entry.outcome==="FLASH_PIN"&&entry.crowdResponse>=65){
+   return {...base,voice:"THE BACK ROW",mood:"BUZZ",source:"FINISH",priority:80,
+    text:"A flash pin settled "+contender(entry)+". "+
+     (winner??"The official winner")+" takes the decision —"+
+     " that's a result that will have the other side demanding a closer look."};
   }
   if(entry.outcome==="DISQUALIFICATION"||entry.outcome==="FOREIGN_OBJECT"){
    const cheater=f?.finishCheaterName;
