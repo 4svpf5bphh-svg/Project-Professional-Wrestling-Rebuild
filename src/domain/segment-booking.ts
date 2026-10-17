@@ -20,6 +20,7 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
+ turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
 }
 /** Shared authoring validation; never randomise or override the booked outcome. */
 export function normalizeBookedSegment(input:SegmentBookingInput,knownPeople:ReadonlySet<string>):AuthoredSegment{

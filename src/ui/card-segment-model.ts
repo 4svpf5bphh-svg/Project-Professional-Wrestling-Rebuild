@@ -7,6 +7,7 @@ export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
+ turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -25,7 +26,8 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 ]);
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
- return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null};
+ return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
+  turnTargetAlignment:"HEEL"};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -42,6 +44,8 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   targets:find(p.targetIds),
   outcome:["HAPPENS","REFUSED","INTERRUPTED"].includes(String(p.outcome))?
    p.outcome as SegmentOutcome:"HAPPENS",
+  turnTargetAlignment:["FACE","HEEL","TWEENER"].includes(String(p.turnTargetAlignment))?
+   p.turnTargetAlignment as EditorSegment["turnTargetAlignment"]:null,
   videoPurpose:VIDEO_PURPOSES.includes(p.videoPurpose as VideoPurpose)?
    p.videoPurpose as VideoPurpose:"WRESTLER_HYPE"};
 }
@@ -61,5 +65,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   actorIds:s.actors.map(p=>p.personId),
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
+  ...(s.kind==="TURN"&&s.turnTargetAlignment?
+   {turnTargetAlignment:s.turnTargetAlignment}:{}),
  },[...s.actors,...s.targets]);
 }

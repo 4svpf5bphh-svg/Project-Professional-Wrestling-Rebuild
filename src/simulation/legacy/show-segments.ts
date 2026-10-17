@@ -11,6 +11,8 @@ export interface AuthoredSegment {
  actorIds:readonly string[];targetIds:readonly string[];
  outcome:SegmentOutcome;
  videoPurpose?:VideoPurpose;
+ /** Optional for historical turns. New authored turns may choose a definite alignment. */
+ turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
 }
 export function validateAuthoredSegments(
  segments:readonly AuthoredSegment[],
@@ -30,6 +32,8 @@ export function validateAuthoredSegments(
    new Set(s.actorIds).size!==s.actorIds.length||
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
+   (s.turnTargetAlignment!==undefined&&
+    (s.kind!=="TURN"||!["FACE","HEEL","TWEENER"].includes(s.turnTargetAlignment)))||
    (s.kind==="VIDEO_PACKAGE")!==Boolean(s.videoPurpose)||
    (s.videoPurpose!==undefined&&
     !["DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP",
