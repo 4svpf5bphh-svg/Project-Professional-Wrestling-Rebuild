@@ -1,5 +1,8 @@
-import type {readIndustryWorldHub} from "../db/industry-world-hub.js";
+import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import {createWrestlerCard} from "./wrestler-card.js";
+import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
+export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedTalent>>;
 export type IndustryPromotion=IndustryHubView["promotions"][number];
 export type IndustryOrder="REACH"|"FORM"|"NAME";
 /** Public data already fetched with Industry; no search RPC or new DB work. */
@@ -18,6 +21,8 @@ export function visibleIndustryPromotions<T extends {
 }
 export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
+ featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
+ openWrestler?(personId:string):void;
  openOwnResults?(showId:string):void;
  openBusiness?():void;openPlanner?():void;back?():void;
 }
@@ -32,6 +37,48 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
   active:"STANDINGS"|"BROADCASTS"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
+ const featuredCache=new Map<string,IndustryFeaturedView>();
+ const featuredBusy=new Set<string>();
+ async function showFeatured(promotionId:string,container:HTMLElement){
+  if(!port.featured)return;
+  container.replaceChildren();
+  const available=featuredCache.get(promotionId);
+  if(available){
+   container.append(el("h3","","Featured wrestlers"));
+   if(!available.people.length)container.append(el("p","ppw-industry-muted",
+    "No signed wrestlers are currently listed for this promotion."));
+   for(const person of available.people){
+    const baseline=originalPersonaBaseline(person.name,person.gimmickId);
+    container.append(createWrestlerCard({
+     personId:person.personId,name:person.name,ringName:baseline.personaName,
+     division:person.division,gimmickId:baseline.gimmickId,
+     primaryStyle:baseline.primaryStyle,alignment:person.alignment,
+     popularity:person.popularity,recognition:person.recognition,
+     momentum:person.momentum,inRingQuality:person.inRingQuality,
+     matchCraft:person.matchCraft,presentation:person.presentation
+    },{context:"MARKET",compact:true,label:"VIEW WRESTLER DOSSIER",
+     ...(port.openWrestler?{onSelect:()=>port.openWrestler?.(person.personId)}:{})}));
+   }
+   if(available.moreThanEight)container.append(el("p","ppw-industry-muted",
+    "Showing the promotion's eight most prominent active wrestlers."));
+   return;
+  }
+  if(featuredBusy.has(promotionId)){
+   container.append(el("p","ppw-industry-muted","Checking the roster…"));return;
+  }
+  featuredBusy.add(promotionId);
+  container.append(el("p","ppw-industry-muted","Checking the roster…"));
+  try{
+   featuredCache.set(promotionId,await port.featured(promotionId));
+   if(container.isConnected)void showFeatured(promotionId,container);
+  }catch(e){
+   if(container.isConnected){
+    container.replaceChildren(el("p","ppw-industry-muted",
+     e instanceof Error?e.message:"Unable to read this roster"),
+     btn("Try again",()=>void showFeatured(promotionId,container)));
+   }
+  }finally{featuredBusy.delete(promotionId);}
+ }
  async function load(){
   loading=true;render();
   try{view=await port.load();error="";}
@@ -151,6 +198,16 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
       }
      }else detail.append(el("p","ppw-industry-muted",
       "No published broadcasts in the current public window."));
+     // No wrestler identity data is transferred on opening Industry.
+     // The extra bounded request happens only when this promotion expands.
+     if(port.featured){
+      const featured=el("section","ppw-industry-featured");
+      featured.setAttribute("aria-label","Featured wrestlers for "+p.name);
+      detail.append(featured);
+      card.addEventListener("toggle",()=>{
+       if(card.open)void showFeatured(p.promotionId,featured);
+      });
+     }
      detail.append(el("p","ppw-industry-privacy",
       "Public information only. Contracts, wages, cash, draft cards and condition are private."));
      card.append(detail);
