@@ -30,6 +30,23 @@ export function mountPersonaDesk(root:HTMLElement,
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"="ALL";
  let inboxSearch="";
+ let lastInboxScroll=0;
+ // Private read/archive receipts change presentation, not the wrestler's
+ // simulation. Keep the current bounded inbox rather than loading it twice.
+ function updateIncoming(person:string,
+  transform:(incoming:NonNullable<View["roster"][number]["latestIncoming"]>)=>
+   NonNullable<View["roster"][number]["latestIncoming"]>){
+  if(!view)return;
+  view={...view,roster:view.roster.map(w=>w.personId===person&&w.latestIncoming?
+   {...w,latestIncoming:transform(w.latestIncoming)}:w)};
+ }
+ const returnToMessages=()=>{
+  pane="INBOX";render();
+  requestAnimationFrame(()=>{
+   const inbox=root.querySelector<HTMLElement>(".ppw-backstage-contacts");
+   if(inbox)inbox.scrollTop=lastInboxScroll;
+  });
+ };
  async function load(id?:string){
   personId=id;loading=true;render();
   try{
@@ -37,8 +54,12 @@ export function mountPersonaDesk(root:HTMLElement,
    if(pane==="THREAD"&&view.personId&&
     view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
      x.latestIncoming?.read_week_index===null)){
-    await port.markRead(view.personId);
-    view=await port.load(id);
+    const selected=view.personId;
+    const marked=await port.markRead(selected);
+    if(marked.readCount>0){
+     const now=(view.worldYear-1)*52+view.worldWeek-1;
+     updateIncoming(selected,old=>({...old,read_week_index:now}));
+    }
    }
    chosen=null;search="";error="";
   }
@@ -49,9 +70,15 @@ export function mountPersonaDesk(root:HTMLElement,
   if(loading)return;
   loading=true;render();
   try{
-   await port.archiveThread(person,archived);
-   view=await port.load(person);error="";
-   pane="INBOX";inboxFilter=archived?"ARCHIVED":"ALL";
+   const receipt=await port.archiveThread(person,archived);
+   if(!receipt||typeof receipt!=="object"||
+     !("archivedThroughWeekIndex" in receipt)||
+     typeof receipt.archivedThroughWeekIndex!=="number")
+    throw new Error("Could not confirm the conversation change");
+   const through=receipt.archivedThroughWeekIndex;
+   updateIncoming(person,old=>({...old,
+    archived:old.created_week_index<=through}));
+   error="";pane="INBOX";inboxFilter=archived?"ARCHIVED":"ALL";
   }catch(e){error=e instanceof Error?e.message:"Unable to update archive";}
   finally{loading=false;render();}
  }
@@ -141,6 +168,9 @@ export function mountPersonaDesk(root:HTMLElement,
    searchInput.setAttribute("aria-label","Search Backstage conversations");
    searchInput.className="ppw-backstage-inbox-search";
    const entries=el("div","ppw-backstage-contacts");
+   entries.setAttribute("role","list");
+   entries.setAttribute("aria-label","Private conversations");
+   entries.onscroll=()=>{lastInboxScroll=entries.scrollTop;};
    inbox.append(searchInput);
    let count=0;
    for(const wrestler of [...view.roster].filter(w=>{
@@ -164,18 +194,22 @@ export function mountPersonaDesk(root:HTMLElement,
     const concern=wrestler.morale!==null&&wrestler.morale<35?
      " · Wants to talk":wrestler.momentum!==null&&wrestler.momentum<25?
      " · Career check-in":"";
-    const summary=incoming?" · "+(incoming.status==="PENDING"?"New message":
+    const preview=incoming&&incoming.status==="PENDING"&&
+     Object.hasOwn(BACKSTAGE_CHOICES,incoming.kind)?
+      backstageMessage(incoming.kind as keyof typeof BACKSTAGE_CHOICES):null;
+    const summary=preview??(incoming?" · "+(incoming.status==="PENDING"?"New message":
      incoming.status==="PROMISED"?"Awaiting your booking":
      incoming.status==="FULFILLED"?"Promise kept":
      incoming.status==="NOTED"?"Locker-room good news":
      incoming.status==="BROKEN"?"Promise broken":"Conversation history")+
      " · "+incoming.kind.replaceAll("_"," ").toLowerCase():
      last?" · "+(last.status==="ACCEPTED"?"Agreed":"Declined")+
-     ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern;
+     ": "+last.requested_gimmick_id.replaceAll("_"," ").toLowerCase():concern);
     const unread=wrestler.isCurrent&&incoming?.read_week_index===null;
      const stamp=incoming?" · Y"+(Math.floor(incoming.created_week_index/52)+1)+
       " W"+(incoming.created_week_index%52+1):"";
      const item=button("",()=>{
+      lastInboxScroll=entries.scrollTop;
       pane="THREAD";if(active&&unread)void load(wrestler.personId);
        else if(active)render();else void load(wrestler.personId);
     });
@@ -307,10 +341,14 @@ export function mountPersonaDesk(root:HTMLElement,
   if(view.roster.find(x=>x.personId===view!.personId)?.isCurrent===false)
    root.append(el("p","ppw-muted",
     "Former talent · retained private conversation. No active contract or booking decisions."));
+  const previousChat=root.querySelector<HTMLElement>(".ppw-persona-chat");
+  const previousScroll=previousChat?.dataset.personId===view.personId?
+   previousChat.scrollTop:null;
   const chat=el("section","ppw-persona-chat");
+  chat.dataset.personId=view.personId;
   chat.setAttribute("aria-label","Conversation with "+view.personName);
   const chatHead=el("header","ppw-backstage-phone-header");
-  const returnToInbox=button("‹",()=>{pane="INBOX";render();});
+  const returnToInbox=button("‹",returnToMessages);
   returnToInbox.classList.add("ppw-backstage-phone-back");
   returnToInbox.setAttribute("aria-label","Back to messages");
   const monogram=el("span","ppw-backstage-phone-avatar",
@@ -366,6 +404,10 @@ export function mountPersonaDesk(root:HTMLElement,
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
      BACKSTAGE_LABELS[item.decision]));
+    if(item.respondedWeekIndex!==null)
+     chat.append(el("small","ppw-backstage-sent-stamp","Sent · Y"+
+      (Math.floor(item.respondedWeekIndex/52)+1)+" W"+
+      (item.respondedWeekIndex%52+1)));
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      backstageReply(item.decision,item.status)));
     if(item.kind==="PARTNERSHIP"&&item.decision==="MEDIATE"&&
@@ -460,6 +502,9 @@ export function mountPersonaDesk(root:HTMLElement,
     void request();},loading||!chosen));
   }
   root.append(chat);
+  requestAnimationFrame(()=>{
+   if(root.contains(chat))chat.scrollTop=previousScroll??chat.scrollHeight;
+  });
  }
  void load();
  return {refresh:()=>load(personId)};

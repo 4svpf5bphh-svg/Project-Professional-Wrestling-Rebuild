@@ -240,3 +240,19 @@
  @keyframes ppw-message-enter{from{opacity:.75;transform:translateY(4px)}
  to{opacity:1;transform:translateY(0)}}
 }
+
+/* Private conversations scroll within their own phone surface. The header
+ * and read receipts remain legible without fixed toolbars or another fetch. */
+.ppw-messenger-thread .ppw-persona-chat{height:min(82dvh,830px);min-height:420px;
+ max-height:calc(100dvh - 110px);overflow-y:auto;overscroll-behavior-y:contain;
+ scroll-padding-top:75px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.ppw-messenger-thread .ppw-backstage-phone-header{position:sticky;top:0;
+ z-index:3;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.ppw-messenger .ppw-backstage-sent-stamp{align-self:flex-end;color:#84b9ea;
+ font-size:10px;margin:-5px 19px 9px;text-align:right}
+.ppw-messenger .ppw-backstage-contact-preview{white-space:nowrap;text-overflow:ellipsis;
+ overflow:hidden;display:block;max-width:100%}
+.ppw-messenger-thread .ppw-persona-chat:focus-visible{outline:2px solid #8acbff}
+@media(max-width:520px){.ppw-messenger-thread .ppw-persona-chat{
+ height:calc(100dvh - 106px - env(safe-area-inset-bottom));
+ max-height:calc(100dvh - 106px - env(safe-area-inset-bottom));min-height:320px}}
