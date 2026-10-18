@@ -67,7 +67,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   for(const [i,ref] of values.entries()){
    const selected=ref?ref.kind+":"+ref.refId:"";
    const choices=[{key:"",label:"Choose wrestler or team"},...rosterOptions().map(p=>({
-    key:p.kind+":"+p.refId,label:p.kind==="TEAM"?"TEAM · "+p.name:p.name}))];
+    key:p.kind+":"+p.refId,label:p.kind==="TEAM"?"TEAM · "+p.name+" ("+
+     (view?.teams.find(t=>t.refId===p.refId)?.memberIds??[])
+      .map(id=>view?.people.find(person=>person.refId===id)?.name??"Unknown")
+      .join(" & ")+")":p.name}))];
    const others=[...refsA.flatMap((value,index)=>side==="A"&&index===i||!value?[]:[value]),
     ...refsB.flatMap((value,index)=>side==="B"&&index===i||!value?[]:[value])];
    const forbidden=new Set(rosterOptions().filter(p=>!availableProgrammeOption({kind:p.kind,refId:p.refId},others,teamMembers()))
@@ -132,10 +135,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     record.append(tile);
    }
    panel.append(record);
-   panel.append(element("p","ppw-muted",
-    "Week "+(p.startedWeekIndex===null?"—":Math.floor(p.startedWeekIndex/52)+1+
-     " / "+(p.startedWeekIndex%52+1))+
-    (p.championshipId?" · Championship rivalry":"")));
+   const weekIndex=(view.year-1)*52+view.week-1;
+   const age=p.startedWeekIndex===null?null:Math.max(0,weekIndex-p.startedWeekIndex);
+   panel.append(element("p","ppw-programme-age",
+    (age===null?"Origin not recorded":age===0?"Launched this week":
+      age+" PPW week"+(age===1?"":"s")+" active")+
+    (p.championshipId?" · Championship stakes":"")));
    if(p.recentActivity.length){
     const history=document.createElement("details");
     const header=document.createElement("summary");
