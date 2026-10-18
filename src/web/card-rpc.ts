@@ -9,7 +9,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
- programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,
  completedShowAsActor,completedShowArchiveAsActor,championshipsAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -239,6 +239,13 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return startProgrammeAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,sideA:p.sideA,sideB:p.sideB,
    championshipId:p.championshipId as string|null|undefined});
+ }
+ if(method==="chooseProgrammeDirection"){
+  if(!["PURSUE_REMATCH","PLAN_RETALIATION","LET_STAND"].includes(String(p.choice)))
+   throw new Error("Invalid creative direction");
+  return programmeDirectionAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,programmeId:id("programmeId"),showId:id("sourceShowId"),
+   slotId:id("sourceSlotId"),choice:p.choice as import("../db/programme-workspace.js").ProgrammeDirectionChoice});
  }
  if(method==="endProgramme")return endProgrammeAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,programmeId:id("programmeId")});

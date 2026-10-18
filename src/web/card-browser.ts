@@ -330,6 +330,9 @@ function programmePort(call:ReturnType<typeof createCardClient>,
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
+  chooseDirection:({requestId,expectedRevision,programmeId,showId,slotId,choice})=>
+   call("chooseProgrammeDirection",{requestId,expectedRevision,
+    programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope){

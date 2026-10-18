@@ -20,8 +20,8 @@ import {readStableWorkspace,readActiveStableChoices,
  createStable,addStableMember,removeStableMember,disbandStable,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
  from "../db/stable-workspace.js";
-import {readProgrammeWorkspace,startProgramme,endProgramme,
- type StartProgrammeInput,type EndProgrammeInput} from "../db/programme-workspace.js";
+import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection,
+ type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -392,6 +392,12 @@ export async function endProgrammeAsActor(context:WorldApiContext,
  return endProgramme(context.pool,{...input,playerId:context.actor.playerId});
 }
 
+export async function programmeDirectionAsActor(context:WorldApiContext,
+ input:Omit<ProgrammeDirectionInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return chooseProgrammeDirection(context.pool,{...input,playerId:context.actor.playerId});
+}
 /** Original stables belong to one verified promotion, never client actor JSON. */
 export async function tagTeamWorkspaceAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){

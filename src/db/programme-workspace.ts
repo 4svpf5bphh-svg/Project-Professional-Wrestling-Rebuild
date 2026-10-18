@@ -12,6 +12,10 @@ type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
 export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{championshipId?:string|null};
 export type EndProgrammeInput=ProgrammeCommandInput&{programmeId:string};
+export type ProgrammeDirectionChoice="PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
+export type ProgrammeDirectionInput=ProgrammeCommandInput&{
+ programmeId:string;showId:string;slotId:string;choice:ProgrammeDirectionChoice;
+};
 type Auth={year:number;week:number;revision:string|number;phase:string;booking_open:boolean};
 const valid=(v:unknown):v is string=>typeof v==="string"&&v.trim().length>0&&v.length<=200;
 async function assertPromotion(tx:SqlRows,scope:Scope):Promise<Auth>{
@@ -36,13 +40,23 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    repetition:number;activity_count:number;match_count:number;segment_count:number;
    side_a_wins:number;side_b_wins:number;draws:number;
    championship_id:string|null;started_week_index:number|null;
-   ended_week_index:number|null}>([
-   "SELECT programme_id,status,heat,repetition,championship_id,",
+   ended_week_index:number|null;direction_choice:ProgrammeDirectionChoice|null;
+   direction_show_id:string|null;direction_slot_id:string|null;
+   direction_week_index:number|null}>([
+   "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
    "started_week_index,ended_week_index,activity_count,match_count,",
-   "segment_count,side_a_wins,side_b_wins,draws FROM ppw_programmes",
-   "WHERE world_id=$1 AND promotion_id=$2",
-   "ORDER BY CASE WHEN status='ACTIVE' THEN 0 ELSE 1 END,",
-   "started_week_index DESC NULLS LAST,programme_id LIMIT 101"
+   "segment_count,side_a_wins,side_b_wins,draws,",
+   "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
+   "direction.slot_id AS direction_slot_id,direction.chosen_week_index AS direction_week_index",
+   "FROM ppw_programmes programme",
+   "LEFT JOIN LATERAL (SELECT d.choice,d.show_id,d.slot_id,d.chosen_week_index",
+   "FROM ppw_programme_postshow_directions d",
+   "WHERE d.world_id=programme.world_id AND d.promotion_id=programme.promotion_id",
+   "AND d.programme_id=programme.programme_id",
+   "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) direction ON TRUE",
+   "WHERE programme.world_id=$1 AND programme.promotion_id=$2",
+   "ORDER BY CASE WHEN programme.status='ACTIVE' THEN 0 ELSE 1 END,",
+   "programme.started_week_index DESC NULLS LAST,programme.programme_id LIMIT 101"
   ].join(" "),[scope.worldId,scope.promotionId]);
   if(rows.length>100)throw new Error("Programme capacity exceeded");
   const programmes=rows.map(p=>p.programme_id);
@@ -106,6 +120,10 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
     championshipId:p.championship_id,
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
+    latestFollowUp:p.direction_choice===null?null:{
+     choice:p.direction_choice,showId:p.direction_show_id!,
+     slotId:p.direction_slot_id!,weekIndex:p.direction_week_index!
+    },
     recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
       kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response})),
@@ -245,5 +263,54 @@ export async function endProgramme(pool:TransactionPool,input:EndProgrammeInput)
     input.programmeId,ended[0]!.heat,ended[0]!.repetition]);
    return {programmeId:input.programmeId,status:"COMPLETED" as const};
   },
+ });
+}
+
+/** A booker records a next-story intention against the latest completed match.
+ * Editing this reminder neither books a show nor alters a resolved finish.
+ * Revision, actor ownership, World Lock and retry receipts are all enforced.
+ */
+export async function chooseProgrammeDirection(pool:TransactionPool,input:ProgrammeDirectionInput){
+ if(![input.programmeId,input.showId,input.slotId].every(valid)||
+  !["PURSUE_REMATCH","PLAN_RETALIATION","LET_STAND"].includes(input.choice))
+  throw new Error("Choose a valid completed match and direction");
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,
+  requestId:input.requestId,expectedRevision:input.expectedRevision,
+  commandType:"PROGRAMME_POSTSHOW_DIRECTION",requiresOpenWeek:true,
+  execute:async tx=>{
+   const auth=await assertPromotion(tx,input);
+   if(!auth.booking_open)throw new Error("Creative decisions reopen after the deadline");
+   const active=await tx.query<{programme_id:string}>([
+    "SELECT programme_id FROM ppw_programmes WHERE world_id=$1",
+    "AND promotion_id=$2 AND programme_id=$3 AND status='ACTIVE' LIMIT 1"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId]);
+   if(active.length!==1)throw new Error("The rivalry is no longer active");
+   const latest=await tx.query<{show_id:string;slot_id:string;week_index:number}>([
+    "SELECT show_id,slot_id,week_index FROM ppw_programme_resolved_activities",
+    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3 AND kind='MATCH'",
+    "ORDER BY week_index DESC,show_id DESC,slot_id DESC LIMIT 1"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId]);
+   if(latest.length!==1||latest[0]!.show_id!==input.showId||
+    latest[0]!.slot_id!==input.slotId)
+    throw new Error("Choose the latest completed rivalry match");
+   await tx.query([
+    "INSERT INTO ppw_programme_postshow_directions(world_id,promotion_id,programme_id,",
+    "show_id,slot_id,chosen_week_index,choice) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    "ON CONFLICT(world_id,promotion_id,programme_id,show_id,slot_id)",
+    "DO UPDATE SET choice=excluded.choice,chosen_week_index=excluded.chosen_week_index,",
+    "chosen_at=clock_timestamp()"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,
+    input.showId,input.slotId,latest[0]!.week_index,input.choice]);
+   await tx.query([
+    "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
+    "VALUES($1,$2,$3,'PROGRAMME_DIRECTION_CHOSEN',",
+    "jsonb_build_object('promotionId',$4::text,'programmeId',$5::text,",
+    "'showId',$6::text,'slotId',$7::text,'choice',$8::text))"
+   ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
+    input.programmeId,input.showId,input.slotId,input.choice]);
+   return {programmeId:input.programmeId,showId:input.showId,
+    slotId:input.slotId,choice:input.choice};
+  }
  });
 }
