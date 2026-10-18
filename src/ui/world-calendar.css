@@ -59,3 +59,33 @@
  padding:7px 9px;font-size:12px;font-weight:740}
 .ppw-calendar-forecast p{font-size:12px;line-height:1.45;margin:7px 0 0}
 .ppw-calendar-forecast-ok{color:#b5e2dc}.ppw-calendar-forecast-warning{color:#ffc3b6}
+
+
+/* Event identity with genuine hierarchy: flagship blue, premium warm gold. */
+.ppw-calendar-header{padding:9px 4px 17px;border-bottom:1px solid #365b71}
+.ppw-calendar-header h1{font-weight:900;letter-spacing:-.045em;
+ font-size:clamp(30px,7vw,41px);line-height:1.05}
+.ppw-calendar-panel{background:linear-gradient(140deg,#152d42,#0d2031);
+ border-color:#355d77;box-shadow:0 12px 28px rgba(4,14,29,.19)}
+.ppw-calendar-panel>h2{letter-spacing:-.025em;font-weight:850}
+.ppw-calendar-event{isolation:isolate;box-shadow:0 8px 23px rgba(1,11,23,.24);
+ background:
+ radial-gradient(ellipse at 0% -50%,rgba(56,191,221,.19),transparent 70%),
+ linear-gradient(130deg,#1b3d5a,#0e253a 85%)}
+.ppw-calendar-event:after{content:"";position:absolute;pointer-events:none;
+ inset:0 0 0 70%;z-index:-1;transform:skewX(-18deg);
+ background:linear-gradient(90deg,transparent,rgba(111,176,243,.065))}
+.ppw-calendar-event-major{border-color:rgba(249,197,107,.55);
+ background:
+ radial-gradient(ellipse at -10% 0%,rgba(248,181,87,.27),transparent 62%),
+ radial-gradient(ellipse at 110% 100%,rgba(185,94,166,.12),transparent 55%),
+ linear-gradient(120deg,#392e30,#1a2638 85%)}
+.ppw-calendar-event-emblem{font-weight:900;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 16px rgba(2,10,23,.22)}
+.ppw-calendar-event-major .ppw-calendar-event-emblem{box-shadow:
+ inset 0 1px rgba(255,219,153,.1),0 0 23px rgba(237,170,81,.08)}
+.ppw-calendar-event-name{font-weight:900;letter-spacing:-.025em}
+.ppw-calendar-event-major .ppw-calendar-event-name{color:#fff1d8}
+.ppw-calendar-occurrence.ppw-calendar-current .ppw-calendar-week-head{
+ color:#b5fff0}
+.ppw-calendar-button:focus-visible{outline:2px solid #9febfa;outline-offset:2px}

@@ -86,3 +86,57 @@
  font-size:13px;font-weight:750}
 .ppw-home-wire-dismiss{background:transparent;color:#bcd6e8;border-color:#3b5266}
 .ppw-home-wire-dismiss:disabled{opacity:.45}
+
+
+/* Arena-inspired Home identity. Pure CSS lighting and broadcast chrome. */
+.ppw-home-head{position:relative;padding-left:4px;border-bottom:1px solid #294359;margin-bottom:17px}
+.ppw-home-head:after{content:"";position:absolute;bottom:-1px;left:0;width:min(180px,50%);
+ height:2px;background:linear-gradient(90deg,#77f1ff,#b47cff,transparent)}
+.ppw-home-hero{position:relative;isolation:isolate;overflow:hidden;min-height:184px;
+ padding:clamp(18px,4.3vw,26px);border-color:rgba(126,215,250,.5);
+ background:
+ radial-gradient(ellipse at 10% -30%,rgba(35,212,240,.32),transparent 65%),
+ radial-gradient(ellipse at 105% 115%,rgba(201,86,246,.23),transparent 65%),
+ linear-gradient(115deg,#193d5b,#152641 70%,#132238);
+ box-shadow:0 24px 65px rgba(3,12,31,.24),inset 0 1px 0 rgba(255,255,255,.09)}
+.ppw-home-hero:before{content:"";position:absolute;pointer-events:none;
+ inset:0;z-index:-1;opacity:.38;
+ background:linear-gradient(109deg,transparent 9%,rgba(180,229,255,.13) 12%,transparent 20%),
+ linear-gradient(72deg,transparent 65%,rgba(133,112,250,.13) 78%,transparent 88%),
+ repeating-linear-gradient(175deg,transparent 0 21px,rgba(171,218,255,.025) 22px 23px)}
+.ppw-home-hero:after{content:"";position:absolute;pointer-events:none;z-index:-1;
+ inset:auto -10% -44px 35%;height:100px;border-radius:50%;transform:rotate(-8deg);
+ border:1px solid rgba(127,215,254,.16);box-shadow:0 0 0 21px rgba(107,146,238,.04),
+ 0 0 0 49px rgba(107,146,238,.035)}
+.ppw-home-hero-top{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:8px}
+.ppw-home-hero h2{max-width:26ch;font-weight:900;font-size:clamp(26px,7vw,41px);
+ letter-spacing:-.052em;line-height:1.04;margin:17px 0 9px;text-wrap:balance}
+.ppw-home-phase{display:inline-flex;align-items:center;min-height:28px;padding:5px 10px;
+ background:#071a2bbf;border:1px solid #3d7d97;border-radius:100px;
+ font-size:10px;font-weight:850;letter-spacing:.06em;color:#a6f8e7}
+.ppw-home-phase-locked{color:#f3c99e;border-color:#9b7050}
+.ppw-home-phase-resolving{color:#f5d2fd;border-color:#986da5}
+.ppw-home-countdown{display:inline-flex;max-width:100%;font-weight:850;
+ border-color:rgba(143,221,255,.33);background:rgba(4,12,28,.6);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.ppw-home-stat{position:relative;overflow:hidden;min-height:78px;
+ background:linear-gradient(135deg,#142d43,#0c2033);border-color:#2c5371}
+.ppw-home-stat:after{content:"";position:absolute;inset:auto 0 0;height:2px;
+ background:linear-gradient(90deg,rgba(59,221,245,.75),rgba(172,126,255,.4),transparent)}
+.ppw-home-stat strong{display:block;font-weight:850;letter-spacing:-.025em}
+.ppw-home-brief{position:relative}
+.ppw-home-brief-title h3{font-size:23px}
+.ppw-home-brief>.ppw-home-tile{position:relative;overflow:hidden;
+ background:linear-gradient(100deg,#172f47,#11263d);box-shadow:0 7px 19px #06132240}
+.ppw-home-brief>.ppw-home-tile:focus-visible{outline:3px solid #8ce4f8;outline-offset:2px}
+.ppw-home-brief>.ppw-home-action-priority .ppw-home-icon{color:#ffcc9b;background:#593b39}
+.ppw-home-brief>.ppw-home-action-important .ppw-home-icon{color:#b0f4fd;background:#27516c}
+@media(max-width:360px){.ppw-home-hero{padding:16px}.ppw-home-hero h2{font-size:26px}
+ .ppw-home-finances{gap:6px}.ppw-home-stat{padding:10px 7px}
+ .ppw-home-stat strong{font-size:12px}}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-home-hero{animation:ppw-arena-reveal .32s ease-out}
+ @keyframes ppw-arena-reveal{from{opacity:.7;transform:translateY(4px)}
+ to{opacity:1;transform:none}}
+}
