@@ -737,6 +737,7 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
  await expect(page.locator(".ppw-calendar-forecast-dates")).toContainText("YEAR 2 · WEEK 7");
  await expect(page.getByRole("button",{name:"Save event"})).toBeEnabled();
  await page.getByRole("button",{name:"Save event"}).click();
+ await expect(page.getByRole("heading",{name:"Create recurring event"})).toHaveCount(0);
  const saved=calls.find(x=>x.method==="saveCalendar")?.payload;
  expect(saved?.series).toMatchObject({name:"Summer Clash",cadenceWeeks:52,anchorWeek:6,
   role:"SPECIAL",eventType:"MAJOR"});
