@@ -61,3 +61,46 @@ export async function creativeReviewsInTransaction(tx:SqlRows,worldId:string,
   contractId:x.contract_id,signature:x.signature}),x.decision]));
  return concerns.map(x=>({...x,decision:found.get(key(x))??x.decision}));
 }
+import type {TransactionPool} from "./transaction.js";
+import {applyWorldCommand} from "./world-commands.js";
+import {creativeDecisionScore} from "../domain/match-creative-consent.js";
+export async function requestMatchCreativeConsent(pool:TransactionPool,input:{
+ worldId:string;promotionId:string;showId:string;slotId:string;personId:string;
+ playerId:string;requestId:string;expectedRevision:number;
+}){
+ if(![input.worldId,input.promotionId,input.showId,input.slotId,
+  input.personId,input.playerId,input.requestId].every(s=>
+   typeof s==="string"&&s.trim().length>0&&s.length<=200))
+  throw new Error("Invalid creative agreement request");
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,requiresOpenWeek:true,
+  commandType:"REQUEST_MATCH_CREATIVE_CONSENT",
+  execute:async tx=>{
+   const drafts=await tx.query<{year:number;week:number}>([
+    "SELECT d.year,d.week FROM ppw_booking_drafts d",
+    "JOIN ppw_worlds w ON w.world_id=d.world_id AND w.year=d.year AND w.week=d.week",
+    "JOIN ppw_promotion_controls c ON c.world_id=d.world_id AND c.promotion_id=d.promotion_id",
+    "AND c.player_id=$4 AND c.active",
+    "JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id",
+    "AND m.status='ACTIVE'",
+    "JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id",
+    "AND p.lifecycle='ACTIVE'",
+    "WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.draft_id=$3",
+    "AND d.status='DRAFT' AND d.lock_ready_fingerprint IS NULL",
+    "AND w.phase='OPEN' AND w.next_lock_at>clock_timestamp()"
+   ].join(" "),[input.worldId,input.promotionId,input.showId,input.playerId]);
+   if(drafts.length!==1)throw new Error("Save the card before asking the wrestler");
+   const slots=await tx.query<{slot_id:string;kind:string;payload:unknown}>(
+    "SELECT slot_id,kind,payload FROM ppw_card_slots"+
+    " WHERE world_id=$1 AND draft_id=$2 AND slot_id=$3 AND kind='MATCH'",
+    [input.worldId,input.showId,input.slotId]);
+   if(slots.length!==1)throw new Error("Save the complete match first");
+   const concerns=await creativeReviewsInTransaction(tx,input.worldId,[{
+    showId:input.showId,promotionId:input.promotionId,
+    weekIndex:(drafts[0]!.year-1)*52+drafts[0]!.week-1,slots
+   }]);
+   const issue=concerns.find(x=>x.personId===input.personId&&x.requiresConsent);
+   if(!issue)throw new Error("No contractual approval is needed for this wrestler");
+   if(issue.decision!=="NOT_REQUESTED")return {slotId:input.slotId,
+    personId:input.personId,decision:issue.decision,existing:true};
