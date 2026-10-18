@@ -102,30 +102,38 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   const names=new Map(roster.map(p=>[p.person_id,p.name]));
   const teamOptions=teams.filter(t=>t.person_ids.every(id=>names.has(id)));
   const teamNames=new Map(teamOptions.map(t=>[t.team_id,t.name]));
-  const recent=programmes.length?await tx.query<{programme_id:string;show_id:string;
-   slot_id:string;kind:string;week_index:number;crowd_response:number}>([
+  // Both the completed beats and standing terms ride ONE existing bounded
+  // workspace statement. No extra SQL read when opening a Programme.
+  type Recent={programme_id:string;show_id:string;slot_id:string;
+   kind:string;week_index:number;crowd_response:number};
+  type Agreement={programme_id:string;person_id:string;approved:boolean;
+   score:number;decided_week_index:number;expires_week_index:number;
+   match_type:string;permitted_outcome:string};
+  const combined=programmes.length?await tx.query<{
+   source:"ACTIVITY"|"AGREEMENT";details:Recent|Agreement
+  }>([
+   "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
    "SELECT programme_id,show_id,slot_id,kind,week_index,crowd_response",
    "FROM ppw_programme_resolved_activities",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY week_index DESC,show_id,slot_id LIMIT 151"
-  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
-  if(recent.length>150)throw new Error("Programme history view limit exceeded");
-  // The roster already knows whether signed talent holds full approval rights.
-  // Read at most 300 recorded terms in one indexed statement, keeping the
-  // original seven-statement Programme budget (even with active rivalries).
-  const fullPeople=new Set(roster.filter(x=>x.full_approval).map(x=>x.person_id));
-  const agreements=programmes.length?await tx.query<{
-   programme_id:string;person_id:string;approved:boolean;score:number;
-   decided_week_index:number;expires_week_index:number;
-   match_type:string;permitted_outcome:string;
-  }>([
+   "ORDER BY week_index DESC,show_id,slot_id LIMIT 151) activity",
+   "UNION ALL",
+   "SELECT 'AGREEMENT'::text AS source,to_jsonb(term) AS details FROM (",
    "SELECT programme_id,person_id,approved,score,decided_week_index,",
    "expires_week_index,match_type,permitted_outcome",
    "FROM ppw_programme_creative_agreements",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY programme_id,person_id LIMIT 301"
+   "ORDER BY programme_id,person_id LIMIT 301) term"
   ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+  const recent=combined.filter(x=>x.source==="ACTIVITY")
+   .map(x=>x.details as Recent);
+  const agreements=combined.filter(x=>x.source==="AGREEMENT")
+   .map(x=>x.details as Agreement);
+  if(recent.length>150)throw new Error("Programme history view limit exceeded");
   if(agreements.length>300)throw new Error("Too many rivalry agreements");
+  // Roster projection includes the strongest active signed approval right,
+  // so a second contract lookup is neither necessary nor permitted here.
+  const fullPeople=new Set(roster.filter(x=>x.full_approval).map(x=>x.person_id));
   const programmesView=rows.map(p=>{
    const own=refs.filter(x=>x.programme_id===p.programme_id);
    const side=(which:"A"|"B")=>own.filter(x=>x.side===which).map(x=>({
