@@ -15,7 +15,8 @@ test("annual shows preview the next year across year-end with no SQL",()=>{
   eventType:"MAJOR",cadenceWeeks:52,anchorWeek:30,importance:95,active:true};
  const check=calendarSeriesPreview(annual,[flagship!],1,50);
  assert.equal(check.valid,true);
- assert.deepEqual(check.occurrences,[{year:2,week:31}]);
+ assert.deepEqual(check.occurrences,[{year:2,week:31},{year:3,week:31},
+  {year:4,week:31},{year:5,week:31}]);
 });
 test("preview prevents overlapping major events and invalid repeat intervals before save",()=>{
  const annual:ShowSeries={seriesId:"new",name:"Clash",role:"SPECIAL",

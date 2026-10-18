@@ -41,11 +41,11 @@ export function calendarSeriesPreview(candidate:ShowSeries,
    occurrences:[] as {year:number;week:number}[]};
  }
  const current=weekIndex(year,week),upcoming:{year:number;week:number}[]=[];
- for(let i=0;i<52&&upcoming.length<4;i++){
+ for(let i=0;i<260&&upcoming.length<4;i++){
   if(seriesDue(candidate,current+i))upcoming.push(dateAt(current+i));
  }
  return {valid:true,message:upcoming.length===0?
-  "No appearances in the next 52 weeks. Choose an earlier cycle week or a shorter repeat interval.":
+  "No upcoming dates are currently scheduled. Choose an earlier cycle week or a shorter repeat interval.":
   "These dates are reserved for this series, subject to your final event plans.",
   occurrences:upcoming,anchor};
 }
