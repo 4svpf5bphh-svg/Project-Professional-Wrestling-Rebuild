@@ -149,3 +149,12 @@
  margin:13px 0;padding:12px;border-radius:11px;
  border-left:3px solid #a58ce9;background:linear-gradient(100deg,#302c55,#18263d)}
 .ppw-angle-guidance strong{color:#ceb7ff;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+
+.ppw-booking-readiness{display:inline-flex;margin-top:5px;align-items:center;
+ border:1px solid rgba(233,162,115,.38);border-radius:6px;
+ background:rgba(104,62,41,.42);color:#ffcfaa;font-size:10px;font-weight:850;
+ letter-spacing:.06em;padding:2px 7px}
+.ppw-booking-readiness[data-complete=true]{border-color:rgba(95,217,172,.35);
+ background:rgba(26,96,77,.35);color:#a8f4d7}
+.ppw-booking-hint{font-size:12px;line-height:1.5;color:#c5dce9;margin:0 0 11px;
+ padding:8px 10px;border-radius:8px;background:#1b3242}

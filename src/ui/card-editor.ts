@@ -16,6 +16,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {matchCastingReadiness,angleCastingReadiness} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
@@ -255,10 +256,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    return;
   }
   const summary=el("div","ppw-summary");
+  const castReady=[...matches.values()].filter(x=>matchCastingReadiness(x).complete).length+
+   [...segments.values()].filter(x=>angleCastingReadiness(x).complete).length;
   summary.append(el("span","",matches.size+" matches"),
-    el("span","",segments.size+" angles"),
+   el("span","",segments.size+" angles"),
    el("span","",order.length+" card slots"),
-   el("span","",dirty?"Unsaved changes":view.ready?"Ready for World Lock":"Not confirmed"));
+   el("span","",castReady+" / "+order.length+" cast complete"),
+   el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
   const toolbar=el("div","ppw-toolbar");
   toolbar.append(selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
@@ -315,8 +319,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const card=el("article","ppw-card");
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
-   label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"SEGMENT")),
+   label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"Angle"));
+   const status=m?matchCastingReadiness(m):segment?angleCastingReadiness(segment):null;
+   if(status){
+    const indicator=el("span","ppw-booking-readiness",status.label);
+    indicator.dataset.complete=String(status.complete);
+    indicator.title=status.hint;
+    label.append(indicator);
+   }
    bar.append(button(expanded===slotId?"▴":"▾",()=>{
     expanded=expanded===slotId?null:slotId;render();
    },false,"ppw-expand"),label);
@@ -328,6 +339,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    bar.append(arrows);card.append(bar);
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
+    const readiness=angleCastingReadiness(segment);
+    body.append(el("p","ppw-booking-hint",readiness.hint));
     const controls=el("div","ppw-control-grid");
     const setAngle=(kind:EditorSegment["kind"])=>{
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
@@ -414,6 +427,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     card.append(body);
    }else if(m&&expanded===slotId){
     const body=el("div","ppw-card-body");
+    const readiness=matchCastingReadiness(m);
+    body.append(el("p","ppw-booking-hint",readiness.hint));
     const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),
      m.teams.map((_,index)=>[String(index),m.format==="BATTLE_ROYAL"?
