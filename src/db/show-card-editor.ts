@@ -41,7 +41,9 @@ type ContractRow={person_id:string;contract_id:string;name:string|null;
  stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;
  default_alignment:string|null;active_alignment:string|null;
  booking_division:string|null;person_status:string|null;family:string|null;
- portable_gimmick_id:string|null;persona_record:unknown|null;
+ portable_gimmick_id:string|null;
+ identity_exists:boolean;identity_name:string|null;identity_gimmick:string|null;
+ identity_style:string|null;identity_signature:string|null;identity_finisher:string|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
  remaining_dates:number|null;exclusive_elsewhere:boolean};
 async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
@@ -170,7 +172,12 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "p.popularity,p.recognition,p.momentum,p.in_ring_quality,p.match_craft,",
     "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,",
     "p.default_alignment,aligned.alignment AS active_alignment,",
-    "p.portable_gimmick_id,identity.persona AS persona_record,",
+    "p.portable_gimmick_id,(identity.persona IS NOT NULL) AS identity_exists,",
+    "identity.persona->>'personaName' AS identity_name,",
+    "identity.persona->>'gimmickId' AS identity_gimmick,",
+    "identity.persona->>'primaryStyle' AS identity_style,",
+    "identity.persona->'signatureMoves'->0->>'name' AS identity_signature,",
+    "identity.persona->'finishingMoves'->0->>'name' AS identity_finisher,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
     "c.expires_week_index,c.remaining_dates,",
     "EXISTS(SELECT 1 FROM ppw_contracts other",
@@ -200,18 +207,15 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     expiresWeekIndex:c.expires_week_index??-1,remainingDates:c.remaining_dates,
     currentWeekIndex:week});
    const baseline=originalPersonaBaseline(c.name??c.person_id,c.portable_gimmick_id);
-   const persona=c.persona_record&&typeof c.persona_record==="object"?
-    c.persona_record as Record<string,unknown>:null;
-   const ringName=typeof persona?.personaName==="string"&&persona.personaName.trim()?
-    persona.personaName:c.name;
-   const gimmick=typeof persona?.gimmickId==="string"?
-    persona.gimmickId:baseline.gimmickId;
-   const identityStyle=typeof persona?.primaryStyle==="string"?persona.primaryStyle:baseline.primaryStyle;
-   const signature=Array.isArray(persona?.signatureMoves)?persona.signatureMoves as {name?:string}[]:baseline.signatureMoves;
-   const finishing=Array.isArray(persona?.finishingMoves)?persona.finishingMoves as {name?:string}[]:baseline.finishingMoves;
+   const ringName=c.identity_name?.trim()?c.identity_name:c.name;
+   const gimmick=c.identity_gimmick??baseline.gimmickId;
+   const identityStyle=c.identity_style??baseline.primaryStyle;
+   // An intentionally empty edited repertoire remains empty.
+   const signatureName=c.identity_exists?c.identity_signature:baseline.signatureMoves[0]?.name??null;
+   const finisherName=c.identity_exists?c.identity_finisher:baseline.finishingMoves[0]?.name??null;
    return {personId:c.person_id,contractId:c.contract_id,name:c.name,
     ringName,gimmickId:gimmick??null,primaryStyle:identityStyle,
-    signatureMove:signature[0]?.name??null,finisherMove:finishing[0]?.name??null,
+    signatureMove:signatureName,finisherMove:finisherName,
     alignment:c.active_alignment??c.default_alignment,
     popularity:c.popularity,recognition:c.recognition,momentum:c.momentum,
     inRingQuality:c.in_ring_quality,matchCraft:c.match_craft,presentation:c.presentation,
