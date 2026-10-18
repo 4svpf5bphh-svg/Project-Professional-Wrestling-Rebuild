@@ -1,7 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
-import {readCardParticipants} from "../domain/card-participants.js";
+import {readCardParticipants,appearancesFromSlots} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/match-sides.js";
 import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
 import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match.js";
@@ -106,11 +106,11 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const appearances=new Set<string>();
     const interferers=new Set<string>();
     const bookedForShow=new Set<string>();
-    for(const slot of slots){
-      // Booked appearances must originate from a real card slot with a
-      // contract-backed participant, NOT just an interference personId.
-      for(const p of readCardParticipants(slot.payload))bookedForShow.add(p.personId);
-    }
+    // A contracted run-in is a genuine appearance, even without an extra
+    // angle. Existing participant and run-in contracts were checked together
+    // before World resource clearance. No extra wrestler query.
+    for(const p of appearancesFromSlots(slots.map(s=>s.payload)))
+      bookedForShow.add(p.personId);
     const pairMap=new Map<string,[string,string]>();
     const tagPairs=new Map<string,[string,string]>();
     const layouts=matches.map(m=>readCanonicalMatchLayout(m.payload));

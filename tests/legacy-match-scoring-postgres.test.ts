@@ -360,6 +360,24 @@ test("original match rating/crowd run from only current-week relational context"
       withRunIn.projections[0]!.injuryPreview!.crowdResponse+3.3)*10)/10);
     assert.equal(count.length-beforeRunInCount,8,
       "Linked feud adds two indexed reads to the six-query preview");
+    // New booking: a named, signed outside performer does not need a
+    // separate backstage interview just to be counted as ringside present.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(
+        "UPDATE ppw_card_slots SET payload=jsonb_set(payload,'{participants}','[]'::jsonb) WHERE world_id=$1 AND draft_id=$2 AND slot_id='interview'",
+        [worldId,showId]);
+      await tx.query(
+        "UPDATE ppw_card_slots SET payload=jsonb_set(payload,'{interference}',$3::jsonb) WHERE world_id=$1 AND draft_id=$2 AND slot_id='opening'",
+        [worldId,showId,JSON.stringify({
+          personId:"interferer-"+id,contractId:"contract-i-"+id,
+          aidedSide:"B",plannedOutcome:"SUCCESS"})]);
+    });
+    const beforeStandaloneCount=count.length;
+    const standalone=await previewArchivedShowMatchScores(instrumented,input);
+    assert.equal(standalone.projections[0]!.interferencePreview!.interference!.outcome,"SUCCESS");
+    assert.equal(standalone.projections[0]!.interferencePreview!.actualWinnerId,personIds[1]);
+    assert.equal(count.length-beforeStandaloneCount,8,
+      "Ringside run-in shares the same batched projection query count");
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_people SET status='INACTIVE' WHERE world_id=$1 AND person_id=$2",
       [worldId,"interferer-"+id],
