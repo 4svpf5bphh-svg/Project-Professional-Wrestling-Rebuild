@@ -903,5 +903,9 @@ test("iPhone venue choices show rival interest and save without repeated Planner
  await page.getByRole("button",{name:"Choose Town Hall instead"}).click();
  await expect(page.getByText(/No other promotion currently has a show planned/)).toBeVisible();
  await page.getByRole("button",{name:"Save show"}).click();
+ // The authoritative response is asynchronous: wait for the subsequent
+ // single workspace refresh, rather than sampling the request log mid-flight.
+ await expect.poll(()=>methods.length).toBe(3);
+ await expect(page.getByRole("button",{name:"Plan weekly show"})).toBeVisible();
  expect(methods).toEqual(["planner","planShow","planner"]);
 });
