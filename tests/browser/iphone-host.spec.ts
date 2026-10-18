@@ -257,6 +257,9 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+ await expect(page.getByText("18 of 120 min TV guide")).toBeVisible();
+ await expect(page.getByRole("progressbar",{name:"Booked match minutes against the television running-time guide"}))
+  .toHaveAttribute("aria-valuenow","18");
  await page.locator(".ppw-card-bar .ppw-expand").click();
  const focused=page.getByRole("dialog",{name:"Edit match"});
  await expect(focused).toBeVisible();

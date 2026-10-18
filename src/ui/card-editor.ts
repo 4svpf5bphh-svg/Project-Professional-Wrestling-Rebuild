@@ -307,6 +307,33 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    el("span","",castReady+" / "+order.length+" cast complete"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
+  // Match timing is already authored and available in memory. Present only a
+  // truthful partial estimate: angles and entrances have their own air-time.
+  const matchMinutes=[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0);
+  const airtime=el("section","ppw-card-airtime");
+  const clock=el("div","ppw-card-airtime-heading");
+  clock.append(el("span","ppw-eyebrow","MATCH TIME"),
+   el("strong","",view.bookingClass==="REGULAR"?
+    matchMinutes+" of 120 min TV guide":
+    matchMinutes+" min of booked matches"));
+  airtime.append(clock);
+  if(view.bookingClass==="REGULAR"){
+   const track=el("div","ppw-card-airtime-track");
+   track.setAttribute("role","progressbar");
+   track.setAttribute("aria-label","Booked match minutes against the television running-time guide");
+   track.setAttribute("aria-valuemin","0");track.setAttribute("aria-valuemax","120");
+   track.setAttribute("aria-valuenow",String(Math.min(120,matchMinutes)));
+   const progress=el("span","ppw-card-airtime-fill");
+   progress.style.width=Math.min(100,matchMinutes/120*100)+"%";
+   if(matchMinutes>120)track.classList.add("ppw-card-airtime-overrun");
+   track.append(progress);airtime.append(track);
+  }
+  airtime.append(el("small","",view.bookingClass==="REGULAR"?
+   (matchMinutes>120?
+    "Match time exceeds the TV guide. Review the card before adding entrances or angles.":
+    "Angles, entrances and breaks need time too. Keep space for them."):
+   "Entrances and angles are additional to these match minutes."));
+  root.append(airtime);
   const toolbar=el("div","ppw-toolbar");
   const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
    v=>{formatChoice=v as Format;render();},!mutable());

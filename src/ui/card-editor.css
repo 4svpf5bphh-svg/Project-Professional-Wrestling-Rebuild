@@ -236,3 +236,19 @@
  @keyframes ppw-card-sheet-enter{from{opacity:.7;transform:translateY(13px)}
  to{opacity:1;transform:none}}
 }
+
+/* Running-time guidance is computed entirely from the locally authored card. */
+.ppw-card-airtime{margin:0 0 16px;border:1px solid #365973;border-radius:13px;
+ padding:13px 14px;background:linear-gradient(100deg,#112f48,#0d2033)}
+.ppw-card-airtime-heading{display:flex;align-items:baseline;justify-content:space-between;
+ flex-wrap:wrap;gap:8px 12px}
+.ppw-card-airtime-heading strong{font-weight:850;color:#e5faff;
+ font-size:16px;font-variant-numeric:tabular-nums}
+.ppw-card-airtime-track{height:6px;background:#304960;border-radius:99px;
+ overflow:hidden;margin:11px 0 8px}
+.ppw-card-airtime-fill{display:block;height:100%;border-radius:99px;
+ background:linear-gradient(90deg,#36c6ef,#aa8af3);transition:width .16s}
+.ppw-card-airtime-overrun .ppw-card-airtime-fill{background:#ff9e70}
+.ppw-card-airtime>small{display:block;font-size:11px;line-height:1.45;color:#b9d1e0;
+ margin-top:7px}
+@media(prefers-reduced-motion:reduce){.ppw-card-airtime-fill{transition:none}}
