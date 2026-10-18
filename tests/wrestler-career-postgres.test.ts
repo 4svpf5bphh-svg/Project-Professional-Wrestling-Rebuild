@@ -1,0 +1,90 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {postgresPool} from "../src/db/postgres.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
+import {originalGenesisFixture} from "./fixtures/original-genesis.js";
+import {joinWorld} from "../src/db/membership-operations.js";
+import {submitPromotionClaim} from "../src/db/promotion-commands.js";
+import {readWrestlerCareer} from "../src/db/wrestler-career.js";
+import {dispatchCardRpc} from "../src/web/card-rpc.js";
+const url=process.env.PPW_NEON_TEST_URL;
+
+test("wrestler career is scoped, three-query and reproduces only verified completed outcomes",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="career-"+randomUUID(),player="career-controller-"+randomUUID();
+ const db=postgresPool(url!,4),promotionId="promotion-0",personId="person-0";
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,96));
+  await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId,requestId:"claim",expectedRevision:1});
+  const scope={worldId:world,playerId:player,promotionId,personId};
+  const zero=await readWrestlerCareer(db.pool,scope);
+  assert.deepEqual(zero.summary,{matches:0,wins:0,losses:0,singles:0,tag:0,
+   ratedMatches:0,averageStars:null,bestStars:null,injuries:0});
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
+    "resolution_id,crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'career-show',1,1,'career-resolution',75,'{}'::jsonb,$3)",
+    [world,promotionId,"a".repeat(64)]);
+   await tx.query(
+    "INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,"+
+    "crowd_response,actual_finish,actual_winner_side)"+
+    " VALUES($1,'career-show','match-1',0,85,'CLEAN_PIN','A')",[world]);
+   await tx.query(
+    "INSERT INTO ppw_individual_field_career_effects("+
+    "world_id,show_id,match_id,person_id,actual_winner_side,performer_side,"+
+    "won,before_stats,after_stats,injury_severity,injury_weeks_out)"+
+    " VALUES($1,'career-show','match-1',$2,'A','A',true,'{}'::jsonb,'{}'::jsonb,"+
+    "'MINOR',2)",[world,personId]);
+   await tx.query(
+    "INSERT INTO ppw_completed_match_report_facts("+
+    "world_id,show_id,match_id,rating_stars,execution_quality,"+
+    "chemistry_modifier,actual_minutes)"+
+    " VALUES($1,'career-show','match-1',4.25,85,0,18)",[world]);
+  });
+  const meter=new MeasuredQuerySession("wrestler-career-on-demand");
+  const measured:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  const view=await readWrestlerCareer(measured,scope);
+  assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:5000}).queryCount,3);
+  assert.deepEqual(view.summary,{matches:1,wins:1,losses:0,singles:1,tag:0,
+   ratedMatches:1,averageStars:4.25,bestStars:4.25,injuries:1});
+  assert.equal(view.recent[0]?.showId,"career-show");
+  assert.equal(view.recent[0]?.finish,"CLEAN_PIN");
+  assert.equal(view.recent[0]?.weeksOut,2);
+  assert.equal(view.recent[0]?.stars,4.25);
+  assert.equal(view.recent[0]?.format,"SINGLES");
+  const rpc=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
+   "wrestlerCareer",{worldId:world,promotionId,personId});
+  assert.equal((rpc as typeof view).summary.wins,1);
+  await assert.rejects(readWrestlerCareer(db.pool,{...scope,playerId:"outsider"}),
+   /access denied/i);
+  await assert.rejects(readWrestlerCareer(db.pool,{...scope,personId:"not-known"}),
+   /access denied/i);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of [
+    "ppw_completed_match_report_facts","ppw_individual_field_career_effects",
+    "ppw_completed_show_matches","ppw_completed_shows",
+    "ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
+    "ppw_promotion_controls","ppw_memberships","ppw_contracts",
+    "ppw_championships","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotions","ppw_markets"
+   ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
