@@ -241,7 +241,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     (p.division==="WOMEN"?"Women":p.division==="MEN"?"Men":"Division unknown")+
     " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum)+
     (filter.view==="ROSTER"&&p.roleExpectation?
-      " · "+p.roleExpectation.replaceAll("_"," ").toLowerCase():"")));
+      " · "+p.roleExpectation.replaceAll("_"," ").toLowerCase():""));
    const label=p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
