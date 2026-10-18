@@ -722,8 +722,8 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
  await page.getByRole("button",{name:"+ Add event"}).click();
  await page.getByRole("textbox",{name:"Event name"}).fill("Summer Clash");
  const frequency=page.getByRole("combobox",{name:"Repeat frequency"});
- await frequency.selectOption("2");
- await expect(page.locator(".ppw-calendar-forecast")).toContainText(/WEEK/);
+ await frequency.selectOption("13");
+ await expect(page.locator(".ppw-calendar-forecast-dates")).toContainText("YEAR 1 · WEEK 5");
  await frequency.selectOption("52");
  await page.getByRole("spinbutton",{name:"First week in repeat cycle"}).fill("6");
  await expect(page.locator(".ppw-calendar-forecast-warning")).toContainText(/Only one additional PPV/i);
