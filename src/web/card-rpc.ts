@@ -10,7 +10,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,
- completedShowAsActor,completedShowArchiveAsActor,championshipsAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+ completedShowAsActor,completedShowArchiveAsActor,championshipsAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -268,6 +268,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    ...(p.segments===undefined?{}:{segments:p.segments as never[]}),
    runningOrder:p.runningOrder as string[]});
  }
+ if(method==="creativeConsent")return requestMatchConsentAsActor(context,{
+  worldId,promotionId,showId,requestId,expectedRevision,
+  slotId:id("slotId"),personId:id("personId")});
  if(method==="ready")return markPreparedShowReadyAsActor(context,{
   worldId,promotionId,showId,requestId,expectedRevision,confirmReadyToRun:true});
  throw new Error("Unknown booking action");
