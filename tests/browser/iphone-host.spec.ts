@@ -330,13 +330,18 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await expect(page).toHaveURL(/#\/planner\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load"]);
+ await page.locator("details.ppw-management-menu summary").click();
+ await page.getByRole("button",{name:"Show Planner"}).click();
+ await expect(page).toHaveURL(/#\/planner$/);
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ expect(methods).toEqual(["overview","planner","load","planner"]);
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Your locker room has messages/}).click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
  await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
  await expect(page.getByRole("button",{name:/Charlie/})).toBeVisible();
- expect(methods).toEqual(["overview","planner","load","overview","backstage"]);
+ expect(methods).toEqual(["overview","planner","load","planner","overview","backstage"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
