@@ -23,8 +23,6 @@ type PersonRow={
  person_id:string;name:string;booking_division:string|null;
  in_ring_quality:number|null;portable_gimmick_id:string|null;
  default_alignment:string|null;active_alignment:string|null;
- persona_name:string|null;persona_gimmick:string|null;persona_style:string|null;
- persona_signature:string|null;persona_finisher:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;interest_score:number|null;
@@ -97,11 +95,6 @@ export async function readWrestlerDirectory(
     p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
-    persona.persona->>'personaName' AS persona_name,
-    persona.persona->>'gimmickId' AS persona_gimmick,
-    persona.persona->>'primaryStyle' AS persona_style,
-    persona.persona->'signatureMoves'->0->>'name' AS persona_signature,
-    persona.persona->'finishingMoves'->0->>'name' AS persona_finisher,
     interest.score AS interest_score,
     mine.contract_id,mine.family,mine.role_expectation,mine.remaining_dates,mine.expires_week_index,
     mine.start_week_index,
@@ -113,8 +106,6 @@ export async function readWrestlerDirectory(
       WHERE o.world_id=p.world_id AND o.person_id=p.person_id
        AND o.promotion_id=$2 AND o.status='PENDING') AS pending_offer
    FROM ppw_people p
-   LEFT JOIN ppw_portable_personas persona ON persona.world_id=p.world_id
-    AND persona.person_id=p.person_id
    LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
     AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
    JOIN ppw_promotions owner ON owner.world_id=p.world_id AND owner.promotion_id=$2
@@ -197,11 +188,10 @@ export async function readWrestlerDirectory(
     const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
-    ringName:p.persona_name??fallback.personaName,
-    gimmickId:p.persona_gimmick??fallback.gimmickId,
-    primaryStyle:p.persona_style??fallback.primaryStyle,
-    signatureMove:p.persona_signature??fallback.signatureMoves[0]?.name??null,
-    finisherMove:p.persona_finisher??fallback.finishingMoves[0]?.name??null,
+    ringName:fallback.personaName,gimmickId:fallback.gimmickId,
+    primaryStyle:fallback.primaryStyle,
+    signatureMove:fallback.signatureMoves[0]?.name??null,
+    finisherMove:fallback.finishingMoves[0]?.name??null,
     alignment:p.active_alignment??p.default_alignment,
     inRingQuality:p.in_ring_quality,
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
