@@ -35,7 +35,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
     await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
     await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
-    await tx.query("INSERT INTO ppw_markets(world_id,market_id,name) VALUES($1,'home','Heartland')",[world]);
+    await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'home','Heartland',65,75,100)",[world]);
     await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Main Hall','home')",[world]);
     for(const id of ids){
      await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
