@@ -69,6 +69,38 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  expect(methods).toContain("overview");expect(methods).toContain("planner");
 });
+test("Home alerts open expiring agreements or pending offers directly without another lookup",async({page})=>{
+ const methods:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:false,pendingBackstage:false,
+  expiringTalent:true,pendingContractOffers:true
+ }}};
+ const contracts={year:1,week:5,worldRevision:4,canEdit:true,
+  currentWeekIndex:4,roster:[],requests:[],renewals:[],offers:[],
+  summary:{signed:0,expiringSoon:0,noDates:0,
+   backstageContractDiscussions:0,pendingNegotiations:0,pendingRenewals:0,
+   pendingOffers:0,weeklyGuarantees:0}};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  methods.push(method);
+  await route.fulfill({json:method==="overview"?home:
+   method==="contracts"?contracts:{}});
+ });
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:/Contracts approaching expiry/}).click();
+ await expect(page).toHaveURL(/#\/contracts\/expiring$/);
+ await expect(page.getByLabel("Contract filter")).toHaveValue("EXPIRING");
+ await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:/Offers awaiting decisions/}).click();
+ await expect(page).toHaveURL(/#\/contracts\/pending$/);
+ await expect(page.getByText(/outstanding offers, renewals and date requests/)).toBeVisible();
+ await expect(page.getByLabel("Contract filter")).toHaveValue("ATTENTION");
+ expect(methods).toEqual(["overview","contracts","overview","contracts"]);
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+});
+
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
