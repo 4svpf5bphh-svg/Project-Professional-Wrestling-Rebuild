@@ -196,3 +196,78 @@ for(const mode of ["ROYAL","TEAMS"] as const){
   }
  });
 }
+
+test("authored run-ins are roster-contracted, charged as an appearance and remain one-query-batch",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,3),world="run-in-"+randomUUID();
+ const promotion="arena",show="weekly",player="owner-"+randomUUID();
+ const context={pool:db.pool,actor:{playerId:player}};
+ const scope={worldId:world,promotionId:promotion,showId:show};
+ const a={personId:"alice",contractId:"deal-alice"};
+ const b={personId:"bob",contractId:"deal-bob"};
+ const raw={
+  matchType:"SINGLES",family:"INDIVIDUAL",
+  sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  participants:[a,b],scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18,
+  interference:{personId:"outsider",contractId:"deal-outsider",
+   aidedSide:"A",plannedOutcome:"SUCCESS"}
+ };
+ const save=(payload:unknown,requestId:string,revision:number,pool=db.pool)=>
+  saveCardEditorAsActor({pool,actor:{playerId:player}},{...scope,requestId,
+   expectedRevision:revision,matches:[{slotId:"bout",payload}],runningOrder:["bout"]});
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Run-in trial",seed:15,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promotion,name:"Arena",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name) VALUES($1,'home','Home')",[world]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Hall','home')",[world]);
+   for(const id of ["alice","bob","outsider"]){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
+     [world,id,id]);
+    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52)",
+     [world,"deal-"+id,id,promotion]);
+   }
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home')",[world,show,promotion]);
+  });
+  const meter=new MeasuredQuerySession("run-in-contracts-bulk");
+  const wrapped:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},async query<T extends Record<string,unknown>>(
+    sql:string,args:readonly unknown[]){return meter.execute(()=>client.query<T>(sql,args));}};
+  }};
+  const applied=await save(raw,"save",0,wrapped);
+  assert.equal(applied.status,"APPLIED");
+  assert.equal(applied.result.performers,3,"Run-in costs a wrestler appearance");
+  assert.equal(meter.assertBudget({maxQueries:15,maxResultBytes:40_000}).queryCount<=15,true);
+  const saved=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(saved.selectedPeople.length,3,"Run-in wrestler keeps a name after reloading the card");
+  assert.deepEqual((saved.slots[0]?.payload as typeof raw).interference,raw.interference);
+  assert.equal((await save(raw,"save",0)).status,"REPLAYED");
+  await assert.rejects(save({...raw,interference:{...raw.interference,
+   contractId:"fake"}}, "wrong-agreement",1),/contract rights/);
+  await assert.rejects(save({...raw,interference:{...raw.interference,
+   contractId:undefined}},"missing-agreement",1),/signed agreement/);
+  await assert.rejects(save({...raw,interference:{...raw.interference,
+   personId:"alice"}},"self-interference",1),/outside the match/);
+  await assert.rejects(save({...raw,interference:{...raw.interference,
+   aidedSide:"B"}},"wrong-winner",1),/support the winner/);
+  const failed=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(failed.worldRevision,1);
+  assert.equal((failed.slots[0]?.payload as typeof raw).interference.personId,"outsider");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
+    "ppw_card_slots","ppw_booking_drafts","ppw_contracts","ppw_people",
+    "ppw_venues","ppw_promotion_controls","ppw_memberships",
+    "ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

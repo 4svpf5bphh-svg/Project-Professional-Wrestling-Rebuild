@@ -84,8 +84,11 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
    " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
    [id.worldId,id.showId]));
-  const personIds=[...new Set(slots.flatMap(s=>
-   readCardParticipants(s.payload).map(p=>p.personId)))];
+  const personIds=[...new Set(slots.flatMap(s=>[
+   ...readCardParticipants(s.payload).map(p=>p.personId),
+   ...(s.kind==="MATCH"&&readBookedInterference(s.payload)?
+    [readBookedInterference(s.payload)!.personId]:[])
+  ]))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
    programme_id:string;heat:number|null;repetition:number;label:string}>([

@@ -43,3 +43,29 @@ test("browser cannot edit medical winners, forge fields or book unsupported comb
   {sideId:"A",participants:[person(0)]},
   {sideId:"B",participants:[person(0)]}]}),/repeated|disagree/);
 });
+
+test("only an outside contracted wrestler can run in, and winner never changes",()=>{
+ const singles={...make(2,1),ruleset:undefined,eliminationOrder:undefined};
+ const runIn={personId:"manager",contractId:"contract-manager",
+  aidedSide:"B",plannedOutcome:"SUCCESS"};
+ const accepted=normalizeBookableMatch({...singles,interference:runIn});
+ assert.deepEqual(accepted.interference,runIn);
+ assert.equal(accepted.scriptedWinnerSide,"B");
+ assert.throws(()=>normalizeBookableMatch({...singles,interference:{
+  ...runIn,personId:"person-0"}}),/outside/);
+ assert.throws(()=>normalizeBookableMatch({...singles,interference:{
+  ...runIn,aidedSide:"A"}}),/support the winner/);
+ assert.equal((normalizeBookableMatch({...singles,interference:{
+  ...runIn,aidedSide:"A",plannedOutcome:"THWARTED"}}).interference as
+  {plannedOutcome:string}).plannedOutcome,"THWARTED");
+ assert.throws(()=>normalizeBookableMatch({...singles,interference:{
+  ...runIn,contractId:""}}),/Invalid booked interference/);
+ assert.equal(normalizeBookableMatch({...singles,plannedFinish:"FOREIGN_OBJECT",
+  cheatingWrestlerId:"person-1"}).cheatingWrestlerId,"person-1");
+ assert.throws(()=>normalizeBookableMatch({...singles,plannedFinish:"FOREIGN_OBJECT",
+  cheatingWrestlerId:"person-0"}),/responsible/);
+ assert.equal(normalizeBookableMatch({...singles,plannedFinish:"DISQUALIFICATION",
+  cheatingWrestlerId:"person-0"}).cheatingWrestlerId,"person-0");
+ assert.throws(()=>normalizeBookableMatch({...singles,plannedFinish:"DISQUALIFICATION",
+  cheatingWrestlerId:"person-1"}),/responsible/);
+});

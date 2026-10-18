@@ -113,3 +113,25 @@ test("original match-style acceptance responds to wrestler fatigue without affec
  assert.equal(bookedStyleReadiness(match,new Map()).missing,2);
  assert.equal(buildBookedMatch(match).scriptedWinnerSide,"A");
 });
+
+test("contracted run-in survives booking and winner edits without writing an unwanted finish",()=>{
+ let match=newEditorMatch("interference","SINGLES");
+ match=assignPerformer(match,0,0,{personId:"alice",contractId:"deal-alice"});
+ match=assignPerformer(match,1,0,{personId:"bob",contractId:"deal-bob"});
+ match={...match,interference:{personId:"outside",contractId:"deal-outside",
+  aidedSide:"A",plannedOutcome:"SUCCESS"},plannedFinish:"FOREIGN_OBJECT",
+  cheatingWrestlerId:"alice"};
+ const booked=buildBookedMatch(match);
+ assert.equal(booked.scriptedWinnerSide,"A");
+ assert.deepEqual(booked.interference,match.interference);
+ assert.equal(booked.cheatingWrestlerId,"alice");
+ const returned=restoreEditorMatch("interference",booked);
+ assert.deepEqual(returned.interference,match.interference);
+ const changed=changeWinner(returned,1);
+ assert.equal(changed.winnerSide,1);
+ assert.equal(changed.interference?.aidedSide,"B");
+ assert.equal(changed.cheatingWrestlerId,undefined);
+ assert.equal(buildBookedMatch(changed).scriptedWinnerSide,"B");
+ const defeated=assignPerformer(changed,1,0,{personId:"outside",contractId:"deal-outside"});
+ assert.equal(defeated.interference,undefined,"Booked participant cannot remain their own interferer");
+});
