@@ -32,25 +32,27 @@ test("iPhone sign in, persistent navigation and deep-linked desks",async({page})
  await page.getByLabel("Player ID").fill("test-owner");
  await page.getByLabel("Private access code").fill("test-code-123456789");
  await page.getByRole("button",{name:"Sign in"}).click();
- await expect(nav.getByRole("button",{name:"Home"})).toBeVisible();
+ await expect(nav.getByRole("button",{name:"World"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  const readsOnHome=methods.length;
- await nav.getByRole("button",{name:"More"}).click();
- await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await nav.getByRole("button",{name:"Business"}).click();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
  expect(methods.length,"Opening the local office menu never reads Neon").toBe(readsOnHome);
- await nav.getByRole("button",{name:"Home"}).click();
+ await nav.getByRole("button",{name:"World"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await nav.getByRole("button",{name:"Talent"}).click();
  await page.getByRole("button",{name:/Talent Market/}).click();
  await expect(page).toHaveURL(/#\/market$/);
- await nav.getByRole("button",{name:"Home"}).click();
+ await nav.getByRole("button",{name:"World"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- await nav.getByRole("button",{name:"More"}).click();
- await expect(page).toHaveURL(/#\/more$/);
- await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await nav.getByRole("button",{name:"Business"}).click();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
  await page.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await expect(nav.getByRole("button",{name:"Roster"})).toBeVisible();
+ await expect(nav.getByRole("button",{name:"Talent"})).toBeVisible();
  await nav.getByRole("button",{name:"Plan"}).click();
+ await page.getByRole("button",{name:/Show Planner/}).click();
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await expect(page).toHaveURL(/#\/planner$/);
  await page.goto("/#/home");
@@ -86,10 +88,7 @@ test("compact iPhones retain legible touch navigation and no horizontal shell ov
  await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
  await expect(nav.locator(".ppw-tab")).toHaveCount(5);
- const officeRows=await page.locator(".ppw-home-office .ppw-home-tile")
-  .evaluateAll(nodes=>nodes.slice(0,2).map(n=>Math.round(n.getBoundingClientRect().top)));
- expect(officeRows).toHaveLength(2);
- expect(officeRows[0]).toBe(officeRows[1]);
+ await expect(page.locator(".ppw-home-drawer-hint")).toBeVisible();
  const audit=()=>page.evaluate(()=>{
   const tabs=[...document.querySelectorAll<HTMLElement>(".ppw-navigation .ppw-tab")];
   return {overflow:document.documentElement.scrollWidth-innerWidth,
@@ -99,18 +98,18 @@ test("compact iPhones retain legible touch navigation and no horizontal shell ov
  let sizes=await audit();
  expect(sizes.overflow).toBeLessThanOrEqual(1);
  expect(Math.min(...sizes.tabHeights)).toBeGreaterThanOrEqual(44);
- await nav.getByRole("button",{name:"More"}).click();
- await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
- await expect(page.getByRole("heading",{name:"Creative"})).toBeVisible();
- await expect(page.getByRole("heading",{name:"The business"})).toBeVisible();
+ await nav.getByRole("button",{name:"Business"}).click();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Staff"})).toBeVisible();
  sizes=await audit();
  expect(sizes.overflow).toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Contracts"}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await expect(nav.getByRole("button",{name:"More"})).toHaveAttribute("aria-current","page");
+ await expect(nav.getByRole("button",{name:"Business"})).toHaveAttribute("aria-current","page");
  await page.setViewportSize({width:390,height:844});
- await nav.getByRole("button",{name:"Home"}).click();
- await expect(nav.getByRole("button",{name:"Home"})).toHaveAttribute("aria-current","page");
+ await nav.getByRole("button",{name:"World"}).click();
+ await expect(nav.getByRole("button",{name:"World"})).toHaveAttribute("aria-current","page");
  expect((await audit()).overflow).toBeLessThanOrEqual(1);
 });
 
@@ -175,11 +174,11 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await page.getByRole("button",{name:/Saturday Spectacle/}).click();
  await requested;
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
- await nav.getByRole("button",{name:"More"}).click();
- await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await nav.getByRole("button",{name:"Business"}).click();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
  releaseShow();
  await page.waitForTimeout(250);
- await expect(page.getByRole("heading",{name:"Promotion office"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
  await expect(page.locator("#game > .ppw-workspace")).toHaveCount(1);
  await expect(page.locator("#game .ppw-archive-hero")).toHaveCount(0);
  expect(await page.evaluate(()=>

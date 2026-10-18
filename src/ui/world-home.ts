@@ -119,27 +119,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "Financial outlook: "+promotion.financialDistress+
      ". Open Business to review cash and weekly commitments."));
   }
-  const main=el("section","ppw-home-group ppw-home-main");
-  main.append(el("h3","","THE LOCKER ROOM"));
-  const book=control("Show Planner","Calendar, venues and cards",port.planner,"▣");
-  book.classList.add("ppw-home-featured");
-  main.append(book,
-   control("My Roster","Singles, teams and factions",port.roster,"♟"),
-   control("Talent Market","Scout and negotiate contracts",port.market,"◇"),
-   control("Backstage","Wrestler conversations and creative proposals",port.backstage,"☷"),
-   control("Results","Finished broadcasts and match reports",port.results,"★"));
-  root.append(main);
-  const office=el("section","ppw-home-group ppw-home-office");
-  office.append(el("h3","","THE CONTROL ROOM"));
-  office.append(control("Contracts","Renewals, dates and pending offers",port.contracts,"▤"),
-   control("Business","Finances and regional audiences",port.business,"◫"),
-   control("Staff","Delegate permissions before World Lock",port.staff,"◉"),
-   control("Industry","Other promotions and completed shows",port.industry,"◎"),
-   control("Show Calendar","Weekly series and premium events",port.calendar,"▦"));
-  root.append(office);
-  const reload=el("button","ppw-home-refresh","↻ Refresh World") as HTMLButtonElement;
-  reload.type="button";reload.disabled=loading;reload.onclick=()=>void load();
-  root.append(reload);
+  root.append(el("p","ppw-home-small ppw-home-drawer-hint",
+   "Use the five-section menu at the bottom to open Roster, Market, Backstage, Planning, Business and Results. All gameplay actions remain in their respective desks."));
  }
  void load();
  return {refresh:load};

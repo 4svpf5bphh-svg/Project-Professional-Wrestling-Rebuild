@@ -250,3 +250,6 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
  .ppw-home-office .ppw-home-icon{height:27px;width:27px;font-size:15px}
  .ppw-home-office .ppw-home-arrow{font-size:14px}
 }
+
+/* Drawer layout deliberately overrides broadcast tab styling only inside the drawer. */
+.ppw-navigation-open{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}

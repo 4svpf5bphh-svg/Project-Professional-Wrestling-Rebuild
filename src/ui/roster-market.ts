@@ -160,31 +160,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      (filter.view==="ROSTER"?" · Signed talent only":" · World-wide recruitment"):
      "Your wrestlers, their contracts and opportunities across the World."));
   root.append(head);
-  const navigation=el("nav","ppw-directory-nav");
-  navigation.setAttribute("aria-label","Roster navigation");
-  for(const [kind,label] of [
-   ["ROSTER","Singles"],["TEAMS","Tag Teams"],["STABLES","Stables"],
-   ["MARKET","Talent Market"],["CONTRACTS","Contracts"],["STAFF","Staff"],["INDUSTRY","Industry"],
-   ["BUSINESS","Business"]
-  ] as const){
-   const b=btn(label,()=>{
-    if(kind==="ROSTER"||kind==="MARKET")
-     pick({view:kind,availability:"ALL",
-      sort:kind==="ROSTER"?"NAME":filter.sort?.startsWith("PAY_")?"NAME":filter.sort});
-    else if(kind==="STAFF")port.openStaff?.();
-    else if(kind==="INDUSTRY")port.openIndustry?.();
-    else if(kind==="TEAMS")port.openTagTeams();
-    else if(kind==="STABLES")port.openStables();
-    else if(kind==="BUSINESS")port.openBusiness?.();
-    else port.openContracts();
-   });
-   b.setAttribute("aria-current",filter.view===kind?"page":"false");
-   navigation.append(b);
-  }
-  root.append(navigation);
-  if(port.backToBooking)root.append(btn("← Back to current card",
-   ()=>port.backToBooking?.()));
-  if(port.backToHome)root.append(btn("⌂ Home",()=>port.backToHome?.()));
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
   const controls=el("section","ppw-directory-filters");

@@ -4,8 +4,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage}
  from "../../../src/web/card-browser.js";
-import {HOST_SECTIONS,readHostSection,hostSectionHash,
- type HostSection} from "../../../src/web/host-navigation.js";
+import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
+ type HostSection,type HostDrawerRoot} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
 import "../polish.css";
@@ -23,6 +23,8 @@ const game=document.querySelector<HTMLElement>("#game")!;
 const account=document.querySelector<HTMLElement>("#account")!;
 const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
+let drawerExpanded=false;
+let selectedDrawerRoot:HostDrawerRoot="world";
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
@@ -48,31 +50,71 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
 
 /** Mobile shell is independent of the workspace root and remains accessible. */
 function openSection(section:HostSection){
+ drawerExpanded=false;
  const target=hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
  else renderSection();
 }
+
+function renderNavigation(section:HostSection){
+ navigation.replaceChildren();
+ navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
+ navigation.hidden=false;
+ document.querySelector("#ppw-drawer-backdrop")?.remove();
+ if(drawerExpanded){
+  const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
+  backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
+  backdrop.setAttribute("aria-label","Close navigation drawer");
+  backdrop.onclick=()=>{drawerExpanded=false;renderNavigation(section);};
+  document.body.append(backdrop);
+  const selected=HOST_DRAWER_ROOTS.find(x=>x.key===selectedDrawerRoot)!;
+  const drawer=el("section","ppw-nav-drawer");
+  drawer.setAttribute("aria-label",selected.label+" menu");
+  const head=el("div","ppw-nav-drawer-heading");
+  head.append(el("span","","PPW / "+selected.label.toUpperCase()),
+   el("strong","",selected.label));
+  const close=button("×",()=>{drawerExpanded=false;renderNavigation(section)});
+  close.className="ppw-nav-drawer-close";
+  close.setAttribute("aria-label","Close navigation drawer");
+  head.append(close);drawer.append(head);
+  const entries=el("div","ppw-nav-drawer-entries");
+  for(const [id,label,description] of selected.destinations){
+   const entry=button("",()=>openSection(id as HostSection));
+   entry.className="ppw-nav-drawer-entry";
+   entry.append(el("strong","",label),el("small","",description));
+   if(id===section)entry.setAttribute("aria-current","page");
+   entries.append(entry);
+  }
+  drawer.append(entries);navigation.append(drawer);
+ }
+ for(const root of HOST_DRAWER_ROOTS){
+  const tab=button("",()=>{
+   if(drawerExpanded&&selectedDrawerRoot===root.key)drawerExpanded=false;
+   else {drawerExpanded=true;selectedDrawerRoot=root.key;}
+   renderNavigation(section);
+  });
+  const active=drawerExpanded?selectedDrawerRoot===root.key:
+   drawerRootForSection(section)===root.key;
+  tab.className="ppw-tab"+(active?" ppw-tab-active":"");
+  tab.setAttribute("aria-label",root.label);
+  tab.setAttribute("aria-expanded",String(drawerExpanded&&selectedDrawerRoot===root.key));
+  if(drawerRootForSection(section)===root.key)tab.setAttribute("aria-current","page");
+  tab.append(el("span","ppw-tab-icon",root.glyph),el("span","ppw-tab-label",root.label));
+  navigation.append(tab);
+ }
+}
+document.addEventListener("keydown",e=>{
+ if(e.key==="Escape"&&drawerExpanded){
+  drawerExpanded=false;renderNavigation(readHostSection(location.hash));
+ }
+});
 function renderSection(){
  if(!session?.overview?.promotion)return;
  const section=readHostSection(location.hash);
  const scope:CardSessionScope={worldId:session.worldId,
   promotionId:session.overview.promotion.id,showId:"",
   csrfToken:session.csrfToken};
- navigation.replaceChildren();
- for(const item of HOST_SECTIONS.filter(x=>"primary" in x&&x.primary)){
-  const tab=button("",()=>openSection(item.id));
-  const active=item.id===section||(item.id==="more"&&
-   !["home","planner","roster","backstage"].includes(section));
-  tab.className="ppw-tab"+(active?" ppw-tab-active":"");
-  tab.setAttribute("aria-label",item.label);
-  if(active)tab.setAttribute("aria-current","page");
-  const glyph=el("span","ppw-tab-icon",item.glyph);
-  glyph.setAttribute("aria-hidden","true");
-  const caption=el("span","ppw-tab-label",item.label);
-  tab.append(glyph,caption);
-  navigation.append(tab);
- }
- navigation.hidden=false;
+ renderNavigation(section);
  document.documentElement.dataset.ppwScreen=section;
  // A fresh mounted viewport prevents slow replies from an abandoned desk
  // replacing the next screen. No extra RPC or global store is involved.
@@ -135,7 +177,7 @@ function renderSection(){
   }
  }
 }
-window.addEventListener("hashchange",()=>renderSection());
+window.addEventListener("hashchange",()=>{drawerExpanded=false;renderSection();});
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
