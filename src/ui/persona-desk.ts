@@ -90,19 +90,24 @@ export function mountPersonaDesk(root:HTMLElement,
   finally{loading=false;render();}
  }
  function render(){
-  root.classList.add("ppw-editor","ppw-persona-desk");root.replaceChildren();
+  root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
+  root.classList.remove("ppw-messenger-inbox","ppw-messenger-thread",
+   "ppw-messenger-profile");
+  root.classList.add("ppw-messenger-"+pane.toLowerCase());
+  root.replaceChildren();
   const head=el("header","ppw-persona-header");
   if(onBack)head.append(button("← Back to card",onBack));
   head.append(el("span","ppw-eyebrow","PPW · BACKSTAGE"),
-   el("h1","",pane==="INBOX"?"Messages":"Wrestler profile"),
+   el("h1","",pane==="INBOX"?"Messages":"Contact details"),
    el("p","ppw-muted",
-    pane==="INBOX"?"Your wrestlers can contact you privately here.":"Character history and wrestler-owned creative identity."));
+    pane==="INBOX"?"Private conversations and locker-room decisions.":
+     "Wrestler-owned identity, career and character history."));
   if(pane!=="THREAD")root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){root.append(button(loading?"Loading…":"Retry",()=>void load(personId),loading));return;}
   const tabs=el("nav","ppw-backstage-tabs");
-  for(const [id,label] of [["INBOX","Inbox"],["THREAD","Conversation"],
-   ["PROFILE","Wrestler profile"]] as const){
+  tabs.setAttribute("aria-label","Backstage messages and contacts");
+  for(const [id,label] of [["INBOX","Chats"],["PROFILE","People"]] as const){
    const tab=button(label,()=>{pane=id;
     if(id==="THREAD"&&view?.personId&&
      view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
@@ -115,8 +120,15 @@ export function mountPersonaDesk(root:HTMLElement,
   if(pane!=="THREAD")root.append(tabs);
   if(pane==="INBOX"){
    const inbox=el("section","ppw-backstage-inbox");
-   inbox.append(el("h2","","Conversations"),
-    el("p","ppw-muted","Private messages about careers, morale and creative plans."));
+   const threadCount=view.roster.filter(w=>!!w.latestIncoming||!!w.lastMessage).length;
+   const unreadCount=view.roster.filter(w=>w.isCurrent&&w.latestIncoming&&
+    w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length;
+   const topline=el("div","ppw-messenger-inbox-topline");
+   topline.append(el("span","ppw-messenger-inbox-label","PRIVATE MESSAGES"),
+    el("span","ppw-messenger-inbox-count",
+     threadCount+" threads"+(unreadCount?" · "+unreadCount+" unread":"")));
+   inbox.append(topline,el("h2","","Conversations"),
+    el("p","ppw-muted","Wrestler requests, promises and replies in one place."));
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["HISTORY","History"],
@@ -176,6 +188,8 @@ export function mountPersonaDesk(root:HTMLElement,
     const avatar=el("span","ppw-backstage-avatar",
      wrestler.name.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
     avatar.setAttribute("aria-hidden","true");
+    avatar.style.setProperty("--messenger-hue",String([...wrestler.personId].reduce(
+     (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
     top.append(el("strong","",wrestler.name),
@@ -184,6 +198,8 @@ export function mountPersonaDesk(root:HTMLElement,
      el("span","ppw-backstage-contact-preview",
       summary.replace(/^ · /,"")||(wrestler.isCurrent?"Open conversation":"Former talent")));
     item.append(avatar,copy);
+    if(incoming?.status==="PENDING")
+     item.append(el("span","ppw-messenger-awaiting","REPLY"));
     if(unread)item.append(el("span","ppw-backstage-unread-dot",""));
     entries.append(item);
     count++;
@@ -223,7 +239,17 @@ export function mountPersonaDesk(root:HTMLElement,
    select.append(o);
   }
   select.value=view.personId;select.onchange=()=>void load(select.value);
-  choice.append(select);if(pane==="PROFILE")root.append(choice);
+  choice.append(select);
+  if(pane==="PROFILE"){
+   root.append(choice);
+   if(view.personId)root.append(button("Open conversation →",()=>{
+    pane="THREAD";
+    const selected=view?.roster.find(x=>x.personId===view?.personId);
+    if(selected?.isCurrent&&selected.latestIncoming?.read_week_index===null)
+     void load(view!.personId!);
+    else render();
+   }));
+  }
   const persona=view.persona;
   if(persona){
   const live=el("section","ppw-persona-active");
@@ -290,6 +316,8 @@ export function mountPersonaDesk(root:HTMLElement,
   const monogram=el("span","ppw-backstage-phone-avatar",
    view.personName.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
   monogram.setAttribute("aria-hidden","true");
+  monogram.style.setProperty("--messenger-hue",String([...view.personId].reduce(
+   (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private · PPW Messages"));
   const details=button("Details",()=>{pane="PROFILE";render();});

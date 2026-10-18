@@ -150,3 +150,93 @@
 @media(max-width:420px){.ppw-persona-chat{border-radius:0;border-left:0;border-right:0}
 .ppw-persona-chat .ppw-persona-bubble{max-width:87%;font-size:14px}
 .ppw-backstage-inbox{border-radius:12px}}
+
+/* Backstage is a separate private messaging app rather than a general desk. */
+.ppw-messenger{max-width:850px!important;min-height:82dvh;color:#f5f5f7!important;
+ background:radial-gradient(ellipse at top left,#182338 0%,#0c101b 44%,#07090f 100%);
+ border:1px solid rgba(112,124,151,.19);border-radius:24px;
+ padding:clamp(13px,3vw,28px)!important;box-shadow:0 30px 80px #0006;
+ box-sizing:border-box}
+.ppw-messenger *{box-sizing:border-box}
+.ppw-messenger .ppw-persona-header{margin:0 0 11px;padding:9px 4px 8px}
+.ppw-messenger .ppw-persona-header h1{font-size:clamp(31px,7vw,43px);
+ letter-spacing:-.055em;line-height:1.08;color:#fff;margin:7px 0}
+.ppw-messenger .ppw-persona-header .ppw-eyebrow{
+ font-size:10px;color:#83cbff;letter-spacing:.15em;font-weight:900}
+.ppw-messenger .ppw-persona-header .ppw-muted{font-size:12px;color:#a3aaba}
+.ppw-messenger .ppw-backstage-tabs{display:flex;max-width:330px;gap:2px;
+ border:1px solid #30343c;background:#1b1d24;padding:3px;border-radius:12px;
+ margin:8px 0 17px}
+.ppw-messenger .ppw-backstage-tabs .ppw-persona-button{
+ flex:1;background:transparent;border:0;color:#afb4c1;border-radius:9px;
+ font-weight:750;min-height:36px;padding:7px}
+.ppw-messenger .ppw-backstage-tabs .ppw-persona-selected{
+ outline:0;background:#414653;color:#fff;box-shadow:0 2px 9px #0005}
+.ppw-messenger .ppw-backstage-inbox{background:#11141d;border:1px solid #292f3a;
+ box-shadow:0 8px 28px #0005;border-radius:20px;padding:13px 12px}
+.ppw-messenger-inbox-topline{display:flex;align-items:center;
+ justify-content:space-between;gap:8px}
+.ppw-messenger-inbox-label{font-size:10px;letter-spacing:.12em;
+ font-weight:900;color:#86bfff}
+.ppw-messenger-inbox-count{font-size:11px;color:#bdc4d1}
+.ppw-messenger .ppw-backstage-inbox>h2{font-weight:850;font-size:22px;margin:3px 0 0}
+.ppw-messenger .ppw-backstage-inbox .ppw-muted{color:#8895aa;font-size:12px}
+.ppw-messenger .ppw-backstage-inbox-search{background:#252936!important;
+ padding:12px 13px!important;color:#fff!important;border:1px solid #363e4e!important;
+ border-radius:12px!important;min-height:46px}
+.ppw-messenger .ppw-backstage-filters{gap:8px;padding-bottom:8px;
+ -webkit-overflow-scrolling:touch}
+.ppw-messenger .ppw-backstage-filters button{flex:none;border:1px solid #343b49;
+ background:#232838;color:#d4d9e4;font-size:12px;padding:8px 12px;
+ border-radius:999px}
+.ppw-messenger .ppw-backstage-filters .ppw-persona-selected{outline:0;
+ background:#175da5;border-color:#5bafff;color:#fff}
+.ppw-messenger .ppw-backstage-contact{gap:11px}
+.ppw-messenger .ppw-backstage-avatar,.ppw-messenger .ppw-backstage-phone-avatar{
+ border:1px solid hsla(var(--messenger-hue),90%,80%,.3);
+ background:radial-gradient(circle at 70% 24%,hsla(var(--messenger-hue),70%,70%,.7),transparent 68%),
+ linear-gradient(135deg,#3c5776,#1b253c 75%);
+ box-shadow:inset 0 -7px 15px #0005}
+.ppw-messenger-awaiting{font-size:9px;letter-spacing:.08em;font-weight:900;
+ color:#99ceff;background:#1e4777;border:1px solid #456f9e;
+ padding:4px 6px;border-radius:6px}
+.ppw-messenger .ppw-backstage-contact-stamp{font-size:10px}
+.ppw-messenger .ppw-persona-chat{margin:4px auto 18px;min-height:68dvh;
+ border-radius:21px;border:1px solid #303748;
+ background:radial-gradient(circle at 12% 30%,#0b1323 0%,transparent 45%),
+ linear-gradient(#10131d,#090c14);box-shadow:0 18px 50px #0006}
+.ppw-messenger .ppw-backstage-phone-header{background:#171e2cee;
+ border-bottom:1px solid #354053;padding:12px 14px}
+.ppw-messenger .ppw-backstage-phone-identity strong{font-size:15px}
+.ppw-messenger .ppw-backstage-phone-identity small{color:#9db5ca}
+.ppw-messenger .ppw-persona-chat .ppw-persona-in{background:#252c38!important}
+.ppw-messenger .ppw-persona-chat .ppw-persona-out{background:#176ce2!important}
+.ppw-messenger .ppw-backstage-composer{border:1px solid #344356!important;
+ background:#1a2537!important;
+ margin-bottom:max(12px,env(safe-area-inset-bottom))!important}
+.ppw-messenger .ppw-persona-chat .ppw-backstage-date{
+ background:#222a36;border-radius:999px;padding:5px 9px;color:#c6d0dc}
+.ppw-messenger .ppw-backstage-phone-details{margin-left:auto;
+ background:transparent!important;border:0!important;color:#83c6ff!important;
+ font-size:13px!important;font-weight:850}
+.ppw-messenger .ppw-persona-active,.ppw-messenger .ppw-persona-alternates,
+.ppw-messenger .ppw-persona-history{background:#161e2c;border:1px solid #2e3f55;
+ border-radius:16px;padding:14px}
+.ppw-messenger .ppw-persona-button:focus-visible,
+.ppw-messenger input:focus-visible,.ppw-messenger select:focus-visible{
+ outline:2px solid #8ccaff;outline-offset:2px}
+@media(max-width:520px){
+ .ppw-messenger{border:0;border-radius:0;
+ padding:12px 10px calc(35px + env(safe-area-inset-bottom))!important;
+ margin:0!important;max-width:none!important}
+ .ppw-messenger .ppw-persona-chat{border-radius:14px;
+ margin-left:-5px;margin-right:-5px;min-height:calc(100dvh - 150px)}
+ .ppw-messenger .ppw-backstage-phone-header{padding:10px 11px}
+ .ppw-messenger .ppw-persona-chat .ppw-persona-bubble{max-width:88%}
+}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-messenger .ppw-backstage-contact{transition:background .14s}
+ .ppw-messenger .ppw-persona-bubble{animation:ppw-message-enter .19s ease-out both}
+ @keyframes ppw-message-enter{from{opacity:.75;transform:translateY(4px)}
+ to{opacity:1;transform:translateY(0)}}
+}
