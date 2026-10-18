@@ -6,7 +6,7 @@ import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
-import type {HostSection,ContractFocus} from "./host-navigation.js";
+import type {HostSection,ContractFocus,HomeAttentionFocus} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
@@ -43,7 +43,7 @@ type Scope=CardSessionScope;
  * Navigating does not advance simulation or create a new World.
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
- onNavigate?:(section:HostSection,focus?:ContractFocus)=>void){
+ onNavigate?:(section:HostSection,focus?:HomeAttentionFocus)=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -51,6 +51,8 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   load:()=>call("overview"),
   dismissAttention:attentionId=>call("dismissAttention",{attentionId}),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
+  openUnfinishedCard:onNavigate?()=>onNavigate("planner","CARD"):
+   ()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope),true),
   roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
   market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
   contracts:go("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),
@@ -64,6 +66,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope),
    ()=>mountProgrammePage(root,scope))),
+  openUnreadBackstage:onNavigate?()=>onNavigate("backstage","UNREAD"):
+   ()=>mountPersonaDesk(root,personaPort(call,root,scope),
+    ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),"UNREAD"),
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
@@ -391,15 +396,17 @@ function personaPort(call:ReturnType<typeof createCardClient>,
  };
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
-export function mountPersonaPage(root:HTMLElement,scope:Scope){
+export function mountPersonaPage(root:HTMLElement,scope:Scope,
+ filter:"ALL"|"UNREAD"="ALL"){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
-  undefined,()=>mountProgrammePage(root,scope));
+  undefined,()=>mountProgrammePage(root,scope),filter);
 }
 
 /** Host-level planner entry point. The existing card editor remains the
  * authoritative booking surface, with the selected draft's ID in scope.
  */
-export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
+ openUnfinishedCard=false){
  const call=createCardClient(scope);
  const port:PlannerPort={
   load:()=>call("planner"),
@@ -407,7 +414,7 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
   openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
   openCalendar:()=>mountCalendarPage(root,scope,()=>mountPlannerPage(root,scope,onBack))
  };
- return mountPlanner(root,port,onBack);
+ return mountPlanner(root,port,onBack,openUnfinishedCard);
 }
 
 /** Show identity recurrence editor; no private rival draft plans are exposed. */

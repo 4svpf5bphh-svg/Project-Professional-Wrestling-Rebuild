@@ -5,7 +5,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage}
  from "../../../src/web/card-browser.js";
 import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
- type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus, type ContractFocus} from "../../../src/web/host-navigation.js";
+ type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
+ plannerCardHash,backstageUnreadHash,type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
 import "../polish.css";
@@ -49,10 +50,13 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
 }
 
 /** Mobile shell is independent of the workspace root and remains accessible. */
-function openSection(section:HostSection,focus?:ContractFocus){
+function openSection(section:HostSection,focus?:HomeAttentionFocus){
  drawerExpanded=false;
  const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
-  contractAttentionHash(focus):hostSectionHash(section);
+  contractAttentionHash(focus):
+  section==="planner"&&focus==="CARD"?plannerCardHash:
+  section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
+  hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
  else renderNavigation(section);
 }
@@ -141,9 +145,10 @@ function renderSection(){
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
   case "home":mountWorldHomePage(view,scope,openSection);break;
-  case "planner":mountPlannerPage(view,scope,back);break;
+  case "planner":mountPlannerPage(view,scope,back,location.hash===plannerCardHash);break;
   case "roster":mountRosterPage(view,scope);break;
-  case "backstage":mountPersonaPage(view,scope);break;
+  case "backstage":mountPersonaPage(view,scope,
+   location.hash===backstageUnreadHash?"UNREAD":"ALL");break;
   case "market":mountTalentMarketPage(view,scope);break;
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;

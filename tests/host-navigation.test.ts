@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {HOST_SECTIONS,hostSectionHash,readHostSection,
- contractAttentionHash,readContractFocus}
+ contractAttentionHash,readContractFocus,plannerCardHash,backstageUnreadHash}
  from "../src/web/host-navigation.js";
 test("every workspace is addressable and all routes avoid private credentials",()=>{
  for(const item of HOST_SECTIONS){
@@ -42,4 +42,14 @@ test("Home alerts deep-link to the right contract queue without revealing wrestl
   assert.equal(readHostSection(bad),"home");
   assert.equal(readContractFocus(bad),"ATTENTION");
  }
+});
+
+test("Home alerts open the unfinished card or unread inbox without exposing identities",()=>{
+ assert.equal(plannerCardHash,"#/planner/card");
+ assert.equal(backstageUnreadHash,"#/backstage/unread");
+ assert.equal(readHostSection(plannerCardHash),"planner");
+ assert.equal(readHostSection(backstageUnreadHash),"backstage");
+ for(const bad of ["#/planner/card/person-3","#/backstage/unread?name=John",
+  "#/backstage/unread/secret","#/planner/card#token"])
+  assert.equal(readHostSection(bad),"home");
 });
