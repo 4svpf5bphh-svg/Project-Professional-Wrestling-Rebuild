@@ -12,6 +12,7 @@ export interface ProgrammeDeskPort{
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
  openResults?(showId:string):void;
  openArchive?():void;
+ openWrestler?(personId:string):void;
 }
 const element=(tag:string,cls:string,text="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;};
@@ -79,6 +80,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const found=rosterOptions().find(p=>p.kind+":"+p.refId===value);
     values[i]=found?{kind:found.kind,refId:found.refId}:null;render();
    },forbidden));
+   if(ref?.kind==="PERSON"&&port.openWrestler){
+    const open=button("View "+name(ref)+"'s dossier ↗",
+     ()=>port.openWrestler?.(ref.refId));
+    open.className="ppw-programme-file-link";
+    wrap.append(open);
+   }
   }
   wrap.append(button(values.length===2?"− Remove extra":"+ Add another",()=>{
    if(values.length===2)values.pop();else values.push(null);
@@ -105,9 +112,20 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   for(const p of active){
    const panel=element("article","ppw-programme-card");
    const header=element("div","ppw-programme-broadcast");
-   const left=element("div","ppw-programme-broadcast-side",p.sideA.map(x=>x.name).join(" & "));
-   const right=element("div","ppw-programme-broadcast-side",p.sideB.map(x=>x.name).join(" & "));
-   header.append(left,element("span","ppw-programme-versus","VS"),right);
+   const side=(members:typeof p.sideA)=>{
+    const column=element("div","ppw-programme-broadcast-side");
+    members.forEach((member,index)=>{
+     if(index)column.append(element("span","ppw-programme-separator"," & "));
+     if(member.kind==="PERSON"&&port.openWrestler){
+      const open=button(member.name,()=>port.openWrestler?.(member.refId));
+      open.className="ppw-programme-person-link";
+      open.setAttribute("aria-label","Open "+member.name+"'s wrestler dossier");
+      column.append(open);
+     }else column.append(element("span","",member.name));
+    });
+    return column;
+   };
+   header.append(side(p.sideA),element("span","ppw-programme-versus","VS"),side(p.sideB));
    const heat=p.heat===null?null:Math.max(0,Math.min(100,p.heat));
    const pulse=element("div","ppw-programme-signals");
    for(const [caption,value,percent] of [

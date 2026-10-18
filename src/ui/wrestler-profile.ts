@@ -58,7 +58,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     signatureMoves:parse(signature),finishingMoves:parse(finisher)});
    if(result.status==="STALE")
     throw new Error("The World changed. Reload the profile before editing.");
-   success="Wrestler repertoire updated for the shared World.";
+   success="Wrestler repertoire updated.";
    view=await port.load(personId);
   }catch(e){error=e instanceof Error?e.message:"Unable to update move names";}
   finally{saving=false;render();}
@@ -87,7 +87,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,
    signatureMove:view.persona.signatureMoves[0]?.name,
    finisherMove:view.persona.finishingMoves[0]?.name,
-   status:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"WORLD TALENT"
+   status:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
   },{context:view.onYourRoster?"ROSTER":"MARKET",
    label:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"NOT ON YOUR ROSTER"}));
   const attrs=section("Performance & standing");

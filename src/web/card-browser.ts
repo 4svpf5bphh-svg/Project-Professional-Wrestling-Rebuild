@@ -52,7 +52,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
   roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
   market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
-  contracts:go("contracts",()=>mountContractDesk(root,contractPort(call),
+  contracts:go("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope))),
   backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call),
    ()=>mountWorldHomePage(root,scope),
@@ -73,7 +73,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   const openResults=(showId:string)=>{
    void mountResultsPage(root,{...scope,showId},()=>{openProgrammeDesk();});
   };
-  return mountProgrammeDesk(root,programmePort(call,openResults,
+  return mountProgrammeDesk(root,programmePort(call,root,scope,openResults,
    ()=>{void mountResultsArchivePage(root,scope,()=>{openProgrammeDesk();});}),
    ()=>{mountCardEditor(root,port);});
  }
@@ -89,7 +89,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),
-  openContracts:()=>mountContractDesk(root,contractPort(call),()=>mountCardEditor(root,port)),
+  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),()=>mountCardEditor(root,port)),
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
@@ -122,7 +122,8 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack
  return mountChampionshipDesk(root,port,onBack);
 }
 
-function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort{
+function contractPort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope):ContractDeskPort{
  return {load:()=>call("contracts"),
   requestDates:({requestId,expectedRevision,contractId,additionalDates,additionalPayment})=>
    call("requestContractDates",{requestId,expectedRevision,contractId,additionalDates,additionalPayment}),
@@ -135,7 +136,8 @@ function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort
   withdrawRenewal:({requestId,expectedRevision,proposalId})=>
    call("withdrawContractRenewal",{requestId,expectedRevision,proposalId}),
   withdrawOffer:({requestId,expectedRevision,offerId})=>
-   call("withdrawContractOffer",{requestId,expectedRevision,offerId})};
+   call("withdrawContractOffer",{requestId,expectedRevision,offerId}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
 }
 function industryPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):IndustryHubPort{
@@ -173,7 +175,7 @@ function businessPort(root:HTMLElement,scope:Scope,
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
     ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
-  openContracts:()=>mountContractDesk(root,contractPort(call),
+  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)
@@ -195,7 +197,7 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openBackstage:personId=>mountPersonaDesk(root,{
    ...personaPort(call),load:(selected?:string)=>call("backstage",
     {personId:selected??personId})},onBack,()=>mountProgrammePage(root,scope)),
-  openContracts:()=>mountContractDesk(root,contractPort(call),onBack)
+  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),onBack)
  };
 }
 function rosterMarketPort(root:HTMLElement,scope:Scope,
@@ -206,7 +208,7 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   load:(filter:DirectoryFilter)=>call("wrestlerDirectory",{filter}),
   offer:({personId,requestId,expectedRevision,terms})=>
    call("submitContractOffer",{personId,requestId,expectedRevision,terms}),
-  openContracts:()=>mountContractDesk(root,contractPort(call),
+  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>open("ROSTER")),
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),
    ()=>open("ROSTER")),
@@ -237,7 +239,8 @@ export function mountTalentMarketPage(root:HTMLElement,scope:Scope){
 }
 /** Contracts are promotion-private and require a real verified session. */
 export function mountContractsPage(root:HTMLElement,scope:Scope){
- return mountContractDesk(root,contractPort(createCardClient(scope)));
+ const call=createCardClient(scope);
+ return mountContractDesk(root,contractPort(call,root,scope));
 }
 
 function tagTeamPort(call:ReturnType<typeof createCardClient>):TagTeamPort{
@@ -280,10 +283,38 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  root.prepend(archive);
 }
 
+/** A modal dossier preserves the working card, negotiation or rivalry underneath.
+ * Its two reads (profile + opt-in career) never run on list render.
+ */
+function openWrestlerDossier(root:HTMLElement,scope:Scope,
+ call:ReturnType<typeof createCardClient>,personId:string):void{
+ const previouslyFocused=document.activeElement instanceof HTMLElement?
+  document.activeElement:null;
+ const overlay=document.createElement("div");
+ overlay.className="ppw-profile-overlay";
+ overlay.setAttribute("role","dialog");
+ overlay.setAttribute("aria-modal","true");
+ overlay.setAttribute("aria-label","Wrestler dossier");
+ overlay.tabIndex=-1;
+ const close=()=>{
+  overlay.remove();
+  if(previouslyFocused?.isConnected)previouslyFocused.focus();
+ };
+ overlay.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){event.preventDefault();event.stopPropagation();close();}
+ });
+ root.append(overlay);
+ mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
+  personId,close);
+ overlay.focus();
+}
+
 function programmePort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
@@ -294,7 +325,7 @@ export function mountProgrammePage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope));};
- return mountProgrammeDesk(root,programmePort(call,showResult,
+ return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   ()=>{void mountResultsArchivePage(root,scope,()=>mountProgrammePage(root,scope));}));
 }
 
