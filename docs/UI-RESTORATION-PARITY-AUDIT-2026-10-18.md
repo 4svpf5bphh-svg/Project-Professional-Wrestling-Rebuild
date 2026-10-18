@@ -114,3 +114,9 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - Corrected Home's false-negative Backstage status check: unresolved wrestler requests have status `PENDING`, not `OPEN`.
 - One authorised Home projection includes up to three named pending requests and their concern type; each opens the existing unread Backstage inbox. The desk makes no additional request or background poll and provides no dismissal of mandatory conversations.
 - The disposable PostgreSQL test proves accurate status, player-scoped identities and the one-query / 2.4 KB cap. The original `main` remains the reference; Results and World Lock are unchanged.
+
+## Direct wrestler follow-up from Home (18 October 2026)
+- Named outstanding wrestler concerns open the exact, authorised Backstage conversation rather than the generic inbox. Resolved promise notices likewise lead to the wrestler's existing private thread.
+- A wrestler identifier passes only through a one-shot in-memory navigation callback. It never enters the URL, browser history or persistent storage. The server still validates the person and the promotion.
+- A direct conversation opens via the ordinary single-wrestler Backstage read. An explicit opening of an unread conversation may create the existing acknowledgement receipt, but no extra directory or inbox read is added. If the server cannot return the target conversation, the UI falls back to the inbox.
+- iPhone browser checks cover targeted messages, read receipts, accurate history navigation and lack of URL disclosure. Original reference branch remains `main`; Results and deployments untouched.

@@ -101,7 +101,7 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
-test("named locker-room concerns open unread messages from a single Home read",async({page})=>{
+test("named Home concerns open only the intended wrestler conversation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  const home={...overview,promotion:{...overview.promotion,attention:{
@@ -111,16 +111,23 @@ test("named locker-room concerns open unread messages from a single Home read",a
  }}};
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
-  const method=String(route.request().postDataJSON().method);
-  methods.push(method);
-  await route.fulfill({json:method==="overview"?home:method==="backstage"?{
-   personId:null,persona:null,personName:"",
-   roster:[{personId:"p-adams",name:"Ava Adams",isCurrent:true,
-    morale:65,momentum:52,lastMessage:null,latestIncoming:{
-     archived:false,read_week_index:null,status:"PENDING",
-     kind:"CREATIVE",created_week_index:4}}],
-   conversations:[]
-  }:{}});
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(request.method);methods.push(method);
+  if(method==="backstage"){
+   expect(request.personId).toBe("p-adams");
+   await route.fulfill({json:{
+    personId:"p-adams",personName:"Ava Adams",worldYear:1,worldWeek:5,
+    worldRevision:4,canEdit:true,persona:null,documentedAlternates:[],history:[],
+    availableArchetypes:[],roster:[{
+     personId:"p-adams",name:"Ava Adams",isCurrent:true,morale:65,momentum:52,
+     lastMessage:null,latestIncoming:{archived:false,read_week_index:null,
+      status:"PENDING",kind:"CREATIVE",created_week_index:4}}],
+    conversations:[]
+   }});
+  }else if(method==="markBackstageRead"){
+   expect(request.personId).toBe("p-adams");
+   await route.fulfill({json:{readCount:1}});
+  }else await route.fulfill({json:method==="overview"?home:{}});
  });
  await page.goto("/#/home");
  const prompt=page.getByRole("button",{name:/Ava Adams is waiting/});
@@ -129,9 +136,14 @@ test("named locker-room concerns open unread messages from a single Home read",a
  expect(methods).toEqual(["overview"]);
  await prompt.click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
+ await expect(page.getByRole("region",{name:"Conversation with Ava Adams"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Back to messages"})).toBeVisible();
+ await expect.poll(()=>methods.length).toBe(3);
+ expect(methods).toEqual(["overview","backstage","markBackstageRead"]);
+ expect(page.url()).not.toContain("p-adams");
+ await page.getByRole("button",{name:"Back to messages"}).click();
  await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
- await expect(page.getByRole("button",{name:/Ava Adams/})).toBeVisible();
- expect(methods).toEqual(["overview","backstage"]);
+ expect(methods).toHaveLength(3);
 });
 test("completed locker-room updates dismiss privately without hiding current tasks",async({page})=>{
  await page.setViewportSize({width:390,height:844});
@@ -169,6 +181,40 @@ test("completed locker-room updates dismiss privately without hiding current tas
  await expect(page.getByText("Promises settled")).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
  expect(calls.filter(x=>x==="overview")).toHaveLength(2);
+});
+test("resolved locker-room promise opens the exact private historical thread",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:false,pendingBackstage:false,
+  expiringTalent:false,pendingContractOffers:false,
+  backstageResults:[{
+   id:"backstage-result:77",personId:"p-victor",name:"Victor Vale",status:"FULFILLED"}]
+ }}};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const req=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(req.method);methods.push(method);
+  if(method==="backstage"){
+   expect(req.personId).toBe("p-victor");
+   await route.fulfill({json:{
+    personId:"p-victor",personName:"Victor Vale",
+    worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,
+    persona:null,history:[],documentedAlternates:[],availableArchetypes:[],
+    roster:[{personId:"p-victor",name:"Victor Vale",isCurrent:true,
+     lastMessage:null,latestIncoming:{archived:false,read_week_index:4,
+      status:"FULFILLED",kind:"CREATIVE",created_week_index:2}}],
+    conversations:[]
+   }});
+  }else await route.fulfill({json:method==="overview"?home:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByText(/Victor Vale saw your promise kept/)).toBeVisible();
+ await page.getByRole("button",{name:"Open Backstage"}).click();
+ await expect(page).toHaveURL(/#\/backstage$/);
+ await expect(page.getByRole("region",{name:"Conversation with Victor Vale"})).toBeVisible();
+ expect(methods).toEqual(["overview","backstage"]);
+ expect(page.url()).not.toContain("p-victor");
 });
 test("Tag partner cards and roster disciplines stay fast without person-by-person reads",async({page})=>{
  const methods:string[]=[];
