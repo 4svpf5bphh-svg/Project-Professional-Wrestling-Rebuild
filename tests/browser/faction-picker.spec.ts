@@ -13,10 +13,19 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
   momentum:40+i%50,inRingQuality:63+i%24,matchCraft:65,
   presentation:74,alignment:"FACE",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL"
  }));
+ const dossier={personId:"p-0",name:"Performer 000",division:"WOMEN",
+  status:"ACTIVE",careerStage:"PRIME",popularity:55,recognition:50,momentum:40,
+  morale:70,inRingQuality:63,matchCraft:65,presentation:74,stamina:75,safety:85,
+  fatigue:0,wear:0,alignment:"FACE",onYourRoster:true,canEdit:false,
+  sharedHuman:false,currentWeekIndex:4,worldRevision:4,
+  persona:{personaName:"Performer 000",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[],teams:[],stables:[],connections:[],history:[]};
  await page.route("**/api/session",async route=>route.fulfill({json:session}));
  await page.route("**/api/card",async route=>{
   const input=route.request().postDataJSON();
   methods.push(input.method);
+  if(input.method==="wrestlerProfile")return route.fulfill({json:dossier});
   if(input.method==="createStable"){
    submitted=input;
    return route.fulfill({json:{status:"APPLIED",result:{stableId:"formed"}}});
@@ -30,6 +39,13 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
  const cards=page.locator(".ppw-stable-founder-card");
  await expect(cards).toHaveCount(40);
  await expect(page.getByRole("button",{name:"Form faction"})).toBeDisabled();
+ await page.getByRole("button",{name:"View Performer 000's dossier ↗"}).click();
+ const modal=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(modal).toBeVisible();
+ await modal.getByRole("button",{name:"‹ Back"}).click();
+ await expect(modal).toHaveCount(0);
+ await expect(cards).toHaveCount(40);
+ expect(methods.filter(x=>x==="stables")).toHaveLength(1);
  for(let i=0;i<3;i++)await cards.nth(i).click();
  await expect(page.getByRole("button",{name:"Form faction"})).toBeEnabled();
  await expect(page.locator(".ppw-stable-founder-card[aria-pressed=true]")).toHaveCount(3);
@@ -37,7 +53,7 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
  await field.fill("Performer 045");
  await expect(cards).toHaveCount(1);
  await expect(page.getByText(/3 of 12 chosen/)).toBeVisible();
- expect(methods).toEqual(["stables"]);
+ expect(methods).toEqual(["stables","wrestlerProfile"]);
  await page.getByLabel("Faction name").fill("The Revolution");
  await page.getByRole("button",{name:"Form faction"}).click();
  await expect(page.getByText("New faction created")).toBeVisible();
@@ -45,5 +61,5 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
   personIds:["p-0","p-1","p-2"]});
  expect((submitted as {playerId?:string}).playerId).toBeUndefined();
  expect(methods.filter(x=>x==="stables")).toHaveLength(2);
- expect(methods).not.toContain("wrestlerProfile");
+ expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
 });
