@@ -31,6 +31,8 @@ const validId=(v:unknown):v is string=>
  typeof v==="string"&&v.trim().length>0&&v.length<=200;
 type ShowRow={year:number;week:number;status:string;revision:string|number;
  show_day:number|null;venue_id:string|null;lock_ready_fingerprint:string|null;
+ show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
+ booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
@@ -47,11 +49,14 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
   throw new Error("Invalid card editor identity");
  const rows=await tx.query<ShowRow>([
   "SELECT w.year,w.week,w.revision,d.status,d.show_day,d.venue_id,",
-  "d.lock_ready_fingerprint,",
+  "d.lock_ready_fingerprint,d.show_name,d.booking_class,d.ticket_strategy,",
+  "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open",
   "FROM ppw_worlds w JOIN ppw_booking_drafts d",
   "ON d.world_id=w.world_id AND d.year=w.year AND d.week=w.week",
   "JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id",
+  "LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id",
+  "LEFT JOIN ppw_markets mkt ON mkt.world_id=d.world_id AND mkt.market_id=d.market_id",
   "JOIN ppw_promotion_controls c ON c.world_id=d.world_id",
   "AND c.promotion_id=d.promotion_id AND c.player_id=$2 AND c.active",
   "JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id",
@@ -142,7 +147,10 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    showId:id.showId,year:show.year,week:show.week,
    worldRevision:Number(show.revision),canEdit:show.booking_open&&show.status==="DRAFT",
    ready:show.lock_ready_fingerprint!==null,
-   day:show.show_day,venueId:show.venue_id,
+   day:show.show_day,venueId:show.venue_id,showName:show.show_name,
+   promotionName:show.promotion_name,venueName:show.venue_name,
+   marketName:show.market_name,bookingClass:show.booking_class,
+   ticketStrategy:show.ticket_strategy,
    slots:slots.map(s=>({slotId:s.slot_id,position:s.position,
     kind:s.kind,payload:s.payload}))};
  });

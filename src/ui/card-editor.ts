@@ -253,6 +253,21 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    view?"Year "+view.year+" · Week "+view.week+" · "+
     (view.canEdit?"Booking open":"Read only"):"Your next show");
   top.append(headline);
+  if(view){
+   const spotlight=el("div","ppw-card-show-identity");
+   const marquee=el("div","ppw-card-show-copy");
+   marquee.append(el("span","ppw-eyebrow",view.bookingClass==="PREMIUM"?
+    "PREMIUM EVENT":"THIS WEEK'S SHOW"),
+    el("strong","",view.showName??(view.bookingClass==="PREMIUM"?
+     "Premium event":"Weekly show")),
+    el("span","",view.promotionName));
+   const location=el("div","ppw-card-show-location");
+   location.append(el("span","",view.venueName??"Venue not selected"),
+    el("span","",view.marketName??"Market to be confirmed"),
+    el("span","",view.day===null?"Show day pending":
+     ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][view.day-1]??"Show day pending"));
+   spotlight.append(marquee,location);top.append(spotlight);
+  }
   root.append(top);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));

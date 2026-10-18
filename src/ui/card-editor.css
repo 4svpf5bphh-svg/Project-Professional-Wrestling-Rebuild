@@ -176,3 +176,19 @@
 .ppw-match-style-fitness-row>strong{font-size:13px}
 .ppw-match-style-fitness-row>small{grid-column:1/-1;color:#adbecf}
 .ppw-match-style-fitness-row>span{font-weight:800;text-align:right}
+
+/* Broadcast show identity from existing promotion-scoped card session. */
+.ppw-card-show-identity{display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+ justify-content:space-between;padding:15px;margin:13px 0 1px;border-radius:15px;
+ border:1px solid #547c9c;background:linear-gradient(112deg,#23445f,#162a40 53%,#111b30);
+ box-shadow:inset 3px 0 0 #74d9ef,0 5px 22px rgba(0,0,0,.13)}
+.ppw-card-show-copy{display:grid;gap:4px;min-width:0}
+.ppw-card-show-copy>strong{font-size:clamp(18px,5vw,26px);line-height:1.1;
+ overflow-wrap:anywhere;letter-spacing:-.03em}
+.ppw-card-show-copy>span:last-child{font-size:12px;color:#bcdff0}
+.ppw-card-show-location{display:grid;gap:4px;padding-left:10px;
+ border-left:1px solid #4d7191;font-size:12px;color:#c9dff1}
+.ppw-card-show-location>span:first-child{color:#fff;font-weight:780}
+@media(max-width:410px){.ppw-card-show-identity{align-items:stretch}
+ .ppw-card-show-location{padding-left:0;border:0;padding-top:7px;
+  border-top:1px solid #4d7191;width:100%}}
