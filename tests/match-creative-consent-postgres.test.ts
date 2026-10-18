@@ -58,3 +58,24 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'main',0,'MATCH',$3::jsonb)",
     [world,show,JSON.stringify(match())]);
   });
+  const meter=new MeasuredQuerySession("one-card-creative-review");
+  const measured:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
+  const first=await showCardEditorAsActor({...context,pool:measured},world,promotion,show);
+  assert.equal(first.creativeConcerns.length,2);
+  assert.equal(first.creativeConcerns.find(x=>x.personId==="alice")?.reason,"MATCH_APPROVAL");
+  assert.equal(first.creativeConcerns.find(x=>x.personId==="bob")?.reason,"PROTECTED_LOSS");
+  meter.assertBudget({maxQueries:9,maxResultBytes:13000});
+  await assert.rejects(ready(0,"not-yet"),/creative agreement/);
+  const approved=await agree("alice","alice-yes",0);
+  assert.equal(approved.status,"APPLIED");
+  assert.equal(approved.result.decision,"APPROVED");
+  assert.equal((await agree("alice","alice-yes",0)).status,"REPLAYED");
+  const refused=await agree("bob","bob-no",1);
+  assert.equal(refused.result.decision,"DECLINED");
+  await assert.rejects(ready(2,"still-blocked"),/creative agreement/);
