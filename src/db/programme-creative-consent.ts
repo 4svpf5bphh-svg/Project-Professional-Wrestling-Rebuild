@@ -68,3 +68,66 @@ export async function requestStandingCreativeAgreement(pool:TransactionPool,
    if(!mine||!sides?.A.length||!sides.B.length)
     throw new Error("Only a current rivalry participant can make this agreement");
    const own=sides[mine],opponents=sides[mine==="A"?"B":"A"];
+   const contractRows=await tx.query<{
+    contract_id:string;role_expectation:string;creative_control:string;
+    morale:number|null;fatigue:number|null;
+    contract_priorities:CreativeContract["priorities"];
+   }>([
+    "SELECT c.contract_id,c.role_expectation,c.creative_control,",
+    "p.morale,p.fatigue,p.contract_priorities",
+    "FROM ppw_contracts c JOIN ppw_people p",
+    "ON p.world_id=c.world_id AND p.person_id=c.person_id",
+    "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.person_id=$3",
+    "AND c.status='SIGNED' AND c.start_week_index<=$4",
+    "AND c.expires_week_index>=$4",
+    "ORDER BY CASE c.creative_control",
+    "WHEN 'FULL_APPROVAL' THEN 3 WHEN 'PROTECTED_FINISHES' THEN 2",
+    "WHEN 'CONSULTATION' THEN 1 ELSE 0 END DESC,c.contract_id LIMIT 1"
+   ].join(" "),[input.worldId,input.promotionId,input.personId,week]);
+   const c=contractRows[0];
+   if(!c||c.creative_control!=="FULL_APPROVAL")
+    throw new Error("This wrestler has no standing match-approval right");
+   const previous=await tx.query<{
+    contract_id:string;decided_week_index:number;expires_week_index:number;
+    match_type:string;permitted_outcome:string;approved:boolean;score:number;
+   }>([
+    "SELECT contract_id,decided_week_index,expires_week_index,",
+    "match_type,permitted_outcome,approved,score",
+    "FROM ppw_programme_creative_agreements",
+    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3",
+    "AND person_id=$4 AND contract_id=$5 LIMIT 1"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,
+    input.personId,c.contract_id]);
+   if(previous.length){
+    const old=previous[0]!;
+    if(old.match_type!==input.matchType||
+     old.permitted_outcome!==input.permittedOutcome||
+     old.expires_week_index-old.decided_week_index!==input.termWeeks)
+     throw new Error("This wrestler has already considered different terms for this rivalry");
+    return {programmeId:input.programmeId,personId:input.personId,
+     approved:old.approved,score:old.score,existing:true,
+     expiresWeekIndex:old.expires_week_index};
+   }
+   const contract:CreativeContract={
+    promotionId:input.promotionId,personId:input.personId,
+    contractId:c.contract_id,name:input.personId,
+    creativeControl:"FULL_APPROVAL",roleExpectation:c.role_expectation,
+    morale:c.morale,fatigue:c.fatigue,priorities:c.contract_priorities
+   };
+   const score=Math.max(0,creativeDecisionScore(contract,"MATCH_APPROVAL")-
+    (input.permittedOutcome==="WIN_OR_PROTECTED_LOSS"?8:0));
+   const approved=score>=55;
+   await tx.query([
+    "INSERT INTO ppw_programme_creative_agreements",
+    "(world_id,promotion_id,programme_id,person_id,contract_id,",
+    "decided_week_index,expires_week_index,match_type,permitted_outcome,",
+    "own_people,opponent_people,approved,score)",
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::text[],$11::text[],$12,$13)"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,
+    input.personId,c.contract_id,week,week+input.termWeeks,
+    input.matchType,input.permittedOutcome,own,opponents,approved,score]);
+   return {programmeId:input.programmeId,personId:input.personId,
+    approved,score,existing:false,expiresWeekIndex:week+input.termWeeks};
+  }
+ });
+}
