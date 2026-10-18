@@ -52,7 +52,7 @@ test("mobile booker asks for one saved wrestler agreement and sees the actual an
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.getByText("1 match approval to resolve")).toBeVisible();
  await page.getByRole("button",{name:"Ask Bob"}).click();
- await expect(page.getByText("AGREED")).toBeVisible();
+ await expect(page.getByText("AGREED",{exact:true})).toBeVisible();
  await expect(page.getByText(/wrestler has agreed/)).toBeVisible();
  expect(calls).toEqual(["planner","load","creativeConsent","load"]);
  expect(page.url()).not.toContain("bob");
