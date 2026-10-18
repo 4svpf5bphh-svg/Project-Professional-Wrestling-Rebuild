@@ -208,6 +208,81 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  expect(methods).toEqual(["overview","dismissAttention"]);
 });
 
+test("iPhone booking restores authored run-in, cheating and protected winner without extra reads",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const alice={personId:"alice",contractId:"deal-alice"};
+ const bob={personId:"bob",contractId:"deal-bob"};
+ const booking={
+  matchType:"SINGLES",family:"INDIVIDUAL",participants:[alice,bob],
+  sides:[{sideId:"A",participants:[alice]},{sideId:"B",participants:[bob]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:18
+ };
+ let saved=booking as Record<string,unknown>,revision=4;
+ const planner={
+  worldName:"Genesis",promotionName:"AEW",year:1,week:5,canEdit:true,
+  worldRevision:4,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,scheduled:[],
+   shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+    marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+    ready:false,slots:1,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]
+ };
+ const view=()=>({
+  showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+  day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+  venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+  ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+   {personId:"bob",name:"Bob",division:"MEN"},
+   ...("interference" in saved?[{personId:"outside",name:"Outside",division:"MEN"}]:[])],
+  slots:[{slotId:"bout",kind:"MATCH",position:0,payload:saved}]
+ });
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(input.method);methods.push(method);
+  if(method==="save"){
+   const matches=input.matches as {slotId:string;payload:Record<string,unknown>}[];
+   saved=matches[0]!.payload;revision++;
+  }
+  await route.fulfill({json:method==="planner"?planner:method==="load"?view():
+   method==="talent"?{talent:[{
+    personId:"outside",contractId:"deal-outside",name:"Outside",division:"MEN",
+    available:true,reason:"AVAILABLE",remainingDates:5,popularity:68,
+    recognition:63,momentum:72,inRingQuality:84,matchCraft:77,presentation:80
+   }],cursor:null}:method==="save"?{status:"APPLIED",result:{performers:3}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+ await page.locator(".ppw-card-bar .ppw-expand").click();
+ const finish=page.getByLabel("Finish");
+ await finish.selectOption("FOREIGN_OBJECT");
+ await page.getByLabel("Who uses the foreign object?").selectOption("alice");
+ await page.locator(".ppw-run-in summary").click();
+ await page.getByRole("button",{name:"Choose run-in wrestler"}).click();
+ await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
+ await page.locator(".ppw-sheet .ppw-wrestler-card").first().click();
+ const run=page.locator(".ppw-run-in");
+ await expect(run).toHaveAttribute("open","");
+ await run.getByLabel("Which side?").selectOption("B");
+ await expect(run.getByLabel("What happens?")).toHaveValue("THWARTED");
+ await run.getByLabel("Which side?").selectOption("A");
+ await run.getByLabel("What happens?").selectOption("SUCCESS");
+ await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
+ await page.getByRole("button",{name:"Save card"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect((saved.interference as {contractId:string}).contractId).toBe("deal-outside");
+ expect((saved.interference as {plannedOutcome:string}).plannedOutcome).toBe("SUCCESS");
+ expect(saved.cheatingWrestlerId).toBe("alice");
+ expect(saved.scriptedWinnerSide).toBe("A");
+ expect(methods.filter(x=>x==="talent")).toHaveLength(1);
+ expect(methods.filter(x=>x==="save")).toHaveLength(1);
+ expect(methods).not.toContain("wrestlerProfile");
+});
+
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
