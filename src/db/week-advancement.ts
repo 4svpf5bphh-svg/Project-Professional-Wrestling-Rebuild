@@ -180,22 +180,32 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // updates all promotions and records compact category totals, not a
       // historical financial-transaction row per category and promotion.
       await tx.query(`
-        WITH credited AS (
+        WITH staff AS (
+         SELECT promotion_id,sum(weekly_salary)::bigint AS amount
+         FROM ppw_staff_employments WHERE world_id=$1 AND status='ACTIVE'
+         GROUP BY promotion_id
+        ), costs AS (
+         SELECT p0.promotion_id,COALESCE(s.amount,0::bigint) AS staff_cost
+         FROM ppw_promotions p0 LEFT JOIN staff s ON s.promotion_id=p0.promotion_id
+         WHERE p0.world_id=$1
+        ), credited AS (
          UPDATE ppw_promotions p SET
-          cash=p.cash+p.weekly_media_income+p.weekly_sponsor_income-p.weekly_fixed_overhead
-         WHERE p.world_id=$1 AND p.lifecycle NOT IN ('DORMANT','CLOSED')
+          cash=p.cash+p.weekly_media_income+p.weekly_sponsor_income
+           -p.weekly_fixed_overhead-costs.staff_cost
+         FROM costs WHERE p.world_id=$1 AND p.promotion_id=costs.promotion_id
+           AND p.lifecycle NOT IN ('DORMANT','CLOSED')
            AND p.weekly_media_income IS NOT NULL
            AND p.weekly_sponsor_income IS NOT NULL
            AND p.weekly_fixed_overhead IS NOT NULL
          RETURNING p.promotion_id,p.weekly_media_income,p.weekly_sponsor_income,
-           p.weekly_fixed_overhead
+           p.weekly_fixed_overhead,costs.staff_cost
         )
         INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
          SELECT $1,$2,$3,'PROMOTION_RECURRING_FINANCES',
           jsonb_build_object('promotionId',promotion_id,
            'mediaIncome',weekly_media_income,'sponsorIncome',weekly_sponsor_income,
-           'fixedOverhead',weekly_fixed_overhead,
-           'net',weekly_media_income+weekly_sponsor_income-weekly_fixed_overhead)
+           'fixedOverhead',weekly_fixed_overhead,'staffCost',staff_cost,
+           'net',weekly_media_income+weekly_sponsor_income-weekly_fixed_overhead-staff_cost)
          FROM credited`,[input.worldId,year,week]);
       // Complete original week P&L after ALL monetary movements have been
       // recorded. One indexed current-week aggregate and one batched update;

@@ -38,6 +38,13 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
         [input.worldId,input.promotionId,input.playerId],
       );
       if(authorized.length!==1)throw new Error("Only the active promotion controller may delegate staff continuity");
+      if(input.autoRenewSameTerms===true){
+        const employed=await tx.query<{employment_id:string}>([
+          "SELECT employment_id FROM ppw_staff_employments",
+          "WHERE world_id=$1 AND promotion_id=$2 AND status='ACTIVE' LIMIT 1"
+        ].join(" "),[input.worldId,input.promotionId]);
+        if(employed.length!==1)throw new Error("Hire a Talent Manager before enabling delegated renewals");
+      }
       await tx.query(
         `INSERT INTO ppw_staff_continuity_settings
            (world_id,promotion_id,owner_player_id,allow_unfinished_fallback,
