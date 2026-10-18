@@ -7,7 +7,7 @@ const overview={
 };
 const current={worldId:"genesis",playerId:"test-owner",
  csrfToken:"opaque-browser-csrf",overview,availablePromotions:[]};
-test("iPhone sign in, persistent navigation and deep-linked desks",async({page})=>{
+test("iPhone signs in and opens every department through a single drawer",async({page})=>{
  let signedIn=false;const methods:string[]=[];
  await page.route("**/api/session",async route=>{
   await route.fulfill(signedIn?{json:current}:{status:401,json:{error:"Sign in required"}});
@@ -32,35 +32,35 @@ test("iPhone sign in, persistent navigation and deep-linked desks",async({page})
  await page.getByLabel("Player ID").fill("test-owner");
  await page.getByLabel("Private access code").fill("test-code-123456789");
  await page.getByRole("button",{name:"Sign in"}).click();
- await expect(nav.getByRole("button",{name:"World",exact:true})).toBeVisible();
+ const menu=page.getByRole("button",{name:"Open promotion menu"});
+ await expect(menu).toBeVisible();
+ await expect(nav).toBeHidden();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- const readsOnHome=methods.length;
+ const before=methods.length;
+ await menu.click();
+ await expect(nav).toBeVisible();
+ await expect(menu).toHaveAttribute("aria-expanded","true");
  await nav.getByRole("button",{name:"Business",exact:true}).click();
  await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
- expect(methods.length,"Opening the local office menu never reads Neon").toBe(readsOnHome);
- await nav.getByRole("button",{name:"World",exact:true}).click();
- await page.getByRole("button",{name:/World overview/}).click();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ expect(methods.length,"The promotion drawer never reads Neon").toBe(before);
  await nav.getByRole("button",{name:"Talent",exact:true}).click();
- await page.getByRole("button",{name:/Talent Market/}).click();
+ await nav.getByRole("button",{name:/Talent Market/}).click();
  await expect(page).toHaveURL(/#\/market$/);
- await nav.getByRole("button",{name:"World",exact:true}).click();
- await page.getByRole("button",{name:/World overview/}).click();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- await nav.getByRole("button",{name:"Talent",exact:true}).click();
+ await expect(nav).toBeHidden();
+ await expect(menu).toHaveAttribute("aria-expanded","false");
+ await menu.click();
  await expect(page.getByRole("region",{name:"Talent menu"})).toBeVisible();
- await page.getByRole("button",{name:/Contracts/}).click();
+ await nav.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await expect(nav.getByRole("button",{name:"Talent",exact:true})).toBeVisible();
+ await menu.click();
  await nav.getByRole("button",{name:"Plan",exact:true}).click();
- await page.getByRole("button",{name:/Show Planner/}).click();
- await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await nav.getByRole("button",{name:/Show Planner/}).click();
  await expect(page).toHaveURL(/#\/planner$/);
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goto("/#/home");
- await expect(nav).toBeVisible();
+ await expect(nav).toBeHidden();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- expect(methods).toContain("overview");
- expect(methods).toContain("planner");
+ expect(methods).toContain("overview");expect(methods).toContain("planner");
 });
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
@@ -76,7 +76,7 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/manifest.webmanifest");
 });
 
-test("compact iPhones retain legible touch navigation and no horizontal shell overflow",async({page})=>{
+test("small iPhones have one accessible menu, no permanent bottom tabs or horizontal overflow",async({page})=>{
  await page.setViewportSize({width:320,height:700});
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
@@ -85,36 +85,34 @@ test("compact iPhones retain legible touch navigation and no horizontal shell ov
  });
  await page.goto("/#/home");
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ const menu=page.getByRole("button",{name:"Open promotion menu"});
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
+ await expect(menu).toBeVisible();await expect(nav).toBeHidden();
+ await expect(page.locator(".ppw-navigation .ppw-tab")).toHaveCount(0);
+ let overflow=()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+ expect(await overflow()).toBeLessThanOrEqual(1);
+ expect(await menu.evaluate(el=>Math.round(el.getBoundingClientRect().height))).toBeGreaterThanOrEqual(44);
+ await menu.click();
+ await expect(nav).toBeVisible();
  await expect(nav.locator(".ppw-tab")).toHaveCount(5);
- await expect(page.locator(".ppw-home-drawer-hint")).toBeVisible();
- const audit=()=>page.evaluate(()=>{
-  const tabs=[...document.querySelectorAll<HTMLElement>(".ppw-navigation .ppw-tab")];
-  return {overflow:document.documentElement.scrollWidth-innerWidth,
-   tabWidths:tabs.map(b=>Math.round(b.getBoundingClientRect().width)),
-   tabHeights:tabs.map(b=>Math.round(b.getBoundingClientRect().height))};
- });
- let sizes=await audit();
- expect(sizes.overflow).toBeLessThanOrEqual(1);
- expect(Math.min(...sizes.tabHeights)).toBeGreaterThanOrEqual(44);
  await nav.getByRole("button",{name:"Business",exact:true}).click();
  await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
- await expect(page.getByRole("button",{name:/Staff/})).toBeVisible();
- sizes=await audit();
- expect(sizes.overflow).toBeLessThanOrEqual(1);
+ await expect(nav.getByRole("button",{name:/Staff/})).toBeVisible();
+ expect(await overflow()).toBeLessThanOrEqual(1);
  await nav.getByRole("button",{name:"Talent",exact:true}).click();
- await page.getByRole("button",{name:/Contracts/}).click();
+ await nav.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await expect(nav.getByRole("button",{name:"Talent",exact:true})).toHaveAttribute("aria-current","page");
+ await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
+ await menu.click();
  await nav.getByRole("button",{name:"World",exact:true}).click();
- await page.getByRole("button",{name:/World overview/}).click();
- await expect(nav.getByRole("button",{name:"World",exact:true})).toHaveAttribute("aria-current","page");
- expect((await audit()).overflow).toBeLessThanOrEqual(1);
+ await nav.getByRole("button",{name:/World overview/}).click();
+ await expect(page).toHaveURL(/#\/home$/);
+ await expect(nav).toBeHidden();
+ expect(await overflow()).toBeLessThanOrEqual(1);
 });
-
 test("verified player can join, claim and reach World without bypassing session authority",async({page})=>{
  let stage=0;
  const mutated:string[]=[];
@@ -147,7 +145,8 @@ test("verified player can join, claim and reach World without bypassing session 
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
  expect(mutated).toEqual(["/api/join","/api/claim"]);
 });
 
@@ -176,8 +175,9 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await page.getByRole("button",{name:/Saturday Spectacle/}).click();
  await requested;
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ await page.getByRole("button",{name:"Open promotion menu"}).click();
  await nav.getByRole("button",{name:"World",exact:true}).click();
- await page.getByRole("button",{name:/World overview/}).click();
+ await nav.getByRole("button",{name:/World overview/}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  releaseShow();
  await page.waitForTimeout(250);
