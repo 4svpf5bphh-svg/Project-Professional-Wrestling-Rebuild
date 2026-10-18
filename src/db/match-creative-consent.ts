@@ -1,4 +1,5 @@
 import type {SqlRows} from "./world-operations.js";
+import {standingCoveredConcerns} from "./standing-programme-review.js";
 export type CreativeReviewShow={showId:string;promotionId:string;weekIndex:number;slots:readonly {slot_id:string;kind:string;payload:unknown}[]};
 import {buildCreativeConcerns,creativeApprovalRequired,
  type CreativeConcern,type CreativeContract,type CreativeRight}
@@ -43,6 +44,7 @@ export async function creativeReviewsInTransaction(tx:SqlRows,worldId:string,
   show.showId,show.promotionId,show.slots.filter(x=>x.kind==="MATCH")
    .map(x=>({slotId:x.slot_id,payload:x.payload})),scoped(show)));
  if(!concerns.some(x=>x.requiresConsent))return concerns;
+ const standing=await standingCoveredConcerns(tx,worldId,active,concerns);
  const decisions=await tx.query<{show_id:string;slot_id:string;
   person_id:string;contract_id:string;signature:string;
   decision:"APPROVED"|"DECLINED"}>([
@@ -59,7 +61,15 @@ export async function creativeReviewsInTransaction(tx:SqlRows,worldId:string,
  const found=new Map(decisions.map(x=>[key({
   showId:x.show_id,slotId:x.slot_id,personId:x.person_id,
   contractId:x.contract_id,signature:x.signature}),x.decision]));
- return concerns.map(x=>({...x,decision:found.get(key(x))??x.decision}));
+ return concerns.map(x=>{
+  const standingKey=[x.showId,x.slotId,x.personId,x.contractId].join("\u0001");
+  if(x.reason==="MATCH_APPROVAL"&&standing.has(standingKey))
+   return {...x,decision:"APPROVED" as const,
+    approvalSource:"STANDING_PROGRAMME" as const};
+  const exact=found.get(key(x));
+  return {...x,decision:exact??x.decision,
+   ...(exact?{approvalSource:"EXACT_MATCH" as const}:{})};
+ });
 }
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
