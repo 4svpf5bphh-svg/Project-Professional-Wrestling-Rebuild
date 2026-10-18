@@ -34,7 +34,9 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
     sideAWins:1,sideBWins:0,draws:0,championshipId:null,
     startedWeekIndex:1,endedWeekIndex:null,latestFollowUp:null,
     sideA:[{kind:"PERSON",refId:"alice",name:"Alice"}],
-    sideB:[{kind:"PERSON",refId:"bob",name:"Bob"}],recentActivity:[],
+    sideB:[{kind:"PERSON",refId:"bob",name:"Bob"}],
+    recentActivity:[{showId:"settled",slotId:"main",kind:"MATCH",
+     weekIndex:4,crowdResponse:76}],
     eligibleCreativePeople:[{personId:"alice",name:"Alice"}],
     creativeAgreements:approved?[{personId:"alice",approved:true,score:76,
      decidedWeekIndex:4,expiresWeekIndex:8,
@@ -45,6 +47,11 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  });
  await page.goto("/#/programmes");
  await expect(page.getByRole("heading",{name:"Match agreements"})).toBeVisible();
+ // Standing terms cannot replace the long-standing rivalry dossier and
+ // post-match direction choices from the original Programme desk.
+ await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Rematch"})).toBeVisible();
  await page.getByRole("combobox",{name:"Match format for Alice"}).selectOption("TAG");
  await page.getByRole("combobox",{name:"Permitted finish for Alice"}).selectOption("WIN_OR_PROTECTED_LOSS");
  await page.getByRole("spinbutton",{name:"Agreement weeks for Alice"}).fill("4");
@@ -57,5 +64,7 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes"]);
  await page.reload();
  await expect(page.getByText(/Agreed · Through/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes","programmes"]);
 });
