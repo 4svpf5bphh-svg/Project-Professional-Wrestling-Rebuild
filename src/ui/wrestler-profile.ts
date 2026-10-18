@@ -139,8 +139,9 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    ()=>void save(moveInputs.signature!.value,moveInputs.finisher!.value,
     primaryStyle.value||null,secondaryStyle.value||null),saving));
   else character.append(el("p","ppw-profile-locked",
-   view.onYourRoster?"Editing unavailable while World Lock is closed.":
-    "Available to inspect · move editing unlocks when signed to your roster."));
+   !view.onYourRoster?"Available to inspect · editing requires a signed roster wrestler.":
+    view.sharedHuman?"Editing requires agreement from all human employers.":
+     "Editing unavailable while World Lock is closed."));
   if(view.onYourRoster&&port.openBackstage)character.append(button(
    "Discuss a gimmick change in Backstage",()=>port.openBackstage?.(personId)));
   root.append(character);
