@@ -14,7 +14,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
- const formatMoney=(n:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP",maximumFractionDigits:0}).format(n);
+ const formatMoney=(n:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
  async function refresh(){
   busy=true;draw();
   try{data=await port.load();error="";}catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
