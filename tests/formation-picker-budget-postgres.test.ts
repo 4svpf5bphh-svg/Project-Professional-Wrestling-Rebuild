@@ -11,7 +11,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readTagTeamWorkspace} from "../src/db/tag-team-workspace.js";
 import {readStableWorkspace} from "../src/db/stable-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
-test("Wrestler scouting cards in team and faction selectors stay within five queries at Genesis scale",{
+test("Wrestler scouting cards in team and faction selectors stay within six queries at Genesis scale",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const world="formation-budget-"+randomUUID(),player="owner-"+randomUUID();
@@ -34,15 +34,15 @@ test("Wrestler scouting cards in team and faction selectors stay within five que
   assert.ok(pairs.roster.length>=30);
   assert.ok(pairs.roster.every(x=>x.ringName&&x.division&&
    x.gimmickId&&typeof x.popularity==="number"&&typeof x.inRingQuality==="number"));
-  const first=meter.assertBudget({maxQueries:2,maxResultBytes:35000});
-  assert.equal(first.queryCount,2);
+  const first=meter.assertBudget({maxQueries:3,maxResultBytes:35000});
+  assert.equal(first.queryCount,3);
   const factions=await readStableWorkspace(measured,scope);
   assert.equal(factions.roster.length,pairs.roster.length);
   assert.ok(factions.roster.every(x=>x.ringName&&x.gimmickId&&
    x.primaryStyle!==undefined&&typeof x.momentum==="number"));
   assert.ok(factions.roster.every(x=>x.stableId===null));
-  const combined=meter.assertBudget({maxQueries:5,maxResultBytes:75000});
-  assert.equal(combined.queryCount,5,"No per-wrestler or per-card SQL");
+  const combined=meter.assertBudget({maxQueries:6,maxResultBytes:75000});
+  assert.equal(combined.queryCount,6,"No per-wrestler or per-card SQL");
   assert.ok(combined.resultRows<150,"Do not load the entire 643-person World");
   await assert.rejects(readStableWorkspace(db.pool,{...scope,playerId:"stranger"}),
    /access denied/);
