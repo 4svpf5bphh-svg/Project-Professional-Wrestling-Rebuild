@@ -8,6 +8,7 @@ import {setStaffContinuityAsActor} from "../src/api/world-service.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {recordWeekContinuity} from "../src/db/week-continuity.js";
 import {prepareDelegatedSameTermsRenewals} from "../src/db/staff-auto-renewals.js";
+import {hireWorldTalentManager} from "../src/db/staff-employment.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -25,6 +26,7 @@ test("Consent-based Talent Manager proposes unchanged expiring deals once, witho
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,promotion_id,player_id) VALUES($1,$2,$3)",[world,promo,player]);
    await tx.query("UPDATE ppw_worlds SET week=11 WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_promotions SET cash=100000 WHERE world_id=$1 AND promotion_id=$2",[world,promo]);
    await tx.query(`
     INSERT INTO ppw_people(world_id,person_id,name)
     VALUES($1,'a','Signed Wrestler'),($1,'b','Unmanaged Wrestler'),($1,'c','One Off')`,[world]);
@@ -37,20 +39,24 @@ test("Consent-based Talent Manager proposes unchanged expiring deals once, witho
       ($1,'c-contract','c',$2,'ONE_OFF','SIGNED',1,10,10,1,0,5000,'REGULAR','NONE')`,
     [world,promo,uncontrolled]);
   });
+  const hired=await hireWorldTalentManager(db.pool,{worldId:world,
+   promotionId:promo,playerId:player,requestId:"hire",expectedRevision:0,
+   staffId:"staff-001"});
+  assert.equal(hired.status,"APPLIED");
   const actor={pool:db.pool,actor:{playerId:player}};
   const consent=await setStaffContinuityAsActor(actor,{worldId:world,
-   promotionId:promo,requestId:"manager-consent",expectedRevision:0,
+   promotionId:promo,requestId:"manager-consent",expectedRevision:1,
    allowUnfinishedFallback:false,autoRenewSameTerms:true});
   assert.equal(consent.status,"APPLIED");
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[world]));
   assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock",
-   expectedRevision:1})).status,"APPLIED");
+   expectedRevision:2})).status,"APPLIED");
   const result=await recordWeekContinuity(db.pool,{worldId:world,
-   requestId:"continuity",expectedRevision:2});
+   requestId:"continuity",expectedRevision:3});
   assert.equal(result.status,"APPLIED");
   assert.equal((await recordWeekContinuity(db.pool,{worldId:world,
-   requestId:"continuity",expectedRevision:2})).status,"REPLAYED");
+   requestId:"continuity",expectedRevision:3})).status,"REPLAYED");
   const proposals=await withWorldTransaction(db.pool,tx=>tx.query<{
    proposal_id:string;contract_id:string;promotion_id:string;
    status:string;created_week_index:number;
@@ -113,7 +119,7 @@ test("Consent-based Talent Manager proposes unchanged expiring deals once, witho
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_contract_renewal_proposals","ppw_ledger_events",
     "ppw_week_logistics_authorizations","ppw_week_continuity_assessments",
-    "ppw_staff_continuity_settings","ppw_command_receipts",
+    "ppw_staff_continuity_settings","ppw_staff_employments","ppw_command_receipts",
     "ppw_contracts","ppw_people","ppw_promotion_controls",
     "ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
