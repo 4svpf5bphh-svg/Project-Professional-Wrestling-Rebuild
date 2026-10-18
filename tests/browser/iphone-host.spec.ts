@@ -331,3 +331,47 @@ test("Industry featured wrestlers load only on expansion, cache through local fi
  await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
  expect(requests.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
 });
+
+test("Business event pulse reuses loaded receipts and opens detailed accounts without another request",async({page})=>{
+ await page.setViewportSize({width:320,height:700});
+ const methods:string[]=[];
+ const business={
+  name:"AEW",tier:"GLOBAL",year:1,week:5,phase:"OPEN",
+  cash:5000000,debt:0,lastWeeklyNet:700,runwayWeeks:null,financialDistress:"HEALTHY",
+  weeklyMediaIncome:10000,weeklySponsorIncome:2000,weeklyFixedOverhead:5000,
+  weeklyGuarantees:1000,recurringMargin:6000,
+  shows:[{
+   showId:"event-new",year:1,week:4,name:"Collision",
+   bookingClass:"REGULAR",attendance:2500,expectedDemand:2700,
+   gateRevenue:5000,venueCost:1000,productionCost:1400,travelCost:200,
+   appearanceFees:400,totalCost:3000,netResult:2000,incrementalCash:1800
+  },{
+   showId:"event-old",year:1,week:3,name:"Rampage",
+   bookingClass:"REGULAR",attendance:800,expectedDemand:950,
+   gateRevenue:1000,venueCost:1000,productionCost:800,travelCost:100,
+   appearanceFees:100,totalCost:2000,netResult:-1000,incrementalCash:-1200
+  }],
+  territories:[]
+ };
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=route.request().postDataJSON().method;
+  methods.push(method);
+  await route.fulfill({json:method==="business"?business:overview});
+ });
+ await page.goto("/#/business");
+ await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
+ await page.getByRole("button",{name:"Events"}).click();
+ await expect(page.getByText("EVENT RESULT")).toBeVisible();
+ await expect(page.getByText("$1,000",{exact:true})).toBeVisible();
+ const group=page.getByRole("group",{name:"Event profit and loss"});
+ await expect(group).toBeVisible();
+ await expect(group.getByRole("button")).toHaveCount(2);
+ await group.getByRole("button",{name:/Collision/}).click();
+ const expanded=page.locator('details.ppw-business-show[data-show-id="event-new"]');
+ await expect(expanded).toHaveAttribute("open","");
+ await expect(expanded.getByText("Gate revenue")).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ expect(methods).toEqual(["business"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
