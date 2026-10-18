@@ -50,7 +50,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    for(const person of available.people){
     const baseline=originalPersonaBaseline(person.name,person.gimmickId);
     container.append(createWrestlerCard({
-     personId:person.personId,name:person.name,ringName:baseline.personaName,
+     personId:person.personId,name:person.name,promotion:available.promotionName,
+     ringName:baseline.personaName,
      division:person.division,gimmickId:baseline.gimmickId,
      primaryStyle:baseline.primaryStyle,alignment:person.alignment,
      popularity:person.popularity,recognition:person.recognition,

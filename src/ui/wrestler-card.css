@@ -41,3 +41,46 @@
  .ppw-wrestler-stats{grid-template-columns:repeat(6,minmax(0,1fr))}}
 @media(prefers-reduced-motion:no-preference){.ppw-wrestler-card:where(button){transition:transform .14s,border-color .14s}
  .ppw-wrestler-card:where(button):hover{border-color:#78d8ff}}
+
+/* Character art is a deterministic local silhouette, not a fabricated wrestler photograph.
+ * Refined ratings, roster context and character alignment load no external assets. */
+.ppw-wrestler-portrait{position:relative;isolation:isolate;overflow:hidden;
+ background:radial-gradient(circle at 72% 16%,hsla(var(--wrestler-hue),90%,71%,.78),transparent 46%),
+  linear-gradient(158deg,hsla(var(--wrestler-hue),53%,33%,.95),#101a34 80%)}
+.ppw-wrestler-portrait:before{content:"";position:absolute;inset:8px -25px auto;
+ height:2px;background:#ffffff8c;transform:rotate(-25deg)}
+.ppw-wrestler-portrait-figure{position:absolute;inset:0;opacity:.65;z-index:-1}
+.ppw-wrestler-portrait-figure:before{content:"";position:absolute;top:17%;left:33%;width:34%;height:27%;
+ border-radius:52% 48% 44% 48%;background:linear-gradient(130deg,#ecf6ff66,#0b143e);
+ box-shadow:0 1px 1px #131b3880}
+.ppw-wrestler-portrait-figure:after{content:"";position:absolute;left:9%;bottom:-14%;width:82%;height:65%;
+ background:linear-gradient(120deg,#95bdedbb,#0a143ad9 77%);
+ clip-path:polygon(31% 0,69% 0,94% 21%,100% 100%,0 100%,6% 21%);
+ border-radius:29% 29% 0 0}
+.ppw-wrestler-initials{position:absolute;left:0;right:0;bottom:0;
+ text-align:center;font-size:16px;font-weight:950;letter-spacing:.06em;line-height:1.2;
+ padding:9px 2px 5px;color:#f8fcff;text-shadow:0 2px 7px #010816,0 0 10px #010816;
+ background:linear-gradient(0deg,#040d20da,transparent)}
+.ppw-wrestler-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ppw-wrestler-division,.ppw-wrestler-alignment,.ppw-wrestler-promotion{
+ display:inline-flex;align-items:center;padding:3px 5px;min-height:18px;
+ font-size:9px;line-height:1.2;letter-spacing:.08em;font-weight:850;border-radius:5px;
+ color:#aeeeff;background:#0c496069}
+.ppw-wrestler-alignment{color:#ffe3bc;background:#7546215b}
+.ppw-wrestler-card[data-alignment="FACE"] .ppw-wrestler-alignment{
+ color:#b7fff1;background:#147c6d54}
+.ppw-wrestler-promotion{color:#d7caf8;background:#5f4b9759}
+.ppw-wrestler-stat[data-ability="outstanding"] .ppw-wrestler-fill{
+ background:linear-gradient(90deg,#17dcab,#9dffd9)}
+.ppw-wrestler-stat[data-ability="strong"] .ppw-wrestler-fill{
+ background:linear-gradient(90deg,#46c7ef,#9da4ff)}
+.ppw-wrestler-stat[data-ability="developing"] .ppw-wrestler-fill{
+ background:linear-gradient(90deg,#eaa577,#ffc48d)}
+.ppw-wrestler-stat[data-ability="unknown"] .ppw-wrestler-fill{width:0!important}
+.ppw-wrestler-card:not(.ppw-wrestler-unavailable) .ppw-wrestler-status{
+ background:linear-gradient(90deg,#173c4099,transparent);padding:6px 9px;
+ border-left:2px solid #56c7bd;border-radius:5px}
+.ppw-wrestler-card.ppw-wrestler-unavailable .ppw-wrestler-status{
+ color:#ffd7d2;border-left:2px solid #ffaba5;padding:6px 9px;background:#63333245}
+.ppw-wrestler-card:where(button):focus-visible{outline:3px solid #a8eeff;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.ppw-wrestler-card{transition:none!important;animation:none!important}}

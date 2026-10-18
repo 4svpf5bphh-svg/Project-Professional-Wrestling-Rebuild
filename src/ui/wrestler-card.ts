@@ -17,12 +17,25 @@ export function wrestlerLabel(value:string|null|undefined):string{
 export function wrestlerInitials(name:string):string{
  return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()??"").join("")||"PP";
 }
+/** Performance ratings are current levels, not predictions or week-on-week trends. */
+export function wrestlerAbilityBand(value:number|null|undefined){
+ if(value==null)return "unknown" as const;
+ return value>=85?"outstanding" as const:value>=70?"strong" as const:
+  value<40?"developing" as const:"steady" as const;
+}
 const span=(className:string,label:string)=>{
  const node=document.createElement("span");node.className=className;node.textContent=label;
  return node;
 };
 function metric(label:string,value:number|null|undefined){
+ const metricNames:Record<string,string>={
+  POP:"Popularity",REC:"Recognition",MOM:"Momentum",
+  RING:"In-ring ability",CRAFT:"Match craft",PRES:"Presentation"
+ };
  const item=document.createElement("span");item.className="ppw-wrestler-stat";
+ item.dataset.ability=wrestlerAbilityBand(value);
+ item.setAttribute("aria-label",(metricNames[label]??label)+": "+
+  (value==null?"unrated":Math.round(value)+ " out of 100"));
  item.append(span("ppw-wrestler-stat-name",label),
   span("ppw-wrestler-stat-value",value==null?"—":Math.round(value).toString()));
  const track=span("ppw-wrestler-track","");
@@ -45,19 +58,27 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
   const button=root as HTMLButtonElement;button.type="button";
   button.disabled=!!options.disabled;button.onclick=options.onSelect!;
  }
- root.setAttribute("aria-label",p.name+
+ root.setAttribute("aria-label",(p.ringName||p.name)+
   (p.division?" · "+wrestlerLabel(p.division):"")+
+  (p.alignment?" · "+wrestlerLabel(p.alignment):"")+
   (options.label?" · "+options.label:""));
- const portrait=span("ppw-wrestler-portrait",wrestlerInitials(p.ringName||p.name));
+ if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
+ const portrait=span("ppw-wrestler-portrait","");
  portrait.setAttribute("aria-hidden","true");
+ portrait.append(span("ppw-wrestler-portrait-figure",""),
+  span("ppw-wrestler-initials",wrestlerInitials(p.ringName||p.name)));
  // Accent is derived locally from the immutable identity ID, not a request.
  const tone=[...p.personId].reduce((n,ch)=>(n*31+ch.charCodeAt(0))%360,0);
  portrait.style.setProperty("--wrestler-hue",String(tone));
  const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
- copy.append(span("ppw-wrestler-division",
-  (p.division==="WOMEN"?"WOMEN":p.division==="MEN"?"MEN":"WORLD ROSTER")+
-  (p.alignment?"  /  "+wrestlerLabel(p.alignment).toUpperCase():"")));
- copy.append(span("ppw-wrestler-name",p.ringName||p.name));
+ const badges=span("ppw-wrestler-badges","");
+ badges.append(span("ppw-wrestler-division",p.division==="WOMEN"?
+  "WOMEN":p.division==="MEN"?"MEN":"ROSTER"));
+ if(p.alignment)badges.append(span("ppw-wrestler-alignment",
+  p.alignment.toUpperCase()==="FACE"?"FAN FAVOURITE":
+   p.alignment.toUpperCase()==="HEEL"?"VILLAIN":wrestlerLabel(p.alignment).toUpperCase()));
+ if(p.promotion)badges.append(span("ppw-wrestler-promotion",p.promotion));
+ copy.append(badges,span("ppw-wrestler-name",p.ringName||p.name));
  if(p.ringName&&p.ringName!==p.name)
   copy.append(span("ppw-wrestler-real-name",p.name));
  const identity=[p.gimmickId?wrestlerLabel(p.gimmickId):null,
@@ -72,6 +93,7 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  if(p.finisherMove&&!options.compact)
   copy.append(span("ppw-wrestler-finisher","FINISHER  /  "+p.finisherMove));
  const footer=span("ppw-wrestler-status",options.label??p.status??"");
+ footer.setAttribute("aria-live","off");
  if(options.context==="BOOKING"&&p.available===false)
   footer.classList.add("ppw-wrestler-status-blocked");
  if(p.reason&&p.available===false)footer.title=wrestlerLabel(p.reason);

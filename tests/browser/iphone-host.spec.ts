@@ -333,6 +333,10 @@ test("Industry featured wrestlers load only on expansion, cache through local fi
  const restored=page.locator("details.ppw-industry-company").filter({hasText:"WWE"});
  await restored.locator("summary").click();
  await expect(restored.getByText("Cody Rhodes",{exact:true})).toBeVisible();
+ await expect(restored.locator(".ppw-wrestler-badges")).toContainText("WWE");
+ await expect(restored.locator(".ppw-wrestler-alignment")).toContainText("FAN FAVOURITE");
+ await expect(restored.locator(".ppw-wrestler-stat[data-ability=outstanding]")).toHaveCount(3);
+ expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  await restored.locator(".ppw-wrestler-card").click();
  await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
