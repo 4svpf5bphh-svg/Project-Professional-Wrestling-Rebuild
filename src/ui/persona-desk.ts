@@ -94,15 +94,12 @@ export function mountPersonaDesk(root:HTMLElement,
   const head=el("header","ppw-persona-header");
   if(onBack)head.append(button("← Back to card",onBack));
   head.append(el("span","ppw-eyebrow","PPW · BACKSTAGE"),
-   el("h1","","Backstage messages"),
+   el("h1","",pane==="INBOX"?"Messages":"Wrestler profile"),
    el("p","ppw-muted",
-    "Your private locker-room conversations. Wrestlers own their characters; you decide what happens on screen."));
-  root.append(head);
+    pane==="INBOX"?"Your wrestlers can contact you privately here.":"Character history and wrestler-owned creative identity."));
+  if(pane!=="THREAD")root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){root.append(button(loading?"Loading…":"Retry",()=>void load(personId),loading));return;}
-  if(!view.personId||!view.persona){
-   root.append(el("p","ppw-muted","There are no current roster identities to inspect."));return;
-  }
   const tabs=el("nav","ppw-backstage-tabs");
   for(const [id,label] of [["INBOX","Inbox"],["THREAD","Conversation"],
    ["PROFILE","Wrestler profile"]] as const){
@@ -118,8 +115,8 @@ export function mountPersonaDesk(root:HTMLElement,
   if(pane!=="THREAD")root.append(tabs);
   if(pane==="INBOX"){
    const inbox=el("section","ppw-backstage-inbox");
-   inbox.append(el("h2","","Locker room"),
-    el("p","ppw-muted","Open a wrestler's conversation or character history."));
+   inbox.append(el("h2","","Conversations"),
+    el("p","ppw-muted","Private messages about careers, morale and creative plans."));
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["HISTORY","History"],
@@ -209,6 +206,14 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(entries,empty);
    root.append(inbox);return;
   }
+  if(!view.personId){
+   root.append(el("p","ppw-muted","Select a wrestler from Messages to open their conversation."));
+   root.append(button("← Messages",()=>{pane="INBOX";render();}));return;
+  }
+  if(pane==="PROFILE"&&!view.persona){
+   root.append(el("p","ppw-muted","This wrestler has no character profile yet. Their conversations remain available."));
+   return;
+  }
   const choice=el("label","ppw-field");
   choice.append(el("span","","Select a roster wrestler"));
   const select=document.createElement("select");
@@ -220,6 +225,7 @@ export function mountPersonaDesk(root:HTMLElement,
   select.value=view.personId;select.onchange=()=>void load(select.value);
   choice.append(select);if(pane==="PROFILE")root.append(choice);
   const persona=view.persona;
+  if(persona){
   const live=el("section","ppw-persona-active");
   live.append(el("span","ppw-eyebrow","CURRENT WRESTLER-OWNED CHARACTER"),
    el("h2","",persona.personaName),
@@ -242,6 +248,7 @@ export function mountPersonaDesk(root:HTMLElement,
    live.append(section);
   }
   if(pane==="PROFILE")root.append(live);
+  }
   if(pane==="PROFILE"&&view.documentedAlternates.length){
    const alt=el("section","ppw-persona-alternates");
    alt.append(el("h2","","Documented real-world personas"),
@@ -265,11 +272,11 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   if(pane==="PROFILE")return;
   const contact=view.roster.find(x=>x.personId===view!.personId)?.latestIncoming;
+  let archiveButton:HTMLButtonElement|null=null;
   if(contact&&view.roster.find(x=>x.personId===view!.personId)?.isCurrent){
-   const archiveButton=button(contact.archived?"Restore conversation":"Archive conversation",
+   archiveButton=button(contact.archived?"Restore conversation":"Archive conversation",
     ()=>void archive(view!.personId!,!contact.archived),loading);
    archiveButton.classList.add("ppw-backstage-archive");
-   root.append(archiveButton);
   }
   if(view.roster.find(x=>x.personId===view!.personId)?.isCurrent===false)
    root.append(el("p","ppw-muted",
@@ -285,12 +292,16 @@ export function mountPersonaDesk(root:HTMLElement,
   monogram.setAttribute("aria-hidden","true");
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private · PPW Messages"));
-  chatHead.append(returnToInbox,monogram,identity);
+  const details=button("Details",()=>{pane="PROFILE";render();});
+  details.classList.add("ppw-backstage-phone-details");
+  details.setAttribute("aria-label","View "+view.personName+" profile");
+  chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
   const info=el("details","ppw-backstage-phone-info");
-  info.append(el("summary","","About character proposals"),
+  info.append(el("summary","","Conversation options"),
    el("p","",
     "You can suggest a character change, but the wrestler owns their identity and can refuse. Only your selected responses have gameplay effects."));
+  if(archiveButton)info.append(archiveButton);
   chat.append(info);
   const selectedPersonId=view.personId;
   const wrestler=view.roster.find(p=>p.personId===selectedPersonId);
@@ -390,7 +401,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const cooldown=view.nextPitchWeek>now;
   if(cooldown)chat.append(el("p","ppw-muted",
    "Reconsideration available in "+(view.nextPitchWeek-now)+" PPW weeks."));
-  if(view.canEdit&&!cooldown){
+  if(view.canEdit&&!cooldown&&persona){
    chat.append(el("h3","","Suggest a character change"));
    const filter=document.createElement("input");
    filter.type="search";filter.placeholder="Search gimmicks or families";
