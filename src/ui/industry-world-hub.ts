@@ -113,7 +113,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      if(p.isYours)card.classList.add("ppw-industry-own");
      const summary=document.createElement("summary");summary.className="ppw-industry-company-summary";
      const crest=el("span","ppw-industry-company-crest",
-      p.name.split(/\\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase());
+      p.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase());
      crest.setAttribute("aria-hidden","true");
      const identity=el("span","ppw-industry-company-identity");
      identity.append(el("span","ppw-industry-company-name",p.name));
