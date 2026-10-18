@@ -42,3 +42,22 @@ export async function creativeReviewsInTransaction(tx:SqlRows,worldId:string,
  const concerns=active.flatMap(show=>buildCreativeConcerns(
   show.showId,show.promotionId,show.slots.filter(x=>x.kind==="MATCH")
    .map(x=>({slotId:x.slot_id,payload:x.payload})),scoped(show)));
+ if(!concerns.some(x=>x.requiresConsent))return concerns;
+ const decisions=await tx.query<{show_id:string;slot_id:string;
+  person_id:string;contract_id:string;signature:string;
+  decision:"APPROVED"|"DECLINED"}>([
+  "SELECT show_id,slot_id,person_id,contract_id,signature,decision",
+  "FROM ppw_match_creative_consents WHERE world_id=$1",
+  "AND show_id=ANY($2::text[]) AND signature=ANY($3::text[])",
+  "ORDER BY show_id,slot_id,person_id LIMIT 3001"
+ ].join(" "),[worldId,[...new Set(active.map(x=>x.showId))],
+  concerns.filter(x=>x.requiresConsent).map(x=>x.signature)]);
+ if(decisions.length>3000)throw new Error("Creative decisions limit exceeded");
+ const key=(x:{showId:string;slotId:string;personId:string;
+  contractId:string;signature:string})=>[
+   x.showId,x.slotId,x.personId,x.contractId,x.signature].join(":");
+ const found=new Map(decisions.map(x=>[key({
+  showId:x.show_id,slotId:x.slot_id,personId:x.person_id,
+  contractId:x.contract_id,signature:x.signature}),x.decision]));
+ return concerns.map(x=>({...x,decision:found.get(key(x))??x.decision}));
+}
