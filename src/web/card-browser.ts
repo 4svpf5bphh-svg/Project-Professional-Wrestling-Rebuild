@@ -105,6 +105,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
+  requestCreativeConsent:({requestId,expectedRevision,slotId,personId})=>
+   call("creativeConsent",{requestId,expectedRevision,slotId,personId}),
   openPlanner:()=>{
    // A reminder can enter directly at #/planner/card. Leaving that
    // one-time action must clear the focus route or a later reload would
