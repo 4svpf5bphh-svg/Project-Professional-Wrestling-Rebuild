@@ -128,12 +128,28 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
     const competition=node("div","","ppw-planner-competition");
     if(rival){
      competition.append(node("span","LOCAL COMPETITION","ppw-planner-context-kicker"),
-      node("strong",rival.name+" · "+rival.tier.replaceAll("_"," ").toLowerCase()),
+      node("strong",rival.name+" · "+rival.tier.replaceAll("_"," ").toLowerCase()+
+       (rival.basedHere?" · Local promotion":"")),
       node("p","Their local strength: "+Math.round(rival.liveStrength)+"/100 · Yours: "+
        Math.round(currentVenue.liveStrength)+"/100. Consider your following before choosing this market.",
        "ppw-planner-market-note"));
     }else competition.append(node("p","No other active promotion has an established local following here.",
      "ppw-planner-market-note"));
+    const venueBrief=node("section","","ppw-planner-venue-brief");
+    venueBrief.append(node("span","THE BUILDING","ppw-planner-context-kicker"),
+     node("strong",currentVenue.name));
+    const venueStats=node("div","","ppw-planner-venue-stats");
+    for(const [caption,score] of [
+     ["Prestige",currentVenue.prestige],
+     ["Production suitability",currentVenue.productionSuitability]
+    ] as const){
+     const tile=node("div","","ppw-planner-venue-score");
+     tile.append(node("span",caption),
+      node("strong",score===null?"Not rated":Math.round(score)+"/100"));
+     venueStats.append(tile);
+    }
+    venueBrief.append(venueStats);
+    context.append(venueBrief);
     context.append(competition,node("p",
      "Venue capacity: "+currentVenue.capacity.toLocaleString("en-GB")+
      " · Hire cost: "+formatMoney(currentVenue.weeklyHireCost)+

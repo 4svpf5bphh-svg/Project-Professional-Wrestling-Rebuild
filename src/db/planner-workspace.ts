@@ -19,9 +19,10 @@ export interface PlanWeekInput extends PlannerScope {
 }
 export interface PlannerVenue {
  venueId:string;marketId:string;marketName:string;name:string;capacity:number;
- weeklyHireCost:number;awareness:number;liveStrength:number;loyalty:number;
+ weeklyHireCost:number;prestige:number|null;productionSuitability:number|null;
+ awareness:number;liveStrength:number;loyalty:number;
  audiencePotential:number;wrestlingInterest:number;spendingIndex:number;
- strongestRival:{name:string;tier:string;liveStrength:number}|null;
+ strongestRival:{name:string;tier:string;liveStrength:number;basedHere:boolean}|null;
  home:boolean;
 }
 export interface PlannedShow {
@@ -94,21 +95,26 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  const venues=await tx.query<{
   venue_id:string;market_id:string;market_name:string;name:string;
   capacity:number;weekly_hire_cost:string|number;
+  prestige:number|null;production_suitability:number|null;
   awareness:number;live_strength:number;loyalty:number;
   audience_potential:number;wrestling_interest:number;spending_index:number;
   rival_name:string|null;rival_tier:string|null;rival_live_strength:number|null;
+  rival_based_here:boolean|null;
  }>(`
  SELECT v.venue_id,v.market_id,m.name AS market_name,v.name,v.capacity,
-  v.weekly_hire_cost,local.awareness,local.live_strength,local.loyalty,
+  v.weekly_hire_cost,v.prestige,v.production_suitability,
+  local.awareness,local.live_strength,local.loyalty,
   m.audience_potential,m.wrestling_interest,m.spending_index,
   rival.name AS rival_name,rival.tier AS rival_tier,
-  rival.live_strength AS rival_live_strength
+  rival.live_strength AS rival_live_strength,
+  rival.based_here AS rival_based_here
  FROM ppw_venues v
  JOIN ppw_markets m ON m.world_id=v.world_id AND m.market_id=v.market_id
  JOIN ppw_promotion_market_states local ON local.world_id=v.world_id
   AND local.market_id=v.market_id AND local.promotion_id=$2
  LEFT JOIN LATERAL (
-  SELECT competitor.name,competitor.tier,reach.live_strength
+  SELECT competitor.name,competitor.tier,reach.live_strength,
+    (competitor.home_market_id=v.market_id) AS based_here
   FROM ppw_promotion_market_states reach
   JOIN ppw_promotions competitor ON competitor.world_id=reach.world_id
    AND competitor.promotion_id=reach.promotion_id AND competitor.lifecycle='ACTIVE'
@@ -141,12 +147,15 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,
-   weeklyHireCost:Number(v.weekly_hire_cost),awareness:v.awareness,
+   weeklyHireCost:Number(v.weekly_hire_cost),
+   prestige:v.prestige,productionSuitability:v.production_suitability,
+   awareness:v.awareness,
    liveStrength:v.live_strength,loyalty:v.loyalty,
    audiencePotential:v.audience_potential,wrestlingInterest:v.wrestling_interest,
    spendingIndex:v.spending_index,
    strongestRival:v.rival_name===null||v.rival_live_strength===null?null:
-    {name:v.rival_name,tier:v.rival_tier??"UNKNOWN",liveStrength:v.rival_live_strength},
+    {name:v.rival_name,tier:v.rival_tier??"UNKNOWN",
+     liveStrength:v.rival_live_strength,basedHere:v.rival_based_here===true},
    home:v.market_id===owned.home_market_id})),
   weeks:Array.from({length:6},(_,offset)=>{
    const index=start+offset,when=dateAt(index);

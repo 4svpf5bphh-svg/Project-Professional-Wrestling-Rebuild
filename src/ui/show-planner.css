@@ -39,3 +39,12 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-competition{margin-top:12px;padding:12px 13px;border:1px solid rgba(255,181,103,.3);border-radius:12px;background:linear-gradient(105deg,rgba(92,45,35,.3),rgba(17,36,51,.5))}
 .ppw-planner-competition>strong{display:block;margin:5px 0 3px;font-size:14px;color:#ffddb2}
 .ppw-planner-competition .ppw-planner-market-note{margin:3px 0;color:#dfd6d3}
+
+/* Venue presentation uses the original building's real setup ratings. */
+.ppw-planner-venue-brief{padding:12px;margin:12px 0;border:1px solid rgba(123,208,240,.28);
+ border-radius:13px;background:linear-gradient(125deg,rgba(18,58,77,.65),rgba(10,28,47,.7))}
+.ppw-planner-venue-brief>strong{display:block;font-size:17px;letter-spacing:-.025em;margin:5px 0 9px}
+.ppw-planner-venue-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ppw-planner-venue-score{display:grid;gap:4px;padding:9px;background:#081b2d;border-radius:9px}
+.ppw-planner-venue-score span{font-size:11px;color:#afcddd}
+.ppw-planner-venue-score strong{font-size:15px;color:#d4f5ff}

@@ -42,7 +42,10 @@ test("Venue planning reveals rival presence and market potential in four bounded
   assert.equal(home.wrestlingInterest,70);
   assert.equal(home.spendingIndex,90);
   assert.equal(home.liveStrength,50);
-  assert.deepEqual(home.strongestRival,{name:"Promotion 7",tier:"INDEPENDENT",liveStrength:57});
+  assert.equal(home.prestige,55);
+  assert.equal(home.productionSuitability,80);
+  assert.deepEqual(home.strongestRival,{name:"Promotion 7",tier:"INDEPENDENT",
+   liveStrength:57,basedHere:false});
   assert.equal(view.venues.filter(x=>x.marketId==="market-0").length,4);
   await assert.rejects(readSixWeekPlanner(pool.pool,{...scope,playerId:"impostor"}),/access denied/i);
  }finally{
