@@ -260,9 +260,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      const item=element("div","ppw-programme-standing-row");
      item.append(element("strong","",person.name));
      if(prior){
+      // The stored expiry week is EXCLUSIVE: do not advertise a week of
+      // permission that the wrestler never granted.
+      const finalWeek=prior.expiresWeekIndex-1;
       const when=prior.expiresWeekIndex<=weekIndex?" · Expired":
-       " · Until Y"+(Math.floor(prior.expiresWeekIndex/52)+1)+
-       " W"+(prior.expiresWeekIndex%52+1);
+       " · Through Y"+(Math.floor(finalWeek/52)+1)+
+       " W"+(finalWeek%52+1);
       item.append(element("small","",
        (prior.approved?"Agreed":"Declined")+when),
        element("p","ppw-muted",prior.matchType==="SINGLES"?
