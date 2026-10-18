@@ -12,6 +12,9 @@ export interface ProgrammeDeskPort{
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
  chooseDirection(input:{requestId:string;expectedRevision:number;programmeId:string;
   showId:string;slotId:string;choice:ProgrammeDirectionChoice}):Promise<unknown>;
+ standingConsent(input:{requestId:string;expectedRevision:number;programmeId:string;
+  personId:string;matchType:"SINGLES"|"TAG";
+  permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}):Promise<unknown>;
  openPlanner?():void;
  openResults?(showId:string):void;
  openArchive?():void;
@@ -29,6 +32,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
+ const standing=new Map<string,{matchType:"SINGLES"|"TAG";
+  permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}>();
  function rosterOptions(){
   return view?[...view.people,...view.teams]:[];
  }
@@ -244,6 +249,81 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       "The card deadline has passed. Creative decisions reopen next week."));
     if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
     panel.append(direction);
+   }
+   if(p.eligibleCreativePeople.length||p.creativeAgreements.length){
+    const terms=element("section","ppw-programme-standing");
+    terms.append(element("h3","","Match agreements"),
+     element("p","ppw-muted",
+      "Agree a short run of bouts without seeking fresh permission every week. The wrestlers keep their agreed protections."));
+    for(const person of p.eligibleCreativePeople){
+     const prior=p.creativeAgreements.find(x=>x.personId===person.personId);
+     const item=element("div","ppw-programme-standing-row");
+     item.append(element("strong","",person.name));
+     if(prior){
+      const when=prior.expiresWeekIndex<=weekIndex?" · Expired":
+       " · Until Y"+(Math.floor(prior.expiresWeekIndex/52)+1)+
+       " W"+(prior.expiresWeekIndex%52+1);
+      item.append(element("small","",
+       (prior.approved?"Agreed":"Declined")+when),
+       element("p","ppw-muted",prior.matchType==="SINGLES"?
+        "Singles matches":"Tag matches"));
+     }else if(view.canEdit){
+      const key=p.programmeId+":"+person.personId;
+      const proposal=standing.get(key)??{matchType:"SINGLES" as const,
+       permittedOutcome:"WIN_ONLY" as const,termWeeks:3};
+      standing.set(key,proposal);
+      const choose=<T extends string>(label:string,values:readonly T[],
+       current:T,onChange:(v:T)=>void)=>{
+       const field=element("label","ppw-programme-standing-field");
+       field.append(element("span","",label));
+       const input=document.createElement("select");
+       input.setAttribute("aria-label",label+" for "+person.name);
+       input.disabled=working;
+       for(const v of values){
+        const option=document.createElement("option");
+        option.value=v;option.textContent=v==="WIN_ONLY"?"Wins only":
+         v==="WIN_OR_PROTECTED_LOSS"?"Wins or protected losses":
+         v==="SINGLES"?"Singles":"Tag";
+        input.append(option);
+       }
+       input.value=current;input.onchange=()=>{onChange(input.value as T);};
+       field.append(input);return field;
+      };
+      item.append(choose("Match format",["SINGLES","TAG"] as const,
+       proposal.matchType,v=>{proposal.matchType=v;}),
+       choose("Permitted finish",["WIN_ONLY","WIN_OR_PROTECTED_LOSS"] as const,
+       proposal.permittedOutcome,v=>{proposal.permittedOutcome=v;}));
+      const duration=element("label","ppw-programme-standing-field");
+      duration.append(element("span","","Agreement weeks"));
+      const weeks=document.createElement("input");
+      weeks.type="number";weeks.min="1";weeks.max="6";weeks.inputMode="numeric";
+      weeks.value=String(proposal.termWeeks);
+      weeks.setAttribute("aria-label","Agreement weeks for "+person.name);
+      weeks.onchange=()=>{
+       const next=Number(weeks.value);
+       if(Number.isInteger(next)&&next>=1&&next<=6)proposal.termWeeks=next;
+       else weeks.value=String(proposal.termWeeks);
+      };
+      duration.append(weeks);item.append(duration);
+      item.append(button("Ask "+person.name+" about the rivalry",()=>{
+       void run(()=>port.standingConsent({
+        programmeId:p.programmeId,personId:person.personId,
+        matchType:proposal.matchType,
+        permittedOutcome:proposal.permittedOutcome,termWeeks:proposal.termWeeks,
+        requestId:crypto.randomUUID(),expectedRevision:view!.worldRevision
+       }),"The wrestler has considered the proposed rivalry terms.");
+      },working));
+     }
+     terms.append(item);
+    }
+    for(const prior of p.creativeAgreements.filter(x=>
+     !p.eligibleCreativePeople.some(y=>y.personId===x.personId))){
+     const item=element("p","ppw-programme-standing-note",
+      (prior.approved?"Previously agreed":"Previously declined")+
+      " · Agreement recorded for a former participant");
+     terms.append(item);
+    }
+    panel.append(terms);
    }
    panel.append(button("End programme",()=>{
     void run(()=>port.end({requestId:crypto.randomUUID(),
