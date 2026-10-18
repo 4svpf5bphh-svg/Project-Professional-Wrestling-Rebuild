@@ -5,7 +5,7 @@ export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
  membership:"ACTIVE"|"INACTIVE"|"NONE";
- promotion:null|{id:string;name:string;tier:string;cash:number;debt:number;
+ promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null};
 }
 
@@ -25,6 +25,7 @@ export async function readPlayerWorldOverview(
    phase:string;revision:string|number;next_lock_epoch:string;
    server_epoch:string;membership_status:"ACTIVE"|"INACTIVE"|null;
    promotion_id:string|null;promotion_name:string|null;tier:string|null;
+   home_market_name:string|null;
    cash:string|number|null;debt:string|number|null;
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
@@ -34,7 +35,7 @@ export async function readPlayerWorldOverview(
     floor(extract(epoch FROM w.next_lock_at))::text AS next_lock_epoch,
     extract(epoch FROM clock_timestamp())::text AS server_epoch,
     m.status AS membership_status,
-    owned.promotion_id,owned.name AS promotion_name,owned.tier,
+    owned.promotion_id,owned.name AS promotion_name,owned.tier,owned.home_market_name,
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress
    FROM ppw_worlds w
@@ -42,9 +43,12 @@ export async function readPlayerWorldOverview(
     ON m.world_id=w.world_id AND m.player_id=$2
    LEFT JOIN LATERAL (
     SELECT p.promotion_id,p.name,p.tier,p.cash,p.debt,
-     p.last_weekly_net,p.runway_weeks,p.financial_distress
+     p.last_weekly_net,p.runway_weeks,p.financial_distress,
+     market.name AS home_market_name
     FROM ppw_promotion_controls c JOIN ppw_promotions p
      ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+    LEFT JOIN ppw_markets market ON market.world_id=p.world_id
+     AND market.market_id=p.home_market_id
     WHERE c.world_id=w.world_id AND c.player_id=$2 AND c.active
      AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'
     ORDER BY p.promotion_id LIMIT 1
@@ -60,6 +64,7 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
+    homeMarketName:x.home_market_name,
     cash:Number(x.cash),debt:Number(x.debt),
     lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),
     runwayWeeks:x.runway_weeks,financialDistress:x.financial_distress

@@ -9,7 +9,7 @@ const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
 export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void){
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
- let selectedDraft="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
+ let selectedDraft="",marketId="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
  let selectedSeriesId="";
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
@@ -45,6 +45,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   editing=week;selectedDraft=draft?.draftId??"";
   selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
+  marketId=data?.venues.find(v=>v.venueId===venueId)?.marketId??"";
   day=draft?.day??5;strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
  function draw(){
@@ -66,18 +67,66 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   if(editing){
    const form=node("section","","ppw-planner-form");
    form.append(node("h2","Year "+editing.year+" · Week "+editing.week));
+   const markets=new Map<string,{name:string;home:boolean}>();
+   for(const v of data.venues)markets.set(v.marketId,{
+    name:v.marketName,home:v.marketId===data.homeMarketId});
+   const choices=[...markets.entries()].sort((a,b)=>Number(b[1].home)-
+    Number(a[1].home)||a[1].name.localeCompare(b[1].name));
+   const market=document.createElement("select");
+   market.setAttribute("aria-label","Show market");
+   for(const [id,meta] of choices){
+    const o=document.createElement("option");o.value=id;
+    o.textContent=(meta.home?"★ YOUR HOME · ":"")+meta.name;
+    market.append(o);
+   }
+   market.value=marketId;
+   market.onchange=()=>{
+    marketId=market.value;
+    venueId=data!.venues.find(v=>v.marketId===marketId)?.venueId??"";
+    draw();
+   };
    const venues=document.createElement("select");
    venues.setAttribute("aria-label","Show venue");venues.disabled=busy;
-   for(const v of data.venues){
+   for(const v of data.venues.filter(v=>v.marketId===marketId)){
     const option=document.createElement("option");option.value=v.venueId;
-    option.textContent=(v.marketId===data.homeMarketId?"★ HOME · ":"")+v.marketName+" · "+v.name+" · "+v.capacity+" seats · "+formatMoney(v.weeklyHireCost);
+    option.textContent=v.name+" · "+v.capacity.toLocaleString("en-GB")+
+     " seats · "+formatMoney(v.weeklyHireCost)+" hire";
     venues.append(option);
    }
-   venues.value=venueId;venues.onchange=()=>{venueId=venues.value;};
+   venues.value=venueId;venues.onchange=()=>{venueId=venues.value;draw();};
    form.append(node("p","Booking: "+
     (editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.name??
     "Weekly show"),"ppw-planner-calendar-label"));
-   form.append(node("label","Venue"),venues);
+   form.append(node("label","Market"),market,node("label","Venue"),venues);
+   const currentVenue=data.venues.find(v=>v.venueId===venueId);
+   if(currentVenue){
+    const context=node("section","","ppw-planner-market-context");
+    context.append(node("span","MARKET INTELLIGENCE","ppw-planner-context-kicker"),
+     node("h3",currentVenue.marketName+
+      (currentVenue.home?" / HOME ADVANTAGE":" / AWAY SHOW")),
+     node("p",currentVenue.home?
+      "Your promotion's established territory. These are current local market signals, not an attendance forecast.":
+      "Away-market awareness and audience loyalty may differ. This is current local information, not a promised turnout."));
+    const figures=node("div","","ppw-planner-market-metrics");
+    for(const [label,value] of [
+     ["Local awareness",currentVenue.awareness],
+     ["Live-show strength",currentVenue.liveStrength],
+     ["Loyalty",currentVenue.loyalty]
+    ] as const){
+     const stat=node("div","","ppw-planner-market-stat");
+     stat.append(node("span",label),node("strong",Math.round(value).toString()));
+     const rail=node("span","","ppw-planner-market-rail");
+     const bar=node("span","","ppw-planner-market-fill");
+     bar.style.width=Math.min(100,Math.max(0,value))+"%";
+     rail.append(bar);stat.append(rail);figures.append(stat);
+    }
+    context.append(figures,node("p",
+     "Venue capacity: "+currentVenue.capacity.toLocaleString("en-GB")+
+     " · Hire cost: "+formatMoney(currentVenue.weeklyHireCost)+
+     ". Choose a venue that suits your event and finances.",
+     "ppw-planner-market-note"));
+    form.append(context);
+   }
    const days=document.createElement("select");days.setAttribute("aria-label","Show day");
    for(let d=1;d<=7;d++){const opt=document.createElement("option");opt.value=String(d);opt.textContent=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][d-1];days.append(opt);}
    days.value=String(day);days.onchange=()=>{day=Number(days.value);};form.append(node("label","Day"),days);

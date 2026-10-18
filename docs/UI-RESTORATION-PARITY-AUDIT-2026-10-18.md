@@ -1,0 +1,39 @@
+# PPW original → rebuild: screen and workflow parity audit
+Source baseline: original repo **main** (18 October 2026), rebuild **main** (reviewed through 8681ba5). Results excluded by explicit instruction.
+
+Legend: **Restored** implemented, **Partial** important work remains, **Retain** a deliberate rebuild improvement, **Gap** not recreated. The original was inspected as gameplay evidence, not a mandate to copy obsolete architecture.
+
+| Screen/workflow | Original behaviour confirmed in source | Rebuild state and action |
+|---|---|---|
+| World/Home | Promotion identity including home territory, attention items, readiness, weekly clock. Original has **two** World deadlines. | **Partial:** single World Lock remains intentionally (**Retain**); economy/clock present. Home market restored with existing 1-query projection. Attention/readiness dashboard still a **Gap**. |
+| Planner/show planning | Six-week timeline, show details/participants, market analysis (audience awareness, loyalty, rival presence, venue availability), card-edit flow. | **Partial:** six-week calendar and show editing exist; home territory and market-by-market venue chooser/awareness/live strength/loyalty restored from *existing* Planner payload. Rival presence and reservation risk context remain **Gap**. |
+| Calendar | Create/edit/archive recurring series; flagship/secondary/special/PPV roles, all-world calendar and big-event filtering. | **Mostly present:** recurrence editor, PPV and World filters. Needs polish and side-by-side recurrence and role validation. |
+| Card Editor / booking | Authored outcomes, multi-sided participant slots, running order, style/finish/warnings, wrestler selector, segments. | **Partial:** broader match types and server-authoritative match booking retained; compact 40-keyset wrestler picker now uses shared quick-view wrestler cards with ratings, character and contract eligibility; open complete profile without abandoning card. Remaining detailed style/finish/readiness affordance audit **Gap**. |
+| Roster / Talent Market | Role ordering, contract filters, sorting, availability, public and private metrics, wrestler expand/roster management, offers. | **Partial:** server-side roster/market filters, interest, payroll/date sorting already stronger in rebuild. Shared wrestler card restored, plus full on-demand profile. Portraits and relationship/badge polish still **Gap**. |
+| Wrestler profile | Character, skills, status, booking history, career, relationships, contract and affiliations. | **Partial:** authorised single-person dossier now includes ratings, portable persona, repertoire, active contracts (private salary only yours), alliances, relationships and persona eras. Restored edit of move names and style only on current roster with server rights, no unilateral change when another human controls the shared person. Comprehensive match/injury/career timeline and portraits remain **Gap**. |
+| Contracts | Separate offer/renewals/date expansion workflow, expiration guidance, trusted roster links. | **Mostly present** in rebuild Contracts Desk; check notices deep-link and archived offer outcomes, consolidate high-priority actions. |
+| Backstage | Programme/story pitches, wrestler concern/proposal replies and conversations. | **Partial:** server-authoritative 30-message bounded conversations, read/archive, role pitches and mobile messenger visual already in rebuild. Further stand-alone full-screen chat layout, notification/read transitions and contextual controls require review. |
+| Business | Home market, recurring cash lines, four-week actuals, company standing, recent shows, ledger drilldown. | **Partial:** business finances, runway and local territories exist; comparison for missing standing/economics depth remains. Don't touch Results presentation while restoring links. |
+| Staff | Talent Manager hiring, releasing and manual renewal approvals. | **Partial:** rebuild has talent-manager renewal delegation and emergency show support but original hire/release/candidate workflow is a **Gap**. Confirm whether this omission is intentional before extending backend. |
+| Industry | Promotion tier/rank, rosters and featured wrestlers, championships, recent events and public privacy rules. | **Partial:** public promotion standings and broadcasts retained; featured talent and per-promotion title cards are **Gap**. Never expose rivals' private contracts. |
+| Championships | Singles and tag World lineage with active/inactive, holders and reign history. | **Mostly present:** bounded active and historic title queries, timeline view and filters. Premium title presentation needs redesign. |
+| Programmes | Active story line, heat/counters, sides and teams, linked championship, create/end programme and follow-up. | **Mostly present:** current heat/repetition, team participant inputs and programme resolution are in rebuild; richer progress/continuity visuals remain **Gap**. |
+| Navigation/notifications | Drawer and sections plus notification items/deep links, pending actions and context. | **Partial:** rebuild retains five-section drawer; do not add permanent nav buttons. Persistent action inbox and context-specific deep links remain **Gap**. |
+| Results | Explicitly excluded. | **Do not modify.** |
+
+## Neon and multiplayer invariants
+- Keep one World Lock; no background polling for UI, no production deployment, no activation of scheduled resolution.
+- No global JSON world hydration, whole-roster response, monolithic save or per-card profile queries.
+- Quick wrestler summaries reuse narrow paginated roster and booking payloads (25 or 40 at a time).
+- Expanded profile reads only when explicitly opened, is person-keyed and actor authorised; mutations revalidate controller, active contract, other human employer and revision server-side.
+- Existing identity guide remains static build content rather than Neon blobs. Display-time portraits should be locally optimised static references, not fetched from DB.
+- Separate Neon billing test branches and GitHub cost probe must not be modified or merged.
+
+## Next implementation groups
+1. Finish wrestler quick-view/expanded profile and booking mobile/browser integration, ensure PostgreSQL budgets and end-to-end tests pass.
+2. Restore Home attention/readiness and Planner competitor/venue risk context using preexisting public data, adding only narrow bounded reads where necessary.
+3. Finish high-trust Contracts and Staff recruitment flows, confirm all event/offer dismissals and deep-links.
+4. Build Backstage as a fully separated iOS messenger context, then enrich Industry/championship presentation and notifications.
+5. Verify iPhone Safari/PWA touch, safe areas, scroll traps, form zoom, privacy and international wrestling roster completeness.
+
+Original screen decisions are restored by functionality, not by reinstating older two-clock logic or the original costly persistence model.

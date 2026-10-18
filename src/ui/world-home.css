@@ -47,3 +47,8 @@
  color:#d2f7ff;font-variant-numeric:tabular-nums;
  background:rgba(7,23,37,.42);border:1px solid rgba(146,220,245,.25);
  border-radius:12px;padding:12px;margin:14px 0 0}
+
+.ppw-home-territory{display:inline-flex;align-items:center;margin:9px 0 1px;
+ padding:8px 11px;border-radius:10px;border:1px solid rgba(88,217,255,.33);
+ background:rgba(11,62,88,.46);color:#b8efff;font-size:12px;
+ font-weight:850;letter-spacing:.04em}

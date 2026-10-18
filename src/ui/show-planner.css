@@ -16,3 +16,22 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-home-market{border:1px solid rgba(78,196,234,.35);border-left:3px solid #56e0ed;
  border-radius:10px;background:linear-gradient(95deg,rgba(9,68,90,.53),rgba(12,23,36,.55));
  padding:12px 13px;color:#d1f8ff;font-weight:750;font-size:13px;letter-spacing:.015em}
+
+/* Source-driven market analysis. Venue and territory data is already in Planner's read. */
+.ppw-planner-market-context{margin-top:13px;padding:15px 13px;
+ border:1px solid #396384;border-radius:15px;
+ background:linear-gradient(140deg,#153d55,#0f2536 67%,#15253e)}
+.ppw-planner-context-kicker{display:block;font-size:10px;font-weight:850;
+ letter-spacing:.14em;color:#85ddff}
+.ppw-planner-market-context h3{font-size:17px;color:#f2fbff;margin:8px 0}
+.ppw-planner-market-context>p{font-size:12px;line-height:1.5;color:#c1d7e4;margin:7px 0 13px}
+.ppw-planner-market-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-planner-market-stat{padding:9px 7px;border-radius:10px;background:rgba(0,9,19,.45);
+ display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:5px}
+.ppw-planner-market-stat>span:first-child{font-size:10px;color:#b4d6e8}
+.ppw-planner-market-stat strong{font-size:15px;color:#fff}
+.ppw-planner-market-rail{height:4px;width:100%;border-radius:4px;background:#334457;overflow:hidden}
+.ppw-planner-market-fill{height:100%;display:block;background:linear-gradient(90deg,#29c8ca,#93a4ff)}
+.ppw-planner-market-note{padding:7px 0 0;font-size:12px;line-height:1.5}
+@media(max-width:375px){.ppw-planner-market-stat{padding:6px 5px}
+ .ppw-planner-market-stat>span:first-child{font-size:9px}}

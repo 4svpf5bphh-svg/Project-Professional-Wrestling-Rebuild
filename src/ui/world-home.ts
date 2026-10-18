@@ -80,6 +80,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   heroTop.append(live);
   hero.append(heroTop,
    el("h2","",promotion?.name??"Choose a promotion"),
+   ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
+    "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
    el("p","ppw-home-small",world.phase==="OPEN"?
     "The booking window is open. Your creative choices remain yours.":
     world.phase==="LOCKED"?"The World is locked. Cards are no longer editable.":
