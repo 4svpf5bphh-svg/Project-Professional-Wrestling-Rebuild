@@ -1,4 +1,6 @@
 import type {ShowSeries,ShowRole} from "../domain/show-calendar.js";
+import {calendarSeriesPreview,setSeriesCadence,SERIES_CADENCES}
+ from "./calendar-series-preview.js";
 export interface CalendarPort{
  load():Promise<{promotionName:string;year:number;week:number;worldRevision:number;
  canEdit:boolean;series:ShowSeries[];weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
@@ -32,6 +34,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  }
  async function change(archiveId?:string){
   if(!data||busy||(!archiveId&&!editing))return;
+  if(!archiveId&&editing){
+   const checked=calendarSeriesPreview(editing,data.series,data.year,data.week);
+   if(!checked.valid){error=checked.message;render();return;}
+  }
   busy=true;render();
   try{
    const shared={requestId:crypto.randomUUID(),expectedRevision:data.worldRevision};
@@ -50,32 +56,94 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function form(){
   const s=editing!,section=node("section","","ppw-calendar-form");
   section.append(node("h2",s.seriesId==="NEW"?"Create recurring event":"Edit recurring event"));
-  const name=document.createElement("input");name.type="text";name.maxLength=80;name.value=s.name;
-  name.oninput=()=>{s.name=name.value;};section.append(field("Event name",name));
-  const role=document.createElement("select");
+  section.append(node("p","Every date below is a future broadcast slot. Booking the venue and match card happens in Planner.",
+   "ppw-calendar-form-help"));
+  const name=document.createElement("input");name.type="text";name.maxLength=80;
+  name.value=s.name;name.setAttribute("aria-label","Event name");
+  section.append(field("Event name",name));
+  const role=document.createElement("select");role.setAttribute("aria-label","Event role");
   const roles:ShowRole[]=s.role==="FLAGSHIP"?["FLAGSHIP"]:
    ["SECONDARY","DEVELOPMENTAL","SPECIAL","PREMIUM"];
   for(const value of roles){
    const option=document.createElement("option");option.value=value;option.textContent=label(value);
    role.append(option);
   }
-  role.value=s.role;role.onchange=()=>{
+  role.value=s.role;section.append(field("Event type",role));
+  const cadence=document.createElement("select");
+  cadence.setAttribute("aria-label","Repeat frequency");
+  for(const option of SERIES_CADENCES){
+   const item=document.createElement("option");item.value=String(option.weeks);
+   item.textContent=option.label;cadence.append(item);
+  }
+  const custom=document.createElement("option");custom.value="custom";custom.textContent="Custom frequency";
+  cadence.append(custom);
+  cadence.value=SERIES_CADENCES.some(c=>c.weeks===s.cadenceWeeks)?
+   String(s.cadenceWeeks):"custom";
+  section.append(field("Repeat",cadence));
+  const customCadence=document.createElement("input");customCadence.type="number";
+  customCadence.min="1";customCadence.max="260";customCadence.step="1";
+  customCadence.value=String(s.cadenceWeeks);
+  customCadence.setAttribute("aria-label","Custom repeat interval in weeks");
+  const customField=field("Every how many weeks?",customCadence);
+  customField.hidden=cadence.value!=="custom";section.append(customField);
+  const cycle=document.createElement("input");cycle.type="number";
+  cycle.min="1";cycle.max=String(s.cadenceWeeks);
+  cycle.step="1";cycle.value=String(s.anchorWeek+1);
+  cycle.setAttribute("aria-label","First week in repeat cycle");
+  const cycleLabel=node("span",s.cadenceWeeks===52?
+   "Annual show week (1–52)":"First week of the repeat cycle");
+  const cycleField=field("",cycle);cycleField.firstElementChild?.replaceWith(cycleLabel);
+  section.append(cycleField);
+  const importance=document.createElement("input");importance.type="number";
+  importance.min="1";importance.max="100";importance.step="1";importance.value=String(s.importance);
+  importance.setAttribute("aria-label","Event importance");
+  section.append(field("Event importance (1–100)",importance));
+  const forecast=node("div","","ppw-calendar-forecast");
+  forecast.setAttribute("aria-live","polite");
+  section.append(forecast);
+  const save=button("Save event",()=>void change(),busy);
+  const refresh=()=>{
+   const outcome=calendarSeriesPreview(s,data!.series,data!.year,data!.week);
+   forecast.replaceChildren();
+   forecast.append(node("strong","NEXT APPEARANCES","ppw-calendar-forecast-kicker"));
+   if(outcome.occurrences.length){
+    const dates=node("div","","ppw-calendar-forecast-dates");
+    for(const date of outcome.occurrences)
+     dates.append(node("span","YEAR "+date.year+" · WEEK "+date.week));
+    forecast.append(dates);
+   }
+   const message=node("p",outcome.message,outcome.valid?
+    "ppw-calendar-forecast-ok":"ppw-calendar-forecast-warning");
+   forecast.append(message);
+   save.disabled=busy||!outcome.valid;
+   cycleLabel.textContent=s.cadenceWeeks===52?
+    "Annual show week (1–52)":"First week of the repeat cycle";
+   cycle.max=String(Math.max(1,s.cadenceWeeks));
+  };
+  name.oninput=()=>{s.name=name.value;refresh();};
+  role.onchange=()=>{
    s.role=role.value as ShowRole;
    s.eventType=["SPECIAL","PREMIUM"].includes(s.role)?"MAJOR":"REGULAR";
+   refresh();
   };
-  section.append(field("Event type",role));
-  for(const [name,key,min,max] of [
-   ["Repeat every N weeks (52 = annually)","cadenceWeeks",1,260],
-   ["Recurrence offset (0 = first week)","anchorWeek",0,259],
-   ["Importance (1–100)","importance",1,100]
-  ] as const){
-   const input=document.createElement("input");input.type="number";
-   input.min=String(min);input.max=String(max);input.step="1";input.value=String(s[key]);
-   input.oninput=()=>{s[key]=Number(input.value);};
-   section.append(field(name,input));
-  }
-  section.append(button("Save event",()=>void change(),busy),
-   button("Cancel",()=>{editing=null;render();},busy));
+  cadence.onchange=()=>{
+   customField.hidden=cadence.value!=="custom";
+   if(cadence.value!=="custom"){
+    editing=setSeriesCadence(s,Number(cadence.value));
+    Object.assign(s,editing);
+    customCadence.value=String(s.cadenceWeeks);
+    cycle.value=String(s.anchorWeek+1);
+   }
+   refresh();
+  };
+  customCadence.oninput=()=>{
+   Object.assign(s,setSeriesCadence(s,Number(customCadence.value)));
+   cycle.value=String(s.anchorWeek+1);refresh();
+  };
+  cycle.oninput=()=>{s.anchorWeek=Number(cycle.value)-1;refresh();};
+  importance.oninput=()=>{s.importance=Number(importance.value);refresh();};
+  section.append(save,button("Cancel",()=>{editing=null;error="";render();},busy));
+  refresh();
   return section;
  }
  /** Broadcast-style public event identity; no network or invented attendance. */

@@ -44,3 +44,18 @@
 .ppw-calendar-event-name{font-size:clamp(14px,3.9vw,19px);line-height:1.25;
  overflow-wrap:anywhere;font-weight:850;color:#fff}
 .ppw-calendar-event-role{font-size:11px;color:#b9d0df}
+
+/* Recurrence editor: a broadcast calendar with immediate, local previews. */
+.ppw-calendar-form{padding:17px;border:1px solid rgba(135,201,236,.34);border-radius:17px;
+ background:linear-gradient(125deg,#17374c,#102234);margin:16px 0}
+.ppw-calendar-form h2{margin:0 0 5px}
+.ppw-calendar-form-help{color:#bad4de;line-height:1.45;font-size:13px;margin:7px 0 14px}
+.ppw-calendar-field[hidden]{display:none!important}
+.ppw-calendar-forecast{padding:12px 14px;margin:17px 0 12px;border-radius:14px;
+ border:1px solid rgba(102,219,224,.25);background:rgba(5,27,43,.7)}
+.ppw-calendar-forecast-kicker{display:block;color:#86dff5;font-size:10px;letter-spacing:.1em}
+.ppw-calendar-forecast-dates{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.ppw-calendar-forecast-dates span{border:1px solid #45768d;background:#123a50;border-radius:8px;
+ padding:7px 9px;font-size:12px;font-weight:740}
+.ppw-calendar-forecast p{font-size:12px;line-height:1.45;margin:7px 0 0}
+.ppw-calendar-forecast-ok{color:#b5e2dc}.ppw-calendar-forecast-warning{color:#ffc3b6}
