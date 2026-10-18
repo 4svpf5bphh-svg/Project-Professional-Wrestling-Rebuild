@@ -1,0 +1,59 @@
+import {test,expect} from "@playwright/test";
+test("mobile booker asks for one saved wrestler agreement and sees the actual answer",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ let approved=false,revision=4;
+ const session={worldId:"genesis",playerId:"booker",csrfToken:"browser-csrf",
+  availablePromotions:[],overview:{world:{revision:4,year:1,week:5,
+   name:"Genesis",phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,
+   serverEpoch:Date.now()/1000},membership:"ACTIVE",
+   promotion:{id:"aew",name:"AEW",tier:"GLOBAL",cash:1000000,debt:0}}};
+ const a={personId:"alice",contractId:"deal-a"};
+ const b={personId:"bob",contractId:"deal-b"};
+ const match={matchType:"SINGLES",family:"INDIVIDUAL",
+  sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  participants:[a,b],scriptedWinnerSide:"A",
+  plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  canEdit:true,worldRevision:4,homeMarketId:"home",venues:[],venuePressure:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"hall",
+    marketName:"Home",venueName:"Hall",ticketStrategy:"STANDARD",
+    ready:false,slots:1,bookingClass:"REGULAR",showSeriesId:null,
+    showName:"Friday Night Live"}]}]};
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",async route=>{
+  const req=route.request().postDataJSON() as Record<string,unknown>;
+  calls.push(String(req.method));
+  if(req.method==="creativeConsent"){
+   expect(req.slotId).toBe("main");expect(req.personId).toBe("bob");
+   expect(req.expectedRevision).toBe(4);
+   expect(req.playerId).toBeUndefined();
+   approved=true;revision++;
+  }
+  const card={showId:"weekly",year:1,week:5,worldRevision:revision,
+   canEdit:true,ready:false,day:5,venueId:"hall",
+   showName:"Friday Night Live",promotionName:"AEW",marketName:"Home",
+   venueName:"Hall",bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+   championships:[],programmes:[],programmeLinks:[],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+    {personId:"bob",name:"Bob",division:"MEN"}],
+   creativeConcerns:[{showId:"weekly",slotId:"main",personId:"bob",
+    contractId:"deal-b",name:"Bob",reason:"PROTECTED_LOSS",
+    signature:"saved-script-only",requiresConsent:true,
+    decision:approved?"APPROVED":"NOT_REQUESTED"}],
+   slots:[{slotId:"main",kind:"MATCH",position:0,payload:match}]};
+  await route.fulfill({json:req.method==="planner"?planner:
+   req.method==="load"?card:
+   req.method==="creativeConsent"?{status:"APPLIED",result:{decision:"APPROVED"}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page.getByText("1 match approval to resolve")).toBeVisible();
+ await page.getByRole("button",{name:"Ask Bob"}).click();
+ await expect(page.getByText("AGREED")).toBeVisible();
+ await expect(page.getByText(/wrestler has agreed/)).toBeVisible();
+ expect(calls).toEqual(["planner","load","creativeConsent","load"]);
+ expect(page.url()).not.toContain("bob");
+});
