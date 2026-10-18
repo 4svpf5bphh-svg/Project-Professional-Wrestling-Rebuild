@@ -58,10 +58,24 @@ export async function readContractDesk(
    ORDER BY created_week_index,request_id LIMIT 200`,
    [worldId,promotionId]);
   const renewals=await tx.query<{proposal_id:string;contract_id:string;person_id:string;status:string;created_week_index:number;proposed_terms:unknown}>(`SELECT proposal_id,contract_id,person_id,status,created_week_index,proposed_terms FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING' ORDER BY created_week_index,proposal_id LIMIT 200`,[worldId,promotionId]);
-  const offers=await tx.query<{offer_id:string;person_id:string;source_contract_id:string|null;
-   terms:unknown;submitted_week_index:number}>(`SELECT offer_id,person_id,source_contract_id,terms,submitted_week_index
-   FROM ppw_contract_offers WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
-   ORDER BY submitted_week_index DESC,offer_id LIMIT 200`,[worldId,promotionId]);
+  // The very same fifth SQL read now includes recent decisions, allowing Home's
+  // contract news to lead into a meaningful detail view without extra reads.
+  const offers=await tx.query<{offer_id:string;person_id:string;person_name:string;
+   source_contract_id:string|null;terms:unknown;submitted_week_index:number;
+   status:"PENDING"|"ACCEPTED"|"REJECTED";rejection_reason:string|null}>(`
+   SELECT o.offer_id,o.person_id,p.name AS person_name,o.source_contract_id,
+    o.terms,o.submitted_week_index,o.status,o.rejection_reason
+   FROM ppw_contract_offers o JOIN ppw_people p
+    ON p.world_id=o.world_id AND p.person_id=o.person_id
+   WHERE o.world_id=$1 AND o.promotion_id=$2
+    AND (o.status='PENDING' OR
+     (o.status IN ('ACCEPTED','REJECTED') AND o.submitted_week_index
+       BETWEEN greatest(0,$3::integer-3) AND $3::integer))
+   ORDER BY CASE WHEN o.status='PENDING' THEN 0 ELSE 1 END,
+    o.submitted_week_index DESC,o.offer_id DESC LIMIT 200`,
+   [worldId,promotionId,currentWeekIndex]);
+  const pendingOffers=offers.filter(o=>o.status==="PENDING");
+  const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
   const roster=contracts.map(c=>contractDeskEntry({
    contractId:c.contract_id,personId:c.person_id,name:c.name,
@@ -80,13 +94,24 @@ export async function readContractDesk(
     pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
-   renewals,offers,
+   renewals,offers:pendingOffers,
+   resolvedOffers:decidedOffers.map(o=>({offerId:o.offer_id,
+    personId:o.person_id,name:o.person_name,status:o.status,
+    sourceContractId:o.source_contract_id,
+    submittedWeekIndex:o.submitted_week_index,
+    // Never surface database rejection codes as wrestler dialogue.
+    reason:o.rejection_reason==="existing exclusive contract blocks outside work"||
+     o.rejection_reason==="exclusive offer overlaps another signed contract"?
+      "Another exclusive commitment prevents the deal.":
+     o.rejection_reason==="service capacity exceeded"?
+      "Their current schedule cannot accommodate the dates.":
+      null})),
    summary:{
     signed:roster.length,expiringSoon:roster.filter(c=>c.expiringSoon).length,
     noDates:roster.filter(c=>c.reason==="NO_DATES").length,
     backstageContractDiscussions:contracts.filter(c=>c.backstage_contract_request_id!==null).length,
     pendingNegotiations:requests.length,
-    pendingRenewals:renewals.length,pendingOffers:offers.length,
+    pendingRenewals:renewals.length,pendingOffers:pendingOffers.length,
     weeklyGuarantees:contracts.reduce((sum,c)=>sum+Number(c.weekly_guarantee),0),
    },
   };

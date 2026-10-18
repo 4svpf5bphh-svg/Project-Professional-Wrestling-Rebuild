@@ -115,6 +115,36 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    inbox.append(box);root.append(inbox);
   }
+  // An accepted or declined contract is still visible after its Home news
+  // item has been dismissed. This is the actual agreement desk, not an alert.
+  if((view.resolvedOffers??[]).length){
+   const recent=document.createElement("details");
+   recent.className="ppw-contract-decisions";recent.open=initialFocus==="PENDING";
+   recent.append(el("summary","",
+    "Recent decisions · "+view.resolvedOffers.length));
+   const events=el("div","ppw-contract-decision-list");
+   for(const offer of view.resolvedOffers){
+    const entry=el("article","ppw-contract-decision");
+    const accepted=offer.status==="ACCEPTED";
+    entry.append(el("small","ppw-contract-decision-state "+(accepted?
+     "ppw-contract-decision-accepted":"ppw-contract-decision-rejected"),
+      accepted?"SIGNED":"DECLINED"),
+     el("strong","",offer.name),
+     el("p","ppw-muted",accepted?
+      (offer.sourceContractId?
+       "Renewal terms accepted. The next agreement begins after the current one.":
+       "The wrestler accepted the proposed contract. Check the agreed dates before booking."):
+      (offer.reason??"The proposed terms were declined. You can discuss a different offer.")));
+    const week=offer.submittedWeekIndex;
+    entry.append(el("small","ppw-contract-decision-week",
+     "Offer submitted · Year "+(Math.floor(week/52)+1)+" Week "+(week%52+1)));
+    if(port.openWrestler)
+     entry.append(btn("Wrestler dossier ↗",
+      ()=>port.openWrestler?.(offer.personId)));
+    events.append(entry);
+   }
+   recent.append(events);root.append(recent);
+  }
   const filters=el("div","ppw-contract-filters");
   const input=document.createElement("input");
   input.type="search";input.placeholder="Search your contracted wrestlers";

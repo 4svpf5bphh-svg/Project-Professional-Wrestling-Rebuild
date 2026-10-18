@@ -9,6 +9,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
+import {readContractDesk} from "../src/db/contract-desk-workspace.js";
 import {dismissResolvedOfferAttention} from "../src/db/player-attention-dismissals.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -43,6 +44,11 @@ test("Private contract news is individually dismissible without hiding mandatory
   assert.deepEqual(first?.promotion?.attention.offerResults?.map(x=>x.status).sort(),
    ["ACCEPTED","REJECTED"]);
   assert.equal(first?.promotion?.attention.plannedShows,0);
+  const desk=await readContractDesk(measured,world,player,promotionId);
+  assert.equal(desk.summary.pendingOffers,0);
+  assert.deepEqual(desk.resolvedOffers.map(x=>({name:x.name,status:x.status})),
+   [{name:"Wrestler 8",status:"REJECTED"},
+    {name:"Wrestler 0",status:"ACCEPTED"}]);
   const worldRevision=first?.world.revision;
   const input={worldId:world,playerId:player,promotionId,attentionId:"offer-result:offer-accepted"};
   await assert.rejects(dismissResolvedOfferAttention(db.pool,{...input,playerId:"intruder"}),
@@ -61,6 +67,9 @@ test("Private contract news is individually dismissible without hiding mandatory
   assert.deepEqual(after?.promotion?.attention.offerResults?.map(x=>x.id),
    ["offer-result:offer-declined"]);
   assert.equal(after?.promotion?.attention.plannedShows,0);
+  const afterDesk=await readContractDesk(db.pool,world,player,promotionId);
+  assert.equal(afterDesk.resolvedOffers.length,2,
+   "Acknowledging Home news does not erase recorded contract decisions");
   const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_player_attention_dismissals"+
    " WHERE world_id=$1 AND player_id=$2",[world,player]));

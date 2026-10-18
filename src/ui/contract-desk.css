@@ -60,3 +60,21 @@
 .ppw-contract-context{padding:12px 14px;margin:8px 0 15px;border-radius:12px;
  border-left:3px solid #72c8e9;background:linear-gradient(105deg,rgba(28,74,96,.55),rgba(13,33,47,.7));
  font-size:13px;color:#d2edfb;line-height:1.5}
+
+/* Resolved negotiations extend the existing desk instead of a new data fetch. */
+.ppw-contract-decisions{margin:14px 0;border:1px solid #3c5d78;border-radius:16px;
+ background:linear-gradient(140deg,#142a42,#0b1b30);padding:12px}
+.ppw-contract-decisions>summary{min-height:44px;display:flex;align-items:center;
+ font-size:15px;font-weight:800;letter-spacing:-.015em;cursor:pointer}
+.ppw-contract-decision-list{display:grid;gap:9px;margin:7px 0}
+.ppw-contract-decision{display:grid;gap:6px;padding:12px;border-radius:12px;
+ border:1px solid #2d4960;background:#081b2c}
+.ppw-contract-decision strong{font-size:15px}
+.ppw-contract-decision .ppw-muted{font-size:12px;line-height:1.5;margin:0}
+.ppw-contract-decision-state{justify-self:start;font-weight:900;letter-spacing:.09em;
+ font-size:10px;padding:4px 7px;border-radius:6px}
+.ppw-contract-decision-accepted{background:#13533f;color:#b0ffe0}
+.ppw-contract-decision-rejected{background:#59343a;color:#ffd1d1}
+.ppw-contract-decision-week{font-size:11px;color:#94b3c9}
+.ppw-contract-decision .ppw-contract-button{justify-self:start}
+@media(min-width:700px){.ppw-contract-decision-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
