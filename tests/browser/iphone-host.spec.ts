@@ -40,6 +40,13 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await menu.click();
  await expect(nav).toBeVisible();
  await expect(menu).toHaveAttribute("aria-expanded","true");
+ await expect(page.locator("body")).toHaveClass(/ppw-drawer-active/);
+ await expect(nav.getByRole("button",{name:"Close promotion menu"})).toBeFocused();
+ await page.keyboard.press("Escape");
+ await expect(nav).toBeHidden();
+ await expect(menu).toBeFocused();
+ await expect(page.locator("body")).not.toHaveClass(/ppw-drawer-active/);
+ await menu.click();
  await nav.getByRole("button",{name:"Business",exact:true}).click();
  await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
  expect(methods.length,"The promotion drawer never reads Neon").toBe(before);

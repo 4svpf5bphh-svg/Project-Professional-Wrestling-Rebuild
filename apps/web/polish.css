@@ -296,7 +296,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 }
 
 /* The open menu owns touch/keyboard focus; background never scrolls behind it. */
-body.ppw-drawer-active{overflow:hidden;touch-action:none}
+body.ppw-drawer-active{overflow:hidden}
 body.ppw-drawer-active .ppw-navigation{touch-action:pan-y}
 .ppw-nav-rootbar .ppw-tab:focus-visible,
 .ppw-nav-drawer-close:focus-visible,
