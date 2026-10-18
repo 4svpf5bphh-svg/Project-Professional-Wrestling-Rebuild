@@ -177,7 +177,7 @@ export function mountPersonaDesk(root:HTMLElement,
     item.classList.add("ppw-backstage-contact");
     if(unread)item.classList.add("ppw-backstage-unread");
     const avatar=el("span","ppw-backstage-avatar",
-     wrestler.name.trim().split(/\\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
+     wrestler.name.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
     avatar.setAttribute("aria-hidden","true");
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
@@ -281,7 +281,7 @@ export function mountPersonaDesk(root:HTMLElement,
   returnToInbox.classList.add("ppw-backstage-phone-back");
   returnToInbox.setAttribute("aria-label","Back to messages");
   const monogram=el("span","ppw-backstage-phone-avatar",
-   view.personName.trim().split(/\\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
+   view.personName.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
   monogram.setAttribute("aria-hidden","true");
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private · PPW Messages"));

@@ -252,6 +252,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     p.availability==="CONTRACTED_SOON"?"CONTRACTED SOON":
     p.availability==="FREE_AGENT"?"FREE AGENT":"NON-EXCLUSIVE";
    title.append(name,note,el("span","ppw-directory-status",label));
+   if(filter.view==="MARKET"){
+    const interest=el("span","ppw-directory-interest",
+     "Interest · "+p.interest.replaceAll("_"," ").toLowerCase());
+    interest.setAttribute("aria-label","Recruitment interest is an estimate, not a guarantee");
+    title.append(interest);
+   }
    card.append(title);
    const detail=el("div","ppw-directory-detail");
    const metrics=el("div","ppw-directory-metrics");
