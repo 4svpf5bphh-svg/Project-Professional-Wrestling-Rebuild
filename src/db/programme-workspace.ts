@@ -107,6 +107,28 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "ORDER BY week_index DESC,show_id,slot_id LIMIT 151"
   ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
   if(recent.length>150)throw new Error("Programme history view limit exceeded");
+  // One bounded roster-rights read and one set of already-settled agreements.
+  // Never query per feud or per wrestler.
+  const fullRights=programmes.length?await tx.query<{person_id:string}>([
+   "SELECT DISTINCT person_id FROM ppw_contracts WHERE world_id=$1",
+   "AND promotion_id=$2 AND person_id=ANY($3::text[])",
+   "AND status='SIGNED' AND creative_control='FULL_APPROVAL'",
+   "AND start_week_index<=$4 AND expires_week_index>=$4 LIMIT 301"
+  ].join(" "),[scope.worldId,scope.promotionId,roster.map(x=>x.person_id),currentWeek]):[];
+  if(fullRights.length>300)throw new Error("Too many protected wrestlers");
+  const fullPeople=new Set(fullRights.map(x=>x.person_id));
+  const agreements=programmes.length?await tx.query<{
+   programme_id:string;person_id:string;approved:boolean;score:number;
+   decided_week_index:number;expires_week_index:number;match_type:string;
+   permitted_outcome:string;
+  }>([
+   "SELECT programme_id,person_id,approved,score,decided_week_index,",
+   "expires_week_index,match_type,permitted_outcome",
+   "FROM ppw_programme_creative_agreements",
+   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
+   "ORDER BY programme_id,person_id LIMIT 301"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+  if(agreements.length>300)throw new Error("Too many rivalry agreements");
   const programmesView=rows.map(p=>{
    const own=refs.filter(x=>x.programme_id===p.programme_id);
    const side=(which:"A"|"B")=>own.filter(x=>x.side===which).map(x=>({
@@ -127,7 +149,16 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
       kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response})),
-    sideA:side("A"),sideB:side("B")};
+    sideA:side("A"),sideB:side("B"),
+    eligibleCreativePeople:[...new Set(own.flatMap(x=>
+     x.ref_kind==="PERSON"?[x.ref_id]:
+     teamOptions.find(t=>t.team_id===x.ref_id)?.person_ids??[]))]
+     .filter(id=>fullPeople.has(id)).map(id=>({personId:id,name:names.get(id)??id})),
+    creativeAgreements:agreements.filter(a=>a.programme_id===p.programme_id)
+     .map(a=>({personId:a.person_id,approved:a.approved,score:a.score,
+      decidedWeekIndex:a.decided_week_index,expiresWeekIndex:a.expires_week_index,
+      matchType:a.match_type,permittedOutcome:a.permitted_outcome}))
+   };
   });
   return {year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
    canEdit:auth.booking_open,programmes:programmesView,
