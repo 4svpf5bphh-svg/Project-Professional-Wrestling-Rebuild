@@ -58,7 +58,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}
   const summary=node("p",data.promotionName+" · Year "+data.year+", Week "+data.week,"ppw-planner-summary");
   root.append(summary);
-  const home=data.venues.find(v=>v.marketId===data.homeMarketId);
+  const homeMarketId=data.homeMarketId;
+  const home=data.venues.find(v=>v.marketId===homeMarketId);
   root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
    " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
    "ppw-planner-home-market"));
