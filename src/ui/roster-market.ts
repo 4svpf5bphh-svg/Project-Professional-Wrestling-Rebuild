@@ -167,7 +167,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const sections=el("nav","ppw-directory-nav");
    sections.setAttribute("aria-label","Roster divisions");
    const singles=btn("Singles",()=>{},true);
-   singles.disabled=false;
    singles.setAttribute("aria-current","page");
    singles.setAttribute("aria-label","Singles roster");
    sections.append(singles,

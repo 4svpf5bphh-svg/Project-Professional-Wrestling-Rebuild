@@ -229,11 +229,9 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
-  openWrestler:(personId:string,origin:DirectoryView)=>{
-   const back=()=>open(origin);
-   return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),
-    personId,back);
-  }
+  // A dossier opens over the current directory. Filtering, current page
+  // and expanded cards survive, with no second directory read on return.
+  openWrestler:(personId:string)=>openWrestlerDossier(root,scope,call,personId)
  };
 }
 /** Independent roster and recruitment routes. The hosting app can mount them

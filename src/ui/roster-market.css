@@ -111,3 +111,5 @@
 .ppw-directory-nav .ppw-directory-button[aria-current=page]{background:#1d627c;
  box-shadow:inset 0 0 0 1px #9decff}
 .ppw-directory-nav .ppw-directory-button:disabled{opacity:.37;cursor:not-allowed}
+
+.ppw-directory-nav .ppw-directory-button[aria-current=page]:disabled{opacity:1;cursor:default}
