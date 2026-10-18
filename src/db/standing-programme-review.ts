@@ -28,7 +28,9 @@ const expanded=(side:"A"|"B")=>[
 ].join(" ");
 export async function standingCoveredConcerns(tx:SqlRows,worldId:string,
  shows:readonly CreativeReviewShow[],concerns:readonly CreativeConcern[]):Promise<Set<string>>{
- const full=concerns.filter(x=>x.reason==="MATCH_APPROVAL");
+ const eligible=shows.filter(x=>x.checkStanding!==false);
+ const full=concerns.filter(x=>x.reason==="MATCH_APPROVAL"&&
+  eligible.some(show=>show.showId===x.showId));
  if(!full.length)return new Set();
  const allowed=new Set(full.map(x=>[
   x.showId,x.slotId,x.personId,x.contractId].join("\u0001")));
@@ -49,8 +51,8 @@ export async function standingCoveredConcerns(tx:SqlRows,worldId:string,
   "WHERE link.world_id=$1 AND link.draft_id=ANY($2::text[])",
   "AND link.kind='MATCH' AND link.promotion_id=ANY($3::text[])",
   "ORDER BY link.draft_id,link.slot_id,consent.person_id LIMIT 3001"
- ].join(" "),[worldId,[...new Set(shows.map(x=>x.showId))],
-  [...new Set(shows.map(x=>x.promotionId))]]);
+ ].join(" "),[worldId,[...new Set(eligible.map(x=>x.showId))],
+  [...new Set(eligible.map(x=>x.promotionId))]]);
  if(records.length>3000)throw new Error("Too many signed rivalry terms");
  const showMap=new Map(shows.map(x=>[x.showId,x]));
  const result=new Set<string>();
