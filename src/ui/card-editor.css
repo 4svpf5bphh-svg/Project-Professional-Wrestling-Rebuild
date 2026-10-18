@@ -252,3 +252,18 @@
 .ppw-card-airtime>small{display:block;font-size:11px;line-height:1.45;color:#b9d1e0;
  margin-top:7px}
 @media(prefers-reduced-motion:reduce){.ppw-card-airtime-fill{transition:none}}
+
+/* Original-main post-show creative direction, presented as optional advice. */
+.ppw-card-continuity{margin:12px 0;border:1px solid #456481;border-radius:15px;
+ background:linear-gradient(130deg,#20354b,#111b2c);overflow:hidden}
+.ppw-card-continuity summary{cursor:pointer;min-height:46px;padding:13px 15px;
+ color:#ddf4fe;font-size:14px;font-weight:800}
+.ppw-card-continuity-story{margin:0 13px 11px;padding:12px;
+ border:1px solid #38576d;border-radius:10px;background:#0b1e30}
+.ppw-card-continuity-story strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.ppw-card-continuity-story p{font-size:12px;line-height:1.5;color:#cee4ed;margin:5px 0}
+.ppw-card-continuity-story small{font-size:11px;color:#9dd1e9}
+.ppw-card-angle-continuity{grid-column:1/-1;margin:0;padding:11px;
+ border-left:3px solid #74cfdf;background:#103347;border-radius:7px;
+ color:#cfedfa;font-size:12px;line-height:1.45}
+.ppw-card-continuity summary:focus-visible{outline:2px solid #8be6fa;outline-offset:-2px}

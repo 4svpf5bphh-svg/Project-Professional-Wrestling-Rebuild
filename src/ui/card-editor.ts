@@ -19,6 +19,7 @@ import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {matchCastingReadiness,angleCastingReadiness} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
+import {storyDirectionHint} from "./story-direction-hint.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -384,6 +385,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    toolbar.append(management);
   }
   root.append(toolbar);
+  const stories=view.programmes.filter(p=>p.latestFollowUp);
+  if(stories.length){
+   const continuity=document.createElement("details");
+   continuity.className="ppw-card-continuity";
+   const heading=el("summary","",
+    "Rivalry follow-ups · "+stories.length+" "+(stories.length===1?"story":"stories"));
+   continuity.append(heading);
+   for(const story of stories){
+    const note=story.latestFollowUp!;
+    const item=el("article","ppw-card-continuity-story");
+    item.append(el("strong","",story.label),
+     el("p","",storyDirectionHint(note,"MATCH")),
+     el("small","","After Year "+(Math.floor(note.weekIndex/52)+1)+
+      " · Week "+(note.weekIndex%52+1)));
+    continuity.append(item);
+   }
+   root.append(continuity);
+  }
   const list=el("section","ppw-card-list");
   let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
@@ -448,6 +467,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       [["","None"],...view.programmes.map(p=>[
        p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
       v=>editSegment(segment,{programmeId:v||null}),!mutable())));
+    const linked=view.programmes.find(p=>p.programmeId===segment.programmeId);
+    if(linked?.latestFollowUp){
+     const followUp=el("p","ppw-card-angle-continuity",
+      storyDirectionHint(linked.latestFollowUp,"SEGMENT"));
+     controls.append(followUp);
+    }
     if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(segment.kind)){
      if(stableChoices===null&&!stableChoicesLoading)void loadStableChoices();
      controls.append(field("Faction",selector(segment.stableId??"",

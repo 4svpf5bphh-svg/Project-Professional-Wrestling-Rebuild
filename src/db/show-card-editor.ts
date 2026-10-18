@@ -91,14 +91,21 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   ]))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
-   programme_id:string;heat:number|null;repetition:number;label:string}>([
+   programme_id:string;heat:number|null;repetition:number;label:string;follow_up:unknown}>([
    "SELECT p.programme_id,p.heat,p.repetition,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
    "ORDER BY r.position),'Side A') || ' vs ' ||",
    "COALESCE(string_agg(CASE WHEN r.side='B'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
-   "ORDER BY r.position),'Side B') AS label",
+   "ORDER BY r.position),'Side B') AS label,",
+   "(SELECT jsonb_build_object('choice',d.choice,'weekIndex',d.chosen_week_index,",
+   "'laterBeatRecorded',EXISTS (SELECT 1 FROM ppw_programme_resolved_activities a",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2",
+   "AND a.programme_id=p.programme_id AND a.week_index>d.chosen_week_index))",
+   "FROM ppw_programme_postshow_directions d",
+   "WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.programme_id=p.programme_id",
+   "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) AS follow_up",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
    "ON r.world_id=p.world_id AND r.promotion_id=p.promotion_id",
    "AND r.programme_id=p.programme_id",
@@ -147,8 +154,20 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    championships:titles.map(c=>({championshipId:c.championship_id,
     name:c.name,division:c.division,holderName:c.holder_name,
     vacant:c.current_reign_id===null})),
-   programmes:activeProgrammes.map(p=>({programmeId:p.programme_id,label:p.label,heat:p.heat,
-    repetition:p.repetition})),
+   programmes:activeProgrammes.map(p=>{
+    const direction=p.follow_up&&typeof p.follow_up==="object"?
+     p.follow_up as Record<string,unknown>:null;
+    const choice=direction?.choice;
+    const latestFollowUp=
+     (choice==="PURSUE_REMATCH"||choice==="PLAN_RETALIATION"||choice==="LET_STAND")&&
+      Number.isSafeInteger(direction?.weekIndex)&&
+      typeof direction?.laterBeatRecorded==="boolean"?{
+       choice,weekIndex:direction.weekIndex as number,
+       laterBeatRecorded:direction.laterBeatRecorded as boolean
+      }:null;
+    return {programmeId:p.programme_id,label:p.label,heat:p.heat,
+     repetition:p.repetition,latestFollowUp};
+   }),
    programmeLinks:links.map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,
    worldRevision:Number(show.revision),canEdit:show.booking_open&&show.status==="DRAFT",

@@ -868,3 +868,40 @@ test("Calendar highlights flagship and premium broadcasts without additional rea
  expect(methods).toEqual(["calendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
+
+test("iPhone venue choices show rival interest and save without repeated Planner reads",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const venue=(venueId:string,name:string)=>({
+  venueId,marketId:"home",marketName:"Home territory",name,capacity:1500,
+  weeklyHireCost:25000,prestige:60,productionSuitability:75,
+  awareness:55,liveStrength:55,loyalty:50,audiencePotential:70,
+  wrestlingInterest:73,spendingIndex:82,strongestRival:null,home:true
+ });
+ const planner={
+  worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",
+  venues:[venue("arena","Main Arena"),venue("hall","Town Hall")],
+  venuePressure:[{year:1,week:5,day:5,venueId:"arena",otherPromotions:2}],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   shows:[],scheduled:[]}]
+ };
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON();
+  methods.push(String(input.method));
+  if(input.method==="planShow"){
+   expect(input.day).toBe(5);
+   expect(input.venueId).toBe("hall");
+   await route.fulfill({json:{status:"APPLIED",result:{draftId:"first"}}});
+  }else await route.fulfill({json:input.method==="planner"?planner:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Plan weekly show"}).click();
+ await expect(page.getByText("Other promotions are eyeing this venue")).toBeVisible();
+ await expect(page.getByText(/2 other promotions have planned a show/)).toBeVisible();
+ await page.getByRole("button",{name:"Choose Town Hall instead"}).click();
+ await expect(page.getByText(/No other promotion currently has a show planned/)).toBeVisible();
+ await page.getByRole("button",{name:"Save show"}).click();
+ expect(methods).toEqual(["planner","planShow","planner"]);
+});
