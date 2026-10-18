@@ -83,12 +83,6 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("strong",tone(view.recurringMargin??0),
      view.recurringMargin===null?"Not configured":money(view.recurringMargin)));
    flow.append(total);
-   if(port.openContracts||port.openRoster){
-    const links=el("div","ppw-business-actions");
-    if(port.openContracts)links.append(button("Manage contracts →",()=>port.openContracts?.()));
-    if(port.openRoster)links.append(button("My Roster →",()=>port.openRoster?.()));
-    flow.append(links);
-   }
    root.append(flow);
   }
   if(pane==="EVENTS"){

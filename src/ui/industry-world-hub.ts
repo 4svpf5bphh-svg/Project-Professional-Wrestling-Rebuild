@@ -44,12 +44,6 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   status.append(el("p","ppw-industry-muted",
    "One weekly deadline for every promotion. The server resolves booked events; opening the game gives no simulation advantage."));
   root.append(status);
-  if(port.openPlanner||port.openBusiness){
-   const actions=el("div","ppw-industry-actions");
-   if(port.openPlanner)actions.append(btn("My show planner →",()=>port.openPlanner?.()));
-   if(port.openBusiness)actions.append(btn("My business →",()=>port.openBusiness?.()));
-   root.append(actions);
-  }
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
   for(const [key,label] of [["STANDINGS","Promotions"],["BROADCASTS","Recent broadcasts"]] as const){
