@@ -3,6 +3,7 @@
  */
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {originalPersonaBaseline,validatePortablePersona,WRESTLING_STYLES}
  from "../domain/portable-persona.js";
@@ -32,9 +33,7 @@ type Contract={promotion_id:string;promotion_name:string;family:string;
  remaining_dates:number|null;start_week_index:number;expires_week_index:number;
  role_expectation:string|null;weekly_guarantee:string|null;
  appearance_fee:string|null;creative_control:string|null};
-const authorised=async(tx:{
- query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]):Promise<T[]>
-},s:ProfileScope)=>{
+const authorised=async(tx:SqlRows,s:ProfileScope)=>{
  const row=await tx.query<{year:number;week:number;revision:string|number;can_edit:boolean}>(
   "SELECT w.year,w.week,w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit"+
   " FROM ppw_worlds w JOIN ppw_promotion_controls c ON c.world_id=w.world_id"+

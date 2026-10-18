@@ -1,0 +1,44 @@
+.ppw-wrestler-profile{max-width:940px;margin:0 auto;padding:16px 13px calc(80px + env(safe-area-inset-bottom));
+ color:#f1f7fe;font-family:inherit;box-sizing:border-box}
+.ppw-profile-header{display:flex;align-items:center;justify-content:space-between;gap:8px;
+ padding:4px 0 14px}.ppw-profile-kicker{font-size:10px;font-weight:900;letter-spacing:.15em;color:#7ad5f1}
+.ppw-profile-section{margin:13px 0;padding:17px 14px;border:1px solid #31516c;
+ border-radius:19px;background:linear-gradient(145deg,#142941ed,#0c1728e8)}
+.ppw-profile-section h2{font-size:17px;margin:0 0 10px;letter-spacing:-.02em}
+.ppw-profile-muted{font-size:12px;color:#aebfd2;line-height:1.5}
+.ppw-profile-info{font-size:13px;color:#e9f4fc;line-height:1.6}
+.ppw-profile-statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ppw-profile-stat{min-width:0;padding:10px;border-radius:11px;background:#0712229c;
+ display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.ppw-profile-stat>span:first-child{font-size:11px;color:#adbed0}
+.ppw-profile-stat strong{font-size:15px;font-variant-numeric:tabular-nums}
+.ppw-profile-meter{width:100%;height:4px;border-radius:4px;background:#273a4b;overflow:hidden}
+.ppw-profile-meter-fill{height:100%;display:block;background:linear-gradient(90deg,#00d3cf,#9188ff)}
+.ppw-profile-moves{display:grid;grid-template-columns:1fr;gap:11px;margin-top:12px}
+.ppw-profile-move-group{display:flex;flex-direction:column;gap:7px;font-size:13px}
+.ppw-profile-move-group textarea{font:inherit;font-size:16px;line-height:1.5;
+ box-sizing:border-box;width:100%;min-height:85px;padding:12px;
+ color:#f2f8fc;background:#081827;border:1px solid #37556d;border-radius:12px;resize:vertical}
+.ppw-profile-move-group textarea:disabled{opacity:.6;cursor:not-allowed}
+.ppw-profile-locked{font-size:12px;color:#abb5c7;margin:13px 0}
+.ppw-profile-action{font:inherit;min-height:44px;padding:10px 13px;border:1px solid #4f8dae;
+ color:#d9f6ff;background:#17425b;border-radius:11px;cursor:pointer;font-weight:750;margin:8px 8px 0 0}
+.ppw-profile-action:disabled{opacity:.55;cursor:not-allowed}
+.ppw-profile-affiliation{padding:8px 0;border-top:1px solid #29415d;font-size:13px}
+.ppw-profile-affiliation strong{color:#9ed8f5}
+.ppw-profile-affiliation p{line-height:1.5;color:#edf4fc;margin:5px 0}
+.ppw-profile-history{border-left:2px solid #856df1;padding:9px 12px;font-size:12px;color:#c8d9eb}
+.ppw-profile-message{padding:11px;border:1px solid #329d85;border-radius:10px;background:#103c36}
+.ppw-profile-error{border-color:#d88585;background:#3a1d23}
+.ppw-profile-overlay{position:fixed;inset:0;z-index:210;overflow:auto;
+ background:#090f18;overscroll-behavior:contain}
+@media(min-width:660px){.ppw-profile-statgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .ppw-profile-moves{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:no-preference){.ppw-profile-action{transition:background .14s}
+ .ppw-profile-action:hover{background:#286685}}
+
+.ppw-profile-style-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-profile-style{display:grid;gap:5px;color:#b4d8ee;font-size:12px;font-weight:700}
+.ppw-profile-style select{min-width:0;min-height:44px;padding:8px 10px;border:1px solid #37556d;
+ border-radius:10px;background:#0a1a2c;color:#fff;font-size:16px}
+.ppw-profile-style select:disabled{opacity:.56}

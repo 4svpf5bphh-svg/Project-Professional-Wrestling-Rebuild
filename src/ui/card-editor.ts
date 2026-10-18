@@ -37,6 +37,7 @@ export interface CardEditorPort{
  openStables?():void;
  openWorkingConnections?():void;
  openPersona?():void;
+ openProfile?(personId:string,holder:HTMLElement,onClose:()=>void):void;
  stableChoices?():Promise<{stableId:string;name:string}[]>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
@@ -529,10 +530,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      (candidate.remainingDates===null?"UNLIMITED DATES":
       candidate.remainingDates+" DATES REMAINING"):
       nice(candidate.reason);
-    rows.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
+    const entry=el("div","ppw-picker-wrestler");
+    entry.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
      status:label},{
      context:"BOOKING",compact:true,label:taken?"ALREADY BOOKED":label,
      disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
+    if(port.openProfile)entry.append(button("View full wrestler profile",()=>{
+     const overlay=el("div","ppw-profile-overlay");
+     overlay.setAttribute("role","dialog");
+     overlay.setAttribute("aria-modal","true");
+     overlay.setAttribute("aria-label","Wrestler profile");
+     shade.append(overlay);
+     port.openProfile?.(candidate.personId,overlay,()=>overlay.remove());
+    }));
+    rows.append(entry);
 
    }
    sheet.append(rows);

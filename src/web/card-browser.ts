@@ -24,6 +24,8 @@ import "../ui/business-desk.css";
 import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
 import "../ui/roster-market.css";
 import "../ui/wrestler-card.css";
+import {mountWrestlerProfile,type WrestlerProfilePort} from "../ui/wrestler-profile.js";
+import "../ui/wrestler-profile.css";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
@@ -99,6 +101,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    ()=>mountCardEditor(root,port)),
   openPersona:()=>mountPersonaDesk(root,personaPort(call),
    ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
+  openProfile:(personId,holder,onClose)=>mountWrestlerProfile(holder,
+   wrestlerProfilePort(call,holder,scope,onClose),personId,onClose),
  };
  return mountCardEditor(root,port);
 }
@@ -173,6 +177,20 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  return mountBusinessDesk(root,businessPort(root,scope,call));
 }
+function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
+ return {
+  load:personId=>call("wrestlerProfile",{personId}),
+  save:({personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
+   signatureMoves,finishingMoves})=>call("saveWrestlerRepertoire",{
+    personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
+    signatureMoves,finishingMoves}),
+  openBackstage:personId=>mountPersonaDesk(root,{
+   ...personaPort(call),load:(selected?:string)=>call("backstage",
+    {personId:selected??personId})},onBack,()=>mountProgrammePage(root,scope)),
+  openContracts:()=>mountContractDesk(root,contractPort(call),onBack)
+ };
+}
 function rosterMarketPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):RosterMarketPort{
  const open=(mode:DirectoryView)=>mountRosterMarket(root,
@@ -192,9 +210,11 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
-  openWrestler:(personId:string)=>mountPersonaDesk(root,{
-   ...personaPort(call),load:(selected?:string)=>call("backstage",{personId:selected??personId})
-  },()=>open("ROSTER"),()=>mountProgrammePage(root,scope))
+  openWrestler:(personId:string,origin:DirectoryView)=>{
+   const back=()=>open(origin);
+   return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),
+    personId,back);
+  }
  };
 }
 /** Independent roster and recruitment routes. The hosting app can mount them

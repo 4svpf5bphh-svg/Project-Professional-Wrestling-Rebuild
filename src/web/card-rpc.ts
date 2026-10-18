@@ -1,7 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
- plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,businessAsActor,
+ plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,industryWorldAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
@@ -48,6 +48,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return wrestlerDirectoryAsActor(context,worldId,promotionId,
    f as import("../db/wrestler-directory.js").DirectoryFilter);
  }
+ if(method==="wrestlerProfile")return wrestlerProfileAsActor(context,
+  worldId,promotionId,id("personId"));
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
  if(method==="tagTeams")return tagTeamWorkspaceAsActor(context,worldId,promotionId);
@@ -96,6 +98,19 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="saveWrestlerRepertoire"){
+  if(!Array.isArray(p.signatureMoves)||!Array.isArray(p.finishingMoves))
+   throw new Error("Invalid wrestler move lists");
+  if(p.primaryStyle!==null&&typeof p.primaryStyle!=="string"||
+     p.secondaryStyle!==null&&typeof p.secondaryStyle!=="string")
+   throw new Error("Invalid wrestler style");
+  return editWrestlerRepertoireAsActor(context,{worldId,promotionId,
+   personId:id("personId"),requestId,expectedRevision,
+   primaryStyle:p.primaryStyle as string|null,
+   secondaryStyle:p.secondaryStyle as string|null,
+   signatureMoves:p.signatureMoves as string[],
+   finishingMoves:p.finishingMoves as string[]});
+ }
  if(method==="saveCalendar"){
   const series=p.series;
   if(!series||typeof series!=="object"||Array.isArray(series))

@@ -11,7 +11,7 @@ export interface RosterMarketPort{
  offer(input:{personId:string;requestId:string;expectedRevision:number;
   terms:OfferTerms}):Promise<unknown>;
  openContracts():void;openTagTeams():void;openStables():void;
- openWrestler(personId:string):void;
+ openWrestler(personId:string,origin:DirectoryView):void;
  openBusiness?():void;
  openStaff?():void;
  openIndustry?():void;
@@ -273,7 +273,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       "Already signed, but not eligible for booking until the contract starts."));
     else if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
      "No dates remaining — negotiate an addendum before booking."));
-    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId)),
+    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)),
      btn("Manage contract →",()=>port.openContracts()));
    }else{
     detail.append(el("p","ppw-directory-interest",
@@ -296,6 +296,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      p.availability==="FREE_AGENT"?
       "No current or future signed contract. You can submit terms for consideration.":
       "Works elsewhere on non-exclusive terms. Acceptance depends on scheduling, fit and your offer."));
+    detail.append(btn("Full wrestler profile →",
+     ()=>port.openWrestler(p.personId,filter.view)));
     if(p.pendingOffer)detail.append(el("p","ppw-directory-muted",
      "Your offer is awaiting the next World resolution."));
     else if(p.availability!=="EXCLUSIVE_ELSEWHERE"&&view.canEdit)
