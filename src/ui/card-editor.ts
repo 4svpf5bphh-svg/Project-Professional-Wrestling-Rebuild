@@ -63,7 +63,7 @@ function option(value:string,label:string,selected=false){
 function selector(value:string,choices:readonly string[][],
  change:(value:string)=>void,disabled=false){
  const select=document.createElement("select");select.disabled=disabled;
- select.setAttribute("aria-label","Booking choice");
+ // The surrounding field supplies the label. Standalone selects are named individually.
  for(const [v,label] of choices)select.append(option(v,label,v===value));
  select.value=value;select.onchange=()=>change(select.value);
  return select;
@@ -303,8 +303,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
   const toolbar=el("div","ppw-toolbar");
-  toolbar.append(selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
-   v=>{formatChoice=v as Format;render();},!mutable()));
+  const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
+   v=>{formatChoice=v as Format;render();},!mutable());
+  matchFormat.setAttribute("aria-label","Match format");
+  toolbar.append(matchFormat);
   toolbar.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
