@@ -34,6 +34,10 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   const business=await readBusinessWorkspace(measured,{
    worldId:world,promotionId:promotion,playerId:owner});
   assert.equal(business.name,"Promotion 0");
+  assert.equal(business.homeMarketName,"Territory 0",
+   "The promotion's founding territory comes from its own market, not any rival");
+  assert.equal(business.mediaReach,90,
+   "Keep the original broadcast distribution measure, not a derived estimate");
   assert.equal(business.cash,5_000_000);
   assert.equal(business.weeklyMediaIncome,300_000);
   assert.equal(business.weeklySponsorIncome,25_000);
@@ -54,6 +58,8 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
    worldId:world,promotionId:promotion,playerId:"forged"}) as unknown as
     Awaited<ReturnType<typeof readBusinessWorkspace>>;
   assert.equal(actorRead.name,"Promotion 0");
+  assert.equal(actorRead.homeMarketName,"Territory 0");
+  assert.equal(actorRead.mediaReach,90);
   // A real economics receipt is displayed as an archived fact, not
   // recomputed or applied twice to the promotion's cash.
   await withWorldTransaction(db.pool,async tx=>{
