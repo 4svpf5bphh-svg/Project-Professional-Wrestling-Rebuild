@@ -403,6 +403,52 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
 });
 
+test("Post-show creative direction follows the latest completed rivalry match without booking a card",async({page})=>{
+ const methods:string[]=[];
+ let selected:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND"|null=null;
+ let revision=4;
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const data=route.request().postDataJSON();
+  methods.push(data.method);
+  if(data.method==="chooseProgrammeDirection"){
+   expect(data.programmeId).toBe("feud-test");
+   expect(data.sourceShowId).toBe("show-last");
+   expect(data.sourceSlotId).toBe("main");
+   expect(data.expectedRevision).toBe(revision);
+   selected=data.choice;revision++;
+   await route.fulfill({json:{status:"APPLIED"}});return;
+  }
+  const direction=selected?{choice:selected,showId:"show-last",slotId:"main",weekIndex:3}:null;
+  await route.fulfill({json:data.method==="programmes"?{
+   year:1,week:5,canEdit:true,worldRevision:revision,
+   people:[],teams:[],championships:[],
+   programmes:[{programmeId:"feud-test",status:"ACTIVE",heat:74,
+    repetition:15,activityCount:1,matchCount:1,segmentCount:0,
+    sideAWins:1,sideBWins:0,draws:0,championshipId:null,
+    startedWeekIndex:1,endedWeekIndex:null,
+    sideA:[{kind:"PERSON",refId:"alex",name:"Alex"}],
+    sideB:[{kind:"PERSON",refId:"jules",name:"Jules"}],
+    latestFollowUp:direction,
+    recentActivity:[{showId:"show-last",slotId:"main",kind:"MATCH",
+     weekIndex:3,crowdResponse:86}]
+   }]
+  }:{}});
+ });
+ await page.goto("/#/programmes");
+ await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
+ await page.getByRole("button",{name:"Rematch",exact:true}).click();
+ await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Rematch",exact:true})).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"Let it stand"}).click();
+ await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
+ expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
+ expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
+ expect(methods).not.toContain("save");
+ expect(methods).not.toContain("results");
+ await expect(page.getByText(/No bout or angle is booked for you/)).toBeVisible();
+});
+
 test("Industry featured wrestlers load only on expansion, cache through local filters and open the universal dossier",async({page})=>{
  const requests:string[]=[];
  const hub={
