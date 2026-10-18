@@ -62,3 +62,14 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - Wrestler dossiers open as true overlays from Roster, preserving search, current page, expanded cards and scroll position; closing them performs **no new directory request**.
 - Targeted Playwright and PostgreSQL regression tests cover the restored journeys. The relevant main-branch CI checks were green through commit `81b0c15bed953ab6d5165c35894bd179ca02428a`.
 - Existing unauthorised actions, World Lock rules, security checks, user-authored winners and original Neon cost-probe branches remain unchanged.
+
+## Booking-screen parity restored in the latest development group
+
+- The original `main` match-style simulation already existed in the rebuild, but its six UI controls had disappeared. Restored **competition, technical wrestling, storytelling, intensity, risk and spectacle** to singles booking, with existing original workload calculations and explicit player choice. Unsupported multi-team and battle-royal style controls remain unavailable rather than silently saving invalid cards.
+- Angle booking has regained **creative direction → angle type**: Character, Rivalry, Challenge, Alliances, Arrival and Video group the exact segment kinds currently supported by the rebuild. Descriptions explain the wrestling story rather than its software implementation. Specific unsupported original segment subtypes are still parity gaps; no fictional choices are presented.
+- Match and angle cards now display **casting readiness** before save, explaining missing performers, targets and faction decisions. This is a client preflight; the existing authoritative save remains responsible for contract, division and title checks.
+- Restored performer-first collapsed card summaries. Matches display the named competitors and their planned duration/finish; angles identify the featured wrestlers. These are rendered from the Card Editor's already-loaded selections and do not request another wrestler profile.
+- Match-style panels retain their open state while the booker adjusts sliders, avoiding repeat expansion on iPhone.
+- No additional SQL was added for these booking presentation restorations. The normal card and wrestler picker transfer budgets remain as before.
+- **Still outstanding:** original `main` live interference controls, the deeper specialised segment objectives and deliveries, match-by-match performance-readiness consent, richer post-show Programme feedback, real portrait assets with permissible licensing, and fully integrated iPhone playtesting. Restoring these requires confirming their associated authoritative rules, not merely redrawing control labels.
+
