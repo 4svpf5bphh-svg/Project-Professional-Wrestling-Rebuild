@@ -86,6 +86,23 @@ test("standing rivalry agreement covers only approved participants, term and fin
   assert.equal(blocked.creativeConcerns[0]?.decision,"NOT_REQUESTED");
   await assert.rejects(markPreparedShowReadyAsActor(ctx,{...ids,
    requestId:"blocked",expectedRevision:3,confirmReadyToRun:true}),/creative agreement/);
+  // Rejected long-term terms are a durable wrestler decision, not a button
+  // a connected player can press repeatedly for a better answer.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_contracts SET creative_control='FULL_APPROVAL' WHERE world_id=$1 AND person_id='bob'",[world]);
+   await tx.query("UPDATE ppw_people SET morale=1,fatigue=95,contract_priorities=$2::jsonb WHERE world_id=$1 AND person_id='bob'",
+    [world,JSON.stringify({money:40,role:95,prestige:40,schedule:40,loyalty:0,exposure:40})]);
+  });
+  const refusalTerms={...terms,personId:"bob",requestId:"bob-refuses",
+   expectedRevision:3,permittedOutcome:"WIN_OR_PROTECTED_LOSS" as const};
+  const refusal=await standingCreativeAgreementAsActor(ctx,refusalTerms);
+  assert.equal(refusal.status,"APPLIED");
+  if(refusal.status==="APPLIED")assert.equal(refusal.result.approved,false);
+  assert.equal((await standingCreativeAgreementAsActor(ctx,refusalTerms)).status,"REPLAYED");
+  await assert.rejects(standingCreativeAgreementAsActor(ctx,{
+   ...refusalTerms,requestId:"bob-reroll",expectedRevision:4,
+   permittedOutcome:"WIN_ONLY"
+  }),/already considered different terms/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
