@@ -117,7 +117,11 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Proposal could not be reviewed";}
   finally{loading=false;render();}
  }
+ let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
+  const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
+  if(previous){preservedThreadScroll=previous.scrollTop;
+   preservedThreadPerson=previous.dataset.personId??null;}
   root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
   root.classList.remove("ppw-messenger-inbox","ppw-messenger-thread",
    "ppw-messenger-profile");
@@ -341,9 +345,8 @@ export function mountPersonaDesk(root:HTMLElement,
   if(view.roster.find(x=>x.personId===view!.personId)?.isCurrent===false)
    root.append(el("p","ppw-muted",
     "Former talent · retained private conversation. No active contract or booking decisions."));
-  const previousChat=root.querySelector<HTMLElement>(".ppw-persona-chat");
-  const previousScroll=previousChat?.dataset.personId===view.personId?
-   previousChat.scrollTop:null;
+  const previousScroll=preservedThreadPerson===view.personId?
+   preservedThreadScroll:null;
   const chat=el("section","ppw-persona-chat");
   chat.dataset.personId=view.personId;
   chat.setAttribute("aria-label","Conversation with "+view.personName);

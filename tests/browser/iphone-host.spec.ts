@@ -451,6 +451,56 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  expect(methods.length,"Inbox search is client-only").toBe(before);
 });
 
+test("Backstage messages read and archive in place without fetching the entire inbox again",async({page})=>{
+ const methods:string[]=[];
+ const contact={personId:"ada",name:"Ada Stone",isCurrent:true,morale:67,momentum:58,
+  lastMessage:null,latestIncoming:{request_id:"c-1",kind:"CONTRACT",status:"PENDING",
+   created_week_index:4,read_week_index:null,archived:false}};
+ const common={personId:"ada",personName:"Ada Stone",
+  roster:[contact],worldYear:1,worldWeek:5,worldRevision:4,canEdit:false,
+  persona:{personaName:"Ada Stone",gimmickId:"AUTHENTIC",
+   primaryStyle:"TECHNICAL",secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  recentRequests:[],documentedAlternates:[],history:[],archetypes:[],
+  nextPitchWeek:0,
+  conversations:[{conversationId:"c-1",kind:"CONTRACT",
+   createdWeekIndex:4,respondedWeekIndex:null,relatedPersonId:null,
+   status:"PENDING",decision:null,dueWeekIndex:null,promisedRole:null,
+   observedMatchShows:null,observedFeaturedShows:null,
+   assessmentReason:null,trustDelta:0,workingVerifiedShows:null,
+   workingTrustDelta:null,averageCrowd:null,verifiedSinglesShows:null,
+   professionalTrust:null,verifiedTagShows:null,averageExecution:null,
+   followThroughWeekIndex:null,followThroughKind:null}]};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const req=route.request().postDataJSON();
+  const method=String(req.method);methods.push(method);
+  await route.fulfill({json:method==="backstage"?common:
+   method==="markBackstageRead"?{readCount:1}:
+   method==="backstageArchive"?{personId:"ada",
+    archivedThroughWeekIndex:req.archived?4:-1}:{}});
+ });
+ await page.goto("/#/backstage");
+ const list=page.locator(".ppw-backstage-contact");
+ await expect(list).toHaveCount(1);
+ await expect(list.first()).toContainText("My deal is nearly up");
+ const initial=methods.filter(m=>m==="backstage").length;
+ await list.first().click();
+ await expect(page.getByLabel("Conversation with Ada Stone")).toBeVisible();
+ expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
+ expect(methods.filter(m=>m==="markBackstageRead")).toHaveLength(1);
+ await expect(page.locator(".ppw-persona-chat .ppw-backstage-date")).toContainText(["Y1 · W5"]);
+ await page.getByRole("button",{name:"Back to messages"}).click();
+ await expect(page.locator(".ppw-messenger-inbox-count")).toContainText("0 unread");
+ expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
+ await page.locator(".ppw-backstage-contact").first().click();
+ await page.locator("summary").filter({hasText:"Conversation options"}).click();
+ await page.getByRole("button",{name:"Archive conversation"}).click();
+ await expect(page.getByRole("button",{name:"Archived",exact:true})).toHaveClass(/ppw-persona-selected/);
+ await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
+ expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
+ expect(methods.filter(m=>m==="backstageArchive")).toHaveLength(1);
+});
+
 test("Programme casting opens the universal wrestler dossier without erasing its creative selections",async({page})=>{
  const calls:string[]=[];
  const story={
