@@ -25,3 +25,74 @@
 .ppw-title-more{width:100%;margin:12px 0 0}
 @media(max-width:620px){.ppw-title-filters{grid-template-columns:1fr 1fr}
  .ppw-title-search{grid-column:1/-1}}
+
+/* Broadcast title hall: metallic belts are CSS only, no image/download/Neon cost. */
+.ppw-championship-desk{max-width:1020px;margin:0 auto;
+ padding:14px 14px calc(82px + env(safe-area-inset-bottom));color:#f5f9ff}
+.ppw-title-hero{margin-bottom:8px}.ppw-title-hero h1{font-size:clamp(29px,7vw,42px);
+ letter-spacing:-.05em}
+.ppw-title-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:8px;margin:11px 0 22px}
+.ppw-title-overview-fact{background:linear-gradient(130deg,#22334b,#111c2e);
+ border:1px solid #405778;border-radius:14px;padding:12px 10px;
+ display:flex;flex-direction:column;justify-content:space-between;gap:7px;min-width:0}
+.ppw-title-overview-fact small{color:#a7becf;letter-spacing:.085em;font-size:9px}
+.ppw-title-overview-fact strong{font-variant-numeric:tabular-nums;font-size:clamp(19px,6vw,28px)}
+.ppw-championship-desk .ppw-belt-card{border:1px solid #6e604b;
+ background:radial-gradient(circle at 12% 10%,#53462d66,transparent 58%),
+ linear-gradient(105deg,#192839,#0c1829 80%);border-radius:17px;
+ margin:12px 0;box-shadow:0 9px 25px #0003}
+.ppw-championship-desk .ppw-belt-tag{border-color:#677e9f;
+ background:radial-gradient(circle at 15% 15%,#3d619066,transparent 55%),
+ linear-gradient(105deg,#162b44,#0d182b 80%)}
+.ppw-championship-desk .ppw-belt-inactive{filter:saturate(.6)}
+.ppw-belt-ours{outline:1px solid #74dfba77;outline-offset:1px}
+.ppw-championship-desk .ppw-belt-summary{display:grid;grid-template-columns:74px minmax(0,1fr);
+ gap:12px;align-items:center;padding:14px;min-height:112px}
+.ppw-belt-insignia{width:72px;min-height:85px;display:grid;place-items:center;
+ position:relative;isolation:isolate}
+.ppw-belt-insignia:before{content:"";position:absolute;z-index:-1;
+ width:100%;height:38px;border-radius:14px 20px 20px 14px;
+ background:linear-gradient(0deg,#1a1411,#4e3825,#1a1411);
+ transform:skewY(-2deg);border:1px solid #86714d}
+.ppw-belt-tag .ppw-belt-insignia:before{background:linear-gradient(0deg,#0a1928,#45566f,#0a1928);
+ border-color:#7b93b6}
+.ppw-belt-plate{width:56px;height:69px;border-radius:18px 18px 22px 22px;
+ display:grid;place-items:center;font-size:24px;font-weight:950;color:#372514;
+ background:radial-gradient(circle at 34% 25%,#fff1b0,#bd8740 58%,#664221);
+ border:3px double #fbe4a0;box-shadow:0 4px 13px #0008,
+ inset 0 0 0 4px #956536, inset 0 0 0 6px #e5b766}
+.ppw-belt-tag .ppw-belt-plate{font-size:17px;color:#123047;
+ background:radial-gradient(circle at 35% 25%,#f2faff,#93adc2 60%,#2a516e);
+ border-color:#d1e5ff;box-shadow:0 4px 13px #0008,inset 0 0 0 4px #577692}
+.ppw-belt-identity{display:grid;gap:6px;min-width:0}
+.ppw-belt-identity .ppw-belt-promotion{font-size:10px;color:#efcd85;
+ font-weight:850;letter-spacing:.095em}
+.ppw-belt-tag .ppw-belt-promotion{color:#b9e4ff}
+.ppw-belt-identity .ppw-belt-name{font-size:clamp(17px,4.4vw,23px);
+ line-height:1.15;letter-spacing:-.028em;overflow-wrap:anywhere;color:#fcf2cf}
+.ppw-belt-tag .ppw-belt-name{color:#e2f2ff}
+.ppw-belt-identity .ppw-belt-current{font-size:12px;color:#cfdae8;
+ overflow-wrap:anywhere}
+.ppw-championship-desk .ppw-belt-meta{grid-column:1/-1;display:flex;
+ align-items:center;gap:8px;border-top:1px solid #64748b44;
+ padding-top:9px;color:#a4b7c7}
+.ppw-belt-meta>strong{color:#fce4a1;font-size:17px;font-variant-numeric:tabular-nums}
+.ppw-belt-meta>small{font-size:10px;letter-spacing:.06em}
+.ppw-championship-desk .ppw-belt-history{border-top:1px solid #96794b77;background:#091829;padding:14px}
+.ppw-belt-history-heading{display:flex;align-items:baseline;justify-content:space-between;
+ gap:10px;padding:0 0 7px}
+.ppw-belt-history-heading h3{font-size:14px;color:#f0d79d;margin:0}
+.ppw-belt-history-heading span{font-size:10px;color:#adc0d1;letter-spacing:.08em}
+.ppw-title-reign{border-left:3px solid #344a61;padding:12px 14px;margin:8px 0;
+ border-radius:0 10px 10px 0;background:#17283b;border-bottom:0}
+.ppw-title-reign-current{border-left-color:#edc16d;background:#40351b6b}
+.ppw-title-holder{color:#d6eeff;font-size:15px}
+.ppw-title-reign-state{color:#f7d898;font-weight:800;font-size:11px}
+@media(min-width:650px){.ppw-championship-desk .ppw-belt-summary{
+ grid-template-columns:85px minmax(0,1fr) 130px}
+ .ppw-championship-desk .ppw-belt-meta{grid-column:auto;display:grid;
+ justify-items:end;border-top:0;border-left:1px solid #60758b66;padding:0 0 0 16px}
+ .ppw-belt-insignia{width:85px}.ppw-belt-plate{width:66px}}
+@media(max-width:365px){.ppw-title-overview-fact{padding:11px 7px}
+ .ppw-title-overview-fact small{font-size:8px}}

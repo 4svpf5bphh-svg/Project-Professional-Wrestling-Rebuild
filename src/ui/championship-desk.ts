@@ -42,23 +42,50 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
   for(const [v,t] of [["ALL","All divisions"],["SINGLES","Singles"],["TAG","Tag teams"]]){
    const o=document.createElement("option");o.value=v;o.textContent=t;division.append(o);
   }
+  const facts=element("section","ppw-title-overview");
+  const activeTitles=directory.titles.filter(t=>t.status==="ACTIVE");
+  for(const [name,value] of [
+   ["WORLD TITLES",directory.titles.length],
+   ["ACTIVE BELTS",activeTitles.length],
+   ["REIGNING CHAMPIONS",activeTitles.filter(t=>t.holderId!==null).length],
+  ] as const){
+   const box=element("article","ppw-title-overview-fact");
+   box.append(element("small","",name),element("strong","",String(value)));
+   facts.append(box);
+  }
   const tabs=element("div","ppw-title-filters");
   tabs.append(search,status,division);
   const summary=element("p","ppw-title-summary");
   const list=element("section","ppw-title-list");
-  root.replaceChildren(header,tabs,summary,list);
+  root.replaceChildren(header,facts,tabs,summary,list);
   const buckets=new Map<string,{card:HTMLElement;title:ChampionshipCard}>();
   function titleCard(title:ChampionshipCard){
    const details=document.createElement("details");
    details.className="ppw-belt-card";
-   const head=document.createElement("summary");
-   head.append(element("span","ppw-belt-promotion",title.promotionName+" / "+title.division),
-    element("strong","ppw-belt-name",title.name),
-    element("span","ppw-belt-current",title.holderName??"Vacant — no current champion"),
-    element("span","ppw-belt-meta",label(title.status)+" · Prestige "+
-     Math.round(title.prestige)+(title.currentReignId?
-      " · "+title.defenses+" defenses":"")));
+   details.classList.add(title.status==="ACTIVE"?"ppw-belt-active":"ppw-belt-inactive");
+   details.classList.add(title.division==="TAG"?"ppw-belt-tag":"ppw-belt-singles");
+   if(title.promotionId===directory.viewerPromotionId)details.classList.add("ppw-belt-ours");
+   const head=document.createElement("summary");head.className="ppw-belt-summary";
+   const belt=element("span","ppw-belt-insignia");
+   const plate=element("span","ppw-belt-plate",title.division==="TAG"?"TAG":"★");
+   plate.setAttribute("aria-hidden","true");belt.append(plate);
+   const identity=element("span","ppw-belt-identity");
+   const promo=element("span","ppw-belt-promotion",
+    title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES"));
+   identity.append(promo,element("strong","ppw-belt-name",title.name),
+    element("span","ppw-belt-current",
+     (title.holderId===null?"VACANT · ": "CHAMPION · ")+
+     (title.holderName??"Awaiting first champion")));
+   const more=element("span","ppw-belt-meta");
+   more.append(element("strong","",Math.round(title.prestige)+""),
+    element("small","","PRESTIGE"),
+    element("small","",title.defenses+" "+(title.defenses===1?"defense":"defenses")));
+   head.append(belt,identity,more);
    const history=element("div","ppw-belt-history");
+   const historyIntro=element("div","ppw-belt-history-heading");
+   historyIntro.append(element("h3","","Championship lineage"),
+    element("span","",title.status==="ACTIVE"?"ACTIVE LINEAGE":"INACTIVE TITLE"));
+   history.append(historyIntro);
    details.append(head,history);
    let page:ReignCursor|null=null,loaded=false,busy=false;
    async function loadMore(){
@@ -70,7 +97,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
      const data=await port.loadHistory(title.promotionId,title.championshipId,page);
      pending.remove();
      if(!loaded){
-      history.replaceChildren();
+      history.replaceChildren(historyIntro);
       if(!data.reigns.length)history.append(element("p","ppw-muted",
        "No reign recorded yet. The belt is awaiting its first champion."));
      }
@@ -83,9 +110,10 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
       else if(reign.holderType==="TEAM"&&port.openTeam)
        name.onclick=()=>port.openTeam!(reign.holderId);
       else name.disabled=true;
+      if(reign.isCurrent)article.classList.add("ppw-title-reign-current");
       article.append(name,
        element("span","ppw-title-reign-state",
-        reign.isCurrent?"CURRENT CHAMPION":label(reign.status)),
+        reign.isCurrent?"REIGNING CHAMPION":label(reign.status)),
        element("span","ppw-title-reign-period",week(reign.startWeekIndex)+
         " → "+(reign.endedWeekIndex===null?"PRESENT":week(reign.endedWeekIndex))),
        element("span","ppw-title-defenses",reign.defenses+
@@ -133,7 +161,10 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
   if(!directory.titles.length)list.append(element("p","ppw-muted",
    "No championships have been created in this World."));
  }catch(e){
-  root.replaceChildren(element("p","ppw-alert ppw-error",
-   e instanceof Error?e.message:"Championship history unavailable"));
+  const error=element("p","ppw-alert ppw-error",
+   e instanceof Error?e.message:"Championship history unavailable");
+  const retry=element("button","ppw-title-more","Try again") as HTMLButtonElement;
+  retry.type="button";retry.onclick=()=>void mountChampionshipDesk(root,port,onBack);
+  root.replaceChildren(error,retry);
  }
 }

@@ -113,7 +113,11 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
-   call("championshipHistory",{titlePromotionId,championshipId,cursor})
+   call("championshipHistory",{titlePromotionId,championshipId,cursor}),
+  openWrestler:(id:string)=>{
+   const back=()=>void mountChampionshipsPage(root,scope,onBack);
+   return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),id,back);
+  }
  };
  return mountChampionshipDesk(root,port,onBack);
 }
