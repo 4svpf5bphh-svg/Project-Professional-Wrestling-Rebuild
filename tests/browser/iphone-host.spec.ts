@@ -101,6 +101,39 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
+test("Tag partner cards and roster disciplines stay fast without person-by-person reads",async({page})=>{
+ const methods:string[]=[];
+ const people=Array.from({length:50},(_,i)=>({
+  personId:"person-"+i,name:"Talent "+String(i).padStart(2,"0"),
+  division:i%5===0?"WOMEN":"MEN"
+ }));
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);methods.push(method);
+  await route.fulfill({json:method==="overview"?overview:
+   method==="tagTeams"?{year:1,week:5,canEdit:true,worldRevision:4,
+    roster:people,teams:[]}:
+   method==="wrestlerDirectory"?{year:1,week:5,view:"ROSTER",
+    worldRevision:4,canEdit:true,people:[],hasMore:false,currentWeekIndex:4}:{}});
+ });
+ await page.goto("/#/teams");
+ await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
+ await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card")).toHaveCount(35);
+ await page.getByRole("button",{name:"Women",exact:true}).click();
+ await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card")).toHaveCount(10);
+ await page.locator(".ppw-pair-picks .ppw-wrestler-card").first().click();
+ await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card[aria-pressed=true]")).toHaveCount(1);
+ await page.getByRole("button",{name:"Men",exact:true}).click();
+ await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card").first()).toBeDisabled();
+ await page.goto("/#/roster");
+ await expect(page.getByRole("navigation",{name:"Roster divisions"})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Trios/})).toBeDisabled();
+ await page.getByRole("navigation",{name:"Roster divisions"})
+  .getByRole("button",{name:"Tag Teams"}).click();
+ await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
+ expect(methods).not.toContain("wrestlerProfile");
+ expect(methods.filter(x=>x==="tagTeams").length).toBe(2);
+});
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
