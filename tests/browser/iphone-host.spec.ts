@@ -909,3 +909,77 @@ test("iPhone venue choices show rival interest and save without repeated Planner
  await expect(page.getByRole("button",{name:"Plan weekly show"})).toBeVisible();
  expect(methods).toEqual(["planner","planShow","planner"]);
 });
+
+test("iPhone scripts and reopens a specialist attack with one card save",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const alice={personId:"alice",contractId:"deal-alice"};
+ const bob={personId:"bob",contractId:"deal-bob"};
+ const match={
+  matchType:"SINGLES",family:"INDIVIDUAL",participants:[alice,bob],
+  sides:[{sideId:"A",participants:[alice]},{sideId:"B",participants:[bob]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:18
+ };
+ let angle:Record<string,unknown>={
+  slotId:"ambush",position:1,kind:"ATTACK",actorIds:["alice"],
+  targetIds:["bob"],outcome:"HAPPENS",participants:[alice,bob]
+ };
+ const planner={
+  worldName:"Genesis",promotionName:"AEW",year:1,week:5,canEdit:true,
+  worldRevision:4,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+    marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+    ready:false,slots:2,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]
+ };
+ let revision=4;
+ const view=()=>({
+  showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+  worldRevision:revision,day:5,venueId:"arena",showName:"Dynamite",
+  promotionName:"AEW",venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+  ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+   {personId:"bob",name:"Bob",division:"MEN"}],
+  slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+   {slotId:"ambush",kind:"SEGMENT",position:1,payload:angle}]
+ });
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON();
+  methods.push(String(input.method));
+  if(input.method==="save"){
+   const segments=input.segments as {slotId:string;payload:Record<string,unknown>}[];
+   expect(segments).toHaveLength(1);
+   angle=segments[0]!.payload;
+   revision++;
+  }
+  await route.fulfill({json:input.method==="planner"?planner:
+   input.method==="load"?view():
+   input.method==="save"?{status:"APPLIED",result:{performers:2}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("button",{name:"Script the exact angle"}).click();
+ await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
+ await dialog.getByLabel("The intention").selectOption("ESCALATE_RIVALRY");
+ await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
+ await expect(dialog.getByLabel("The intention")).toHaveValue("ESCALATE_RIVALRY");
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
+ await page.getByRole("button",{name:"Save card"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(angle.creativeBeat).toEqual({kind:"ATTACK",
+  presentation:"PULL_APART_BRAWL",objective:"ESCALATE_RIVALRY"});
+ expect(angle.outcome).toBe("HAPPENS");
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ await expect(page.getByRole("dialog",{name:"Edit angle"}).getByLabel("Attack style"))
+  .toHaveValue("PULL_APART_BRAWL");
+ expect(methods.filter(x=>x==="save")).toHaveLength(1);
+ expect(methods.filter(x=>x==="talent")).toHaveLength(0);
+ expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(0);
+});
