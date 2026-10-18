@@ -362,9 +362,12 @@ export function mountPersonaDesk(root:HTMLElement,
    (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private conversation"));
-  const details=button("Details",()=>{pane="PROFILE";render();});
+  const details=button("Dossier ↗",()=>{
+   if(port.openWrestler)port.openWrestler(view!.personId!);
+   else{pane="PROFILE";render();}
+  });
   details.classList.add("ppw-backstage-phone-details");
-  details.setAttribute("aria-label","View "+view.personName+" profile");
+  details.setAttribute("aria-label","View "+view.personName+" wrestler dossier");
   chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
   const info=el("details","ppw-backstage-phone-info");

@@ -48,3 +48,11 @@
 .ppw-pair-wrestler[aria-pressed=true]{border-color:#e8ce83;
  box-shadow:inset 0 0 0 1px #e8ce83}
 .ppw-pair-limit-note{font-size:12px;color:#b1d7e4;padding:12px}
+
+/* Scout without selecting a partner. The dossier overlays the existing picks. */
+.ppw-pair-choice{min-width:0;display:grid;gap:2px;border-radius:15px}
+.ppw-pair-choice>.ppw-wrestler-card{min-width:0}
+.ppw-pair-scout{width:100%;min-height:38px;border:0;background:transparent;
+ color:#aee8ff;text-decoration:underline;text-underline-offset:3px;
+ text-align:right;font-size:12px;padding:4px 12px}
+.ppw-pair-scout:focus-visible{outline:2px solid #8bdcff;outline-offset:2px}

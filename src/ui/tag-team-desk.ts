@@ -125,7 +125,15 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
      }});
     card.classList.add("ppw-pair-wrestler");
     card.setAttribute("aria-pressed",String(active));
-    choices.append(card);
+    const row=el("div","ppw-pair-choice");
+    row.append(card);
+    if(port.openWrestler){
+     const inspect=btn("View "+person.name+"'s dossier ↗",
+      ()=>port.openWrestler?.(person.personId));
+     inspect.classList.add("ppw-pair-scout");
+     row.append(inspect);
+    }
+    choices.append(row);
    }
    if(!all.length)choices.append(el("p","ppw-muted","No wrestlers match your search and division."));
    else if(all.length>35)choices.append(el("p","ppw-pair-limit-note",

@@ -185,7 +185,15 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
       }});
      card.classList.add("ppw-stable-founder-card");
      card.setAttribute("aria-pressed",String(picked));
-     picker.append(card);
+     const row=el("div","ppw-stable-founder-choice");
+     row.append(card);
+     if(port.openWrestler){
+      const scout=btn("View "+person.name+"'s dossier ↗",
+       ()=>port.openWrestler?.(person.personId));
+      scout.classList.add("ppw-stable-founder-scout");
+      row.append(scout);
+     }
+     picker.append(row);
     }
     if(!matching.length)picker.append(el("p","ppw-muted","No available wrestlers match your search."));
     else if(matching.length>40)picker.append(el("p","ppw-muted",
