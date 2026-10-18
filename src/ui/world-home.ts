@@ -124,23 +124,26 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    el("h3","","What needs you"));
   brief.append(briefHead);
   const items:{title:string;detail:string;action:()=>void;icon:string;level:string}[]=[];
-  if(world.phase==="OPEN"&&promotion.attention.plannedShows===0)
+  // Tolerate previously cached session projections and historical test fixtures.
+  // Unavailable telemetry must never be interpreted as a confirmed alert.
+  const attention=promotion.attention;
+  if(world.phase==="OPEN"&&attention?.plannedShows===0)
    items.push({title:"Plan this week's show",detail:
     "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
     action:port.planner,icon:"◷",level:"priority"});
-  if(world.phase==="OPEN"&&promotion.attention.unpreparedShow)
+  if(world.phase==="OPEN"&&attention?.unpreparedShow)
    items.push({title:"Finish your booking card",detail:
     "You have a draft show that has not been confirmed ready for World Lock.",
     action:port.planner,icon:"▤",level:"priority"});
-  if(promotion.attention.pendingBackstage)
+  if(attention?.pendingBackstage)
    items.push({title:"Your locker room has messages",detail:
     "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
     action:port.backstage,icon:"✉",level:"important"});
-  if(promotion.attention.expiringTalent)
+  if(attention?.expiringTalent)
    items.push({title:"Contracts approaching expiry",detail:
     "At least one active wrestler's deal expires within the next two PPW weeks.",
     action:port.contracts,icon:"◈",level:"important"});
-  if(promotion.attention.pendingContractOffers)
+  if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:
     "Contract offers are pending. Check the negotiation desk for their status.",
     action:port.contracts,icon:"◇",level:"normal"});
