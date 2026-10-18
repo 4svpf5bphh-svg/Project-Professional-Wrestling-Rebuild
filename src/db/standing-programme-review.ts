@@ -59,7 +59,7 @@ export async function standingCoveredConcerns(tx:SqlRows,worldId:string,
   if(!allowed.has(key))continue;
   const show=showMap.get(a.show_id);
   const match=show?.slots.find(s=>s.kind==="MATCH"&&s.slot_id===a.slot_id);
-  if(!match)continue;
+  if(!show||!match)continue;
   const own=a.current_a.includes(a.person_id)?a.current_a:
    a.current_b.includes(a.person_id)?a.current_b:[];
   const opponents=a.current_a.includes(a.person_id)?a.current_b:
