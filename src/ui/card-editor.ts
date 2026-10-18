@@ -10,6 +10,8 @@ import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
 import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
  restoreEditorSegment,addSegmentPerson,buildEditorSegment,type EditorSegment}
  from "./card-segment-model.js";
+import {ANGLE_STORY_GOALS,angleGoalFor,anglesForGoal,firstAngleFor,angleDirection,
+ type AngleGoal} from "./angle-story-goals.js";
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
@@ -326,17 +328,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
     const controls=el("div","ppw-control-grid");
+    const setAngle=(kind:EditorSegment["kind"])=>{
+     if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
+      void loadStableChoices();
+     editSegment(segment,{kind,
+      stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
+       segment.stableId:null,
+      stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
+       segment.stableDecision:null,
+      actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
+      targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
+       []:segment.targets});
+    };
+    const goal=angleGoalFor(segment.kind);
+    controls.append(field("Creative direction",selector(goal,
+     ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
+      setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
     controls.append(field("Angle",selector(segment.kind,
-     ANGLE_TYPES.map(x=>[x.value,x.label]),v=>{
-      const kind=v as EditorSegment["kind"];
-      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
-       void loadStableChoices();
-      editSegment(segment,{kind,
-       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
-        segment.stableId:null,
-       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
-       targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?[]:segment.targets});
-     },!mutable())));
+     ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
+      .map(x=>[x.value,x.label]),value=>
+      setAngle(value as EditorSegment["kind"]),!mutable())));
     controls.append(field("Scripted outcome",selector(segment.outcome,
      [["HAPPENS","Goes ahead"],["REFUSED","Refused"],["INTERRUPTED","Interrupted"]],
      v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
@@ -372,6 +383,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       VIDEO_PURPOSES.map(v=>[v,nice(v)]),
       v=>editSegment(segment,{videoPurpose:v as EditorSegment["videoPurpose"]}),!mutable())));
     body.append(controls);
+    const direction=el("p","ppw-angle-guidance");
+    direction.append(el("strong","",ANGLE_STORY_GOALS.find(x=>x.value===goal)!.label+" / "),
+     el("span","",angleDirection(segment.kind)));
+    body.append(direction);
     for(const role of ["actors","targets"] as const){
      const section=el("div","ppw-side");
      section.append(el("h3","",role==="actors"?"On-screen talent / initiators":"Targets / rivals"));
