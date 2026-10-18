@@ -20,7 +20,7 @@ export function createCardClient(scope:CardSessionScope,
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
    "backstageArchive","backstageDecision","resultsArchive",
    "championships","championshipHistory","tagTeams","createTagTeam","renameTagTeam",
-   "planner","planShow","calendar","saveCalendar","archiveCalendar","contracts","wrestlerDirectory","submitContractOffer","business","staff","setStaffContinuity","industry","requestContractDates","cancelContractDates","renewContract",
+   "planner","planShow","calendar","saveCalendar","archiveCalendar","contracts","wrestlerDirectory","wrestlerProfile","saveWrestlerRepertoire","submitContractOffer","business","staff","setStaffContinuity","industry","requestContractDates","cancelContractDates","renewContract",
    "withdrawContractRenewal","withdrawContractOffer"].includes(method))
    throw new Error("Unknown card action");
   if(["load","talent","save","ready","results"].includes(method)&&!showId)

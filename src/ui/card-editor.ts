@@ -87,7 +87,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   division:string|null;available:boolean;reason:string}>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets";
-  query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"] }|null=null;
+  query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
+  sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
+  division:"ALL"|"MEN"|"WOMEN"}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let pendingRequestId:string|null=null;
  let stableChoices:{stableId:string;name:string}[]|null=null;
@@ -145,7 +147,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }catch(e){error=errorText(e);render();}
  }
  function pickFor(slotId:string,side:number,member:number){
-  picker={slotId,side,member,query:"",cursor:null,items:[]};
+  picker={slotId,side,member,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
   render();
   void findTalent("");
  }
@@ -175,7 +177,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }catch(e){error=errorText(e);render();}
  }
  function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
-  picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[]};
+  picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
   render();void findTalent("");
  }
  async function loadStableChoices(){
@@ -516,6 +518,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    submit.textContent="Search";form.append(submit);
    form.onsubmit=e=>{e.preventDefault();void findTalent(search.value.trim());};
    sheet.append(form);
+   const tools=el("div","ppw-picker-filters");
+   const sort=selector(current.sort,[
+    ["POPULARITY","Popularity"],["MOMENTUM","Momentum"],["IN_RING","In-ring"],
+    ["PRESENTATION","Presentation"],["DATES","Dates left"],["NAME","Name"]],
+    value=>{current.sort=value as typeof current.sort;render();});
+   sort.setAttribute("aria-label","Sort loaded wrestlers");
+   const division=selector(current.division,[
+    ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]],
+    value=>{current.division=value as typeof current.division;render();});
+   division.setAttribute("aria-label","Filter loaded wrestlers by division");
+   tools.append(sort,division);sheet.append(tools);
    const chosen=matches.get(current.slotId)?.teams[current.side]?.[current.member]??null;
    if(chosen)sheet.append(button("Clear position",()=>{
     const item=matches.get(current.slotId)!;
@@ -523,8 +536,30 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     picker=null;render();
    }));
    const rows=el("div","ppw-talent-rows");
-   for(const candidate of current.items){
-    const taken=[...matches.values()].flatMap(x=>assignedIds(x)).includes(candidate.personId)&&
+   const takenIds=new Set([...matches.values()].flatMap(m=>assignedIds(m)));
+   const sorted=current.items
+    .filter(p=>current.division==="ALL"||p.division===current.division)
+    .sort((a,b)=>{
+     const unavailable=(p:TalentPage["talent"][number])=>
+      Number(!p.available||takenIds.has(p.personId)&&
+       chosen?.personId!==p.personId);
+     if(unavailable(a)!==unavailable(b))return unavailable(a)-unavailable(b);
+     const measure=(p:TalentPage["talent"][number])=>
+      current.sort==="MOMENTUM"?p.momentum??-1:
+      current.sort==="IN_RING"?p.inRingQuality??-1:
+      current.sort==="PRESENTATION"?p.presentation??-1:
+      current.sort==="DATES"?p.remainingDates??9999:p.popularity??-1;
+     return current.sort==="NAME"?
+      (a.name??"").localeCompare(b.name??""):
+      measure(b)-measure(a)||(a.name??"").localeCompare(b.name??"");
+    });
+   sheet.append(el("p","ppw-picker-note",
+    sorted.length+" of "+current.items.length+" loaded · Search covers the full roster. Sort and division organise loaded results."));
+   if(!sorted.length)rows.append(el("p","ppw-muted",current.cursor?
+    "No match yet. Load more to search additional wrestlers.":
+    "No wrestlers match the current selection."));
+   for(const candidate of sorted){
+    const taken=takenIds.has(candidate.personId)&&
      chosen?.personId!==candidate.personId;
     const label=candidate.available?
      (candidate.remainingDates===null?"UNLIMITED DATES":

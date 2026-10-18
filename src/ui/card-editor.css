@@ -116,3 +116,8 @@
 .ppw-picker-wrestler>.ppw-wrestler-card{margin:0}
 .ppw-picker-wrestler>button:not(.ppw-wrestler-card){width:100%;min-height:36px;
  background:transparent;border:0;text-align:left;font-size:12px;color:#a9dcf5;padding:5px 12px}
+
+.ppw-picker-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:11px 0}
+.ppw-picker-filters select{font-size:16px;min-height:45px}
+.ppw-picker-note{font-size:11px;color:#b4cadd;line-height:1.45;margin:5px 0 10px}
+@media(max-width:350px){.ppw-picker-filters{grid-template-columns:1fr}}
