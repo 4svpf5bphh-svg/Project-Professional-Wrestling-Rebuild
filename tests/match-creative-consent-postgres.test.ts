@@ -74,7 +74,6 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   await assert.rejects(ready(0,"not-yet"),/creative agreement/);
   const approved=await agree("alice","alice-yes",0);
   assert.equal(approved.status,"APPLIED");
-  if(approved.status==="STALE")throw new Error("Consent unexpectedly stale");
   assert.equal(approved.result.decision,"APPROVED");
   assert.equal((await agree("alice","alice-yes",0)).status,"REPLAYED");
   const refused=await agree("bob","bob-no",1);
