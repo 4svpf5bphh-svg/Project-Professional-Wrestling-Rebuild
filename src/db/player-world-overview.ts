@@ -6,7 +6,11 @@ export interface PlayerWorldOverview {
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
  membership:"ACTIVE"|"INACTIVE"|"NONE";
  promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
-  lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null};
+  lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
+  attention:{
+   unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
+   pendingContractOffers:boolean;plannedShows:number;};
+ };
 }
 
 /** One World-keyed authenticated overview read instead of three round-trips.
@@ -29,6 +33,9 @@ export async function readPlayerWorldOverview(
    cash:string|number|null;debt:string|number|null;
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
+   planned_shows:number|null;unprepared_show:boolean|null;
+   pending_backstage:boolean|null;expiring_talent:boolean|null;
+   pending_contract_offers:boolean|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -37,7 +44,9 @@ export async function readPlayerWorldOverview(
     m.status AS membership_status,
     owned.promotion_id,owned.name AS promotion_name,owned.tier,owned.home_market_name,
     owned.cash,owned.debt,owned.last_weekly_net,
-    owned.runway_weeks,owned.financial_distress
+    owned.runway_weeks,owned.financial_distress,
+    notices.planned_shows,notices.unprepared_show,
+    notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -53,6 +62,28 @@ export async function readPlayerWorldOverview(
      AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'
     ORDER BY p.promotion_id LIMIT 1
    ) owned ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT
+     (SELECT count(*)::integer FROM ppw_booking_drafts d
+       WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+        AND d.year=w.year AND d.week=w.week) AS planned_shows,
+     EXISTS (SELECT 1 FROM ppw_booking_drafts d
+       WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+        AND d.year=w.year AND d.week=w.week AND d.status='DRAFT'
+        AND d.lock_ready_fingerprint IS NULL LIMIT 1) AS unprepared_show,
+     EXISTS (SELECT 1 FROM ppw_backstage_requests b
+       WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
+        AND b.status='OPEN' LIMIT 1) AS pending_backstage,
+     EXISTS (SELECT 1 FROM ppw_contracts c
+       WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
+        AND c.status='SIGNED'
+        AND c.start_week_index<=(w.year-1)*52+w.week-1
+        AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
+         AND (w.year-1)*52+w.week+1 LIMIT 1) AS expiring_talent,
+     EXISTS (SELECT 1 FROM ppw_contract_offers o
+       WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
+        AND o.status='PENDING' LIMIT 1) AS pending_contract_offers
+   ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
@@ -67,7 +98,12 @@ export async function readPlayerWorldOverview(
     homeMarketName:x.home_market_name,
     cash:Number(x.cash),debt:Number(x.debt),
     lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),
-    runwayWeeks:x.runway_weeks,financialDistress:x.financial_distress
+    runwayWeeks:x.runway_weeks,financialDistress:x.financial_distress,
+    attention:{unpreparedShow:x.unprepared_show===true,
+     pendingBackstage:x.pending_backstage===true,
+     expiringTalent:x.expiring_talent===true,
+     pendingContractOffers:x.pending_contract_offers===true,
+     plannedShows:x.planned_shows??0}
    }:null
   };
  });

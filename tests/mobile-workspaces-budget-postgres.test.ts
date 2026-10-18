@@ -43,6 +43,8 @@ test("643-wrestler iPhone session: Home, roster, market, Business, Staff and Ind
   const scope={worldId:world,promotionId:promotion,playerId:player};
   const overview=await readPlayerWorldOverview(measured,world,player);
   assert.equal(overview?.promotion?.id,promotion);
+  assert.equal(overview?.promotion?.attention.plannedShows,0);
+  assert.equal(overview?.promotion?.attention.pendingBackstage,false);
   assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:2200}).queryCount,1);
   const roster=await readWrestlerDirectory(measured,scope,{view:"ROSTER",limit:25});
   assert.equal(roster.view,"ROSTER");

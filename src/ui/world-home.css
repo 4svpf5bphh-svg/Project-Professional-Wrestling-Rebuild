@@ -52,3 +52,18 @@
  padding:8px 11px;border-radius:10px;border:1px solid rgba(88,217,255,.33);
  background:rgba(11,62,88,.46);color:#b8efff;font-size:12px;
  font-weight:850;letter-spacing:.04em}
+
+/* Wrestling broadcast hierarchy, contextual actions not permanent navigation. */
+.ppw-home-brief{padding:16px 14px;margin:17px 0 20px;
+ border:1px solid rgba(106,178,218,.3);border-radius:19px;
+ background:linear-gradient(145deg,#132639 0%,#0a1729 100%)}
+.ppw-home-brief-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ppw-home-brief-title h3{font-size:21px;font-weight:850;letter-spacing:-.04em;margin:0}
+.ppw-home-brief>.ppw-home-tile{margin:8px 0;background:#1a3148}
+.ppw-home-brief>.ppw-home-action-priority{border-left:3px solid #fdb17e}
+.ppw-home-brief>.ppw-home-action-important{border-left:3px solid #7ccaff}
+.ppw-home-brief>.ppw-home-tile .ppw-home-icon{background:#254762}
+.ppw-home-brief-clear{font-size:13px;line-height:1.5;color:#b6d4e2;padding:10px 3px}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-home-brief>.ppw-home-tile{transition:background .14s,transform .14s}
+ .ppw-home-brief>.ppw-home-tile:active{transform:scale(.993);background:#245171}}

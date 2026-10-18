@@ -116,11 +116,46 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    tile.append(el("span","",label),el("strong","",note));stats.append(tile);
   }
   root.append(stats);
-  if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY"){
-   root.append(el("p","ppw-home-attention",
-    "Financial outlook: "+promotion.financialDistress+
-     ". Open Business to review cash and weekly commitments."));
+  // Contextual actions, never a persistent tab bar. Only authoritative facts
+  // from the existing single overview query appear as attention cues.
+  const brief=el("section","ppw-home-brief");
+  const briefHead=el("header","ppw-home-brief-title");
+  briefHead.append(el("span","ppw-home-brand","YOUR WEEK"),
+   el("h3","","What needs you"));
+  brief.append(briefHead);
+  const items:{title:string;detail:string;action:()=>void;icon:string;level:string}[]=[];
+  if(world.phase==="OPEN"&&promotion.attention.plannedShows===0)
+   items.push({title:"Plan this week's show",detail:
+    "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
+    action:port.planner,icon:"◷",level:"priority"});
+  if(world.phase==="OPEN"&&promotion.attention.unpreparedShow)
+   items.push({title:"Finish your booking card",detail:
+    "You have a draft show that has not been confirmed ready for World Lock.",
+    action:port.planner,icon:"▤",level:"priority"});
+  if(promotion.attention.pendingBackstage)
+   items.push({title:"Your locker room has messages",detail:
+    "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
+    action:port.backstage,icon:"✉",level:"important"});
+  if(promotion.attention.expiringTalent)
+   items.push({title:"Contracts approaching expiry",detail:
+    "At least one active wrestler's deal expires within the next two PPW weeks.",
+    action:port.contracts,icon:"◈",level:"important"});
+  if(promotion.attention.pendingContractOffers)
+   items.push({title:"Offers awaiting decisions",detail:
+    "Contract offers are pending. Check the negotiation desk for their status.",
+    action:port.contracts,icon:"◇",level:"normal"});
+  if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
+   items.push({title:"Financial pressure",detail:
+    "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
+    action:port.business,icon:"!",level:"important"});
+  if(!items.length)brief.append(el("p","ppw-home-brief-clear",
+   "No outstanding alerts in the tracked areas. Review your Planner for full show readiness."));
+  for(const item of items){
+   const entry=control(item.title,item.detail,item.action,item.icon);
+   entry.classList.add("ppw-home-action-"+item.level);
+   brief.append(entry);
   }
+  root.append(brief);
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
    "Use the five-section menu at the bottom to open Roster, Market, Backstage, Planning, Business and Results. All gameplay actions remain in their respective desks."));
  }
