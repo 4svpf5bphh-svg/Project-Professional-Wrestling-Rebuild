@@ -3,12 +3,12 @@ import {buildBookedSegmentPayload,type BookedSegmentPayload}
  from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose}
  from "../simulation/legacy/show-segments.js";
-import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import {initialCreativeBeat,isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
- creativeBeat:SegmentCreativeBeat|null;
+ creativeBeat:SegmentCreativeBeat|null;sourceMatchSlotId:string|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
 }
@@ -34,7 +34,8 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  creativeBeat:null,
+  creativeBeat:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
+   initialCreativeBeat(kind):null,sourceMatchSlotId:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
@@ -50,6 +51,8 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   actors:find(Array.isArray(p.actorIds)?p.actorIds:
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
+  sourceMatchSlotId:typeof p.sourceMatchSlotId==="string"&&p.sourceMatchSlotId.trim()?
+   p.sourceMatchSlotId:null,
   creativeBeat:p.creativeBeat===undefined?null:
    isSegmentCreativeBeat(p.creativeBeat,kind)?p.creativeBeat:
     (()=>{throw new Error("Invalid scripted angle direction")})(),
@@ -70,7 +73,10 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
   throw new Error("A wrestler cannot fill two roles in one angle");
  if(role==="actors"&&LIMITED_ACTORS.has(s.kind)&&s.actors.length>=1)
   throw new Error("This angle has one lead wrestler");
- if(s[role].length>=20)throw new Error("Angle role capacity exceeded");
+ const max=role==="actors"?
+  s.kind==="RESCUE"?2:["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)?1:20:
+  ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)?1:20;
+ if(s[role].length>=max)throw new Error("Angle role capacity exceeded");
  return {...s,[role]:[...s[role],{...person}]};
 }
 export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
@@ -84,6 +90,8 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
+  ...(s.kind==="POST_MATCH_ASSAULT"&&s.sourceMatchSlotId?
+   {sourceMatchSlotId:s.sourceMatchSlotId}:{}),
   ...(s.stableId?{stableId:s.stableId}:{}),
   ...(s.stableDecision&&["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)?
     {stableDecision:s.stableDecision}:{}),
