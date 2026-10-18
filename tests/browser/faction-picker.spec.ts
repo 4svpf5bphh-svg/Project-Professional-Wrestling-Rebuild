@@ -3,7 +3,7 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
  const methods:string[]=[];let submitted:unknown=null;
  const overview={world:{name:"Genesis",year:1,week:5,revision:4,phase:"OPEN",
   serverEpoch:Date.now()/1000,nextLockEpoch:Date.now()/1000+1800},
-  promotion:{id:"aew",name:"AEW",tier:"GLOBAL",cash:5000000,debt:0}};
+  membership:"ACTIVE",promotion:{id:"aew",name:"AEW",tier:"GLOBAL",cash:5000000,debt:0}};
  const session={worldId:"genesis",playerId:"owner",csrfToken:"test-csrf",overview,
   availablePromotions:[]};
  const roster=Array.from({length:46},(_,i)=>({
