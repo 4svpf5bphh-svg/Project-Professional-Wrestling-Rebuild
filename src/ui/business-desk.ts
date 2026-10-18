@@ -40,7 +40,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    el("h1","","Business"),
    el("p","ppw-business-muted",
     view?view.name+" · Year "+view.year+" / Week "+view.week:
-     "Cash, show receipts and territories. No fictional forecasts."));
+     "Your latest accounts, show takings and strength in each territory."));
   if(port.back)head.prepend(button("← Back",()=>port.back?.()));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
@@ -91,10 +91,67 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("p","ppw-business-muted",
      "Your 12 most recent shows. Ticket income, venue hire and production spending are reflected in each week's accounts."));
    if(!view.shows.length)section.append(el("p","ppw-business-muted",
-    "No settled show-finance receipts yet."));
+    "Your first show's takings will appear here after the event."));
+   if(view.shows.length){
+    // Every number below is calculated from the 12 already-loaded receipts.
+    // Do not confuse operating result with actual incremental cash effect.
+    const events=view.shows;
+    const sample=events.length;
+    const stats=el("div","ppw-business-event-stats");
+    const total=(key:"gateRevenue"|"netResult"|"incrementalCash")=>
+     events.reduce((sum,show)=>sum+show[key],0);
+    const cells:[string,string,string][]=[
+     ["SHOWS",String(sample),"Last "+sample+" completed events"],
+     ["GATE TAKINGS",money(total("gateRevenue")),"Ticket receipts"],
+     ["EVENT RESULT",money(total("netResult")),"Before other company costs"],
+     ["CASH EFFECT",money(total("incrementalCash")),"Change to the company balance"]
+    ];
+    for(const [title,number,note] of cells){
+     const tile=el("article","ppw-business-event-stat");
+     tile.append(el("span","",title),
+      el("strong",title==="EVENT RESULT"||title==="CASH EFFECT"?
+       tone(title==="EVENT RESULT"?total("netResult"):total("incrementalCash")):"",number),
+      el("small","",note));
+     stats.append(tile);
+    }
+    section.append(stats);
+    const panel=el("section","ppw-business-trend");
+    panel.append(el("h3","","Event performance"),
+     el("p","ppw-business-muted",
+      "Profit and loss from your latest completed events. Tap an event to see its accounts."));
+    const scroll=el("div","ppw-business-trend-scroll");
+    scroll.setAttribute("role","group");
+    scroll.setAttribute("aria-label","Event profit and loss");
+    const bars=el("div","ppw-business-trend-bars");
+    const max=Math.max(1,...events.map(s=>Math.abs(s.netResult)));
+    for(const show of [...events].reverse()){
+     const pick=el("button","ppw-business-trend-pick") as HTMLButtonElement;
+     pick.type="button";
+     pick.setAttribute("aria-label",show.name+
+      ", Year "+show.year+" Week "+show.week+", net "+money(show.netResult));
+     pick.onclick=()=>{
+      const match=[...section.querySelectorAll<HTMLDetailsElement>("details.ppw-business-show")]
+       .find(x=>x.dataset.showId===show.showId);
+      if(match){match.open=true;match.scrollIntoView({
+       behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
+       block:"center"});}
+     };
+     const plot=el("span","ppw-business-trend-plot");
+     const axis=el("span","ppw-business-trend-axis");
+     const bar=el("span","ppw-business-trend-column "+
+      (show.netResult>=0?"ppw-business-trend-gain":"ppw-business-trend-loss"));
+     bar.style.height=(Math.max(5,Math.round(Math.abs(show.netResult)/max*43)))+"%";
+     plot.append(axis,bar);
+     pick.append(el("small","ppw-business-trend-value",
+      money(show.netResult)),plot,el("small","ppw-business-trend-week",
+      "Y"+show.year+" W"+show.week));
+     bars.append(pick);
+    }
+    scroll.append(bars);panel.append(scroll);section.append(panel);
+   }
    for(const show of view.shows){
     const card=document.createElement("details");
-    card.className="ppw-business-show";
+    card.className="ppw-business-show";card.dataset.showId=show.showId;
     const summary=el("summary","");
     summary.append(el("strong","",show.name),
      el("span","ppw-business-muted","Y"+show.year+" W"+show.week+

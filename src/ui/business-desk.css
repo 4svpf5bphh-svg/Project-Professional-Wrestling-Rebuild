@@ -48,3 +48,34 @@
  .ppw-business-show>summary{display:grid;grid-template-columns:1fr 1fr auto;
  align-items:center}
 }
+/* Verified show receipts repackaged as a sports-broadcast finance pulse. */
+.ppw-business-event-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}
+.ppw-business-event-stat{display:grid;gap:5px;padding:13px;border:1px solid rgba(117,205,235,.22);
+ border-radius:13px;background:linear-gradient(130deg,#1a344b,#0e2032);min-width:0}
+.ppw-business-event-stat>span{font-size:10px;letter-spacing:.09em;color:#8fd9f1;font-weight:800}
+.ppw-business-event-stat>strong{font-size:clamp(17px,4.5vw,24px);overflow-wrap:anywhere;
+ font-variant-numeric:tabular-nums}
+.ppw-business-event-stat>small{font-size:11px;color:#b7cbda;line-height:1.35}
+.ppw-business-trend{margin:15px 0 23px;border:1px solid rgba(119,211,240,.24);
+ padding:15px 12px;border-radius:17px;background:linear-gradient(140deg,#10283a,#0a182b)}
+.ppw-business-trend h3{font-size:17px;margin:0 0 4px}
+.ppw-business-trend-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+ padding:10px 4px 6px}
+.ppw-business-trend-bars{display:flex;align-items:stretch;gap:7px;min-width:max-content}
+.ppw-business-trend-pick{display:flex;flex-direction:column;align-items:center;min-height:184px;
+ width:76px;border:1px solid #37536b;border-radius:10px;background:#0d1e31;
+ color:#eaf6ff;padding:8px 4px;cursor:pointer}
+.ppw-business-trend-pick:focus-visible{outline:2px solid #87e5ff;outline-offset:3px}
+.ppw-business-trend-value{font-size:10px;font-variant-numeric:tabular-nums;font-weight:800}
+.ppw-business-trend-week{font-size:10px;color:#a9c8da;font-weight:750}
+.ppw-business-trend-plot{display:block;position:relative;width:100%;height:122px;margin:4px 0}
+.ppw-business-trend-axis{position:absolute;top:50%;left:0;right:0;height:1px;background:#7192ac}
+.ppw-business-trend-column{position:absolute;left:22%;right:22%;border-radius:4px 4px 0 0;min-height:3px}
+.ppw-business-trend-gain{bottom:50%;background:linear-gradient(0deg,#187966,#5dffcd)}
+.ppw-business-trend-loss{top:50%;background:linear-gradient(180deg,#e38470,#ba4e62);
+ border-radius:0 0 4px 4px}
+@media(min-width:630px){.ppw-business-event-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-business-trend-pick{transition:border-color .15s,transform .15s}
+ .ppw-business-trend-pick:hover{border-color:#86dfff;transform:translateY(-2px)}
+}
