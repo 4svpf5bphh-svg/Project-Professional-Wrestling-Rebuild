@@ -187,3 +187,40 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  expect(await page.evaluate(()=>
   document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
+
+test("Backstage phone inbox stays visible without seeded personas; local filters do not query Neon",async({page})=>{
+ const methods:string[]=[];
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON();
+  methods.push(request.method);
+  if(request.method==="overview")return route.fulfill({json:overview});
+  if(request.method==="backstage")return route.fulfill({json:{
+   personId:null,persona:null,personName:"",roster:[{
+    personId:"p-adams",name:"Ava Adams",isCurrent:true,morale:65,
+    momentum:52,lastMessage:null,latestIncoming:{
+     archived:false,read_week_index:null,status:"PENDING",
+     kind:"ROLE_USAGE",created_week_index:0}
+   },{
+    personId:"p-stone",name:"Ben Stone",isCurrent:true,morale:75,
+    momentum:66,lastMessage:null,latestIncoming:{
+     archived:false,read_week_index:0,status:"NOTED",
+     kind:"GOOD_NEWS",created_week_index:0}
+   }],conversations:[]
+  }});
+  await route.fulfill({json:{}});
+ });
+ await page.goto("/#/backstage");
+ await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.locator(".ppw-backstage-contact")).toHaveCount(2);
+ await expect(page.locator(".ppw-backstage-avatar")).toHaveCount(2);
+ const before=methods.length;
+ await page.getByRole("button",{name:"Unread"}).click();
+ await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
+ await expect(page.getByRole("button",{name:/Ava Adams/})).toBeVisible();
+ expect(methods.length,"Inbox filter is client-only").toBe(before);
+ const search=page.getByRole("searchbox",{name:"Search Backstage conversations"});
+ await search.fill("Nobody matches");
+ await expect(page.getByText("No matching conversations.")).toBeVisible();
+ expect(methods.length,"Inbox search is client-only").toBe(before);
+});
