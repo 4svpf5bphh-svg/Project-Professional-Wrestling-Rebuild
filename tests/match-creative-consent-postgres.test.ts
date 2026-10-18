@@ -8,6 +8,9 @@ import {showCardEditorAsActor,requestMatchConsentAsActor,
  saveCardEditorAsActor,markPreparedShowReadyAsActor}
  from "../src/api/world-service.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("contractual veto, consent, refusal, rewritten finish and confirmed card are authoritative",{
