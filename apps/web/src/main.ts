@@ -53,7 +53,7 @@ function openSection(section:HostSection){
  drawerExpanded=false;
  const target=hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
- else renderSection();
+ else renderNavigation(section);
 }
 
 function renderNavigation(section:HostSection){
