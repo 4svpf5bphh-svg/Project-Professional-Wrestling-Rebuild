@@ -58,7 +58,7 @@ test("Backstage iPhone inbox avoids persona hydration: four bounded SQL reads fo
   assert.equal(sample.queryCount,4);
   assert.ok(sample.resultRows<=110,"No rival roster or historical World data is hydrated");
   console.log("PPW Backstage inbox PostgreSQL budget:",JSON.stringify(sample));
-  await assert.rejects(readPortablePersonaWorkspace(measured,{
+  await assert.rejects(readPortablePersonaWorkspace(db.pool,{
    worldId,promotionId,playerId,personId:"worker-1",inboxOnly:true}),
    /Inbox request cannot select/);
   const beforeFull=meter.assertBudget({maxQueries:4,maxResultBytes:80_000}).queryCount;

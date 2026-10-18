@@ -487,7 +487,7 @@ test("Backstage messages read and archive in place without fetching the entire i
  await list.first().click();
  await expect(page.getByLabel("Conversation with Ada Stone")).toBeVisible();
  expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
- expect(methods.filter(m=>m==="markBackstageRead")).toHaveLength(1);
+ await expect.poll(()=>methods.filter(m=>m==="markBackstageRead").length).toBe(1);
  await expect(page.locator(".ppw-persona-chat .ppw-backstage-date")).toContainText(["Y1 · W5"]);
  await page.getByRole("button",{name:"Back to messages"}).click();
  await expect(page.locator(".ppw-messenger-inbox-count")).toContainText("0 unread");

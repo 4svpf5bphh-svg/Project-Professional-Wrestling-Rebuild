@@ -473,7 +473,7 @@ export async function workingConnectionsAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  if(personId!==undefined)validate(personId,"wrestler");
  return readWorkingConnections(context.pool,{
-  worldId,promotionId,playerId:context.actor.playerId,personId,inboxOnly});
+  worldId,promotionId,playerId:context.actor.playerId,personId});
 }
 
 /** Original PPW wrestler-owned career persona. Actor is verified by the host. */
@@ -483,7 +483,7 @@ export async function portablePersonaAsActor(context:WorldApiContext,
  validate(worldId,"World");validate(promotionId,"promotion");
  if(personId!==undefined)validate(personId,"wrestler");
  return readPortablePersonaWorkspace(context.pool,{
-  worldId,promotionId,playerId:context.actor.playerId,personId});
+  worldId,promotionId,playerId:context.actor.playerId,personId,inboxOnly});
 }
 export async function requestPersonaAsActor(context:WorldApiContext,
  input:Omit<PersonaChangeInput,"playerId">){
