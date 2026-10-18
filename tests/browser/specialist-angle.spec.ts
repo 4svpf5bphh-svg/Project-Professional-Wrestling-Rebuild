@@ -149,3 +149,49 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  expect(methods).not.toContain("talent");
  expect(methods).not.toContain("wrestlerProfile");
 });
+
+test("iPhone consults only a saved match and preserves the promoter's planned finish",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4,decision:"NOT_REQUESTED"|"DECLINED"="NOT_REQUESTED";
+ const methods:string[]=[];
+ await page.route("**/api/session",async route=>route.fulfill({json:session}));
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(request.method);methods.push(method);
+  if(method==="creativeConsent"){
+   expect(request.slotId).toBe("bout");
+   expect(request.personId).toBe("bob");
+   expect(request.expectedRevision).toBe(4);
+   decision="DECLINED";revision++;
+   await route.fulfill({json:{status:"APPLIED",result:{
+    slotId:"bout",personId:"bob",decision,existing:false
+   }}});
+   return;
+  }
+  const card={
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+   day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+    {personId:"bob",name:"Bob",division:"MEN"}],
+   creativeConcerns:[{showId:"weekly",slotId:"bout",personId:"bob",
+    contractId:"contract-bob",name:"Bob",reason:"PROTECTED_LOSS",
+    requiresConsent:true,signature:"exact-script",decision}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match}]
+  };
+  await route.fulfill({json:method==="planner"?planner:method==="load"?card:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page.getByText("1 match approval to resolve")).toBeVisible();
+ await expect(page.getByText("A clean or submission loss needs agreement")).toBeVisible();
+ await page.getByRole("button",{name:"Ask Bob"}).click();
+ await expect(page.getByText("The wrestler declined these terms.")).toBeVisible();
+ await expect(page.getByText("DECLINED",{exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Ask Bob"})).toHaveCount(0);
+ await expect(page.locator(".ppw-card-lineup")).toContainText("Clean Pin");
+ expect(methods).toEqual(["planner","load","creativeConsent","load"]);
+ expect(methods).not.toContain("talent");
+ expect(methods).not.toContain("wrestlerProfile");
+});
