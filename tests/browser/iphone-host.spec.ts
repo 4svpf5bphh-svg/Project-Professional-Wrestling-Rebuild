@@ -286,3 +286,48 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  await expect(selectors.nth(1)).toHaveValue("PERSON:bob");
  expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
 });
+
+test("Industry featured wrestlers load only on expansion, cache through local filters and open the universal dossier",async({page})=>{
+ const requests:string[]=[];
+ const hub={
+  worldName:"Genesis",year:1,week:5,phase:"OPEN",nextLockEpoch:Date.now()/1000+3000,
+  ownPromotionId:"aew",ownPromotionName:"AEW",
+  promotions:[
+   {promotionId:"aew",name:"AEW",tier:"GLOBAL",rank:1,mediaReach:80,
+    managementMode:"HUMAN",latestCompletedWeekIndex:null,
+    recentAverageCrowd:null,recentShowCount:0,isYours:true},
+   {promotionId:"wwe",name:"WWE",tier:"GLOBAL",rank:2,mediaReach:70,
+    managementMode:"AI",latestCompletedWeekIndex:null,
+    recentAverageCrowd:null,recentShowCount:0,isYours:false}
+  ],broadcasts:[]
+ };
+ const featured={promotionId:"wwe",promotionName:"WWE",moreThanEight:false,
+  people:[{personId:"cody",name:"Cody Rhodes",division:"MEN",gimmickId:"HERO",
+   alignment:"FACE",popularity:95,recognition:97,momentum:88,
+   inRingQuality:86,matchCraft:87,presentation:92}]};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  requests.push(method);
+  await route.fulfill({json:method==="industry"?hub:
+   method==="industryFeatured"?featured:{}});
+ });
+ await page.goto("/#/industry");
+ await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
+ expect(requests).toEqual(["industry"]);
+ const rival=page.locator("details.ppw-industry-company").filter({hasText:"WWE"});
+ await rival.locator("summary").click();
+ await expect(rival.getByRole("heading",{name:"Featured wrestlers"})).toBeVisible();
+ await expect(rival.getByText("Cody Rhodes",{exact:true})).toBeVisible();
+ expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
+ await page.getByLabel("Search promotions").fill("AEW");
+ await expect(rival).toHaveCount(0);
+ await page.getByLabel("Search promotions").fill("");
+ const restored=page.locator("details.ppw-industry-company").filter({hasText:"WWE"});
+ await restored.locator("summary").click();
+ await expect(restored.getByText("Cody Rhodes",{exact:true})).toBeVisible();
+ expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
+ await restored.locator(".ppw-wrestler-card").click();
+ await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
+ expect(requests.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
+});
