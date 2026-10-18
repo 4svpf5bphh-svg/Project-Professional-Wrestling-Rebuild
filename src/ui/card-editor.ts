@@ -228,7 +228,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    await load();
    if(response.status==="STALE")
     error="The World changed. Recheck your show and confirm again.";
-   else success="Show confirmed for the next World Lock";
+   else success="Your card is confirmed for the weekly deadline";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -236,7 +236,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   root.replaceChildren();
   root.classList.add("ppw-editor");
   const top=el("header","ppw-top");
-  top.append(el("div","ppw-eyebrow","PPW  /  BOOKING"),
+  top.append(el("div","ppw-eyebrow","CREATIVE / SHOW BOOKING"),
    el("h1","","The Card"));
   const headline=el("p","ppw-muted",loading?"Loading your show…":
    view?"Year "+view.year+" · Week "+view.week+" · "+

@@ -60,7 +60,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
   const head=el("header","ppw-pair-hero");
   if(onBack)head.append(btn("← Back to booking",onBack,working));
-  head.append(el("span","ppw-eyebrow","PPW / TAG DIVISION"),
+  head.append(el("span","ppw-eyebrow","ROSTER / TAG DIVISION"),
    el("h1","","Tag Teams"),
    el("p","ppw-muted","Portable tag identities, real match-earned chemistry and championship history."));
   root.append(head);
@@ -114,7 +114,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   find.oninput=()=>{rosterSearch=find.value;paintChoices();};
   paintChoices();
   create.append(btn(working?"Forming…":"Form team",()=>void form(),!editable()));
-  if(!view.canEdit)create.append(el("p","ppw-muted","World Lock is closed."));
+  if(!view.canEdit)create.append(el("p","ppw-muted","The weekly deadline has passed. Team changes reopen next week."));
   root.append(create);
   const section=el("section","ppw-pair-list");
   section.append(el("h2","","Your tag division"));

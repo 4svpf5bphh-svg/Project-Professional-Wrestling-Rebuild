@@ -26,7 +26,7 @@ export function mountWorkingConnections(root:HTMLElement,
    const back=el("button","ppw-connections-button","← Back to card") as HTMLButtonElement;
    back.type="button";back.onclick=onBack;header.append(back);
   }
-  header.append(el("span","ppw-eyebrow","PPW · LOCKER ROOM"),
+  header.append(el("span","ppw-eyebrow","THE LOCKER ROOM / RELATIONSHIPS"),
    el("h1","","Working connections"),
    el("p","ppw-muted","Who works well together? This is verified in-ring cooperation, not scripted animosity."));
   root.append(header);

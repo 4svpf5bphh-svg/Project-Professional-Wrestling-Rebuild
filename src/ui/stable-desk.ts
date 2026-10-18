@@ -58,7 +58,7 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
   root.replaceChildren();
   const header=el("header","ppw-stable-header");
   if(onBack)header.append(btn("← Back to booking",onBack));
-  header.append(el("span","ppw-eyebrow","PPW • LOCKER ROOM"),
+  header.append(el("span","ppw-eyebrow","THE LOCKER ROOM / FACTIONS"),
    el("h1","","Stables"),
    el("p","ppw-muted",
     "Build and manage factions. A scripted exit or reconciliation never silently changes this roster."));

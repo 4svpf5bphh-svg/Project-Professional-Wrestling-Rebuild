@@ -36,7 +36,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  function draw(){
   root.classList.add("ppw-editor","ppw-business");root.replaceChildren();
   const head=el("header","ppw-business-head");
-  head.append(el("span","ppw-business-kicker","PPW / THE FRONT OFFICE"),
+  head.append(el("span","ppw-business-kicker","THE FRONT OFFICE"),
    el("h1","","Business"),
    el("p","ppw-business-muted",
     view?view.name+" · Year "+view.year+" / Week "+view.week:
@@ -62,7 +62,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     metric("RUNWAY",view.runwayWeeks===null?
      view.lastWeeklyNet===null?"Not settled":"No projected shortfall":
       view.runwayWeeks+" weeks",
-      view.financialDistress??"Awaiting first World resolution"));
+      view.financialDistress??"Awaiting the first weekly accounts"));
    root.append(cards);
    const flow=el("section","ppw-business-panel");
    flow.append(el("h2","","Weekly commitments"),
@@ -89,7 +89,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const section=el("section","ppw-business-panel");
    section.append(el("h2","","Recent settled events"),
     el("p","ppw-business-muted",
-     "Most recent 12 verified shows. Live-gate revenue, venue and production costs are recorded at World resolution."));
+     "Your 12 most recent shows. Ticket income, venue hire and production spending are reflected in each week's accounts."));
    if(!view.shows.length)section.append(el("p","ppw-business-muted",
     "No settled show-finance receipts yet."));
    for(const show of view.shows){

@@ -20,7 +20,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
  try{
   const directory=await port.loadDirectory();
   const header=element("header","ppw-title-hero");
-  const eyebrow=element("span","ppw-eyebrow","PPW / THE RECORD BOOKS");
+  const eyebrow=element("span","ppw-eyebrow","CHAMPIONSHIPS / THE RECORD BOOKS");
   const heading=element("h1","","Championships");
   const subtitle=element("p","ppw-muted",
    directory.worldName+" · Year "+directory.year+" · Week "+directory.week);
