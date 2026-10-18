@@ -51,11 +51,11 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  await page.getByRole("spinbutton",{name:"Agreement weeks for Alice"}).blur();
  await page.getByRole("button",{name:"Ask Alice about the rivalry"}).click();
  await expect(page.getByText(/The wrestler has considered/)).toBeVisible();
- await expect(page.getByText(/Agreed · Until Y1 W9/)).toBeVisible();
+ await expect(page.getByText(/Agreed · Through Y1 W8/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Ask Alice about the rivalry"})).toHaveCount(0);
  await expect(page.getByRole("heading",{name:"Active rivalries · 1"})).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes"]);
  await page.reload();
- await expect(page.getByText(/Agreed · Until/)).toBeVisible();
+ await expect(page.getByText(/Agreed · Through/)).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes","programmes"]);
 });
