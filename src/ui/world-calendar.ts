@@ -129,8 +129,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   cadence.onchange=()=>{
    customField.hidden=cadence.value!=="custom";
    if(cadence.value!=="custom"){
-    editing=setSeriesCadence(s,Number(cadence.value));
-    Object.assign(s,editing);
+    Object.assign(s,setSeriesCadence(s,Number(cadence.value)));
     customCadence.value=String(s.cadenceWeeks);
     cycle.value=String(s.anchorWeek+1);
    }
