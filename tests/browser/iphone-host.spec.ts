@@ -136,7 +136,15 @@ test("named Home concerns open only the intended wrestler conversation",async({p
  expect(methods).toEqual(["overview"]);
  await prompt.click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
- await expect(page.getByRole("region",{name:"Conversation with Ava Adams"})).toBeVisible();
+ try{await expect(page.getByRole("region",{name:"Conversation with Ava Adams"})).toBeVisible();}
+ catch(e){
+  const visible=await page.evaluate(()=>({
+   screen:document.documentElement.dataset.ppwScreen,
+   body:document.body.innerText.slice(-2500),
+   hash:location.hash,thread:document.querySelector(".ppw-persona-chat")?.outerHTML.slice(0,600)
+  }));
+  throw new Error("Targeted Backstage state "+JSON.stringify({visible,methods})+": "+String(e));
+ }
  await expect(page.getByRole("button",{name:"Back to messages"})).toBeVisible();
  await expect.poll(()=>methods.length).toBe(3);
  expect(methods).toEqual(["overview","backstage","markBackstageRead"]);
