@@ -41,7 +41,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    if(result&&typeof result==="object"&&"status" in result&&
     result.status==="STALE"){
     data=await port.load();
-    throw new Error("World changed. Review your calendar and save again.");
+    throw new Error("The schedule has changed. Review the latest dates before saving.");
    }
    data=await port.load();editing=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Calendar change failed";}
@@ -78,11 +78,27 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    button("Cancel",()=>{editing=null;render();},busy));
   return section;
  }
+ /** Broadcast-style public event identity; no network or invented attendance. */
+ function eventTile(name:string,role:ShowRole,eventType:string,
+  owner?:string){
+  const major=eventType==="MAJOR";
+  const card=node("div","","ppw-calendar-event "+(major?
+   "ppw-calendar-event-major":"ppw-calendar-event-weekly"));
+  const emblem=node("span",major?"★":role==="FLAGSHIP"?"◆":"◇",
+   "ppw-calendar-event-emblem");
+  emblem.setAttribute("aria-hidden","true");
+  const copy=node("div","","ppw-calendar-event-copy");
+  copy.append(node("small",owner??(major?"PREMIUM / SPECIAL":"WEEKLY BROADCAST"),
+   "ppw-calendar-event-strap"),
+   node("strong",name,"ppw-calendar-event-name"),
+   node("span",label(role),"ppw-calendar-event-role"));
+  card.append(emblem,copy);return card;
+ }
  function render(){
   root.replaceChildren();root.classList.add("ppw-world-calendar");
   const head=node("header","","ppw-calendar-header");
   head.append(button("← Planner",back),node("h1","Show Calendar"),
-   node("p","Recurring A/B shows, specials and premium events."));
+   node("p","Your weekly broadcasts, major events and special attractions."));
   root.append(head);
   if(error)root.append(node("p",error,"ppw-calendar-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void load(),busy));return;}
@@ -116,22 +132,29 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    for(const w of (ppvOnly?data.weeks:data.weeks.slice(0,expanded?52:12))){
     const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
     if(!shows.length)continue;
-    const article=node("article","","ppw-calendar-occurrence");
-    article.append(node("strong","Year "+w.year+" · Week "+w.week));
-    for(const s of shows)article.append(node("p",s.name+" · "+label(s.role)));
+    const article=node("article","","ppw-calendar-occurrence"+
+     (w.offset===0?" ppw-calendar-current":""));
+    const heading=node("div","","ppw-calendar-week-head");
+    heading.append(node("strong","YEAR "+w.year+" · WEEK "+w.week),
+     ...(w.offset===0?[node("span","THIS WEEK","ppw-calendar-now")]:[]));
+    article.append(heading);
+    for(const s of shows)article.append(eventTile(s.name,s.role,s.eventType));
     upcoming.append(article);
    }
    if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
     expanded=!expanded;render();
    }));
   }else{
-   upcoming.append(node("p","Public event identities only; rival venues and unfinished cards remain private."));
+   upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."));
    for(const w of data.worldWeeks??[]){
     if(!w.events.length)continue;
-    const article=node("article","","ppw-calendar-occurrence");
-    article.append(node("strong","Year "+w.year+" · Week "+w.week));
-    for(const e of w.events)article.append(node("p",
-     e.promotionName+" · "+e.name+" · "+label(e.role)));
+    const article=node("article","","ppw-calendar-occurrence"+
+     (w.offset===0?" ppw-calendar-current":""));
+    const heading=node("div","","ppw-calendar-week-head");
+    heading.append(node("strong","YEAR "+w.year+" · WEEK "+w.week));
+    article.append(heading);
+    for(const e of w.events)
+     article.append(eventTile(e.name,e.role,e.eventType,e.promotionName));
     upcoming.append(article);
    }
   }
