@@ -212,6 +212,11 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  });
  await page.goto("/#/backstage");
  await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.locator(".ppw-messenger.ppw-messenger-inbox")).toHaveCount(1);
+ await expect(page.getByRole("navigation",{name:"Backstage messages and contacts"})).toBeVisible();
+ await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 threads");
+ await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("1 unread");
+ await expect(page.locator(".ppw-messenger-awaiting")).toHaveCount(1);
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(2);
  await expect(page.locator(".ppw-backstage-avatar")).toHaveCount(2);
  const before=methods.length;
