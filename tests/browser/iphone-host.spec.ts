@@ -363,7 +363,7 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
  await page.getByRole("button",{name:"Events"}).click();
  await expect(page.getByText("EVENT RESULT")).toBeVisible();
- await expect(page.getByText("$1,000",{exact:true})).toBeVisible();
+ await expect(page.locator(".ppw-business-event-stat").filter({hasText:"EVENT RESULT"}).locator("strong")).toContainText("1,000");
  const group=page.getByRole("group",{name:"Event profit and loss"});
  await expect(group).toBeVisible();
  await expect(group.getByRole("button")).toHaveCount(2);
@@ -373,5 +373,42 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
  await expect(expanded.getByText("Gate revenue")).toBeVisible();
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
  expect(methods).toEqual(["business"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
+test("Calendar highlights flagship and premium broadcasts without additional reads",async({page})=>{
+ await page.setViewportSize({width:360,height:780});
+ const flagship={seriesId:"weekly",name:"Dynamite",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
+ const ppv={seriesId:"premium",name:"All In",role:"PREMIUM",
+  eventType:"MAJOR",cadenceWeeks:52,anchorWeek:5,importance:95,active:true};
+ const calendar={promotionName:"AEW",year:1,week:5,worldRevision:4,canEdit:true,
+  series:[flagship,ppv],weeks:[
+   {year:1,week:5,offset:0,shows:[flagship]},
+   {year:1,week:6,offset:1,shows:[ppv]}
+  ],
+  worldWeeks:[{year:1,week:6,offset:1,events:[{
+   promotionId:"wwe",promotionName:"WWE",seriesId:"mania",name:"WrestleMania",
+   role:"PREMIUM",eventType:"MAJOR",importance:99
+  }]}]
+ };
+ const methods:string[]=[];
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=route.request().postDataJSON().method;
+  methods.push(method);
+  await route.fulfill({json:method==="calendar"?calendar:overview});
+ });
+ await page.goto("/#/calendar");
+ await expect(page.getByRole("heading",{name:"Show Calendar"})).toBeVisible();
+ await expect(page.locator(".ppw-calendar-event-weekly").getByText("Dynamite")).toBeVisible();
+ await expect(page.locator(".ppw-calendar-event-major").getByText("All In")).toBeVisible();
+ await page.getByRole("button",{name:"PPVs & specials"}).click();
+ await expect(page.locator(".ppw-calendar-occurrence")).toHaveCount(1);
+ await expect(page.locator(".ppw-calendar-occurrence").getByText("All In")).toBeVisible();
+ await page.getByRole("button",{name:"Across the World"}).click();
+ await expect(page.locator(".ppw-calendar-event-major").getByText("WrestleMania")).toBeVisible();
+ await expect(page.locator(".ppw-calendar-event-strap")).toContainText(["WWE"]);
+ expect(methods).toEqual(["calendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
