@@ -9,7 +9,8 @@ export interface PlayerWorldOverview {
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
-   pendingContractOffers:boolean;plannedShows:number;};
+   pendingContractOffers:boolean;plannedShows:number;
+   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];};
  };
 }
 
@@ -35,7 +36,7 @@ export async function readPlayerWorldOverview(
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
    pending_backstage:boolean|null;expiring_talent:boolean|null;
-   pending_contract_offers:boolean|null;
+   pending_contract_offers:boolean|null;offer_results:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -46,7 +47,8 @@ export async function readPlayerWorldOverview(
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
-    notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers
+    notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
+    notices.offer_results
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -82,7 +84,25 @@ export async function readPlayerWorldOverview(
          AND (w.year-1)*52+w.week+1 LIMIT 1) AS expiring_talent,
      EXISTS (SELECT 1 FROM ppw_contract_offers o
        WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
-        AND o.status='PENDING' LIMIT 1) AS pending_contract_offers
+        AND o.status='PENDING' LIMIT 1) AS pending_contract_offers,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+       'id','offer-result:'||recent.offer_id,'personId',recent.person_id,
+       'name',recent.name,'status',recent.status)
+       ORDER BY recent.submitted_week_index DESC,recent.offer_id DESC),'[]'::jsonb)
+      FROM (SELECT o.offer_id,o.person_id,person.name,o.status,o.submitted_week_index
+       FROM ppw_contract_offers o
+       JOIN ppw_people person ON person.world_id=o.world_id
+        AND person.person_id=o.person_id
+       WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
+        AND o.status IN ('ACCEPTED','REJECTED')
+        AND o.submitted_week_index BETWEEN
+         greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1
+        AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
+          WHERE dismissal.world_id=o.world_id
+           AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
+           AND dismissal.attention_id='offer-result:'||o.offer_id)
+       ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 5) recent
+     ) AS offer_results
    ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -103,7 +123,14 @@ export async function readPlayerWorldOverview(
      pendingBackstage:x.pending_backstage===true,
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
-     plannedShows:x.planned_shows??0}
+     plannedShows:x.planned_shows??0,
+     offerResults:Array.isArray(x.offer_results)?
+      x.offer_results.filter((news):news is {
+       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"
+      }=>news!==null&&typeof news==="object"&&
+       typeof news.id==="string"&&typeof news.personId==="string"&&
+       typeof news.name==="string"&&
+       (news.status==="ACCEPTED"||news.status==="REJECTED")):[]}
    }:null
   };
  });

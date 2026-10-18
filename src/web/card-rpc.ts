@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {overviewAsActor} from "../api/world-service.js";
+import {overviewAsActor,dismissAttentionAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,industryFeaturedAsActor,
@@ -24,6 +24,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const showId=["load","talent","save","ready","results"].includes(method)?
   id("showId"):"";
  if(method==="overview")return overviewAsActor(context,worldId);
+ if(method==="dismissAttention")return dismissAttentionAsActor(context,
+  worldId,promotionId,id("attentionId"));
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);

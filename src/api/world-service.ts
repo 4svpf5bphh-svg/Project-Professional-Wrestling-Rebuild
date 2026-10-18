@@ -25,6 +25,7 @@ import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirect
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
+import {dismissResolvedOfferAttention} from "../db/player-attention-dismissals.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
@@ -56,6 +57,14 @@ export async function businessAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readBusinessWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+/** Acknowledging completed contract news never touches the World revision. */
+export async function dismissAttentionAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,attentionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return dismissResolvedOfferAttention(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId,attentionId});
 }
 /** A single authenticated profile: public wrestler facts; contract payments remain private. */
 export async function wrestlerProfileAsActor(context:WorldApiContext,
