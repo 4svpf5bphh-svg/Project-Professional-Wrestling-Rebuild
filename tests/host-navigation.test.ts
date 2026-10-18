@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {HOST_SECTIONS,hostSectionHash,readHostSection}
+import {HOST_SECTIONS,hostSectionHash,readHostSection,
+ contractAttentionHash,readContractFocus}
  from "../src/web/host-navigation.js";
 test("every workspace is addressable and all routes avoid private credentials",()=>{
  for(const item of HOST_SECTIONS){
@@ -24,5 +25,21 @@ test("original five-root drawer maps gameplay desks without extra routes",async(
  for(const dest of allDestinations){
   assert.equal(readHostSection(hostSectionHash(dest)),dest);
   assert.equal(HOST_DRAWER_ROOTS.find(x=>x.key===drawerRootForSection(dest))?.destinations.some(x=>x[0]===dest),true);
+ }
+});
+
+test("Home alerts deep-link to the right contract queue without revealing wrestler IDs",()=>{
+ assert.equal(contractAttentionHash("EXPIRING"),"#/contracts/expiring");
+ assert.equal(contractAttentionHash("PENDING"),"#/contracts/pending");
+ for(const focus of ["EXPIRING","PENDING"] as const){
+  const url=contractAttentionHash(focus);
+  assert.equal(readHostSection(url),"contracts");
+  assert.equal(readContractFocus(url),focus);
+ }
+ assert.equal(readContractFocus("#/contracts"),"ATTENTION");
+ for(const bad of ["#/contracts/other","#/contracts/expiring?person=123",
+  "#/contracts/pending/secret","#/contracts/%2e%2e"]){
+  assert.equal(readHostSection(bad),"home");
+  assert.equal(readContractFocus(bad),"ATTENTION");
  }
 });

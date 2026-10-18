@@ -5,7 +5,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage}
  from "../../../src/web/card-browser.js";
 import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
- type HostSection,type HostDrawerRoot} from "../../../src/web/host-navigation.js";
+ type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus, type ContractFocus} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
 import "../polish.css";
@@ -49,9 +49,10 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
 }
 
 /** Mobile shell is independent of the workspace root and remains accessible. */
-function openSection(section:HostSection){
+function openSection(section:HostSection,focus?:ContractFocus){
  drawerExpanded=false;
- const target=hostSectionHash(section);
+ const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
+  contractAttentionHash(focus):hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
  else renderNavigation(section);
 }
@@ -144,7 +145,7 @@ function renderSection(){
   case "roster":mountRosterPage(view,scope);break;
   case "backstage":mountPersonaPage(view,scope);break;
   case "market":mountTalentMarketPage(view,scope);break;
-  case "contracts":mountContractsPage(view,scope);break;
+  case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "industry":mountIndustryPage(view,scope);break;

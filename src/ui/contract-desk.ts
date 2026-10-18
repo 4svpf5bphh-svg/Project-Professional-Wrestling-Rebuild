@@ -22,9 +22,11 @@ const title=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/(^|\s)\S/g,
 const btn=(value:string,click:()=>void,disabled=false)=>{
  const x=el("button","ppw-contract-button",value) as HTMLButtonElement;
  x.type="button";x.disabled=disabled;x.onclick=click;return x;};
-export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?:()=>void){
+export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?:()=>void,
+ initialFocus:"ATTENTION"|"EXPIRING"|"PENDING"="ATTENTION"){
  let view:ContractDeskView|null=null,working=false,error="",notice="";
- let filter:"ALL"|"ATTENTION"|"NO_DATES"|"EXPIRING"="ATTENTION";
+ let filter:"ALL"|"ATTENTION"|"NO_DATES"|"EXPIRING"=
+  initialFocus==="EXPIRING"?"EXPIRING":"ATTENTION";
  let search="";
  let amounts=new Map<string,{dates:number;payment:number}>();
  let pending=new Map<string,string>();
@@ -55,6 +57,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     "Year "+view.year+" · Week "+view.week+" · Your promotion only":
     "Checking your wrestlers' agreements…"));
   root.append(header);
+  if(initialFocus==="PENDING")
+   root.append(el("p","ppw-contract-context",
+    "Your outstanding offers, renewals and date requests are listed first."));
+  else if(initialFocus==="EXPIRING")
+   root.append(el("p","ppw-contract-context",
+    "Contracts closest to expiry are shown below. Review the terms before your next show."));
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(notice)root.append(el("p","ppw-alert ppw-success",notice));
   if(!view){root.append(btn(working?"Loading…":"Retry",()=>void load(),working));return;}

@@ -6,7 +6,7 @@ import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
-import type {HostSection} from "./host-navigation.js";
+import type {HostSection,ContractFocus} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
@@ -43,7 +43,7 @@ type Scope=CardSessionScope;
  * Navigating does not advance simulation or create a new World.
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
- onNavigate?:(section:HostSection)=>void){
+ onNavigate?:(section:HostSection,focus?:ContractFocus)=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -54,6 +54,12 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
   contracts:go("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope))),
+  contractsExpiring:onNavigate?()=>onNavigate("contracts","EXPIRING"):
+   ()=>mountContractDesk(root,contractPort(call,root,scope),
+    ()=>mountWorldHomePage(root,scope),"EXPIRING"),
+  contractsPending:onNavigate?()=>onNavigate("contracts","PENDING"):
+   ()=>mountContractDesk(root,contractPort(call,root,scope),
+    ()=>mountWorldHomePage(root,scope),"PENDING"),
   backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope),
    ()=>mountProgrammePage(root,scope))),
@@ -242,9 +248,10 @@ export function mountTalentMarketPage(root:HTMLElement,scope:Scope){
  return mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET");
 }
 /** Contracts are promotion-private and require a real verified session. */
-export function mountContractsPage(root:HTMLElement,scope:Scope){
+export function mountContractsPage(root:HTMLElement,scope:Scope,
+ focus:ContractFocus="ATTENTION"){
  const call=createCardClient(scope);
- return mountContractDesk(root,contractPort(call,root,scope));
+ return mountContractDesk(root,contractPort(call,root,scope),undefined,focus);
 }
 
 function tagTeamPort(call:ReturnType<typeof createCardClient>,

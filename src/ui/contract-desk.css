@@ -56,3 +56,7 @@
 .ppw-contract-renegotiate>.ppw-contract-button{width:100%;margin-top:7px;
  border-color:#58a7ce;background:#176585;color:white;font-weight:750}
 @media(max-width:360px){.ppw-contract-renegotiate-fields{grid-template-columns:1fr}}
+
+.ppw-contract-context{padding:12px 14px;margin:8px 0 15px;border-radius:12px;
+ border-left:3px solid #72c8e9;background:linear-gradient(105deg,rgba(28,74,96,.55),rgba(13,33,47,.7));
+ font-size:13px;color:#d2edfb;line-height:1.5}

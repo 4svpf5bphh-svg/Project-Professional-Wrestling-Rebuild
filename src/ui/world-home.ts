@@ -5,6 +5,7 @@ import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
  planner():void;roster():void;market():void;contracts():void;
+ contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
 }
@@ -142,11 +143,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(attention?.expiringTalent)
    items.push({title:"Contracts approaching expiry",detail:
     "A wrestler's contract expires within the next two weeks.",
-    action:port.contracts,icon:"◈",level:"important"});
+    action:port.contractsExpiring??port.contracts,icon:"◈",level:"important"});
   if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:
     "Contract offers are pending. Check the negotiation desk for their status.",
-    action:port.contracts,icon:"◇",level:"normal"});
+    action:port.contractsPending??port.contracts,icon:"◇",level:"normal"});
   if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
