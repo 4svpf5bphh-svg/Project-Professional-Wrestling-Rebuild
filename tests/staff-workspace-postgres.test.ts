@@ -88,7 +88,7 @@ test("Staff permissions remain private, opt-in, revision-guarded and frozen afte
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_staff_continuity_settings","ppw_staff_employments",
-    "ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
+    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
     "ppw_venues","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[player,other]]);
