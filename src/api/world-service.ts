@@ -402,6 +402,16 @@ export async function completedShowArchiveAsActor(context:WorldApiContext,
   playerId:context.actor.playerId,cursor});
 }
 
+import {requestStandingCreativeAgreement,
+ type StandingRequest} from "../db/programme-creative-consent.js";
+export async function standingCreativeAgreementAsActor(context:WorldApiContext,
+ input:Omit<StandingRequest,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.programmeId,"programme");
+ validate(input.personId,"wrestler");
+ return requestStandingCreativeAgreement(context.pool,{
+  ...input,playerId:context.actor.playerId});
+}
 /** Promotion-scoped programme management, with the same verified actor as booking. */
 export async function programmeWorkspaceAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
