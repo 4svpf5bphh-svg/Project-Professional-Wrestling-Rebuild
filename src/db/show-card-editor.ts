@@ -500,22 +500,27 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Incomplete automatic rivalry match links");
    }
    if(authored!==undefined){
-    await tx.query("DELETE FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2"+
-     " AND kind='SEGMENT' AND NOT(slot_id=ANY($3::text[]))",
-     [input.worldId,input.showId,authored.map(s=>s.slotId)]);
-    if(authored.length){
-     const written=await tx.query<{slot_id:string}>([
-      "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)",
-      "SELECT $1,$2,x.slot_id,x.position,'SEGMENT',x.payload FROM",
-      "jsonb_to_recordset($3::jsonb) AS x(slot_id text,position integer,payload jsonb)",
-      "ON CONFLICT(world_id,draft_id,slot_id) DO UPDATE",
-      "SET position=EXCLUDED.position,kind='SEGMENT',payload=EXCLUDED.payload",
-      "RETURNING slot_id",
-     ].join(" "),[input.worldId,input.showId,
-      JSON.stringify(authored.map(s=>({slot_id:s.slotId,position:order.get(s.slotId)!,
-       payload:{...s.payload,position:order.get(s.slotId)!}})))]);
-     if(written.length!==authored.length)throw new Error("Incomplete segment write");
-    }
+    // Replace retired angles and upsert the new ones atomically in ONE query.
+    // Both sets are disjoint: retained slot IDs cannot be deleted here.
+    // This recovers the existing 15-query full-card save ceiling.
+    const written=await tx.query<{slot_id:string}>([
+     "WITH removed AS (",
+     "DELETE FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2",
+     "AND kind='SEGMENT' AND NOT(slot_id=ANY($4::text[]))",
+     "RETURNING slot_id",
+     "), saved AS (",
+     "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)",
+     "SELECT $1,$2,x.slot_id,x.position,'SEGMENT',x.payload FROM",
+     "jsonb_to_recordset($3::jsonb) AS x(slot_id text,position integer,payload jsonb)",
+     "ON CONFLICT(world_id,draft_id,slot_id) DO UPDATE",
+     "SET position=EXCLUDED.position,kind='SEGMENT',payload=EXCLUDED.payload",
+     "RETURNING slot_id",
+     ") SELECT slot_id FROM saved"
+    ].join(" "),[input.worldId,input.showId,
+     JSON.stringify(authored.map(s=>({slot_id:s.slotId,position:order.get(s.slotId)!,
+      payload:{...s.payload,position:order.get(s.slotId)!}}))),
+     authored.map(s=>s.slotId)]);
+    if(written.length!==authored.length)throw new Error("Incomplete segment write");
    }else if(segments.length){
     const moved=await tx.query<{slot_id:string}>([
      "UPDATE ppw_card_slots s SET position=x.position",
