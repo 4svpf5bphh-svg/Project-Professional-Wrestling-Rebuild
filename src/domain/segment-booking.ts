@@ -1,4 +1,5 @@
 import {validateAuthoredSegments,type AuthoredSegment,type SegmentKind,type VideoPurpose,type SegmentOutcome} from "../simulation/legacy/show-segments.js";
+import type {SegmentCreativeBeat} from "./segment-creative-beats.js";
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
@@ -21,6 +22,7 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
+ creativeBeat?:SegmentCreativeBeat;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";
 }

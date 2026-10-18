@@ -8,6 +8,7 @@ import {readCardParticipants} from "../domain/card-participants.js";
 import {validateAuthoredSegments,type AuthoredSegment}
  from "../simulation/legacy/show-segments.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
+import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 import type {SegmentCrowdContext}
  from "../simulation/legacy/segment-crowd.js";
 export interface CanonicalSegmentScope {
@@ -53,6 +54,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     kind:p.kind as AuthoredSegment["kind"],actorIds,targetIds,
     outcome:p.outcome as AuthoredSegment["outcome"],
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
+    ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
     ...(p.turnTargetAlignment===undefined?{}:{
      turnTargetAlignment:p.turnTargetAlignment as AuthoredSegment["turnTargetAlignment"]}),
     ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),

@@ -13,6 +13,7 @@ import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
+import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export interface CardEditorIdentity{
@@ -285,6 +286,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
    outcome:p.outcome as SegmentOutcome,
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
+   ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
    ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),

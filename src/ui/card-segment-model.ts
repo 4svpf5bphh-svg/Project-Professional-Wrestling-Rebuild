@@ -3,10 +3,12 @@ import {buildBookedSegmentPayload,type BookedSegmentPayload}
  from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose}
  from "../simulation/legacy/show-segments.js";
+import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
+ creativeBeat:SegmentCreativeBeat|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
 }
@@ -29,6 +31,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
+  creativeBeat:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
@@ -44,6 +47,9 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   actors:find(Array.isArray(p.actorIds)?p.actorIds:
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
+  creativeBeat:p.creativeBeat===undefined?null:
+   isSegmentCreativeBeat(p.creativeBeat,kind)?p.creativeBeat:
+    (()=>{throw new Error("Invalid scripted angle direction")})(),
   stableId:typeof p.stableId==="string"&&p.stableId.trim()?p.stableId:null,
   stableDecision:p.stableDecision==="ACCEPTED"||p.stableDecision==="REJECTED"?
    p.stableDecision:null,
@@ -74,6 +80,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   actorIds:s.actors.map(p=>p.personId),
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
+  ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
   ...(s.stableId?{stableId:s.stableId}:{}),
   ...(s.stableDecision&&["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)?
     {stableDecision:s.stableDecision}:{}),
