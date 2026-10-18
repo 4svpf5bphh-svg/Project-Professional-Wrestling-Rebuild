@@ -12,9 +12,10 @@ test("Profile and move editing pass authorised transport without a show",async()
  const call=createCardClient({worldId:"world",promotionId:"promotion",
   showId:"",csrfToken:"csrf"},transport);
  await call("wrestlerProfile",{personId:"wrestler"});
+ await call("wrestlerCareer",{personId:"wrestler"});
  await call("saveWrestlerRepertoire",{personId:"wrestler",requestId:"save",
   expectedRevision:1,primaryStyle:"TECHNICAL",secondaryStyle:null,
   signatureMoves:["Clothesline"],finishingMoves:["Chokeslam"]});
- assert.deepEqual(methods,["wrestlerProfile","saveWrestlerRepertoire"]);
+ assert.deepEqual(methods,["wrestlerProfile","wrestlerCareer","saveWrestlerRepertoire"]);
  await assert.rejects(call("forged-method"),/Unknown card action/);
 });

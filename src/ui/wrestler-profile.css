@@ -42,3 +42,35 @@
 .ppw-profile-style select{min-width:0;min-height:44px;padding:8px 10px;border:1px solid #37556d;
  border-radius:10px;background:#0a1a2c;color:#fff;font-size:16px}
 .ppw-profile-style select:disabled{opacity:.56}
+
+/* Wrestling record-book reveal: opt-in SQL, broadcast-quality hierarchy. */
+.ppw-profile-career{margin:15px 0;border-radius:19px;
+ border:1px solid #365f7d;background:linear-gradient(125deg,#1d314d,#081b31);
+ overflow:hidden}
+.ppw-profile-career-trigger{padding:18px 15px;cursor:pointer;min-height:67px;
+ display:grid;gap:5px;list-style-position:inside}
+.ppw-profile-career-trigger strong{font-size:17px;line-height:1.25;letter-spacing:-.02em}
+.ppw-profile-career-trigger small{font-size:11px;color:#bad5e6}
+.ppw-profile-career-body{padding:5px 14px 19px}
+.ppw-profile-career-scoreboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ppw-profile-career-stat{padding:12px 10px;background:#06162b;border:1px solid #284864;
+ border-radius:10px;display:grid;gap:5px}
+.ppw-profile-career-stat small{font-size:10px;color:#8bbdd6;font-weight:750}
+.ppw-profile-career-stat strong{font-size:22px;line-height:1.15;font-variant-numeric:tabular-nums}
+.ppw-profile-career-honors,.ppw-profile-career-recents{margin-top:22px}
+.ppw-profile-career-honors h3,.ppw-profile-career-recents h3{
+ font-size:14px;color:#e6f7ff;margin:0 0 10px;letter-spacing:.02em}
+.ppw-profile-career-match{border:1px solid #274c69;border-radius:12px;
+ background:#0b2036;padding:11px 12px;margin:8px 0}
+.ppw-profile-career-match>strong,.ppw-profile-career-match>span{display:block;margin:3px 0}
+.ppw-profile-career-match>span{font-size:12px;color:#b6d1e2;line-height:1.5}
+.ppw-profile-career-matchtop{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.ppw-profile-career-matchtop strong{flex:1;min-width:120px;font-size:14px}
+.ppw-profile-career-matchtop .ppw-profile-career-outcome{
+ font-size:10px;font-weight:900;border-radius:6px;padding:4px 6px}
+.ppw-profile-career-win{color:#9bfdd7;background:#125447}
+.ppw-profile-career-loss{color:#ffd0d0;background:#66343a}
+.ppw-profile-career-stars{color:#ffd98c;font-weight:800;font-size:12px}
+.ppw-profile-career-match .ppw-profile-muted{margin-bottom:0}
+.ppw-profile-career-injury{color:#ffc9a5;font-size:12px}
+@media(min-width:660px){.ppw-profile-career-scoreboard{grid-template-columns:repeat(4,minmax(0,1fr))}}

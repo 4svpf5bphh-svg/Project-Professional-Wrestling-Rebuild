@@ -4,11 +4,13 @@
 import {createWrestlerCard,wrestlerLabel} from "./wrestler-card.js";
 import type {readWrestlerProfile} from "../db/wrestler-profile.js";
 import type {editWrestlerRepertoire} from "../db/wrestler-profile.js";
+import type {CareerView} from "../db/wrestler-career.js";
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
 export interface WrestlerProfilePort{
  load(personId:string):Promise<View>;
+ career(personId:string):Promise<CareerView>;
  save(input:{personId:string;requestId:string;expectedRevision:number;
   primaryStyle:string|null;secondaryStyle:string|null;
   signatureMoves:string[];finishingMoves:string[]}):Promise<Save>;
@@ -37,6 +39,7 @@ function stat(label:string,value:number|null|undefined){
 export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
  personId:string,onBack?:()=>void){
  let view:View|null=null,loading=false,saving=false,error="",success="";
+ let career:CareerView|null=null,careerLoading=false,careerError="";
  const names=(moves:View["persona"]["signatureMoves"])=>moves.map(m=>m.name).join("\n");
  async function load(){
   loading=true;render();
@@ -193,6 +196,93 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   if(!view.history.length)history.append(el("p","ppw-profile-muted",
    "No previous PPW persona era recorded. Historical real-world characters are not invented as simulated PPW career events."));
   root.append(history);
+
+  // Career is consciously absent from the basic dossier response:
+  // an explicit open triggers three indexed SQL reads once, not a load per card.
+  const drilldown=el("details","ppw-profile-career") as HTMLDetailsElement;
+  const summary=el("summary","ppw-profile-career-trigger");
+  summary.append(el("span","ppw-profile-kicker","THE RECORD BOOK"),
+   el("strong","","Matches, victories, injuries & championships"),
+   el("small","","Expand career · no background requests"));
+  drilldown.append(summary);
+  const careerBody=el("div","ppw-profile-career-body");
+  drilldown.append(careerBody);
+  const timelineWeek=(index:number)=>"Y"+(Math.floor(index/52)+1)+" W"+(index%52+1);
+  const paintCareer=()=>{
+   if(!root.contains(drilldown))return;
+   careerBody.replaceChildren();
+   if(careerLoading)careerBody.append(el("p","ppw-profile-muted","Reading verified match ledger…"));
+   if(careerError){
+    careerBody.append(el("p","ppw-profile-message ppw-profile-error",careerError),
+     button("Retry career record",()=>void loadCareer()));return;
+   }
+   if(!career)return;
+   const stats=el("div","ppw-profile-career-scoreboard");
+   for(const [title,value] of [
+    ["MATCHES",String(career.summary.matches)],
+    ["WINS",String(career.summary.wins)],
+    ["LOSSES",String(career.summary.losses)],
+    ["SINGLES",String(career.summary.singles)],
+    ["TAG",String(career.summary.tag)],
+    ["AVG RATING",career.summary.averageStars===null?
+     "Not rated":career.summary.averageStars.toFixed(2)+"★"],
+    ["BEST",career.summary.bestStars===null?
+     "Not rated":career.summary.bestStars.toFixed(2)+"★"],
+    ["INJURIES",String(career.summary.injuries)]
+   ] as const){
+    const tile=el("article","ppw-profile-career-stat");
+    tile.append(el("small","",title),el("strong","",value));stats.append(tile);
+   }
+   careerBody.append(stats);
+   const honors=el("section","ppw-profile-career-honors");
+   honors.append(el("h3","","Singles championship honours"));
+   if(!career.singlesTitles.length)honors.append(el("p","ppw-profile-muted",
+    "No singles championship reign is recorded in this PPW World."));
+   for(const belt of career.singlesTitles){
+    const row=el("article","ppw-profile-career-match");
+    row.append(el("strong","",belt.name),
+     el("span","",belt.promotion+" · "+timelineWeek(belt.startWeekIndex)+
+      " – "+(belt.endedWeekIndex===null?"Current":timelineWeek(belt.endedWeekIndex))+
+      " · "+belt.defenses+" defences"));
+    honors.append(row);
+   }
+   careerBody.append(honors);
+   const recents=el("section","ppw-profile-career-recents");
+   recents.append(el("h3","","Latest completed matches"));
+   if(!career.recent.length)recents.append(el("p","ppw-profile-muted",
+    "No completed matches recorded. Planned cards and simulated outcomes are not counted."));
+   for(const match of career.recent){
+    const row=el("article","ppw-profile-career-match");
+    const outcome=el("span","ppw-profile-career-outcome "+(match.won?
+     "ppw-profile-career-win":"ppw-profile-career-loss"),match.won?"WIN":"LOSS");
+    const top=el("div","ppw-profile-career-matchtop");
+    top.append(outcome,el("strong","",match.showName),
+     el("span","ppw-profile-career-stars",
+      match.stars===null?"Unrated":match.stars.toFixed(2)+"★"));
+    row.append(top,el("p","ppw-profile-muted",
+     match.promotion+" · Y"+match.year+" W"+match.week+" · "+
+     match.format+" · "+match.finish.replaceAll("_"," ").toLowerCase()+
+     (match.minutes===null?"":" · "+match.minutes+" min")));
+    if(match.injury!==null)
+     row.append(el("p","ppw-profile-career-injury",
+      match.injury+" injury"+(match.weeksOut===null?"":" · "+match.weeksOut+" weeks out")));
+    recents.append(row);
+   }
+   careerBody.append(recents);
+   if(career.recent.length>=12)careerBody.append(el("p","ppw-profile-muted",
+    "Showing the 12 most recent completed matches. Lifetime totals include earlier verified matches."));
+  };
+  async function loadCareer(){
+   if(careerLoading||career)return;
+   careerError="";careerLoading=true;paintCareer();
+   try{career=await port.career(personId);}
+   catch(e){careerError=e instanceof Error?e.message:"Career records unavailable";}
+   finally{careerLoading=false;paintCareer();}
+  }
+  drilldown.addEventListener("toggle",()=>{
+   if(drilldown.open){if(!career&&!careerLoading)void loadCareer();else paintCareer();}
+  });
+  root.append(drilldown);
  }
  void load();return {reload:load};
 }
