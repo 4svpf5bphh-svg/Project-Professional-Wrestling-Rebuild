@@ -14,12 +14,17 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{
    year:number;week:number;phase:string;name:string;tier:string;
+   home_market_name:string|null;media_reach:number|null;
    cash:string;debt:string;weekly_media_income:string|null;
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
    last_weekly_net:string|null;runway_weeks:number|null;
    financial_distress:string|null;guarantees:string;staff_payroll:string;
   }>(`
    SELECT w.year,w.week,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
+     p.media_reach,
+     (SELECT market.name FROM ppw_markets market
+      WHERE market.world_id=p.world_id
+       AND market.market_id=p.home_market_id) AS home_market_name,
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,p.last_weekly_net::text,
      p.runway_weeks,p.financial_distress,
@@ -80,6 +85,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const guarantees=Number(w.guarantees),staffPayroll=Number(w.staff_payroll);
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
+   homeMarketName:w.home_market_name,mediaReach:w.media_reach,
    cash:Number(w.cash),debt:Number(w.debt),
    weeklyMediaIncome:weeklyMedia,weeklySponsorIncome:weeklySponsor,
    weeklyFixedOverhead:weeklyOverhead,weeklyGuarantees:guarantees,
