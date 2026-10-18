@@ -150,7 +150,11 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     "presentation,stamina,safety,fatigue,wear FROM ppw_people"+
     " WHERE world_id=$1 AND person_id=ANY($2::text[])",
     [id.worldId,personIds]):[];
-  return {selectedPeople:selectedPeople.map(p=>({
+  const creativeConcerns=await creativeReviewsInTransaction(tx,id.worldId,[{
+   showId:id.showId,promotionId:id.promotionId,
+   weekIndex:(show.year-1)*52+show.week-1,slots
+  }]);
+  return {creativeConcerns,selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
    stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
