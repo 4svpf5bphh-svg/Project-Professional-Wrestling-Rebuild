@@ -8,6 +8,7 @@ export interface WorldHomePort{
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
+ dismissAttention?(attentionId:string):Promise<unknown>;
 }
 const el=(tag:string,cls="",label="")=>{
  const node=document.createElement(tag);node.className=cls;
@@ -17,6 +18,7 @@ const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
  style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
+ const dismissing=new Set<string>();
  let clockTimer:ReturnType<typeof setInterval>|null=null;
  function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
  function startClock(node:HTMLElement,world:PlayerWorldOverview["world"]){
@@ -51,6 +53,17 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   try{overview=await port.load();error="";loaded=true;}
   catch(e){error=e instanceof Error?e.message:"The World is unavailable";}
   finally{loading=false;draw();}
+ }
+ async function dismissNews(id:string){
+  if(!port.dismissAttention||dismissing.has(id))return;
+  dismissing.add(id);
+  try{
+   await port.dismissAttention(id);
+   const news=overview?.promotion?.attention?.offerResults;
+   if(news)overview!.promotion!.attention.offerResults=news.filter(x=>x.id!==id);
+   error="";
+  }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the contract update";}
+  finally{dismissing.delete(id);draw();}
  }
  function draw(){
   clearClock();root.classList.add("ppw-home");root.replaceChildren();
@@ -160,6 +173,36 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    brief.append(entry);
   }
   root.append(brief);
+  const results=attention?.offerResults??[];
+  if(results.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE CONTRACT WIRE"),
+    el("h3","","Decisions received"));
+   for(const item of results){
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status "+(item.status==="ACCEPTED"?
+     "ppw-home-wire-accepted":"ppw-home-wire-declined"),
+      item.status==="ACCEPTED"?"ACCEPTED":"DECLINED"),
+     el("strong","",item.name+(item.status==="ACCEPTED"?
+      " accepted the offer":" declined the offer")),
+     el("p","",item.status==="ACCEPTED"?
+      "The terms have been agreed. Review your current contracts and upcoming dates.":
+      "The agreement did not go ahead. You can review the terms before approaching them again."));
+    const actions=el("div","ppw-home-wire-actions");
+    const open=el("button","ppw-home-wire-button","Open Contracts") as HTMLButtonElement;
+    open.type="button";open.onclick=port.contracts;
+    actions.append(open);
+    if(port.dismissAttention){
+     const dismissButton=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismissButton.type="button";dismissButton.disabled=dismissing.has(item.id);
+     dismissButton.setAttribute("aria-label","Dismiss "+item.name+"'s contract update");
+     dismissButton.onclick=()=>void dismissNews(item.id);
+     actions.append(dismissButton);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
    "Open the menu to visit talent, booking, backstage, business and the wider industry."));
  }

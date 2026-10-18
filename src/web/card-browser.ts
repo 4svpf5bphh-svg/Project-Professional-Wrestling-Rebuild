@@ -49,6 +49,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
   load:()=>call("overview"),
+  dismissAttention:attentionId=>call("dismissAttention",{attentionId}),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
   roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
   market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
