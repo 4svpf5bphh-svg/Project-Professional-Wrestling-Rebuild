@@ -285,3 +285,12 @@ body{padding-bottom:env(safe-area-inset-bottom)}
  .ppw-shell-menu{min-width:70px;padding:7px 8px}
  .ppw-nav-rootbar .ppw-tab-label{font-size:9px}
 }
+
+/* Header controls override the more specific legacy access-button rule. */
+.ppw-account-banner .ppw-shell-menu,
+.ppw-account-banner .ppw-shell-signout{min-height:44px}
+.ppw-account-banner .ppw-shell-menu{padding:9px 10px;white-space:nowrap}
+@media(max-width:350px){
+ .ppw-account-banner .ppw-shell-menu{padding:7px 8px;min-width:69px}
+ .ppw-account-banner .ppw-shell-signout{padding:7px 6px}
+}
