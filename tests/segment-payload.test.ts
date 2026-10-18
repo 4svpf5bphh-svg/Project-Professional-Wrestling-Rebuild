@@ -17,3 +17,11 @@ test("segment payload rejects missing, duplicate or unassigned identities",()=>{
 test("scripted refusal survives the canonical segment payload",()=>{
  assert.equal(buildBookedSegmentPayload({...base,outcome:"REFUSED"},[actor,target]).outcome,"REFUSED");
 });
+
+test("authored attack presentation stays bound to contracted participants",()=>{
+ const creativeBeat={kind:"ATTACK" as const,presentation:"PULL_APART_BRAWL" as const,
+  objective:"ESCALATE_RIVALRY" as const};
+ const payload=buildBookedSegmentPayload({...base,creativeBeat},[actor,target]);
+ assert.deepEqual(payload.creativeBeat,creativeBeat);
+ assert.equal(payload.outcome,"HAPPENS");
+});

@@ -20,6 +20,9 @@ import {createWrestlerCard} from "./wrestler-card.js";
 import {matchCastingReadiness,angleCastingReadiness} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
+import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
+ from "../domain/segment-creative-beats.js";
+import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -414,10 +417,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
    const anglePeople=segment?[...segment.actors,...segment.targets]
     .map(person=>selectedName(person)).slice(0,3).join(" · "):"";
+   const angleDetails=segment?creativeSummary(segment.creativeBeat):"";
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):angleName),
     el("small","ppw-card-lineup",m?matchSubtitle(m):
-      anglePeople||"Choose the wrestlers for this moment"));
+      [anglePeople,angleDetails].filter(Boolean).join(" · ")||
+       "Choose the wrestlers for this moment"));
    const status=m?matchCastingReadiness(m):segment?angleCastingReadiness(segment):null;
    if(status){
     const indicator=el("span","ppw-booking-readiness",status.label);
@@ -443,6 +448,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
       void loadStableChoices();
      editSegment(segment,{kind,
+      creativeBeat:segment.kind===kind?segment.creativeBeat:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
       stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
@@ -462,6 +468,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Scripted outcome",selector(segment.outcome,
      [["HAPPENS","Goes ahead"],["REFUSED","Refused"],["INTERRUPTED","Interrupted"]],
      v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
+    if(supportsCreativeBeat(segment.kind)){
+     if(!segment.creativeBeat){
+      controls.append(button("Script the exact angle",()=>{
+       editSegment(segment,{creativeBeat:initialCreativeBeat(segment.kind)});
+      },!mutable(),"ppw-creative-detail-toggle"));
+     }else{
+      const beat=segment.creativeBeat;
+      for(const option of creativeFields(segment.kind)){
+       const value=(beat as unknown as Record<string,string>)[option.name]??"";
+       controls.append(field(option.label,selector(value,
+        option.options.map(x=>[x.value,x.label]),
+        next=>editSegment(segment,{creativeBeat:{
+         ...beat,[option.name]:next
+        } as SegmentCreativeBeat}),!mutable())));
+      }
+      controls.append(button("Use a simple angle instead",()=>{
+       editSegment(segment,{creativeBeat:null});
+      },!mutable(),"ppw-creative-detail-toggle"));
+     }
+    }
     if(view.programmes.length)
      controls.append(field("Storyline / programme",selector(segment.programmeId??"",
       [["","None"],...view.programmes.map(p=>[

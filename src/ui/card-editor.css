@@ -267,3 +267,9 @@
  border-left:3px solid #74cfdf;background:#103347;border-radius:7px;
  color:#cfedfa;font-size:12px;line-height:1.45}
 .ppw-card-continuity summary:focus-visible{outline:2px solid #8be6fa;outline-offset:-2px}
+
+/* Specialists live inside the one iPhone card editor, never another route. */
+.ppw-creative-detail-toggle{grid-column:1/-1;width:100%;min-height:44px;
+ border:1px solid #5d91a6;border-radius:10px;background:#15384d;
+ color:#edf8fc;padding:10px 12px;text-align:left;font:inherit}
+.ppw-creative-detail-toggle:focus-visible{outline:2px solid #a2ecfb;outline-offset:2px}

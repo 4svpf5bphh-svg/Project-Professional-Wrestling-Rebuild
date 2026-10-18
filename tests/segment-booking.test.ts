@@ -26,3 +26,16 @@ test("video subtype and stable reconciliation are explicit",()=>{
 test("authored refusal is never changed by normalisation",()=>{
  assert.equal(normalizeBookedSegment({...make("ATTACK",["a"],["b"]),outcome:"REFUSED"},known).outcome,"REFUSED");
 });
+
+test("scripted deliveries reject forged values and mismatched segment types",()=>{
+ const good=make("ATTACK",["a"],["b"],{creativeBeat:{
+  kind:"ATTACK",presentation:"BEATDOWN",objective:"GENERATE_HEAT"}});
+ assert.deepEqual(normalizeBookedSegment(good,known).creativeBeat,{
+  kind:"ATTACK",presentation:"BEATDOWN",objective:"GENERATE_HEAT"});
+ for(const bad of [
+  {kind:"ATTACK",presentation:"INVISIBLE",objective:"GENERATE_HEAT"},
+  {kind:"PROMO",purpose:"BOAST"},
+  {kind:"ATTACK",presentation:"BEATDOWN"},
+  {kind:"ATTACK",presentation:"BEATDOWN",objective:"GENERATE_HEAT",extra:"not allowed"}
+ ])assert.throws(()=>normalizeBookedSegment({...good,creativeBeat:bad},known));
+});

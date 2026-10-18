@@ -68,3 +68,33 @@ test("faction invitation requires a player-scripted answer before booking",()=>{
  assert.equal(booked.stableDecision,"REJECTED");
  assert.equal(restoreEditorSegment("story",booked).stableDecision,"REJECTED");
 });
+
+test("seven original-main specialist angle deliveries survive saves and reopening",()=>{
+ const choices=[
+  ["PROMO",{kind:"PROMO",purpose:"AIR_GRIEVANCE"}],
+  ["INTERVIEW",{kind:"INTERVIEW",format:"SIT_DOWN",topic:"RECENT_FORM",response:"DEFIANT"}],
+  ["CELEBRATION",{kind:"CELEBRATION",occasion:"SELF_CORONATION",ending:"POSE"}],
+  ["CONFRONTATION",{kind:"CONFRONTATION",ending:"RELUCTANT_HANDSHAKE"}],
+  ["CHALLENGE",{kind:"CHALLENGE",response:"LEFT_OPEN"}],
+  ["ATTACK",{kind:"ATTACK",presentation:"PULL_APART_BRAWL",objective:"ESCALATE_RIVALRY"}],
+  ["CONTRACT_SIGNING",{kind:"CONTRACT_SIGNING",ending:"BRAWL"}]
+ ] as const;
+ for(const [kind,beat] of choices){
+  let model=newEditorSegment("angle",kind);
+  model=addSegmentPerson(model,"actors",{personId:"a",contractId:"ca"});
+  if(kind==="CONTRACT_SIGNING")
+   model=addSegmentPerson(model,"actors",{personId:"b",contractId:"cb"});
+  else if(["ATTACK","CHALLENGE","CONFRONTATION"].includes(kind))
+   model=addSegmentPerson(model,"targets",{personId:"b",contractId:"cb"});
+  model.creativeBeat=beat;
+  const saved=buildEditorSegment(model);
+  assert.deepEqual(saved.creativeBeat,beat);
+  assert.deepEqual(buildEditorSegment(restoreEditorSegment("angle",saved)),saved);
+ }
+});
+test("old interview keeps generic delivery rather than inventing an answer",()=>{
+ let model=newEditorSegment("old","INTERVIEW");
+ model=addSegmentPerson(model,"actors",{personId:"a",contractId:"ca"});
+ assert.equal(buildEditorSegment(model).creativeBeat,undefined);
+ assert.equal(restoreEditorSegment("old",buildEditorSegment(model)).creativeBeat,null);
+});
