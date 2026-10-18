@@ -6,6 +6,8 @@ export interface StaffPort{
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
   autoRenewSameTerms:boolean;
   permittedDays:number[];permittedVenueIds:string[]}):Promise<unknown>;
+ hire(input:{requestId:string;expectedRevision:number;staffId:string}):Promise<unknown>;
+ release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
@@ -20,6 +22,7 @@ const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","S
  * guarded by the same verified actor and revision as booking decisions. */
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let view:StaffView|null=null,loading=false,saving=false,error="",notice="";
+ let releaseConfirm=false;
  let unfinished=false,logistics=false,autoRenew=false,days=new Set<number>(),
   venues=new Set<string>(),requestId="";
  const changed=()=>{requestId="";};
@@ -34,6 +37,23 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   try{hydrate(await port.load());error="";}
   catch(e){error=e instanceof Error?e.message:"Staff settings could not load";}
   finally{loading=false;render();}
+ }
+ async function employment(action:"HIRE"|"RELEASE",identity:string){
+  if(!view?.canEdit||saving)return;
+  const requestId=crypto.randomUUID(),expectedRevision=view.worldRevision;
+  saving=true;error="";notice="";render();
+  try{
+   const result=action==="HIRE"?
+    await port.hire({requestId,expectedRevision,staffId:identity}):
+    await port.release({requestId,expectedRevision,employmentId:identity});
+   if(result&&typeof result==="object"&&"status" in result&&
+    (result as {status:unknown}).status==="STALE")
+    throw new Error("The World changed. Reopen Staff to review current records.");
+   hydrate(await port.load());releaseConfirm=false;requestId="";
+   notice=action==="HIRE"?"Talent Manager hired. Weekly salary will be deducted at World rollover.":
+    "Talent Manager released. Weekly wages and future automated renewals stop.";
+  }catch(e){error=e instanceof Error?e.message:"The employment decision failed";}
+  finally{saving=false;render();}
  }
  async function save(){
   if(!view?.canEdit||saving)return;
@@ -90,13 +110,51 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     "Only when your show is missing or incomplete at the deadline. Staff will never change your chosen winners.",
     unfinished,v=>{unfinished=v;},!view.canEdit||saving));
   root.append(fallback);
-  const manager=el("section","ppw-staff-panel");
-  manager.append(el("h2","","Talent Manager"),
-   toggle("Offer same-terms renewals",
-    "Opt in to a renewal offer during the final three weeks of an eligible contract. The wrestler can still refuse.",
-    autoRenew,v=>{autoRenew=v;},!view.canEdit||saving));
+  const manager=el("section","ppw-staff-panel ppw-staff-manager");
+  manager.append(el("span","ppw-staff-kicker","THE TALENT OFFICE"),el("h2","","Talent Manager"));
+  if(view.talentManager){
+   const member=view.talentManager;
+   const employed=el("article","ppw-staff-employed");
+   const identity=el("div","ppw-staff-manager-identity");
+   identity.append(el("span","ppw-staff-manager-avatar",
+    member.name.split(" ").slice(0,2).map(x=>x[0]).join("")),
+    el("strong","",member.name));
+   employed.append(identity);
+   const figures=el("div","ppw-staff-manager-metrics");
+   figures.append(el("span","","INSIGHT  /  "+member.insight+"/100"),
+    el("span","","SALARY  /  $"+member.weeklySalary.toLocaleString("en-GB")+"/week"));
+   employed.append(figures);
+   if(releaseConfirm){
+    employed.append(el("p","ppw-staff-muted",
+     "Release this manager? Their salary and delegated renewal authority end. Submitted wrestler offers are unaffected."),
+     button("Confirm release",()=>void employment("RELEASE",member.employmentId),saving||!view.canEdit),
+     button("Keep manager",()=>{releaseConfirm=false;render();},saving));
+   }else employed.append(button("Release manager",()=>{
+    releaseConfirm=true;render();},saving||!view.canEdit));
+   manager.append(employed);
+  }else{
+   manager.append(el("p","ppw-staff-muted",
+    "No Talent Manager employed. Recruit one of the World's available fictional specialists. You need enough cash for four weeks of salary."));
+   const candidates=el("div","ppw-staff-candidates");
+   for(const member of view.availableManagers){
+    const candidate=el("article","ppw-staff-candidate");
+    const copy=el("div","");
+    copy.append(el("strong","",member.name),
+     el("small","","INSIGHT "+member.insight+"/100 · $"+
+      member.weeklySalary.toLocaleString("en-GB")+"/week"));
+    candidate.append(copy,button("Hire",()=>void employment("HIRE",member.staffId),
+     saving||!view.canEdit));
+    candidates.append(candidate);
+   }
+   if(!view.availableManagers.length)candidates.append(el("p","ppw-staff-muted",
+    "Every Talent Manager is employed by another promotion."));
+   manager.append(candidates);
+  }
+  manager.append(toggle("Delegate same-terms renewals",
+    "When enabled, your employed manager offers unchanged terms in the final three weeks. Wrestlers may refuse.",
+    autoRenew,v=>{autoRenew=v;},!view.talentManager||!view.canEdit||saving));
   manager.append(el("p","ppw-staff-muted",
-   "This never hires talent, changes terms or extends a contract without wrestler acceptance. Every proposal appears in your Contract Desk."));
+   "Managerial insight improves administrative guidance, not contract consent or wrestling results. Offers appear in Contracts."));
   root.append(manager);
   const support=el("section","ppw-staff-panel");
   support.append(el("h2","","Logistics authority"),

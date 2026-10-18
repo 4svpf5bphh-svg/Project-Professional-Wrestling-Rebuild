@@ -21,3 +21,26 @@
 .ppw-staff-picks{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:6px}
 @media(min-width:700px){.ppw-staff{padding:26px 24px 90px}
  .ppw-staff-picks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ppw-staff-manager{background:radial-gradient(circle at 100% 0,#30688b55,transparent 60%),
+ linear-gradient(130deg,#192c48,#0c1d30);border-color:#4b7696}
+.ppw-staff-employed{padding:14px;border:1px solid #456c82;border-radius:15px;background:#091c2cc9}
+.ppw-staff-manager-identity{display:flex;align-items:center;gap:11px}
+.ppw-staff-manager-identity strong{font-size:20px;letter-spacing:-.03em}
+.ppw-staff-manager-avatar{display:flex;align-items:center;justify-content:center;
+ width:53px;height:53px;flex:none;border-radius:14px;border:1px solid #5fa9c1;
+ font-size:17px;font-weight:900;color:white;
+ background:linear-gradient(145deg,#347da4,#30355b)}
+.ppw-staff-manager-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:14px 0}
+.ppw-staff-manager-metrics span{font-size:11px;font-weight:800;letter-spacing:.04em;
+ background:#112f42;padding:11px 8px;border-radius:9px;color:#c6f0ff}
+.ppw-staff-candidates{display:grid;gap:8px;margin-bottom:13px}
+.ppw-staff-candidate{padding:11px;display:flex;align-items:center;
+ justify-content:space-between;gap:9px;border:1px solid #35586e;background:#0a1a2b;
+ border-radius:12px}
+.ppw-staff-candidate>div{display:grid;gap:6px;min-width:0}
+.ppw-staff-candidate strong{font-size:14px;color:#f3faff}
+.ppw-staff-candidate small{font-size:11px;color:#a6cddf}
+.ppw-staff-candidate .ppw-staff-button{min-width:70px}
+@media(min-width:650px){.ppw-staff-candidates{grid-template-columns:repeat(2,minmax(0,1fr))}}
