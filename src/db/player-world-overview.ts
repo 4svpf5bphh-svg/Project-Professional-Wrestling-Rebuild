@@ -10,8 +10,8 @@ export interface PlayerWorldOverview {
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
    pendingContractOffers:boolean;plannedShows:number;
-   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
-   backstageResults?:{id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"}[];};
+   backstageRequests?:{personId:string;name:string;kind:string}[];
+   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];};
  };
 }
 
@@ -37,7 +37,8 @@ export async function readPlayerWorldOverview(
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
    pending_backstage:boolean|null;expiring_talent:boolean|null;
-   pending_contract_offers:boolean|null;offer_results:unknown;backstage_results:unknown;
+   pending_contract_offers:boolean|null;offer_results:unknown;
+   backstage_requests:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -49,7 +50,7 @@ export async function readPlayerWorldOverview(
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
-    notices.offer_results,notices.backstage_results
+    notices.offer_results,notices.backstage_requests
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -76,7 +77,17 @@ export async function readPlayerWorldOverview(
         AND d.lock_ready_fingerprint IS NULL LIMIT 1) AS unprepared_show,
      EXISTS (SELECT 1 FROM ppw_backstage_requests b
        WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
-        AND b.status='OPEN' LIMIT 1) AS pending_backstage,
+        AND b.status='PENDING' LIMIT 1) AS pending_backstage,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+       'personId',request.person_id,'name',request.name,'kind',request.kind)
+       ORDER BY request.created_week_index DESC,request.request_id DESC),'[]'::jsonb)
+      FROM (SELECT b.person_id,p.name,b.kind,b.created_week_index,b.request_id
+       FROM ppw_backstage_requests b JOIN ppw_people p
+        ON p.world_id=b.world_id AND p.person_id=b.person_id
+       WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
+        AND b.status='PENDING' AND p.status='ACTIVE'
+       ORDER BY b.created_week_index DESC,b.request_id DESC LIMIT 3) request
+     ) AS backstage_requests,
      EXISTS (SELECT 1 FROM ppw_contracts c
        WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
         AND c.status='SIGNED'
@@ -103,38 +114,7 @@ export async function readPlayerWorldOverview(
            AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
            AND dismissal.attention_id='offer-result:'||o.offer_id)
        ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 5) recent
-     ) AS offer_results,
-     (SELECT coalesce(jsonb_agg(jsonb_build_object(
-       'id','backstage-result:'||recent.event_id::text,
-       'personId',recent.person_id,'name',recent.name,'status',recent.status)
-       ORDER BY recent.event_id DESC),'[]'::jsonb)
-      FROM (
-       SELECT e.event_id,e.payload->>'personId' AS person_id,
-        person.name,
-        CASE WHEN e.event_type='BACKSTAGE_PROMISE_FULFILLED'
-         THEN 'FULFILLED' ELSE 'BROKEN' END AS status
-       FROM ppw_ledger_events e
-       JOIN ppw_backstage_requests request ON request.world_id=e.world_id
-        AND request.request_id=e.payload->>'conversationId'
-        AND request.promotion_id=owned.promotion_id
-       JOIN ppw_people person ON person.world_id=e.world_id
-        AND person.person_id=request.person_id
-       WHERE e.world_id=w.world_id
-        AND e.event_type IN ('BACKSTAGE_PROMISE_FULFILLED','BACKSTAGE_PROMISE_BROKEN')
-        AND e.payload->>'promotionId'=owned.promotion_id
-        AND e.payload->>'personId'=request.person_id
-        AND request.status=CASE
-         WHEN e.event_type='BACKSTAGE_PROMISE_FULFILLED'
-         THEN 'FULFILLED' ELSE 'BROKEN' END
-        AND (e.year-1)*52+e.week-1 BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1
-        AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
-         WHERE dismissal.world_id=e.world_id AND dismissal.player_id=$2
-          AND dismissal.promotion_id=owned.promotion_id
-          AND dismissal.attention_id='backstage-result:'||e.event_id::text)
-       ORDER BY e.event_id DESC LIMIT 5
-      ) recent
-     ) AS backstage_results
+     ) AS offer_results
    ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -156,20 +136,19 @@ export async function readPlayerWorldOverview(
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
      plannedShows:x.planned_shows??0,
+     backstageRequests:Array.isArray(x.backstage_requests)?
+      x.backstage_requests.filter((request):request is {
+       personId:string;name:string;kind:string;
+      }=>request!==null&&typeof request==="object"&&
+       typeof request.personId==="string"&&typeof request.name==="string"&&
+       typeof request.kind==="string"):[],
      offerResults:Array.isArray(x.offer_results)?
       x.offer_results.filter((news):news is {
        id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"
       }=>news!==null&&typeof news==="object"&&
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
-       (news.status==="ACCEPTED"||news.status==="REJECTED")):[],
-     backstageResults:Array.isArray(x.backstage_results)?
-      x.backstage_results.filter((news):news is {
-       id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"
-      }=>news!==null&&typeof news==="object"&&
-       typeof news.id==="string"&&typeof news.personId==="string"&&
-       typeof news.name==="string"&&
-       (news.status==="FULFILLED"||news.status==="BROKEN")):[]}
+       (news.status==="ACCEPTED"||news.status==="REJECTED")):[]}
    }:null
   };
  });

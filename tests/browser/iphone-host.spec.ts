@@ -101,6 +101,38 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
+test("named locker-room concerns open unread messages from a single Home read",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:false,pendingBackstage:true,
+  backstageRequests:[{personId:"p-adams",name:"Ava Adams",kind:"CREATIVE"}],
+  expiringTalent:false,pendingContractOffers:false
+ }}};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  methods.push(method);
+  await route.fulfill({json:method==="overview"?home:method==="backstage"?{
+   personId:null,persona:null,personName:"",
+   roster:[{personId:"p-adams",name:"Ava Adams",isCurrent:true,
+    morale:65,momentum:52,lastMessage:null,latestIncoming:{
+     archived:false,read_week_index:null,status:"PENDING",
+     kind:"CREATIVE",created_week_index:4}}],
+   conversations:[]
+  }:{}});
+ });
+ await page.goto("/#/home");
+ const prompt=page.getByRole("button",{name:/Ava Adams is waiting/});
+ await expect(prompt).toBeVisible();
+ await expect(prompt).toContainText("has a new creative idea");
+ expect(methods).toEqual(["overview"],"Names are supplied by the existing Home read");
+ await prompt.click();
+ await expect(page).toHaveURL(/#\/backstage\/unread$/);
+ await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Ava Adams/})).toBeVisible();
+ expect(methods).toEqual(["overview","backstage"]);
+});
 test("Tag partner cards and roster disciplines stay fast without person-by-person reads",async({page})=>{
  const methods:string[]=[];
  const people=Array.from({length:50},(_,i)=>({

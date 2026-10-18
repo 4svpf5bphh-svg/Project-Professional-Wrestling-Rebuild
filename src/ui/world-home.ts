@@ -63,9 +63,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    await port.dismissAttention(id);
    const news=overview?.promotion?.attention?.offerResults;
    if(news)overview!.promotion!.attention.offerResults=news.filter(x=>x.id!==id);
-   const backstage=overview?.promotion?.attention?.backstageResults;
-   if(backstage)overview!.promotion!.attention.backstageResults=
-    backstage.filter(x=>x.id!==id);
    error="";
   }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the contract update";}
   finally{dismissing.delete(id);draw();}
@@ -154,10 +151,26 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Finish your booking card",detail:
     "Your card still needs confirming before the weekly deadline.",
     action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
-  if(attention?.pendingBackstage)
-   items.push({title:"Your locker room has messages",detail:
+  if(attention?.pendingBackstage){
+   const pending=(attention.backstageRequests??[]).slice(0,3);
+   const subjects:Record<string,string>={
+    CONTRACT:"wants to talk about their contract",
+    MORALE:"has something on their mind backstage",
+    MOMENTUM:"wants to discuss their place on the card",
+    CREATIVE:"has a new creative idea",
+    PARTNERSHIP:"wants to talk about a potential partner"
+   };
+   if(pending.length){
+    for(const request of pending){
+     items.push({title:request.name+" is waiting",detail:
+      (subjects[request.kind]??"has a private request for you")+
+      ". Open your locker-room conversations.",
+      action:port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
+    }
+   }else items.push({title:"Your locker room has messages",detail:
     "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
     action:port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
+  }
   if(attention?.expiringTalent)
    items.push({title:"Contracts approaching expiry",detail:
     "A wrestler's contract expires within the next two weeks.",
@@ -210,39 +223,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      dismissButton.setAttribute("aria-label","Dismiss "+item.name+"'s contract update");
      dismissButton.onclick=()=>void dismissNews(item.id);
      actions.append(dismissButton);
-    }
-    entry.append(actions);wire.append(entry);
-   }
-   root.append(wire);
-  }
-  const backstageNews=attention?.backstageResults??[];
-  if(backstageNews.length){
-   const wire=el("section","ppw-home-wire");
-   wire.append(el("span","ppw-home-brand","THE LOCKER ROOM"),
-    el("h3","","Promises settled"));
-   for(const item of backstageNews){
-    const kept=item.status==="FULFILLED";
-    const entry=el("article","ppw-home-wire-item");
-    entry.append(el("span","ppw-home-wire-status "+(kept?
-     "ppw-home-wire-accepted":"ppw-home-wire-declined"),kept?"KEPT":"BROKEN"),
-     el("strong","",item.name+(kept?
-      " saw your promise kept":" was left waiting")),
-     el("p","",kept?
-      "Your commitment was honoured. Catch up with the wrestler in the locker room.":
-      "A promise went unfulfilled. Speak with the wrestler about what comes next."));
-    const actions=el("div","ppw-home-wire-actions");
-    actions.append(control("Open Backstage","Review the conversation",port.backstage,"✉"));
-    if(port.openWrestler){
-     const profile=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
-     profile.type="button";profile.onclick=()=>port.openWrestler?.(item.personId);
-     actions.append(profile);
-    }
-    if(port.dismissAttention){
-     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
-     dismiss.type="button";dismiss.disabled=dismissing.has(item.id);
-     dismiss.setAttribute("aria-label","Dismiss "+item.name+"'s locker room update");
-     dismiss.onclick=()=>void dismissNews(item.id);
-     actions.append(dismiss);
     }
     entry.append(actions);wire.append(entry);
    }

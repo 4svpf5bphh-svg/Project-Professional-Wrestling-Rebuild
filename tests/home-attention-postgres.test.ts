@@ -30,6 +30,12 @@ test("Private contract news is individually dismissible without hiding mandatory
    "($1,'offer-accepted','person-0','promotion-0',0,'ACCEPTED','{}'::jsonb),"+
    "($1,'offer-declined','person-8','promotion-0',0,'REJECTED','{}'::jsonb)",
    [world]));
+  // A genuine awaiting response uses PENDING, never the nonexistent OPEN status.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,"+
+   "person_id,kind,created_week_index,status)"+
+   " VALUES($1,'backstage-ask','promotion-0','person-0','MORALE',0,'PENDING')",
+   [world]));
   const meter=new MeasuredQuerySession("resolved-offer-home");
   const measured:TransactionPool={async connect(){
    const client=await db.pool.connect();
@@ -39,7 +45,10 @@ test("Private contract news is individually dismissible without hiding mandatory
     }};
   }};
   const first=await readPlayerWorldOverview(measured,world,player);
-  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:2200}).queryCount,1);
+  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:2400}).queryCount,1);
+  assert.equal(first?.promotion?.attention.pendingBackstage,true);
+  assert.deepEqual(first?.promotion?.attention.backstageRequests,[
+   {personId:"person-0",name:"Wrestler 0",kind:"MORALE"}]);
   assert.equal(first?.promotion?.attention.offerResults?.length,2);
   assert.deepEqual(first?.promotion?.attention.offerResults?.map(x=>x.status).sort(),
    ["ACCEPTED","REJECTED"]);
@@ -76,7 +85,7 @@ test("Private contract news is individually dismissible without hiding mandatory
   assert.equal(count[0]!.n,"1","Exactly one private receipt was written");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_player_attention_dismissals",
+   for(const table of ["ppw_backstage_requests","ppw_player_attention_dismissals",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
