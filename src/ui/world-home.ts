@@ -34,7 +34,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     clearClock();return;}
    const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),
     mins=Math.floor(seconds%3600/60),secs=seconds%60;
-   node.textContent="Next World Lock in "+(days?days+"d ":"")+
+   node.textContent="Booking closes in "+(days?days+"d ":"")+
     String(hours).padStart(2,"0")+":"+String(mins).padStart(2,"0")+
     ":"+String(secs).padStart(2,"0");
   };
@@ -91,7 +91,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const heroTop=el("div","ppw-home-hero-top");
   heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
   const live=el("span","ppw-home-phase ppw-home-phase-"+world.phase.toLowerCase(),
-   world.phase==="OPEN"?"● BOOKING OPEN":world.phase==="LOCKED"?"● WORLD LOCKED":"● RESOLVING");
+   world.phase==="OPEN"?"● BOOKING OPEN":world.phase==="LOCKED"?"● CARDS LOCKED":"● SHOWS IN PROGRESS");
   heroTop.append(live);
   hero.append(heroTop,
    el("h2","",promotion?.name??"Choose a promotion"),

@@ -43,7 +43,7 @@ export const hostSectionHash=(section:HostSection)=>"#/"+section;
 /** Original PPW IA: the five roots open a client-only drawer, never query Neon. */
 export const HOST_DRAWER_ROOTS=[
  {key:"world",label:"World",glyph:"W",landing:"home",destinations:[
-  ["home","World overview","Your promotion and World status"],
+  ["home","World overview","Your promotion and this week\u0027s outlook"],
   ["industry","Promotions","Rivals and the wrestling industry"],
   ["championships","Championships","Titles and title history"]]},
  {key:"talent",label:"Talent",glyph:"T",landing:"roster",destinations:[

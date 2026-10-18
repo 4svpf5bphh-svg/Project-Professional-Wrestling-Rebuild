@@ -38,7 +38,7 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
    const result=await action();
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
-    throw new Error("The World changed. Reload before modifying factions.");
+    throw new Error("Someone has changed the lineup. Review your faction before trying again.");
    view=await port.load();success=message;
    selected=new Set();name="";
   }catch(e){error=e instanceof Error?e.message:"The faction could not be changed";}

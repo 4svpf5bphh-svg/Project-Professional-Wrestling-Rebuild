@@ -44,7 +44,7 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
   body:JSON.stringify(body)});
  if(!r.ok)throw new Error(r.status===401?"Invalid player sign-in":
   r.status===429?"Too many requests. Try again later.":
-  r.status===409?"World changed. Refresh to continue.":
+  r.status===409?"Your promotion has changed. Refresh before continuing.":
   "Request rejected. Review and try again.");
  return r.json();
 }

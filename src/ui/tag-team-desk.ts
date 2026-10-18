@@ -32,7 +32,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
    const result=await action();
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
-    throw new Error("The World changed. Refresh before changing your team.");
+    throw new Error("Plans have changed. Review the latest team details before trying again.");
    view=await port.load();success=message;
    name="";one="";two="";renaming="";renameValue="";
    createRequest=null;renameRequest=null;

@@ -239,7 +239,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     matches:payloads,segments:segmentPayloads,runningOrder:order});
    if(result.status==="STALE"){
     await load();
-    error="The World changed; review the reloaded booking before saving.";
+    error="The card has changed. Review the latest booking before saving.";
     return;
    }
    const previous=result.status;
@@ -256,7 +256,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     expectedRevision:view.worldRevision});
    await load();
    if(response.status==="STALE")
-    error="The World changed. Recheck your show and confirm again.";
+    error="The show has changed. Review the latest lineup and confirm again.";
    else success="Your card is confirmed for the weekly deadline";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
