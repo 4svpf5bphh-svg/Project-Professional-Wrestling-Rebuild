@@ -17,7 +17,9 @@ export const CREATIVE_BEAT_FIELDS={
 type Fields=typeof CREATIVE_BEAT_FIELDS;
 export type CreativeBeatKind=keyof Fields;
 export type SegmentCreativeBeat={
- [K in CreativeBeatKind]:{kind:K}&{[F in keyof Fields[K]]:Fields[K][F][number]}
+ [K in CreativeBeatKind]:{kind:K}&{
+  [F in keyof Fields[K]]:Fields[K][F] extends readonly (infer Value)[]?Value:never
+ }
 }[CreativeBeatKind];
 export function supportsCreativeBeat(kind:string):kind is CreativeBeatKind{
  return Object.prototype.hasOwnProperty.call(CREATIVE_BEAT_FIELDS,kind);
