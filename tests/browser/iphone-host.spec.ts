@@ -490,7 +490,8 @@ test("Backstage messages read and archive in place without fetching the entire i
  await expect.poll(()=>methods.filter(m=>m==="markBackstageRead").length).toBe(1);
  await expect(page.locator(".ppw-persona-chat .ppw-backstage-date")).toContainText(["Y1 · W5"]);
  await page.getByRole("button",{name:"Back to messages"}).click();
- await expect(page.locator(".ppw-messenger-inbox-count")).toContainText("0 unread");
+ await expect(page.locator(".ppw-messenger-inbox-count")).toHaveText("1 threads");
+ await expect(page.locator(".ppw-backstage-unread-dot")).toHaveCount(0);
  expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
  await page.locator(".ppw-backstage-contact").first().click();
  await page.locator("summary").filter({hasText:"Conversation options"}).click();
