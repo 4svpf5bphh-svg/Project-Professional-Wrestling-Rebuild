@@ -131,7 +131,7 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Angle",{exact:true}).selectOption("POST_MATCH_ASSAULT");
+ await dialog.locator(".ppw-control-grid select").nth(1).selectOption("POST_MATCH_ASSAULT");
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("After which match?").selectOption("bout");
  await dialog.getByLabel("How it ends").selectOption("VICTIM_FIGHTS_BACK");
@@ -139,7 +139,7 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:"Save card"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
- await expect(page.locator(".ppw-card-lineup").filter({hasText:"Victim fights back"})).toBeVisible();
+ await expect(page.locator(".ppw-card-lineup").filter({hasText:/Victim Fights Back/i})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByLabel("After which match?")).toHaveValue("bout");
