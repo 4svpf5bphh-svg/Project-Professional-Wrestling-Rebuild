@@ -4,6 +4,8 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import type {TransactionPool} from "../src/db/transaction.js";
 import {standingCreativeAgreementAsActor,showCardEditorAsActor,
  saveCardEditorAsActor,markPreparedShowReadyAsActor,programmeWorkspaceAsActor}
  from "../src/api/world-service.js";
@@ -55,8 +57,22 @@ test("standing rivalry agreement covers only approved participants, term and fin
   assert.equal(accepted.status,"APPLIED");
   if(accepted.status==="APPLIED")assert.equal(accepted.result.approved,true);
   assert.equal((await standingCreativeAgreementAsActor(ctx,terms)).status,"REPLAYED");
-  const programme=await programmeWorkspaceAsActor(ctx,world,promotion);
+  // An active signed rivalry must cost the same as an ordinary Programme
+  // overview: one roster scan and one combined activity/terms projection.
+  const meter=new MeasuredQuerySession("rivalry-desk-with-standing-terms");
+  const measured:TransactionPool={async connect(){
+   const connection=await db.pool.connect();
+   return {release(){connection.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]=[]){
+     return meter.execute(()=>connection.query<T>(sql,args));
+    }};
+  }};
+  const programme=await programmeWorkspaceAsActor({pool:measured,
+   actor:{playerId:player}},world,promotion);
+  assert.equal(programme.programmes[0]?.eligibleCreativePeople[0]?.personId,"alice");
   assert.equal(programme.programmes[0]?.creativeAgreements[0]?.approved,true);
+  const usage=meter.assertBudget({maxQueries:7,maxResultBytes:80_000});
+  console.log("PPW standing rivalry desk budget:",JSON.stringify(usage));
   const covered=await showCardEditorAsActor(ctx,world,promotion,show);
   assert.equal(covered.creativeConcerns[0]?.decision,"APPROVED");
   assert.equal(covered.creativeConcerns[0]?.approvalSource,"STANDING_PROGRAMME");
