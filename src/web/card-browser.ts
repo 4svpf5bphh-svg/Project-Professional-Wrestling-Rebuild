@@ -6,7 +6,8 @@ import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
-import type {HostSection,ContractFocus,HomeAttentionFocus} from "./host-navigation.js";
+import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
+ type HomeAttentionFocus} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
@@ -97,7 +98,16 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
-  openPlanner:()=>mountPlannerPage(root,scope,()=>mountCardEditor(root,port)),
+  openPlanner:()=>{
+   // A reminder can enter directly at #/planner/card. Leaving that
+   // one-time action must clear the focus route or a later reload would
+   // unexpectedly jump back into the same card.
+   if(typeof window!=="undefined"&&window.location.hash===plannerCardHash){
+    window.location.hash=hostSectionHash("planner");
+    return;
+   }
+   mountPlannerPage(root,scope,()=>mountCardEditor(root,port));
+  },
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),()=>mountCardEditor(root,port)),
