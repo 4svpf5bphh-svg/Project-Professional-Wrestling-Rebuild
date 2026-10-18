@@ -1,6 +1,6 @@
 import type {SqlRows} from "./world-operations.js";
 import {standingCoveredConcerns} from "./standing-programme-review.js";
-export type CreativeReviewShow={showId:string;promotionId:string;weekIndex:number;slots:readonly {slot_id:string;kind:string;payload:unknown}[]};
+export type CreativeReviewShow={showId:string;promotionId:string;weekIndex:number;slots:readonly {slot_id:string;kind:string;payload:unknown}[];checkStanding?:boolean};
 import {buildCreativeConcerns,creativeApprovalRequired,
  type CreativeConcern,type CreativeContract,type CreativeRight}
  from "../domain/match-creative-consent.js";
