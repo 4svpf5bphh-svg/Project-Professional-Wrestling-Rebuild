@@ -5,6 +5,9 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 import {standingCreativeAgreementAsActor,showCardEditorAsActor,
  saveCardEditorAsActor,markPreparedShowReadyAsActor,programmeWorkspaceAsActor}
@@ -103,9 +106,48 @@ test("standing rivalry agreement covers only approved participants, term and fin
    ...refusalTerms,requestId:"bob-reroll",expectedRevision:4,
    permittedOutcome:"WIN_ONLY"
   }),/already considered different terms/);
+  // An approval must survive a genuine single-World-Lock handoff. Clear the
+  // separate fixture's refused contract right, then restore Alice's agreed
+  // winner and finish without requesting a new decision from her.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET creative_control='NONE'"+
+   " WHERE world_id=$1 AND person_id='bob'",[world]));
+  const restored=await saveCardEditorAsActor(ctx,{...ids,
+   requestId:"restore-script",expectedRevision:4,
+   matches:[{slotId:"bout",payload:match()}],
+   segments:[],runningOrder:["bout"]});
+  assert.equal(restored.status,"APPLIED");
+  const again=await showCardEditorAsActor(ctx,world,promotion,show);
+  assert.equal(again.creativeConcerns[0]?.approvalSource,"STANDING_PROGRAMME");
+  assert.equal((await markPreparedShowReadyAsActor(ctx,{...ids,
+   requestId:"ready-again",expectedRevision:5,confirmReadyToRun:true})).status,"APPLIED");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=now()-interval '1 minute' WHERE world_id=$1",
+   [world]));
+  assert.equal((await lockWorldWeek(db.pool,{
+   worldId:world,requestId:"lock",expectedRevision:6})).status,"APPLIED");
+  assert.equal((await recordWeekContinuity(db.pool,{
+   worldId:world,requestId:"continuity",expectedRevision:7})).status,"APPLIED");
+  const handed=await finalizePreparedWorldShows(db.pool,{
+   worldId:world,requestId:"finalize",expectedRevision:8});
+  assert.equal(handed.status,"APPLIED");
+  if(handed.status==="APPLIED"){
+   assert.deepEqual(handed.result.review,[]);
+   assert.deepEqual(handed.result.submittedShowIds,[show]);
+  }
+  const finalCard=await withWorldTransaction(db.pool,tx=>tx.query<{
+   status:string;payload:{scriptedWinnerSide:string;plannedFinish:string}
+  }>(
+   "SELECT d.status,s.payload FROM ppw_booking_drafts d JOIN ppw_card_slots s"+
+   " ON s.world_id=d.world_id AND s.draft_id=d.draft_id"+
+   " WHERE d.world_id=$1 AND d.draft_id=$2 AND s.slot_id='bout'",[world,show]));
+  assert.deepEqual(finalCard.map(x=>[x.status,x.payload.scriptedWinnerSide,x.payload.plannedFinish]),
+   [["SUBMITTED","A","CLEAN_PIN"]],"The World cannot rewrite a signed finish");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
+   for(const table of ["ppw_ledger_events","ppw_week_prepared_finalizations",
+    "ppw_week_continuity_assessments",
+    "ppw_command_receipts","ppw_programme_match_activities",
     "ppw_match_creative_consents","ppw_programme_creative_agreements",
     "ppw_card_slots","ppw_booking_drafts","ppw_programme_side_refs",
     "ppw_programmes","ppw_contracts","ppw_people","ppw_venues",
