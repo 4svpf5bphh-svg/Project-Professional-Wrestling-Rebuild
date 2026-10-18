@@ -51,6 +51,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  const port:WorldHomePort={
   load:()=>call("overview"),
   dismissAttention:attentionId=>call("dismissAttention",{attentionId}),
+  dismissAttentionBatch:attentionIds=>call("dismissAttentionBatch",{attentionIds}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
   openUnfinishedCard:onNavigate?()=>onNavigate("planner","CARD"):

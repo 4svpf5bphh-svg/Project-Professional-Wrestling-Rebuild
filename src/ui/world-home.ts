@@ -11,6 +11,7 @@ export interface WorldHomePort{
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
+ dismissAttentionBatch?(attentionIds:string[]):Promise<unknown>;
  openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",label="")=>{
@@ -22,6 +23,7 @@ const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  const dismissing=new Set<string>();
+ let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
  function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
  function startClock(node:HTMLElement,world:PlayerWorldOverview["world"]){
@@ -58,7 +60,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   finally{loading=false;draw();}
  }
  async function dismissNews(id:string){
-  if(!port.dismissAttention||dismissing.has(id))return;
+  if(!port.dismissAttention||dismissing.has(id)||clearing)return;
   dismissing.add(id);
   try{
    await port.dismissAttention(id);
@@ -70,6 +72,23 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    error="";
   }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the update";}
   finally{dismissing.delete(id);draw();}
+ }
+ async function clearResolvedUpdates(){
+  if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
+  const attention=overview?.promotion?.attention;
+  const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[])]
+   .map(item=>item.id);
+  if(keys.length<2||keys.length>10)return;
+  clearing=true;error="";draw();
+  try{
+   await port.dismissAttentionBatch(keys);
+   const cleared=new Set(keys);
+   if(attention){
+    attention.offerResults=attention.offerResults?.filter(x=>!cleared.has(x.id));
+    attention.backstageResults=attention.backstageResults?.filter(x=>!cleared.has(x.id));
+   }
+  }catch(e){error=e instanceof Error?e.message:"Could not clear the updates";}
+  finally{clearing=false;draw();}
  }
  function draw(){
   clearClock();root.classList.add("ppw-home");root.replaceChildren();
@@ -225,7 +244,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     if(port.dismissAttention){
      const dismissButton=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
-     dismissButton.type="button";dismissButton.disabled=dismissing.has(item.id);
+     dismissButton.type="button";dismissButton.disabled=clearing||dismissing.has(item.id);
      dismissButton.setAttribute("aria-label","Dismiss "+item.name+"'s contract update");
      dismissButton.onclick=()=>void dismissNews(item.id);
      actions.append(dismissButton);
@@ -260,13 +279,22 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     if(port.dismissAttention){
      const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
-     dismiss.type="button";dismiss.disabled=dismissing.has(item.id);
+     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
      dismiss.setAttribute("aria-label","Dismiss "+item.name+"'s locker room update");
      dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
     }
     entry.append(actions);wire.append(entry);
    }
    root.append(wire);
+  }
+  const resolvedCount=results.length+resolved.length;
+  if(port.dismissAttentionBatch&&resolvedCount>1){
+   const clear=el("button","ppw-home-clear-resolved",
+    clearing?"Clearing updates…":"Clear "+resolvedCount+" resolved updates") as HTMLButtonElement;
+   clear.type="button";clear.disabled=clearing||dismissing.size>0;
+   clear.setAttribute("aria-label","Clear all resolved updates");
+   clear.onclick=()=>void clearResolvedUpdates();
+   root.append(clear);
   }
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
    "Open the menu to visit talent, booking, backstage, business and the wider industry."));

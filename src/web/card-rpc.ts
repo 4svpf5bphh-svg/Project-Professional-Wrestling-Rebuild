@@ -1,5 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
-import {overviewAsActor,dismissAttentionAsActor} from "../api/world-service.js";
+import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,industryFeaturedAsActor,
@@ -26,6 +26,12 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="overview")return overviewAsActor(context,worldId);
  if(method==="dismissAttention")return dismissAttentionAsActor(context,
   worldId,promotionId,id("attentionId"));
+ if(method==="dismissAttentionBatch"){
+  if(!Array.isArray(p.attentionIds)||p.attentionIds.length<1||
+   p.attentionIds.length>10||p.attentionIds.some(x=>typeof x!=="string"))
+   throw new Error("Invalid resolved updates");
+  return dismissAttentionBatchAsActor(context,worldId,promotionId,p.attentionIds);
+ }
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);

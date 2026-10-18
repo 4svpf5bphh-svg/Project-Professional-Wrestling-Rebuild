@@ -124,3 +124,9 @@ Original screen decisions are restored by functionality, not by reinstating olde
 ## Verified direct Backstage navigation milestone
 - Latest green run [#39160994673](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/39160994673): 398 standard, 87 disposable PostgreSQL and 30 browser tests passed, including focused iPhone direct-conversation and read-receipt coverage.
 - Complete booking-card saves remain within **15** bounded SQL commands on both royal and team fixtures, and the Home view retains its single authorised read. No new background polling, World snapshots, Results modifications or production cron activation.
+
+## Single-step clear of completed notices (restoration continuation)
+- The Home desk can clear up to ten resolved contract decisions and locker-room promise receipts **in one authenticated database statement**, rather than an extra SQL write for every dismissal. This option appears only when at least two completed updates exist.
+- The server checks every proposed notice belongs to the currently controlled promotion, is terminal, and remains in the recent publication window. Any forged, expired or actionable identifier aborts the whole batch without a partial acknowledgement.
+- Real PostgreSQL tests verify atomic rollback for mixed valid/invalid input, owner isolation, replay-safe receipts, zero World-revision changes and the one-query transfer ceiling. iPhone browser coverage checks clear-all, persistence across reloads and continued visibility of unread concerns and required bookings.
+- No new background activity, snapshot writes, roster polling, Results changes, production deployment or scheduled World Lock activity.

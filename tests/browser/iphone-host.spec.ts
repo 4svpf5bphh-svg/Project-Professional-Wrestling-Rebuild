@@ -217,6 +217,46 @@ test("resolved locker-room promise opens the exact private historical thread",as
  expect(methods).toEqual(["overview","backstage"]);
  expect(page.url()).not.toContain("p-victor");
 });
+test("iPhone clears all settled notices in one request and preserves urgent work",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];let cleared=false;
+ const home=()=>({...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:0,unpreparedShow:false,pendingBackstage:true,
+  backstageRequests:[{personId:"p-adams",name:"Ava Adams",kind:"CREATIVE"}],
+  expiringTalent:false,pendingContractOffers:false,
+  offerResults:cleared?[]:[
+   {id:"offer-result:one",personId:"p-lee",name:"Lee Harper",status:"ACCEPTED"},
+   {id:"offer-result:two",personId:"p-jade",name:"Jade Quinn",status:"REJECTED"}],
+  backstageResults:cleared?[]:[{
+   id:"backstage-result:91",personId:"p-adams",name:"Ava Adams",status:"BROKEN"}]
+ }}});
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  calls.push(String(request.method));
+  if(request.method==="dismissAttentionBatch"){
+   expect(request.attentionIds).toEqual([
+    "offer-result:one","offer-result:two","backstage-result:91"]);
+   expect(request.playerId).toBeUndefined();
+   cleared=true;
+   await route.fulfill({json:{dismissed:3,firstDismissals:3}});
+  }else await route.fulfill({json:request.method==="overview"?home():{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toBeVisible();
+ await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
+ await page.getByRole("button",{name:"Clear all resolved updates"}).click();
+ await expect(page.getByText(/Lee Harper accepted the offer/)).toHaveCount(0);
+ await expect(page.getByText("Promises settled")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ expect(calls).toEqual(["overview","dismissAttentionBatch"]);
+ await page.reload();
+ await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ await expect(page.getByText("Promises settled")).toHaveCount(0);
+ expect(calls).toEqual(["overview","dismissAttentionBatch","overview"]);
+});
 test("Tag partner cards and roster disciplines stay fast without person-by-person reads",async({page})=>{
  const methods:string[]=[];
  const people=Array.from({length:50},(_,i)=>({

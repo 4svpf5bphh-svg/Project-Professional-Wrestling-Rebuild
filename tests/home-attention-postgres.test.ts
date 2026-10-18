@@ -10,7 +10,7 @@ import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import {readContractDesk} from "../src/db/contract-desk-workspace.js";
-import {dismissResolvedOfferAttention} from "../src/db/player-attention-dismissals.js";
+import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../src/db/player-attention-dismissals.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -115,13 +115,52 @@ test("Private contract news is individually dismissible without hiding mandatory
    ["BROKEN"]);
   assert.deepEqual(afterBackstage?.promotion?.attention.offerResults?.map(x=>x.id),
    ["offer-result:offer-declined"],"Dismissal of one story does not clear another");
+  const batchIds=["offer-result:offer-declined",
+   afterBackstage!.promotion!.attention.backstageResults![0]!.id];
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:"intruder",attentionIds:batchIds
+  }),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:player,
+   attentionIds:[batchIds[1]!,"offer-result:forged"]
+  }),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:player,
+   attentionIds:[batchIds[0]!,batchIds[0]!]
+  }),/Invalid settled updates/);
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:player,
+   attentionIds:["required-show:fake",batchIds[1]!]
+  }),/Invalid settled updates/);
+  const batchMeter=new MeasuredQuerySession("one-query-resolved-news-batch");
+  const batchPool:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return batchMeter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
+  const cleaned=await dispatchCardRpc({pool:batchPool,actor:{playerId:player}},
+   "dismissAttentionBatch",{worldId:world,promotionId,
+    attentionIds:batchIds,playerId:"forged"});
+  assert.deepEqual(cleaned,{dismissed:2,firstDismissals:2});
+  assert.equal(batchMeter.assertBudget({maxQueries:1,maxResultBytes:800}).queryCount,1);
+  assert.deepEqual(await dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:player,attentionIds:batchIds
+  }),{dismissed:2,firstDismissals:0});
+  const cleared=await readPlayerWorldOverview(db.pool,world,player);
+  assert.equal(cleared?.world.revision,worldRevision);
+  assert.deepEqual(cleared?.promotion?.attention.offerResults,[]);
+  assert.deepEqual(cleared?.promotion?.attention.backstageResults,[]);
+  assert.equal(cleared?.promotion?.attention.pendingBackstage,true);
+  assert.equal(cleared?.promotion?.attention.plannedShows,0);
   const afterDesk=await readContractDesk(db.pool,world,player,promotionId);
   assert.equal(afterDesk.resolvedOffers.length,2,
    "Acknowledging Home news does not erase recorded contract decisions");
   const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_player_attention_dismissals"+
    " WHERE world_id=$1 AND player_id=$2",[world,player]));
-  assert.equal(count[0]!.n,"2","Exactly one private receipt per chosen update");
+  assert.equal(count[0]!.n,"4","Only the four deliberately acknowledged updates have receipts");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_backstage_requests","ppw_player_attention_dismissals",
