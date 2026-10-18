@@ -36,7 +36,7 @@ const offerDefaults=():TermsDraft=>({
 export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  initialView:DirectoryView="ROSTER"){
  let filter:DirectoryFilter={view:initialView,search:"",division:"ALL",
-  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:"ROLE",minPopularity:undefined,limit:25,offset:0};
+  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"ROLE",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
   sending=false,pendingKey="",activeOffer:string|null=null;
  let choices=new Map<string,TermsDraft>();

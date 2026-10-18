@@ -181,6 +181,7 @@ window.addEventListener("hashchange",()=>{drawerExpanded=false;renderSection();}
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
+ drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
  delete document.documentElement.dataset.ppwScreen;
  game.replaceChildren(el("p","ppw-access-loading","Opening the PPW World…"));
