@@ -5,6 +5,7 @@ import type {readWorkingConnections} from "../db/working-connections-workspace.j
 export type WorkingConnectionsView=Awaited<ReturnType<typeof readWorkingConnections>>;
 export interface WorkingConnectionsPort {
  load(personId?:string):Promise<WorkingConnectionsView>;
+ openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",label="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=label;return x;
@@ -53,6 +54,11 @@ export function mountWorkingConnections(root:HTMLElement,
   choose.value=view.selectedPersonId??"";
   choose.onchange=()=>void load(choose.value);
   field.append(choose);root.append(field);
+  if(view.selectedPersonId&&port.openWrestler){
+   const scout=el("button","ppw-connections-button","View wrestler dossier ↗") as HTMLButtonElement;
+   scout.type="button";scout.onclick=()=>port.openWrestler?.(view!.selectedPersonId!);
+   root.append(scout);
+  }
   const list=el("section","ppw-connections-list");
   list.append(el("h2","","Recent connections"));
   if(!view.connections.length)
@@ -60,6 +66,11 @@ export function mountWorkingConnections(root:HTMLElement,
   for(const c of view.connections){
    const card=el("article","ppw-connection-card");
    card.append(el("h3","",c.name));
+   if(port.openWrestler){
+    const scout=el("button","ppw-connections-button","View "+c.name+"'s dossier ↗") as HTMLButtonElement;
+    scout.type="button";scout.onclick=()=>port.openWrestler?.(c.personId);
+    card.append(scout);
+   }
    const facts=el("div","ppw-connection-facts");
    facts.append(el("span","","Recent tag shows · "+c.recentTagMatches),
     el("span","","Familiarity · "+(c.established?c.familiarity:"Not established")));

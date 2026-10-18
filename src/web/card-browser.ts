@@ -97,7 +97,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
   openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
    ()=>mountCardEditor(root,port)),
-  openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
+  openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call,root,scope),
    ()=>mountCardEditor(root,port)),
   openPersona:()=>mountPersonaDesk(root,personaPort(call,root,scope),
    ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
@@ -353,13 +353,15 @@ export function mountStablesPage(root:HTMLElement,scope:Scope){
  return mountStableDesk(root,stablePort(createCardClient(scope),root,scope));
 }
 
-function workingPort(call:ReturnType<typeof createCardClient>):WorkingConnectionsPort{
+function workingPort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope):WorkingConnectionsPort{
  return {load:(personId)=>call("workingConnections",
-  personId?{personId}:{})};
+  personId?{personId}:{}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
 }
 /** The Roster > Singles / Working Connections page, without draft writes. */
 export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
- return mountWorkingConnections(root,workingPort(createCardClient(scope)));
+ return mountWorkingConnections(root,workingPort(createCardClient(scope),root,scope));
 }
 
 function personaPort(call:ReturnType<typeof createCardClient>,
