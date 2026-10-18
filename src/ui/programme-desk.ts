@@ -3,6 +3,7 @@
  */
 import type {readProgrammeWorkspace} from "../db/programme-workspace.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
+import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
  load():Promise<ProgrammeView>;
@@ -26,6 +27,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  function rosterOptions(){
   return view?[...view.people,...view.teams]:[];
  }
+ const teamMembers=()=>new Map((view?.teams??[]).map(t=>[t.refId,t.memberIds]));
+ const allSelected=()=>[...refsA,...refsB].filter((r):r is ProgrammeRef=>r!==null);
  const name=(p:ProgrammeRef)=>rosterOptions().find(x=>
   x.kind===p.kind&&x.refId===p.refId)?.name??p.refId;
  async function reload(){
@@ -47,12 +50,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   finally{working=false;render();}
  }
  function selector(options:readonly {key:string;label:string}[],
-  selected:string,change:(value:string)=>void):HTMLSelectElement{
+  selected:string,change:(value:string)=>void,
+  forbidden:ReadonlySet<string>=new Set()):HTMLSelectElement{
   const x=document.createElement("select");x.disabled=working||!view?.canEdit;
   x.setAttribute("aria-label","Choose rivalry participant");
   for(const o of options){
    const item=document.createElement("option");item.value=o.key;
-   item.textContent=o.label;item.selected=o.key===selected;x.append(item);
+   item.textContent=o.label;item.selected=o.key===selected;
+   item.disabled=forbidden.has(o.key)&&o.key!==selected;x.append(item);
   }
   x.value=selected;x.onchange=()=>change(x.value);return x;
  }
@@ -63,10 +68,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const selected=ref?ref.kind+":"+ref.refId:"";
    const choices=[{key:"",label:"Choose wrestler or team"},...rosterOptions().map(p=>({
     key:p.kind+":"+p.refId,label:p.kind==="TEAM"?"TEAM · "+p.name:p.name}))];
+   const others=[...refsA.flatMap((value,index)=>side==="A"&&index===i||!value?[]:[value]),
+    ...refsB.flatMap((value,index)=>side==="B"&&index===i||!value?[]:[value])];
+   const forbidden=new Set(rosterOptions().filter(p=>!availableProgrammeOption({kind:p.kind,refId:p.refId},others,teamMembers()))
+    .map(p=>p.kind+":"+p.refId));
    wrap.append(selector(choices,selected,value=>{
     const found=rosterOptions().find(p=>p.kind+":"+p.refId===value);
     values[i]=found?{kind:found.kind,refId:found.refId}:null;render();
-   }));
+   },forbidden));
   }
   wrap.append(button(values.length===2?"− Remove extra":"+ Add another",()=>{
    if(values.length===2)values.pop();else values.push(null);
@@ -92,13 +101,37 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   list.append(element("h2","","Active rivalries · "+active.length));
   for(const p of active){
    const panel=element("article","ppw-programme-card");
-   panel.append(element("p","ppw-eyebrow","HEAT "+(p.heat??"—")+" · REPETITION "+p.repetition),
-    element("h3","",p.sideA.map(x=>x.name).join(" & ")+"  vs  "+
-     p.sideB.map(x=>x.name).join(" & ")));
-   panel.append(element("p","ppw-muted",
-    p.matchCount+" matches · "+p.segmentCount+" angles · "+
-    "A "+p.sideAWins+"–"+p.sideBWins+" B"+
-    (p.draws?" · "+p.draws+" draws":"")));
+   const header=element("div","ppw-programme-broadcast");
+   const left=element("div","ppw-programme-broadcast-side",p.sideA.map(x=>x.name).join(" & "));
+   const right=element("div","ppw-programme-broadcast-side",p.sideB.map(x=>x.name).join(" & "));
+   header.append(left,element("span","ppw-programme-versus","VS"),right);
+   const heat=p.heat===null?null:Math.max(0,Math.min(100,p.heat));
+   const pulse=element("div","ppw-programme-signals");
+   for(const [caption,value,percent] of [
+    ["HEAT",heat===null?"NOT RATED":Math.round(heat)+"/100",heat??0],
+    ["REPETITION",Math.round(p.repetition).toString(),Math.max(0,Math.min(100,p.repetition))]
+   ] as const){
+    const tile=element("div","ppw-programme-signal");
+    tile.append(element("small","",caption),element("strong","",value));
+    const track=element("span","ppw-programme-signal-track");
+    const bar=element("span","ppw-programme-signal-fill");
+    bar.style.width=percent+"%";track.append(bar);tile.append(track);pulse.append(tile);
+   }
+   panel.append(element("span","ppw-programme-eyebrow",
+    "STORIES IN MOTION · "+(heat===null?"AWAITING FIRST CROWD REACTION":
+     heat>=75?"HOT PROGRAMME":heat>=45?"BUILDING MOMENTUM":"STORY DEVELOPING")),
+    header,pulse);
+   const record=element("div","ppw-programme-record");
+   for(const [caption,n] of [
+    ["SIDE A WINS",p.sideAWins],["SIDE B WINS",p.sideBWins],
+    ["MATCHES",p.matchCount],["ANGLES",p.segmentCount],
+    ["DRAWS",p.draws],["BEATS",p.activityCount]
+   ] as const){
+    const tile=element("span","ppw-programme-record-item");
+    tile.append(element("small","",caption),element("strong","",String(n)));
+    record.append(tile);
+   }
+   panel.append(record);
    panel.append(element("p","ppw-muted",
     "Week "+(p.startedWeekIndex===null?"—":Math.floor(p.startedWeekIndex/52)+1+
      " / "+(p.startedWeekIndex%52+1))+
@@ -147,11 +180,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    const a=refsA.filter((x):x is ProgrammeRef=>!!x);
    const b=refsB.filter((x):x is ProgrammeRef=>!!x);
+   const overlap=programmeOverlaps(allSelected(),teamMembers());
+   if(overlap)creation.append(element("p","ppw-alert ppw-error",
+    "This rivalry uses a wrestler more than once. Check singles and established team selections."));
    creation.append(button(working?"Saving…":"Start rivalry",()=>{
     void run(()=>port.start({requestId:crypto.randomUUID(),
      expectedRevision:view!.worldRevision,sideA:a,sideB:b,
      championshipId:titleId}),"New programme started");
-   },working||a.length!==refsA.length||b.length!==refsB.length||
+   },working||overlap||a.length!==refsA.length||b.length!==refsB.length||
       !a.length||!b.length));
    root.append(creation);
   }

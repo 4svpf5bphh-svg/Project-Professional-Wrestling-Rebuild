@@ -16,3 +16,38 @@
 .ppw-programme-history-entry .ppw-programme-action{flex:none;min-height:42px}
 @media(max-width:490px){.ppw-programme-history-entry{align-items:flex-start;
  flex-direction:column}.ppw-programme-history-entry .ppw-programme-action{width:100%}}
+
+/* Broadcast-inspired feud presentation. All bars are derived client-side. */
+.ppw-programme-card{position:relative;overflow:hidden;padding:15px;
+ border:1px solid #375b80;border-radius:19px;
+ background:radial-gradient(circle at 78% -20%,#314a7077,transparent 54%),
+ linear-gradient(145deg,#1b314b,#0a1728)}
+.ppw-programme-card:before{content:"";position:absolute;inset:0 0 auto;height:3px;
+ background:linear-gradient(90deg,#66defb,#a996fc,#ff7bb4)}
+.ppw-programme-eyebrow{display:block;font-size:10px;letter-spacing:.12em;
+ font-weight:800;color:#a6dffc;padding:4px 2px 12px}
+.ppw-programme-broadcast{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+ align-items:center;gap:9px;margin:0 0 13px}
+.ppw-programme-broadcast-side{font-size:clamp(13px,3.8vw,20px);font-weight:900;
+ overflow-wrap:anywhere;line-height:1.2}
+.ppw-programme-broadcast-side:last-child{text-align:right}
+.ppw-programme-versus{font-size:11px;letter-spacing:.05em;font-weight:900;
+ background:linear-gradient(135deg,#fd7ba8,#9066fc);padding:9px 7px;border-radius:50%}
+.ppw-programme-signals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ppw-programme-signal{padding:11px;border:1px solid #375779;border-radius:10px;background:#07192b8c;
+ display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px}
+.ppw-programme-signal small{font-size:10px;font-weight:800;letter-spacing:.08em;color:#a7cfe1}
+.ppw-programme-signal strong{font-size:12px}
+.ppw-programme-signal-track{width:100%;height:5px;border-radius:8px;background:#3c4a67;overflow:hidden}
+.ppw-programme-signal-fill{display:block;height:100%;background:linear-gradient(90deg,#4bcef4,#e875ba)}
+.ppw-programme-signal:last-child .ppw-programme-signal-fill{background:linear-gradient(90deg,#9dbfcf,#e29d65)}
+.ppw-programme-record{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;margin:12px 0}
+.ppw-programme-record-item{padding:9px 6px;display:flex;flex-direction:column;gap:4px;
+ border-radius:8px;background:#081626;border:1px solid #243c54;text-align:center}
+.ppw-programme-record-item small{font-size:8px;color:#a9c6d8;letter-spacing:.06em}
+.ppw-programme-record-item strong{font-size:18px;font-variant-numeric:tabular-nums}
+.ppw-programme-side select{min-height:44px;width:100%;font-size:16px}
+@media(min-width:650px){.ppw-programme-record{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(prefers-reduced-motion:no-preference){.ppw-programme-card{transition:border-color .18s}
+ .ppw-programme-card:hover{border-color:#69bfd7}}
