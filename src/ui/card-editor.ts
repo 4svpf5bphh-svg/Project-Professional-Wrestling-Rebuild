@@ -330,6 +330,41 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    el("span","",castReady+" / "+order.length+" cast complete"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
+  const concerns=view.creativeConcerns??[];
+  if(concerns.length){
+   const desk=el("section","ppw-card-creative");
+   const pending=concerns.filter(c=>c.requiresConsent&&c.decision!=="APPROVED");
+   desk.append(el("span","ppw-eyebrow","WRESTLER AGREEMENTS"),
+    el("h3","",pending.length?
+     pending.length+" match approval"+(pending.length===1?"":"s")+" to resolve":
+     "Your wrestlers' creative terms"));
+   if(dirty)desk.append(el("p","ppw-card-creative-advice",
+    "Save the latest card before reviewing the wrestlers' terms."));
+   for(const c of concerns){
+    const box=el("div","ppw-card-creative-item");
+    const reason=c.reason==="MATCH_APPROVAL"?
+     "Contractual say over this match":
+     c.reason==="PROTECTED_LOSS"?
+      "A clean or submission loss needs agreement":
+      "The wrestler has asked to be consulted";
+    const label=c.decision==="APPROVED"?"AGREED":
+     c.decision==="DECLINED"?"DECLINED":
+     c.requiresConsent?"AWAITING ANSWER":"CONSULTATION";
+    const wrestler=el("strong","",c.name);
+    const state=el("span","ppw-card-creative-state",label);
+    state.dataset.status=c.decision;
+    box.append(wrestler,state,el("p","",reason));
+    if(!dirty&&c.requiresConsent&&c.decision==="NOT_REQUESTED"&&
+     port.requestCreativeConsent&&view.canEdit&&!view.ready)
+     box.append(button("Ask "+c.name,()=>void requestAgreement(c.slotId,c.personId),
+      saving,"ppw-card-creative-ask"));
+    if(c.decision==="DECLINED")
+     box.append(el("small","",
+      "They won't agree to this version. Reconsider the finish, opponents or assignment."));
+    desk.append(box);
+   }
+   root.append(desk);
+  }
   // Match timing is already authored and available in memory. Present only a
   // truthful partial estimate: angles and entrances have their own air-time.
   const matchMinutes=[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0);
