@@ -187,7 +187,7 @@ export async function readPlayerWorldOverview(
       }=>news!==null&&typeof news==="object"&&
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
-       (news.status==="FULFILLED"||news.status==="BROKEN")):[]
+       (news.status==="FULFILLED"||news.status==="BROKEN")):[]}
    }:null
   };
  });
