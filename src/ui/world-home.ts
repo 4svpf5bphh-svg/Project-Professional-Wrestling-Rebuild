@@ -10,6 +10,7 @@ export interface WorldHomePort{
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
+ openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",label="")=>{
  const node=document.createElement(tag);node.className=cls;
@@ -193,6 +194,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const open=el("button","ppw-home-wire-button","Open Contracts") as HTMLButtonElement;
     open.type="button";open.onclick=port.contracts;
     actions.append(open);
+    if(port.openWrestler){
+     const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
+     person.type="button";
+     person.onclick=()=>port.openWrestler?.(item.personId);
+     person.setAttribute("aria-label","View "+item.name+"'s wrestler dossier");
+     actions.append(person);
+    }
     if(port.dismissAttention){
      const dismissButton=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
      dismissButton.type="button";dismissButton.disabled=dismissing.has(item.id);

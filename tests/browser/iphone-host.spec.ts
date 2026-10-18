@@ -983,3 +983,38 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  expect(methods.filter(x=>x==="talent")).toHaveLength(0);
  expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(0);
 });
+
+test("Home contract news opens the exact wrestler dossier without losing the desk",async({page})=>{
+ const methods:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:0,unpreparedShow:false,pendingBackstage:false,
+  expiringTalent:false,pendingContractOffers:false,
+  offerResults:[{id:"offer-result:new-contract",personId:"alice",
+   name:"Alice",status:"ACCEPTED"}]}}};
+ const dossier={personId:"alice",name:"Alice",division:"WOMEN",status:"ACTIVE",
+  careerStage:"REGULAR",popularity:70,recognition:72,momentum:80,morale:75,
+  inRingQuality:89,matchCraft:83,presentation:88,stamina:70,safety:85,
+  fatigue:0,wear:0,alignment:"FACE",canEdit:false,onYourRoster:true,
+  sharedHuman:false,currentWeekIndex:4,worldRevision:4,
+  persona:{personaName:"Alice",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[],teams:[],stables:[],connections:[],history:[]};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON();
+  methods.push(String(input.method));
+  if(input.method==="wrestlerProfile")expect(input.personId).toBe("alice");
+  await route.fulfill({json:input.method==="overview"?home:
+   input.method==="wrestlerProfile"?dossier:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByText("Alice accepted the offer")).toBeVisible();
+ await page.getByRole("button",{name:"View Alice's wrestler dossier"}).click();
+ const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("button",{name:"‹ Back"}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(page.getByText("Alice accepted the offer")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ expect(methods).toEqual(["overview","wrestlerProfile"]);
+});
