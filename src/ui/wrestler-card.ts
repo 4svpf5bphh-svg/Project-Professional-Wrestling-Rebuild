@@ -1,0 +1,80 @@
+/** One presentation contract across roster, recruitment and the booking sheet.
+ * Caller owns selection/permission decisions; visual cards never query Neon.
+ */
+export interface WrestlerCardModel{
+ personId:string;name:string;ringName?:string|null;
+ division?:string|null;promotion?:string|null;status?:string|null;
+ alignment?:string|null;gimmickId?:string|null;primaryStyle?:string|null;
+ signatureMove?:string|null;finisherMove?:string|null;
+ popularity?:number|null;recognition?:number|null;momentum?:number|null;
+ inRingQuality?:number|null;matchCraft?:number|null;presentation?:number|null;
+ remainingDates?:number|null;available?:boolean;reason?:string|null;
+}
+export function wrestlerLabel(value:string|null|undefined):string{
+ return value?value.replaceAll("_"," ").toLowerCase()
+  .replace(/(^|\s)\S/g,x=>x.toUpperCase()):"Not yet documented";
+}
+export function wrestlerInitials(name:string):string{
+ return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()??"").join("")||"PP";
+}
+const span=(className:string,label:string)=>{
+ const node=document.createElement("span");node.className=className;node.textContent=label;
+ return node;
+};
+function metric(label:string,value:number|null|undefined){
+ const item=document.createElement("span");item.className="ppw-wrestler-stat";
+ item.append(span("ppw-wrestler-stat-name",label),
+  span("ppw-wrestler-stat-value",value==null?"—":Math.round(value).toString()));
+ const track=span("ppw-wrestler-track","");
+ const fill=span("ppw-wrestler-fill","");
+ fill.style.width=(value==null?0:Math.max(0,Math.min(100,value)))+"%";
+ track.append(fill);item.append(track);
+ return item;
+}
+export function createWrestlerCard(p:WrestlerCardModel,options:{
+ context:"ROSTER"|"MARKET"|"BOOKING";
+ label?:string;onSelect?:()=>void;disabled?:boolean;
+ compact?:boolean;
+}):HTMLElement{
+ const selectable=!!options.onSelect;
+ const root=document.createElement(selectable?"button":"div");
+ root.className="ppw-wrestler-card ppw-wrestler-"+options.context.toLowerCase()+
+  (options.compact?" ppw-wrestler-compact":"")+
+  (options.disabled?" ppw-wrestler-unavailable":"");
+ if(selectable){
+  const button=root as HTMLButtonElement;button.type="button";
+  button.disabled=!!options.disabled;button.onclick=options.onSelect!;
+ }
+ root.setAttribute("aria-label",p.name+
+  (p.division?" · "+wrestlerLabel(p.division):"")+
+  (options.label?" · "+options.label:""));
+ const portrait=span("ppw-wrestler-portrait",wrestlerInitials(p.ringName||p.name));
+ portrait.setAttribute("aria-hidden","true");
+ // Accent is derived locally from the immutable identity ID, not a request.
+ const tone=[...p.personId].reduce((n,ch)=>(n*31+ch.charCodeAt(0))%360,0);
+ portrait.style.setProperty("--wrestler-hue",String(tone));
+ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
+ copy.append(span("ppw-wrestler-division",
+  (p.division==="WOMEN"?"WOMEN":p.division==="MEN"?"MEN":"WORLD ROSTER")+
+  (p.alignment?"  /  "+wrestlerLabel(p.alignment).toUpperCase():"")));
+ copy.append(span("ppw-wrestler-name",p.ringName||p.name));
+ if(p.ringName&&p.ringName!==p.name)
+  copy.append(span("ppw-wrestler-real-name",p.name));
+ const identity=[p.gimmickId?wrestlerLabel(p.gimmickId):null,
+  p.primaryStyle?wrestlerLabel(p.primaryStyle):null].filter(Boolean);
+ if(identity.length)copy.append(span("ppw-wrestler-identity",identity.join(" · ")));
+ const stats=document.createElement("span");stats.className="ppw-wrestler-stats";
+ const numbers:[string,number|null|undefined][]=[
+  ["POP",p.popularity],["REC",p.recognition],["MOM",p.momentum],
+  ["RING",p.inRingQuality],["CRAFT",p.matchCraft],["PRES",p.presentation]];
+ for(const [key,n] of numbers)if(n!==undefined)stats.append(metric(key,n));
+ copy.append(stats);
+ if(p.finisherMove&&!options.compact)
+  copy.append(span("ppw-wrestler-finisher","FINISHER  /  "+p.finisherMove));
+ const footer=span("ppw-wrestler-status",options.label??p.status??"");
+ if(options.context==="BOOKING"&&p.available===false)
+  footer.classList.add("ppw-wrestler-status-blocked");
+ if(p.reason&&p.available===false)footer.title=wrestlerLabel(p.reason);
+ root.append(portrait,copy,footer);
+ return root;
+}

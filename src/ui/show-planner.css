@@ -13,3 +13,6 @@ margin:5px 8px 5px 0;cursor:pointer}
 .ppw-planner-form select{width:100%;font-size:16px;min-height:46px;
 border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;padding:8px}
 .ppw-planner-error{color:#ffb2aa}
+.ppw-planner-home-market{border:1px solid rgba(78,196,234,.35);border-left:3px solid #56e0ed;
+ border-radius:10px;background:linear-gradient(95deg,rgba(9,68,90,.53),rgba(12,23,36,.55));
+ padding:12px 13px;color:#d1f8ff;font-weight:750;font-size:13px;letter-spacing:.015em}

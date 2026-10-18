@@ -12,6 +12,7 @@ import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegm
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
+import {createWrestlerCard} from "./wrestler-card.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -524,15 +525,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const candidate of current.items){
     const taken=[...matches.values()].flatMap(x=>assignedIds(x)).includes(candidate.personId)&&
      chosen?.personId!==candidate.personId;
-    const realName=candidate.name??candidate.personId;
-    const name=candidate.ringName&&candidate.ringName!==realName?
-     candidate.ringName+" ("+realName+")":realName;
-    const character=candidate.gimmickId?
-     " · "+candidate.gimmickId.replaceAll("_"," ").toLowerCase():"";
-    rows.append(button(name+character+" · "+(candidate.division??"Unknown division")+
-     (candidate.available?" · "+(candidate.remainingDates===null?
-      "Unlimited dates":candidate.remainingDates+" dates"):" · "+candidate.reason),
-     ()=>chooseTalent(candidate),!candidate.available||taken,"ppw-talent"));
+    const label=candidate.available?
+     (candidate.remainingDates===null?"UNLIMITED DATES":
+      candidate.remainingDates+" DATES REMAINING"):
+      nice(candidate.reason);
+    rows.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
+     status:label},{
+     context:"BOOKING",compact:true,label:taken?"ALREADY BOOKED":label,
+     disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
+
    }
    sheet.append(rows);
    if(current.cursor)sheet.append(button("Load more",()=>{void findTalent(current.query,true);}));

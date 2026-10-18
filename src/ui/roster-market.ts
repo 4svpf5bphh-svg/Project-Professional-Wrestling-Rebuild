@@ -4,6 +4,7 @@
 import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
+import {createWrestlerCard} from "./wrestler-card.js";
 export type WrestlerDirectoryData=Awaited<ReturnType<typeof readWrestlerDirectory>>;
 export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
@@ -236,12 +237,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   for(const p of view.people){
    const card=document.createElement("details");card.className="ppw-directory-card";
    const title=document.createElement("summary");
-   const name=el("span","ppw-directory-name",p.name);
-   const note=el("small","ppw-directory-muted",
-    (p.division==="WOMEN"?"Women":p.division==="MEN"?"Men":"Division unknown")+
-    " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum)+
-    (filter.view==="ROSTER"&&p.roleExpectation?
-      " · "+p.roleExpectation.replaceAll("_"," ").toLowerCase():""));
    const label=p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
@@ -251,13 +246,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE STARTS SOON":
     p.availability==="CONTRACTED_SOON"?"CONTRACTED SOON":
     p.availability==="FREE_AGENT"?"FREE AGENT":"NON-EXCLUSIVE";
-   title.append(name,note,el("span","ppw-directory-status",label));
-   if(filter.view==="MARKET"){
-    const interest=el("span","ppw-directory-interest",
-     "Interest · "+p.interest.replaceAll("_"," ").toLowerCase());
-    interest.setAttribute("aria-label","Recruitment interest is an estimate, not a guarantee");
-    title.append(interest);
-   }
+   title.append(createWrestlerCard({...p,status:label},{
+    context:filter.view,label}));
+   if(filter.view==="MARKET")title.append(el("span","ppw-directory-interest",
+    "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()));
    card.append(title);
    const detail=el("div","ppw-directory-detail");
    const metrics=el("div","ppw-directory-metrics");

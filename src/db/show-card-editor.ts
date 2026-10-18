@@ -13,6 +13,7 @@ import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import {contractAvailability} from "../domain/contract-availability.js";
+import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
@@ -33,6 +34,9 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;
  booking_open:boolean};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
+ popularity:number|null;recognition:number|null;momentum:number|null;
+ in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
+ default_alignment:string|null;active_alignment:string|null;
  booking_division:string|null;person_status:string|null;family:string|null;
  portable_gimmick_id:string|null;persona_record:unknown|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
@@ -149,6 +153,8 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
   const week=(show.year-1)*52+show.week-1;
   const rows=await tx.query<ContractRow>([
     "SELECT c.person_id,c.contract_id,p.name,p.booking_division,",
+    "p.popularity,p.recognition,p.momentum,p.in_ring_quality,p.match_craft,",
+    "p.presentation,p.default_alignment,aligned.alignment AS active_alignment,",
     "p.portable_gimmick_id,identity.persona AS persona_record,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
     "c.expires_week_index,c.remaining_dates,",
@@ -161,6 +167,9 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "ON p.world_id=c.world_id AND p.person_id=c.person_id",
     "LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id",
     "AND identity.person_id=p.person_id",
+    "LEFT JOIN ppw_promotion_wrestler_alignments aligned",
+    "ON aligned.world_id=p.world_id AND aligned.person_id=p.person_id",
+    "AND aligned.promotion_id=$2",
     "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'",
     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
@@ -175,14 +184,22 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     status:c.status as "SIGNED",startWeekIndex:c.start_week_index??undefined,
     expiresWeekIndex:c.expires_week_index??-1,remainingDates:c.remaining_dates,
     currentWeekIndex:week});
+   const baseline=originalPersonaBaseline(c.name??c.person_id,c.portable_gimmick_id);
    const persona=c.persona_record&&typeof c.persona_record==="object"?
     c.persona_record as Record<string,unknown>:null;
    const ringName=typeof persona?.personaName==="string"&&persona.personaName.trim()?
     persona.personaName:c.name;
    const gimmick=typeof persona?.gimmickId==="string"?
-    persona.gimmickId:c.portable_gimmick_id;
+    persona.gimmickId:baseline.gimmickId;
+   const identityStyle=typeof persona?.primaryStyle==="string"?persona.primaryStyle:baseline.primaryStyle;
+   const signature=Array.isArray(persona?.signatureMoves)?persona.signatureMoves as {name?:string}[]:baseline.signatureMoves;
+   const finishing=Array.isArray(persona?.finishingMoves)?persona.finishingMoves as {name?:string}[]:baseline.finishingMoves;
    return {personId:c.person_id,contractId:c.contract_id,name:c.name,
-    ringName,gimmickId:gimmick??null,
+    ringName,gimmickId:gimmick??null,primaryStyle:identityStyle,
+    signatureMove:signature[0]?.name??null,finisherMove:finishing[0]?.name??null,
+    alignment:c.active_alignment??c.default_alignment,
+    popularity:c.popularity,recognition:c.recognition,momentum:c.momentum,
+    inRingQuality:c.in_ring_quality,matchCraft:c.match_craft,presentation:c.presentation,
     division:c.booking_division,available:rights.available&&
      c.person_status==="ACTIVE"&&!c.exclusive_elsewhere,
     reason:c.person_status!=="ACTIVE"?"INACTIVE":

@@ -58,6 +58,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}
   const summary=node("p",data.promotionName+" · Year "+data.year+", Week "+data.week,"ppw-planner-summary");
   root.append(summary);
+  const home=data.venues.find(v=>v.marketId===data.homeMarketId);
+  root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
+   " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
+   "ppw-planner-home-market"));
   if(editing){
    const form=node("section","","ppw-planner-form");
    form.append(node("h2","Year "+editing.year+" · Week "+editing.week));
@@ -65,7 +69,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
    venues.setAttribute("aria-label","Show venue");venues.disabled=busy;
    for(const v of data.venues){
     const option=document.createElement("option");option.value=v.venueId;
-    option.textContent=v.marketName+" · "+v.name+" · "+v.capacity+" seats · "+formatMoney(v.weeklyHireCost);
+    option.textContent=(v.marketId===data.homeMarketId?"★ HOME · ":"")+v.marketName+" · "+v.name+" · "+v.capacity+" seats · "+formatMoney(v.weeklyHireCost);
     venues.append(option);
    }
    venues.value=venueId;venues.onchange=()=>{venueId=venues.value;};

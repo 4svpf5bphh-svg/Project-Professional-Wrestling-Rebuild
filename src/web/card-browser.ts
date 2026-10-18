@@ -23,6 +23,7 @@ import "../ui/staff-desk.css";
 import "../ui/business-desk.css";
 import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
 import "../ui/roster-market.css";
+import "../ui/wrestler-card.css";
 import {mountWorkingConnections,type WorkingConnectionsPort} from "../ui/working-connections.js";
 import {mountPersonaDesk,type PersonaDeskPort} from "../ui/persona-desk.js";
 import "../ui/persona-desk.css";
