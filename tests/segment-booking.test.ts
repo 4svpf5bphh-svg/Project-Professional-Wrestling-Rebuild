@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {normalizeBookedSegment} from "../src/domain/segment-booking.js";
+import type {SegmentCreativeBeat} from "../src/domain/segment-creative-beats.js";
 const known=new Set(["a","b","c"]);
 const make=(kind:"ATTACK"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|"DEBUT"|"VIDEO_PACKAGE"|"STABLE_EXIT"|"STABLE_RECONCILIATION",actorIds:string[],targetIds:string[],extra:Record<string,unknown>={})=>({slotId:"slot",position:0,kind,actorIds,targetIds,outcome:"HAPPENS" as const,...extra});
 test("attacks and interference require an explicit target",()=>{
@@ -37,5 +38,5 @@ test("scripted deliveries reject forged values and mismatched segment types",()=
   {kind:"PROMO",purpose:"BOAST"},
   {kind:"ATTACK",presentation:"BEATDOWN"},
   {kind:"ATTACK",presentation:"BEATDOWN",objective:"GENERATE_HEAT",extra:"not allowed"}
- ])assert.throws(()=>normalizeBookedSegment({...good,creativeBeat:bad},known));
+ ])assert.throws(()=>normalizeBookedSegment({...good,creativeBeat:bad as unknown as SegmentCreativeBeat},known));
 });
