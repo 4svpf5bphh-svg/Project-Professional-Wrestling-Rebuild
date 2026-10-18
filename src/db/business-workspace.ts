@@ -17,7 +17,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    cash:string;debt:string;weekly_media_income:string|null;
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
    last_weekly_net:string|null;runway_weeks:number|null;
-   financial_distress:string|null;guarantees:string;
+   financial_distress:string|null;guarantees:string;staff_payroll:string;
   }>(`
    SELECT w.year,w.week,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
@@ -27,7 +27,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
       FROM ppw_contracts c WHERE c.world_id=p.world_id
        AND c.promotion_id=p.promotion_id AND c.status='SIGNED'
        AND c.start_week_index <= (w.year-1)*52+w.week-1
-       AND c.expires_week_index >= (w.year-1)*52+w.week-1),0)::text AS guarantees
+       AND c.expires_week_index >= (w.year-1)*52+w.week-1),0)::text AS guarantees,
+     COALESCE((SELECT sum(e.weekly_salary)
+      FROM ppw_staff_employments e WHERE e.world_id=p.world_id
+       AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
+       AND e.start_week_index <= (w.year-1)*52+w.week-1),0)::text AS staff_payroll
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
    JOIN ppw_memberships m ON m.world_id=w.world_id
@@ -73,15 +77,16 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const weeklyMedia=number(w.weekly_media_income);
   const weeklySponsor=number(w.weekly_sponsor_income);
   const weeklyOverhead=number(w.weekly_fixed_overhead);
-  const guarantees=Number(w.guarantees);
+  const guarantees=Number(w.guarantees),staffPayroll=Number(w.staff_payroll);
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
    cash:Number(w.cash),debt:Number(w.debt),
    weeklyMediaIncome:weeklyMedia,weeklySponsorIncome:weeklySponsor,
    weeklyFixedOverhead:weeklyOverhead,weeklyGuarantees:guarantees,
+   weeklyStaffPayroll:staffPayroll,
    recurringMargin:weeklyMedia===null||weeklySponsor===null||
     weeklyOverhead===null?null:
-    weeklyMedia+weeklySponsor-weeklyOverhead-guarantees,
+    weeklyMedia+weeklySponsor-weeklyOverhead-guarantees-staffPayroll,
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
    shows:shows.slice(0,12).map(s=>({

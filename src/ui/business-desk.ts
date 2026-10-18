@@ -72,7 +72,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     ["Media income",view.weeklyMediaIncome],
     ["Sponsorship",view.weeklySponsorIncome],
     ["Fixed overhead",view.weeklyFixedOverhead===null?null:-view.weeklyFixedOverhead],
-    ["Signed talent guarantees",-view.weeklyGuarantees]
+    ["Signed talent guarantees",-view.weeklyGuarantees],
+    ["Talent office wages",-view.weeklyStaffPayroll]
    ] as const){
     const line=el("div","ppw-business-line");
     line.append(el("span","",label),el("strong",n===null?"Not configured":money(n)));
