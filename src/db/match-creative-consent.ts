@@ -104,3 +104,34 @@ export async function requestMatchCreativeConsent(pool:TransactionPool,input:{
    if(!issue)throw new Error("No contractual approval is needed for this wrestler");
    if(issue.decision!=="NOT_REQUESTED")return {slotId:input.slotId,
     personId:input.personId,decision:issue.decision,existing:true};
+   const rows=await tx.query<{morale:number|null;fatigue:number|null;
+    contract_priorities:{role:number;loyalty:number}|null;
+    role_expectation:string}>([
+    "SELECT p.morale,p.fatigue,p.contract_priorities,c.role_expectation",
+    "FROM ppw_contracts c JOIN ppw_people p",
+    "ON p.world_id=c.world_id AND p.person_id=c.person_id",
+    "WHERE c.world_id=$1 AND c.contract_id=$2 AND c.person_id=$3",
+    "AND c.promotion_id=$4 AND c.status='SIGNED'"
+   ].join(" "),[input.worldId,issue.contractId,input.personId,input.promotionId]);
+   if(rows.length!==1)throw new Error("Creative contract expired");
+   const c=rows[0]!;
+   const score=creativeDecisionScore({
+    promotionId:input.promotionId,personId:input.personId,contractId:issue.contractId,
+    name:issue.name,creativeControl:"FULL_APPROVAL",
+    roleExpectation:c.role_expectation,morale:c.morale,fatigue:c.fatigue,
+    priorities:c.contract_priorities
+   },issue.reason);
+   const decision=score>=55?"APPROVED" as const:"DECLINED" as const;
+   const wrote=await tx.query<{decision:string}>([
+    "INSERT INTO ppw_match_creative_consents",
+    "(world_id,show_id,slot_id,person_id,contract_id,signature,decision,score,decided_week_index)",
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+    "ON CONFLICT DO NOTHING RETURNING decision"
+   ].join(" "),[input.worldId,input.showId,input.slotId,input.personId,
+    issue.contractId,issue.signature,decision,score,
+    (drafts[0]!.year-1)*52+drafts[0]!.week-1]);
+   if(wrote.length===0)throw new Error("Creative agreement already recorded");
+   return {slotId:input.slotId,personId:input.personId,decision,existing:false};
+  }
+ });
+}
