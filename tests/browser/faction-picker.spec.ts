@@ -32,7 +32,7 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
  await expect(page.getByRole("button",{name:"Form faction"})).toBeDisabled();
  for(let i=0;i<3;i++)await cards.nth(i).click();
  await expect(page.getByRole("button",{name:"Form faction"})).toBeEnabled();
- await expect(cards.locator('[aria-pressed=true]')).toHaveCount(3);
+ await expect(page.locator(".ppw-stable-founder-card[aria-pressed=true]")).toHaveCount(3);
  const field=page.getByRole("searchbox",{name:"Search faction founders"});
  await field.fill("Performer 045");
  await expect(cards).toHaveCount(1);
