@@ -36,7 +36,7 @@ const offerDefaults=():TermsDraft=>({
 export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  initialView:DirectoryView="ROSTER"){
  let filter:DirectoryFilter={view:initialView,search:"",division:"ALL",
-  availability:"ALL",sort:"NAME",minPopularity:undefined,limit:25,offset:0};
+  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:"ROLE",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
   sending=false,pendingKey="",activeOffer:string|null=null;
  let choices=new Map<string,TermsDraft>();
@@ -171,23 +171,45 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   search.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();pick({search:search.value});}};
   controls.append(search,btn("Search",()=>pick({search:search.value})));
   controls.append(selection("Division",[
-   ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]
+   ["ALL","All"],["MEN","Men"],["WOMEN","Women"]
   ] as const,filter.division??"ALL",division=>pick({division})));
   const sortOptions=filter.view==="ROSTER"?[
-   ["NAME","Name"],["POPULARITY","Popularity"],
-   ["MOMENTUM","Momentum"],["PAY_LOW","Weekly pay: low first"],
-   ["PAY_HIGH","Weekly pay: high first"]
+   ["ROLE","By card role"],["NAME","Name"],["POPULARITY","Popularity"],
+   ["RECOGNITION","Recognition"],["MOMENTUM","Momentum"],
+   ["DATES_LOW","Dates remaining: lowest"],["DATES_HIGH","Dates remaining: highest"],
+   ["EXPIRY","Expires soonest"],["PAY_LOW","Wage: lowest"],
+   ["PAY_HIGH","Wage: highest"]
   ] as const:[
-   ["NAME","Name"],["POPULARITY","Popularity"],
-   ["MOMENTUM","Momentum"],["VALUE","Estimated value: low first"]
+   ["INTEREST","Interest: strongest"],["NAME","Name"],
+   ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
+   ["MOMENTUM","Momentum"],["VALUE","Value: lowest"]
   ] as const;
   controls.append(selection("Sort by",sortOptions,
-   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":"NAME",
-   sort=>pick({sort})));
-  if(filter.view==="MARKET")controls.append(selection("Contract availability",[
-   ["ALL","All wrestlers"],["APPROACHABLE","Eligible to approach"],
-   ["FREE_AGENT","Free agents"]
-  ] as const,filter.availability??"ALL",availability=>pick({availability})));
+   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
+    filter.view==="ROSTER"?"ROLE":"INTEREST",sort=>pick({sort})));
+  if(filter.view==="ROSTER"){
+   controls.append(selection("Role",[
+    ["ALL","All roles"],["MAIN_EVENT","Main event"],
+    ["UPPER_CARD","Upper card"],["FEATURED","Featured"],
+    ["REGULAR","Regular"],["DEVELOPMENTAL","Developmental"],
+    ["SPECIAL_ATTRACTION","Special attraction"]
+   ] as const,filter.role??"ALL",role=>pick({role})));
+   controls.append(selection("Contract",[
+    ["ALL","All deals"],["EXCLUSIVE","Exclusive"],
+    ["LIMITED_NON_EXCLUSIVE","Non-exclusive"]
+   ] as const,filter.contract??"ALL",contract=>pick({contract})));
+  }else{
+   controls.append(selection("Contract availability",[
+    ["ALL","All wrestlers"],["APPROACHABLE","Can approach"],
+    ["FREE_AGENT","Free agents"],["NON_EXCLUSIVE","Non-exclusive"]
+   ] as const,filter.availability??"ALL",availability=>pick({availability})));
+   controls.append(selection("Recruitment interest",[
+    ["ALL","Any interest"],["OPEN_PLUS","Open to talks+"],
+    ["INTERESTED_PLUS","Interested+"]
+   ] as const,filter.interest??"ALL",interest=>pick({interest})));
+   controls.append(el("p","ppw-directory-hint",
+    "Interest is an estimate of willingness to discuss terms, not a guarantee of acceptance."));
+  }
   const advanced=document.createElement("details");advanced.className="ppw-directory-advanced";
   advanced.append(el("summary","","Advanced attributes"));
   const thresholds=el("div","ppw-directory-thresholds");
@@ -217,7 +239,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const name=el("span","ppw-directory-name",p.name);
    const note=el("small","ppw-directory-muted",
     (p.division==="WOMEN"?"Women":p.division==="MEN"?"Men":"Division unknown")+
-    " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum));
+    " · Pop "+value(p.popularity)+" · Momentum "+value(p.momentum)+
+    (filter.view==="ROSTER"&&p.roleExpectation?
+      " · "+p.roleExpectation.replaceAll("_"," ").toLowerCase():"")));
    const label=p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
@@ -254,6 +278,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId)),
      btn("Manage contract →",()=>port.openContracts()));
    }else{
+    detail.append(el("p","ppw-directory-interest",
+     "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+
+     ". Indicative only: agreed terms and acceptance are still uncertain."));
     detail.append(el("p","ppw-directory-muted",
      "Indicative weekly market value: "+
       (p.estimatedWeeklyValue===null?"Unavailable":money(p.estimatedWeeklyValue))+
@@ -284,7 +311,19 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    }
    card.append(detail);
    if(activeOffer===p.personId)card.open=true;
-   listing.append(card);
+   if(filter.view==="ROSTER"&&filter.sort==="ROLE"){
+    const role=p.roleExpectation??"UNASSIGNED";
+    let group=listing.querySelector<HTMLDetailsElement>(
+     '.ppw-directory-role-group[data-role="'+role+'"]');
+    if(!group){
+     group=document.createElement("details");
+     group.className="ppw-directory-role-group";group.dataset.role=role;group.open=true;
+     const summary=el("summary","ppw-directory-role-heading",
+      role==="UNASSIGNED"?"Other wrestlers":role.replaceAll("_"," ").toLowerCase());
+     group.append(summary);listing.append(group);
+    }
+    group.append(card);
+   }else listing.append(card);
   }
   if(!view.people.length)listing.append(el("p","ppw-directory-empty",
    "No wrestlers match. Clear the filters or change division."));
