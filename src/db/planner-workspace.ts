@@ -35,10 +35,14 @@ export interface PlannerWeek {
  year:number;week:number;offset:number;required:boolean;major:boolean;
  canEdit:boolean;shows:PlannedShow[];scheduled:ShowSeries[];
 }
+/** Rival plans are anonymous, provisional venue intentions, not reserved slots. */
+export interface PlannerVenuePressure {
+ year:number;week:number;day:number;venueId:string;otherPromotions:number;
+}
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
  worldRevision:number;canEdit:boolean;homeMarketId:string|null;
- venues:PlannerVenue[];weeks:PlannerWeek[];
+ venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
 }
 const id=(s:unknown):s is string=>typeof s==="string"&&s.trim().length>0&&s.length<=200;
 function checkScope(s:PlannerScope){
@@ -126,6 +130,27 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  AND v.capacity IS NOT NULL AND v.weekly_hire_cost IS NOT NULL
  ORDER BY m.name,v.name,v.venue_id LIMIT 101`,[s.worldId,s.promotionId]);
  if(venues.length>100)throw new Error("Planner venue choices exceed safe limit");
+ // One bounded read for the six-week venue grid. Group at source so no rival
+ // promotion identity, line-up, card status or private finance enters the response.
+ // Plans can change up to the shared deadline; no player receives priority for saving first.
+ const end=dateAt(start+5);
+ const pressure=await tx.query<{
+  year:number;week:number;show_day:number;venue_id:string;other_promotions:number;
+ }>(`
+ SELECT d.year,d.week,d.show_day,d.venue_id,
+  count(DISTINCT d.promotion_id)::integer AS other_promotions
+ FROM ppw_booking_drafts d
+ JOIN ppw_promotions competitor ON competitor.world_id=d.world_id
+  AND competitor.promotion_id=d.promotion_id AND competitor.lifecycle='ACTIVE'
+ WHERE d.world_id=$1 AND d.promotion_id<>$2
+  AND d.year BETWEEN $5 AND $6
+  AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
+  AND d.status IN ('DRAFT','SUBMITTED')
+  AND d.venue_id IS NOT NULL AND d.show_day BETWEEN 1 AND 7
+ GROUP BY d.year,d.week,d.show_day,d.venue_id
+ ORDER BY d.year,d.week,d.show_day,d.venue_id LIMIT 129`,
+ [s.worldId,s.promotionId,start,start+5,owned.year,end.year]);
+ if(pressure.length>128)throw new Error("Venue planning grid exceeds safe limit");
  const configured=await tx.query<{
   series_id:string;name:string;role:ShowSeries["role"];
   event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
@@ -145,6 +170,8 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,
+  venuePressure:pressure.map(x=>({year:x.year,week:x.week,day:x.show_day,
+   venueId:x.venue_id,otherPromotions:x.other_promotions})),
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,
    weeklyHireCost:Number(v.weekly_hire_cost),

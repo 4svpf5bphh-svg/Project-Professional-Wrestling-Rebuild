@@ -1,4 +1,5 @@
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
+import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -102,8 +103,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    venues.setAttribute("aria-label","Show venue");venues.disabled=busy;
    for(const v of data.venues.filter(v=>v.marketId===marketId)){
     const option=document.createElement("option");option.value=v.venueId;
+    const competing=venuePressureCount(data!,editing.year,editing.week,day,v.venueId);
     option.textContent=v.name+" · "+v.capacity.toLocaleString("en-GB")+
-     " seats · "+formatMoney(v.weeklyHireCost)+" hire";
+     " seats · "+formatMoney(v.weeklyHireCost)+" hire"+
+     (competing?" · Other interest: "+competing:"");
     venues.append(option);
    }
    venues.value=venueId;venues.onchange=()=>{venueId=venues.value;draw();};
@@ -172,7 +175,36 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    const days=document.createElement("select");days.setAttribute("aria-label","Show day");
    for(let d=1;d<=7;d++){const opt=document.createElement("option");opt.value=String(d);opt.textContent=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][d-1];days.append(opt);}
-   days.value=String(day);days.onchange=()=>{day=Number(days.value);};form.append(node("label","Day"),days);
+   days.value=String(day);days.onchange=()=>{day=Number(days.value);draw();};
+   form.append(node("label","Day"),days);
+   const contenders=venuePressureCount(data,editing.year,editing.week,day,venueId);
+   if(contenders){
+    const warning=node("section","","ppw-planner-contention");
+    warning.setAttribute("role","status");
+    warning.append(node("strong","Other promotions are eyeing this venue"),
+     node("p",contenders+" other "+(contenders===1?"promotion has":"promotions have")+
+      " planned a show here on the same day. Neither booking has priority yet. "+
+      "You can keep your choice, or avoid a possible clash."));
+    const ownDays=new Set(editing.shows.filter(s=>s.draftId!==selectedDraft)
+     .flatMap(s=>s.day===null?[]:[s.day]));
+    const freeDays=freeVenueDays(data,editing.year,editing.week,venueId)
+     .filter(d=>!ownDays.has(d));
+    const alternative=freeDays.find(d=>d!==day);
+    if(alternative){
+     const dayName=["","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][alternative];
+     warning.append(button("Try "+dayName+" instead",()=>{day=alternative;draw();}));
+    }
+    const otherVenue=data.venues.find(v=>v.marketId===marketId&&v.venueId!==venueId&&
+     venuePressureCount(data!,editing!.year,editing!.week,day,v.venueId)===0);
+    if(otherVenue)warning.append(button("Choose "+otherVenue.name+" instead",()=>{
+     venueId=otherVenue.venueId;draw();
+    }));
+    form.append(warning);
+   }else{
+    form.append(node("p","No other promotion currently has a show planned at this "+
+     "venue on this day. Venue arrangements remain provisional until the booking deadline.",
+     "ppw-planner-venue-clear"));
+   }
    const ticket=document.createElement("select");ticket.setAttribute("aria-label","Ticket strategy");
    for(const value of ["ACCESSIBLE","STANDARD","PREMIUM","PRESTIGE"] as const){
     const opt=document.createElement("option");opt.value=value;opt.textContent=value.toLowerCase();ticket.append(opt);
@@ -195,6 +227,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
+    const competing=show.venueId&&show.day!==null?
+     venuePressureCount(data,week.year,week.week,show.day,show.venueId):0;
+    if(competing)card.append(node("p",competing+" other "+
+     (competing===1?"promotion is":"promotions are")+
+     " planning to use this venue on the same day. The venue remains contested "+
+     "until bookings close.","ppw-planner-week-contention"));
     if(week.offset===0)card.append(button("Edit card",()=>port.openCard(show.draftId)));
     else card.append(node("p","Scheduled ahead · booking opens when the week arrives."));
     if(week.canEdit&&show.status==="DRAFT")

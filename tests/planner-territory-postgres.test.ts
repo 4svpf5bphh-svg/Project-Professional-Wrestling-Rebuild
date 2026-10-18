@@ -11,7 +11,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
-test("Venue planning reveals rival presence and market potential in four bounded queries",{
+test("Venue planning shows anonymous six-week venue contention in five bounded queries",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const world="territory-"+randomUUID(),player="promoter-"+randomUUID();
@@ -21,6 +21,15 @@ test("Venue planning reveals rival presence and market potential in four bounded
   await joinWorld(pool.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
   await submitPromotionClaim(pool.pool,{worldId:world,playerId:player,
    promotionId,requestId:"claim",expectedRevision:1});
+  // Two rival promotions provisionally plan the same building and day.
+  // Only anonymous aggregate interest can leave the controlled Planner.
+  await withWorldTransaction(pool.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,"+
+   "status,show_day,venue_id) VALUES "+
+   "($1,'rival-1','promotion-1',1,1,'DRAFT',5,'venue-0'),"+
+   "($1,'rival-2','promotion-2',1,1,'DRAFT',5,'venue-0'),"+
+   "($1,'rival-3','promotion-3',1,2,'DRAFT',6,'venue-4')",
+   [world]));
   const meter=new MeasuredQuerySession("rival-territory-planner");
   const measured:TransactionPool={async connect(){
    const client=await pool.pool.connect();
@@ -31,8 +40,12 @@ test("Venue planning reveals rival presence and market potential in four bounded
   }};
   const scope={worldId:world,promotionId,playerId:player};
   const view=await readSixWeekPlanner(measured,scope);
-  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:20000});
-  assert.equal(budget.queryCount,4);
+  const budget=meter.assertBudget({maxQueries:5,maxResultBytes:24000});
+  assert.equal(budget.queryCount,5);
+  assert.deepEqual(view.venuePressure,[
+   {year:1,week:1,day:5,venueId:"venue-0",otherPromotions:2},
+   {year:1,week:2,day:6,venueId:"venue-4",otherPromotions:1}
+  ]);
   assert.equal(view.weeks.length,6);
   assert.equal(view.homeMarketId,"market-0");
   const home=view.venues.find(x=>x.home);
@@ -50,7 +63,7 @@ test("Venue planning reveals rival presence and market potential in four bounded
   await assert.rejects(readSixWeekPlanner(pool.pool,{...scope,playerId:"impostor"}),/access denied/i);
  }finally{
   await withWorldTransaction(pool.pool,async tx=>{
-   for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals",
+   for(const table of ["ppw_booking_drafts","ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
     "ppw_championships","ppw_people","ppw_venues",
