@@ -44,6 +44,8 @@ test("canonical segment projection does not transfer large match payloads",async
     if(sql.includes("FROM ppw_card_slots")){
      assert.match(sql,/kind='SEGMENT'/);
      assert.match(sql,/LIMIT 101/);
+     assert.match(sql,/payload->'participants'/);
+     assert.match(sql,/sourceMatchSlotId/);
     }
     return connection.query<T>(sql,params??[]);
    },

@@ -32,11 +32,26 @@ export async function readCanonicalSegmentContextsInTransaction(
    "SELECT draft_id FROM ppw_booking_drafts WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3 AND year=$4 AND week=$5 AND status='SUBMITTED' FOR UPDATE",
    [scope.worldId,scope.promotionId,scope.showId,scope.year,scope.week]);
   if(show.length!==1)throw new Error("Canonical submitted show required");
+  // A single bounded read, including only the participants of matches that
+  // actually anchor post-match angles. Never hydrate full bout layouts, style
+  // notes or unrelated match payloads into the segment evaluation path.
   const slots=await tx.query<{slot_id:string;position:number;kind:string;payload:unknown}>(
-   "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
-    " WHERE world_id=$1 AND draft_id=$2 AND kind IN ('MATCH','SEGMENT')"+
-    " ORDER BY position LIMIT 101",
-   [scope.worldId,scope.showId]);
+   [
+    "SELECT slot_id,position,kind,payload FROM (",
+    " SELECT slot_id,position,kind,payload FROM ppw_card_slots",
+    " WHERE world_id=$1 AND draft_id=$2 AND kind='SEGMENT'",
+    " UNION ALL",
+    " SELECT slot_id,position,kind,",
+    " jsonb_build_object('participants',payload->'participants') AS payload",
+    " FROM ppw_card_slots",
+    " WHERE world_id=$1 AND draft_id=$2 AND kind='MATCH'",
+    " AND slot_id IN (",
+    " SELECT payload->>'sourceMatchSlotId' FROM ppw_card_slots",
+    " WHERE world_id=$1 AND draft_id=$2 AND kind='SEGMENT'",
+    " AND payload->>'kind'='POST_MATCH_ASSAULT'",
+    " )",
+    " ) linked ORDER BY position LIMIT 101",
+   ].join(" "),[scope.worldId,scope.showId]);
   if(slots.length>100)throw new Error("Card exceeds maximum slots");
   const segments:AuthoredSegment[]=[],allIds=new Set<string>();
   for(const slot of slots){
