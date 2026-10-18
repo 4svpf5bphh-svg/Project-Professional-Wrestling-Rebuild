@@ -71,3 +71,82 @@
  background:#102636;color:#f3f8fc;appearance:none;-webkit-appearance:none}
 .ppw-backstage-contacts{display:flex;flex-direction:column;gap:8px;min-width:0}
 .ppw-backstage-contacts [hidden]{display:none!important}
+
+
+/* Messages-inspired Backstage: chat is a private phone conversation, not a
+   generic management card. No network activity, fonts or external images. */
+.ppw-persona-desk{max-width:850px;margin:0 auto}
+.ppw-backstage-inbox{background:#0a0c12;border:1px solid #242c36;
+ border-radius:22px;padding:14px 12px 12px;gap:9px}
+.ppw-backstage-inbox h2{font-size:23px;letter-spacing:-.035em;color:#f5f5f7}
+.ppw-backstage-inbox-search{background:#202127!important;border:0!important;
+ border-radius:13px!important;color:#fff!important}
+.ppw-backstage-contacts{display:grid;gap:0}
+.ppw-backstage-contact{display:flex;align-items:center;gap:12px;
+ border:0;border-bottom:1px solid #262830!important;border-radius:0!important;
+ background:transparent!important;padding:12px 7px!important;min-height:72px!important}
+.ppw-backstage-contact:last-child{border-bottom:0!important}
+.ppw-backstage-contact:active{background:#24272f!important}
+.ppw-backstage-avatar,.ppw-backstage-phone-avatar{display:grid;place-items:center;
+ flex:none;width:48px;height:48px;border-radius:50%;
+ font-size:15px;font-weight:800;color:#fcffff;
+ background:linear-gradient(145deg,#4e6983,#253850)}
+.ppw-backstage-contact-copy{display:grid;gap:5px;min-width:0;flex:1}
+.ppw-backstage-contact-top{display:flex;align-items:baseline;gap:6px;
+ justify-content:space-between;min-width:0}
+.ppw-backstage-contact-top strong{font-size:15px;line-height:1.2;color:#f5f5f7;
+ overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ppw-backstage-contact-stamp{font-size:11px;color:#aeb1ba;white-space:nowrap}
+.ppw-backstage-contact-preview{color:#a5a7b0;font-size:12px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ppw-backstage-unread-dot{width:8px;height:8px;border-radius:50%;
+ background:#0a84ff;flex:none}
+.ppw-backstage-contact.ppw-backstage-unread{background:#151923!important}
+.ppw-persona-chat{max-width:760px;margin:12px auto 24px;padding:0 0 12px;
+ min-height:60dvh;border:1px solid #343841;background:#06070a;
+ border-radius:25px;overflow:hidden;gap:0;box-shadow:0 24px 65px rgba(0,0,0,.42)}
+.ppw-backstage-phone-header{position:sticky;top:0;z-index:2;
+ display:flex;align-items:center;gap:11px;padding:12px 15px;
+ background:rgba(25,27,33,.96);border-bottom:1px solid #30333a;
+ backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.ppw-backstage-phone-back{width:38px;min-width:38px!important;height:44px;
+ padding:0!important;border:0!important;background:transparent!important;
+ font-size:38px!important;line-height:1;color:#0a84ff!important}
+.ppw-backstage-phone-avatar{width:41px;height:41px;font-size:13px}
+.ppw-backstage-phone-identity{min-width:0;display:grid;gap:3px}
+.ppw-backstage-phone-identity strong{font-size:14px;color:#fff;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ppw-backstage-phone-identity small{font-size:11px;color:#aeb0bb}
+.ppw-backstage-phone-info{margin:8px 14px 14px;color:#9a9ba7;font-size:11px}
+.ppw-backstage-phone-info summary{padding:8px 0;cursor:pointer;color:#8298ab}
+.ppw-backstage-phone-info p{margin:4px 0 10px;line-height:1.5}
+.ppw-persona-chat .ppw-backstage-date{font-size:10px;font-weight:650;
+ letter-spacing:.02em;color:#8e909b;margin:14px auto 5px}
+.ppw-persona-chat .ppw-persona-bubble{position:relative;flex-shrink:0;
+ border:none;max-width:min(84%,480px);margin:3px 13px;padding:11px 14px;
+ border-radius:18px;font-size:15px;line-height:1.45;letter-spacing:-.01em}
+.ppw-persona-chat .ppw-persona-in{background:#2c2e35!important;
+ color:#f5f5f7;border-bottom-left-radius:5px;margin-right:auto}
+.ppw-persona-chat .ppw-persona-out{background:#0a84ff!important;
+ color:white;border-bottom-right-radius:5px;margin-left:auto}
+.ppw-persona-chat .ppw-backstage-promise{align-self:center;
+ border:0;max-width:92%;text-align:center;color:#a3b4c7;
+ font-size:11px;margin:6px auto;padding:7px 10px}
+.ppw-persona-chat .ppw-backstage-composer{align-self:stretch;
+ display:grid;grid-template-columns:1fr;gap:7px;max-width:none;
+ margin:15px 10px 8px;padding:11px;border-radius:18px;
+ border:1px solid #303440;background:#191b22}
+.ppw-backstage-composer-caption{color:#8e96a6;font-size:10px;
+ letter-spacing:.12em;font-weight:850}
+.ppw-persona-chat .ppw-backstage-composer .ppw-persona-button{min-height:46px;
+ border-radius:14px;background:#252d3a;color:#e5efff;border:1px solid #465b74;
+ font-size:14px;font-weight:700;text-align:center;padding:10px}
+.ppw-persona-chat .ppw-backstage-composer .ppw-persona-button:last-child{
+ background:#332d39;border-color:#64546c}
+.ppw-persona-chat>h3,.ppw-persona-chat>input,.ppw-persona-chat>.ppw-persona-options,
+.ppw-persona-chat>.ppw-persona-button{margin-left:14px;margin-right:14px}
+.ppw-persona-chat>input[type=search]{width:calc(100% - 28px)}
+.ppw-persona-chat>.ppw-persona-options{max-height:260px}
+@media(max-width:420px){.ppw-persona-chat{border-radius:0;border-left:0;border-right:0}
+.ppw-persona-chat .ppw-persona-bubble{max-width:87%;font-size:14px}
+.ppw-backstage-inbox{border-radius:12px}}

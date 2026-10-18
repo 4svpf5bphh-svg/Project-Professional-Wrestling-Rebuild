@@ -115,7 +115,7 @@ export function mountPersonaDesk(root:HTMLElement,
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
-  root.append(tabs);
+  if(pane!=="THREAD")root.append(tabs);
   if(pane==="INBOX"){
    const inbox=el("section","ppw-backstage-inbox");
    inbox.append(el("h2","","Locker room"),
@@ -170,13 +170,24 @@ export function mountPersonaDesk(root:HTMLElement,
     const unread=wrestler.isCurrent&&incoming?.read_week_index===null;
      const stamp=incoming?" · Y"+(Math.floor(incoming.created_week_index/52)+1)+
       " W"+(incoming.created_week_index%52+1):"";
-     const item=button((unread?"● ":"")+wrestler.name+
-      (wrestler.isCurrent?"":" · Former talent")+stamp+summary,()=>{
+     const item=button("",()=>{
       pane="THREAD";if(active&&unread)void load(wrestler.personId);
        else if(active)render();else void load(wrestler.personId);
     });
     item.classList.add("ppw-backstage-contact");
-     if(unread)item.classList.add("ppw-backstage-unread");
+    if(unread)item.classList.add("ppw-backstage-unread");
+    const avatar=el("span","ppw-backstage-avatar",
+     wrestler.name.trim().split(/\\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
+    avatar.setAttribute("aria-hidden","true");
+    const copy=el("span","ppw-backstage-contact-copy");
+    const top=el("span","ppw-backstage-contact-top");
+    top.append(el("strong","",wrestler.name),
+     el("small","ppw-backstage-contact-stamp",stamp.replace(/^ · /,"")));
+    copy.append(top,
+     el("span","ppw-backstage-contact-preview",
+      summary.replace(/^ · /,"")||(wrestler.isCurrent?"Open conversation":"Former talent")));
+    item.append(avatar,copy);
+    if(unread)item.append(el("span","ppw-backstage-unread-dot",""));
     entries.append(item);
     count++;
    }
@@ -207,7 +218,7 @@ export function mountPersonaDesk(root:HTMLElement,
    select.append(o);
   }
   select.value=view.personId;select.onchange=()=>void load(select.value);
-  choice.append(select);root.append(choice);
+  choice.append(select);if(pane==="PROFILE")root.append(choice);
   const persona=view.persona;
   const live=el("section","ppw-persona-active");
   live.append(el("span","ppw-eyebrow","CURRENT WRESTLER-OWNED CHARACTER"),
@@ -265,9 +276,22 @@ export function mountPersonaDesk(root:HTMLElement,
     "Former talent · retained private conversation. No active contract or booking decisions."));
   const chat=el("section","ppw-persona-chat");
   chat.setAttribute("aria-label","Conversation with "+view.personName);
-  chat.append(el("h2","",view.personName+" · private conversation"),
-   el("p","ppw-muted",
-    "You may suggest a new gimmick. The wrestler can say no. An accepted proposal changes their World-wide character, but never their moves or match results."));
+  const chatHead=el("header","ppw-backstage-phone-header");
+  const returnToInbox=button("‹",()=>{pane="INBOX";render();});
+  returnToInbox.classList.add("ppw-backstage-phone-back");
+  returnToInbox.setAttribute("aria-label","Back to messages");
+  const monogram=el("span","ppw-backstage-phone-avatar",
+   view.personName.trim().split(/\\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
+  monogram.setAttribute("aria-hidden","true");
+  const identity=el("span","ppw-backstage-phone-identity");
+  identity.append(el("strong","",view.personName),el("small","","Private · PPW Messages"));
+  chatHead.append(returnToInbox,monogram,identity);
+  chat.append(chatHead);
+  const info=el("details","ppw-backstage-phone-info");
+  info.append(el("summary","","About character proposals"),
+   el("p","",
+    "You can suggest a character change, but the wrestler owns their identity and can refuse. Only your selected responses have gameplay effects."));
+  chat.append(info);
   const selectedPersonId=view.personId;
   const wrestler=view.roster.find(p=>p.personId===selectedPersonId);
   // Only durable incoming correspondence appears as a wrestler bubble.
@@ -334,7 +358,8 @@ export function mountPersonaDesk(root:HTMLElement,
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
      "This conversation has closed because the wrestler is no longer available under this contract."));
    }else if(view.canEdit&&wrestler?.isCurrent!==false){
-    const actions=el("div","ppw-backstage-replies");
+    const actions=el("div","ppw-backstage-replies ppw-backstage-composer");
+    actions.append(el("span","ppw-backstage-composer-caption","CHOOSE A REPLY"));
     for(const decision of BACKSTAGE_CHOICES[item.kind]){
      actions.append(button(BACKSTAGE_LABELS[decision],()=>{
       void decide(item.conversationId,decision);},loading));
