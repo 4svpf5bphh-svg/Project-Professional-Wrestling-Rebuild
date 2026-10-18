@@ -187,6 +187,7 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
  return {
   load:personId=>call("wrestlerProfile",{personId}),
+  career:personId=>call("wrestlerCareer",{personId}),
   save:({personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
    signatureMoves,finishingMoves})=>call("saveWrestlerRepertoire",{
     personId,requestId,expectedRevision,primaryStyle,secondaryStyle,

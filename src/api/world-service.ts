@@ -37,6 +37,7 @@ import {readBusinessWorkspace} from "../db/business-workspace.js";
 import {readWrestlerDirectory,type DirectoryFilter} from "../db/wrestler-directory.js";
 import {readWrestlerProfile,editWrestlerRepertoire,type RepertoireEdit}
  from "../db/wrestler-profile.js";
+import {readWrestlerCareer} from "../db/wrestler-career.js";
 import {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {submitManualContractOffer,withdrawManualContractOffer,readPendingContractOffers} from "../db/manual-contract-offers.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
@@ -67,6 +68,14 @@ export async function editWrestlerRepertoireAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.personId,"wrestler");
  return editWrestlerRepertoire(context.pool,{...input,playerId:context.actor.playerId});
+}
+/** A bounded wrestler career file is fetched only when the user expands it. */
+export async function wrestlerCareerAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,personId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(personId,"wrestler");
+ return readWrestlerCareer(context.pool,{worldId,promotionId,
+  personId,playerId:context.actor.playerId});
 }
 /** Authenticated player-facing wrestler directory, never a global
  * unguarded market read. Filtering is validated inside the query module. */

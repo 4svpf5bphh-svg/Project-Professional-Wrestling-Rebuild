@@ -1,7 +1,7 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
- plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,editWrestlerRepertoireAsActor,businessAsActor,
+ plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,industryWorldAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
@@ -49,6 +49,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    f as import("../db/wrestler-directory.js").DirectoryFilter);
  }
  if(method==="wrestlerProfile")return wrestlerProfileAsActor(context,
+  worldId,promotionId,id("personId"));
+ if(method==="wrestlerCareer")return wrestlerCareerAsActor(context,
   worldId,promotionId,id("personId"));
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
