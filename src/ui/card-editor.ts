@@ -5,6 +5,7 @@
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,assignedIds,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
+ bookedStyleReadiness,type ConditionSnapshot,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
 import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
@@ -89,7 +90,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
-  division:string|null;available:boolean;reason:string}>();
+  division:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
@@ -131,11 +132,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
     });
    }
-   for(const p of (view as View&{selectedPeople?:{
-    personId:string;name:string;division:string}[]}).selectedPeople??[]){
-    if(!roster.has(p.personId))
-     roster.set(p.personId,{personId:p.personId,name:p.name,division:p.division,
-      contractId:"",available:false,reason:"BOOKED"});
+   for(const p of view.selectedPeople){
+    const prior=roster.get(p.personId);
+    roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
+     division:p.division,contractId:prior?.contractId??"",
+     available:prior?.available??false,reason:prior?.reason??"BOOKED",
+     inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
+     stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
    }
    expanded=null;dirty=false;pendingRequestId=null;error="";success="";
   }catch(e){error=errorText(e);}
@@ -500,8 +503,34 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      workload.dataset.load=load.band;
      workload.append(el("strong","","Expected workload · "+nice(load.band)),
       el("span","","Physical "+Math.round(load.physical)+" · Creative "+Math.round(load.creative)));
-     sheet.append(workload,el("p","ppw-match-style-fineprint",
-      "Workload describes the match demands, not a predicted rating or a guarantee of cooperation."));
+     sheet.append(workload);
+     const conditions=new Map<string,ConditionSnapshot>();
+     for(const [personId,profile] of roster){
+      conditions.set(personId,{inRingQuality:profile.inRingQuality??null,
+       matchCraft:profile.matchCraft??null,presentation:profile.presentation??null,
+       stamina:profile.stamina??null,safety:profile.safety??null,
+       fatigue:profile.fatigue??null,wear:profile.wear??null});
+     }
+     const assessments=bookedStyleReadiness(m,conditions);
+     const fitness=el("div","ppw-match-style-fitness");
+     fitness.append(el("h4","","Performer readiness"));
+     if(!assessments.known)fitness.append(el("p","ppw-match-style-fineprint",
+      "Choose wrestlers to see how comfortable they are with these demands."));
+     for(const report of assessments.reports){
+      const item=el("p","ppw-match-style-fitness-row");
+      item.dataset.status=report.status;
+      item.append(el("strong","",roster.get(report.personId)?.name??report.personId),
+       el("span","",report.status==="COMFORTABLE"?"Comfortable":
+        report.status==="CONCERNED"?"Has concerns":"Likely to refuse"),
+       el("small","",report.reasons.length?
+        report.reasons.map(nice).join(" · "):"No immediate concerns"));
+      fitness.append(item);
+     }
+     if(assessments.missing&&assessments.known)
+      fitness.append(el("p","ppw-match-style-fineprint",
+       "Some wrestlers still need a current fitness report."));
+     sheet.append(fitness,el("p","ppw-match-style-fineprint",
+      "An early warning from your roster's current condition. Speak to the wrestler or adjust the bout if concerns arise; no winner or outcome changes here."));
      body.append(sheet);
     }
     if(m.format==="BATTLE_ROYAL"||m.format==="MULTI_TEAM"){

@@ -165,3 +165,14 @@
 .ppw-card-bar strong{font-size:clamp(14px,3.5vw,17px);line-height:1.24;
  overflow-wrap:anywhere;letter-spacing:-.015em}
 .ppw-card-bar>div:nth-child(2){max-width:100%}
+
+.ppw-match-style-fitness{margin-top:14px;border-top:1px solid #3a6079;padding-top:12px}
+.ppw-match-style-fitness h4{margin:0 0 8px;color:#b1e9f4;font-size:13px}
+.ppw-match-style-fitness-row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;
+ align-items:center;padding:9px 10px;background:#0c2235;border-left:3px solid #57bd98;
+ border-radius:8px;margin:7px 0;font-size:12px}
+.ppw-match-style-fitness-row[data-status=CONCERNED]{border-left-color:#e7ad73}
+.ppw-match-style-fitness-row[data-status=REFUSES]{border-left-color:#eb7284}
+.ppw-match-style-fitness-row>strong{font-size:13px}
+.ppw-match-style-fitness-row>small{grid-column:1/-1;color:#adbecf}
+.ppw-match-style-fitness-row>span{font-weight:800;text-align:right}

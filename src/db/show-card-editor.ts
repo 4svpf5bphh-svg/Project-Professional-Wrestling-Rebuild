@@ -36,6 +36,7 @@ type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
  in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
+ stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;
  default_alignment:string|null;active_alignment:string|null;
  booking_division:string|null;person_status:string|null;family:string|null;
  portable_gimmick_id:string|null;persona_record:unknown|null;
@@ -121,12 +122,17 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    [id.worldId,id.promotionId,id.showId]);
   if(links.length>100)throw new Error("Too many linked angles");
   const selectedPeople=personIds.length?await tx.query<{
-   person_id:string;name:string;booking_division:string|null}>(
-    "SELECT person_id,name,booking_division FROM ppw_people"+
+   person_id:string;name:string;booking_division:string|null;
+   in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
+   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null}>(
+    "SELECT person_id,name,booking_division,in_ring_quality,match_craft,"+
+    "presentation,stamina,safety,fatigue,wear FROM ppw_people"+
     " WHERE world_id=$1 AND person_id=ANY($2::text[])",
     [id.worldId,personIds]):[];
   return {selectedPeople:selectedPeople.map(p=>({
-   personId:p.person_id,name:p.name,division:p.booking_division})),
+   personId:p.person_id,name:p.name,division:p.booking_division,
+   inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
+   stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
    championships:titles.map(c=>({championshipId:c.championship_id,
     name:c.name,division:c.division,holderName:c.holder_name,
     vacant:c.current_reign_id===null})),
@@ -154,7 +160,8 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
   const rows=await tx.query<ContractRow>([
     "SELECT c.person_id,c.contract_id,p.name,p.booking_division,",
     "p.popularity,p.recognition,p.momentum,p.in_ring_quality,p.match_craft,",
-    "p.presentation,p.default_alignment,aligned.alignment AS active_alignment,",
+    "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,",
+    "p.default_alignment,aligned.alignment AS active_alignment,",
     "p.portable_gimmick_id,identity.persona AS persona_record,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
     "c.expires_week_index,c.remaining_dates,",
@@ -200,6 +207,7 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     alignment:c.active_alignment??c.default_alignment,
     popularity:c.popularity,recognition:c.recognition,momentum:c.momentum,
     inRingQuality:c.in_ring_quality,matchCraft:c.match_craft,presentation:c.presentation,
+    stamina:c.stamina,safety:c.safety,fatigue:c.fatigue,wear:c.wear,
     division:c.booking_division,available:rights.available&&
      c.person_status==="ACTIVE"&&!c.exclusive_elsewhere,
     reason:c.person_status!=="ACTIVE"?"INACTIVE":

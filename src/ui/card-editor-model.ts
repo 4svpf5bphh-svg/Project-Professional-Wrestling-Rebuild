@@ -4,6 +4,7 @@
 import {normalizeBookableMatch,type BookableMatch} from "../domain/bookable-match.js";
 import {readCanonicalMatchLayout,sideIdAt} from "../domain/match-sides.js";
 import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
+ assessMatchStyleReadiness,
  type MatchStyleDimension,type MatchStyleProfile} from "../simulation/legacy/match-style.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 export type Format="SINGLES"|"TRIPLE_THREAT"|"FOUR_WAY"|"TAG"|"TRIOS"|
@@ -113,6 +114,32 @@ export function bookedMatchHeadline(match:EditorMatch,
  if(teams.length>3)return teams.slice(0,2).join(" vs ")+" + "+
   (teams.length-2)+" more";
  return teams.join(" vs ");
+}
+export interface ConditionSnapshot{
+ inRingQuality:number|null;matchCraft:number|null;presentation:number|null;
+ stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;
+}
+export function bookedStyleReadiness(match:EditorMatch,
+ byPerson:ReadonlyMap<string,ConditionSnapshot>){
+ if(match.format!=="SINGLES")return {known:0,missing:0,reports:[]};
+ const people=match.teams.flat().filter((p):p is PersonPick=>p!==null);
+ const reports:{personId:string;status:"COMFORTABLE"|"CONCERNED"|"REFUSES";
+  reasons:string[];physicalLoad:number}[]=[];
+ let missing=0;
+ for(const person of people){
+  const p=byPerson.get(person.personId);
+  if(!p||[p.inRingQuality,p.matchCraft,p.presentation,p.stamina,p.safety,
+   p.fatigue,p.wear].some(x=>typeof x!=="number"||!Number.isFinite(x))){
+   missing++;continue;
+  }
+  const result=assessMatchStyleReadiness(editorMatchStyle(match),{
+   inRingQuality:p.inRingQuality!,matchCraft:p.matchCraft!,
+   presentation:p.presentation!,stamina:p.stamina!,safety:p.safety!
+  },match.plannedLengthMinutes,p.fatigue!,p.wear!);
+  reports.push({personId:person.personId,status:result.status,
+   reasons:[...result.reasons],physicalLoad:result.physicalLoad});
+ }
+ return {known:reports.length,missing,reports};
 }
 export function assignedIds(match:EditorMatch):string[]{
  return match.teams.flatMap(s=>s.flatMap(p=>p?[p.personId]:[]));

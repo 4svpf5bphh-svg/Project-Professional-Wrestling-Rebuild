@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS,
- editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline}
+ editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
+ bookedStyleReadiness}
  from "../src/ui/card-editor-model.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../src/domain/match-sides.js";
@@ -94,4 +95,21 @@ test("collapsed card headline names real booked competitors without loading new 
  assert.match(bookedMatchHeadline(battle,display),/0 of 20 entrants/);
  battle=assignPerformer(battle,0,0,{personId:"a",contractId:"a"});
  assert.match(bookedMatchHeadline(battle,display),/1 of 20 entrants/);
+});
+
+test("original match-style acceptance responds to wrestler fatigue without affecting the finish",()=>{
+ let match=newEditorMatch("style","SINGLES");
+ match=assignPerformer(match,0,0,{personId:"fresh",contractId:"fresh-deal"});
+ match=assignPerformer(match,1,0,{personId:"tired",contractId:"tired-deal"});
+ const fit={inRingQuality:80,matchCraft:80,presentation:80,stamina:90,
+  safety:90,fatigue:5,wear:4};
+ const byPerson=new Map([["fresh",fit],["tired",{...fit,fatigue:95}]]);
+ const before=bookedStyleReadiness(match,byPerson);
+ assert.equal(before.known,2);
+ assert.equal(before.missing,0);
+ assert.equal(before.reports.find(x=>x.personId==="fresh")?.status,"COMFORTABLE");
+ assert.equal(before.reports.find(x=>x.personId==="tired")?.status,"REFUSES");
+ assert.deepEqual(bookedStyleReadiness(match,new Map()).reports,[]);
+ assert.equal(bookedStyleReadiness(match,new Map()).missing,2);
+ assert.equal(buildBookedMatch(match).scriptedWinnerSide,"A");
 });
