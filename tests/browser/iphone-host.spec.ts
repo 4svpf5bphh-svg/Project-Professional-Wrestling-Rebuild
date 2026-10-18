@@ -741,7 +741,7 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
  const saved=calls.find(x=>x.method==="saveCalendar")?.payload;
  expect(saved?.series).toMatchObject({name:"Summer Clash",cadenceWeeks:52,anchorWeek:6,
   role:"SPECIAL",eventType:"MAJOR"});
- expect(calls.map(x=>x.method)).toEqual(["calendar","saveCalendar","calendar"]);
+ expect(calls.map(x=>x.method)).toEqual(["calendar","saveCalendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
