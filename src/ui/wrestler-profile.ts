@@ -57,7 +57,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     primaryStyle:primary,secondaryStyle:secondary,
     signatureMoves:parse(signature),finishingMoves:parse(finisher)});
    if(result.status==="STALE")
-    throw new Error("The World changed. Reload the profile before editing.");
+    throw new Error("Someone has updated this wrestler. Reopen the profile before making changes.");
    success="Wrestler repertoire updated.";
    view=await port.load(personId);
   }catch(e){error=e instanceof Error?e.message:"Unable to update move names";}

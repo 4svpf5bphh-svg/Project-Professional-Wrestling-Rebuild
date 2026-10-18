@@ -48,7 +48,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     await port.release({requestId,expectedRevision,employmentId:identity});
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
-    throw new Error("The World changed. Reopen Staff to review current records.");
+    throw new Error("Staff assignments have changed. Review the latest details before continuing.");
    hydrate(await port.load());releaseConfirm=false;changed();
    notice=action==="HIRE"?"Talent Manager hired. Their wages are paid with your weekly accounts.":
     "Talent Manager released. Their wages and renewal duties end now.";
@@ -73,7 +73,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    });
    if(result&&typeof result==="object"&&"status" in result&&
      (result as {status:unknown}).status==="STALE")
-    throw new Error("World changed. Reload Staff permissions to review this choice.");
+    throw new Error("Office instructions have changed. Reopen Staff before saving.");
    hydrate(await port.load());requestId="";
    notice="Staff instructions updated for upcoming shows.";
   }catch(e){error=e instanceof Error?e.message:"Staff permissions were not saved";}

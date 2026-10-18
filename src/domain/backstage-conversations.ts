@@ -50,7 +50,7 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
   case "CREATIVE":return "I need more of a voice on this show. Can I get some mic time or an angle?";
   case "PARTNERSHIP":return "Our tag work has slipped with "+
    (evidence?.partnerName??"my partner")+". After "+
-   (evidence?.workingVerifiedShows??"several")+" verified matches, "+
+   (evidence?.workingVerifiedShows??"several")+" matches, "+
    "our working trust took a hit. Can we sort it out?";
   case "ROLE_USAGE":return "My contract says I should feature near the top of the card. I've worked the matches, but where's that promised spot?";
   case "RIVALRY_PITCH":return "We have something with "+
@@ -63,8 +63,8 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
    (evidence?.partnerName??"my partner")+
    " is clicking. Two strong shows together — the crowd and locker room can feel it.";
   case "TAG_TEAM_PITCH":return "We've got chemistry in the ring with "+
-   (evidence?.partnerName??"my partner")+". Two or more strong tag matches ("+
-   (evidence?.verifiedTagShows??"several")+" together). Could we build on that?";
+   (evidence?.partnerName??"my partner")+". We have been tearing it up together ("+
+   (evidence?.verifiedTagShows??"several")+" matches so far). Could we make it official?";
   case "GIMMICK_PITCH":return "The crowd response has been cold across "+
    (evidence?.observedMatchShows??"several")+" matches"+
    (evidence?.averageCrowd!==null&&evidence?.averageCrowd!==undefined?

@@ -306,7 +306,7 @@ export function mountPersonaDesk(root:HTMLElement,
    else for(const move of moves){
     const row=el("p","",move.name+" · "+move.category.toLowerCase());
     if(move.source==="PPW_AUTHORED")row.append(
-     el("small","ppw-muted"," · Unverified reference"));
+     el("small","ppw-muted"," · Custom move"));
     section.append(row);
    }
    live.append(section);

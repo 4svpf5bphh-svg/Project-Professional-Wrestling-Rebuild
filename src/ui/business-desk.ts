@@ -180,9 +180,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const section=el("section","ppw-business-panel");
    section.append(el("h2","","Your markets"),
     el("p","ppw-business-muted",
-     "World-wide territory awareness, audience loyalty and live strength. Updated after real completed shows."));
+     "Territory awareness, audience loyalty and live strength, refreshed after completed events."));
    if(!view.territories.length)section.append(el("p","ppw-business-muted",
-    "Territory economics are not configured in this World."));
+    "No territory trading figures are available yet."));
    for(const t of view.territories){
     const card=el("article","ppw-business-territory");
     card.append(el("h3","",t.name+(t.isHome?" · Home market":"")));

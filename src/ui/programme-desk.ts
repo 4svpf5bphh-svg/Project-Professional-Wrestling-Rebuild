@@ -49,7 +49,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const response=await action();
    if(response&&typeof response==="object"&&"status" in response&&
     (response as {status:unknown}).status==="STALE")
-    throw new Error("The World changed. Check the updated rivalries.");
+    throw new Error("A rivalry has changed. Review the latest details before continuing.");
    view=await port.load();success=result;refsA=[null];refsB=[null];titleId=null;
   }catch(e){error=e instanceof Error?e.message:"Programme change failed";}
   finally{working=false;render();}

@@ -104,7 +104,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     expectedRevision:view.worldRevision,terms});
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
-    throw new Error("The World changed. Refresh before making this offer.");
+    throw new Error("The terms or deadline have changed. Review the latest details before offering.");
    pendingKey="";activeOffer=null;
    success="Offer sent. The wrestler will respond at the end of the week.";
    await load();
@@ -158,8 +158,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    el("h1","",filter.view==="ROSTER"?"My Roster":"Talent Market"),
    el("p","ppw-directory-muted",
     view?"Year "+view.year+" · Week "+view.week+
-     (filter.view==="ROSTER"?" · Signed talent only":" · World-wide recruitment"):
-     "Your wrestlers, their contracts and opportunities across the World."));
+     (filter.view==="ROSTER"?" · Signed talent only":" · Recruiting across the industry"):
+     "Keep an eye on your wrestlers, their contracts and who might be available."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));

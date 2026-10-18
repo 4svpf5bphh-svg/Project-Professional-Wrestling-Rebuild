@@ -35,7 +35,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
    if(result&&typeof result==="object"&&"status" in result&&
     result.status==="STALE"){
     data=await port.load();
-    throw new Error("World changed. Review the updated Planner and save again.");
+    throw new Error("Plans have changed. Review the updated schedule before saving.");
    }
    editing=null;selectedDraft="";data=await port.load();error="";
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}

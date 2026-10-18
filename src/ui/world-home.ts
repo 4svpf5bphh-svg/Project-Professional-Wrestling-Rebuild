@@ -29,7 +29,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(!root.isConnected||!root.contains(node)){clearClock();return;}
    const seconds=Math.max(0,Math.ceil(world.nextLockEpoch-
     (serverStart+(Date.now()-origin)/1000)));
-   if(seconds===0){node.textContent="Lock deadline reached · refresh World";
+   if(seconds===0){node.textContent="Booking deadline reached · refresh";
     clearClock();return;}
    const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),
     mins=Math.floor(seconds%3600/60),secs=seconds%60;
@@ -51,7 +51,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  async function load(){
   loading=true;draw();
   try{overview=await port.load();error="";loaded=true;}
-  catch(e){error=e instanceof Error?e.message:"The World is unavailable";}
+  catch(e){error=e instanceof Error?e.message:"Your promotion is unavailable";}
   finally{loading=false;draw();}
  }
  async function dismissNews(id:string){
@@ -75,14 +75,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!loaded){
    root.append(el("p","ppw-home-small",loading?
-    "Reading your World…":"No promotion details are available."));
+    "Getting your promotion up to date…":"No promotion details are available."));
    if(!loading)root.append(control("Retry connection","Try the connection again",()=>void load(),"↻"));
    return;
   }
   if(!overview){
    root.append(el("p","ppw-home-small",
     "The selected promotion is unavailable. Return to the promotion list or sign in again."));
-   root.append(control("Try again","Reload your World",()=>void load(),"↻"));
+   root.append(control("Try again","Refresh promotion",()=>void load(),"↻"));
    return;
   }
   const {world,promotion,membership}=overview;
