@@ -43,6 +43,11 @@ for(const mode of ["ROYAL","TEAMS"] as const){
      await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52)",
       [world,"deal-"+id,id,promotion]);
     }
+    await tx.query("INSERT INTO ppw_portable_personas(world_id,person_id,persona,provenance,introduced_week_index) VALUES($1,'p0',$2::jsonb,'GAME_AUTHORED',0)",
+     [world,JSON.stringify({personaName:"The Iron Wave",gimmickId:"power-wrestler",
+      primaryStyle:"BRAWLER",secondaryStyle:null,
+      signatureMoves:[{name:"Iron Whip",category:"STRIKE",source:"PPW_AUTHORED"}],
+      finishingMoves:[],source:"GAME_AUTHORED"})]);
     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
@@ -60,6 +65,12 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    const page=await cardTalentAsActor(context,world,promotion,show,"Talent",null,10);
    assert.equal(page.talent.length,Math.min(10,ids.length));
    assert.ok(page.talent.every(t=>t.available));
+   const renamed=page.talent.find(person=>person.personId==="p0");
+   assert.equal(renamed?.ringName,"The Iron Wave");
+   assert.equal(renamed?.primaryStyle,"BRAWLER");
+   assert.equal(renamed?.signatureMove,"Iron Whip");
+   assert.equal(renamed?.finisherMove,null,
+    "Intentionally empty edited finisher list must not resurrect a baseline move");
    if(ids.length>10){
     assert.ok(page.cursor);
     const next=await cardTalentAsActor(context,world,promotion,show,"Talent",page.cursor,10);
@@ -176,7 +187,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    await withWorldTransaction(db.pool,async tx=>{
     for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
      "ppw_programmes","ppw_card_slots",
-     "ppw_booking_drafts","ppw_contracts","ppw_people",
+     "ppw_booking_drafts","ppw_portable_personas","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",
      "ppw_promotions","ppw_markets"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
     await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
