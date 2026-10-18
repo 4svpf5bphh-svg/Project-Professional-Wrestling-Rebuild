@@ -12,6 +12,7 @@ export interface CreativeSlot{slotId:string;payload:unknown}
 export interface CreativeConcern{
  showId:string;slotId:string;personId:string;contractId:string;name:string;
  reason:CreativeReason;requiresConsent:boolean;decision:CreativeDecision;signature:string;
+ approvalSource?:"EXACT_MATCH"|"STANDING_PROGRAMME";
 }
 export interface MatchCreativeReceipt{
  showId:string;slotId:string;personId:string;contractId:string;signature:string;
