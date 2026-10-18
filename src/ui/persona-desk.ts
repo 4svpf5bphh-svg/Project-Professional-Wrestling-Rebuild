@@ -108,12 +108,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const tabs=el("nav","ppw-backstage-tabs");
   tabs.setAttribute("aria-label","Backstage messages and contacts");
   for(const [id,label] of [["INBOX","Chats"],["PROFILE","People"]] as const){
-   const tab=button(label,()=>{pane=id;
-    if(id==="THREAD"&&view?.personId&&
-     view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
-      x.latestIncoming?.read_week_index===null))void load(view.personId);
-    else render();
-   });
+   const tab=button(label,()=>{pane=id;render();});
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
