@@ -41,6 +41,23 @@ test("one-day talent and venue collisions block provisional readiness; different
     assert.equal(result.submittedShows,2);
     assert.deepEqual(result.blockers.map(x=>x.code).sort(),["MISSING_SHOW","VENUE_DAY_CONFLICT","WRESTLER_DAY_CONFLICT"]);
     assert.equal(result.provisionalClear,false);
+    // Even when not competing, a run-in wrestler is booked for that day.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+       VALUES($1,'third-a-contract','third',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',2,20)`,[worldId,a]);
+      await tx.query("UPDATE ppw_card_slots SET payload=$3::jsonb WHERE world_id=$1 AND draft_id=$2",
+       [worldId,sa,JSON.stringify({participants:[{personId:"third",contractId:"third-a-contract"}],
+        interference:{personId:wrestler,contractId:contractA,aidedSide:"A",plannedOutcome:"SUCCESS"}})]);
+      await tx.query("UPDATE ppw_booking_drafts SET venue_id='different-arena' WHERE world_id=$1 AND draft_id=$2",[worldId,sb]);
+    });
+    result=await inspect();
+    assert.ok(result.blockers.some(x=>x.code==="WRESTLER_DAY_CONFLICT"&&x.resourceId===wrestler));
+    assert.ok(!result.blockers.some(x=>x.code==="VENUE_DAY_CONFLICT"));
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("UPDATE ppw_card_slots SET payload=$3::jsonb WHERE world_id=$1 AND draft_id=$2",
+       [worldId,sa,JSON.stringify({participants:[{personId:wrestler,contractId:contractA}]})]);
+      await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1 AND contract_id='third-a-contract'",[worldId]);
+    });
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_booking_drafts SET show_day=4,venue_id='different-arena' WHERE world_id=$1 AND draft_id=$2",[worldId,sb],
     ));

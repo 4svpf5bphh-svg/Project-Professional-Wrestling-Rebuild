@@ -1,6 +1,6 @@
 import type {SqlRows} from "./world-operations.js";
 import {createHash} from "node:crypto";
-import {readCardParticipants} from "../domain/card-participants.js";
+import {appearancesFromSlots} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import type {ResourceClaim} from "../domain/resource-arbitration.js";
 
@@ -125,7 +125,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     if(payloads.length>100){blockers.push({code:"INVALID_CARD",promotionIds:[p.promotion_id],showIds:[showId]});continue;}
     let appearances:ReturnType<typeof uniqueShowAppearances>;
     try {
-      appearances=uniqueShowAppearances(payloads.flatMap(readCardParticipants));
+      appearances=uniqueShowAppearances(appearancesFromSlots(payloads));
       if(appearances.length>100) throw new Error("Too many show appearances");
     }catch{
       blockers.push({code:"INVALID_CARD",promotionIds:[p.promotion_id],showIds:[showId]});

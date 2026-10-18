@@ -1,4 +1,5 @@
 import type { BookedAppearance } from "../domain/appearance-policy.js";
+import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 
 export interface CardParticipant { personId:string; contractId:string }
 export interface CardSlotPayload { participants:CardParticipant[] }
@@ -22,5 +23,12 @@ export function readCardParticipants(payload:unknown):CardParticipant[] {
 
 export function appearancesFromSlots(payloads:readonly unknown[]):BookedAppearance[] {
   if(payloads.length>100) throw new Error("Too many card slots");
-  return payloads.flatMap(readCardParticipants);
+  // Ringside run-ins need a contracted appearance without becoming competitors.
+  // Old historical interference without an agreement stays readable.
+  return payloads.flatMap(payload=>{
+    const cast=readCardParticipants(payload),spot=readBookedInterference(payload);
+    return spot?.contractId?[...cast,{
+      personId:spot.personId,contractId:spot.contractId
+    }]:cast;
+  });
 }
