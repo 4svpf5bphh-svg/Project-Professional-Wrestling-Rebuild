@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {validatePreparedDraft,preparedDraftFingerprint,type ReadyDraftEvidence} from "../domain/prepared-show.js";
 import {snapshotPreparedShowDemand} from "./prepared-show-demand.js";
+import {creativeReviewsInTransaction,creativeApprovalRequired} from "./match-creative-consent.js";
 
 export interface MarkPreparedShowInput {
   worldId:string;playerId:string;requestId:string;expectedRevision:number;
@@ -45,6 +46,12 @@ export async function markPreparedShowReady(pool:TransactionPool,input:MarkPrepa
       };
       const bad=validatePreparedDraft(evidence);
       if(bad)throw new Error("Prepared show is incomplete: "+bad);
+      const concerns=await creativeReviewsInTransaction(tx,input.worldId,[{
+       showId:input.showId,promotionId:input.promotionId,
+       weekIndex:(draft.year-1)*52+draft.week-1,slots
+      }]);
+      if(creativeApprovalRequired(concerns).length)
+       throw new Error("A wrestler's creative agreement is required before confirming the card");
       const venue=await tx.query<{venue_id:string}>(
         "SELECT venue_id FROM ppw_venues WHERE world_id=$1 AND venue_id=$2 AND status='ACTIVE'",
         [input.worldId,evidence.venueId],
