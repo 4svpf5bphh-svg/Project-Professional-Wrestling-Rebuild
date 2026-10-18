@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS,
- editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad}
+ editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline}
  from "../src/ui/card-editor-model.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../src/domain/match-sides.js";
@@ -81,4 +81,17 @@ test("singles match style uses original scoring dimensions and survives booking 
  assert.throws(()=>changeMatchStyle(m,"risk",101),/0–100/);
  assert.throws(()=>changeMatchIntent(m,"IMAGINARY"),/Unknown/);
  assert.throws(()=>changeMatchStyle(newEditorMatch("tag","TAG"),"risk",10),/singles/);
+});
+
+test("collapsed card headline names real booked competitors without loading new profiles",()=>{
+ let m=newEditorMatch("single","SINGLES");
+ const display=(p:{personId:string}|null)=>p?p.personId==="a"?"MJF":"Cody Rhodes":"Choose wrestler";
+ assert.match(bookedMatchHeadline(m,display),/Choose wrestler vs Choose wrestler/);
+ m=assignPerformer(m,0,0,{personId:"a",contractId:"a"});
+ m=assignPerformer(m,1,0,{personId:"b",contractId:"b"});
+ assert.equal(bookedMatchHeadline(m,display),"MJF vs Cody Rhodes");
+ let battle=newEditorMatch("royal","BATTLE_ROYAL");
+ assert.match(bookedMatchHeadline(battle,display),/0 of 20 entrants/);
+ battle=assignPerformer(battle,0,0,{personId:"a",contractId:"a"});
+ assert.match(bookedMatchHeadline(battle,display),/1 of 20 entrants/);
 });

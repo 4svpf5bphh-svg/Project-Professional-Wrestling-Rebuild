@@ -103,6 +103,17 @@ export function changeMatchStyle(match:EditorMatch,key:MatchStyleDimension,value
 export function editorStyleLoad(match:EditorMatch){
  return evaluateMatchStyleLoad(editorMatchStyle(match),match.plannedLengthMinutes);
 }
+/** The programme card should headline the performers, not merely a slot counter. */
+export function bookedMatchHeadline(match:EditorMatch,
+ nameFor:(participant:PersonPick|null)=>string):string{
+ const teams=match.teams.map(side=>side.map(nameFor).join(" & "));
+ if(match.format==="BATTLE_ROYAL")return "Battle royal · "+
+  match.teams.filter(side=>side.every(Boolean)).length+
+  " of "+match.teams.length+" entrants";
+ if(teams.length>3)return teams.slice(0,2).join(" vs ")+" + "+
+  (teams.length-2)+" more";
+ return teams.join(" vs ");
+}
 export function assignedIds(match:EditorMatch):string[]{
  return match.teams.flatMap(s=>s.flatMap(p=>p?[p.personId]:[]));
 }

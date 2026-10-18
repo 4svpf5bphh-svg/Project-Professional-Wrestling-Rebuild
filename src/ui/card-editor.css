@@ -158,3 +158,10 @@
  background:rgba(26,96,77,.35);color:#a8f4d7}
 .ppw-booking-hint{font-size:12px;line-height:1.5;color:#c5dce9;margin:0 0 11px;
  padding:8px 10px;border-radius:8px;background:#1b3242}
+
+/* The lineup is the headline; format/finish and casting stay visually secondary. */
+.ppw-card-bar .ppw-card-lineup{display:block;color:#aacce1;font-size:11px;
+ line-height:1.4;white-space:normal;overflow-wrap:anywhere;margin-top:4px}
+.ppw-card-bar strong{font-size:clamp(14px,3.5vw,17px);line-height:1.24;
+ overflow-wrap:anywhere;letter-spacing:-.015em}
+.ppw-card-bar>div:nth-child(2){max-width:100%}
