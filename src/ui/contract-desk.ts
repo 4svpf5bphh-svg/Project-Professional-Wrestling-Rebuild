@@ -40,7 +40,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    const result=await doIt(input);
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
-    throw new Error("World state changed. Reload the contract desk and try again.");
+    throw new Error("The deadline or contract terms have changed. Review the latest details before trying again.");
    view=await port.load();notice=ok;clear(key);
   }catch(e){error=e instanceof Error?e.message:"Contract action could not be completed";}
   finally{working=false;render();}
@@ -53,7 +53,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    el("h1","","Contract Desk"),
    el("p","ppw-muted",view?
     "Year "+view.year+" · Week "+view.week+" · Your promotion only":
-    "Loading your contract ledger…"));
+    "Checking your wrestlers' agreements…"));
   root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(notice)root.append(el("p","ppw-alert ppw-success",notice));
@@ -72,7 +72,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
   root.append(helper);
   if(!view.canEdit)root.append(el("p","ppw-alert",
-   "World Lock is closed. You can review contracts but cannot make new offers."));
+   "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
   const pendingTotal=view.requests.length+view.renewals.length+view.offers.length;
   if(pendingTotal){

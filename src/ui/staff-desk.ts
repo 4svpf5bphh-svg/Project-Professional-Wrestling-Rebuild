@@ -93,11 +93,11 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   root.classList.add("ppw-editor","ppw-staff");root.replaceChildren();
   const head=el("header","ppw-staff-head");
   if(port.back)head.append(button("← Back",()=>port.back?.()));
-  head.append(el("span","ppw-staff-kicker","PPW / THE OFFICE"),
+  head.append(el("span","ppw-staff-kicker","THE OFFICE / STAFF"),
    el("h1","","Staff"),
    el("p","ppw-staff-muted",
     view?"Year "+view.year+" · Week "+view.week:
-     "Delegate administrative fallbacks without surrendering creative control."));
+     "Put trusted people in charge of renewals, scheduling and show-day cover."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(notice)root.append(el("p","ppw-alert ppw-success",notice));
@@ -106,8 +106,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    "The weekly deadline has passed. Staff instructions can be reviewed but not changed until next week."));
   const fallback=el("section","ppw-staff-panel");
   fallback.append(el("h2","","Emergency show cover"),
-   toggle("Allow unfinished-card fallback",
-    "Only when your show is missing or incomplete at the deadline. Staff will never change your chosen winners.",
+   toggle("Cover an unfinished show",
+    "If your card is incomplete at the deadline, staff can arrange cover without changing your chosen winners.",
     unfinished,v=>{unfinished=v;},!view.canEdit||saving));
   root.append(fallback);
   const manager=el("section","ppw-staff-panel ppw-staff-manager");
@@ -134,7 +134,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    manager.append(employed);
   }else{
    manager.append(el("p","ppw-staff-muted",
-    "No Talent Manager employed. Recruit one of the World's available fictional specialists. You need enough cash for four weeks of salary."));
+    "Your talent office needs a manager. Choose an available candidate and hold enough cash to cover four weeks' wages."));
    const candidates=el("div","ppw-staff-candidates");
    for(const member of view.availableManagers){
     const candidate=el("article","ppw-staff-candidate");
@@ -154,12 +154,12 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     "When enabled, your employed manager offers unchanged terms in the final three weeks. Wrestlers may refuse.",
     autoRenew,v=>{autoRenew=v;},!view.talentManager||!view.canEdit||saving));
   manager.append(el("p","ppw-staff-muted",
-   "Managerial insight improves administrative guidance, not contract consent or wrestling results. Offers appear in Contracts."));
+   "An experienced manager can offer better advice, but every wrestler decides whether to accept. Follow offers in Contracts."));
   root.append(manager);
   const support=el("section","ppw-staff-panel");
   support.append(el("h2","","Logistics authority"),
    toggle("Permit scheduling assistance",
-    "A separate opt-in for bounded venue/day recovery. It cannot edit wrestlers, matches or finishes.",
+    "Let staff find an approved date or venue when plans fall through. They cannot change your match card.",
     logistics,v=>{logistics=v;},!view.canEdit||saving));
   const choices=el("div","ppw-staff-choices");
   choices.append(el("h3","","Permitted show days"));
@@ -183,15 +183,15 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     },!view.canEdit||saving||!logistics));
   }
   if(!view.venues.length)venueList.append(el("p","ppw-staff-muted",
-   "No eligible venues are configured in this World."));
+   "No suitable venues are currently available."));
   choices.append(venueList);support.append(choices);root.append(support);
   const footer=el("section","ppw-staff-panel");
   footer.append(el("h2","","What staff cannot do"),
    el("p","ppw-staff-muted",
-    "Staff may not change a booked winner, author your storylines, sign wrestlers, spend contract dates without a resolved show, or gain authority because you were offline."));
+    "Your team can handle administration, but you still choose the winners, storylines, signings and appearances."));
   if(view.lockedLogisticsDelegated)footer.append(el("p","ppw-staff-muted",
    "Your scheduling instructions were already confirmed for this week."));
-  footer.append(button(saving?"Saving…":"Save Staff permissions",()=>void save(),
+  footer.append(button(saving?"Saving…":"Save instructions",()=>void save(),
    !view.canEdit||saving||loading));
   root.append(footer);
  }

@@ -61,13 +61,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!loaded){
    root.append(el("p","ppw-home-small",loading?
-    "Reading your World…":"No current World snapshot."));
-   if(!loading)root.append(control("Retry connection","Reload this World",()=>void load(),"↻"));
+    "Reading your World…":"No promotion details are available."));
+   if(!loading)root.append(control("Retry connection","Try the connection again",()=>void load(),"↻"));
    return;
   }
   if(!overview){
    root.append(el("p","ppw-home-small",
-    "This World does not exist or is not available to your session."));
+    "The selected promotion is unavailable. Return to the promotion list or sign in again."));
    root.append(control("Try again","Reload your World",()=>void load(),"↻"));
    return;
   }
@@ -84,25 +84,25 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
    el("p","ppw-home-small",world.phase==="OPEN"?
     "The booking window is open. Your creative choices remain yours.":
-    world.phase==="LOCKED"?"The World is locked. Cards are no longer editable.":
-    "The World is resolving this week's submitted shows."));
+    world.phase==="LOCKED"?"This week's cards are locked. The show lineup is final.":
+    "This week's shows are taking place. The new standings will follow."));
   const tags=el("div","ppw-home-tags");
   tags.append(el("span","",world.phase),
    el("span","",promotion?.tier??membership),
    el("span","","One shared wrestling universe"));
   hero.append(tags);
   if(world.phase==="OPEN"){
-   const countdown=el("p","ppw-home-countdown","Loading lock deadline…");
+   const countdown=el("p","ppw-home-countdown","Checking this week's deadline…");
    countdown.setAttribute("aria-live","off");
    hero.append(countdown);
    startClock(countdown,world);
   }else if(world.phase==="LOCKED"||world.phase==="RESOLVING"){
-   hero.append(el("p","ppw-home-countdown","Booking is closed until World resolution completes."));
+   hero.append(el("p","ppw-home-countdown","Booking reopens when this week's shows are complete."));
   }
   root.append(hero);
   if(!promotion){
    root.append(el("p","ppw-home-small",
-    "Join and claim a promotion through the World selection screen before managing your roster."));
+    "Choose a promotion to take charge of talent, bookings and business."));
    // A controller must claim a promotion before private Industry views open.
    return;
   }
@@ -152,7 +152,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
     action:port.business,icon:"!",level:"important"});
   if(!items.length)brief.append(el("p","ppw-home-brief-clear",
-   "No outstanding alerts in the tracked areas. Review your Planner for full show readiness."));
+   "Your desk is clear for now. Review your next show whenever you're ready."));
   for(const item of items){
    const entry=control(item.title,item.detail,item.action,item.icon);
    entry.classList.add("ppw-home-action-"+item.level);

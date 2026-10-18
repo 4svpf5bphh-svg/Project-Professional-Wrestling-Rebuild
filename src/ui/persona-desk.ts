@@ -354,14 +354,14 @@ export function mountPersonaDesk(root:HTMLElement,
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
        "Rivalry programme started":
        item.followThroughKind==="MEDIATION_MATCH_COMPLETED"?
-       "Verified partnership recovery":
+       "Partnership back on track":
        item.followThroughKind==="CONTRACT_NEGOTIATION_STARTED"?
-       "Actual contract negotiation opened":"Booking follow-through")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
+       "Actual contract negotiation opened":"Promise delivered")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
    if(item.kind==="ROLE_USAGE"&&item.promisedRole)
     chat.append(el("small","ppw-backstage-promise",
      (item.promisedRole==="MAIN_EVENT"?"Main event":"Upper card")+
-     " · "+item.observedMatchShows+" verified matches; "+
+     " · "+item.observedMatchShows+" matches together; "+
      item.observedFeaturedShows+" featured"));
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
@@ -371,10 +371,10 @@ export function mountPersonaDesk(root:HTMLElement,
     if(item.kind==="PARTNERSHIP"&&item.decision==="MEDIATE"&&
      item.followThroughWeekIndex===null)
      chat.append(el("small","ppw-backstage-promise",
-      "Mediation requires real follow-through. A strong completed tag match together can rebuild trust; you still author the outcome."));
+      "Words will only go so far. Book a strong tag-team performance together to help repair the damage."));
     if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
      item.followThroughWeekIndex===null&&onOpenProgrammes){
-     chat.append(button("Create rivalry in Programme Desk →",
+     chat.append(button("Build this rivalry →",
       onOpenProgrammes,loading));
     }
     if(item.status==="BROKEN"&&item.trustDelta<0)

@@ -42,22 +42,22 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
-  head.append(el("span","ppw-industry-kicker","PPW / THE WORLD"),
+  head.append(el("span","ppw-industry-kicker","THE INDUSTRY / PROMOTIONS"),
    el("h1","","Industry"),
    el("p","ppw-industry-muted",view?
     view.worldName+" · Year "+view.year+" · Week "+view.week:
-    "The same World, shared by every player and AI promotion."));
+    "See the competition, follow rival promotions and find out who's making headlines."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){if(!loading)root.append(btn("Retry",()=>void load()));return;}
   const status=el("section","ppw-industry-status");
-  status.append(el("span","","WORLD PHASE"),
+  status.append(el("span","","THIS WEEK"),
    el("strong","",view.phase==="OPEN"?"Bookings open":
-    view.phase==="LOCKED"?"Cards locked":"World resolution"));
+    view.phase==="LOCKED"?"Cards locked":"Shows taking place"));
   const when=Number.isFinite(view.nextLockEpoch)&&view.nextLockEpoch>0?
     new Date(view.nextLockEpoch*1000).toLocaleString("en-GB",{
      dateStyle:"medium",timeStyle:"short"}):"Not scheduled";
-  status.append(el("span","","NEXT WORLD LOCK"),el("strong","",when));
+  status.append(el("span","","BOOKING DEADLINE"),el("strong","",when));
   status.append(el("p","ppw-industry-muted",
    "All promotions share the same weekly deadline. Their cards stay private until the shows take place."));
   root.append(status);
@@ -73,7 +73,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    const section=el("section","ppw-industry-list");
    section.append(el("h2","","The promotion landscape"),
     el("p","ppw-industry-muted",
-     "World ranking reflects media reach. Form measures crowd response to completed shows over the last 12 weeks."));
+     "Rankings reflect each promotion's reach. Form reflects the response to their shows over the last 12 weeks."));
    const filters=el("div","ppw-industry-filters");
    const queryLabel=el("label","ppw-industry-field","Search promotions");
    const query=document.createElement("input");query.type="search";
