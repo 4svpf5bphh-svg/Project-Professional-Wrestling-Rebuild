@@ -103,6 +103,29 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   assert.equal((confirmed.slots[0]!.payload as {plannedFinish:string}).plannedFinish,
    "PROTECTED_FINISH","A wrestler's answer never rewrites the finish");
   await assert.rejects(agree("alice","late",5),/save|card|agreement|current/i);
+  // A changed contracted right between confirmation and lock cannot silently
+  // materialise the prior script, even though the ready fingerprint still fits.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET creative_control='FULL_APPROVAL'"+
+   " WHERE world_id=$1 AND contract_id='bob-deal'",[world]));
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=now()-interval '1 minute' WHERE world_id=$1",
+   [world]));
+  assert.equal((await lockWorldWeek(db.pool,{
+   worldId:world,requestId:"lock",expectedRevision:5})).status,"APPLIED");
+  assert.equal((await recordWeekContinuity(db.pool,{
+   worldId:world,requestId:"continuity",expectedRevision:6})).status,"APPLIED");
+  const final=await finalizePreparedWorldShows(db.pool,{
+   worldId:world,requestId:"finalize",expectedRevision:7});
+  assert.equal(final.status,"APPLIED");
+  if(final.status==="APPLIED")
+   assert.deepEqual(final.result.review,[{
+    showId:show,reason:"CREATIVE_APPROVAL_REQUIRED"}]);
+  const submissions=await withWorldTransaction(db.pool,tx=>tx.query<{status:string}>(
+   "SELECT status FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=$2",
+   [world,show]));
+  assert.equal(submissions[0]!.status,"DRAFT");
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_match_creative_consents","ppw_card_slots",
