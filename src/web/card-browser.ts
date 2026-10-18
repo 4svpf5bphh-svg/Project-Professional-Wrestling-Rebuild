@@ -88,14 +88,14 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   openPlanner:()=>mountPlannerPage(root,scope,()=>mountCardEditor(root,port)),
   openProgrammes:()=>{openProgrammeDesk();},
   openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
-  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),()=>mountCardEditor(root,port)),
+  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),()=>mountCardEditor(root,port)),
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),()=>mountCardEditor(root,port)),
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
   openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
-  openStables:()=>mountStableDesk(root,stablePort(call),
+  openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
    ()=>mountCardEditor(root,port)),
@@ -212,9 +212,9 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
    call("submitContractOffer",{personId,requestId,expectedRevision,terms}),
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>open("ROSTER")),
-  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call),
+  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),
    ()=>open("ROSTER")),
-  openStables:()=>mountStableDesk(root,stablePort(call),
+  openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
    ()=>open("ROSTER")),
   backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,
   backToHome:()=>mountWorldHomePage(root,scope),
@@ -245,16 +245,18 @@ export function mountContractsPage(root:HTMLElement,scope:Scope){
  return mountContractDesk(root,contractPort(call,root,scope));
 }
 
-function tagTeamPort(call:ReturnType<typeof createCardClient>):TagTeamPort{
+function tagTeamPort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope):TagTeamPort{
  return {load:()=>call("tagTeams"),
   create:({requestId,expectedRevision,name,personIds})=>
    call("createTagTeam",{requestId,expectedRevision,name,personIds}),
   rename:({requestId,expectedRevision,name,teamId})=>
-   call("renameTagTeam",{requestId,expectedRevision,name,teamId})};
+   call("renameTagTeam",{requestId,expectedRevision,name,teamId}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
 }
 /** Independent tag-team roster route, without a current booking draft. */
 export function mountTagTeamsPage(root:HTMLElement,scope:Scope){
- return mountTagTeamDesk(root,tagTeamPort(createCardClient(scope)));
+ return mountTagTeamDesk(root,tagTeamPort(createCardClient(scope),root,scope));
 }
 
 /** A history route independent of particular rivalries or show cards. */
@@ -331,7 +333,8 @@ export function mountProgrammePage(root:HTMLElement,scope:Scope){
   ()=>{void mountResultsArchivePage(root,scope,()=>mountProgrammePage(root,scope));}));
 }
 
-function stablePort(call:ReturnType<typeof createCardClient>):StableDeskPort{
+function stablePort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope):StableDeskPort{
  return {
   load:()=>call("stables"),
   create:({requestId,expectedRevision,name,personIds})=>
@@ -342,11 +345,12 @@ function stablePort(call:ReturnType<typeof createCardClient>):StableDeskPort{
    call("removeStableMember",{requestId,expectedRevision,stableId,personId}),
   disband:({requestId,expectedRevision,stableId})=>
    call("disbandStable",{requestId,expectedRevision,stableId}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
  };
 }
 /** Routed stable roster component for the eventual Roster > Stables tab. */
 export function mountStablesPage(root:HTMLElement,scope:Scope){
- return mountStableDesk(root,stablePort(createCardClient(scope)));
+ return mountStableDesk(root,stablePort(createCardClient(scope),root,scope));
 }
 
 function workingPort(call:ReturnType<typeof createCardClient>):WorkingConnectionsPort{

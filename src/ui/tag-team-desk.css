@@ -30,3 +30,9 @@
 .ppw-pair-pick{min-width:0;word-break:break-word;font-size:13px}
 .ppw-pair-pick[aria-pressed=true]{border-color:#f2d999;background:#424035}
 @media(max-width:520px){.ppw-pair-picks{grid-template-columns:1fr}}
+
+/* Team-member dossiers are fetched only on tap, not for the whole team list. */
+.ppw-pair-partner-links{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.ppw-pair-partner-file{flex:1 1 130px;background:#173d4d;border-color:#4d7d9a;
+ font-size:12px;color:#bdeeff}
+.ppw-pair-partner-file:focus-visible{outline:2px solid #8de4fc;outline-offset:2px}

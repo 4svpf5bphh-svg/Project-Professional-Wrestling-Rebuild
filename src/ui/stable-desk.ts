@@ -10,6 +10,7 @@ export interface StableDeskPort {
  add(input:Mutation&{stableId:string;personId:string}):Promise<unknown>;
  remove(input:Mutation&{stableId:string;personId:string}):Promise<unknown>;
  disband(input:Mutation&{stableId:string}):Promise<unknown>;
+ openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",value="")=>{
  const node=document.createElement(tag);node.className=cls;node.textContent=value;return node;
@@ -61,7 +62,7 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
   header.append(el("span","ppw-eyebrow","THE LOCKER ROOM / FACTIONS"),
    el("h1","","Stables"),
    el("p","ppw-muted",
-    "Build and manage factions. A scripted exit or reconciliation never silently changes this roster."));
+    "Build your factions and settle who belongs. On-screen breakups and reunions are yours to make official."));
   root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
@@ -99,8 +100,13 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
       (Math.floor(stable.formedWeekIndex/52)+1)+" W"+(stable.formedWeekIndex%52+1)));
    for(const member of stable.currentMembers){
     const line=el("div","ppw-stable-member");
-    line.append(el("span","",member.name),
-     btn("Remove",()=>void run(()=>port.remove({...request(),
+    if(port.openWrestler){
+     const file=btn(member.name+" ↗",()=>port.openWrestler?.(member.personId));
+     file.classList.add("ppw-stable-member-profile");
+     file.setAttribute("aria-label","Open "+member.name+"'s wrestler dossier");
+     line.append(file);
+    }else line.append(el("span","",member.name));
+    line.append(btn("Remove",()=>void run(()=>port.remove({...request(),
       stableId:stable.stableId,personId:member.personId}),"Wrestler left the faction"),
      working||!view.canEdit));
     card.append(line);

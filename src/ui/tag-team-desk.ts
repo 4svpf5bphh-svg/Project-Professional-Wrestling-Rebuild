@@ -7,6 +7,7 @@ export interface TagTeamPort {
  load():Promise<TagTeamView>;
  create(input:{requestId:string;expectedRevision:number;name:string;personIds:string[]}):Promise<unknown>;
  rename?(input:{requestId:string;expectedRevision:number;teamId:string;name:string}):Promise<unknown>;
+ openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",text="")=>{
  const node=document.createElement(tag);node.className=cls;node.textContent=text;return node;};
@@ -54,7 +55,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   if(!view||!editable()||!port.rename)return;
   const input={requestId:renameRequest??(renameRequest=crypto.randomUUID()),
    expectedRevision:view.worldRevision,teamId,name:renameValue};
-  await apply(()=>port.rename!(input),"The shared World team name has changed.");
+  await apply(()=>port.rename!(input),"Team renamed.");
  }
  function render(){
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
@@ -62,7 +63,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   if(onBack)head.append(btn("← Back to booking",onBack,working));
   head.append(el("span","ppw-eyebrow","ROSTER / TAG DIVISION"),
    el("h1","","Tag Teams"),
-   el("p","ppw-muted","Portable tag identities, real match-earned chemistry and championship history."));
+   el("p","ppw-muted","Build a lasting partnership, earn chemistry in the ring and chase championship gold."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
@@ -143,6 +144,14 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
       team.currentTitles.map(t=>t.name).join(" · ")));
     article.append(heading);
     const body=el("div","ppw-pair-details");
+    if(port.openWrestler){
+     const partnerLinks=el("div","ppw-pair-partner-links");
+     for(const member of team.members){
+      const file=btn(member.name+" · Dossier ↗",()=>port.openWrestler?.(member.personId));
+      file.classList.add("ppw-pair-partner-file");partnerLinks.append(file);
+     }
+     body.append(partnerLinks);
+    }
     body.append(el("p","ppw-muted","Familiarity "+Math.round(team.familiarity)+
      " · "+team.totalTitleReigns+" title reigns · "+
      team.totalTitleDefenses+" defenses"));

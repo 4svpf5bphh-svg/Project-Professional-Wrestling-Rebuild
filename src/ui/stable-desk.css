@@ -29,3 +29,8 @@
  padding:13px;margin:10px 0}
 .ppw-stable-task strong{display:block;font-size:15px}
 .ppw-stable-task p{margin:8px 0;line-height:1.45}
+
+.ppw-stable-member-profile{border:0;background:transparent;color:#a9e9ff;font-weight:750;
+ text-align:left;min-width:0;overflow-wrap:anywhere;text-decoration:underline;
+ text-underline-offset:4px;text-decoration-color:#5dbfef8c}
+.ppw-stable-member-profile:focus-visible{outline:2px solid #8de4fc;outline-offset:2px}
