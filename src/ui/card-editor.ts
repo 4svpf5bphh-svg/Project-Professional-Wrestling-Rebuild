@@ -100,6 +100,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
  let managementOpen=false;
+ const openStyles=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
  const mutable=()=>view?.canEdit===true&&!saving;
@@ -448,6 +449,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(m.format==="SINGLES"){
      const sheet=document.createElement("details");
      sheet.className="ppw-match-style";
+     sheet.open=openStyles.has(slotId);
+     sheet.ontoggle=()=>{
+      if(!sheet.isConnected)return;
+      if(sheet.open)openStyles.add(slotId);else openStyles.delete(slotId);
+     };
      sheet.append(el("summary","","Match presentation · pace, story & risk"));
      const style=editorMatchStyle(m),load=editorStyleLoad(m);
      sheet.append(el("p","ppw-match-style-intro",
