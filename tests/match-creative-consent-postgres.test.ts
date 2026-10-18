@@ -79,3 +79,33 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   const refused=await agree("bob","bob-no",1);
   assert.equal(refused.result.decision,"DECLINED");
   await assert.rejects(ready(2,"still-blocked"),/creative agreement/);
+  const changed=await saveCardEditorAsActor(context,{
+   ...info,requestId:"rebook",expectedRevision:2,
+   matches:[{slotId:"main",payload:match("PROTECTED_FINISH")}],
+   segments:[],runningOrder:["main"]
+  });
+  assert.equal(changed.status,"APPLIED");
+  const reviewed=await showCardEditorAsActor(context,world,promotion,show);
+  assert.deepEqual(reviewed.creativeConcerns.map(x=>x.personId),["alice"]);
+  assert.equal(reviewed.creativeConcerns[0]!.decision,"NOT_REQUESTED",
+   "Changing the scripted finish voids earlier permission");
+  await assert.rejects(ready(3,"stale-consent"),/creative agreement/);
+  assert.equal((await agree("alice","alice-revised",3)).result.decision,"APPROVED");
+  assert.equal((await ready(4,"confirmed")).status,"APPLIED");
+  const confirmed=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(confirmed.ready,true);
+  assert.equal((confirmed.slots[0]!.payload as {plannedFinish:string}).plannedFinish,
+   "PROTECTED_FINISH","A wrestler's answer never rewrites the finish");
+  await assert.rejects(agree("alice","late",5),/save|card|agreement|current/i);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_match_creative_consents","ppw_card_slots",
+    "ppw_command_receipts","ppw_booking_drafts","ppw_contracts",
+    "ppw_promotion_controls","ppw_memberships","ppw_venues",
+    "ppw_promotion_market_states","ppw_people","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
