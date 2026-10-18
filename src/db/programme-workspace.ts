@@ -69,12 +69,15 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   if(refs.length>400)throw new Error("Programme refs exceed bounded capacity");
   // Distinct signed roster: no per-wrestler queries, and zero date balances
   // still count as on-roster if the agreement itself remains in force.
-  const roster=await tx.query<{person_id:string;name:string}>([
-   "SELECT DISTINCT p.person_id,p.name FROM ppw_people p JOIN ppw_contracts c",
+  const roster=await tx.query<{person_id:string;name:string;full_approval:boolean}>([
+   "SELECT p.person_id,p.name,",
+   "bool_or(c.creative_control='FULL_APPROVAL') AS full_approval",
+   "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
-   "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501"
+   "AND c.expires_week_index>=$3",
+   "GROUP BY p.person_id,p.name ORDER BY p.name,p.person_id LIMIT 501"
   ].join(" "),[scope.worldId,scope.promotionId,currentWeek]);
   if(roster.length>500)throw new Error("Roster too large for programme editor");
   const teams=await tx.query<{team_id:string;name:string;person_ids:string[]}>([
@@ -107,39 +110,22 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "ORDER BY week_index DESC,show_id,slot_id LIMIT 151"
   ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
   if(recent.length>150)throw new Error("Programme history view limit exceeded");
-  // The two categories share ONE bounded relational round trip.
-  // Existing seven-query Programme budget remains unchanged.
-  type RightsRow={kind:"RIGHT"|"AGREEMENT";person_id:string;
-   programme_id:string|null;approved:boolean|null;score:number|null;
-   decided_week_index:number|null;expires_week_index:number|null;
-   match_type:string|null;permitted_outcome:string|null};
-  const rights=programmes.length?await tx.query<RightsRow>([
-   "SELECT 'RIGHT'::text AS kind,c.person_id,NULL::text AS programme_id,",
-   "NULL::boolean AS approved,NULL::integer AS score,",
-   "NULL::integer AS decided_week_index,NULL::integer AS expires_week_index,",
-   "NULL::text AS match_type,NULL::text AS permitted_outcome",
-   "FROM ppw_contracts c WHERE c.world_id=$1 AND c.promotion_id=$2",
-   "AND c.person_id=ANY($3::text[]) AND c.status='SIGNED'",
-   "AND c.creative_control='FULL_APPROVAL' AND c.start_week_index<=$4",
-   "AND c.expires_week_index>=$4",
-   "UNION ALL",
-   "SELECT 'AGREEMENT',a.person_id,a.programme_id,a.approved,a.score,",
-   "a.decided_week_index,a.expires_week_index,a.match_type,a.permitted_outcome",
-   "FROM ppw_programme_creative_agreements a",
-   "WHERE a.world_id=$1 AND a.promotion_id=$2",
-   "AND a.programme_id=ANY($5::text[])",
-   "ORDER BY kind,person_id LIMIT 601"
-  ].join(" "),[scope.worldId,scope.promotionId,roster.map(x=>x.person_id),
-   currentWeek,programmes]):[];
-  if(rights.length>600)throw new Error("Rivalry terms exceed safe capacity");
-  const fullPeople=new Set(rights.filter(x=>x.kind==="RIGHT").map(x=>x.person_id));
-  const agreements=rights.filter((a):a is RightsRow&{
-   programme_id:string;approved:boolean;score:number;
+  // The roster already knows whether signed talent holds full approval rights.
+  // Read at most 300 recorded terms in one indexed statement, keeping the
+  // original seven-statement Programme budget (even with active rivalries).
+  const fullPeople=new Set(roster.filter(x=>x.full_approval).map(x=>x.person_id));
+  const agreements=programmes.length?await tx.query<{
+   programme_id:string;person_id:string;approved:boolean;score:number;
    decided_week_index:number;expires_week_index:number;
-   match_type:string;permitted_outcome:string
-  }=>a.kind==="AGREEMENT"&&a.programme_id!==null&&
-   a.approved!==null&&a.score!==null&&a.decided_week_index!==null&&
-   a.expires_week_index!==null&&a.match_type!==null&&a.permitted_outcome!==null);
+   match_type:string;permitted_outcome:string;
+  }>([
+   "SELECT programme_id,person_id,approved,score,decided_week_index,",
+   "expires_week_index,match_type,permitted_outcome",
+   "FROM ppw_programme_creative_agreements",
+   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
+   "ORDER BY programme_id,person_id LIMIT 301"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+  if(agreements.length>300)throw new Error("Too many rivalry agreements");
   const programmesView=rows.map(p=>{
    const own=refs.filter(x=>x.programme_id===p.programme_id);
    const side=(which:"A"|"B")=>own.filter(x=>x.side===which).map(x=>({
