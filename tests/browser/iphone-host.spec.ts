@@ -291,6 +291,55 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  expect(methods).not.toContain("wrestlerProfile");
 });
 
+test("Home reminders open the unfinished card and unread locker room directly",async({page})=>{
+ const methods:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:true,pendingBackstage:true,
+  expiringTalent:false,pendingContractOffers:false}}};
+ const planner={
+  worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   scheduled:[],shows:[{draftId:"week5-card",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+    marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+    ready:false,slots:0,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]
+ };
+ const card={showId:"week5-card",year:1,week:5,worldRevision:4,
+  canEdit:true,ready:false,day:5,venueId:"arena",showName:"Dynamite",
+  promotionName:"AEW",venueName:"Arena",marketName:"Home",
+  bookingClass:"REGULAR",ticketStrategy:"STANDARD",championships:[],
+  programmes:[],programmeLinks:[],selectedPeople:[],slots:[]};
+ const backstage={personId:null,persona:null,personName:"",roster:[
+  {personId:"talent-1",name:"Charlie",isCurrent:true,morale:70,momentum:70,
+   lastMessage:null,latestIncoming:{archived:false,read_week_index:null,
+    status:"PENDING",kind:"ROLE_USAGE",created_week_index:4}},
+  {personId:"talent-2",name:"Riley",isCurrent:true,morale:70,momentum:70,
+   lastMessage:null,latestIncoming:{archived:false,read_week_index:4,
+    status:"NOTED",kind:"GOOD_NEWS",created_week_index:4}}
+ ],conversations:[]};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  methods.push(method);
+  await route.fulfill({json:method==="overview"?home:method==="planner"?planner:
+   method==="load"?card:method==="backstage"?backstage:{}});
+ });
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:/Finish your booking card/}).click();
+ await expect(page).toHaveURL(/#\/planner\/card$/);
+ await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+ expect(methods).toEqual(["overview","planner","load"]);
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:/Your locker room has messages/}).click();
+ await expect(page).toHaveURL(/#\/backstage\/unread$/);
+ await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
+ await expect(page.getByRole("button",{name:/Charlie/})).toBeVisible();
+ expect(methods).toEqual(["overview","planner","load","overview","backstage"]);
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+});
+
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
