@@ -178,6 +178,36 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  expect(methods.filter(x=>x==="wrestlerProfile").length).toBe(1);
 });
 
+test("Home contract wire dismisses one resolved offer without suppressing show obligations or refetching",async({page})=>{
+ const methods:string[]=[];
+ const attention={plannedShows:0,unpreparedShow:false,pendingBackstage:false,
+  expiringTalent:false,pendingContractOffers:false,
+  offerResults:[
+   {id:"offer-result:accept",personId:"alice",name:"Alice",status:"ACCEPTED"},
+   {id:"offer-result:reject",personId:"bob",name:"Bob",status:"REJECTED"}
+  ]};
+ const home={...overview,promotion:{...overview.promotion,attention}};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const data=route.request().postDataJSON();methods.push(data.method);
+  if(data.method==="dismissAttention"){
+   expect(data.attentionId).toBe("offer-result:accept");
+   expect(data.playerId).toBeUndefined();
+   await route.fulfill({json:{dismissed:true,firstDismissal:true}});return;
+  }
+  await route.fulfill({json:data.method==="overview"?home:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByText("Alice accepted the offer")).toBeVisible();
+ await expect(page.getByText("Bob declined the offer")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ await page.getByRole("button",{name:"Dismiss Alice's contract update"}).click();
+ await expect(page.getByText("Alice accepted the offer")).toHaveCount(0);
+ await expect(page.getByText("Bob declined the offer")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ expect(methods).toEqual(["overview","dismissAttention"]);
+});
+
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
