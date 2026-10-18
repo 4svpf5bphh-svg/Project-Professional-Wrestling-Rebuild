@@ -92,7 +92,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
   division:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
- let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets";
+ let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
   division:"ALL"|"MEN"|"WOMEN"}|null=null;
@@ -103,6 +103,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let formatChoice:Format="SINGLES";
  let managementOpen=false;
  const openStyles=new Set<string>();
+ const openRunIns=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
  const mutable=()=>view?.canEdit===true&&!saving;
@@ -164,6 +165,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function chooseTalent(p:TalentPage["talent"][number]){
   if(!picker||!p.available)return;
+  if(picker.role==="RUN_IN"){
+   const match=matches.get(picker.slotId);
+   if(!match)return;
+   if(assignedIds(match).includes(p.personId)){
+    error="A run-in needs someone outside the match.";render();return;
+   }
+   setMatch(match.slotId,{...match,interference:{
+    personId:p.personId,contractId:p.contractId,
+    aidedSide:match.winnerSide===0?"A":"B",plannedOutcome:"SUCCESS"
+   }});
+   picker=null;render();return;
+  }
   if(picker.role){
    const current=segments.get(picker.slotId);
    if(!current)return;
@@ -186,6 +199,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     personId:p.personId,contractId:p.contractId}));
    picker=null;render();
   }catch(e){error=errorText(e);render();}
+ }
+ function chooseRunInTalent(slotId:string){
+  picker={slotId,side:0,member:0,role:"RUN_IN",query:"",cursor:null,items:[],
+   sort:"POPULARITY",division:"ALL"};
+  render();void findTalent("");
  }
  function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
   picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
@@ -469,7 +487,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH"]:
       ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH",
        "DISQUALIFICATION","FOREIGN_OBJECT"]).map(x=>[x,nice(x)]),
-      v=>edit(m,{plannedFinish:v}),!mutable())));
+      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined}),!mutable())));
+    const cheatingSide=m.plannedFinish==="FOREIGN_OBJECT"?m.winnerSide:
+     m.plannedFinish==="DISQUALIFICATION"?1-m.winnerSide:-1;
+    if(m.format==="SINGLES"&&cheatingSide>=0){
+     const cheaters=m.teams[cheatingSide]!.filter((p):p is PersonPick=>p!==null);
+     controls.append(field(m.plannedFinish==="DISQUALIFICATION"?
+      "Who gets caught cheating?":"Who uses the foreign object?",
+      selector(m.cheatingWrestlerId??"",
+       [["","Choose wrestler"],...cheaters.map(p=>[p.personId,selectedName(p)])],
+       v=>edit(m,{cheatingWrestlerId:v||undefined}),!mutable())));
+    }
     const titleDivision=["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(m.format)?
      "SINGLES":m.format==="TAG"?"TAG":null;
     if(titleDivision){
@@ -486,6 +514,40 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     body.append(controls);
+    if(m.format==="SINGLES"||m.format==="TAG"){
+     const run=document.createElement("details");run.className="ppw-run-in";
+     run.open=openRunIns.has(slotId);
+     run.ontoggle=()=>{
+      if(!run.isConnected)return;
+      if(run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
+     };
+     run.append(el("summary","","Run-in / match interference"+
+      (m.interference?" · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):" · optional")));
+     run.append(el("p","ppw-run-in-help",
+      "Bring someone from outside the match to ringside. Choose which side they support and whether the run-in succeeds. The winner is still your decision."));
+     run.append(button(m.interference?
+      "Change wrestler · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):
+      "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
+     if(m.interference){
+      const spot=m.interference;
+      const sideChoices=m.teams.map((_,i)=>[i===0?"A":"B",
+       "Help "+(i===0?"Side A":"Side B")] as string[]);
+      run.append(field("Which side?",selector(spot.aidedSide,sideChoices,
+       v=>edit(m,{interference:{...spot,aidedSide:v as "A"|"B",
+        plannedOutcome:v===(m.winnerSide===0?"A":"B")?
+         spot.plannedOutcome:"THWARTED"}}),!mutable())));
+      run.append(field("What happens?",selector(spot.plannedOutcome,[
+       ["SUCCESS","Run-in succeeds"],["THWARTED","Run-in is thwarted"]],
+       v=>edit(m,{interference:{...spot,plannedOutcome:v as "SUCCESS"|"THWARTED",
+        aidedSide:v==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide}}),!mutable())));
+      run.append(button("Remove run-in",()=>edit(m,{interference:undefined}),
+       !mutable(),"ppw-run-in-clear"));
+      if(spot.plannedOutcome==="SUCCESS")
+       run.append(el("p","ppw-run-in-hint",
+        "A successful run-in supports the wrestler or team you've selected to win."));
+     }
+     body.append(run);
+    }
     if(m.format==="SINGLES"){
      const sheet=document.createElement("details");
      sheet.className="ppw-match-style";
@@ -626,7 +688,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    sheet.setAttribute("role","dialog");sheet.setAttribute("aria-modal","true");
    sheet.setAttribute("aria-label","Choose wrestler");
    const heading=el("div","ppw-sheet-head");
-   heading.append(el("h2","","Choose wrestler"),
+   heading.append(el("h2","",current.role==="RUN_IN"?"Choose a run-in wrestler":"Choose wrestler"),
     button("×",()=>{picker=null;render();}));
    sheet.append(heading);
    const form=document.createElement("form");form.className="ppw-search";
@@ -649,14 +711,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     value=>{current.division=value as typeof current.division;render();});
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
-   const chosen=matches.get(current.slotId)?.teams[current.side]?.[current.member]??null;
+   const matchForPicker=matches.get(current.slotId);
+   const chosen=current.role==="RUN_IN"?null:
+    matchForPicker?.teams[current.side]?.[current.member]??null;
    if(chosen)sheet.append(button("Clear position",()=>{
     const item=matches.get(current.slotId)!;
     setMatch(current.slotId,assignPerformer(item,current.side,current.member,null));
     picker=null;render();
    }));
    const rows=el("div","ppw-talent-rows");
-   const takenIds=new Set([...matches.values()].flatMap(m=>assignedIds(m)));
+   const takenIds=new Set(current.role==="RUN_IN"?
+    (matchForPicker?assignedIds(matchForPicker):[]):
+    [...matches.values()].flatMap(m=>assignedIds(m)));
    const sorted=current.items
     .filter(p=>current.division==="ALL"||p.division===current.division)
     .sort((a,b)=>{

@@ -192,3 +192,12 @@
 @media(max-width:410px){.ppw-card-show-identity{align-items:stretch}
  .ppw-card-show-location{padding-left:0;border:0;padding-top:7px;
   border-top:1px solid #4d7191;width:100%}}
+
+/* Optional ringside run-ins stay with the match, not disconnected angles. */
+.ppw-run-in{margin:13px 0;padding:13px;border:1px solid rgba(166,130,236,.45);border-radius:14px;background:linear-gradient(135deg,#211e3d,#0e1d31)}
+.ppw-run-in>summary{cursor:pointer;min-height:42px;font-size:14px;font-weight:850;color:#ded0ff}
+.ppw-run-in-help,.ppw-run-in-hint{font-size:12px;line-height:1.55;color:#c6d4e6;margin:5px 0 12px}
+.ppw-run-in .ppw-field{margin:10px 0;display:grid;gap:6px}
+.ppw-run-in select{font-size:16px;min-height:44px;max-width:100%}
+.ppw-run-in-person,.ppw-run-in-clear{min-height:44px;padding:10px 13px;border-radius:10px;cursor:pointer}
+.ppw-run-in-clear{color:#ffc4c4;background:#47252e;border:1px solid #a76074}
