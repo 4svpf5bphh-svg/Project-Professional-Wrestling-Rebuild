@@ -6,7 +6,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type DirectoryView="ROSTER"|"MARKET";
-export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
+export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
 export type MarketAvailability="ALL"|"APPROACHABLE"|"FREE_AGENT"|"NON_EXCLUSIVE";
 export type DirectoryRole="ALL"|"MAIN_EVENT"|"UPPER_CARD"|"FEATURED"|"REGULAR"|"DEVELOPMENTAL"|"SPECIAL_ATTRACTION";
@@ -16,7 +16,7 @@ export interface DirectoryFilter{
  view:DirectoryView;search?:string;division?:DirectoryDivision;
  availability?:MarketAvailability;role?:DirectoryRole;contract?:DirectoryContract;
  interest?:DirectoryInterest;sort?:DirectorySort;minPopularity?:number;
- minRecognition?:number;minMomentum?:number;minCraft?:number;minPresentation?:number;
+ minRecognition?:number;minMomentum?:number;minInRing?:number;minCraft?:number;minPresentation?:number;
  offset?:number;limit?:number;
 }
 type PersonRow={
@@ -42,12 +42,12 @@ export function validateDirectoryFilter(f:DirectoryFilter){
   !["ALL","MAIN_EVENT","UPPER_CARD","FEATURED","REGULAR","DEVELOPMENTAL","SPECIAL_ATTRACTION"].includes(f.role??"ALL")||
   !["ALL","EXCLUSIVE","LIMITED_NON_EXCLUSIVE"].includes(f.contract??"ALL")||
   !["ALL","OPEN_PLUS","INTERESTED_PLUS"].includes(f.interest??"ALL")||
-  !["ROLE","NAME","POPULARITY","RECOGNITION","MOMENTUM","VALUE","PAY_LOW","PAY_HIGH","DATES_LOW","DATES_HIGH","EXPIRY","INTEREST"].includes(f.sort??"NAME")||
+  !["ROLE","NAME","POPULARITY","RECOGNITION","MOMENTUM","VALUE","PAY_LOW","PAY_HIGH","FEE_LOW","FEE_HIGH","DATES_LOW","DATES_HIGH","EXPIRY","INTEREST"].includes(f.sort??"NAME")||
   !Number.isSafeInteger(f.offset??0)||(f.offset??0)<0||(f.offset??0)>1000||
   !Number.isSafeInteger(f.limit??25)||(f.limit??25)<1||(f.limit??25)>40||
   typeof (f.search??"")!=="string"||(f.search??"").length>70)
    throw new Error("Invalid wrestler directory filters");
- for(const n of [f.minPopularity,f.minRecognition,f.minMomentum,f.minCraft,f.minPresentation])
+ for(const n of [f.minPopularity,f.minRecognition,f.minMomentum,f.minInRing,f.minCraft,f.minPresentation])
   if(n!==undefined&&(!Number.isSafeInteger(n)||n<0||n>100))
    throw new Error("Invalid talent attribute threshold");
  return {...f,search:(f.search??"").trim(),division:f.division??"ALL",
@@ -67,7 +67,9 @@ const sortSql:Record<DirectorySort,string>={
  MOMENTUM:"p.momentum DESC NULLS LAST,p.name ASC,p.person_id ASC",
  VALUE:"mv.estimated_value ASC NULLS LAST,p.name ASC,p.person_id ASC",
  PAY_LOW:"mine.weekly_guarantee ASC NULLS LAST,p.name ASC,p.person_id ASC",
- PAY_HIGH:"mine.weekly_guarantee DESC NULLS LAST,p.name ASC,p.person_id ASC"
+ PAY_HIGH:"mine.weekly_guarantee DESC NULLS LAST,p.name ASC,p.person_id ASC",
+ FEE_LOW:"mine.appearance_fee ASC NULLS LAST,p.name ASC,p.person_id ASC",
+ FEE_HIGH:"mine.appearance_fee DESC NULLS LAST,p.name ASC,p.person_id ASC"
 };
 export async function readWrestlerDirectory(
  pool:TransactionPool,who:{worldId:string;playerId:string;promotionId:string},
@@ -163,6 +165,7 @@ export async function readWrestlerDirectory(
     AND ($8::integer IS NULL OR p.momentum >= $8)
     AND ($9::integer IS NULL OR p.match_craft >= $9)
     AND ($10::integer IS NULL OR p.presentation >= $10)
+    AND ($17::integer IS NULL OR p.in_ring_quality >= $17)
     AND ($14::text='ALL' OR mine.role_expectation=$14)
     AND ($15::text='ALL' OR mine.family=$15)
     AND ($16::text='ALL' OR ($16='OPEN_PLUS' AND
@@ -179,7 +182,7 @@ export async function readWrestlerDirectory(
    [who.worldId,who.promotionId,now,f.division,f.search,
     f.minPopularity??null,f.minRecognition??null,f.minMomentum??null,
     f.minCraft??null,f.minPresentation??null,f.availability,f.limit+1,f.offset,
-   f.role,f.contract,f.interest]);
+   f.role,f.contract,f.interest,f.minInRing??null]);
   const hasMore=rows.length>f.limit;
   return {year:auth[0]!.year,week:auth[0]!.week,
    currentWeekIndex:now,worldRevision:Number(auth[0]!.revision),

@@ -105,6 +105,21 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",offset:-1}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPopularity:101}),/threshold/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPresentation:-1}),/threshold/);
+  assert.throws(()=>validateDirectoryFilter({view:"MARKET",minInRing:101}),/threshold/);
+  const strongRing=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",minInRing:85,limit:12});
+  assert.ok(strongRing.people.every(p=>p.inRingQuality!==null&&p.inRingQuality>=85));
+  const ringBlocked=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",search:"Wrestler 87",minInRing:88});
+  assert.deepEqual(ringBlocked.people,[]);
+  const feeSort=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",limit:40,sort:"FEE_HIGH"});
+  assert.ok(feeSort.people.length>1);
+  assert.ok(feeSort.people.every((p,i,all)=>i===0||
+   (all[i-1]!.appearanceFee??0)>=(p.appearanceFee??0)));
   const affordable=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",limit:7,sort:"VALUE",minPresentation:70});
   assert.ok(affordable.people.every(p=>p.presentation!==null&&p.presentation>=70));

@@ -179,7 +179,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["RECOGNITION","Recognition"],["MOMENTUM","Momentum"],
    ["DATES_LOW","Dates remaining: lowest"],["DATES_HIGH","Dates remaining: highest"],
    ["EXPIRY","Expires soonest"],["PAY_LOW","Wage: lowest"],
-   ["PAY_HIGH","Wage: highest"]
+   ["PAY_HIGH","Wage: highest"],["FEE_LOW","Appearance fee: lowest"],
+   ["FEE_HIGH","Appearance fee: highest"]
   ] as const:[
    ["INTEREST","Interest: strongest"],["NAME","Name"],
    ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
@@ -216,7 +217,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const thresholds=el("div","ppw-directory-thresholds");
   for(const [key,label] of [
    ["minPopularity","Min popularity"],["minRecognition","Min recognition"],
-   ["minMomentum","Min momentum"],["minCraft","Min match craft"],
+   ["minMomentum","Min momentum"],["minInRing","Min in-ring"],
+   ["minCraft","Min match craft"],
    ["minPresentation","Min presentation"]
   ] as const)numbers(thresholds,label,filter[key]??0,0,100,n=>{
    filter[key]=n===0?undefined:n;
