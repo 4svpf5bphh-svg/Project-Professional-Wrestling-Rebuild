@@ -77,7 +77,8 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   assert.equal(approved.result.decision,"APPROVED");
   assert.equal((await agree("alice","alice-yes",0)).status,"REPLAYED");
   const refused=await agree("bob","bob-no",1);
-  assert.equal(refused.result.decision,"DECLINED");
+  assert.equal(refused.status,"APPLIED");
+  if(refused.status==="APPLIED")assert.equal(refused.result.decision,"DECLINED");
   await assert.rejects(ready(2,"still-blocked"),/creative agreement/);
   const changed=await saveCardEditorAsActor(context,{
    ...info,requestId:"rebook",expectedRevision:2,
@@ -90,7 +91,9 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   assert.equal(reviewed.creativeConcerns[0]!.decision,"NOT_REQUESTED",
    "Changing the scripted finish voids earlier permission");
   await assert.rejects(ready(3,"stale-consent"),/creative agreement/);
-  assert.equal((await agree("alice","alice-revised",3)).result.decision,"APPROVED");
+  const revised=await agree("alice","alice-revised",3);
+  assert.equal(revised.status,"APPLIED");
+  if(revised.status==="APPLIED")assert.equal(revised.result.decision,"APPROVED");
   assert.equal((await ready(4,"confirmed")).status,"APPLIED");
   const confirmed=await showCardEditorAsActor(context,world,promotion,show);
   assert.equal(confirmed.ready,true);
