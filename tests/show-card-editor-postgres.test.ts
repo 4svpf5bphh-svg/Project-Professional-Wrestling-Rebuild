@@ -35,20 +35,27 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
     await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
     await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
-    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'hall','Hall')",[world]);
+    await tx.query("INSERT INTO ppw_markets(world_id,market_id,name) VALUES($1,'home','Heartland')",[world]);
+    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Main Hall','home')",[world]);
     for(const id of ids){
      await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
       [world,id,"Talent "+id]);
      await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52)",
       [world,"deal-"+id,id,promotion]);
     }
-    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall')",
+    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
      [world,show,JSON.stringify({participants:[members[0]],kind:"PROMO",outcome:"HAPPENS"})]);
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
    assert.equal(view.canEdit,true);
+   assert.equal(view.showName,"Wednesday Night Live");
+   assert.equal(view.promotionName,"Local");
+   assert.equal(view.venueName,"Main Hall");
+   assert.equal(view.marketName,"Heartland");
+   assert.equal(view.day,3);
+   assert.equal(view.bookingClass,"REGULAR");
    assert.deepEqual(view.slots.map(s=>s.slotId),["angle"]);
    const page=await cardTalentAsActor(context,world,promotion,show,"Talent",null,10);
    assert.equal(page.talent.length,Math.min(10,ids.length));
@@ -171,7 +178,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
      "ppw_programmes","ppw_card_slots",
      "ppw_booking_drafts","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",
-     "ppw_promotions"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+     "ppw_promotions","ppw_markets"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
     await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
     await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
    }).finally(()=>db.close());
