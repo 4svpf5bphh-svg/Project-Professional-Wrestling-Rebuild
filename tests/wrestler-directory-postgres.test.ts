@@ -64,6 +64,42 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.equal(first.people.length,5);assert.equal(next.people.length,5);
   assert.equal(first.hasMore,true);
   assert.equal(new Set([...first.people,...next.people].map(x=>x.personId)).size,10);
+  // Restored original PPW talent filters must remain inside the same two
+  // bounded SQL reads; this protects the Neon optimisation.
+  const interestOrder=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",limit:25,sort:"INTEREST"});
+  assert.equal(interestOrder.people.length,25);
+  assert.ok(interestOrder.people.every(x=>
+   ["KEEN","INTERESTED","OPEN_TO_TALKS","RELUCTANT",
+    "NOT_INTERESTED","UNAVAILABLE","UNKNOWN"].includes(x.interest)));
+  assert.equal(blocked.people[0]!.interest,"UNAVAILABLE");
+  const openToTalks=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"MARKET",limit:25,interest:"OPEN_PLUS"});
+  assert.ok(openToTalks.people.every(x=>
+   ["KEEN","INTERESTED","OPEN_TO_TALKS"].includes(x.interest)));
+  const interestMeter=new MeasuredQuerySession("talent-market-interest");
+  const budgetPool:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return interestMeter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  await readWrestlerDirectory(budgetPool,{worldId:world,playerId:player,promotionId},
+   {view:"MARKET",sort:"INTEREST",interest:"OPEN_PLUS",limit:25});
+  assert.equal(interestMeter.assertBudget({maxQueries:2,maxResultBytes:18000}).queryCount,2);
+  const roles=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",role:"FEATURED",sort:"ROLE",limit:40});
+  assert.ok(roles.people.every(x=>x.roleExpectation==="FEATURED"));
+  const womenRoster=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",division:"WOMEN",limit:40});
+  assert.ok(womenRoster.people.every(x=>x.division==="WOMEN"));
+  assert.throws(()=>validateDirectoryFilter({view:"MARKET",interest:"INVALID" as "ALL"}),/Invalid/);
+  assert.throws(()=>validateDirectoryFilter({view:"ROSTER",role:"INVALID" as "ALL"}),/Invalid/);
   assert.ok(first.people[0]!.popularity!>=first.people[4]!.popularity!);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",limit:500}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",offset:-1}),/Invalid/);
