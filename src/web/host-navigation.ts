@@ -21,6 +21,9 @@ export const HOST_SECTIONS=[
 export type HostSection=typeof HOST_SECTIONS[number]["id"];
 const sections=new Set<string>(HOST_SECTIONS.map(s=>s.id));
 export type ContractFocus="ATTENTION"|"EXPIRING"|"PENDING";
+export type HomeAttentionFocus=ContractFocus|"CARD"|"UNREAD";
+export const plannerCardHash="#/planner/card";
+export const backstageUnreadHash="#/backstage/unread";
 export const contractAttentionHash=(focus:"EXPIRING"|"PENDING")=>
  "#/contracts/"+focus.toLowerCase();
 /** Only two named contract routes are supported; IDs and player data never enter the URL. */
@@ -29,6 +32,8 @@ export function readContractFocus(hash:string):ContractFocus{
   hash==="#/contracts/pending"?"PENDING":"ATTENTION";
 }
 export function readHostSection(hash:string):HostSection{
+ if(hash===plannerCardHash)return "planner";
+ if(hash===backstageUnreadHash)return "backstage";
  if(hash==="#/contracts/expiring"||hash==="#/contracts/pending")return "contracts";
  const match=/^#\/([a-z-]+)$/.exec(hash);
  return match&&sections.has(match[1]!)?match[1] as HostSection:"home";

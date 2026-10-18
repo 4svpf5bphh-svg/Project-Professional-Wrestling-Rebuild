@@ -7,7 +7,9 @@ export interface PlannerPort {
 }
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
-export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void){
+export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
+ openUnfinishedCard=false){
+ let cardRoutePending=openUnfinishedCard;
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
  let selectedDraft="",marketId="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
  let selectedSeriesId="";
@@ -16,9 +18,20 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
  const formatMoney=(n:number)=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
  async function refresh(){
-  busy=true;draw();
-  try{data=await port.load();error="";}catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
-  finally{busy=false;draw();}
+  busy=true;draw();let navigated=false;
+  try{
+   data=await port.load();error="";
+   if(cardRoutePending){
+    cardRoutePending=false;
+    const draft=data.weeks.find(w=>w.offset===0)?.shows.find(s=>
+     s.status==="DRAFT"&&!s.ready);
+    if(draft&&data.canEdit){
+     navigated=true;port.openCard(draft.draftId);return;
+    }
+    error="There isn't an unfinished show card this week. Check your schedule below.";
+   }
+  }catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
+  finally{busy=false;if(!navigated)draw();}
  }
  async function save(){
   if(!data||!editing||busy)return;

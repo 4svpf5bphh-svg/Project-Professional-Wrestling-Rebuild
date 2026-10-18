@@ -24,11 +24,12 @@ const button=(title:string,action:()=>void,disabled=false)=>{
  x.type="button";x.onclick=action;x.disabled=disabled;return x;
 };
 export function mountPersonaDesk(root:HTMLElement,
- port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void){
+ port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void,
+ initialInboxFilter:"ALL"|"UNREAD"="ALL"){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
- let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"="ALL";
+ let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  // Private read/archive receipts change presentation, not the wrestler's

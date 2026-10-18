@@ -5,6 +5,7 @@ import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
  planner():void;roster():void;market():void;contracts():void;
+ openUnfinishedCard?():void;openUnreadBackstage?():void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
@@ -148,11 +149,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(world.phase==="OPEN"&&attention?.unpreparedShow)
    items.push({title:"Finish your booking card",detail:
     "Your card still needs confirming before the weekly deadline.",
-    action:port.planner,icon:"▤",level:"priority"});
+    action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
   if(attention?.pendingBackstage)
    items.push({title:"Your locker room has messages",detail:
     "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
-    action:port.backstage,icon:"✉",level:"important"});
+    action:port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
   if(attention?.expiringTalent)
    items.push({title:"Contracts approaching expiry",detail:
     "A wrestler's contract expires within the next two weeks.",
