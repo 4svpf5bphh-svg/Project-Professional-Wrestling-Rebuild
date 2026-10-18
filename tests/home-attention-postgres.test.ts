@@ -36,6 +36,22 @@ test("Private contract news is individually dismissible without hiding mandatory
    "person_id,kind,created_week_index,status)"+
    " VALUES($1,'backstage-ask','promotion-0','person-0','MORALE',0,'PENDING')",
    [world]));
+  // Published commitments are terminal; pending replies remain mandatory tasks.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(
+    "INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,"+
+    "person_id,kind,created_week_index,status,decision,responded_week_index,due_week_index) VALUES"+
+    "($1,'word-kept','promotion-0','person-0','CREATIVE',0,'FULFILLED','PROMISE_SEGMENT',0,0),"+
+    "($1,'word-broken','promotion-0','person-8','CREATIVE',0,'BROKEN','PROMISE_SEGMENT',0,0)",
+    [world]);
+   await tx.query(
+    "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES"+
+    "($1,1,1,'BACKSTAGE_PROMISE_FULFILLED',jsonb_build_object("+
+    "'promotionId','promotion-0','conversationId','word-kept','personId','person-0')),"+
+    "($1,1,1,'BACKSTAGE_PROMISE_BROKEN',jsonb_build_object("+
+    "'promotionId','promotion-0','conversationId','word-broken','personId','person-8'))",
+    [world]);
+  });
   const meter=new MeasuredQuerySession("resolved-offer-home");
   const measured:TransactionPool={async connect(){
    const client=await db.pool.connect();
@@ -45,7 +61,7 @@ test("Private contract news is individually dismissible without hiding mandatory
     }};
   }};
   const first=await readPlayerWorldOverview(measured,world,player);
-  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:2400}).queryCount,1);
+  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:3600}).queryCount,1);
   assert.equal(first?.promotion?.attention.pendingBackstage,true);
   assert.deepEqual(first?.promotion?.attention.backstageRequests,[
    {personId:"person-0",name:"Wrestler 0",kind:"MORALE"}]);
@@ -53,6 +69,9 @@ test("Private contract news is individually dismissible without hiding mandatory
   assert.deepEqual(first?.promotion?.attention.offerResults?.map(x=>x.status).sort(),
    ["ACCEPTED","REJECTED"]);
   assert.equal(first?.promotion?.attention.plannedShows,0);
+  const settled=first?.promotion?.attention.backstageResults??[];
+  assert.deepEqual(settled.map(x=>x.status).sort(),["BROKEN","FULFILLED"]);
+  assert.deepEqual(settled.map(x=>x.personId).sort(),["person-0","person-8"]);
   const desk=await readContractDesk(measured,world,player,promotionId);
   assert.equal(desk.summary.pendingOffers,0);
   assert.deepEqual(desk.resolvedOffers.map(x=>({name:x.name,status:x.status})),
@@ -76,13 +95,33 @@ test("Private contract news is individually dismissible without hiding mandatory
   assert.deepEqual(after?.promotion?.attention.offerResults?.map(x=>x.id),
    ["offer-result:offer-declined"]);
   assert.equal(after?.promotion?.attention.plannedShows,0);
+  const kept=settled.find(x=>x.status==="FULFILLED")!;
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{...input,
+   attentionId:kept.id,playerId:"intruder"}),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{...input,
+   attentionId:"backstage-result:9999999"}),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{...input,
+   attentionId:"backstage-result:../../broken"}),/Invalid dismissible/);
+  const confirmed=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
+   "dismissAttention",{worldId:world,promotionId,attentionId:kept.id});
+  assert.deepEqual(confirmed,{dismissed:true,firstDismissal:true});
+  assert.deepEqual(await dismissResolvedOfferAttention(db.pool,{...input,
+   attentionId:kept.id}),{dismissed:true,firstDismissal:false});
+  const afterBackstage=await readPlayerWorldOverview(db.pool,world,player);
+  assert.equal(afterBackstage?.world.revision,worldRevision);
+  assert.equal(afterBackstage?.promotion?.attention.pendingBackstage,true,
+   "A new private request cannot be dismissed as completed news");
+  assert.deepEqual(afterBackstage?.promotion?.attention.backstageResults?.map(x=>x.status),
+   ["BROKEN"]);
+  assert.deepEqual(afterBackstage?.promotion?.attention.offerResults?.map(x=>x.id),
+   ["offer-result:offer-declined"],"Dismissal of one story does not clear another");
   const afterDesk=await readContractDesk(db.pool,world,player,promotionId);
   assert.equal(afterDesk.resolvedOffers.length,2,
    "Acknowledging Home news does not erase recorded contract decisions");
   const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_player_attention_dismissals"+
    " WHERE world_id=$1 AND player_id=$2",[world,player]));
-  assert.equal(count[0]!.n,"1","Exactly one private receipt was written");
+  assert.equal(count[0]!.n,"2","Exactly one private receipt per chosen update");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_backstage_requests","ppw_player_attention_dismissals",
