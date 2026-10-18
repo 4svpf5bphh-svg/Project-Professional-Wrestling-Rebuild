@@ -14,6 +14,7 @@ import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export interface CardEditorIdentity{
@@ -287,6 +288,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    outcome:p.outcome as SegmentOutcome,
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
    ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
+   ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
    ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),
@@ -337,6 +339,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    if(input.runningOrder.some(id=>!expected.has(id))||
     new Set(input.runningOrder).size!==expected.size)
     throw new Error("Running order must include each match and segment exactly once");
+   // Pure authoritative check against this controlled card; no new SQL read.
+   validatePostMatchLinks(matches,segments,input.runningOrder);
    const linkedIds=[...new Set(authored?.flatMap(s=>s.programmeId?[s.programmeId]:[])??[])];
    if(linkedIds.length>100)throw new Error("Too many linked programmes");
    if(linkedIds.length){

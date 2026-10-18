@@ -2,7 +2,7 @@
  * deliberately separate: simulation must not choose a scripted outcome.
  */
 import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../../domain/segment-creative-beats.js";
-export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
+export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"INTERRUPTION"|"RESCUE"|"POST_MATCH_ASSAULT"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
  "DEBUT"|"VIDEO_PACKAGE"|"STABLE_INVITATION"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
 export type VideoPurpose="DEBUT_HYPE"|"RETURN_HYPE"|"WRESTLER_HYPE"|
  "FEUD_RECAP"|"EVENT_PROMO";
@@ -14,6 +14,8 @@ export interface AuthoredSegment {
  videoPurpose?:VideoPurpose;
  /** Absent on historical generic angles; no unscripted response is fabricated. */
  creativeBeat?:SegmentCreativeBeat;
+ /** Post-match angle must reference an earlier match in this same card. */
+ sourceMatchSlotId?:string;
  /** Optional for historical turns. New authored turns may choose a definite alignment. */
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";
  /** Promotion-owned faction for a player-authored stable story. Never mutates membership. */
@@ -30,7 +32,7 @@ export function validateAuthoredSegments(
  return segments.map(s=>{
   if(!s.slotId||slots.has(s.slotId)||!Number.isSafeInteger(s.position)||
    s.position<0||positions.has(s.position)||
-   !["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE","CELEBRATION","ATTACK","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
+   !["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE","CELEBRATION","ATTACK","INTERRUPTION","RESCUE","POST_MATCH_ASSAULT","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
      "VIDEO_PACKAGE","STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
    !["HAPPENS","REFUSED","INTERRUPTED"].includes(s.outcome)||
    !Array.isArray(s.actorIds)||!Array.isArray(s.targetIds)||
@@ -40,6 +42,14 @@ export function validateAuthoredSegments(
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
    (s.creativeBeat!==undefined&&!isSegmentCreativeBeat(s.creativeBeat,s.kind))||
+   (["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)&&!s.creativeBeat)||
+   (s.kind==="POST_MATCH_ASSAULT"?
+     (typeof s.sourceMatchSlotId!=="string"||!s.sourceMatchSlotId.trim()||
+      s.sourceMatchSlotId.length>200||s.sourceMatchSlotId===s.slotId):
+      s.sourceMatchSlotId!==undefined)||
+   (s.kind==="RESCUE"&&(s.actorIds.length!==2||s.targetIds.length!==1))||
+   (["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)&&
+    (s.actorIds.length!==1||s.targetIds.length!==1))||
    (s.stableDecision!==undefined&&(
     !["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)||
     !["ACCEPTED","REJECTED"].includes(s.stableDecision)))||

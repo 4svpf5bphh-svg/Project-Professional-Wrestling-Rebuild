@@ -98,3 +98,28 @@ test("old interview keeps generic delivery rather than inventing an answer",()=>
  assert.equal(buildEditorSegment(model).creativeBeat,undefined);
  assert.equal(restoreEditorSegment("old",buildEditorSegment(model)).creativeBeat,null);
 });
+
+test("interruption, rescue and post-match assault retain explicitly directed roles",()=>{
+ const actor=(id:string)=>({personId:id,contractId:"deal-"+id});
+ for(const kind of ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"] as const){
+  let scene=newEditorSegment("scene",kind);
+  assert.ok(scene.creativeBeat,"New specialist angles must have an authored ending");
+  scene=addSegmentPerson(scene,"actors",actor("attacker"));
+  if(kind==="RESCUE"){
+   assert.throws(()=>buildEditorSegment(scene),/roles/);
+   scene=addSegmentPerson(scene,"actors",actor("rescuer"));
+   assert.throws(()=>addSegmentPerson(scene,"actors",actor("extra")),/capacity/);
+  }else assert.throws(()=>addSegmentPerson(scene,"actors",actor("extra")),/lead wrestler/);
+  scene=addSegmentPerson(scene,"targets",actor("victim"));
+  assert.throws(()=>addSegmentPerson(scene,"targets",actor("extra")),/capacity/);
+  if(kind==="POST_MATCH_ASSAULT"){
+   assert.throws(()=>buildEditorSegment(scene),/Invalid authored segment/);
+   scene.sourceMatchSlotId="earlier-match";
+  }
+  const payload=buildEditorSegment(scene);
+  assert.deepEqual(buildEditorSegment(restoreEditorSegment("scene",payload)),payload);
+  assert.equal(payload.outcome,"HAPPENS");
+  assert.equal(payload.actorIds[0],"attacker");
+  assert.equal(payload.targetIds[0],"victim");
+ }
+});

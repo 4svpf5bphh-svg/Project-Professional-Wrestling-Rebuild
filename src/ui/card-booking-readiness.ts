@@ -36,6 +36,13 @@ export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
  const all=[...angle.actors,...angle.targets].map(x=>x.personId);
  if(new Set(all).size!==all.length)
   return {complete:false,label:"DUPLICATE WRESTLER",hint:"Give every performer just one part in this angle."};
+ if(["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(angle.kind)&&
+  (targets!==1||actors!==rules.maxActors||!angle.creativeBeat))
+  return {complete:false,label:"FINISH THE SCENE",
+   hint:"Choose the complete cast and how the confrontation ends."};
+ if(angle.kind==="POST_MATCH_ASSAULT"&&!angle.sourceMatchSlotId)
+  return {complete:false,label:"CHOOSE THE BOUT",
+   hint:"Link the assault to an earlier match on this card."};
  if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(angle.kind)
   &&!angle.stableId)return {complete:false,label:"CHOOSE FACTION",
   hint:"Select the faction involved in this story."};

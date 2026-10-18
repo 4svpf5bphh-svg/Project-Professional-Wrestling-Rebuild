@@ -9,6 +9,7 @@ import {validateAuthoredSegments,type AuthoredSegment}
  from "../simulation/legacy/show-segments.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import type {SegmentCrowdContext}
  from "../simulation/legacy/segment-crowd.js";
 export interface CanonicalSegmentScope {
@@ -33,7 +34,7 @@ export async function readCanonicalSegmentContextsInTransaction(
   if(show.length!==1)throw new Error("Canonical submitted show required");
   const slots=await tx.query<{slot_id:string;position:number;kind:string;payload:unknown}>(
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
-    " WHERE world_id=$1 AND draft_id=$2 AND kind='SEGMENT'"+
+    " WHERE world_id=$1 AND draft_id=$2 AND kind IN ('MATCH','SEGMENT')"+
     " ORDER BY position LIMIT 101",
    [scope.worldId,scope.showId]);
   if(slots.length>100)throw new Error("Card exceeds maximum slots");
@@ -55,6 +56,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     outcome:p.outcome as AuthoredSegment["outcome"],
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
     ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
+    ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
     ...(p.turnTargetAlignment===undefined?{}:{
      turnTargetAlignment:p.turnTargetAlignment as AuthoredSegment["turnTargetAlignment"]}),
     ...(p.stableId===undefined?{}:{stableId:p.stableId as string}),
@@ -63,6 +65,10 @@ export async function readCanonicalSegmentContextsInTransaction(
    segments.push(segment);
    for(const id of ids)allIds.add(id);
   }
+  validatePostMatchLinks(
+   slots.filter(s=>s.kind==="MATCH").map(s=>({slotId:s.slot_id,payload:s.payload})),
+   slots.filter(s=>s.kind==="SEGMENT").map(s=>({slotId:s.slot_id,payload:s.payload})),
+   slots.map(s=>s.slot_id));
   validateAuthoredSegments(segments,allIds);
   if(!segments.length)return [];
   // Only the submitted show's explicitly linked active stories affect its

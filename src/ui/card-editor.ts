@@ -448,14 +448,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
       void loadStableChoices();
      editSegment(segment,{kind,
-      creativeBeat:segment.kind===kind?segment.creativeBeat:null,
+      creativeBeat:segment.kind===kind?segment.creativeBeat:
+       ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
+        initialCreativeBeat(kind):null,
+      sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
       stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableDecision:null,
-      actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):segment.actors,
+      actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
+       kind==="RESCUE"?segment.actors.slice(0,2):segment.actors,
       targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
-       []:segment.targets});
+       []:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
+        segment.targets.slice(0,1):segment.targets});
     };
     const goal=angleGoalFor(segment.kind);
     controls.append(field("Creative direction",selector(goal,
@@ -487,6 +492,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        editSegment(segment,{creativeBeat:null});
       },!mutable(),"ppw-creative-detail-toggle"));
      }
+    }
+    if(segment.kind==="POST_MATCH_ASSAULT"){
+     const index=order.indexOf(slotId),victim=segment.targets[0]?.personId;
+     const earlier=order.slice(0,index).flatMap(matchSlot=>{
+      const match=matches.get(matchSlot);
+      if(!match)return [];
+      const people=match.teams.flat().filter((p):p is PersonPick=>p!==null);
+      if(victim&&!people.some(p=>p.personId===victim))return [];
+      return [[matchSlot,matchLabel(match)] as [string,string]];
+     });
+     controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
+      [["",earlier.length?"Choose the earlier match":"Book the match above this angle"],
+       ...earlier],value=>editSegment(segment,{sourceMatchSlotId:value||null}),!mutable())));
+     if(!earlier.some(([id])=>id===segment.sourceMatchSlotId))
+      controls.append(el("p","ppw-angle-guidance",
+       "Move this angle after the match and choose a wrestler from that bout."));
     }
     if(view.programmes.length)
      controls.append(field("Storyline / programme",selector(segment.programmeId??"",
@@ -532,7 +553,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     body.append(direction);
     for(const role of ["actors","targets"] as const){
      const section=el("div","ppw-side");
-     section.append(el("h3","",role==="actors"?"On-screen talent / initiators":"Targets / rivals"));
+     const specialist=segment.kind==="RESCUE";
+     const heading=specialist?role==="actors"?
+      "Attacker first · rescuer second":"Wrestler being rescued":
+      segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
+      segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
+      role==="actors"?"On-screen talent / initiators":"Targets / rivals";
+     section.append(el("h3","",heading));
      for(const person of segment[role]){
       const line=el("div","ppw-elimination-row");
       line.append(el("span","",selectedName(person)),
@@ -542,9 +569,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
      const targetAllowed=!["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(segment.kind);
      if(role==="actors"||targetAllowed)
-      section.append(button("+ Add "+(role==="actors"?"performer":"target"),()=>{
+      section.append(button("+ Add "+(role==="actors"?
+       specialist?(segment.actors.length?"rescuer":"attacker"):
+        segment.kind==="INTERRUPTION"?"interrupter":
+        segment.kind==="POST_MATCH_ASSAULT"?"attacker":"performer":
+       specialist?"person being rescued":
+        segment.kind==="INTERRUPTION"?"speaker":
+        segment.kind==="POST_MATCH_ASSAULT"?"wrestler from the match":"target"),()=>{
        chooseSegmentTalent(slotId,role);
-      },!mutable()||(role==="actors"&&LIMITED_ACTORS.has(segment.kind)&&segment.actors.length===1)));
+      },!mutable()||(role==="actors"&&
+       (LIMITED_ACTORS.has(segment.kind)&&segment.actors.length===1||
+        specialist&&segment.actors.length>=2))||
+       role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
+        segment.targets.length>=1));
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));
      body.append(section);

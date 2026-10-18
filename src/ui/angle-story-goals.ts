@@ -10,7 +10,7 @@ export const ANGLE_STORY_GOALS:readonly{
  {value:"CHARACTER",label:"Character",description:"Give someone a microphone, spotlight or chance to celebrate.",
   types:["PROMO","INTERVIEW","CELEBRATION"]},
  {value:"RIVALRY",label:"Rivalry",description:"Put the heat on an opponent, spark a confrontation or cause trouble.",
-  types:["CONFRONTATION","ATTACK","INTERFERENCE"]},
+  types:["CONFRONTATION","INTERRUPTION","ATTACK","RESCUE","POST_MATCH_ASSAULT","INTERFERENCE"]},
  {value:"CHALLENGE",label:"Challenge",description:"Issue a challenge or stage a tense signing in front of the crowd.",
   types:["CHALLENGE","CONTRACT_SIGNING"]},
  {value:"FACTION",label:"Alliances",description:"Invite, reject, betray, expel or reunite wrestlers.",
@@ -43,6 +43,9 @@ export function angleDirection(kind:Kind):string{
   case "CELEBRATION":return "A victory lap, a taunt or an awkward celebration.";
   case "CONFRONTATION":return "The rivals face off. You decide who gets the last word.";
   case "ATTACK":return "Choose the aggressor and target before staging the assault.";
+  case "INTERRUPTION":return "Someone cuts off a rival on the microphone. Decide who wins the exchange.";
+  case "RESCUE":return "Book the attacker first, their rescuer second, and the person under attack as the target.";
+  case "POST_MATCH_ASSAULT":return "Pick an earlier bout, then direct what happens to one of its wrestlers after the bell.";
   case "INTERFERENCE":return "Put one wrestler in another's path and direct the disruption.";
   case "CHALLENGE":return "Make the offer public and decide how it is received.";
   case "CONTRACT_SIGNING":return "Stage a televised signing or breakdown; employment deals stay separate.";

@@ -14,7 +14,7 @@ const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const round1=(n:number)=>Math.round(n*10)/10;
 const baseByKind:Record<AuthoredSegment["kind"],number>={
  PROMO:2,INTERVIEW:2,CONFRONTATION:4,CHALLENGE:3,CELEBRATION:2,
- ATTACK:3,TURN:4,CONTRACT_SIGNING:2,INTERFERENCE:2,
+ ATTACK:3,INTERRUPTION:3,RESCUE:4,POST_MATCH_ASSAULT:4,TURN:4,CONTRACT_SIGNING:2,INTERFERENCE:2,
  DEBUT:5,VIDEO_PACKAGE:0,STABLE_INVITATION:3,STABLE_EXIT:3,STABLE_RECONCILIATION:4,
 };
 const videoByPurpose:Record<NonNullable<AuthoredSegment["videoPurpose"]>,number>={

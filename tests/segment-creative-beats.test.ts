@@ -18,3 +18,16 @@ test("specialist fields enforce original-main choices and exclusive kind",()=>{
  }
  assert.equal(initialCreativeBeat("VIDEO_PACKAGE"),null);
 });
+
+test("interruption, rescue and post-match endings cannot be forged or mixed",()=>{
+ const kinds=[
+  ["INTERRUPTION","VERBAL_EXCHANGE"],
+  ["RESCUE","ATTACKER_ESCAPES"],
+  ["POST_MATCH_ASSAULT","OFFICIALS_SEPARATE"]
+ ] as const;
+ for(const [kind,ending] of kinds){
+  assert.equal(isSegmentCreativeBeat({kind,ending},kind),true);
+  assert.equal(isSegmentCreativeBeat({kind,ending},"ATTACK"),false);
+  assert.equal(isSegmentCreativeBeat({kind,ending:"SWERVE"},kind),false);
+ }
+});

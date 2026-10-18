@@ -103,3 +103,9 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - Resolved-offer notices retain their player-scoped dismissal receipts. A separate "View wrestler" action opens the existing actor-authorised universal dossier in an overlay and returns to the unchanged Home state.
 - This requires one bounded person read only after tapping the button. There are no extra Home queries, no exposed person IDs in URL routes and no change to actionable contract notices.
 - iPhone browser flow verifies the exact person identity, modal dismissal, retained attention items and two total calls (overview then one profile). Results, World Lock and original database unchanged.
+
+## Rivalry interruption, rescue and post-match assault restoration
+- Original repository `main` remains the exclusive reference: restored interruption endings, a three-person rescue with explicit attacker/rescuer/victim parts and rescue ending, and a post-match attack with a player-authored ending.
+- A post-match attack must follow an existing bout in this very card, and its victim must be a participant in that earlier bout. The authoritative card save re-checks the link with the same already-loaded slots. The World-resolution read includes match slots in its existing bounded query to check the link again. Neither step adds a Neon round trip.
+- The compact iPhone booking editor supports these scenes and keeps wrestlers' scripted outcomes under the booker's control. No autonomous roster changes, match finish overrides, Results screen edits, cron changes or deployment.
+- Richer original match-anchored dialogue and authenticated notification dismissal workflows remain for later restoration.

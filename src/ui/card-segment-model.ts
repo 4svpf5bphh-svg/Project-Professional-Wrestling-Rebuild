@@ -16,6 +16,8 @@ export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
  {value:"CONFRONTATION",label:"Confrontation"},{value:"CHALLENGE",label:"Challenge"},
  {value:"CELEBRATION",label:"Celebration"},{value:"ATTACK",label:"Attack"},
+ {value:"INTERRUPTION",label:"Interruption"},
+ {value:"RESCUE",label:"Rescue"},{value:"POST_MATCH_ASSAULT",label:"Post-match assault"},
  {value:"TURN",label:"Turn"},{value:"CONTRACT_SIGNING",label:"Contract signing"},
  {value:"INTERFERENCE",label:"Interference"},{value:"DEBUT",label:"Live debut"},
  {value:"VIDEO_PACKAGE",label:"Video package"},
@@ -26,9 +28,10 @@ export const VIDEO_PURPOSES:readonly VideoPurpose[]=[
  "DEBUT_HYPE","RETURN_HYPE","WRESTLER_HYPE","FEUD_RECAP","EVENT_PROMO",
 ];
 export const REQUIRED_TARGETS=new Set<SegmentKind>([
- "CONFRONTATION","CHALLENGE","ATTACK","INTERFERENCE","STABLE_INVITATION","STABLE_RECONCILIATION"
+ "CONFRONTATION","CHALLENGE","ATTACK","INTERRUPTION","RESCUE","POST_MATCH_ASSAULT",
+ "INTERFERENCE","STABLE_INVITATION","STABLE_RECONCILIATION"
 ]);
-export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT"]);
+export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
   creativeBeat:null,

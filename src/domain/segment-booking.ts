@@ -9,6 +9,9 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  CHALLENGE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
  ATTACK:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
+ INTERRUPTION:{minActors:1,minTargets:1,maxActors:1,allowTargets:true,purposes:[]},
+ RESCUE:{minActors:2,minTargets:1,maxActors:2,allowTargets:true,purposes:[]},
+ POST_MATCH_ASSAULT:{minActors:1,minTargets:1,maxActors:1,allowTargets:true,purposes:[]},
  TURN:{minActors:1,minTargets:0,maxActors:1,allowTargets:true,purposes:[]},
  CONTRACT_SIGNING:{minActors:2,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
  INTERFERENCE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
@@ -22,7 +25,7 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
- creativeBeat?:SegmentCreativeBeat;
+ creativeBeat?:SegmentCreativeBeat;sourceMatchSlotId?:string;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";
 }
