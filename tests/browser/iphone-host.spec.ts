@@ -118,7 +118,7 @@ test("named Home concerns open only the intended wrestler conversation",async({p
    await route.fulfill({json:{
     personId:"p-adams",personName:"Ava Adams",worldYear:1,worldWeek:5,
     worldRevision:4,canEdit:true,persona:null,documentedAlternates:[],history:[],
-    availableArchetypes:[],roster:[{
+    recentRequests:[],nextPitchWeek:0,archetypes:[],roster:[{
      personId:"p-adams",name:"Ava Adams",isCurrent:true,morale:65,momentum:52,
      lastMessage:null,latestIncoming:{archived:false,read_week_index:null,
       status:"PENDING",kind:"CREATIVE",created_week_index:4}}],
@@ -136,15 +136,7 @@ test("named Home concerns open only the intended wrestler conversation",async({p
  expect(methods).toEqual(["overview"]);
  await prompt.click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
- try{await expect(page.getByRole("region",{name:"Conversation with Ava Adams"})).toBeVisible();}
- catch(e){
-  const visible=await page.evaluate(()=>({
-   screen:document.documentElement.dataset.ppwScreen,
-   body:document.body.innerText.slice(-2500),
-   hash:location.hash,thread:document.querySelector(".ppw-persona-chat")?.outerHTML.slice(0,600)
-  }));
-  throw new Error("Targeted Backstage state "+JSON.stringify({visible,methods})+": "+String(e));
- }
+ await expect(page.getByRole("region",{name:"Conversation with Ava Adams"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Back to messages"})).toBeVisible();
  await expect.poll(()=>methods.length).toBe(3);
  expect(methods).toEqual(["overview","backstage","markBackstageRead"]);
@@ -208,7 +200,8 @@ test("resolved locker-room promise opens the exact private historical thread",as
    await route.fulfill({json:{
     personId:"p-victor",personName:"Victor Vale",
     worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,
-    persona:null,history:[],documentedAlternates:[],availableArchetypes:[],
+    persona:null,history:[],documentedAlternates:[],
+    recentRequests:[],nextPitchWeek:0,archetypes:[],
     roster:[{personId:"p-victor",name:"Victor Vale",isCurrent:true,
      lastMessage:null,latestIncoming:{archived:false,read_week_index:4,
       status:"FULFILLED",kind:"CREATIVE",created_week_index:2}}],
