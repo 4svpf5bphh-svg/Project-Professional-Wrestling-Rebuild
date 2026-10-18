@@ -92,9 +92,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   const header=element("header","ppw-top");
   if(onBack)header.append(button("← Back to card",onBack));
   if(port.openArchive)header.append(button("Past results",port.openArchive));
-  header.append(element("span","ppw-eyebrow","PPW / CREATIVE"),
+  header.append(element("span","ppw-eyebrow","CREATIVE / STORYLINES"),
    element("h1","","Programmes"),
-   element("p","ppw-muted","Build feuds with real roster members and teams. You decide the outcome on the card."));
+   element("p","ppw-muted","Turn grudges into rivalries. Choose the people involved, then build their story through matches and confrontations."));
   root.append(header);
   if(error)root.append(element("p","ppw-alert ppw-error",error));
   if(success)root.append(element("p","ppw-alert ppw-success",success));
@@ -139,7 +139,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const age=p.startedWeekIndex===null?null:Math.max(0,weekIndex-p.startedWeekIndex);
    panel.append(element("p","ppw-programme-age",
     (age===null?"Origin not recorded":age===0?"Launched this week":
-      age+" PPW week"+(age===1?"":"s")+" active")+
+      age+" week"+(age===1?"":"s")+" active")+
     (p.championshipId?" · Championship stakes":"")));
    if(p.recentActivity.length){
     const history=document.createElement("details");

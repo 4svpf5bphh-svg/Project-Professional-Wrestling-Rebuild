@@ -106,7 +106,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     (result as {status:unknown}).status==="STALE")
     throw new Error("The World changed. Refresh before making this offer.");
    pendingKey="";activeOffer=null;
-   success="Offer sent. The wrestler decides during World resolution.";
+   success="Offer sent. The wrestler will respond at the end of the week.";
    await load();
   }catch(e){error=e instanceof Error?e.message:"Offer could not be sent";}
   finally{sending=false;render();}
@@ -154,7 +154,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   root.classList.add("ppw-editor","ppw-directory");
   root.replaceChildren();
   const head=el("header","ppw-directory-header");
-  head.append(el("span","ppw-directory-kicker","PPW / THE LOCKER ROOM"),
+  head.append(el("span","ppw-directory-kicker","THE LOCKER ROOM / TALENT"),
    el("h1","",filter.view==="ROSTER"?"My Roster":"Talent Market"),
    el("p","ppw-directory-muted",
     view?"Year "+view.year+" · Week "+view.week+
@@ -301,7 +301,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     detail.append(btn("Full wrestler profile →",
      ()=>port.openWrestler(p.personId,filter.view)));
     if(p.pendingOffer)detail.append(el("p","ppw-directory-muted",
-     "Your offer is awaiting the next World resolution."));
+     "Your offer is awaiting a response."));
     else if(p.availability!=="EXCLUSIVE_ELSEWHERE"&&view.canEdit)
      detail.append(btn(activeOffer===p.personId?"Close proposal":"Make contract offer",
       ()=>{activeOffer=activeOffer===p.personId?null:p.personId;render();}));
@@ -309,7 +309,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       p.availability!=="EXCLUSIVE_ELSEWHERE"&&!p.pendingOffer)
      detail.append(offerEditor(p.personId));
     if(!view.canEdit)detail.append(el("p","ppw-directory-muted",
-     "World Lock is closed; recruitment is read-only."));
+     "The weekly deadline has passed. You can review talent, but offers are closed."));
    }
    card.append(detail);
    if(activeOffer===p.personId)card.open=true;

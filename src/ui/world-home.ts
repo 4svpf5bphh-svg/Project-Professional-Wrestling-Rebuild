@@ -89,7 +89,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const tags=el("div","ppw-home-tags");
   tags.append(el("span","",world.phase),
    el("span","",promotion?.tier??membership),
-   el("span","","Server-authoritative World"));
+   el("span","","One shared wrestling universe"));
   hero.append(tags);
   if(world.phase==="OPEN"){
    const countdown=el("p","ppw-home-countdown","Loading lock deadline…");
@@ -133,7 +133,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     action:port.planner,icon:"◷",level:"priority"});
   if(world.phase==="OPEN"&&attention?.unpreparedShow)
    items.push({title:"Finish your booking card",detail:
-    "You have a draft show that has not been confirmed ready for World Lock.",
+    "Your card still needs confirming before the weekly deadline.",
     action:port.planner,icon:"▤",level:"priority"});
   if(attention?.pendingBackstage)
    items.push({title:"Your locker room has messages",detail:
@@ -141,7 +141,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     action:port.backstage,icon:"✉",level:"important"});
   if(attention?.expiringTalent)
    items.push({title:"Contracts approaching expiry",detail:
-    "At least one active wrestler's deal expires within the next two PPW weeks.",
+    "A wrestler's contract expires within the next two weeks.",
     action:port.contracts,icon:"◈",level:"important"});
   if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:
@@ -160,7 +160,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   }
   root.append(brief);
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
-   "Use the five-section menu at the bottom to open Roster, Market, Backstage, Planning, Business and Results. All gameplay actions remain in their respective desks."));
+   "Open the menu to visit talent, booking, backstage, business and the wider industry."));
  }
  void load();
  return {refresh:load};

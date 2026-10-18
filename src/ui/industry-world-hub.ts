@@ -59,7 +59,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      dateStyle:"medium",timeStyle:"short"}):"Not scheduled";
   status.append(el("span","","NEXT WORLD LOCK"),el("strong","",when));
   status.append(el("p","ppw-industry-muted",
-   "One weekly deadline for every promotion. The server resolves booked events; opening the game gives no simulation advantage."));
+   "All promotions share the same weekly deadline. Their cards stay private until the shows take place."));
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
@@ -73,12 +73,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    const section=el("section","ppw-industry-list");
    section.append(el("h2","","The promotion landscape"),
     el("p","ppw-industry-muted",
-     "World ranking reflects media reach. Form measures crowd response to completed shows across 12 PPW weeks."));
+     "World ranking reflects media reach. Form measures crowd response to completed shows over the last 12 weeks."));
    const filters=el("div","ppw-industry-filters");
    const queryLabel=el("label","ppw-industry-field","Search promotions");
    const query=document.createElement("input");query.type="search";
    query.value=search;query.placeholder="Company name or tier";
-   query.setAttribute("aria-label","Search public PPW promotions");
+   query.setAttribute("aria-label","Search promotions");
    queryLabel.append(query);
    const dropdown=(label:string,values:readonly string[],current:string)=>{
     const field=el("label","ppw-industry-field",label);

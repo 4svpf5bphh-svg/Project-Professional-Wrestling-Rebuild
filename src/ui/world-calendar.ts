@@ -65,7 +65,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   };
   section.append(field("Event type",role));
   for(const [name,key,min,max] of [
-   ["Repeat every N PPW weeks (52 = annually)","cadenceWeeks",1,260],
+   ["Repeat every N weeks (52 = annually)","cadenceWeeks",1,260],
    ["Recurrence offset (0 = first week)","anchorWeek",0,259],
    ["Importance (1–100)","importance",1,100]
   ] as const){
@@ -107,7 +107,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   if(editing)manage.append(form());
   root.append(manage);
   const upcoming=node("section","","ppw-calendar-panel");
-  upcoming.append(node("h2","Upcoming PPW weeks"));
+  upcoming.append(node("h2","Upcoming weeks"));
   upcoming.append(button("My shows",()=>{mode="mine";render();},mode==="mine"),
    button("Across the World",()=>{mode="world";render();},mode==="world"));
   if(mode==="mine"){
@@ -121,7 +121,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     for(const s of shows)article.append(node("p",s.name+" · "+label(s.role)));
     upcoming.append(article);
    }
-   if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week PPW year",()=>{
+   if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
     expanded=!expanded;render();
    }));
   }else{

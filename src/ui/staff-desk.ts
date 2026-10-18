@@ -55,7 +55,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
      (result as {status:unknown}).status==="STALE")
     throw new Error("World changed. Reload Staff permissions to review this choice.");
    hydrate(await port.load());requestId="";
-   notice="Staff permissions saved for future World Lock decisions.";
+   notice="Staff instructions updated for upcoming shows.";
   }catch(e){error=e instanceof Error?e.message:"Staff permissions were not saved";}
   finally{saving=false;render();}
  }
@@ -83,11 +83,11 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   if(notice)root.append(el("p","ppw-alert ppw-success",notice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}
   if(!view.canEdit)root.append(el("p","ppw-staff-lock",
-   "World Lock is closed. Settings are view-only; this week's permissions were frozen."));
+   "The weekly deadline has passed. Staff instructions can be reviewed but not changed until next week."));
   const fallback=el("section","ppw-staff-panel");
   fallback.append(el("h2","","Emergency show cover"),
    toggle("Allow unfinished-card fallback",
-    "Only when your show is missing or incomplete at the deadline. Staff never changes a player-scripted winner.",
+    "Only when your show is missing or incomplete at the deadline. Staff will never change your chosen winners.",
     unfinished,v=>{unfinished=v;},!view.canEdit||saving));
   root.append(fallback);
   const manager=el("section","ppw-staff-panel");
@@ -132,7 +132,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("p","ppw-staff-muted",
     "Staff may not change a booked winner, author your storylines, sign wrestlers, spend contract dates without a resolved show, or gain authority because you were offline."));
   if(view.lockedLogisticsDelegated)footer.append(el("p","ppw-staff-muted",
-   "This week's frozen World Lock includes scheduling permission."));
+   "Your scheduling instructions were already confirmed for this week."));
   footer.append(button(saving?"Saving…":"Save Staff permissions",()=>void save(),
    !view.canEdit||saving||loading));
   root.append(footer);

@@ -73,7 +73,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   root.replaceChildren();root.classList.add("ppw-wrestler-profile");
   const heading=el("header","ppw-profile-header");
   if(onBack)heading.append(button("‹ Back",onBack));
-  heading.append(el("span","ppw-profile-kicker","PPW  /  WRESTLER DOSSIER"));
+  heading.append(el("span","ppw-profile-kicker","SCOUTING / WRESTLER DOSSIER"));
   root.append(heading);
   if(error)root.append(el("p","ppw-profile-message ppw-profile-error",error));
   if(!view){root.append(el("p","ppw-profile-muted",loading?
@@ -101,7 +101,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   ] as const)grid.append(stat(label,number));
   attrs.append(grid);root.append(attrs);
   const character=section("Character & repertoire",
-   "This identity follows the wrestler across the PPW World. Gimmick changes require a wrestler's agreement.");
+   "Their character follows them between promotions. Any change needs the wrestler's approval.");
   character.append(el("p","ppw-profile-info",
    "Character · "+wrestlerLabel(view.persona.gimmickId)+"  /  "+
    "Style · "+wrestlerLabel(view.persona.primaryStyle)+
@@ -144,7 +144,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   else character.append(el("p","ppw-profile-locked",
    !view.onYourRoster?"Available to inspect · editing requires a signed roster wrestler.":
     view.sharedHuman?"Editing requires agreement from all human employers.":
-     "Editing unavailable while World Lock is closed."));
+     "Editing is closed until next week."));
   if(view.onYourRoster&&port.openBackstage)character.append(button(
    "Discuss a gimmick change in Backstage",()=>port.openBackstage?.(personId)));
   root.append(character);
@@ -194,7 +194,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     "  /  "+era.persona.personaName+" · "+wrestlerLabel(era.persona.gimmickId)));
   }
   if(!view.history.length)history.append(el("p","ppw-profile-muted",
-   "No previous PPW persona era recorded. Historical real-world characters are not invented as simulated PPW career events."));
+   "No earlier character changes on record."));
   root.append(history);
 
   // Career is consciously absent from the basic dossier response:
@@ -203,7 +203,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   const summary=el("summary","ppw-profile-career-trigger");
   summary.append(el("span","ppw-profile-kicker","THE RECORD BOOK"),
    el("strong","","Matches, victories, injuries & championships"),
-   el("small","","Expand career · no background requests"));
+   el("small","","See their full career record"));
   drilldown.append(summary);
   const careerBody=el("div","ppw-profile-career-body");
   drilldown.append(careerBody);
@@ -211,7 +211,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   const paintCareer=()=>{
    if(!root.contains(drilldown))return;
    careerBody.replaceChildren();
-   if(careerLoading)careerBody.append(el("p","ppw-profile-muted","Reading verified match ledger…"));
+   if(careerLoading)careerBody.append(el("p","ppw-profile-muted","Checking the record books…"));
    if(careerError){
     careerBody.append(el("p","ppw-profile-message ppw-profile-error",careerError),
      button("Retry career record",()=>void loadCareer()));return;
@@ -237,7 +237,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    const honors=el("section","ppw-profile-career-honors");
    honors.append(el("h3","","Singles championship honours"));
    if(!career.singlesTitles.length)honors.append(el("p","ppw-profile-muted",
-    "No singles championship reign is recorded in this PPW World."));
+    "No singles championship reigns on record."));
    for(const belt of career.singlesTitles){
     const row=el("article","ppw-profile-career-match");
     row.append(el("strong","",belt.name),
@@ -250,7 +250,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    const recents=el("section","ppw-profile-career-recents");
    recents.append(el("h3","","Latest completed matches"));
    if(!career.recent.length)recents.append(el("p","ppw-profile-muted",
-    "No completed matches recorded. Planned cards and simulated outcomes are not counted."));
+    "No completed matches on record yet."));
    for(const match of career.recent){
     const row=el("article","ppw-profile-career-match");
     const outcome=el("span","ppw-profile-career-outcome "+(match.won?
@@ -270,7 +270,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    }
    careerBody.append(recents);
    if(career.recent.length>=12)careerBody.append(el("p","ppw-profile-muted",
-    "Showing the 12 most recent completed matches. Lifetime totals include earlier verified matches."));
+    "Showing the 12 most recent matches. Career totals include earlier appearances."));
   };
   async function loadCareer(){
    if(careerLoading||career)return;

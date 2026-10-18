@@ -53,7 +53,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
   const header=node("header","","ppw-planner-header");
   if(onBack)header.append(button("← Back",onBack));
   if(port.openCalendar)header.append(button("Show Calendar",()=>port.openCalendar?.()));
-  header.append(node("h1","Show Planner"),node("p","Six PPW weeks ahead. Book your card when ready."));
+  header.append(node("h1","Show Planner"),node("p","Plan the next six weeks. Find the right venue and build your card."));
   root.append(header);
   if(error)root.append(node("p",error,"ppw-planner-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}
@@ -153,7 +153,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
     if(week.offset===0)card.append(button("Edit card",()=>port.openCard(show.draftId)));
-    else card.append(node("p","Scheduled ahead · card editing opens in this PPW week."));
+    else card.append(node("p","Scheduled ahead · booking opens when the week arrives."));
     if(week.canEdit&&show.status==="DRAFT")
      card.append(button("Change venue / date",()=>edit(week,show),busy));
    }

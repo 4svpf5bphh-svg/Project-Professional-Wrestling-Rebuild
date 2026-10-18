@@ -49,7 +49,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   root.replaceChildren();root.classList.add("ppw-editor","ppw-contract-desk");
   const header=el("header","ppw-contract-header");
   if(onBack)header.append(btn("← Back to booking",onBack,working));
-  header.append(el("span","ppw-eyebrow","PPW / THE OFFICE"),
+  header.append(el("span","ppw-eyebrow","THE OFFICE / CONTRACTS"),
    el("h1","","Contract Desk"),
    el("p","ppw-muted",view?
     "Year "+view.year+" · Week "+view.week+" · Your promotion only":
@@ -69,7 +69,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   }
   root.append(sums);
   const helper=el("p","ppw-muted",
-   "Offers and additional dates are requests, not instant agreements. Wrestlers respond at World resolution.");
+   "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
   root.append(helper);
   if(!view.canEdit)root.append(el("p","ppw-alert",
    "World Lock is closed. You can review contracts but cannot make new offers."));
@@ -259,7 +259,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       }
       void action("negotiated:"+c.contractId,m=>port.negotiatedRenewal({
        ...m,personId:c.personId,sourceContractId:c.contractId,terms:draft}),
-       "Negotiated renewal submitted. Wrestler response arrives at World resolution.");
+       "Renewal offer sent. The wrestler will respond at the end of the week.");
      },!editable()));
      body.append(negotiate);
     }

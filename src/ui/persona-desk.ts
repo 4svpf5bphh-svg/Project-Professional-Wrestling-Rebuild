@@ -97,7 +97,7 @@ export function mountPersonaDesk(root:HTMLElement,
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
   if(onBack)head.append(button("← Back to card",onBack));
-  head.append(el("span","ppw-eyebrow","PPW · BACKSTAGE"),
+  head.append(el("span","ppw-eyebrow","THE LOCKER ROOM / MESSAGES"),
    el("h1","",pane==="INBOX"?"Messages":"Contact details"),
    el("p","ppw-muted",
     pane==="INBOX"?"Private conversations and locker-room decisions.":
@@ -263,7 +263,7 @@ export function mountPersonaDesk(root:HTMLElement,
    else for(const move of moves){
     const row=el("p","",move.name+" · "+move.category.toLowerCase());
     if(move.source==="PPW_AUTHORED")row.append(
-     el("small","ppw-muted"," · PPW editorial approximation"));
+     el("small","ppw-muted"," · Unverified reference"));
     section.append(row);
    }
    live.append(section);
@@ -273,14 +273,14 @@ export function mountPersonaDesk(root:HTMLElement,
   if(pane==="PROFILE"&&view.documentedAlternates.length){
    const alt=el("section","ppw-persona-alternates");
    alt.append(el("h2","","Documented real-world personas"),
-    el("p","ppw-muted","Historical references only — not PPW career eras."));
+    el("p","ppw-muted","Past characters and alternate names."));
    for(const p of view.documentedAlternates)
     alt.append(el("p","",p.personaName+" · "+p.gimmickId.replaceAll("_"," ")));
    root.append(alt);
   }
   if(pane==="PROFILE"&&view.history.length){
    const history=el("section","ppw-persona-history");
-   history.append(el("h2","","PPW identity history"));
+   history.append(el("h2","","Character history"));
    for(const row of view.history){
     const a=row.persona;
     history.append(el("p","",a.personaName+" · "+
@@ -314,7 +314,7 @@ export function mountPersonaDesk(root:HTMLElement,
   monogram.style.setProperty("--messenger-hue",String([...view.personId].reduce(
    (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
   const identity=el("span","ppw-backstage-phone-identity");
-  identity.append(el("strong","",view.personName),el("small","","Private · PPW Messages"));
+  identity.append(el("strong","",view.personName),el("small","","Private conversation"));
   const details=button("Details",()=>{pane="PROFILE";render();});
   details.classList.add("ppw-backstage-phone-details");
   details.setAttribute("aria-label","View "+view.personName+" profile");
@@ -423,7 +423,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const now=(view.worldYear-1)*52+view.worldWeek-1;
   const cooldown=view.nextPitchWeek>now;
   if(cooldown)chat.append(el("p","ppw-muted",
-   "Reconsideration available in "+(view.nextPitchWeek-now)+" PPW weeks."));
+   "Reconsideration available in "+(view.nextPitchWeek-now)+" weeks."));
   if(view.canEdit&&!cooldown&&persona){
    chat.append(el("h3","","Suggest a character change"));
    const filter=document.createElement("input");
