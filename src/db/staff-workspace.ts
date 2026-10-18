@@ -4,6 +4,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {worldTalentManagers} from "../domain/world-staff.js";
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
@@ -17,8 +18,14 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    allow_logistics_fallback:boolean|null;
    permitted_days:number[]|null;permitted_venue_ids:string[]|null;
    frozen_logistics:boolean|null;auto_renew_same_terms:boolean|null;
+   world_seed:string;employed_staff_id:string|null;employment_id:string|null;
+   manager_salary:string|null;occupied_staff_ids:string[];
   }>(`
-   SELECT w.year,w.week,w.revision,
+   SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
+    employed.staff_id AS employed_staff_id,
+    employed.employment_id,employed.weekly_salary::text AS manager_salary,
+    ARRAY(SELECT e.staff_id FROM ppw_staff_employments e
+     WHERE e.world_id=w.world_id AND e.status='ACTIVE') AS occupied_staff_ids,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit,
     s.allow_unfinished_fallback,s.allow_logistics_fallback,
     s.permitted_days,s.permitted_venue_ids,s.auto_renew_same_terms,
@@ -34,9 +41,16 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    LEFT JOIN ppw_week_logistics_authorizations l
     ON l.world_id=w.world_id AND l.year=w.year AND l.week=w.week
     AND l.promotion_id=$3 AND l.controller_player_id=$2
+   LEFT JOIN LATERAL (SELECT e.staff_id,e.employment_id,e.weekly_salary
+    FROM ppw_staff_employments e WHERE e.world_id=w.world_id
+     AND e.promotion_id=$3 AND e.status='ACTIVE' LIMIT 1) employed ON TRUE
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(owners.length!==1)throw new Error("Staff desk access denied");
   const current=owners[0]!;
+  const managers=worldTalentManagers(current.world_seed);
+  const busy=new Set(current.occupied_staff_ids);
+  const employed=managers.find(p=>p.staffId===current.employed_staff_id);
+  if(current.employed_staff_id&&!employed)throw new Error("Unknown employed World manager");
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`
    SELECT venue_id,name,capacity,weekly_hire_cost::text
@@ -47,6 +61,9 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    worldRevision:Number(current.revision),canEdit:current.can_edit,
    allowUnfinishedFallback:current.allow_unfinished_fallback===true,
    autoRenewSameTerms:current.auto_renew_same_terms===true,
+   talentManager:employed?{...employed,employmentId:current.employment_id!,
+    weeklySalary:Number(current.manager_salary)}:null,
+   availableManagers:employed?[]:managers.filter(m=>!busy.has(m.staffId)),
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
    permittedVenueIds:current.permitted_venue_ids??[],

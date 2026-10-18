@@ -28,6 +28,8 @@ import { readPlayerWorldOverview } from "../db/player-world-overview.js";
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
+import {hireWorldTalentManager,releaseWorldTalentManager,type StaffEmploymentInput}
+ from "../db/staff-employment.js";
 import {readIndustryWorldHub} from "../db/industry-world-hub.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
@@ -140,6 +142,18 @@ export async function staffWorkspaceAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readStaffWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+export async function hireTalentManagerAsActor(context:WorldApiContext,
+ input:Omit<StaffEmploymentInput,"playerId">&{staffId:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.staffId,"manager");
+ return hireWorldTalentManager(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function releaseTalentManagerAsActor(context:WorldApiContext,
+ input:Omit<StaffEmploymentInput,"playerId">&{employmentId:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.employmentId,"employment");
+ return releaseWorldTalentManager(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function setStaffContinuityAsActor(context:WorldApiContext,input:StaffContinuityInput){
   validate(context.actor.playerId,"actor");

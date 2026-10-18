@@ -2,7 +2,7 @@ import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,industryWorldAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -141,6 +141,10 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    ...(p.draftId===undefined?{}:{draftId:p.draftId as string}),
    ...(p.showSeriesId===undefined?{}:{showSeriesId:p.showSeriesId as string})});
  }
+ if(method==="hireTalentManager")return hireTalentManagerAsActor(context,{
+  worldId,promotionId,requestId,expectedRevision,staffId:id("staffId")});
+ if(method==="releaseTalentManager")return releaseTalentManagerAsActor(context,{
+  worldId,promotionId,requestId,expectedRevision,employmentId:id("employmentId")});
  if(method==="setStaffContinuity"){
   const fallback=p.allowUnfinishedFallback,logistics=p.allowLogisticsFallback;
   const renew=p.autoRenewSameTerms;
