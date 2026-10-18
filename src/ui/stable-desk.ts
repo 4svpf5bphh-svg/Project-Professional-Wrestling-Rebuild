@@ -2,6 +2,7 @@
  * Every membership change is explicit and World-authoritative.
  */
 import type {readStableWorkspace} from "../db/stable-workspace.js";
+import {createWrestlerCard} from "./wrestler-card.js";
 export type StableDeskView=Awaited<ReturnType<typeof readStableWorkspace>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface StableDeskPort {
@@ -22,6 +23,7 @@ const btn=(label:string,onClick:()=>void,disabled=false)=>{
 export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=>void){
  let view:StableDeskView|null=null,working=false,error="",success="";
  let name="",selected=new Set<string>(),newMember=new Map<string,string>();
+ let founderSearch="";
  const request=()=>({requestId:crypto.randomUUID(),expectedRevision:view!.worldRevision});
  async function load(){
   working=true;render();
@@ -157,22 +159,42 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
    input.oninput=()=>{name=input.value;};
    builder.append(input);
    const options=view.roster.filter(x=>x.stableId===null);
+   const search=document.createElement("input");
+   search.type="search";search.value=founderSearch;
+   search.placeholder="Find an available wrestler";
+   search.setAttribute("aria-label","Search faction founders");builder.append(search);
+   const count=el("p","ppw-stable-selection-count");
    const picker=el("div","ppw-stable-picker");
-   for(const person of options){
-    const row=el("label","ppw-stable-pick");
-    const box=document.createElement("input");
-    box.type="checkbox";box.checked=selected.has(person.personId);
-    box.onchange=()=>{
-     if(box.checked&&selected.size>=12){box.checked=false;return;}
-     if(box.checked)selected.add(person.personId);else selected.delete(person.personId);
-    };
-    row.append(box,el("span","",person.name));picker.append(row);
-   }
-   builder.append(picker);
-   builder.append(btn("Create stable",()=>{
-    void run(()=>port.create({...request(),name,personIds:[...selected]}),
-     "New faction created");
-   },working||options.length<3));
+   const create=btn("Form faction",()=>void run(()=>port.create({
+    ...request(),name,personIds:[...selected]}),"New faction created"),true);
+   const paint=()=>{
+    picker.replaceChildren();
+    const phrase=founderSearch.trim().toLowerCase();
+    const matching=options.filter(p=>!phrase||p.name.toLowerCase().includes(phrase)||
+     p.ringName.toLowerCase().includes(phrase));
+    for(const person of matching.slice(0,40)){
+     const picked=selected.has(person.personId);
+     const card=createWrestlerCard({...person,
+      status:picked?"SELECTED":"AVAILABLE"},{context:"BOOKING",compact:true,
+      label:picked?"✓ FACTION FOUNDER":"ADD TO FACTION",
+      disabled:!picked&&selected.size>=12,
+      onSelect:()=>{
+       if(picked)selected.delete(person.personId);
+       else if(selected.size<12)selected.add(person.personId);
+       paint();
+      }});
+     card.classList.add("ppw-stable-founder-card");
+     card.setAttribute("aria-pressed",String(picked));
+     picker.append(card);
+    }
+    if(!matching.length)picker.append(el("p","ppw-muted","No available wrestlers match your search."));
+    else if(matching.length>40)picker.append(el("p","ppw-muted",
+     "Showing 40 of "+matching.length+" wrestlers. Narrow your search to find someone else."));
+    count.textContent=selected.size+" of 12 chosen · at least 3 members required";
+    create.disabled=working||selected.size<3;
+   };
+   search.oninput=()=>{founderSearch=search.value;paint();};
+   paint();builder.append(count,picker,create);
    root.append(builder);
   }
   const ended=view.stables.filter(s=>s.status==="DISBANDED");

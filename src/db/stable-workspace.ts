@@ -7,6 +7,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {stableStoryFollowThrough} from "../domain/stable-story-followthrough.js";
+import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {validateStableFounders,validateStableMemberId,STABLE_MAX_MEMBERS}
  from "../domain/stable-roster.js";
 export type StableScope={worldId:string;promotionId:string;playerId:string};
@@ -60,8 +61,14 @@ export async function readStableWorkspace(pool:TransactionPool,s:StableScope){
    "ORDER BY CASE WHEN status='ACTIVE' THEN 0 ELSE 1 END,name,stable_id LIMIT 101"
   ].join(" "),[s.worldId,s.promotionId]);
   if(stables.length>100)throw new Error("Stable workspace limit reached");
-  const roster=await tx.query<{person_id:string;name:string}>([
-   "SELECT DISTINCT p.person_id,p.name FROM ppw_people p",
+  const roster=await tx.query<{person_id:string;name:string;
+    booking_division:string|null;popularity:number|null;recognition:number|null;
+    momentum:number|null;in_ring_quality:number|null;match_craft:number|null;
+    presentation:number|null;default_alignment:string|null;
+    portable_gimmick_id:string|null}>([
+   "SELECT DISTINCT p.person_id,p.name,p.booking_division,p.popularity,",
+    "p.recognition,p.momentum,p.in_ring_quality,p.match_craft,p.presentation,",
+    "p.default_alignment,p.portable_gimmick_id FROM ppw_people p",
    "JOIN ppw_contracts c ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
@@ -105,8 +112,16 @@ export async function readStableWorkspace(pool:TransactionPool,s:StableScope){
   });
   return {storyFollowThrough,year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
    canEdit:auth.booking_open,
-   roster:roster.map(p=>({personId:p.person_id,name:p.name,
-    stableId:assigned.get(p.person_id)??null})),
+   roster:roster.map(p=>{
+    const persona=originalPersonaBaseline(p.name,p.portable_gimmick_id);
+    return {personId:p.person_id,name:p.name,
+     ringName:persona.personaName,gimmickId:persona.gimmickId,
+     primaryStyle:persona.primaryStyle,alignment:p.default_alignment,
+     division:p.booking_division,popularity:p.popularity,recognition:p.recognition,
+     momentum:p.momentum,inRingQuality:p.in_ring_quality,
+     matchCraft:p.match_craft,presentation:p.presentation,
+     stableId:assigned.get(p.person_id)??null};
+   }),
    stables:stables.map(st=>({
     stableId:st.stable_id,name:st.name,status:st.status,
     formedWeekIndex:st.formed_week_index,disbandedWeekIndex:st.disbanded_week_index,

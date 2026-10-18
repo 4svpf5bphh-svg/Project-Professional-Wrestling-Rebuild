@@ -7,6 +7,7 @@ import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
+import {originalPersonaBaseline} from "../domain/portable-persona.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type CreateTagTeam=Scope&{requestId:string;expectedRevision:number;
  name:string;personIds:readonly string[]};
@@ -31,8 +32,13 @@ async function scope(tx:SqlRows,who:Scope){
 export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
  return withSqlClient(pool,async tx=>{
   const auth=await scope(tx,who);
-  const roster=await tx.query<{person_id:string;name:string;booking_division:string}>([
-   "SELECT DISTINCT p.person_id,p.name,p.booking_division FROM ppw_people p",
+  const roster=await tx.query<{person_id:string;name:string;booking_division:string;
+    popularity:number|null;recognition:number|null;momentum:number|null;
+    in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
+    default_alignment:string|null;portable_gimmick_id:string|null}>([
+   "SELECT DISTINCT p.person_id,p.name,p.booking_division,p.popularity,p.recognition,",
+    "p.momentum,p.in_ring_quality,p.match_craft,p.presentation,",
+    "p.default_alignment,p.portable_gimmick_id FROM ppw_people p",
    "JOIN ppw_contracts c ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
@@ -89,8 +95,15 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
    n<16?"ESTABLISHED":"VETERAN";
   return {year:auth.year,week:auth.week,worldRevision:Number(auth.revision),
    canEdit:auth.can_edit,
-   roster:roster.map(x=>({personId:x.person_id,name:x.name,
-    division:x.booking_division})),
+   roster:roster.map(x=>{
+    const persona=originalPersonaBaseline(x.name,x.portable_gimmick_id);
+    return {personId:x.person_id,name:x.name,division:x.booking_division,
+     ringName:persona.personaName,gimmickId:persona.gimmickId,
+     primaryStyle:persona.primaryStyle,alignment:x.default_alignment,
+     popularity:x.popularity,recognition:x.recognition,momentum:x.momentum,
+     inRingQuality:x.in_ring_quality,matchCraft:x.match_craft,
+     presentation:x.presentation};
+   }),
    teams:teams.map(x=>{
     const pair=byPair.get(x.members[0]+"|"+x.members[1]);
     const matchesTogether=pair?.matches_together??0;

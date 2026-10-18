@@ -112,8 +112,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
     const active=person.personId===one||person.personId===two;
     const incompatible=!!first&&person.division!==first.division&&!active;
     const card=createWrestlerCard({
-     personId:person.personId,name:person.name,division:person.division,
-     status:active?"SELECTED":incompatible?"DIFFERENT DIVISION":"SELECT PARTNER",
+     ...person,status:active?"SELECTED":incompatible?"DIFFERENT DIVISION":"SELECT PARTNER",
      available:!incompatible
     },{context:"BOOKING",compact:true,
      label:active?"✓ SELECTED":incompatible?"DIFFERENT DIVISION":"SELECT PARTNER",
