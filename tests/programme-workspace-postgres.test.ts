@@ -168,8 +168,8 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
    choice:"LET_STAND",requestId:"direction-change",expectedRevision:6});
   assert.equal(changed.status,"APPLIED");
   const finished=await readProgrammeWorkspace(db.pool,scope);
-  assert.equal(finished.programmes.find(x=>x.programmeId===activeProgramme)?
-   .latestFollowUp?.choice,"LET_STAND");
+  assert.equal(finished.programmes.find(x=>x.programmeId===activeProgramme)
+   ?.latestFollowUp?.choice,"LET_STAND");
   const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_programme_postshow_directions"+
    " WHERE world_id=$1 AND programme_id=$2",[worldId,activeProgramme]));
