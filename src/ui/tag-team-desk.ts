@@ -2,6 +2,7 @@
  * original PPW's earned familiarity and championship history.
  */
 import type {readTagTeamWorkspace} from "../db/tag-team-workspace.js";
+import {createWrestlerCard} from "./wrestler-card.js";
 export type TagTeamView=Awaited<ReturnType<typeof readTagTeamWorkspace>>;
 export interface TagTeamPort {
  load():Promise<TagTeamView>;
@@ -17,6 +18,7 @@ const btn=(text:string,fn:()=>void,disabled=false)=>{
 export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void){
  let view:TagTeamView|null=null,working=false,error="",success="";
  let name="",one="",two="",rosterSearch="",teamSearch="";
+ let partnerDivision:"ALL"|"MEN"|"WOMEN"="ALL";
  let renaming="",renameValue="",createRequest:string|null=null,renameRequest:string|null=null;
  const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
   .replace(/(^|\s)\S/g,x=>x.toUpperCase());
@@ -92,25 +94,43 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   find.type="search";find.value=rosterSearch;
   find.placeholder="Find a wrestler…";
   find.setAttribute("aria-label","Filter wrestler picker");create.append(find);
+  const divisionFilters=el("div","ppw-pair-division-filters");
+  for(const [value,title] of [["ALL","All"],["MEN","Men"],["WOMEN","Women"]] as const){
+   const tab=btn(title,()=>{partnerDivision=value;render();});
+   tab.setAttribute("aria-pressed",String(partnerDivision===value));
+   divisionFilters.append(tab);
+  }
+  create.append(divisionFilters);
   const choices=el("div","ppw-pair-picks");create.append(choices);
   const paintChoices=()=>{
    choices.replaceChildren();
-   const list=view!.roster.filter(p=>p.name.toLowerCase().includes(
-    rosterSearch.trim().toLowerCase()));
-   for(const person of list){
+   const all=view!.roster.filter(p=>
+    p.name.toLowerCase().includes(rosterSearch.trim().toLowerCase())&&
+    (partnerDivision==="ALL"||p.division===partnerDivision));
+   const first=one?view!.roster.find(p=>p.personId===one):null;
+   for(const person of all.slice(0,35)){
     const active=person.personId===one||person.personId===two;
-    const chip=btn((active?"✓ ":"")+person.name+" · "+label(person.division),()=>{
-     if(person.personId===one)one="";
-     else if(person.personId===two)two="";
-     else if(!one)one=person.personId;
-     else two=person.personId;
-     resetCreate();render();
-    },!editable());
-    chip.classList.add("ppw-pair-pick");
-    chip.setAttribute("aria-pressed",String(active));
-    choices.append(chip);
+    const incompatible=!!first&&person.division!==first.division&&!active;
+    const card=createWrestlerCard({
+     personId:person.personId,name:person.name,division:person.division,
+     status:active?"SELECTED":incompatible?"DIFFERENT DIVISION":"SELECT PARTNER",
+     available:!incompatible
+    },{context:"BOOKING",compact:true,
+     label:active?"✓ SELECTED":incompatible?"DIFFERENT DIVISION":"SELECT PARTNER",
+     disabled:!editable()||incompatible,onSelect:()=>{
+      if(person.personId===one)one="";
+      else if(person.personId===two)two="";
+      else if(!one)one=person.personId;
+      else two=person.personId;
+      resetCreate();render();
+     }});
+    card.classList.add("ppw-pair-wrestler");
+    card.setAttribute("aria-pressed",String(active));
+    choices.append(card);
    }
-   if(!list.length)choices.append(el("p","ppw-muted","No wrestlers match that search."));
+   if(!all.length)choices.append(el("p","ppw-muted","No wrestlers match your search and division."));
+   else if(all.length>35)choices.append(el("p","ppw-pair-limit-note",
+    "Showing 35 of "+all.length+" wrestlers. Narrow your search to find a partner."));
   };
   find.oninput=()=>{rosterSearch=find.value;paintChoices();};
   paintChoices();

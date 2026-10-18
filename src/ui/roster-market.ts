@@ -163,6 +163,21 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
+  if(filter.view==="ROSTER"){
+   const sections=el("nav","ppw-directory-nav");
+   sections.setAttribute("aria-label","Roster divisions");
+   const singles=btn("Singles",()=>{},true);
+   singles.disabled=false;
+   singles.setAttribute("aria-current","page");
+   singles.setAttribute("aria-label","Singles roster");
+   sections.append(singles,
+    btn("Tag Teams",port.openTagTeams),
+    btn("Stables",port.openStables));
+   const trios=btn("Trios · not formed yet",()=>{},true);
+   trios.title="Trios roster groups are not yet available";
+   sections.append(trios);
+   root.append(sections);
+  }
   const controls=el("section","ppw-directory-filters");
   const search=document.createElement("input");
   search.type="search";search.placeholder="Search wrestlers by name";

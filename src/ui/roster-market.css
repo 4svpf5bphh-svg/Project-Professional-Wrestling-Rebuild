@@ -101,3 +101,13 @@
 .ppw-directory-card>summary .ppw-wrestler-card{border-color:transparent;background:transparent}
 .ppw-directory-card[open]>summary .ppw-wrestler-card{border-color:rgba(124,218,255,.3)}
 @media(min-width:700px){.ppw-directory-card>summary{display:block;padding:8px}}
+
+/* Contextual roster disciplines, not permanent global navigation. */
+.ppw-directory-nav{display:flex;gap:8px;align-items:center;overflow-x:auto;
+ max-width:100%;overscroll-behavior-x:contain;padding:3px 0 13px;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ppw-directory-nav .ppw-directory-button{flex:none;min-height:44px;
+ white-space:nowrap;border-radius:100px;padding-inline:16px}
+.ppw-directory-nav .ppw-directory-button[aria-current=page]{background:#1d627c;
+ box-shadow:inset 0 0 0 1px #9decff}
+.ppw-directory-nav .ppw-directory-button:disabled{opacity:.37;cursor:not-allowed}

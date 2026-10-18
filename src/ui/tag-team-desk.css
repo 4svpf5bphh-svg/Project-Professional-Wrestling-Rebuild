@@ -36,3 +36,15 @@
 .ppw-pair-partner-file{flex:1 1 130px;background:#173d4d;border-color:#4d7d9a;
  font-size:12px;color:#bdeeff}
 .ppw-pair-partner-file:focus-visible{outline:2px solid #8de4fc;outline-offset:2px}
+
+/* Shared identity cards keep even the team selector consistent with the roster. */
+.ppw-pair-division-filters{display:flex;gap:6px;margin:8px 0;overflow-x:auto}
+.ppw-pair-division-filters .ppw-pair-button{flex:1;min-width:65px;text-align:center;
+ font-size:12px}
+.ppw-pair-division-filters .ppw-pair-button[aria-pressed=true]{background:#265f76;
+ border-color:#7bdcff;color:#fff}
+.ppw-pair-picks{grid-template-columns:minmax(0,1fr);max-height:410px;
+ border-radius:13px;overflow:auto;overscroll-behavior:contain;padding:3px}
+.ppw-pair-wrestler[aria-pressed=true]{border-color:#e8ce83;
+ box-shadow:inset 0 0 0 1px #e8ce83}
+.ppw-pair-limit-note{font-size:12px;color:#b1d7e4;padding:12px}
