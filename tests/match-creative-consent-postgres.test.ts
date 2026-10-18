@@ -128,7 +128,9 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_match_creative_consents","ppw_card_slots",
+   for(const table of ["ppw_ledger_events","ppw_week_prepared_finalizations",
+    "ppw_week_continuity_assessments",
+    "ppw_match_creative_consents","ppw_card_slots",
     "ppw_command_receipts","ppw_booking_drafts","ppw_contracts",
     "ppw_promotion_controls","ppw_memberships","ppw_venues",
     "ppw_promotion_market_states","ppw_people","ppw_promotions","ppw_markets"])
