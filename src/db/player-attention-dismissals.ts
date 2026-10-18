@@ -72,8 +72,9 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
    "RETURNING attention_id",
    ") SELECT EXISTS(SELECT 1 FROM permitted) AS permitted,",
    "EXISTS(SELECT 1 FROM created) AS inserted"
-  ].join(" "),[worldId,promotionId,playerId,offerId,attentionId]:
-   [worldId,promotionId,playerId,attentionId.slice(backstagePrefix.length),attentionId]);
+  ].join(" "),isBackstage?
+   [worldId,promotionId,playerId,attentionId.slice(backstagePrefix.length),attentionId]:
+   [worldId,promotionId,playerId,offerId,attentionId]);
   if(result.length!==1||!result[0]!.permitted)
    throw new Error("This update is unavailable or cannot be dismissed");
   return {dismissed:true,firstDismissal:result[0]!.inserted};
