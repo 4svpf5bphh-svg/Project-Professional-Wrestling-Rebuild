@@ -62,6 +62,7 @@ function renderNavigation(section:HostSection){
  document.querySelector("#ppw-drawer-backdrop")?.remove();
  navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
  navigation.hidden=!drawerExpanded;
+ document.body.classList.toggle("ppw-drawer-active",drawerExpanded);
  const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
  if(menu)menu.setAttribute("aria-expanded",String(drawerExpanded));
  if(!drawerExpanded)return;
@@ -82,7 +83,12 @@ function renderNavigation(section:HostSection){
  const roots=el("div","ppw-nav-rootbar");
  roots.setAttribute("aria-label","Departments");
  for(const root of HOST_DRAWER_ROOTS){
-  const tab=button("",()=>{selectedDrawerRoot=root.key;renderNavigation(section);});
+  const tab=button("",()=>{
+   selectedDrawerRoot=root.key;renderNavigation(section);
+   const target=[...navigation.querySelectorAll<HTMLButtonElement>(".ppw-tab")]
+    .find(x=>x.getAttribute("aria-label")===root.label);
+   target?.focus();
+  });
   const active=selectedDrawerRoot===root.key;
   tab.className="ppw-tab"+(active?" ppw-tab-active":"");
   tab.setAttribute("aria-label",root.label);
@@ -100,10 +106,22 @@ function renderNavigation(section:HostSection){
   entries.append(entry);
  }
  drawer.append(entries);navigation.append(drawer);
+ navigation.onkeydown=event=>{
+  if(event.key!=="Tab")return;
+  const buttons=[...navigation.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+  if(!buttons.length)return;
+  const first=buttons[0]!,last=buttons[buttons.length-1]!;
+  if(event.shiftKey&&document.activeElement===first){
+   event.preventDefault();last.focus();
+  }else if(!event.shiftKey&&document.activeElement===last){
+   event.preventDefault();first.focus();
+  }
+ };
 }
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&drawerExpanded){
   drawerExpanded=false;renderNavigation(readHostSection(location.hash));
+  document.querySelector<HTMLButtonElement>(".ppw-shell-menu")?.focus();
  }
 });
 function renderSection(){
@@ -180,6 +198,7 @@ window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
+ document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
  delete document.documentElement.dataset.ppwScreen;
  game.replaceChildren(el("p","ppw-access-loading","Opening your promotion…"));
@@ -204,6 +223,7 @@ async function loadSession(){
    const section=readHostSection(location.hash);
    if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(section);
    drawerExpanded=!drawerExpanded;renderNavigation(section);
+   if(drawerExpanded)navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
   });
   menu.className="ppw-shell-menu";
    // The sole permanent navigation control must meet the 44px iPhone hit target.

@@ -294,3 +294,10 @@ body{padding-bottom:env(safe-area-inset-bottom)}
  .ppw-account-banner .ppw-shell-menu{padding:7px 8px;min-width:69px}
  .ppw-account-banner .ppw-shell-signout{padding:7px 6px}
 }
+
+/* The open menu owns touch/keyboard focus; background never scrolls behind it. */
+body.ppw-drawer-active{overflow:hidden;touch-action:none}
+body.ppw-drawer-active .ppw-navigation{touch-action:pan-y}
+.ppw-nav-rootbar .ppw-tab:focus-visible,
+.ppw-nav-drawer-close:focus-visible,
+.ppw-nav-drawer-entry:focus-visible{outline:3px solid #85eaff;outline-offset:2px}
