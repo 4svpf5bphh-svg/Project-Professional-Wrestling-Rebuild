@@ -96,6 +96,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  ORDER BY d.year,d.week,d.draft_id LIMIT 73`,
  [s.worldId,s.promotionId,start,start+5]);
  if(drafts.length>72)throw new Error("Planner show count exceeds safe limit");
+ const end=dateAt(start+5);
  const venues=await tx.query<{
   venue_id:string;market_id:string;market_name:string;name:string;
   capacity:number;weekly_hire_cost:string|number;
@@ -103,7 +104,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   awareness:number;live_strength:number;loyalty:number;
   audience_potential:number;wrestling_interest:number;spending_index:number;
   rival_name:string|null;rival_tier:string|null;rival_live_strength:number|null;
-  rival_based_here:boolean|null;
+  rival_based_here:boolean|null;venue_pressure:unknown;
  }>(`
  SELECT v.venue_id,v.market_id,m.name AS market_name,v.name,v.capacity,
   v.weekly_hire_cost,v.prestige,v.production_suitability,
@@ -111,7 +112,27 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   m.audience_potential,m.wrestling_interest,m.spending_index,
   rival.name AS rival_name,rival.tier AS rival_tier,
   rival.live_strength AS rival_live_strength,
-  rival.based_here AS rival_based_here
+  rival.based_here AS rival_based_here,
+  CASE WHEN row_number() OVER (ORDER BY m.name,v.name,v.venue_id)=1 THEN (
+   SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'year',conflict.year,'week',conflict.week,'day',conflict.show_day,
+    'venueId',conflict.venue_id,'otherPromotions',conflict.other_promotions)
+    ORDER BY conflict.year,conflict.week,conflict.show_day,conflict.venue_id),'[]'::jsonb)
+   FROM (
+    SELECT d.year,d.week,d.show_day,d.venue_id,
+     count(DISTINCT d.promotion_id)::integer AS other_promotions
+    FROM ppw_booking_drafts d
+    JOIN ppw_promotions competitor ON competitor.world_id=d.world_id
+     AND competitor.promotion_id=d.promotion_id AND competitor.lifecycle='ACTIVE'
+    WHERE d.world_id=$1 AND d.promotion_id<>$2
+     AND d.year BETWEEN $5 AND $6
+     AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
+     AND d.status IN ('DRAFT','SUBMITTED')
+     AND d.venue_id IS NOT NULL AND d.show_day BETWEEN 1 AND 7
+    GROUP BY d.year,d.week,d.show_day,d.venue_id
+    ORDER BY d.year,d.week,d.show_day,d.venue_id LIMIT 129
+   ) conflict
+  ) END AS venue_pressure
  FROM ppw_venues v
  JOIN ppw_markets m ON m.world_id=v.world_id AND m.market_id=v.market_id
  JOIN ppw_promotion_market_states local ON local.world_id=v.world_id
@@ -128,28 +149,18 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  ) rival ON TRUE
  WHERE v.world_id=$1 AND v.status='ACTIVE'
  AND v.capacity IS NOT NULL AND v.weekly_hire_cost IS NOT NULL
- ORDER BY m.name,v.name,v.venue_id LIMIT 101`,[s.worldId,s.promotionId]);
- if(venues.length>100)throw new Error("Planner venue choices exceed safe limit");
- // One bounded read for the six-week venue grid. Group at source so no rival
- // promotion identity, line-up, card status or private finance enters the response.
- // Plans can change up to the shared deadline; no player receives priority for saving first.
- const end=dateAt(start+5);
- const pressure=await tx.query<{
-  year:number;week:number;show_day:number;venue_id:string;other_promotions:number;
- }>(`
- SELECT d.year,d.week,d.show_day,d.venue_id,
-  count(DISTINCT d.promotion_id)::integer AS other_promotions
- FROM ppw_booking_drafts d
- JOIN ppw_promotions competitor ON competitor.world_id=d.world_id
-  AND competitor.promotion_id=d.promotion_id AND competitor.lifecycle='ACTIVE'
- WHERE d.world_id=$1 AND d.promotion_id<>$2
-  AND d.year BETWEEN $5 AND $6
-  AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
-  AND d.status IN ('DRAFT','SUBMITTED')
-  AND d.venue_id IS NOT NULL AND d.show_day BETWEEN 1 AND 7
- GROUP BY d.year,d.week,d.show_day,d.venue_id
- ORDER BY d.year,d.week,d.show_day,d.venue_id LIMIT 129`,
+ ORDER BY m.name,v.name,v.venue_id LIMIT 101`,
  [s.worldId,s.promotionId,start,start+5,owned.year,end.year]);
+ if(venues.length>100)throw new Error("Planner venue choices exceed safe limit");
+ // The anonymous venue grid is folded into the existing venue read, emitted
+ // only on the first venue row to avoid duplicating data across each building.
+ // A plan is provisional; neither promotion acquires priority for saving first.
+ const pressureRaw=venues[0]?.venue_pressure;
+ const pressure=Array.isArray(pressureRaw)?pressureRaw.filter((p):p is PlannerVenuePressure=>
+  p!==null&&typeof p==="object"&&!Array.isArray(p)&&
+  Number.isSafeInteger(p.year)&&Number.isSafeInteger(p.week)&&
+  Number.isSafeInteger(p.day)&&typeof p.venueId==="string"&&
+  Number.isSafeInteger(p.otherPromotions)&&p.otherPromotions>0):[];
  if(pressure.length>128)throw new Error("Venue planning grid exceeds safe limit");
  const configured=await tx.query<{
   series_id:string;name:string;role:ShowSeries["role"];
@@ -170,8 +181,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,
-  venuePressure:pressure.map(x=>({year:x.year,week:x.week,day:x.show_day,
-   venueId:x.venue_id,otherPromotions:x.other_promotions})),
+  venuePressure:pressure,
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,
    weeklyHireCost:Number(v.weekly_hire_cost),

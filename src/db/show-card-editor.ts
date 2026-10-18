@@ -162,7 +162,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
      (choice==="PURSUE_REMATCH"||choice==="PLAN_RETALIATION"||choice==="LET_STAND")&&
       Number.isSafeInteger(direction?.weekIndex)&&
       typeof direction?.laterBeatRecorded==="boolean"?{
-       choice,weekIndex:direction.weekIndex as number,
+       choice:choice as "PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND",
+       weekIndex:direction.weekIndex as number,
        laterBeatRecorded:direction.laterBeatRecorded as boolean
       }:null;
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,

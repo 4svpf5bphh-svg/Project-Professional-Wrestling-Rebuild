@@ -11,7 +11,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
-test("Venue planning shows anonymous six-week venue contention in five bounded queries",{
+test("Venue planning shows anonymous six-week venue contention in four bounded queries",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const world="territory-"+randomUUID(),player="promoter-"+randomUUID();
@@ -40,8 +40,8 @@ test("Venue planning shows anonymous six-week venue contention in five bounded q
   }};
   const scope={worldId:world,promotionId,playerId:player};
   const view=await readSixWeekPlanner(measured,scope);
-  const budget=meter.assertBudget({maxQueries:5,maxResultBytes:24000});
-  assert.equal(budget.queryCount,5);
+  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:24000});
+  assert.equal(budget.queryCount,4);
   assert.deepEqual(view.venuePressure,[
    {year:1,week:1,day:5,venueId:"venue-0",otherPromotions:2},
    {year:1,week:2,day:6,venueId:"venue-4",otherPromotions:1}
