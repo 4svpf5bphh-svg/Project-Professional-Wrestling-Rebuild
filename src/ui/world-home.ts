@@ -63,6 +63,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    await port.dismissAttention(id);
    const news=overview?.promotion?.attention?.offerResults;
    if(news)overview!.promotion!.attention.offerResults=news.filter(x=>x.id!==id);
+   const backstage=overview?.promotion?.attention?.backstageResults;
+   if(backstage)overview!.promotion!.attention.backstageResults=
+    backstage.filter(x=>x.id!==id);
    error="";
   }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the contract update";}
   finally{dismissing.delete(id);draw();}
@@ -223,6 +226,38 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      dismissButton.setAttribute("aria-label","Dismiss "+item.name+"'s contract update");
      dismissButton.onclick=()=>void dismissNews(item.id);
      actions.append(dismissButton);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
+  const resolved=attention?.backstageResults??[];
+  if(resolved.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE LOCKER ROOM"),
+    el("h3","","Promises settled"));
+   for(const item of resolved){
+    const kept=item.status==="FULFILLED";
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status "+(kept?
+     "ppw-home-wire-accepted":"ppw-home-wire-declined"),kept?"KEPT":"BROKEN"),
+     el("strong","",item.name+(kept?" saw your promise kept":" was left waiting")),
+     el("p","",kept?
+      "Your commitment was honoured. Catch up with the wrestler in the locker room.":
+      "A promise went unfulfilled. Speak with the wrestler about what comes next."));
+    const actions=el("div","ppw-home-wire-actions");
+    const open=el("button","ppw-home-wire-button","Open Backstage") as HTMLButtonElement;
+    open.type="button";open.onclick=port.backstage;actions.append(open);
+    if(port.openWrestler){
+     const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
+     person.type="button";person.onclick=()=>port.openWrestler?.(item.personId);
+     actions.append(person);
+    }
+    if(port.dismissAttention){
+     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismiss.type="button";dismiss.disabled=dismissing.has(item.id);
+     dismiss.setAttribute("aria-label","Dismiss "+item.name+"'s locker room update");
+     dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
     }
     entry.append(actions);wire.append(entry);
    }

@@ -126,12 +126,49 @@ test("named locker-room concerns open unread messages from a single Home read",a
  const prompt=page.getByRole("button",{name:/Ava Adams is waiting/});
  await expect(prompt).toBeVisible();
  await expect(prompt).toContainText("has a new creative idea");
- expect(methods).toEqual(["overview"],"Names are supplied by the existing Home read");
+ expect(methods).toEqual(["overview"]);
  await prompt.click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
  await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
  await expect(page.getByRole("button",{name:/Ava Adams/})).toBeVisible();
  expect(methods).toEqual(["overview","backstage"]);
+});
+test("completed locker-room updates dismiss privately without hiding current tasks",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ let dismissed=false;
+ const home=()=>({...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:true,pendingBackstage:true,
+  backstageRequests:[{personId:"p-adams",name:"Ava Adams",kind:"CREATIVE"}],
+  expiringTalent:false,pendingContractOffers:false,
+  offerResults:[{id:"offer-result:deal-7",personId:"p-smith",name:"Sam Smith",status:"ACCEPTED"}],
+  backstageResults:dismissed?[]:[{
+   id:"backstage-result:153",personId:"p-adams",name:"Ava Adams",status:"BROKEN"}]
+ }}});
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(request.method);calls.push(method);
+  if(method==="dismissAttention"){
+   expect(request.attentionId).toBe("backstage-result:153");
+   dismissed=true;
+   await route.fulfill({json:{dismissed:true,firstDismissal:true}});
+  }else await route.fulfill({json:method==="overview"?home():{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByText("Promises settled")).toBeVisible();
+ await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
+ await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ await expect(page.getByText(/Sam Smith accepted the offer/)).toBeVisible();
+ await page.getByRole("button",{name:"Dismiss Ava Adams's locker room update"}).click();
+ await expect(page.getByText("Promises settled")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ await expect(page.getByText(/Sam Smith accepted the offer/)).toBeVisible();
+ expect(calls).toEqual(["overview","dismissAttention"]);
+ await page.reload();
+ await expect(page.getByText("Promises settled")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ expect(calls.filter(x=>x==="overview")).toHaveLength(2);
 });
 test("Tag partner cards and roster disciplines stay fast without person-by-person reads",async({page})=>{
  const methods:string[]=[];
