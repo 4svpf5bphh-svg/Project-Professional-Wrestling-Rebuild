@@ -136,12 +136,12 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "ORDER BY c.division,c.name,c.championship_id LIMIT 101"
   ].join(" "),[id.worldId,id.promotionId]);
   if(titles.length>100)throw new Error("Too many active championships");
-  const links=await tx.query<{slot_id:string;programme_id:string}>(
-   "SELECT slot_id,programme_id FROM ppw_programme_match_activities"+
+  const links=await tx.query<{slot_id:string;programme_id:string;kind:string}>(
+   "SELECT slot_id,programme_id,kind FROM ppw_programme_match_activities"+
    " WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3"+
-   " AND kind='SEGMENT' ORDER BY slot_id LIMIT 101",
+   " AND kind IN ('MATCH','SEGMENT') ORDER BY slot_id LIMIT 101",
    [id.worldId,id.promotionId,id.showId]);
-  if(links.length>100)throw new Error("Too many linked angles");
+  if(links.length>100)throw new Error("Too many linked matches or angles");
   const selectedPeople=personIds.length?await tx.query<{
    person_id:string;name:string;booking_division:string|null;
    in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
@@ -152,7 +152,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     [id.worldId,personIds]):[];
   const creativeConcerns=await creativeReviewsInTransaction(tx,id.worldId,[{
    showId:id.showId,promotionId:id.promotionId,
-   weekIndex:(show.year-1)*52+show.week-1,slots
+   weekIndex:(show.year-1)*52+show.week-1,slots,
+   checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
   return {creativeConcerns,selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
@@ -176,7 +177,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,
      repetition:p.repetition,latestFollowUp};
    }),
-   programmeLinks:links.map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
+   programmeLinks:links.filter(x=>x.kind==="SEGMENT")
+    .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,
    worldRevision:Number(show.revision),canEdit:show.booking_open&&show.status==="DRAFT",
    ready:show.lock_ready_fingerprint!==null,
