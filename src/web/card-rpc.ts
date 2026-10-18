@@ -21,7 +21,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const p=input as Record<string,unknown>;
  const id=(name:string)=>{const x=p[name];if(typeof x!=="string"||!x||x.length>200)throw new Error("Invalid "+name);return x;};
  const worldId=id("worldId"),promotionId=id("promotionId");
- const showId=["load","talent","save","ready","results"].includes(method)?
+ const showId=["load","talent","save","ready","creativeConsent","results"].includes(method)?
   id("showId"):"";
  if(method==="overview")return overviewAsActor(context,worldId);
  if(method==="dismissAttention")return dismissAttentionAsActor(context,
