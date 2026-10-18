@@ -2,7 +2,7 @@ import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -40,6 +40,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
  if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
+ if(method==="industryFeatured")return industryFeaturedAsActor(context,
+  worldId,promotionId,id("targetPromotionId"));
  if(method==="business")return businessAsActor(context,worldId,promotionId);
  if(method==="wrestlerDirectory"){
   const f=p.filter;

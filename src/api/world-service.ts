@@ -30,7 +30,7 @@ import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
 import {hireWorldTalentManager,releaseWorldTalentManager,type StaffEmploymentInput}
  from "../db/staff-employment.js";
-import {readIndustryWorldHub} from "../db/industry-world-hub.js";
+import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
@@ -78,6 +78,14 @@ export async function wrestlerCareerAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");validate(personId,"wrestler");
  return readWrestlerCareer(context.pool,{worldId,promotionId,
   personId,playerId:context.actor.playerId});
+}
+/** Public shortlist requested for one selected promotion only. */
+export async function industryFeaturedAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,targetPromotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(targetPromotionId,"public promotion");
+ return readIndustryFeaturedTalent(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId,targetPromotionId});
 }
 /** Authenticated player-facing wrestler directory, never a global
  * unguarded market read. Filtering is validated inside the query module. */

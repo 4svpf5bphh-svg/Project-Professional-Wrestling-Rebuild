@@ -93,3 +93,55 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   };
  });
 }
+
+/** Public wrestler shortlist for one chosen promotion; not part of the
+ * recurring Industry overview. Private employment terms stay sealed.
+ */
+export async function readIndustryFeaturedTalent(pool:TransactionPool,input:{
+ worldId:string;promotionId:string;playerId:string;targetPromotionId:string;
+}){
+ const {worldId,promotionId,playerId,targetPromotionId}=input;
+ if(![worldId,promotionId,playerId,targetPromotionId].every(s=>
+  typeof s==="string"&&s.length>0&&s.length<=200))
+  throw new Error("Invalid featured talent scope");
+ return withSqlClient(pool,async tx=>{
+  const authority=await tx.query<{target_name:string;week_index:number}>([
+   "SELECT rival.name AS target_name,(w.year-1)*52+w.week-1 AS week_index",
+   "FROM ppw_worlds w JOIN ppw_promotion_controls control",
+   "ON control.world_id=w.world_id AND control.player_id=$2",
+   "AND control.promotion_id=$3 AND control.active",
+   "JOIN ppw_memberships membership ON membership.world_id=w.world_id",
+   "AND membership.player_id=control.player_id AND membership.status='ACTIVE'",
+   "JOIN ppw_promotions owned ON owned.world_id=w.world_id",
+   "AND owned.promotion_id=control.promotion_id AND owned.lifecycle='ACTIVE'",
+   "JOIN ppw_promotions rival ON rival.world_id=w.world_id",
+   "AND rival.promotion_id=$4 AND rival.lifecycle='ACTIVE'",
+   "WHERE w.world_id=$1 LIMIT 1"
+  ].join(" "),[worldId,playerId,promotionId,targetPromotionId]);
+  if(authority.length!==1)throw new Error("Featured talent access denied");
+  const rows=await tx.query<{person_id:string;name:string;booking_division:string|null;
+   popularity:number|null;recognition:number|null;momentum:number|null;
+   in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
+   default_alignment:string|null;portable_gimmick_id:string|null}>([
+   "SELECT p.person_id,p.name,p.booking_division,p.popularity,p.recognition,",
+   "p.momentum,p.in_ring_quality,p.match_craft,p.presentation,",
+   "p.default_alignment,p.portable_gimmick_id",
+   "FROM ppw_people p WHERE p.world_id=$1 AND p.status='ACTIVE'",
+   "AND EXISTS (SELECT 1 FROM ppw_contracts c",
+   "WHERE c.world_id=p.world_id AND c.person_id=p.person_id",
+   "AND c.promotion_id=$2 AND c.status='SIGNED'",
+   "AND c.start_week_index<=$3 AND c.expires_week_index>=$3)",
+   "ORDER BY p.popularity DESC NULLS LAST,p.recognition DESC NULLS LAST,",
+   "p.name ASC,p.person_id ASC LIMIT 9"
+  ].join(" "),[worldId,targetPromotionId,authority[0]!.week_index]);
+  return {promotionId:targetPromotionId,promotionName:authority[0]!.target_name,
+   moreThanEight:rows.length>8,
+   people:rows.slice(0,8).map(p=>({
+    personId:p.person_id,name:p.name,division:p.booking_division,
+    popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
+    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
+    presentation:p.presentation,alignment:p.default_alignment,
+    gimmickId:p.portable_gimmick_id
+   }))};
+ });
+}

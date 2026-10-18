@@ -143,6 +143,8 @@ function industryPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):IndustryHubPort{
  return {
   load:()=>call("industry"),
+  featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openPlanner:()=>mountPlannerPage(root,scope,
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
