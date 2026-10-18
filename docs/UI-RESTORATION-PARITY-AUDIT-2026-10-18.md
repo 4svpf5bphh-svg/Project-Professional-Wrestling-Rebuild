@@ -73,3 +73,10 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - No additional SQL was added for these booking presentation restorations. The normal card and wrestler picker transfer budgets remain as before.
 - **Still outstanding:** original `main` live interference controls, the deeper specialised segment objectives and deliveries, match-by-match performance-readiness consent, richer post-show Programme feedback, real portrait assets with permissible licensing, and fully integrated iPhone playtesting. Restoring these requires confirming their associated authoritative rules, not merely redrawing control labels.
 
+
+## Calendar recurrence restoration — source comparison to original main
+- **Restored:** add/edit has broadcast-friendly weekly, alternate-week, four-week, quarterly, twice-yearly and annual presets. The same authoritative recurrence and collision rules now validate the form *before* saving.
+- **Restored:** clear one-based annual show week and immediate next four appearances, including rollover to Year 2, shown without a network call or synthetic future events.
+- **Prevented:** accidental overlapping normal broadcasts or simultaneous premium events produce a warning and disable Save; server validation still determines the final outcome.
+- **Verified:** pure recurrence tests and iPhone browser test cover conflicting PPVs, switching cadence, annual continuity and exactly one save request.
+- **Remaining:** original's venue/contention warning and wrestler reservation details require careful rights checks. The Results screen remains excluded, as do production deployment and any Neon-cost test branch.

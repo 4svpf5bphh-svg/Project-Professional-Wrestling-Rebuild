@@ -703,6 +703,44 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
+test("Annual show editor previews real weeks, catches clashing PPVs and never polls",async({page})=>{
+ const flagship={seriesId:"weekly",name:"Dynamite",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
+ const ppv={seriesId:"premium",name:"All In",role:"PREMIUM",
+  eventType:"MAJOR",cadenceWeeks:52,anchorWeek:5,importance:95,active:true};
+ const view={promotionName:"AEW",year:1,week:5,worldRevision:4,canEdit:true,
+  series:[flagship,ppv],weeks:[],worldWeeks:[]};
+ const calls:{method:string;payload:Record<string,unknown>}[]=[];
+ await page.setViewportSize({width:360,height:780});
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const payload=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(payload.method);calls.push({method,payload});
+  await route.fulfill({json:method==="calendar"?view:{status:"APPLIED"}});
+ });
+ await page.goto("/#/calendar");
+ await page.getByRole("button",{name:"+ Add event"}).click();
+ await page.getByRole("textbox",{name:"Event name"}).fill("Summer Clash");
+ const frequency=page.getByRole("combobox",{name:"Repeat frequency"});
+ await frequency.selectOption("2");
+ await expect(page.locator(".ppw-calendar-forecast")).toContainText(/WEEK/);
+ await frequency.selectOption("52");
+ await page.getByRole("spinbutton",{name:"First week in repeat cycle"}).fill("6");
+ await expect(page.locator(".ppw-calendar-forecast-warning")).toContainText(/Only one additional PPV/i);
+ await expect(page.getByRole("button",{name:"Save event"})).toBeDisabled();
+ expect(calls.map(x=>x.method)).toEqual(["calendar"]);
+ await page.getByRole("spinbutton",{name:"First week in repeat cycle"}).fill("7");
+ await expect(page.locator(".ppw-calendar-forecast-dates")).toContainText("YEAR 1 · WEEK 7");
+ await expect(page.locator(".ppw-calendar-forecast-dates")).toContainText("YEAR 2 · WEEK 7");
+ await expect(page.getByRole("button",{name:"Save event"})).toBeEnabled();
+ await page.getByRole("button",{name:"Save event"}).click();
+ const saved=calls.find(x=>x.method==="saveCalendar")?.payload;
+ expect(saved?.series).toMatchObject({name:"Summer Clash",cadenceWeeks:52,anchorWeek:6,
+  role:"SPECIAL",eventType:"MAJOR"});
+ expect(calls.map(x=>x.method)).toEqual(["calendar","saveCalendar","calendar"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
 test("Calendar highlights flagship and premium broadcasts without additional reads",async({page})=>{
  await page.setViewportSize({width:360,height:780});
  const flagship={seriesId:"weekly",name:"Dynamite",role:"FLAGSHIP",
