@@ -8,7 +8,7 @@ import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
-import {readIndustryWorldHub} from "../src/db/industry-world-hub.js";
+import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../src/db/industry-world-hub.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Industry publishes real rival broadcasts but not private unsubmitted cards or negotiations",{
@@ -62,6 +62,37 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
   assert.equal(hub.broadcasts.find(x=>x.showId==="owned")!.isYours,true);
   assert.equal(hub.broadcasts.find(x=>x.showId==="rival")!.isYours,false);
   assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:18000}).queryCount,3);
+  // A public shortlist must be explicitly requested and never include
+  // rival private contract pay, negotiations or unsubmitted plans.
+  const featuredMeter=new MeasuredQuerySession("industry-featured-on-demand");
+  const featuredPool:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return featuredMeter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  const featured=await readIndustryFeaturedTalent(featuredPool,{
+   worldId:world,promotionId:promotion,playerId:player,
+   targetPromotionId:"promotion-1"});
+  assert.equal(featuredMeter.assertBudget({maxQueries:2,maxResultBytes:8500}).queryCount,2);
+  assert.equal(featured.promotionId,"promotion-1");
+  assert.ok(featured.people.length<=8);
+  assert.ok(featured.people.every((p,i,all)=>i===0||
+   (all[i-1]!.popularity??0)>=(p.popularity??0)));
+  assert.ok(!JSON.stringify(featured).includes("weeklyGuarantee"));
+  assert.ok(!JSON.stringify(featured).includes("appearanceFee"));
+  assert.ok(!JSON.stringify(featured).includes("PRIVATE FUTURE PLANS"));
+  assert.equal((await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
+   "industryFeatured",{worldId:world,promotionId:promotion,
+    targetPromotionId:"promotion-1",playerId:"spoofed"}) as typeof featured)
+   .promotionId,"promotion-1");
+  await assert.rejects(readIndustryFeaturedTalent(db.pool,{
+   worldId:world,promotionId:promotion,playerId:"outsider",
+   targetPromotionId:"promotion-1"}),/access denied/);
+  await assert.rejects(readIndustryFeaturedTalent(db.pool,{
+   worldId:world,promotionId:promotion,playerId:player,
+   targetPromotionId:"not-a-promotion"}),/access denied/);
   const rpc=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},"industry",{
    worldId:world,promotionId:promotion,playerId:"spoofed"}) as unknown as
     Awaited<ReturnType<typeof readIndustryWorldHub>>;

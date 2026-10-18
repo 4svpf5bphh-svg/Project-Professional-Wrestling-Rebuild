@@ -81,3 +81,12 @@
  .ppw-industry-company[open]{animation:ppw-league-enter .2s ease-out}
  @keyframes ppw-league-enter{from{opacity:.7;transform:translateY(3px)}
  to{opacity:1;transform:none}}}
+
+/* Public talent is a deliberately opened, eight-person dossier preview. */
+.ppw-industry-featured{border-top:1px solid rgba(127,179,215,.25);
+ padding-top:13px;margin-top:13px;display:grid;gap:8px}
+.ppw-industry-featured h3{font-size:14px;letter-spacing:.025em;margin:1px 0 5px;color:#b7e8ff}
+.ppw-industry-featured .ppw-wrestler-card{margin:0;min-height:0}
+.ppw-industry-featured .ppw-wrestler-name{font-size:15px}
+.ppw-industry-featured .ppw-wrestler-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ppw-industry-featured .ppw-wrestler-identity{line-height:1.35}
