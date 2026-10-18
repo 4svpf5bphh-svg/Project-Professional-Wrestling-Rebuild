@@ -357,6 +357,10 @@ function programmePort(call:ReturnType<typeof createCardClient>,
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
 
+  standingConsent:({requestId,expectedRevision,programmeId,
+   personId,matchType,permittedOutcome,termWeeks})=>
+   call("standingProgrammeConsent",{requestId,expectedRevision,programmeId,
+    personId,matchType,permittedOutcome,termWeeks}),
   chooseDirection:({requestId,expectedRevision,programmeId,showId,slotId,choice})=>
    call("chooseProgrammeDirection",{requestId,expectedRevision,
     programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
