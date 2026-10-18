@@ -4,7 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
-import {readProgrammeWorkspace,startProgramme,endProgramme}
+import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection}
  from "../src/db/programme-workspace.js";
 import {saveCardEditorAsActor,showCardEditorAsActor}
  from "../src/api/world-service.js";
@@ -131,9 +131,58 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   assert.equal((await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type LIKE 'PROGRAMME_%'",
    [worldId])))[0]!.n,"3");
+  // The original after-show rematch/retaliation/stand decision belongs to a
+  // completed rivalry match, never a saved draft or invented outcome.
+  const activeProgramme=team.status==="APPLIED"?team.result.programmeId:"";
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
+    "resolution_id,crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'postshow-one',1,1,'resolution-followup',82,'{}'::jsonb,$3)",
+    [worldId,promotionId,"f".repeat(64)]);
+   await tx.query(
+    "INSERT INTO ppw_programme_resolved_activities("+
+    "world_id,promotion_id,programme_id,show_id,slot_id,week_index,"+
+    "kind,signature,crowd_response,impact)"+
+    " VALUES($1,$2,$3,'postshow-one','main-event',0,'MATCH','test rivalry',88,81)",
+    [worldId,promotionId,activeProgramme]);
+  });
+  const choice={...scope,programmeId:activeProgramme,
+   showId:"postshow-one",slotId:"main-event",choice:"PURSUE_REMATCH" as const};
+  await assert.rejects(chooseProgrammeDirection(db.pool,{...choice,
+   playerId:"intruder",requestId:"intruder-direction",expectedRevision:5}),
+   /not accessible|denied|not owned/i);
+  await assert.rejects(chooseProgrammeDirection(db.pool,{...choice,
+   requestId:"draft-direction",expectedRevision:5,showId:"weekly"}),
+   /latest completed rivalry match/);
+  const chosen=await chooseProgrammeDirection(db.pool,{...choice,
+   requestId:"direction-one",expectedRevision:5});
+  assert.equal(chosen.status,"APPLIED");
+  assert.equal((await chooseProgrammeDirection(db.pool,{...choice,
+   requestId:"direction-one",expectedRevision:5})).status,"REPLAYED");
+  const firstDirection=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(x=>x.programmeId===activeProgramme)?.latestFollowUp;
+  assert.deepEqual(firstDirection,{choice:"PURSUE_REMATCH",
+   showId:"postshow-one",slotId:"main-event",weekIndex:0});
+  const changed=await chooseProgrammeDirection(db.pool,{...choice,
+   choice:"LET_STAND",requestId:"direction-change",expectedRevision:6});
+  assert.equal(changed.status,"APPLIED");
+  const finished=await readProgrammeWorkspace(db.pool,scope);
+  assert.equal(finished.programmes.find(x=>x.programmeId===activeProgramme)?
+   .latestFollowUp?.choice,"LET_STAND");
+  const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_programme_postshow_directions"+
+   " WHERE world_id=$1 AND programme_id=$2",[worldId,activeProgramme]));
+  assert.equal(count[0]!.n,"1","One match has one revisable direction, not an append-only blob");
+  const links=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_booking_drafts WHERE world_id=$1",[worldId]));
+  assert.equal(links[0]!.n,"1","Post-show direction does not generate an unsolicited booking");
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_command_receipts",
+   for(const table of ["ppw_programme_postshow_directions",
+    "ppw_programme_resolved_activities","ppw_completed_shows",
+    "ppw_ledger_events","ppw_command_receipts",
     "ppw_programme_side_refs","ppw_programme_participants","ppw_programmes",
     "ppw_championship_contests","ppw_championship_reigns","ppw_championships",
     "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
