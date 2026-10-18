@@ -14,6 +14,7 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<unknown>;
  request(input:{personId:string;gimmickId:string;
   requestId:string;expectedRevision:number}):Promise<unknown>;
+ openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",label="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=label;return n;
@@ -222,7 +223,9 @@ export function mountPersonaDesk(root:HTMLElement,
    root.append(button("← Messages",()=>{pane="INBOX";render();}));return;
   }
   if(pane==="PROFILE"&&!view.persona){
-   root.append(el("p","ppw-muted","This wrestler has no character profile yet. Their conversations remain available."));
+   root.append(el("p","ppw-muted","No character notes are available yet. The conversation remains accessible."));
+   if(port.openWrestler)root.append(button("Open wrestler dossier ↗",
+    ()=>port.openWrestler?.(view!.personId!)));
    return;
   }
   const choice=el("label","ppw-field");
@@ -237,6 +240,8 @@ export function mountPersonaDesk(root:HTMLElement,
   choice.append(select);
   if(pane==="PROFILE"){
    root.append(choice);
+   if(port.openWrestler)root.append(button("Full wrestler dossier ↗",
+    ()=>port.openWrestler?.(view!.personId!)));
    if(view.personId)root.append(button("Open conversation →",()=>{
     pane="THREAD";
     const selected=view?.roster.find(x=>x.personId===view?.personId);
@@ -248,7 +253,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const persona=view.persona;
   if(persona){
   const live=el("section","ppw-persona-active");
-  live.append(el("span","ppw-eyebrow","CURRENT WRESTLER-OWNED CHARACTER"),
+  live.append(el("span","ppw-eyebrow","CURRENT CHARACTER"),
    el("h2","",persona.personaName),
    el("strong","ppw-persona-gimmick",persona.gimmickId.replaceAll("_"," ")),
    el("p","ppw-muted",persona.primaryStyle?
@@ -272,7 +277,7 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   if(pane==="PROFILE"&&view.documentedAlternates.length){
    const alt=el("section","ppw-persona-alternates");
-   alt.append(el("h2","","Documented real-world personas"),
+   alt.append(el("h2","","Past ring identities"),
     el("p","ppw-muted","Past characters and alternate names."));
    for(const p of view.documentedAlternates)
     alt.append(el("p","",p.personaName+" · "+p.gimmickId.replaceAll("_"," ")));
@@ -323,7 +328,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const info=el("details","ppw-backstage-phone-info");
   info.append(el("summary","","Conversation options"),
    el("p","",
-    "You can suggest a character change, but the wrestler owns their identity and can refuse. Only your selected responses have gameplay effects."));
+    "You can suggest a character change, but the wrestler owns their identity and can refuse. Only the replies you send can influence what happens next."));
   if(archiveButton)info.append(archiveButton);
   chat.append(info);
   const selectedPersonId=view.personId;

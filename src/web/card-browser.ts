@@ -54,7 +54,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   market:go("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
   contracts:go("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope))),
-  backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call),
+  backstage:go("backstage",()=>mountPersonaDesk(root,personaPort(call,root,scope),
    ()=>mountWorldHomePage(root,scope),
    ()=>mountProgrammePage(root,scope))),
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
@@ -99,7 +99,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
    ()=>mountCardEditor(root,port)),
   openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call),
    ()=>mountCardEditor(root,port)),
-  openPersona:()=>mountPersonaDesk(root,personaPort(call),
+  openPersona:()=>mountPersonaDesk(root,personaPort(call,root,scope),
    ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
   openProfile:(personId,holder,onClose)=>mountWrestlerProfile(holder,
    wrestlerProfilePort(call,holder,scope,onClose),personId,onClose),
@@ -197,7 +197,7 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
     personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
     signatureMoves,finishingMoves}),
   openBackstage:personId=>mountPersonaDesk(root,{
-   ...personaPort(call),load:(selected?:string)=>call("backstage",
+   ...personaPort(call,root,scope),load:(selected?:string)=>call("backstage",
     {personId:selected??personId})},onBack,()=>mountProgrammePage(root,scope)),
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),onBack)
  };
@@ -358,7 +358,8 @@ export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
  return mountWorkingConnections(root,workingPort(createCardClient(scope)));
 }
 
-function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
+function personaPort(call:ReturnType<typeof createCardClient>,
+ root:HTMLElement,scope:Scope):PersonaDeskPort{
  return {
   load:personId=>call("backstage",personId?{personId}:{}),
   markRead:personId=>call("markBackstageRead",{personId}),
@@ -367,11 +368,12 @@ function personaPort(call:ReturnType<typeof createCardClient>):PersonaDeskPort{
    call("backstageDecision",{conversationId,decision,requestId,expectedRevision}),
   request:({personId,gimmickId,requestId,expectedRevision})=>
    call("requestPersona",{personId,gimmickId,requestId,expectedRevision}),
+  openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
  };
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope){
- return mountPersonaDesk(root,personaPort(createCardClient(scope)),
+ return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
   undefined,()=>mountProgrammePage(root,scope));
 }
 
