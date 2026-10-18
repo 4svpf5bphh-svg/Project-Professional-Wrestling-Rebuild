@@ -9,7 +9,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
- programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
  completedShowAsActor,completedShowArchiveAsActor,championshipsAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -249,6 +249,19 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return startProgrammeAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,sideA:p.sideA,sideB:p.sideB,
    championshipId:p.championshipId as string|null|undefined});
+ }
+ if(method==="standingProgrammeConsent"){
+  if(!["SINGLES","TAG"].includes(String(p.matchType))||
+   !["WIN_ONLY","WIN_OR_PROTECTED_LOSS"].includes(String(p.permittedOutcome))||
+   !Number.isSafeInteger(p.termWeeks))
+   throw new Error("Invalid rivalry agreement terms");
+  return standingCreativeAgreementAsActor(context,{
+   worldId,promotionId,requestId,expectedRevision,
+   programmeId:id("programmeId"),personId:id("personId"),
+   matchType:p.matchType as "SINGLES"|"TAG",
+   permittedOutcome:p.permittedOutcome as "WIN_ONLY"|"WIN_OR_PROTECTED_LOSS",
+   termWeeks:p.termWeeks as number
+  });
  }
  if(method==="chooseProgrammeDirection"){
   if(!["PURSUE_REMATCH","PLAN_RETALIATION","LET_STAND"].includes(String(p.choice)))
