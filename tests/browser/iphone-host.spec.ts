@@ -745,6 +745,38 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
+test("Venue briefing uses original dollar pricing and live local-rival facts with no extra reads",async({page})=>{
+ const methods:string[]=[];
+ const calendar={seriesId:"weekly",name:"Saturday Showcase",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",
+  venues:[{venueId:"arena",marketId:"home",marketName:"Home Territory",
+   name:"Main Arena",capacity:4000,weeklyHireCost:12000,
+   awareness:68,liveStrength:59,loyalty:65,
+   audiencePotential:75,wrestlingInterest:80,spendingIndex:95,
+   prestige:77,productionSuitability:82,home:true,
+   strongestRival:{name:"WWE",tier:"GLOBAL",liveStrength:84,basedHere:false}}],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   shows:[],scheduled:[calendar]}]};
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  methods.push(method);await route.fulfill({json:method==="planner"?planner:{}});
+ });
+ await page.goto("/#/planner");
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await expect(page.getByText(/HOME MARKET\s*\/\s*Home Territory/)).toBeVisible();
+ await page.getByRole("button",{name:/Plan Saturday Showcase/}).click();
+ await expect(page.getByText(/LOCAL COMPETITION/)).toBeVisible();
+ await expect(page.getByText(/WWE/)).toBeVisible();
+ await expect(page.getByText(/Prestige/)).toBeVisible();
+ const venue=page.getByRole("combobox",{name:"Show venue"});
+ const option=await venue.locator("option:checked").innerText();
+ expect(option).toContain("$");expect(option).not.toContain("£");
+ await expect(page.getByText(/Hire cost:/)).toContainText(/12,000/);
+ expect(methods).toEqual(["planner"]);
+});
 test("Calendar highlights flagship and premium broadcasts without additional reads",async({page})=>{
  await page.setViewportSize({width:360,height:780});
  const flagship={seriesId:"weekly",name:"Dynamite",role:"FLAGSHIP",
