@@ -49,7 +49,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
     throw new Error("The World changed. Reopen Staff to review current records.");
-   hydrate(await port.load());releaseConfirm=false;requestId="";
+   hydrate(await port.load());releaseConfirm=false;changed();
    notice=action==="HIRE"?"Talent Manager hired. Weekly salary will be deducted at World rollover.":
     "Talent Manager released. Weekly wages and future automated renewals stop.";
   }catch(e){error=e instanceof Error?e.message:"The employment decision failed";}
