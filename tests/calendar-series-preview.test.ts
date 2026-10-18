@@ -22,6 +22,7 @@ test("preview prevents overlapping major events and invalid repeat intervals bef
   eventType:"MAJOR",cadenceWeeks:52,anchorWeek:premium!.anchorWeek,
   importance:85,active:true};
  assert.match(calendarSeriesPreview(annual,[flagship!,premium!],1,1).message,/one additional/i);
+ assert.doesNotMatch(calendarSeriesPreview(annual,[flagship!,premium!],1,1).message,/PPW|World|simulation/i);
  assert.equal(calendarSeriesPreview({...annual,cadenceWeeks:0},[flagship!],1,1).valid,false);
  assert.equal(calendarSeriesPreview({...annual,anchorWeek:52},[flagship!],1,1).valid,false);
 });
@@ -29,5 +30,6 @@ test("editing existing series is not counted as an extra conflicting event",()=>
  const revised={...premium!,name:"Anniversary Spectacular",importance:98};
  const view=calendarSeriesPreview(revised,[flagship!,premium!],1,1);
  assert.equal(view.valid,true);
- assert.deepEqual(view.occurrences,[{year:1,week:4}]);
+ assert.deepEqual(view.occurrences,[{year:1,week:4},{year:1,week:8},
+  {year:1,week:12},{year:1,week:16}]);
 });

@@ -23,7 +23,21 @@ export function calendarSeriesPreview(candidate:ShowSeries,
   validateSeries(candidate);
   validateSchedule([...clash,candidate]);
  }catch(error){
-  return {valid:false,message:error instanceof Error?error.message:"Review this schedule",
+  const source=error instanceof Error?error.message:"Review this schedule";
+  const explanations:Record<string,string>={
+   "Show calendar identity or name is invalid":"Give this event a name before saving.",
+   "Only one normal A/B show may run per PPW week":
+    "Only one regular A/B broadcast may run in the same week.",
+   "Only one additional PPV or special may run per PPW week":
+    "Only one additional PPV or special may run in the same week.",
+   "Each promotion must retain exactly one flagship":"Keep one flagship broadcast on your calendar.",
+   "Duplicate show names are not allowed":"Another event already uses that name.",
+   "Invalid show recurrence or importance":
+    "Choose a valid repeat interval, first week and importance.",
+   "Regular and premium show roles cannot be mixed":
+    "Choose either a regular broadcast or a special event."
+  };
+  return {valid:false,message:explanations[source]??source,
    occurrences:[] as {year:number;week:number}[]};
  }
  const current=weekIndex(year,week),upcoming:{year:number;week:number}[]=[];
