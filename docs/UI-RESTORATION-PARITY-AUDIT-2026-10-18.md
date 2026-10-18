@@ -49,3 +49,5 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - All player-facing descriptions are written in the voice of a wrestling promotion, without explaining PPW simulation internals or referring to "PPW weeks" or "World resolution".
 - Wrestler dossiers now open on demand from bookings, the Roster, Talent Market, championships, Programmes, Contracts, Backstage, tag teams, stables and professional connections; no extra list-rendering queries are introduced.
 - The original **main** remains the exclusive reference. Results, original databases, scheduled World Lock and isolated Neon cost-testing branches remain untouched.
+
+- **Industry:** each public promotion can now reveal up to eight prominently booked wrestlers using an explicitly opened, cached, two-query roster view. No salaries, private offers or card plans are included; each wrestler opens the common dossier. No additional Industry queries occur before opening the promotion.

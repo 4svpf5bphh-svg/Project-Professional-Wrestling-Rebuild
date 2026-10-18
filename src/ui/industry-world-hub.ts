@@ -166,7 +166,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      identity.append(el("span","ppw-industry-company-name",p.name));
      const state=el("span","ppw-industry-company-subtitle",
       p.tier.toLowerCase()+" · "+
-      (p.managementMode==="AI"?"AI promotion":p.isYours?"Your promotion":"Promotion"));
+      (p.isYours?"Your promotion":"Rival promotion"));
      identity.append(state);
      if(p.isYours)identity.append(el("span","ppw-industry-ours","YOU"));
      const position=el("span","ppw-industry-company-standing","#"+p.rank);
