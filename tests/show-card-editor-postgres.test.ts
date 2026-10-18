@@ -178,8 +178,43 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     runningOrder:["angle","main"]}),/Only active promotion programmes/);
    assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,
     [{slotId:"angle",programmeId:"feud"}]);
+   // Full authorised PostgreSQL save, failed order, and unchanged query budget
+   // for match-linked post-show attacks. The match finish is untouched.
+   const aftermath={kind:"POST_MATCH_ASSAULT",outcome:"HAPPENS",
+    actorIds:[ids[1]],targetIds:[ids[0]],participants:[members[1],members[0]],
+    sourceMatchSlotId:"main",creativeBeat:{
+     kind:"POST_MATCH_ASSAULT",ending:"VICTIM_FIGHTS_BACK"}};
+   const anchored=(requestId:string,sourceMatchSlotId:string,runningOrder:string[],
+    pool=db.pool)=>saveCardEditorAsActor({...context,pool},{
+    ...identity,requestId,expectedRevision:5,
+    matches:[{slotId:"main",payload:raw}],
+    segments:[{slotId:"angle",payload:{...aftermath,sourceMatchSlotId}}],
+    runningOrder});
+   await assert.rejects(anchored("wrong-running-order","main",["angle","main"]),
+    /must follow a match/);
+   await assert.rejects(anchored("wrong-match","other-promotion",["main","angle"]),
+    /must follow a match/);
+   assert.equal((await showCardEditorAsActor(context,world,promotion,show)).worldRevision,5);
+   const anchoredMeter=new MeasuredQuerySession("anchored-angle-"+mode);
+   const anchorPool:TransactionPool={async connect(){
+    const connection=await db.pool.connect();
+    return {release(){connection.release();},
+     async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+      return anchoredMeter.execute(()=>connection.query<T>(sql,params));
+     }};
+   }};
+   const anchoredSave=await anchored("anchor-valid","main",["main","angle"],anchorPool);
+   assert.equal(anchoredSave.status,"APPLIED");
+   anchoredMeter.assertBudget({maxQueries:15,maxResultBytes:40_000});
+   const withAftermath=await showCardEditorAsActor(context,world,promotion,show);
+   assert.deepEqual(withAftermath.slots.map(s=>s.slotId),["main","angle"]);
+   assert.equal((withAftermath.slots[1]!.payload as typeof aftermath).sourceMatchSlotId,"main");
+   assert.equal(((withAftermath.slots[1]!.payload as typeof aftermath).creativeBeat).ending,
+    "VICTIM_FIGHTS_BACK");
+   assert.equal((withAftermath.slots[0]!.payload as typeof raw).scriptedWinnerSide,
+    raw.scriptedWinnerSide);
    const remove=await saveCardEditorAsActor(context,{...identity,
-    requestId:"remove-angle",expectedRevision:5,
+    requestId:"remove-angle",expectedRevision:6,
     matches:[{slotId:"main",payload:raw}],segments:[],runningOrder:["main"]});
    assert.equal(remove.status,"APPLIED");
    assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,[]);
