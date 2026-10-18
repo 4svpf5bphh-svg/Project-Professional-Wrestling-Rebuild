@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {validatePreparedDraft,preparedDraftFingerprint,type ReadyDraftEvidence} from "../domain/prepared-show.js";
+import {creativeReviewsInTransaction,creativeApprovalRequired} from "./match-creative-consent.js";
 
 export interface FinalizePreparedWorldShowsInput {
   worldId:string;requestId:string;expectedRevision:number;
@@ -86,6 +87,11 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
         const list=byShow.get(slot.draft_id)??[];
         list.push(slot);byShow.set(slot.draft_id,list);
       }
+      // One batch across ALL promotions, never one wrestler or one show at a time.
+      const concerns=await creativeReviewsInTransaction(tx,input.worldId,
+       candidates.map(d=>({showId:d.draft_id,promotionId:d.promotion_id,
+        weekIndex:(d.year-1)*52+d.week-1,slots:byShow.get(d.draft_id)??[]})));
+      const creativeBlocks=new Set(creativeApprovalRequired(concerns).map(c=>c.showId));
       const eligible:string[]=[];
       const flagged:Array<{showId:string;reason:string}>=[];
       for(const d of candidates){
@@ -108,7 +114,8 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
         const permitted=d.controller_player_id!==null&&
           d.controller_player_id===d.assessment_owner &&
           d.lock_ready_by_player_id===d.controller_player_id;
-        const reason=!permitted?"OWNER_CHANGED":error??(
+        const reason=!permitted?"OWNER_CHANGED":error??
+         (creativeBlocks.has(d.draft_id)?"CREATIVE_APPROVAL_REQUIRED":null)??(
           missingCommerce?"MISSING_COMMERCIAL_SNAPSHOT":
           !venues.has(d.venue_id??"")?"VENUE_UNAVAILABLE":
           d.show_economics_enabled&&d.booking_snapshot_fingerprint!==d.lock_ready_fingerprint?
