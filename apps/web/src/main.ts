@@ -26,6 +26,8 @@ const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
 let drawerExpanded=false;
 let selectedDrawerRoot:HostDrawerRoot="world";
+// Private one-shot navigation target; no wrestler IDs in URLs or storage.
+let pendingBackstagePersonId:string|null=null;
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
@@ -50,14 +52,16 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
 }
 
 /** Mobile shell is independent of the workspace root and remains accessible. */
-function openSection(section:HostSection,focus?:HomeAttentionFocus){
+function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
  drawerExpanded=false;
+ pendingBackstagePersonId=section==="backstage"&&personId?personId:null;
  const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
   contractAttentionHash(focus):
   section==="planner"&&focus==="CARD"?plannerCardHash:
   section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
   hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
+ else if(pendingBackstagePersonId)renderSection();
  else renderNavigation(section);
 }
 
@@ -132,6 +136,8 @@ document.addEventListener("keydown",e=>{
 function renderSection(){
  if(!session?.overview?.promotion)return;
  const section=readHostSection(location.hash);
+ const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
+ pendingBackstagePersonId=null;
  const scope:CardSessionScope={worldId:session.worldId,
   promotionId:session.overview.promotion.id,showId:"",
   csrfToken:session.csrfToken};
@@ -148,7 +154,8 @@ function renderSection(){
   case "planner":mountPlannerPage(view,scope,back,location.hash===plannerCardHash);break;
   case "roster":mountRosterPage(view,scope);break;
   case "backstage":mountPersonaPage(view,scope,
-   location.hash===backstageUnreadHash?"UNREAD":"ALL");break;
+   location.hash===backstageUnreadHash?"UNREAD":"ALL",
+   backstagePersonId??undefined);break;
   case "market":mountTalentMarketPage(view,scope);break;
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;
@@ -203,6 +210,7 @@ window.addEventListener("hashchange",()=>{drawerExpanded=false;renderSection();}
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
+ pendingBackstagePersonId=null;
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;

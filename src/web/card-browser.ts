@@ -44,7 +44,7 @@ type Scope=CardSessionScope;
  * Navigating does not advance simulation or create a new World.
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
- onNavigate?:(section:HostSection,focus?:HomeAttentionFocus)=>void){
+ onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -71,6 +71,11 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   openUnreadBackstage:onNavigate?()=>onNavigate("backstage","UNREAD"):
    ()=>mountPersonaDesk(root,personaPort(call,root,scope),
     ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),"UNREAD"),
+  openBackstageThread:(personId,unread)=>onNavigate?
+   onNavigate("backstage",unread?"UNREAD":undefined,personId):
+   mountPersonaDesk(root,personaPort(call,root,scope),
+    ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),
+    unread?"UNREAD":"ALL",personId),
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
@@ -408,9 +413,9 @@ function personaPort(call:ReturnType<typeof createCardClient>,
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope,
- filter:"ALL"|"UNREAD"="ALL"){
+ filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
-  undefined,()=>mountProgrammePage(root,scope),filter);
+  undefined,()=>mountProgrammePage(root,scope),filter,initialPersonId);
 }
 
 /** Host-level planner entry point. The existing card editor remains the

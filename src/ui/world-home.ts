@@ -6,6 +6,7 @@ export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
+ openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
  industry():void;calendar():void;
@@ -67,7 +68,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(backstage)overview!.promotion!.attention.backstageResults=
     backstage.filter(x=>x.id!==id);
    error="";
-  }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the contract update";}
+  }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the update";}
   finally{dismissing.delete(id);draw();}
  }
  function draw(){
@@ -168,7 +169,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      items.push({title:request.name+" is waiting",detail:
       (subjects[request.kind]??"has a private request for you")+
       ". Open your locker-room conversations.",
-      action:port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
+      action:port.openBackstageThread?
+       ()=>port.openBackstageThread!(request.personId,true):
+       port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
     }
    }else items.push({title:"Your locker room has messages",detail:
     "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
@@ -247,7 +250,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
       "A promise went unfulfilled. Speak with the wrestler about what comes next."));
     const actions=el("div","ppw-home-wire-actions");
     const open=el("button","ppw-home-wire-button","Open Backstage") as HTMLButtonElement;
-    open.type="button";open.onclick=port.backstage;actions.append(open);
+    open.type="button";open.onclick=()=>port.openBackstageThread?
+     port.openBackstageThread(item.personId,false):port.backstage();
+    actions.append(open);
     if(port.openWrestler){
      const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
      person.type="button";person.onclick=()=>port.openWrestler?.(item.personId);

@@ -25,10 +25,10 @@ const button=(title:string,action:()=>void,disabled=false)=>{
 };
 export function mountPersonaDesk(root:HTMLElement,
  port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void,
- initialInboxFilter:"ALL"|"UNREAD"="ALL"){
+ initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
- let pane:"INBOX"|"THREAD"|"PROFILE"="INBOX";
+ let pane:"INBOX"|"THREAD"|"PROFILE"=initialPersonId?"THREAD":"INBOX";
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
@@ -52,6 +52,8 @@ export function mountPersonaDesk(root:HTMLElement,
   personId=id;loading=true;render();
   try{
    view=await port.load(id);
+   // An inaccessible or retired target resolves to the normal inbox.
+   if(id&&pane==="THREAD"&&view.personId!==id)pane="INBOX";
    if(pane==="THREAD"&&view.personId&&
     view.roster.some(x=>x.personId===view!.personId&&x.isCurrent&&
      x.latestIncoming?.read_week_index===null)){
@@ -513,6 +515,6 @@ export function mountPersonaDesk(root:HTMLElement,
    if(root.contains(chat))chat.scrollTop=previousScroll??chat.scrollHeight;
   });
  }
- void load();
+ void load(initialPersonId);
  return {refresh:()=>load(personId)};
 }
