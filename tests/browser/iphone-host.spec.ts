@@ -258,7 +258,10 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").click();
- const finish=page.getByLabel("Finish");
+ const focused=page.getByRole("dialog",{name:"Edit match"});
+ await expect(focused).toBeVisible();
+ await expect(page.locator(".ppw-card-list .ppw-card-body")).toHaveCount(0);
+ const finish=focused.getByLabel("Finish");
  await finish.selectOption("FOREIGN_OBJECT");
  await page.getByLabel("Who uses the foreign object?").selectOption("alice");
  await page.locator(".ppw-run-in summary").click();
@@ -272,6 +275,8 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await run.getByLabel("Which side?").selectOption("A");
  await run.getByLabel("What happens?").selectOption("SUCCESS");
  await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
+ await focused.getByRole("button",{name:"Close card editor"}).click();
+ await expect(focused).toHaveCount(0);
  await page.getByRole("button",{name:"Save card"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect((saved.interference as {contractId:string}).contractId).toBe("deal-outside");

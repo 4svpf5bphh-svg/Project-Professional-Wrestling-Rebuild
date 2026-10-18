@@ -201,3 +201,38 @@
 .ppw-run-in select{font-size:16px;min-height:44px;max-width:100%}
 .ppw-run-in-person,.ppw-run-in-clear{min-height:44px;padding:10px 13px;border-radius:10px;cursor:pointer}
 .ppw-run-in-clear{color:#ffc4c4;background:#47252e;border:1px solid #a76074}
+
+/* One foreground match/angle editor. The card list remains compact,
+   while the scrollable sheet avoids losing the top of a long iPhone card. */
+.ppw-card-edit-shade{position:fixed;inset:0;z-index:55;
+ display:flex;align-items:flex-end;justify-content:center;
+ background:rgba(2,6,14,.84);padding:0;overscroll-behavior:contain}
+.ppw-card-edit-sheet{width:100%;max-width:860px;max-height:calc(94dvh - env(safe-area-inset-top));
+ overflow:auto;overscroll-behavior:contain;border:1px solid #4a6988;
+ border-bottom:0;border-radius:21px 21px 0 0;background:linear-gradient(150deg,#152c41,#0b1c2d);
+ box-shadow:0 -18px 65px rgba(0,0,0,.55);
+ padding-bottom:max(15px,env(safe-area-inset-bottom))}
+.ppw-card-edit-head{position:sticky;top:0;z-index:2;
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:12px 16px;border-bottom:1px solid #3a5a75;
+ background:linear-gradient(115deg,#1d3b57,#10253c)}
+.ppw-card-edit-label{min-width:0;flex:1}
+.ppw-card-edit-label strong{font-size:18px;display:block;line-height:1.25;
+ overflow-wrap:anywhere;letter-spacing:-.02em}
+.ppw-card-edit-close{width:44px;height:44px;flex:none;font-size:24px!important;
+ padding:0!important;line-height:1}
+.ppw-card-edit-sheet>.ppw-card-body{padding:16px;border-top:0}
+.ppw-editing-card> :not(.ppw-card-edit-shade):not(.ppw-sheet-shade){
+ pointer-events:none;
+}
+.ppw-card-edit-sheet .ppw-card-body{overflow:visible}
+@media(min-width:840px){
+ .ppw-card-edit-shade{align-items:center;padding:18px}
+ .ppw-card-edit-sheet{max-height:calc(100dvh - 45px);border-radius:20px;
+ border-bottom:1px solid #4a6988}
+}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-card-edit-sheet{animation:ppw-card-sheet-enter .18s ease-out}
+ @keyframes ppw-card-sheet-enter{from{opacity:.7;transform:translateY(13px)}
+ to{opacity:1;transform:none}}
+}

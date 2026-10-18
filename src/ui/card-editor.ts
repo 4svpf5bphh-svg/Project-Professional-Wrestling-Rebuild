@@ -262,8 +262,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   finally{saving=false;render();}
  }
  function render(){
+  // Retain the focused editor's scroll position through controlled updates.
+  // The underlying running order never needs reloading or re-querying.
+  const priorModal=root.querySelector<HTMLElement>(".ppw-card-edit-sheet");
+  const previousScroll=priorModal?.scrollTop??0;
   root.replaceChildren();
   root.classList.add("ppw-editor");
+  root.classList.toggle("ppw-editing-card",expanded!==null);
   const top=el("header","ppw-top");
   top.append(el("div","ppw-eyebrow","CREATIVE / SHOW BOOKING"),
    el("h1","","The Card"));
@@ -353,6 +358,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   root.append(toolbar);
   const list=el("section","ppw-card-list");
+  let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
    const m=matches.get(slotId);
    const segment=segments.get(slotId);
@@ -670,6 +676,51 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     },!mutable(),"ppw-remove"));
     card.append(body);
    }
+   // The original running order stays compact: move only its *existing*
+   // match/angle editor into a foreground sheet, never build a second form.
+   if(expanded===slotId){
+    const body=card.querySelector<HTMLElement>(":scope > .ppw-card-body");
+    if(body){
+     body.remove();
+     const shade=el("div","ppw-card-edit-shade");
+     const sheet=el("section","ppw-card-edit-sheet");
+     sheet.setAttribute("role","dialog");
+     sheet.setAttribute("aria-modal","true");
+     sheet.setAttribute("aria-label",m?"Edit match":"Edit angle");
+     const head=el("header","ppw-card-edit-head");
+     const label=el("div","ppw-card-edit-label");
+     label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" / "+(m?"MATCH":"ANGLE")),
+      el("strong","",m?matchLabel(m):angleName));
+     head.append(label,button("×",()=>{
+      expanded=null;render();
+     },false,"ppw-card-edit-close"));
+     const close=head.querySelector<HTMLButtonElement>(".ppw-card-edit-close");
+     close?.setAttribute("aria-label","Close card editor");
+     sheet.append(head,body);
+     sheet.scrollTop=previousScroll;
+     sheet.onkeydown=event=>{
+      if(event.key==="Escape"){
+       if(picker)return;
+       event.preventDefault();expanded=null;render();return;
+      }
+      if(event.key!=="Tab")return;
+      const focusable=[...sheet.querySelectorAll<HTMLElement>(
+       "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary")];
+      if(!focusable.length)return;
+      const first=focusable[0]!,last=focusable[focusable.length-1]!;
+      if(event.shiftKey&&document.activeElement===first){
+       event.preventDefault();last.focus();
+      }else if(!event.shiftKey&&document.activeElement===last){
+       event.preventDefault();first.focus();
+      }
+     };
+     shade.append(sheet);
+     shade.onclick=event=>{
+      if(event.target===shade){expanded=null;render();}
+     };
+     editShade=shade;
+    }
+   }
    list.append(card);
   }
   root.append(list);
@@ -682,6 +733,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    ()=>{void confirm();},
    !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
   root.append(foot);
+  if(editShade){
+   root.append(editShade);
+   if(!priorModal){
+    editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
+   }
+  }
   if(picker){
    const current=picker;
    const shade=el("div","ppw-sheet-shade");
