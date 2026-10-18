@@ -1,2 +1,44 @@
 import type {SqlRows} from "./world-operations.js";
 export type CreativeReviewShow={showId:string;promotionId:string;weekIndex:number;slots:readonly {slot_id:string;kind:string;payload:unknown}[]};
+import {buildCreativeConcerns,creativeApprovalRequired,
+ type CreativeConcern,type CreativeContract,type CreativeRight}
+ from "../domain/match-creative-consent.js";
+export {creativeApprovalRequired};
+type Row={person_id:string;contract_id:string;promotion_id:string;name:string;
+ creative_control:CreativeRight;role_expectation:string;morale:number|null;
+ fatigue:number|null;contract_priorities:CreativeContract["priorities"];
+ start_week_index:number;expires_week_index:number};
+export async function creativeReviewsInTransaction(tx:SqlRows,worldId:string,
+ shows:readonly CreativeReviewShow[]):Promise<CreativeConcern[]>{
+ const active=shows.filter(x=>x.slots.some(s=>s.kind==="MATCH"));
+ if(!active.length)return [];
+ const people=[...new Set(active.flatMap(show=>show.slots.flatMap(slot=>{
+  if(slot.kind!=="MATCH")return [];
+  const m=slot.payload as {participants?:{personId?:string}[]};
+  return Array.isArray(m?.participants)?m.participants.flatMap(p=>
+   typeof p?.personId==="string"?[p.personId]:[]):[];
+ })))];
+ if(people.length>3000)throw new Error("Too many booked wrestlers");
+ const weeks=active.map(x=>x.weekIndex);
+ const contracts=await tx.query<Row>([
+  "SELECT c.person_id,c.contract_id,c.promotion_id,p.name,",
+  "c.creative_control,c.role_expectation,p.morale,p.fatigue,p.contract_priorities,",
+  "c.start_week_index,c.expires_week_index FROM ppw_contracts c",
+  "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
+  "WHERE c.world_id=$1 AND c.promotion_id=ANY($2::text[])",
+  "AND c.person_id=ANY($3::text[]) AND c.status='SIGNED'",
+  "AND c.creative_control<>'NONE' AND c.start_week_index<=$4",
+  "AND c.expires_week_index>=$5 ORDER BY c.person_id,c.contract_id LIMIT 3001"
+ ].join(" "),[worldId,[...new Set(active.map(x=>x.promotionId))],
+  people,Math.max(...weeks),Math.min(...weeks)]);
+ if(contracts.length>3000)throw new Error("Creative contract limit exceeded");
+ const scoped=(show:CreativeReviewShow):CreativeContract[]=>
+  contracts.filter(c=>c.promotion_id===show.promotionId&&
+   c.start_week_index<=show.weekIndex&&c.expires_week_index>=show.weekIndex)
+   .map(c=>({promotionId:c.promotion_id,personId:c.person_id,
+    contractId:c.contract_id,name:c.name,creativeControl:c.creative_control,
+    roleExpectation:c.role_expectation,morale:c.morale,fatigue:c.fatigue,
+    priorities:c.contract_priorities}));
+ const concerns=active.flatMap(show=>buildCreativeConcerns(
+  show.showId,show.promotionId,show.slots.filter(x=>x.kind==="MATCH")
+   .map(x=>({slotId:x.slot_id,payload:x.payload})),scoped(show)));
