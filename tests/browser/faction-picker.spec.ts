@@ -63,3 +63,64 @@ test("iPhone faction selector reuses scouting cards and submits only the selecte
  expect(methods.filter(x=>x==="stables")).toHaveLength(2);
  expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
 });
+
+test("iPhone tag selection and Backstage thread keep their place when scouting a wrestler",async({page})=>{
+ const calls:string[]=[];
+ const overview={world:{name:"Genesis",year:1,week:5,revision:4,phase:"OPEN",
+  serverEpoch:Date.now()/1000,nextLockEpoch:Date.now()/1000+1800},
+  membership:"ACTIVE",promotion:{id:"aew",name:"AEW",tier:"GLOBAL",cash:5000000,debt:0}};
+ const session={worldId:"genesis",playerId:"owner",csrfToken:"test-csrf",overview,
+  availablePromotions:[]};
+ const person={personId:"ada",name:"Ada Stone",ringName:"Ada Stone",
+  division:"WOMEN",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+  alignment:"FACE",popularity:74,recognition:72,momentum:80,
+  matchCraft:75,inRingQuality:83,presentation:78};
+ const other={...person,personId:"ruby",name:"Ruby Stone",ringName:"Ruby Stone"};
+ const full={...person,status:"ACTIVE",careerStage:"PRIME",morale:75,
+  stamina:81,safety:90,fatigue:0,wear:0,canEdit:false,onYourRoster:true,
+  sharedHuman:false,currentWeekIndex:4,worldRevision:4,
+  persona:{personaName:"Ada Stone",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[],teams:[],stables:[],connections:[],history:[]};
+ const latest={request_id:"message",kind:"CONTRACT",status:"PENDING",
+  created_week_index:4,read_week_index:0,archived:false};
+ const contact={...person,isCurrent:true,morale:75,lastMessage:null,latestIncoming:latest};
+ const inbox={personId:null,persona:null,history:[],recentRequests:[],
+  archetypes:[],documentedAlternates:[],conversations:[],worldYear:1,
+  worldWeek:5,worldRevision:4,canEdit:false,nextPitchWeek:0,roster:[contact]};
+ await page.route("**/api/session",async route=>route.fulfill({json:session}));
+ await page.route("**/api/card",async route=>{
+  const data=route.request().postDataJSON();
+  calls.push(data.method);
+  await route.fulfill({json:data.method==="tagTeams"?
+   {year:1,week:5,worldRevision:4,canEdit:true,roster:[person,other],
+    teams:[]}:
+   data.method==="wrestlerProfile"?full:
+   data.method==="backstage"?(data.personId?
+    {...inbox,personId:"ada",personName:"Ada Stone",persona:full.persona}:inbox):{}});
+ });
+ await page.goto("/#/teams");
+ await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
+ const picked=page.locator(".ppw-pair-wrestler").first();
+ await picked.click();
+ await expect(picked).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"View Ada Stone's dossier ↗"}).click();
+ const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("button",{name:"‹ Back"}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(picked).toHaveAttribute("aria-pressed","true");
+ expect(calls.filter(x=>x==="tagTeams")).toHaveLength(1);
+ await page.goto("/#/backstage");
+ await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await page.locator(".ppw-backstage-contact").first().click();
+ const thread=page.getByLabel("Conversation with Ada Stone");
+ await expect(thread).toBeVisible();
+ const before=calls.filter(x=>x==="backstage").length;
+ await thread.getByRole("button",{name:"View Ada Stone wrestler dossier"}).click();
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("button",{name:"‹ Back"}).click();
+ await expect(thread).toBeVisible();
+ expect(calls.filter(x=>x==="backstage")).toHaveLength(before);
+ expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(2);
+});
