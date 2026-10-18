@@ -2,6 +2,7 @@
  * All balances are server receipts, never optimistic booking rights.
  */
 import type {readContractDesk} from "../db/contract-desk-workspace.js";
+import type {OfferTerms} from "../domain/contract-economics.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface ContractDeskPort{
@@ -9,6 +10,7 @@ export interface ContractDeskPort{
  requestDates(input:Mutation&{contractId:string;additionalDates:number;additionalPayment:number}):Promise<unknown>;
  cancelDates(input:Mutation&{dateRequestId:string}):Promise<unknown>;
  renewal(input:Mutation&{contractId:string}):Promise<unknown>;
+ negotiatedRenewal(input:Mutation&{personId:string;sourceContractId:string;terms:OfferTerms}):Promise<unknown>;
  withdrawRenewal(input:Mutation&{proposalId:string}):Promise<unknown>;
  withdrawOffer(input:Mutation&{offerId:string}):Promise<unknown>;
  openWrestler?(personId:string):void;
@@ -87,7 +89,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    for(const r of view.renewals){
     const row=el("div","ppw-contract-request");
-    row.append(el("span","",entryName(r.contract_id)+" · same-terms renewal"),
+    row.append(el("span","",entryName(r.contract_id)+" · renewal awaiting decision"),
      btn("Withdraw renewal",()=>void action("renewal:"+r.proposal_id,m=>
       port.withdrawRenewal({...m,proposalId:r.proposal_id}),
       "Renewal offer withdrawn."),!editable()));
@@ -97,7 +99,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     const row=el("div","ppw-contract-request");
     const worker=view.roster.find(r=>r.personId===o.person_id);
     row.append(el("span","",(worker?.name??"Recruitment")+
-     " · pending contract offer"),
+     (o.source_contract_id?" · negotiated renewal pending":" · recruitment offer pending")),
      btn("Withdraw offer",()=>void action("offer:"+o.offer_id,m=>
       port.withdrawOffer({...m,offerId:o.offer_id}),
       "Contract offer withdrawn."),!editable()));
@@ -179,10 +181,88 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       el("label","","Extra payment ($)"),pay,submit);
      body.append(section);
     }
-    if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit)
+    const negotiatedPending=view!.offers.some(o=>o.source_contract_id===c.contractId)||
+     view!.renewals.some(r=>r.contract_id===c.contractId);
+    if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit&&!negotiatedPending){
      body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
       "Same-terms renewal offered. Awaiting wrestler decision."),!editable()));
+     const negotiate=document.createElement("details");
+     negotiate.className="ppw-contract-renegotiate";
+     negotiate.append(el("summary","","Negotiate different terms"));
+     negotiate.append(el("p","ppw-muted",
+      "An alternative renewal, not an extra booking. If accepted, the next contract begins after this one expires."));
+     const family=c.family as OfferTerms["family"];
+     const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
+     const nextWeek=c.expiresWeekIndex+1;
+     const draft:OfferTerms={
+      family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
+      creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
+      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:13,
+      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?13:
+       Math.max(1,Math.min(26,c.dateEntitlement??5)),
+      weeklyGuarantee:family==="ONE_OFF"?0:c.weeklyGuarantee,
+      appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
+      signingBonus:c.signingBonus
+     };
+     const panel=el("div","ppw-contract-renegotiate-fields");
+     const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
+      min:number,max:number,disabled=false)=>{
+      const label=el("label","",name),input=document.createElement("input");
+      input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
+      input.value=String(draft[key]);input.disabled=disabled;
+      input.setAttribute("aria-label",name+" for "+c.name);
+      input.oninput=()=>{if(input.value!=="")draft[key]=Number(input.value);
+       if(key==="termWeeks"&&family==="EXCLUSIVE"){
+        draft.dateEntitlement=Number(input.value);
+        const dates=panel.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
+        if(dates)dates.value=input.value;
+       }};
+      if(key==="dateEntitlement")input.dataset.renewDates="yes";
+      label.append(input);panel.append(label);
+     };
+     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF");
+     numeric("Purchased dates","dateEntitlement",1,104,fixed);
+     numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
+     numeric("Appearance fee ($)","appearanceFee",0,1000000000,family==="EXCLUSIVE");
+     numeric("Signing bonus ($)","signingBonus",0,1000000000);
+     const dropdown=<T extends string>(name:string,options:readonly T[],initial:T,set:(v:T)=>void)=>{
+      const label=el("label","",name),select=document.createElement("select");
+      select.setAttribute("aria-label",name+" for "+c.name);select.value=initial;
+      for(const key of options){
+       const item=document.createElement("option");item.value=key;item.textContent=title(key);
+       select.append(item);
+      }
+      select.value=initial;select.onchange=()=>set(select.value as T);
+      label.append(select);panel.append(label);
+     };
+     dropdown("Roster role",["DEVELOPMENTAL","REGULAR","FEATURED","UPPER_CARD",
+      "MAIN_EVENT","SPECIAL_ATTRACTION"] as const,draft.roleExpectation,
+      value=>{draft.roleExpectation=value;});
+     if(family!=="ONE_OFF")dropdown("Creative control",
+      ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
+      draft.creativeControl,value=>{draft.creativeControl=value;});
+     negotiate.append(panel);
+     const note=el("p","ppw-contract-renew-hint",
+      "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
+      " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");
+     negotiate.append(note,btn("Send negotiated renewal",()=>{
+      const numbers=[draft.termWeeks,draft.dateEntitlement,draft.weeklyGuarantee,
+       draft.appearanceFee,draft.signingBonus];
+      if(!numbers.every(v=>Number.isSafeInteger(v)&&v>=0)||
+       draft.termWeeks<1||draft.termWeeks>52||
+       draft.dateEntitlement<1||draft.dateEntitlement>104||
+       (family==="EXCLUSIVE"&&draft.dateEntitlement!==draft.termWeeks)||
+       (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks*2)){
+       error="Review the proposed duration, dates and payment values.";
+       render();return;
+      }
+      void action("negotiated:"+c.contractId,m=>port.negotiatedRenewal({
+       ...m,personId:c.personId,sourceContractId:c.contractId,terms:draft}),
+       "Negotiated renewal submitted. Wrestler response arrives at World resolution.");
+     },!editable()));
+     body.append(negotiate);
+    }
     card.append(body);
     list.append(card);
    }

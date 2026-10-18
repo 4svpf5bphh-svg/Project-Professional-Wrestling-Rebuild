@@ -126,6 +126,8 @@ function contractPort(call:ReturnType<typeof createCardClient>):ContractDeskPort
    call("cancelContractDates",{requestId,expectedRevision,dateRequestId}),
   renewal:({requestId,expectedRevision,contractId})=>
    call("renewContract",{requestId,expectedRevision,contractId}),
+  negotiatedRenewal:({requestId,expectedRevision,personId,sourceContractId,terms})=>
+   call("submitContractOffer",{requestId,expectedRevision,personId,sourceContractId,terms}),
   withdrawRenewal:({requestId,expectedRevision,proposalId})=>
    call("withdrawContractRenewal",{requestId,expectedRevision,proposalId}),
   withdrawOffer:({requestId,expectedRevision,offerId})=>
