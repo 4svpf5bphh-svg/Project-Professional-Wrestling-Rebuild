@@ -1,7 +1,7 @@
 /** Mobile PPW feud desk. Uses server-validated original programme sides.
  * No World-wide data, auto-submission, or mandatory flow.
  */
-import type {readProgrammeWorkspace} from "../db/programme-workspace.js";
+import type {readProgrammeWorkspace,ProgrammeDirectionChoice} from "../db/programme-workspace.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
@@ -10,6 +10,9 @@ export interface ProgrammeDeskPort{
  start(input:{requestId:string;expectedRevision:number;
   sideA:ProgrammeRef[];sideB:ProgrammeRef[];championshipId:string|null}):Promise<unknown>;
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
+ chooseDirection(input:{requestId:string;expectedRevision:number;programmeId:string;
+  showId:string;slotId:string;choice:ProgrammeDirectionChoice}):Promise<unknown>;
+ openPlanner?():void;
  openResults?(showId:string):void;
  openArchive?():void;
  openWrestler?(personId:string):void;
@@ -23,6 +26,7 @@ const button=(title:string,click:()=>void,disabled=false)=>{
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  onBack?:()=>void){
  let view:ProgrammeView|null=null,working=false,error="",success="";
+
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  function rosterOptions(){
@@ -48,6 +52,22 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     throw new Error("The World changed. Check the updated rivalries.");
    view=await port.load();success=result;refsA=[null];refsB=[null];titleId=null;
   }catch(e){error=e instanceof Error?e.message:"Programme change failed";}
+  finally{working=false;render();}
+ }
+ async function saveDirection(programmeId:string,showId:string,slotId:string,
+  choice:ProgrammeDirectionChoice){
+  if(!view||working)return;
+  working=true;error="";success="";
+  // Do not reset an unrelated rivalry the booker may be setting up.
+  try{
+   const result=await port.chooseDirection({programmeId,showId,slotId,choice,
+    requestId:crypto.randomUUID(),expectedRevision:view.worldRevision});
+   if(result&&typeof result==="object"&&"status" in result&&
+    (result as {status:unknown}).status==="STALE")
+    throw new Error("Another decision was made. Review the latest rivalry before proceeding.");
+   view=await port.load();
+   success="The creative direction is recorded. Your next card is still yours to book.";
+  }catch(e){error=e instanceof Error?e.message:"Could not save creative direction";}
   finally{working=false;render();}
  }
  function selector(options:readonly {key:string;label:string}[],
@@ -178,6 +198,52 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      history.append(item);
     }
     panel.append(history);
+   }
+   const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
+    b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
+    b.slotId.localeCompare(a.slotId))[0];
+   if(latestMatch||p.latestFollowUp){
+    const direction=element("section","ppw-programme-next");
+    direction.append(element("span","ppw-programme-eyebrow","AFTER THE BELL"),
+     element("h3","","Where does this rivalry go next?"));
+    if(p.latestFollowUp){
+     const label=p.latestFollowUp.choice==="PURSUE_REMATCH"?
+      "Pursue a rematch":p.latestFollowUp.choice==="PLAN_RETALIATION"?
+      "Plan retaliation":"Let the result stand";
+     const chosen=element("p","ppw-programme-direction-chosen",
+      "Last direction: "+label+" · Year "+
+      (Math.floor(p.latestFollowUp.weekIndex/52)+1)+" Week "+
+      (p.latestFollowUp.weekIndex%52+1));
+     direction.append(chosen);
+     if(latestMatch&&(p.latestFollowUp.showId!==latestMatch.showId||
+      p.latestFollowUp.slotId!==latestMatch.slotId))
+      direction.append(element("p","ppw-programme-direction-note",
+       "A newer match has taken place. Decide whether to continue the issue or change course."));
+    }
+    direction.append(element("p","ppw-programme-direction-note",
+     "This is a creative reminder only. No bout or angle is booked for you."));
+    if(latestMatch&&view.canEdit){
+     const choices=element("div","ppw-programme-directions");
+     for(const [choice,title,note] of [
+      ["PURSUE_REMATCH","Rematch","Set up a return bout"],
+      ["PLAN_RETALIATION","Retaliation","Build toward a confrontation"],
+      ["LET_STAND","Let it stand","Leave the finish as it was"]
+     ] as const){
+      const active=p.latestFollowUp?.choice===choice&&
+       p.latestFollowUp.showId===latestMatch.showId&&
+       p.latestFollowUp.slotId===latestMatch.slotId;
+      const pick=button(title,()=>void saveDirection(p.programmeId,
+       latestMatch.showId,latestMatch.slotId,choice),working);
+      pick.setAttribute("aria-pressed",String(active));
+      pick.title=note;
+      choices.append(pick);
+     }
+     direction.append(choices);
+    }else if(latestMatch&&!view.canEdit)
+     direction.append(element("p","ppw-programme-direction-note",
+      "The card deadline has passed. Creative decisions reopen next week."));
+    if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
+    panel.append(direction);
    }
    panel.append(button("End programme",()=>{
     void run(()=>port.end({requestId:crypto.randomUUID(),

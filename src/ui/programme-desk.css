@@ -68,3 +68,14 @@
  margin:-2px 0 11px;border-radius:9px;text-align:left;cursor:pointer}
 .ppw-programme-separator{color:#8296a8;white-space:pre}
 @media(prefers-reduced-motion:no-preference){.ppw-programme-person-link{transition:color .15s}}
+
+/* Authored post-show direction uses existing completed-match history only. */
+.ppw-programme-next{margin:15px 0 8px;padding:15px;background:linear-gradient(125deg,#1f354b,#101d2e);border:1px solid #466d80;border-radius:14px}
+.ppw-programme-next h3{font-size:16px;letter-spacing:-.02em;margin:3px 0 8px;color:#fff}
+.ppw-programme-direction-note{font-size:12px;color:#afcad9;line-height:1.5;margin:8px 0}
+.ppw-programme-direction-chosen{font-size:13px;color:#aff4de;font-weight:750;line-height:1.45}
+.ppw-programme-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-programme-directions .ppw-programme-action{padding:9px 6px;min-height:46px;white-space:normal;margin:0;line-height:1.2;font-size:12px;border:1px solid #5c8195;border-radius:10px;background:#0b2638;color:#e7f8fe}
+.ppw-programme-directions .ppw-programme-action[aria-pressed=true]{border-color:#9bf3d8;background:#17554a;box-shadow:inset 0 0 0 1px #87ddc7}
+.ppw-programme-directions .ppw-programme-action:disabled{opacity:.4}
+@media(max-width:345px){.ppw-programme-directions{grid-template-columns:1fr}}

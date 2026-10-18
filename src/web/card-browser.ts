@@ -325,11 +325,15 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
+  openPlanner:()=>mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope)),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
+  chooseDirection:({requestId,expectedRevision,programmeId,showId,slotId,choice})=>
+   call("chooseProgrammeDirection",{requestId,expectedRevision,
+    programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
   chooseDirection:({requestId,expectedRevision,programmeId,showId,slotId,choice})=>
    call("chooseProgrammeDirection",{requestId,expectedRevision,
     programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
