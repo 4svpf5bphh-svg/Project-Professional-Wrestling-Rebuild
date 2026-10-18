@@ -253,3 +253,35 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 
 /* Drawer layout deliberately overrides broadcast tab styling only inside the drawer. */
 .ppw-navigation-open{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+
+/* The navigation opens from the promotion header; no permanent bottom dock. */
+body{padding-bottom:env(safe-area-inset-bottom)}
+.ppw-shell-actions{display:flex;align-items:center;gap:7px;flex:none}
+.ppw-shell-menu{min-height:44px;min-width:78px;background:linear-gradient(140deg,#24516a,#152c44);
+ color:#f3fbff;border:1px solid #70bbd5;border-radius:11px;font-size:13px;font-weight:850}
+.ppw-shell-menu:focus-visible{outline:3px solid #86dfff;outline-offset:2px}
+.ppw-navigation[hidden]{display:none!important}
+.ppw-navigation{position:fixed;top:calc(68px + env(safe-area-inset-top));right:max(11px,env(safe-area-inset-right));
+ left:auto;bottom:auto;transform:none;width:min(430px,calc(100vw - 22px));
+ max-height:calc(100dvh - 85px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+ display:block;z-index:101;overflow:auto;overscroll-behavior:contain;
+ border:1px solid #52758d;border-radius:18px;
+ box-shadow:0 25px 80px rgba(0,0,0,.58);padding:0;background:#101e2f}
+.ppw-navigation.ppw-navigation-open{display:block;border-radius:18px}
+.ppw-nav-drawer{max-height:none;overflow:visible;border:0;padding:12px}
+.ppw-nav-rootbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;
+ margin-bottom:13px;padding:5px;border:1px solid rgba(126,204,233,.25);
+ border-radius:12px;background:#071b2b}
+.ppw-nav-rootbar .ppw-tab{min-width:0;min-height:58px;max-width:none;
+ padding:8px 2px;font-size:11px;line-height:1.2}
+.ppw-nav-rootbar .ppw-tab-label{font-size:10px}
+.ppw-nav-drawer-entries{grid-template-columns:1fr 1fr}
+#game .ppw-save{bottom:max(12px,env(safe-area-inset-bottom))}
+@media(min-width:800px){.ppw-navigation{left:auto;right:max(20px,env(safe-area-inset-right));
+ transform:none;width:min(440px,calc(100vw - 40px));border-radius:18px}}
+@media(max-width:365px){
+ .ppw-shell-brand strong{max-width:18ch}.ppw-shell-brand small{max-width:16ch}
+ .ppw-shell-signout{padding:7px 6px;min-height:44px}
+ .ppw-shell-menu{min-width:70px;padding:7px 8px}
+ .ppw-nav-rootbar .ppw-tab-label{font-size:9px}
+}

@@ -56,52 +56,50 @@ function openSection(section:HostSection){
  else renderNavigation(section);
 }
 
+/** No always-visible tab bar. All departments live inside this one menu. */
 function renderNavigation(section:HostSection){
  navigation.replaceChildren();
- navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
- navigation.hidden=false;
  document.querySelector("#ppw-drawer-backdrop")?.remove();
- if(drawerExpanded){
-  const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
-  backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
-  backdrop.setAttribute("aria-label","Close navigation drawer");
-  backdrop.onclick=()=>{drawerExpanded=false;renderNavigation(section);};
-  document.body.append(backdrop);
-  const selected=HOST_DRAWER_ROOTS.find(x=>x.key===selectedDrawerRoot)!;
-  const drawer=el("section","ppw-nav-drawer");
-  drawer.setAttribute("aria-label",selected.label+" menu");
-  const head=el("div","ppw-nav-drawer-heading");
-  head.append(el("span","","PPW / "+selected.label.toUpperCase()),
-   el("strong","",selected.label));
-  const close=button("×",()=>{drawerExpanded=false;renderNavigation(section)});
-  close.className="ppw-nav-drawer-close";
-  close.setAttribute("aria-label","Close navigation drawer");
-  head.append(close);drawer.append(head);
-  const entries=el("div","ppw-nav-drawer-entries");
-  for(const [id,label,description] of selected.destinations){
-   const entry=button("",()=>openSection(id as HostSection));
-   entry.className="ppw-nav-drawer-entry";
-   entry.append(el("strong","",label),el("small","",description));
-   if(id===section)entry.setAttribute("aria-current","page");
-   entries.append(entry);
-  }
-  drawer.append(entries);navigation.append(drawer);
- }
+ navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
+ navigation.hidden=!drawerExpanded;
+ const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
+ if(menu)menu.setAttribute("aria-expanded",String(drawerExpanded));
+ if(!drawerExpanded)return;
+ const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
+ backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
+ backdrop.setAttribute("aria-label","Close promotion menu");
+ backdrop.onclick=()=>{drawerExpanded=false;renderNavigation(section);menu?.focus();};
+ document.body.append(backdrop);
+ const selected=HOST_DRAWER_ROOTS.find(x=>x.key===selectedDrawerRoot)!;
+ const drawer=el("section","ppw-nav-drawer");
+ drawer.setAttribute("aria-label",selected.label+" menu");
+ const head=el("div","ppw-nav-drawer-heading");
+ head.append(el("span","","THE PROMOTION OFFICE"),el("strong","","Where to?"));
+ const close=button("×",()=>{drawerExpanded=false;renderNavigation(section);menu?.focus();});
+ close.className="ppw-nav-drawer-close";
+ close.setAttribute("aria-label","Close promotion menu");
+ head.append(close);drawer.append(head);
+ const roots=el("div","ppw-nav-rootbar");
+ roots.setAttribute("aria-label","Departments");
  for(const root of HOST_DRAWER_ROOTS){
-  const tab=button("",()=>{
-   if(drawerExpanded&&selectedDrawerRoot===root.key)drawerExpanded=false;
-   else {drawerExpanded=true;selectedDrawerRoot=root.key;}
-   renderNavigation(section);
-  });
-  const active=drawerExpanded?selectedDrawerRoot===root.key:
-   drawerRootForSection(section)===root.key;
+  const tab=button("",()=>{selectedDrawerRoot=root.key;renderNavigation(section);});
+  const active=selectedDrawerRoot===root.key;
   tab.className="ppw-tab"+(active?" ppw-tab-active":"");
   tab.setAttribute("aria-label",root.label);
-  tab.setAttribute("aria-expanded",String(drawerExpanded&&selectedDrawerRoot===root.key));
-  if(drawerRootForSection(section)===root.key)tab.setAttribute("aria-current","page");
+  tab.setAttribute("aria-pressed",String(active));
   tab.append(el("span","ppw-tab-icon",root.glyph),el("span","ppw-tab-label",root.label));
-  navigation.append(tab);
+  roots.append(tab);
  }
+ drawer.append(roots);
+ const entries=el("div","ppw-nav-drawer-entries");
+ for(const [id,label,description] of selected.destinations){
+  const entry=button("",()=>openSection(id as HostSection));
+  entry.className="ppw-nav-drawer-entry";
+  entry.append(el("strong","",label),el("small","",description));
+  if(id===section)entry.setAttribute("aria-current","page");
+  entries.append(entry);
+ }
+ drawer.append(entries);navigation.append(drawer);
 }
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&drawerExpanded){
@@ -184,12 +182,12 @@ async function loadSession(){
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
  delete document.documentElement.dataset.ppwScreen;
- game.replaceChildren(el("p","ppw-access-loading","Opening the PPW World…"));
+ game.replaceChildren(el("p","ppw-access-loading","Opening your promotion…"));
  try{
   const r=await fetch("/api/session",{credentials:"same-origin",
    cache:"no-store"});
   if(r.status===401){session=null;showLogin();return;}
-  if(!r.ok)throw new Error("World unavailable. Check the game host connection.");
+  if(!r.ok)throw new Error("Your promotion is unavailable. Check your connection.");
   session=await r.json() as SessionView;
   if(!session||!session.csrfToken||!session.worldId||!session.overview)
    throw new Error("Incomplete game session");
@@ -201,9 +199,20 @@ async function loadSession(){
    el("small","","Y"+session.overview.world.year+" W"+
     session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
+  const actions=el("div","ppw-shell-actions");
+  const menu=button("☰ Menu",()=>{
+   const section=readHostSection(location.hash);
+   if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(section);
+   drawerExpanded=!drawerExpanded;renderNavigation(section);
+  });
+  menu.className="ppw-shell-menu";
+  menu.setAttribute("aria-label","Open promotion menu");
+  menu.setAttribute("aria-controls","navigation");
+  menu.setAttribute("aria-expanded","false");
   const signout=button("Sign out",()=>void signOut());
   signout.className="ppw-shell-signout";
-  banner.append(identity,signout);
+  actions.append(menu,signout);
+  banner.append(identity,actions);
   account.append(banner);
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
