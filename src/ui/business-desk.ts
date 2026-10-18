@@ -39,7 +39,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   head.append(el("span","ppw-business-kicker","THE FRONT OFFICE"),
    el("h1","","Business"),
    el("p","ppw-business-muted",
-    view?view.name+" · Year "+view.year+" / Week "+view.week:
+    view?view.name+" · "+(view.homeMarketName?
+      "Based in "+view.homeMarketName+" · ":"")+
+      "Year "+view.year+" / Week "+view.week:
      "Your latest accounts, show takings and strength in each territory."));
   if(port.back)head.prepend(button("← Back",()=>port.back?.()));
   root.append(head);
@@ -56,7 +58,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   root.append(nav);
   if(pane==="FINANCES"){
    const cards=el("section","ppw-business-grid");
-   cards.append(metric("CASH",money(view.cash)),metric("DEBT",money(view.debt)),
+   cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated",
+     "The market where your promotion is based"),
+    metric("BROADCAST REACH",view.mediaReach==null?"Not recorded":
+     Math.round(view.mediaReach).toLocaleString("en-GB"),
+     "Current distribution strength"),
+    metric("CASH",money(view.cash)),metric("DEBT",money(view.debt)),
     metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":money(view.lastWeeklyNet),
      "Actual result, including settled shows and contracts"),
     metric("RUNWAY",view.runwayWeeks===null?
