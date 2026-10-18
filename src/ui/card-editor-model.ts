@@ -7,6 +7,7 @@ import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
  assessMatchStyleReadiness,
  type MatchStyleDimension,type MatchStyleProfile} from "../simulation/legacy/match-style.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
+import {readBookedInterference,type BookedInterference} from "../simulation/legacy/match-interference.js";
 export type Format="SINGLES"|"TRIPLE_THREAT"|"FOUR_WAY"|"TAG"|"TRIOS"|
  "FOUR_V_FOUR"|"FIVE_V_FIVE"|"MULTI_TEAM"|"BATTLE_ROYAL";
 export type PersonPick={personId:string;contractId:string};
@@ -17,7 +18,7 @@ export interface EditorMatch{
  intent:string;plannedFinish:string;plannedLengthMinutes:number;
  elimination:boolean;eliminationOrder:number[];
  /** Existing optional booking metadata must survive an edit. */
- championshipId?:string;interference?:unknown;style?:unknown;
+ championshipId?:string;interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
 }
 export const FORMATS:readonly {value:Format;label:string}[]=[
@@ -78,7 +79,7 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
   eliminationOrder:layout.eliminationOrder.map(x=>
    layout.sides.findIndex(s=>s.sideId===x)),
   ...(typeof raw.championshipId==="string"?{championshipId:raw.championshipId}:{}),
-  ...(raw.interference===undefined?{}:{interference:raw.interference}),
+  ...(raw.interference===undefined?{}:{interference:readBookedInterference(raw)??undefined}),
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?
    {cheatingWrestlerId:raw.cheatingWrestlerId}:{})};
@@ -155,14 +156,20 @@ export function assignPerformer(match:EditorMatch,side:number,index:number,
   throw new Error("Wrestler already used or missing contract");
  const teams=match.teams.map(s=>s.map(p=>p?{...p}:null));
  teams[side]![index]=performer?{...performer}:null;
- return {...match,teams};
+ const interference=match.interference&&performer?.personId===match.interference.personId?
+  undefined:match.interference;
+ return {...match,teams,interference,cheatingWrestlerId:undefined};
 }
 export function changeWinner(match:EditorMatch,side:number):EditorMatch{
  if(side<0||side>=match.teams.length)throw new Error("Invalid winning side");
  if(side===match.winnerSide)return match;
  const eliminationOrder=[...match.eliminationOrder,match.winnerSide]
   .filter((x,i,a)=>x!==side&&a.indexOf(x)===i);
- return {...match,winnerSide:side,eliminationOrder};
+ return {...match,winnerSide:side,eliminationOrder,
+  cheatingWrestlerId:undefined,
+  ...(match.interference?.plannedOutcome==="SUCCESS"?{
+   interference:{...match.interference,aidedSide:side===0?"A":"B"}
+  }:{})};
 }
 export function resizeMatch(match:EditorMatch,count:number,size?:number):EditorMatch{
  if(match.format!=="BATTLE_ROYAL"&&match.format!=="MULTI_TEAM")

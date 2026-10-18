@@ -8,6 +8,7 @@ import {withSqlClient} from "./postgres.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
+import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
@@ -280,6 +281,14 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
  const booked=matches.flatMap(m=>m.payload.participants);
  if(new Set(booked.map(p=>p.personId)).size!==booked.length)
   throw new Error("Wrestler may appear in only one match on a card");
+ // Run-ins consume signed appearances, validated through the existing
+ // bounded bulk contract lookup rather than an extra Neon query.
+ const runIns=matches.flatMap(m=>{
+  const spot=readBookedInterference(m.payload);
+  if(!spot)return [];
+  if(!spot.contractId)throw new Error("Choose the run-in wrestler's signed agreement before saving");
+  return [{personId:spot.personId,contractId:spot.contractId}];
+ });
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
   expectedRevision:input.expectedRevision,requiresOpenWeek:true,
@@ -324,7 +333,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Faction angle must refer to an active owned stable");
    }
    const appearances=uniqueShowAppearances([
-    ...booked,...segments.flatMap(s=>readCardParticipants(s.payload))]);
+    ...booked,...runIns,...segments.flatMap(s=>readCardParticipants(s.payload))]);
    if(appearances.length>100)throw new Error("Show exceeds 100 unique wrestlers");
    const ids=appearances.map(p=>p.personId),contracts=appearances.map(p=>p.contractId);
    const week=(show.year-1)*52+show.week-1;

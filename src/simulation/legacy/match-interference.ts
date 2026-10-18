@@ -8,6 +8,7 @@ import type {MatchFinish} from "./match-finishes.js";
 
 export interface BookedInterference {
   personId:string;
+  contractId?:string;
   aidedSide:"A"|"B";
   plannedOutcome:"SUCCESS"|"THWARTED";
 }
@@ -43,11 +44,14 @@ export function readBookedInterference(payload:unknown):BookedInterference|null 
     throw new Error("Invalid booked interference");
   const x=raw as Record<string,unknown>;
   if(typeof x.personId!=="string"||!x.personId||x.personId.length>200||
+     (x.contractId!==undefined&&
+      (typeof x.contractId!=="string"||!x.contractId||x.contractId.length>200))||
      (x.aidedSide!=="A"&&x.aidedSide!=="B")||
      (x.plannedOutcome!=="SUCCESS"&&x.plannedOutcome!=="THWARTED"))
     throw new Error("Invalid booked interference");
-  return {personId:x.personId,aidedSide:x.aidedSide,
-    plannedOutcome:x.plannedOutcome};
+  return {personId:x.personId,
+    ...(typeof x.contractId==="string"?{contractId:x.contractId}:{}),
+    aidedSide:x.aidedSide,plannedOutcome:x.plannedOutcome};
 }
 
 /** Pure original interference logic after medical injury resolution.

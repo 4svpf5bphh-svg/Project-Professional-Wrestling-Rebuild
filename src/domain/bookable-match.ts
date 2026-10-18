@@ -60,6 +60,9 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
    (format==="TAG"&&layout.sides[0]!.participants.length!==2)))
   throw new Error("Unsupported championship format");
  const interference=raw.interference===undefined?null:readBookedInterference(raw);
+ if(interference&&(layout.participants.some(p=>p.personId===interference.personId)||
+  interference.plannedOutcome==="SUCCESS"&&interference.aidedSide!==layout.scriptedWinnerSide))
+  throw new Error("Run-in must come from outside the match and successful help must support the winner");
  const winner=layout.sides.find(s=>s.sideId===layout.scriptedWinnerSide)!;
  const result:BookableMatch={
   family:layout.family,matchType:format==="BATTLE_ROYAL"?
@@ -77,9 +80,14 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
  };
  if(raw.style!==undefined)result.style=normalizeMatchStyle(raw.style as never);
  if(raw.cheatingWrestlerId!==undefined){
-  if(format!=="SINGLES"||typeof raw.cheatingWrestlerId!=="string"||
-   !layout.participants.some(x=>x.personId===raw.cheatingWrestlerId))
-   throw new Error("Cheater must be a booked singles wrestler");
+  const cheatingSide=finish==="FOREIGN_OBJECT"?layout.scriptedWinnerSide:
+   finish==="DISQUALIFICATION"?
+    layout.sides.find(s=>s.sideId!==layout.scriptedWinnerSide)!.sideId:null;
+  if(format!=="SINGLES"||!cheatingSide||
+   typeof raw.cheatingWrestlerId!=="string"||
+   !layout.sides.find(s=>s.sideId===cheatingSide)!.participants.some(
+    p=>p.personId===raw.cheatingWrestlerId))
+   throw new Error("Choose the wrestler responsible for this finish");
   result.cheatingWrestlerId=raw.cheatingWrestlerId;
  }
  return result;
