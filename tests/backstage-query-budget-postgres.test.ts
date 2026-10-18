@@ -10,7 +10,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
-test("Backstage iPhone inbox: constant eight bounded SQL reads across a 600-wrestler World",
+test("Backstage iPhone inbox avoids persona hydration: four bounded SQL reads for 600 wrestlers",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
  const suffix=randomUUID(),worldId="backstage-budget-"+suffix,
   promotionId="mine-"+suffix,otherId="other-"+suffix,
@@ -47,15 +47,26 @@ test("Backstage iPhone inbox: constant eight bounded SQL reads across a 600-wres
    },
   };
   const inbox=await readPortablePersonaWorkspace(measured,{
-   worldId,promotionId,playerId});
+   worldId,promotionId,playerId,inboxOnly:true});
+  assert.equal(inbox.personId,null);
+  assert.equal(inbox.persona,null);
   assert.equal(inbox.roster.length,100);
   assert.equal(inbox.conversations.length,0);
   assert.equal(inbox.roster.filter(x=>x.latestIncoming!==null).length,0);
   assert.ok(inbox.roster.every(x=>x.personId.startsWith("worker-")));
-  const sample=meter.assertBudget({maxQueries:8,maxResultBytes:100_000});
-  assert.equal(sample.queryCount,8);
+  const sample=meter.assertBudget({maxQueries:4,maxResultBytes:80_000});
+  assert.equal(sample.queryCount,4);
   assert.ok(sample.resultRows<=110,"No rival roster or historical World data is hydrated");
-  console.log("PPW Backstage PostgreSQL read budget:",JSON.stringify(sample));
+  console.log("PPW Backstage inbox PostgreSQL budget:",JSON.stringify(sample));
+  await assert.rejects(readPortablePersonaWorkspace(measured,{
+   worldId,promotionId,playerId,personId:"worker-1",inboxOnly:true}),
+   /Inbox request cannot select/);
+  const beforeFull=meter.assertBudget({maxQueries:4,maxResultBytes:80_000}).queryCount;
+  const thread=await readPortablePersonaWorkspace(measured,{
+   worldId,promotionId,playerId,personId:"worker-1"});
+  assert.equal(thread.personId,"worker-1");
+  assert.ok(thread.persona);
+  assert.equal(meter.assertBudget({maxQueries:12,maxResultBytes:100_000}).queryCount-beforeFull,8);
   await assert.rejects(readPortablePersonaWorkspace(measured,{
    worldId,promotionId:otherId,playerId}),/access denied/);
  }finally{

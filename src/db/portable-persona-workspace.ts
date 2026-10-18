@@ -8,6 +8,7 @@ import {originalPersonaBaseline,validatePortablePersona,wrestlerIdentityReferenc
  from "../domain/portable-persona.js";
 export interface PersonaScope{
  worldId:string;promotionId:string;playerId:string;personId?:string;
+ inboxOnly?:boolean;
 }
 export async function readPortablePersonaWorkspace(pool:TransactionPool,s:PersonaScope){
  return withSqlClient(pool,async tx=>{
@@ -66,7 +67,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "LIMIT 551"
   ].join(" "),[s.worldId,s.promotionId,roster.map(x=>x.person_id)]):[];
   const latestByPerson=new Map(inbox.map(x=>[x.person_id,x]));
-  const selected=s.personId??roster[0]?.person_id;
+  // Inbox-only renders the contact list without silently opening the first
+  // wrestler. Detail reads happen only when that conversation is selected.
+  if(s.inboxOnly&&s.personId!==undefined)
+   throw new Error("Inbox request cannot select a wrestler");
+  const selected=s.inboxOnly?undefined:s.personId??roster[0]?.person_id;
   if(selected!==undefined&&!roster.some(x=>x.person_id===selected))
    throw new Error("Only a current or historical promotion contact may be inspected");
   // One bounded read of the newest private message per roster member.

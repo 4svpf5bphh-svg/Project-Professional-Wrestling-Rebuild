@@ -380,7 +380,7 @@ export function mountWorkingConnectionsPage(root:HTMLElement,scope:Scope){
 function personaPort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope):PersonaDeskPort{
  return {
-  load:personId=>call("backstage",personId?{personId}:{}),
+  load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
   markRead:personId=>call("markBackstageRead",{personId}),
   archiveThread:(personId,archived)=>call("backstageArchive",{personId,archived}),
   decide:({conversationId,decision,requestId,expectedRevision})=>

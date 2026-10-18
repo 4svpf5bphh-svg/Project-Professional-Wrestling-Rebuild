@@ -62,8 +62,10 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="persona"||method==="backstage"){
   if(p.personId!==undefined&&typeof p.personId!=="string")
    throw new Error("Invalid wrestler");
+  if(p.inboxOnly!==undefined&&typeof p.inboxOnly!=="boolean")
+   throw new Error("Invalid inbox request");
   return portablePersonaAsActor(context,worldId,promotionId,
-   p.personId as string|undefined);
+   p.personId as string|undefined,p.inboxOnly===true);
  }
  if(method==="markBackstageRead")return markBackstageReadAsActor(context,
   worldId,promotionId,id("personId"));
