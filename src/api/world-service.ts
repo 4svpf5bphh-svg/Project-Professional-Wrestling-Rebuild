@@ -47,6 +47,7 @@ import type {OfferTerms} from "../domain/contract-economics.js";
 import {chooseShowMarketAndTickets,readShowMarketOptions}
  from "../db/show-booking-commerce.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
+import {requestMatchCreativeConsent} from "../db/match-creative-consent.js";
 import {readShowCardEditor,readBookableCardTalent,saveShowCardMatches,
  type EditedMatchSlot,type EditedSegmentSlot} from "../db/show-card-editor.js";
 
@@ -362,6 +363,16 @@ export async function saveCardEditorAsActor(context:WorldApiContext,
  return saveShowCardMatches(context.pool,{...input,playerId:context.actor.playerId});
 }
 
+/** Wrestler's actual contractual decision for the already saved script.
+ * The controller and current World revision are rechecked on the server.
+ */
+export async function requestMatchConsentAsActor(context:WorldApiContext,
+ input:WorldMutationInput & {promotionId:string;showId:string;slotId:string;personId:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.showId,"show");
+ validate(input.slotId,"match");validate(input.personId,"wrestler");
+ return requestMatchCreativeConsent(context.pool,{...input,playerId:context.actor.playerId});
+}
 /** Authenticated, read-only final show broadcast. */
 /** Title lineage is shared history, but access requires a verified manager. */
 export async function championshipsAsActor(context:WorldApiContext,
