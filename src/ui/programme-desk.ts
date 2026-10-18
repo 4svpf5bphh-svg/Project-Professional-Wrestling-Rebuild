@@ -250,13 +250,13 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
     panel.append(direction);
    }
-   if(p.eligibleCreativePeople.length||p.creativeAgreements.length){
+   if((p.eligibleCreativePeople?.length??0)||(p.creativeAgreements?.length??0)){
     const terms=element("section","ppw-programme-standing");
     terms.append(element("h3","","Match agreements"),
      element("p","ppw-muted",
       "Agree a short run of bouts without seeking fresh permission every week. The wrestlers keep their agreed protections."));
-    for(const person of p.eligibleCreativePeople){
-     const prior=p.creativeAgreements.find(x=>x.personId===person.personId);
+    for(const person of p.eligibleCreativePeople??[]){
+     const prior=p.creativeAgreements?.find(x=>x.personId===person.personId);
      const item=element("div","ppw-programme-standing-row");
      item.append(element("strong","",person.name));
      if(prior){
@@ -316,8 +316,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      }
      terms.append(item);
     }
-    for(const prior of p.creativeAgreements.filter(x=>
-     !p.eligibleCreativePeople.some(y=>y.personId===x.personId))){
+    for(const prior of (p.creativeAgreements??[]).filter(x=>
+     !(p.eligibleCreativePeople??[]).some(y=>y.personId===x.personId))){
      const item=element("p","ppw-programme-standing-note",
       (prior.approved?"Previously agreed":"Previously declined")+
       " · Agreement recorded for a former participant");
