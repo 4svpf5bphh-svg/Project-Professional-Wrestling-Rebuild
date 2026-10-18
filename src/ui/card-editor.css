@@ -273,3 +273,24 @@
  border:1px solid #5d91a6;border-radius:10px;background:#15384d;
  color:#edf8fc;padding:10px 12px;text-align:left;font:inherit}
 .ppw-creative-detail-toggle:focus-visible{outline:2px solid #a2ecfb;outline-offset:2px}
+
+/* Contracted wrestler rights: an editorial promise, never a changed finish. */
+.ppw-card-creative{margin:12px 0;padding:15px;border:1px solid #7896bc;
+ border-radius:15px;background:linear-gradient(130deg,#19364c,#182238);
+ color:#eef7ff}
+.ppw-card-creative h3{font-size:18px;margin:6px 0 12px;line-height:1.2}
+.ppw-card-creative-advice{font-size:12px;color:#eed9bb}
+.ppw-card-creative-item{display:grid;grid-template-columns:1fr auto;
+ gap:6px 10px;padding:12px 0;border-top:1px solid #49627b}
+.ppw-card-creative-item strong{min-width:0;overflow-wrap:anywhere}
+.ppw-card-creative-item p,.ppw-card-creative-item small{grid-column:1/-1;
+ margin:0;font-size:12px;line-height:1.5;color:#c7e0e8}
+.ppw-card-creative-state{font-size:10px;letter-spacing:.08em;
+ font-weight:800;padding:3px 7px;border-radius:5px;border:1px solid #759bbb;
+ color:#e3f4ff;white-space:nowrap}
+.ppw-card-creative-state[data-status="APPROVED"]{color:#b9ffe3;border-color:#559b82}
+.ppw-card-creative-state[data-status="DECLINED"]{color:#ffcfbc;border-color:#ba755d}
+.ppw-card-creative-ask{grid-column:1/-1;min-height:44px;
+ background:#274e63;color:#f3fbff;border:1px solid #7bcce6;
+ border-radius:9px;text-align:left;font:inherit;padding:11px}
+.ppw-card-creative-ask:focus-visible{outline:3px solid #9aeaff;outline-offset:2px}
