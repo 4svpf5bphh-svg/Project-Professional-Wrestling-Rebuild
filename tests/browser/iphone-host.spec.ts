@@ -229,3 +229,60 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  await expect(page.getByText("No matching conversations.")).toBeVisible();
  expect(methods.length,"Inbox search is client-only").toBe(before);
 });
+
+test("Programme casting opens the universal wrestler dossier without erasing its creative selections",async({page})=>{
+ const calls:string[]=[];
+ const story={
+  year:1,week:5,worldRevision:4,canEdit:true,
+  people:[{kind:"PERSON",refId:"alice",name:"Alice"},{kind:"PERSON",refId:"bob",name:"Bob"}],
+  teams:[],championships:[],
+  programmes:[{
+   programmeId:"feud-1",status:"ACTIVE",heat:61,repetition:3,
+   activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,draws:0,
+   championshipId:null,startedWeekIndex:2,endedWeekIndex:null,recentActivity:[],
+   sideA:[{kind:"PERSON",refId:"alice",name:"Alice"}],
+   sideB:[{kind:"PERSON",refId:"bob",name:"Bob"}]
+  }]
+ };
+ const dossier={
+  personId:"alice",name:"Alice",division:"WOMEN",status:"ACTIVE",
+  careerStage:"REGULAR",popularity:62,recognition:63,momentum:64,morale:70,
+  inRingQuality:76,matchCraft:70,presentation:79,stamina:68,safety:85,
+  fatigue:0,wear:0,alignment:"FACE",canEdit:false,onYourRoster:true,
+  sharedHuman:false,currentWeekIndex:4,worldRevision:4,
+  persona:{personaName:"Alice",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[],teams:[],stables:[],connections:[],history:[]
+ };
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  calls.push(method);
+  await route.fulfill({json:method==="programmes"?story:
+   method==="wrestlerProfile"?dossier:
+   method==="wrestlerCareer"?{personId:"alice",
+    summary:{matches:0,wins:0,losses:0,singles:0,tag:0,ratedMatches:0,
+     averageStars:null,bestStars:null,injuries:0},
+    recent:[],singlesTitles:[]}:{}});
+ });
+ await page.goto("/#/programmes");
+ await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(0);
+ const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
+ await selectors.nth(0).selectOption("PERSON:alice");
+ await selectors.nth(1).selectOption("PERSON:bob");
+ await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();
+ const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByText("SCOUTING / WRESTLER DOSSIER")).toBeVisible();
+ await expect(dialog.getByText("Alice",{exact:true}).first()).toBeVisible();
+ expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
+ expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
+ expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(0);
+ await dialog.getByRole("button",{name:"‹ Back"}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(selectors.nth(0)).toHaveValue("PERSON:alice");
+ await expect(selectors.nth(1)).toHaveValue("PERSON:bob");
+ expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
+});
