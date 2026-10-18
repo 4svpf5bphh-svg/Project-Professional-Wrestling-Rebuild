@@ -35,3 +35,7 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-market-note{padding:7px 0 0;font-size:12px;line-height:1.5}
 @media(max-width:375px){.ppw-planner-market-stat{padding:6px 5px}
  .ppw-planner-market-stat>span:first-child{font-size:9px}}
+
+.ppw-planner-competition{margin-top:12px;padding:12px 13px;border:1px solid rgba(255,181,103,.3);border-radius:12px;background:linear-gradient(105deg,rgba(92,45,35,.3),rgba(17,36,51,.5))}
+.ppw-planner-competition>strong{display:block;margin:5px 0 3px;font-size:14px;color:#ffddb2}
+.ppw-planner-competition .ppw-planner-market-note{margin:3px 0;color:#dfd6d3}

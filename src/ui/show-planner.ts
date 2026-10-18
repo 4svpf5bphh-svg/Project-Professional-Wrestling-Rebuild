@@ -111,7 +111,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
     for(const [label,value] of [
      ["Local awareness",currentVenue.awareness],
      ["Live-show strength",currentVenue.liveStrength],
-     ["Loyalty",currentVenue.loyalty]
+     ["Loyalty",currentVenue.loyalty],
+     ["Audience potential",currentVenue.audiencePotential],
+     ["Wrestling interest",currentVenue.wrestlingInterest],
+     ["Spending power",currentVenue.spendingIndex]
     ] as const){
      const stat=node("div","","ppw-planner-market-stat");
      stat.append(node("span",label),node("strong",Math.round(value).toString()));
@@ -120,7 +123,18 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void)
      bar.style.width=Math.min(100,Math.max(0,value))+"%";
      rail.append(bar);stat.append(rail);figures.append(stat);
     }
-    context.append(figures,node("p",
+    context.append(figures);
+    const rival=currentVenue.strongestRival;
+    const competition=node("div","","ppw-planner-competition");
+    if(rival){
+     competition.append(node("span","LOCAL COMPETITION","ppw-planner-context-kicker"),
+      node("strong",rival.name+" · "+rival.tier.replaceAll("_"," ").toLowerCase()),
+      node("p","Their local strength: "+Math.round(rival.liveStrength)+"/100 · Yours: "+
+       Math.round(currentVenue.liveStrength)+"/100. Consider your following before choosing this market.",
+       "ppw-planner-market-note"));
+    }else competition.append(node("p","No other active promotion has an established local following here.",
+     "ppw-planner-market-note"));
+    context.append(competition,node("p",
      "Venue capacity: "+currentVenue.capacity.toLocaleString("en-GB")+
      " · Hire cost: "+formatMoney(currentVenue.weeklyHireCost)+
      ". Choose a venue that suits your event and finances.",
