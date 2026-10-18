@@ -3,6 +3,9 @@
  */
 import {normalizeBookableMatch,type BookableMatch} from "../domain/bookable-match.js";
 import {readCanonicalMatchLayout,sideIdAt} from "../domain/match-sides.js";
+import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
+ type MatchStyleDimension,type MatchStyleProfile} from "../simulation/legacy/match-style.js";
+import type {MatchIntent} from "../simulation/legacy/types.js";
 export type Format="SINGLES"|"TRIPLE_THREAT"|"FOUR_WAY"|"TAG"|"TRIOS"|
  "FOUR_V_FOUR"|"FIVE_V_FIVE"|"MULTI_TEAM"|"BATTLE_ROYAL";
 export type PersonPick={personId:string;contractId:string};
@@ -78,6 +81,27 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?
    {cheatingWrestlerId:raw.cheatingWrestlerId}:{})};
+}
+/** These are the existing match-scoring styles, not estimated new ratings. */
+const matchIntents=new Set(["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
+ "HIGH_RISK","STORY","PROTECTIVE","EPIC"]);
+export function editorMatchStyle(match:EditorMatch):MatchStyleProfile{
+ const intent=matchIntents.has(match.intent)?match.intent as MatchIntent:"COMPETITIVE";
+ return match.style===undefined?defaultMatchStyleForIntent(intent):
+  normalizeMatchStyle(match.style as MatchStyleProfile);
+}
+export function changeMatchIntent(match:EditorMatch,intent:string):EditorMatch{
+ if(!matchIntents.has(intent))throw new Error("Unknown match presentation");
+ return {...match,intent,style:match.format==="SINGLES"?
+  defaultMatchStyleForIntent(intent as MatchIntent):undefined};
+}
+export function changeMatchStyle(match:EditorMatch,key:MatchStyleDimension,value:number):EditorMatch{
+ if(match.format!=="SINGLES")throw new Error("Detailed styles are limited to singles matches");
+ if(!Number.isInteger(value)||value<0||value>100)throw new Error("Match style must be 0–100");
+ return {...match,style:normalizeMatchStyle({...editorMatchStyle(match),[key]:value})};
+}
+export function editorStyleLoad(match:EditorMatch){
+ return evaluateMatchStyleLoad(editorMatchStyle(match),match.plannedLengthMinutes);
 }
 export function assignedIds(match:EditorMatch):string[]{
  return match.teams.flatMap(s=>s.flatMap(p=>p?[p.personId]:[]));

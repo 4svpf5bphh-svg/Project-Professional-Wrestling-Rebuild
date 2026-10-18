@@ -4,6 +4,7 @@
  */
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,assignedIds,
+ editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
 import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
@@ -13,6 +14,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -404,7 +406,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Intent",selector(m.intent,
      ["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL","HIGH_RISK",
       "STORY","PROTECTIVE","EPIC"].map(x=>[x,nice(x)]),
-      v=>edit(m,{intent:v}),!mutable())));
+      v=>setMatch(slotId,changeMatchIntent(m,v)),!mutable())));
     controls.append(field("Finish",selector(m.plannedFinish,
      (m.format==="BATTLE_ROYAL"?["OVER_THE_TOP_ROPE"]:
       m.format==="TRIPLE_THREAT"||m.format==="FOUR_WAY"?
@@ -428,6 +430,37 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     body.append(controls);
+    if(m.format==="SINGLES"){
+     const sheet=document.createElement("details");
+     sheet.className="ppw-match-style";
+     sheet.append(el("summary","","Match presentation · pace, story & risk"));
+     const style=editorMatchStyle(m),load=editorStyleLoad(m);
+     sheet.append(el("p","ppw-match-style-intro",
+      "Direct the feel of the bout. A demanding performance can stretch your wrestlers, and bold ideas don't always pay off."));
+     const dims=el("div","ppw-match-style-grid");
+     const names:Record<MatchStyleDimension,string>={
+      competitiveness:"Competition",technical:"Technical wrestling",
+      story:"Storytelling",intensity:"Intensity",risk:"Risk",epic:"Big-match spectacle"};
+     for(const key of MATCH_STYLE_DIMENSIONS){
+      const label=el("label","ppw-match-style-control");
+      const top=el("span","ppw-match-style-control-top");
+      top.append(el("strong","",names[key]),el("output","",String(style[key])));
+      const range=document.createElement("input");
+      range.type="range";range.min="0";range.max="100";range.step="1";
+      range.value=String(style[key]);range.disabled=!mutable();
+      range.setAttribute("aria-label",names[key]);
+      range.onchange=()=>setMatch(slotId,changeMatchStyle(m,key,Number(range.value)));
+      label.append(top,range);dims.append(label);
+     }
+     sheet.append(dims);
+     const workload=el("p","ppw-match-style-load");
+     workload.dataset.load=load.band;
+     workload.append(el("strong","","Expected workload · "+nice(load.band)),
+      el("span","","Physical "+Math.round(load.physical)+" · Creative "+Math.round(load.creative)));
+     sheet.append(workload,el("p","ppw-match-style-fineprint",
+      "Workload describes the match demands, not a predicted rating or a guarantee of cooperation."));
+     body.append(sheet);
+    }
     if(m.format==="BATTLE_ROYAL"||m.format==="MULTI_TEAM"){
      const sizing=el("div","ppw-sizing");
      sizing.append(field(m.format==="BATTLE_ROYAL"?"Entrants":"Teams",
@@ -490,11 +523,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   root.append(list);
   const foot=el("div","ppw-save");
-  foot.append(el("p","ppw-muted","Booking saves your choices only. It never advances World time."),
+  foot.append(el("p","ppw-muted","Save the card, then confirm your show before the booking deadline."),
    button(saving?"Saving…":"Save card",()=>{void save();},
     !mutable()||matches.size===0,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
-   view.ready?"Show confirmed":"Confirm ready for World Lock",
+   view.ready?"Show confirmed":"Confirm this week’s card",
    ()=>{void confirm();},
    !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
   root.append(foot);

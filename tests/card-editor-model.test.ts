@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
- resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS}
+ resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS,
+ editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad}
  from "../src/ui/card-editor-model.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../src/domain/match-sides.js";
@@ -64,4 +65,20 @@ test("original card arrow order and explicit elimination order never shuffle une
  assert.equal(m.eliminationOrder[0],original[1]);
  assert.deepEqual(moveRunningOrder(["a","b","c"],"b",-1),["b","a","c"]);
  assert.deepEqual(moveRunningOrder(["a","b","c"],"a",-1),["a","b","c"]);
+});
+
+test("singles match style uses original scoring dimensions and survives booking round-trip",()=>{
+ let m=newEditorMatch("m","SINGLES");
+ m=assignPerformer(m,0,0,{personId:"a",contractId:"a"});
+ m=assignPerformer(m,1,0,{personId:"b",contractId:"b"});
+ assert.equal(editorMatchStyle(m).competitiveness,85);
+ m=changeMatchIntent(m,"TECHNICAL");assert.equal(editorMatchStyle(m).technical,92);
+ m=changeMatchStyle(m,"risk",75);assert.equal(editorMatchStyle(m).risk,75);
+ assert.ok(editorStyleLoad(m).total>0);
+ const booking=buildBookedMatch(m);
+ assert.equal((booking.style as {risk:number}).risk,75);
+ assert.deepEqual(editorMatchStyle(restoreEditorMatch("m",booking)),editorMatchStyle(m));
+ assert.throws(()=>changeMatchStyle(m,"risk",101),/0–100/);
+ assert.throws(()=>changeMatchIntent(m,"IMAGINARY"),/Unknown/);
+ assert.throws(()=>changeMatchStyle(newEditorMatch("tag","TAG"),"risk",10),/singles/);
 });
