@@ -206,6 +206,8 @@ async function loadSession(){
    drawerExpanded=!drawerExpanded;renderNavigation(section);
   });
   menu.className="ppw-shell-menu";
+   // The sole permanent navigation control must meet the 44px iPhone hit target.
+   menu.style.minHeight="44px";
   menu.setAttribute("aria-label","Open promotion menu");
   menu.setAttribute("aria-controls","navigation");
   menu.setAttribute("aria-expanded","false");
