@@ -34,6 +34,8 @@ export interface CardEditorPort{
   matches:{slotId:string;payload:unknown}[];
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
+ requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
+  slotId:string;personId:string}):Promise<unknown>;
  openPlanner?():void;
  openProgrammes?():void;
  openChampionships?():void;
@@ -249,6 +251,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const previous=result.status;
    await load();
    success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
+  }catch(e){error=errorText(e);}
+  finally{saving=false;render();}
+ }
+ async function requestAgreement(slotId:string,personId:string){
+  if(!mutable()||!view||dirty||view.ready||!port.requestCreativeConsent)return;
+  saving=true;error="";success="";render();
+  try{
+   const response=await port.requestCreativeConsent({
+    slotId,personId,requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision
+   }) as {status?:string;result?:{decision?:string}};
+   await load();
+   if(response.status==="STALE")
+    error="The card has changed. Review the latest terms before asking again.";
+   else success=response.result?.decision==="DECLINED"?
+    "The wrestler declined these terms. You can change the proposed match.":
+    "The wrestler has agreed to the match as written.";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
