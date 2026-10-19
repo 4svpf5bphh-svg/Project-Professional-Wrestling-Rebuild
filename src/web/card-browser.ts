@@ -89,7 +89,8 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  return mountWorldHome(root,port);
 }
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
-export function mountBookingPage(root:HTMLElement,scope:Scope){
+export function mountBookingPage(root:HTMLElement,scope:Scope,
+ onReturnToPlanner?:()=>void){
  const call=createCardClient(scope);
  function openProgrammeDesk(){
   const openResults=(showId:string)=>{
@@ -110,6 +111,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope){
   requestCreativeConsent:({requestId,expectedRevision,slotId,personId})=>
    call("creativeConsent",{requestId,expectedRevision,slotId,personId}),
   openPlanner:()=>{
+   if(onReturnToPlanner){onReturnToPlanner();return;}
    // A reminder can enter directly at #/planner/card. Leaving that
    // one-time action must clear the focus route or a later reload would
    // unexpectedly jump back into the same card.
@@ -431,27 +433,32 @@ export function mountPersonaPage(root:HTMLElement,scope:Scope,
  * authoritative booking surface, with the selected draft's ID in scope.
  */
 export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
- openUnfinishedCard=false,initialTarget?:import("../ui/world-calendar.js").CalendarPlanningTarget){
+ openUnfinishedCard=false,initialTarget?:import("../ui/world-calendar.js").CalendarPlanningTarget,
+ onOpenBooking?:(draftId:string)=>void){
  const call=createCardClient(scope);
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
-  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
-  openCalendar:()=>mountCalendarPage(root,scope,()=>mountPlannerPage(root,scope,onBack))
+  openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
+   mountBookingPage(root,{...scope,showId:draftId}),
+  openCalendar:()=>mountCalendarPage(root,scope,
+   ()=>mountPlannerPage(root,scope,onBack,false,undefined,onOpenBooking),onOpenBooking)
  };
  return mountPlanner(root,port,onBack,openUnfinishedCard,initialTarget);
 }
 
 /** Show identity recurrence editor; no private rival draft plans are exposed. */
-export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
+ onOpenBooking?:(draftId:string)=>void){
  const call=createCardClient(scope);
  const port:CalendarPort={
   load:()=>call("calendar"),
   save:input=>call("saveCalendar",input),
   archive:input=>call("archiveCalendar",input),
-  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
+  openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
+   mountBookingPage(root,{...scope,showId:draftId}),
   openPlanner:target=>mountPlannerPage(root,scope,
-   ()=>mountCalendarPage(root,scope,onBack),false,target)
+   ()=>mountCalendarPage(root,scope,onBack,onOpenBooking),false,target,onOpenBooking)
  };
  return mountWorldCalendar(root,port,onBack??(()=>mountPlannerPage(root,scope)));
 }
