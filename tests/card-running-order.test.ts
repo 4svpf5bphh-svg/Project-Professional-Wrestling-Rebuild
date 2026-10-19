@@ -1,0 +1,48 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {runningOrderBlocks,moveLinkedRunningOrder,
+ type LinkedRunningOrderAngle} from "../src/ui/card-running-order.js";
+const assault=(source:string):LinkedRunningOrderAngle=>({
+ slotId:"assault",kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:source
+});
+test("match and adjacent post-match assault reorder as a single block in either direction",()=>{
+ const links=[assault("main")];
+ const original=["opening","main","assault","closing"];
+ assert.deepEqual(runningOrderBlocks(original,links),
+  [["opening"],["main","assault"],["closing"]]);
+ assert.deepEqual(moveLinkedRunningOrder(original,"assault",-1,links),
+  ["main","assault","opening","closing"]);
+ assert.deepEqual(moveLinkedRunningOrder(original,"main",1,links),
+  ["opening","closing","main","assault"]);
+ assert.deepEqual(moveLinkedRunningOrder(original,"assault",1,links),
+  ["opening","closing","main","assault"]);
+ assert.deepEqual(moveLinkedRunningOrder(original,"opening",1,links),
+  ["main","assault","opening","closing"]);
+});
+test("unlinked match or angle moves independently, respecting bounds",()=>{
+ const order=["first","promo","last"];
+ assert.deepEqual(moveLinkedRunningOrder(order,"promo",1,[]),
+  ["first","last","promo"]);
+ assert.deepEqual(moveLinkedRunningOrder(order,"last",-1,[]),
+  ["first","last","promo"]);
+ assert.equal(moveLinkedRunningOrder(order,"first",-1,[]),null);
+ assert.equal(moveLinkedRunningOrder(order,"last",1,[]),null);
+ assert.equal(moveLinkedRunningOrder(order,"unknown",1,[]),null);
+});
+test("nonadjacent older linked assaults cannot move ahead of their source",()=>{
+ const old=["match","interview","assault","closing"];
+ const links=[assault("match")];
+ assert.equal(moveLinkedRunningOrder(old,"assault",-1,links),null);
+ assert.equal(moveLinkedRunningOrder(old,"match",1,links)===null,false);
+ assert.deepEqual(moveLinkedRunningOrder(["match","assault"],"assault",-1,links),null);
+});
+test("moves never break multiple attached match/assault pairs",()=>{
+ const order=["a","attackA","b","attackB","closing"];
+ const links=[{slotId:"attackA",kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:"a"},
+  {slotId:"attackB",kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:"b"}];
+ assert.deepEqual(moveLinkedRunningOrder(order,"attackB",-1,links),
+  ["b","attackB","a","attackA","closing"]);
+ assert.deepEqual(moveLinkedRunningOrder(order,"a",1,links),
+  ["b","attackB","a","attackA","closing"]);
+ assert.equal(moveLinkedRunningOrder(order,"closing",1,links),null);
+});

@@ -1168,6 +1168,75 @@ test("iPhone venue choices show rival interest and save without repeated Planner
  expect(methods).toEqual(["planner","planShow","planner"]);
 });
 
+test("iPhone reorders a match together with its attached post-match angle",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const a={personId:"alice",contractId:"da"};
+ const b={personId:"bob",contractId:"db"};
+ const c={personId:"charlie",contractId:"dc"};
+ const d={personId:"dana",contractId:"dd"};
+ const bout=(people:[typeof a,typeof b])=>({
+  matchType:"SINGLES",family:"INDIVIDUAL",participants:people,
+  sides:[{sideId:"A",participants:[people[0]]},{sideId:"B",participants:[people[1]]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:12
+ });
+ const slots=[
+  {slotId:"opener",kind:"MATCH",position:0,payload:bout([c,d])},
+  {slotId:"main",kind:"MATCH",position:1,payload:bout([a,b])},
+  {slotId:"assault",kind:"SEGMENT",position:2,payload:{
+   kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:"main",
+   actorIds:["alice"],targetIds:["bob"],outcome:"HAPPENS",
+   participants:[a,b]}}
+ ];
+ let order=["opener","main","assault"],revision=4;
+ const methods:string[]=[];
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+    marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+    ready:false,slots:3,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]};
+ const view=()=>({
+  showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+  worldRevision:revision,day:5,venueId:"arena",showName:"Dynamite",
+  promotionName:"AEW",venueName:"Arena",marketName:"Home",
+  bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+  championships:[],programmes:[],programmeLinks:[],
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+   {personId:"bob",name:"Bob",division:"MEN"},
+   {personId:"charlie",name:"Charlie",division:"MEN"},
+   {personId:"dana",name:"Dana",division:"WOMEN"}],
+  slots:order.map((id,i)=>({...slots.find(slot=>slot.slotId===id)!,position:i}))
+ });
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON() as Record<string,unknown>;
+  methods.push(String(input.method));
+  if(input.method==="save"){
+   order=input.runningOrder as string[];revision++;
+   expect(order).toEqual(["main","assault","opener"]);
+   expect((input.segments as {slotId:string;payload:Record<string,unknown>}[])
+    .find(s=>s.slotId==="assault")?.payload.sourceMatchSlotId).toBe("main");
+  }
+  await route.fulfill({json:input.method==="planner"?planner:
+   input.method==="load"?view():
+   input.method==="save"?{status:"APPLIED",result:{performers:4}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
+ await expect(page.getByRole("button",{name:"Move angle in slot 3 earlier"})).toBeEnabled();
+ await page.getByRole("button",{name:"Move match in slot 2 earlier"}).click();
+ await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
+ await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeDisabled();
+ await page.getByRole("button",{name:"Save card"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ expect(methods).toEqual(["planner","load","save","load"]);
+});
+
 test("iPhone scripts and reopens a specialist attack with one card save",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];

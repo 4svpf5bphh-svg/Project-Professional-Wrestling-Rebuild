@@ -308,3 +308,8 @@
 
 .ppw-card-match-consents{margin:0 0 15px;padding:13px 14px;background:#102b43;border:1px solid #537792;border-radius:12px}
 .ppw-card-match-consents h3{font-size:14px;margin:0 0 9px;color:#effaff}
+
+/* A post-match attack follows its bout as one movable running-order block. */
+.ppw-card-linked{display:block;color:#9ce3d8;font-size:11px;margin-top:3px}
+.ppw-actions button{min-width:44px;min-height:44px}
+.ppw-actions button:disabled{opacity:.36;cursor:not-allowed}

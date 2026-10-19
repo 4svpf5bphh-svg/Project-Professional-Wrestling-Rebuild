@@ -3,7 +3,7 @@
  * Draws on the original PPW card's compact, expandable running-order design.
  */
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
- resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,assignedIds,
+ resizeMatch,moveElimination,buildBookedMatch,assignedIds,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
  bookedStyleReadiness,type ConditionSnapshot,
  FORMATS,type EditorMatch,type Format,type PersonPick}
@@ -24,6 +24,7 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
+import {moveLinkedRunningOrder} from "./card-running-order.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -512,10 +513,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     expanded=expanded===slotId?null:slotId;render();
    },false,"ppw-expand"),label);
    const arrows=el("div","ppw-actions");
-   arrows.append(button("↑",()=>{order=moveRunningOrder(order,slotId,-1);markDirty();render();},
-     !mutable()||i===0),
-    button("↓",()=>{order=moveRunningOrder(order,slotId,1);markDirty();render();},
-     !mutable()||i===order.length-1));
+   arrows.setAttribute("role","group");
+   arrows.setAttribute("aria-label","Reorder "+(m?"match":"angle")+" in slot "+(i+1));
+   const linked=[...segments.values()].map(s=>({slotId:s.slotId,
+    kind:s.kind,sourceMatchSlotId:s.sourceMatchSlotId}));
+   const up=moveLinkedRunningOrder(order,slotId,-1,linked);
+   const down=moveLinkedRunningOrder(order,slotId,1,linked);
+   const move=(next:string[]|null)=>()=>{
+    if(!next||!mutable())return;
+    order=next;markDirty();render();
+   };
+   const earlier=button("↑",move(up),!mutable()||!up);
+   const later=button("↓",move(down),!mutable()||!down);
+   earlier.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" earlier");
+   later.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" later");
+   earlier.title="Move earlier";later.title="Move later";
+   arrows.append(earlier,later);
+   if(segment?.kind==="POST_MATCH_ASSAULT"&&segment.sourceMatchSlotId&&
+    order[i-1]===segment.sourceMatchSlotId)
+    label.append(el("small","ppw-card-linked","Follows its match · moves together"));
    bar.append(arrows);card.append(bar);
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
