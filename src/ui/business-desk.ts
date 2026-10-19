@@ -20,7 +20,7 @@ const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  let view:BusinessView|null=null,error="",loading=false,
-  pane:"FINANCES"|"STANDING"|"EVENTS"|"TERRITORIES"="FINANCES";
+  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"="FINANCES";
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
@@ -50,7 +50,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   const nav=el("nav","ppw-business-nav");
   nav.setAttribute("aria-label","Business reports");
   for(const [id,title] of [
-   ["FINANCES","Finances"],["STANDING","Standing"],["EVENTS","Events"],["TERRITORIES","Territories"]
+   ["FINANCES","Finances"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"]
   ] as const){
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
@@ -122,6 +122,57 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      view.standing.lastEvaluatedYear===0
       ?"Opening standing · first annual review has not taken place"
       :"Last evaluated: Year "+view.standing.lastEvaluatedYear));
+   }
+   root.append(section);
+  }
+  if(pane==="ACTIVITY"){
+   const section=el("section","ppw-business-panel");
+   section.append(el("h2","","Four-week activity"),
+    el("p","ppw-business-muted",
+     "Recorded money in and out over the current and previous three weeks. These are settled receipts, not forecasts."));
+   const figures=el("div","ppw-business-event-stats");
+   for(const [label,amount,note] of [
+    ["INCOME",view.rollingFourWeeks.income,"Recorded receipts"],
+    ["SPENDING",view.rollingFourWeeks.spending,"Actual payments"],
+    ["NET",view.rollingFourWeeks.net,"Combined cash movement"]
+   ] as const){
+    const tile=el("article","ppw-business-event-stat");
+    tile.append(el("span","",label),el("strong",
+     label==="NET"?tone(amount):"",money(amount)),el("small","",note));
+    figures.append(tile);
+   }
+   section.append(figures);
+   const labels:Record<string,string>={
+    MEDIA_INCOME:"Broadcast income",SPONSOR_INCOME:"Sponsorship",
+    FIXED_OVERHEAD:"Fixed overhead",STAFF_SALARY:"Staff salaries",
+    CONTRACT_GUARANTEE:"Talent guarantees",
+    CONTRACT_SIGNING_BONUS:"Signing bonuses",
+    EXTRA_DATES:"Additional contract dates",APPEARANCE_FEE:"Appearance fees",
+    GATE_REVENUE:"Ticket sales",VENUE_COST:"Venue hire",
+    PRODUCTION_COST:"Production",TRAVEL_COST:"Travel"
+   };
+   const name=(c:string)=>labels[c]??c.replaceAll("_"," ").toLowerCase();
+   section.append(el("h3","","By category"));
+   if(!view.rollingFourWeeks.byCategory.length)section.append(
+    el("p","ppw-business-muted",
+     "There are no recorded payments or takings for this period."));
+   for(const entry of view.rollingFourWeeks.byCategory){
+    const line=el("div","ppw-business-line");
+    line.append(el("span","",name(entry.category)),
+     el("strong",tone(entry.amount),money(entry.amount)));
+    section.append(line);
+   }
+   section.append(el("h3","","Recent transactions"),
+    el("p","ppw-business-muted",
+     "Latest eight individual accounting entries, drawn from settled cash receipts."));
+   if(!view.recentTransactions.length)section.append(
+    el("p","ppw-business-muted","No recent transactions recorded."));
+   for(const entry of view.recentTransactions){
+    const line=el("div","ppw-business-line");
+    line.append(el("span","",name(entry.category)+
+     " · Y"+entry.year+" W"+entry.week),
+     el("strong",tone(entry.amount),money(entry.amount)));
+    section.append(line);
    }
    root.append(section);
   }

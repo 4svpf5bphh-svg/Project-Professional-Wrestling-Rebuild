@@ -21,7 +21,14 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
    weeklyMediaIncome:300_000,weeklySponsorIncome:25_000,
    weeklyFixedOverhead:60_000,weeklyGuarantees:15_000,weeklyStaffPayroll:0,
    recurringMargin:250_000,lastWeeklyNet:0,runwayWeeks:null,
-   financialDistress:"HEALTHY",shows:[],territories:[{
+   financialDistress:"HEALTHY",shows:[],
+   rollingFourWeeks:{income:425000,spending:125000,net:300000,
+    byCategory:[{category:"MEDIA_INCOME",amount:300000},
+     {category:"GATE_REVENUE",amount:125000},
+     {category:"VENUE_COST",amount:-25000}]},
+   recentTransactions:[{eventId:5,year:1,week:5,
+    category:"GATE_REVENUE",amount:125000}],
+   territories:[{
     marketId:"market-0",name:"Territory 0",awareness:62,
     liveStrength:58,loyalty:54,isHome:true
    }]
@@ -39,6 +46,11 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await expect(page.getByText("78 / 100")).toBeVisible();
  await expect(page.getByText("74 / 100")).toBeVisible();
  await expect(page.getByText(/first annual review has not taken place/)).toBeVisible();
+ await page.getByRole("button",{name:"Activity"}).click();
+ await expect(page.getByRole("heading",{name:"Four-week activity"})).toBeVisible();
+ await expect(page.getByText("Ticket sales")).toHaveCount(2);
+ await expect(page.getByText("Venue hire")).toBeVisible();
+ await expect(page.getByText("Y1 W5")).toBeVisible();
  await page.getByRole("button",{name:"Territories"}).click();
  await expect(page.getByRole("heading",{name:"Your markets"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Territory 0 · Home market"})).toBeVisible();

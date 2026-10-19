@@ -42,6 +42,10 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   });
   assert.equal(business.mediaReach,90,
    "Keep the original broadcast distribution measure, not a derived estimate");
+  assert.deepEqual(business.rollingFourWeeks,{
+   income:0,spending:0,net:0,byCategory:[]
+  });
+  assert.deepEqual(business.recentTransactions,[]);
   assert.equal(business.cash,5_000_000);
   assert.equal(business.weeklyMediaIncome,300_000);
   assert.equal(business.weeklySponsorIncome,25_000);
@@ -72,6 +76,48 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   const historical=await readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:owner});
   assert.equal(historical.standing,null);
+  // The journal is the sole cash source. A show's appearance fees are already
+  // debited by the contract ledger and MUST NOT be paid twice in activity.
+  await withWorldTransaction(db.pool,async tx=>{
+   const events=[
+    ["PROMOTION_RECURRING_FINANCES",{promotionId:promotion,mediaIncome:300000,
+     sponsorIncome:25000,fixedOverhead:60000,staffCost:5000,net:260000}],
+    ["CONTRACT_GUARANTEE_PAID",{promotionId:promotion,amount:18000}],
+    ["CONTRACT_EXTRA_DATES_ACCEPTED",{promotionId:promotion,additionalPayment:12500}],
+    ["CONTRACT_APPEARANCE_FEES",{promotionId:promotion,amount:20000}],
+    ["SHOW_EVENT_ECONOMICS",{promotionId:promotion,gateRevenue:150000,
+     venueCost:20000,productionCost:30000,travelCost:10000,
+     appearanceFees:20000,incrementalCash:90000,eventNet:70000}]
+   ];
+   await tx.query(`
+    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    SELECT $1,1,1,x.event_type,x.payload
+    FROM jsonb_to_recordset($2::jsonb) AS x(event_type text,payload jsonb)`,
+    [world,JSON.stringify(events.map(([event_type,payload])=>({event_type,payload})))]);
+  });
+  const activity=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.equal(activity.rollingFourWeeks.income,475000);
+  assert.equal(activity.rollingFourWeeks.spending,175500);
+  assert.equal(activity.rollingFourWeeks.net,299500);
+  assert.equal(activity.rollingFourWeeks.byCategory.find(x=>x.category==="APPEARANCE_FEE")?.amount,-20000);
+  assert.equal(activity.rollingFourWeeks.byCategory.find(x=>x.category==="GATE_REVENUE")?.amount,150000);
+  assert.equal(activity.recentTransactions.length,8);
+  assert.equal(activity.recentTransactions[0]?.category,"GATE_REVENUE");
+  assert.equal(activity.cash,5_000_000,
+   "Reporting canonical ledger entries must never repeat cash settlement");
+  // Same evidence across Y1 W52 -> Y2 W1 stays in the rolling window.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1",[world]);
+   await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    VALUES($1,1,52,'CONTRACT_SIGNED',$2::jsonb)`,
+    [world,JSON.stringify({promotionId:promotion,signingBonus:4300})]);
+  });
+  const rollover=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.equal(rollover.rollingFourWeeks.net,-4300);
+  assert.equal(rollover.rollingFourWeeks.income,0);
+  assert.equal(rollover.rollingFourWeeks.spending,4300);
   // A real economics receipt is displayed as an archived fact, not
   // recomputed or applied twice to the promotion's cash.
   await withWorldTransaction(db.pool,async tx=>{

@@ -4,6 +4,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
  worldId:string;promotionId:string;playerId:string
@@ -22,6 +23,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    standing_prestige:number|null;standing_fan:number|null;
    standing_business:number|null;standing_talent:number|null;
    standing_year:number|null;
+   finance_event_count:number;finance_categories:FinanceLine[];
+   finance_recent:FinanceEntry[];
   }>(`
    SELECT w.year,w.week,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
      p.media_reach,
@@ -36,6 +39,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.business_reputation AS standing_business,
      standing.talent_reputation AS standing_talent,
      standing.last_evaluated_year AS standing_year,
+     financial.finance_event_count,financial.finance_categories,financial.finance_recent,
      COALESCE((SELECT sum(c.weekly_guarantee)
       FROM ppw_contracts c WHERE c.world_id=p.world_id
        AND c.promotion_id=p.promotion_id AND c.status='SIGNED'
@@ -53,9 +57,15 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     AND p.lifecycle='ACTIVE'
    LEFT JOIN ppw_promotion_standings standing
     ON standing.world_id=p.world_id AND standing.promotion_id=p.promotion_id
+   ${recentFinanceSql}
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(rows.length!==1)throw new Error("Business access denied");
   const w=rows[0]!;
+  // A bounded SQL candidate set must never masquerade as a full activity total.
+  if(w.finance_event_count>500)throw new Error("Four-week activity exceeds reporting bounds");
+  const activity=w.finance_categories;
+  const earned=activity.reduce((sum,line)=>sum+Math.max(0,line.amount),0);
+  const spent=activity.reduce((sum,line)=>sum+Math.max(0,-line.amount),0);
   const shows=await tx.query<{
    show_id:string;year:number;week:number;
    show_name:string|null;booking_class:string;
@@ -112,6 +122,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     weeklyMedia+weeklySponsor-weeklyOverhead-guarantees-staffPayroll,
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
+   rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
+    byCategory:activity},
+   recentTransactions:w.finance_recent,
    shows:shows.slice(0,12).map(s=>({
     showId:s.show_id,year:s.year,week:s.week,
     name:s.show_name??(s.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
