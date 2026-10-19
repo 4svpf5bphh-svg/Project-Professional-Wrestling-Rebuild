@@ -432,6 +432,7 @@ function showClaim(){
  game.replaceChildren(card);
 }
 async function signOut(){
+ if(!confirmLeavingBooking("home"))return;
  if(session)try{
   await fetch("/api/auth",{method:"DELETE",credentials:"same-origin",
    headers:{"x-ppw-csrf":session.csrfToken}});
