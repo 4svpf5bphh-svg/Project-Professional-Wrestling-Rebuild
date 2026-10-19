@@ -129,6 +129,23 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     RETURNING person_id
    ) SELECT count(*)::integer AS count FROM inserted`,
    [g.world.id,JSON.stringify(g.people.map(p=>({...p,career_stage:p.careerStage})))]);
+  // Persist the original main's *actual* wrestler-owned persona identities
+  // including signature and finishing moves. One batch for all 643, never an
+  // individual Neon INSERT or a generic rewritten identity.
+  const savedPersonas=g.personas.length?await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_portable_personas(world_id,person_id,revision,persona,
+     provenance,introduced_week_index)
+    SELECT $1,x.person_id,1,x.persona,x.provenance,0
+    FROM jsonb_to_recordset($2::jsonb) AS x(
+     person_id text,persona jsonb,provenance text)
+    RETURNING person_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id,JSON.stringify(g.personas.map(x=>({
+    person_id:x.personId,persona:x.persona,provenance:x.persona.source
+   })))]) :[{count:0}];
+  if(savedPersonas[0]?.count!==g.personas.length)
+   throw new Error("Incomplete wrestler-owned Genesis personas");
   // The original-main factory seeds real tag identities and their exact
   // participants. Two bulk inserts preserve them; no inferred partnerships,
   // per-person round trips, or promotions owning duplicated team identities.
@@ -195,8 +212,9 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    venues:g.venues.length,contracts:g.contracts.length,
    markets:g.markets.length,promotionMarketStates:g.promotionMarketStates.length,
    championships:titles[0]!.count,standings:standings[0]!.count,
-   tagTeams:g.teams.length,
+   personas:g.personas.length,tagTeams:g.teams.length,
    teamMembers:g.teamMemberships.length,
-   sqlStatements:10+Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
+   sqlStatements:10+Number(g.personas.length>0)+
+    Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
  });
 }

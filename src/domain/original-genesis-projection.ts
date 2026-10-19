@@ -5,6 +5,8 @@
  */
 import {requireEconomics,type PersonEconomics,type Role,type Creative,
  type Family} from "./contract-economics.js";
+import {validatePortablePersona} from "./portable-persona.js";
+import type {PortablePersona} from "./portable-identity-types.js";
 type DateParts={year:number;week:number;day:number};
 type Status="ACTIVE"|"INJURED"|"RETIRED";
 type Tier="GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT"|"LOCAL";
@@ -42,6 +44,8 @@ export interface OriginalGenesisSource {
  /** Direct original-main tag-team identities, never synthetic pairings. */
  teams?:Array<{id:string;worldId:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
  teamMemberships?:Array<{teamId:string;worldId:string;personId:string;active:boolean}>;
+ /** Exact wrestler-owned onscreen persona from genuine main's fresh World. */
+ personas?:Array<{personId:string;persona:PortablePersona}>;
 
  contracts:Array<{id:string;worldId:string;personId:string;promotionId:string;
   status:"SIGNED"|"EXPIRED"|"TERMINATED";family:Family;
@@ -73,6 +77,7 @@ export interface GenesisProjection {
  venues:Array<{id:string;name:string;marketId:string;capacity:number;cost:number;prestige:number;suitability:number}>;
  teams:Array<{id:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
  teamMemberships:Array<{teamId:string;personId:string;active:boolean}>;
+ personas:Array<{personId:string;persona:PortablePersona}>;
 
  contracts:Array<{id:string;person:string;promotion:string;family:Family;status:string;
  remaining:number|null;start:number;expires:number;entitlement:number;weekly:number;
@@ -245,6 +250,24 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    throw new Error("Invalid original tag team member");
   return {teamId:m.teamId,personId:m.personId,active:m.active};
  });
+ // Unlike a generic roster guide, these records carry the *exact* character
+ // and signature/finisher names actually seeded by the original main factory.
+ // Legacy small test fixtures may omit this collection; authentic exports may
+ // not. Verify every wrestler has exactly one World-owned valid persona.
+ const incomingPersonas=source.personas??[];
+ if(!Array.isArray(incomingPersonas)||incomingPersonas.length>2500||
+  (source.personas!==undefined&&incomingPersonas.length!==people.length))
+  throw new Error("Incomplete original wrestler-owned persona population");
+ unique(incomingPersonas.map(x=>x.personId),"original portable persona");
+ const byName=new Map(people.map(p=>[p.id,p.name]));
+ const gimmicks=new Map(people.map(p=>[p.id,p.gimmick]));
+ const personas=incomingPersonas.map(x=>{
+  if(!byName.has(x.personId))throw new Error("Persona references missing wrestler");
+  const persona=validatePortablePersona(x.persona,byName.get(x.personId)!);
+  if(persona.gimmickId!==gimmicks.get(x.personId))
+   throw new Error("Original portable persona differs from wrestler identity");
+  return {personId:x.personId,persona};
+ });
  const contracts=source.contracts.map(c=>{
   if(!isText(c.id)||c.worldId!==worldId||!ids.has(c.personId)||!promos.has(c.promotionId)
    ||!["SIGNED","EXPIRED","TERMINATED"].includes(c.status)
@@ -283,5 +306,5 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   injury:source.ruleset.injuryRateMultiplier,
   majorEventIntervalWeeks:source.ruleset.majorEventIntervalWeeks},
   markets,promotionMarketStates,promotionStandings,promotions,people,venues,
-  teams,teamMemberships,contracts};
+  teams,teamMemberships,personas,contracts};
 }

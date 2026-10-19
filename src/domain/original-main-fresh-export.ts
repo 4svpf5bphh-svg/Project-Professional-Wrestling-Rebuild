@@ -4,6 +4,8 @@
  */
 import {projectOriginalGenesis,type OriginalGenesisSource}
  from "./original-genesis-projection.js";
+import type {PortableIdentityMove,PortablePersona}
+ from "./portable-identity-types.js";
 type PersonSource=Omit<OriginalGenesisSource["people"][number],
  "bookingDivision"|"defaultAlignment"|"portableGimmickId"> &{
  division?:"MEN"|"WOMEN"|null;defaultAlignment?:"FACE"|"HEEL"|"TWEENER"|null;
@@ -21,7 +23,12 @@ export interface OriginalMainFreshState{
  teams?:OriginalGenesisSource["teams"];
  teamMemberships?:OriginalGenesisSource["teamMemberships"];
  wrestlerIdentities?:Array<{
-  personId:string;active:{gimmickId:string};
+  personId:string;active:{
+   gimmickId:string;personaName:string;
+   primaryStyle:string|null;secondaryStyle:string|null;
+   signatureMoves:PortableIdentityMove[];finishingMoves:PortableIdentityMove[];
+   provenance:PortablePersona["source"];
+  };
  }>;
 }
 /** No creative guesses: a missing actual persona, standing, promotion right,
@@ -64,7 +71,19 @@ export function extractOriginalMainFreshGenesis(
   people,venues:structuredClone(state.venues),
   contracts:structuredClone(state.contracts),
   teams:structuredClone(state.teams),
-  teamMemberships:structuredClone(state.teamMemberships)
+  teamMemberships:structuredClone(state.teamMemberships),
+  personas:identities.map(identity=>({
+   personId:identity.personId,
+   persona:{
+    personaName:identity.active.personaName,
+    gimmickId:identity.active.gimmickId,
+    primaryStyle:identity.active.primaryStyle,
+    secondaryStyle:identity.active.secondaryStyle,
+    signatureMoves:structuredClone(identity.active.signatureMoves),
+    finishingMoves:structuredClone(identity.active.finishingMoves),
+    source:identity.active.provenance
+   }
+  }))
  };
  const checked=projectOriginalGenesis(source);
  if(checked.people.length!==643||checked.promotions.length!==13||
