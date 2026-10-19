@@ -50,7 +50,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await expect(page.getByRole("heading",{name:"Four-week activity"})).toBeVisible();
  await expect(page.getByText("Ticket sales")).toHaveCount(2);
  await expect(page.getByText("Venue hire")).toBeVisible();
- await expect(page.getByText("Y1 W5")).toBeVisible();
+ await expect(page.getByText("Ticket sales · Y1 W5",{exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Territories"}).click();
  await expect(page.getByRole("heading",{name:"Your markets"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Territory 0 · Home market"})).toBeVisible();
