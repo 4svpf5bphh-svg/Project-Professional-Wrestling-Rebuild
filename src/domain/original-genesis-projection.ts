@@ -56,6 +56,7 @@ export interface GenesisProjection {
  promotionStandings:Array<{promotionId:string;prestige:number;fanReputation:number;
   businessReputation:number;talentReputation:number;lastEvaluatedYear:number}>;
  promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
+ takeoverEligibility:"LOCKED"|"STANDARD";
  cash:number;debt:number;media:number;eventCadenceWeeks:number;aiFinancialCaution:number;
  aiRiskTolerance:number;aiMatchQualityPreference:number;aiStarPreference:number;
  weeklyMedia:number;weeklySponsor:number;
