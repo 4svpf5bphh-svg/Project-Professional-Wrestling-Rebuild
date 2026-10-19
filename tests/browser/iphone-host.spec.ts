@@ -1494,7 +1494,7 @@ test("iPhone completes the World Lock to next-week broadcast handoff on explicit
  await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
  await expect(page.getByText(/Year 1 · Week 5 is complete/)).toBeVisible();
  await expect(page.getByRole("button",{name:/Read completed shows/})).toBeVisible();
- expect(reads,"Only a deliberate tap rereads the World clock").toBe(2);
+ expect(reads).toBe(2);
  await page.getByRole("button",{name:/Read completed shows/}).click();
  await expect(page).toHaveURL(/#\/results$/);
  await expect(page.getByRole("heading",{name:"THE TAPE LIBRARY"})).toBeVisible();
@@ -1517,7 +1517,7 @@ test("reaching a World deadline on iPhone offers a refresh without silently reso
  await page.goto("/#/home");
  await expect(page.getByText(/Booking deadline reached/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
- expect(reads,"Countdown does not poll Neon").toBe(1);
+ expect(reads).toBe(1);
  await page.getByRole("button",{name:"Check World status"}).click();
  await expect(page.getByText(/CARDS LOCKED/)).toBeVisible();
  expect(reads).toBe(2);
