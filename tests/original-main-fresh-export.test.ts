@@ -35,7 +35,10 @@ function freshOriginalState():OriginalMainFreshState{
   bookingDivision:undefined,portableGimmickId:undefined
  }));
  return {...f,promotions,promotionStandings:standings,
-  promotionMarketStates:markets,people,wrestlerIdentities:identities};
+  promotionMarketStates:markets,people,wrestlerIdentities:identities,
+  teams:[{worldId:f.world.id,id:"original-team",name:"Actual Partners",status:"ACTIVE"}],
+  teamMemberships:[{worldId:f.world.id,teamId:"original-team",personId:people[0]!.id,active:true},
+   {worldId:f.world.id,teamId:"original-team",personId:people[1]!.id,active:true}]};
 }
 test("true original-main WorldState produces exact real-world population and protects WWE-sized companies",()=>{
  const state=freshOriginalState();
@@ -48,8 +51,18 @@ test("true original-main WorldState produces exact real-world population and pro
  assert.equal(out.people[0]?.portableGimmickId,"gimmick-0");
  assert.equal(out.people[0]?.bookingDivision,"WOMEN");
  assert.equal(projectOriginalGenesis(out).contracts.length,400);
+ assert.equal(projectOriginalGenesis(out).teams[0]?.name,"Actual Partners");
+ assert.equal(projectOriginalGenesis(out).teamMemberships.length,2);
  assert.equal(JSON.stringify(state),raw,
   "Export must not alter the original WorldState or its identities");
+});
+test("missing or forged tag affiliations never become fake live teams",()=>{
+ const missing=freshOriginalState();
+ missing.teamMemberships=[];
+ assert.throws(()=>extractOriginalMainFreshGenesis(missing),/tag teams have not been seeded/);
+ const outsider=freshOriginalState();
+ outsider.teamMemberships![0]!.personId="not-in-world";
+ assert.throws(()=>extractOriginalMainFreshGenesis(outsider),/Invalid original tag team member/);
 });
 test("missing portable identity, standings and forged unlocked real company block export",()=>{
  const missing=freshOriginalState();
