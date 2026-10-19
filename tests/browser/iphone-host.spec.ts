@@ -1466,3 +1466,59 @@ test("two-manager claim race keeps the losing iPhone out of private desks",async
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  expect(attempts).toBe(2);
 });
+
+test("iPhone completes the World Lock to next-week broadcast handoff on explicit refresh",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let reads=0,archives=0;
+ const locked={...overview,world:{...overview.world,phase:"LOCKED",
+  year:1,week:5,revision:9}};
+ const next={...overview,world:{...overview.world,phase:"OPEN",
+  year:1,week:6,revision:10}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  if(method==="overview"){reads++;return route.fulfill({json:reads===1?locked:next});}
+  if(method==="resultsArchive"){
+   archives++;return route.fulfill({json:{items:[{showId:"last-week",
+    year:1,week:5,crowdResponse:81,matchCount:3,angleCount:2,
+    showName:"Wednesday Wrestling"}],nextCursor:null}});
+  }
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.getByText(/CARDS LOCKED/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
+ expect(reads).toBe(1);
+ await page.getByRole("button",{name:"Check World status"}).click();
+ await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
+ await expect(page.getByText(/Year 1 · Week 5 is complete/)).toBeVisible();
+ await expect(page.getByRole("button",{name:/Read completed shows/})).toBeVisible();
+ expect(reads).toBe(2,"Only a deliberate tap rereads the World clock");
+ await page.getByRole("button",{name:/Read completed shows/}).click();
+ await expect(page).toHaveURL(/#\/results$/);
+ await expect(page.getByRole("heading",{name:"THE TAPE LIBRARY"})).toBeVisible();
+ await expect(page.getByText("Wednesday Wrestling")).toBeVisible();
+ expect(archives).toBe(1);
+});
+
+test("reaching a World deadline on iPhone offers a refresh without silently resolving it",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let reads=0;
+ const due={...overview,world:{...overview.world,phase:"OPEN",
+  nextLockEpoch:Date.now()/1000-20,serverEpoch:Date.now()/1000}};
+ const locked={...overview,world:{...due.world,phase:"LOCKED"}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);
+  if(method==="overview"){reads++;return route.fulfill({json:reads===1?due:locked});}
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByText(/Booking deadline reached/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
+ expect(reads).toBe(1,"Countdown does not poll Neon");
+ await page.getByRole("button",{name:"Check World status"}).click();
+ await expect(page.getByText(/CARDS LOCKED/)).toBeVisible();
+ expect(reads).toBe(2);
+});
