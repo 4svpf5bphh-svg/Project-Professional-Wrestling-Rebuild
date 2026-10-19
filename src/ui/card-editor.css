@@ -313,3 +313,16 @@
 .ppw-card-linked{display:block;color:#9ce3d8;font-size:11px;margin-top:3px}
 .ppw-actions button{min-width:44px;min-height:44px}
 .ppw-actions button:disabled{opacity:.36;cursor:not-allowed}
+
+/* A stable return action lives outside the collapsed management drawer. */
+.ppw-top .ppw-card-back{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:44px;padding:8px 13px;margin-bottom:10px;
+ border:1px solid var(--ppw-line);border-radius:12px;
+ background:var(--ppw-panel);color:var(--ppw-ink);
+ font-size:14px;font-weight:700;cursor:pointer;
+}
+.ppw-top .ppw-card-back:disabled{opacity:.42;cursor:not-allowed}
+.ppw-top .ppw-card-back:focus-visible{
+ outline:2px solid var(--ppw-accent);outline-offset:3px
+}
