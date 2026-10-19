@@ -66,6 +66,30 @@ locked against takeover; the preflight refuses to treat a World with no
 player-eligible companies as playable. Do not bypass that by changing the
 original's protected promotion contracts.
 
+The rebuild can now produce that offline source from the **original PPW main**
+without opening the original database or altering the original project. With
+a separate clean clone of
+`4svpf5bphh-svg/Project-Professional-Wrestling` checked out to `main` and
+its Node dependencies installed, run this from the **rebuild** checkout:
+
+```sh
+npm run playtest:export-original -- \
+  --original-root /path/to/Project-Professional-Wrestling \
+  --seed 20261019 \
+  --out /path/to/new-ppw-genesis.json
+```
+
+The exporter verifies the exact original repository remote, checks the active
+branch is `main` (not `alpha-1a`), requires no tracked local modifications,
+then invokes the original's genuine `createAlphaWorldAggregate` factory.
+It takes only fresh original-main population, wrestler identities, contract
+terms, territories, standings and 13 promotion profiles. The eight protected
+real-world promotions stay protected; the original five fictional entry
+promotions remain eligible. The 643 wrestlers and original portable gimmick IDs
+are preserved without a fabricated roster. The export is an exclusive-create,
+owner-readable JSON file; **no database connection is used**. Keep it outside
+source control, and use the printed `worldId` for the following commands.
+
 After migrations on an **authorised isolated database**, a trusted operator can
 validate and import an offline source through `npm run playtest:genesis`.
 It requires `PPW_PLAYTEST_DB_URL`, `PPW_PLAYTEST_WORLD_ID`,
