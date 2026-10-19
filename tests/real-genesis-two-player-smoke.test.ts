@@ -99,6 +99,49 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   assert.equal(data.week,1);
   assert.ok(data.venues.length>0,"Actual venues must load in the first-week planner");
   assert.equal(data.weeks.length,6);
+  const current=data.weeks[0];
+  assert.equal(current.year,1);assert.equal(current.week,1);
+  const normal=current.scheduled.find((x:{eventType:string})=>x.eventType==="REGULAR");
+  assert.ok(normal,"Fresh independent company must have a genuine Week 1 show");
+  const venue=data.venues.find((x:{home:boolean})=>x.home)??data.venues[0];
+  assert.ok(venue,"New manager needs a playable venue");
+  const planned=await send("/api/card","POST",{
+   method:"planShow",worldId,promotionId:target.id,showId:"",
+   requestId:"plan-"+identities[index],
+   expectedRevision:state.overview.world.revision,
+   year:1,week:1,day:3+index*2,
+   marketId:venue.marketId,venueId:venue.venueId,
+   ticketStrategy:"STANDARD",eventType:"REGULAR",showSeriesId:normal.seriesId
+  },cookie,state.csrfToken);
+  assert.equal(planned.status,200,"Each actual manager can select a show and home venue");
+  const plan=await planned.json();
+  assert.equal(plan.status,"APPLIED","A genuine, editable show must be created");
+  const draftId=plan.result?.draftId;
+  assert.ok(typeof draftId==="string");
+  const currentCard=await send("/api/card","POST",{
+   method:"load",worldId,promotionId:target.id,showId:draftId
+  },cookie,state.csrfToken);
+  assert.equal(currentCard.status,200,
+   "Manager can open their own real Week 1 card editor");
+  const card=await currentCard.json();
+  assert.equal(card.showId,draftId);
+  const bookable=await send("/api/card","POST",{
+   method:"talent",worldId,promotionId:target.id,showId:draftId,search:""
+  },cookie,state.csrfToken);
+  assert.equal(bookable.status,200,"Shared real-roster picker must open");
+  const choices=await bookable.json();
+  assert.ok(Array.isArray(choices.talent));
+  const eligible=choices.talent.filter((x:{available:boolean})=>x.available);
+  assert.ok(eligible.length>=2,
+   "An original independent company cannot play Week 1 without two contracted wrestlers");
+  assert.ok(eligible.every((x:{personId:string;finisherMove:string|null})=>
+   typeof x.personId==="string"&&!!x.finisherMove),
+   "Booking picks real wrestler dossiers, including original finishers");
+  const forbiddenCard=await send("/api/card","POST",{
+   method:"load",worldId,promotionId:target.id,showId:draftId
+  },managers[0]?.cookie??cookie,managers[0]?.csrf??state.csrfToken);
+  if(index===1)assert.equal(forbiddenCard.status,400,
+   "The first manager cannot open the second company's draft");
  }
  assert.notEqual(managers[0]!.promotionId,managers[1]!.promotionId);
  // Booking must also work with the actual original-main contracts, personas
