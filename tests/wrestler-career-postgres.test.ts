@@ -37,6 +37,11 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
      ($1,'video-show',$2,1,8,'SUBMITTED'),
      ($1,'other-live','promotion-1',1,2,'SUBMITTED')
    `,[world,promotionId]);
+   await tx.query(`
+    INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'career-show','match-1',0,'MATCH',
+     '{"sides":[{"sideId":"A","participants":[{"personId":"person-0","contractId":"contract-0"}]},{"sideId":"B","participants":[{"personId":"person-1","contractId":"contract-1"}]}]}'::jsonb)
+   `,[world]);
    await tx.query(
     "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
     "resolution_id,crowd_response,receipt_json,receipt_digest)"+
@@ -107,6 +112,8 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
   assert.equal(view.recent[0]?.weeksOut,2);
   assert.equal(view.recent[0]?.stars,4.25);
   assert.equal(view.recent[0]?.format,"SINGLES");
+  assert.deepEqual(view.recent[0]?.partners,[]);
+  assert.deepEqual(view.recent[0]?.opponents,["Wrestler 1"]);
   assert.deepEqual(view.liveAppearances.map(x=>({
    company:x.promotionId,status:x.status,shows:x.recordedShows,
    first:x.firstWeekIndex,last:x.lastWeekIndex,weeksSince:x.weeksSinceLast
@@ -134,6 +141,12 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
   const rpc=await dispatchCardRpc({pool:db.pool,actor:{playerId:player}},
    "wrestlerCareer",{worldId:world,promotionId,personId});
   assert.equal((rpc as typeof view).summary.wins,1);
+  // Losing an older saved card must never invent opponents from outcomes.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "DELETE FROM ppw_card_slots WHERE world_id=$1 AND draft_id='career-show'",[world]));
+  const withoutCard=await readWrestlerCareer(db.pool,scope);
+  assert.equal(withoutCard.recent[0]?.partners,null);
+  assert.equal(withoutCard.recent[0]?.opponents,null);
   await assert.rejects(readWrestlerCareer(db.pool,{...scope,playerId:"outsider"}),
    /access denied/i);
   await assert.rejects(readWrestlerCareer(db.pool,{...scope,personId:"not-known"}),

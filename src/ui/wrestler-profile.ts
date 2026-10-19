@@ -294,6 +294,15 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
      match.promotion+" · Y"+match.year+" W"+match.week+" · "+
      match.format+" · "+match.finish.replaceAll("_"," ").toLowerCase()+
      (match.minutes===null?"":" · "+match.minutes+" min")));
+    if(Array.isArray(match.partners)&&Array.isArray(match.opponents)){
+     const participants=[
+      ...(match.partners.length?["Tag partners: "+match.partners.join(" & ")]:[]),
+      ...(match.opponents.length?["Opponents: "+match.opponents.join(" · ")]:[])
+     ];
+     if(participants.length)row.append(el("p","ppw-profile-career-lineup",
+      participants.join("  /  ")));
+    }else row.append(el("p","ppw-profile-muted",
+     "Opponents not verified in older match records."));
     if(match.injury!==null)
      row.append(el("p","ppw-profile-career-injury",
       match.injury+" injury"+(match.weeksOut===null?"":" · "+match.weeksOut+" weeks out")));

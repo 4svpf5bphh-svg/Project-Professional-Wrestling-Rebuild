@@ -74,3 +74,7 @@
 .ppw-profile-career-match .ppw-profile-muted{margin-bottom:0}
 .ppw-profile-career-injury{color:#ffc9a5;font-size:12px}
 @media(min-width:660px){.ppw-profile-career-scoreboard{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Verified names from one completed bout; no extra career lookups. */
+.ppw-profile-career-lineup{margin:7px 0 4px;color:#d0ecf0;font-size:12px;
+ line-height:1.55;overflow-wrap:anywhere;word-break:normal}

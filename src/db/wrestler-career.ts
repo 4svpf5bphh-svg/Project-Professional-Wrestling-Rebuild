@@ -2,12 +2,15 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {liveAppearanceStatus,type LiveAppearanceStatus} from "../domain/live-appearance-history.js";
+import {careerMatchLineup} from "../domain/career-match-lineup.js";
 export interface CareerScope{worldId:string;playerId:string;promotionId:string;personId:string}
 export interface CareerMatch{
  showId:string;matchId:string;showName:string;promotion:string;
  year:number;week:number;format:"SINGLES"|"TAG";won:boolean;
  stars:number|null;minutes:number|null;finish:string;
  injury:string|null;weeksOut:number|null;
+ /** Null means surviving evidence does not identify partners/opponents. */
+ partners:string[]|null;opponents:string[]|null;
 }
 export interface CareerView{
  personId:string;
@@ -28,6 +31,7 @@ type MatchRow={
  year:number;week:number;format:"SINGLES"|"TAG";won:boolean;
  rating_stars:string|null;actual_minutes:number|null;actual_finish:string;
  injury_severity:string|null;injury_weeks_out:number|null;
+ lineup_json:unknown;
  total_matches:string;total_wins:string;total_singles:string;total_tags:string;
  total_rated:string;average_stars:string|null;best_stars:string|null;total_injuries:string;
 };
@@ -58,12 +62,29 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
    "), career AS (",
    "SELECT a.show_id,a.match_id,a.won,a.format,a.injury_severity,a.injury_weeks_out,",
    "s.year,s.week,p.name AS promotion_name,d.show_name,m.actual_finish,",
+   "lineup.lineup_json,",
    "f.rating_stars,f.actual_minutes FROM activity a",
    "JOIN ppw_completed_shows s ON s.world_id=a.world_id AND s.show_id=a.show_id",
    "JOIN ppw_promotions p ON p.world_id=s.world_id AND p.promotion_id=s.promotion_id",
    "JOIN ppw_completed_show_matches m ON m.world_id=a.world_id",
    "AND m.show_id=a.show_id AND m.match_id=a.match_id",
    "LEFT JOIN ppw_booking_drafts d ON d.world_id=s.world_id AND d.draft_id=s.show_id",
+   "LEFT JOIN ppw_card_slots card ON card.world_id=a.world_id",
+   "AND card.draft_id=a.show_id AND card.slot_id=a.match_id AND card.kind='MATCH'",
+   "LEFT JOIN LATERAL (",
+   "SELECT jsonb_agg(jsonb_build_array(perf.person_id,perf.name,",
+   "side.item->>'sideId') ORDER BY side.ordinal,member.ordinal) AS lineup_json",
+   "FROM jsonb_array_elements(CASE",
+   "WHEN jsonb_typeof(card.payload->'sides')='array' THEN card.payload->'sides'",
+   "ELSE '[]'::jsonb END)",
+   "WITH ORDINALITY AS side(item,ordinal)",
+   "CROSS JOIN LATERAL jsonb_array_elements(CASE",
+   "WHEN jsonb_typeof(side.item->'participants')='array'",
+   "THEN side.item->'participants' ELSE '[]'::jsonb END)",
+   "WITH ORDINALITY AS member(item,ordinal)",
+   "JOIN ppw_people perf ON perf.world_id=a.world_id",
+   "AND perf.person_id=member.item->>'personId'",
+   ") lineup ON TRUE",
    "LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=a.world_id",
    "AND f.show_id=a.show_id AND f.match_id=a.match_id)",
    "SELECT *,count(*) OVER()::text AS total_matches,",
@@ -165,7 +186,8 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
     promotion:m.promotion_name,year:m.year,week:m.week,format:m.format,
     won:m.won,stars:m.rating_stars==null?null:Number(m.rating_stars),
     minutes:m.actual_minutes,finish:m.actual_finish,
-    injury:m.injury_severity,weeksOut:m.injury_weeks_out
+    injury:m.injury_severity,weeksOut:m.injury_weeks_out,
+    ...careerMatchLineup(m.lineup_json,scope.personId)
    })),
    singlesTitles:titles.map(t=>({name:t.name,promotion:t.promotion_name,
     startWeekIndex:t.start_week_index,endedWeekIndex:t.ended_week_index,
