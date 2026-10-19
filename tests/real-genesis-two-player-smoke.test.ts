@@ -129,9 +129,9 @@ test("authentic original-main Genesis: two humans independently claim fictional 
    method:"talent",worldId,promotionId:target.id,showId:draftId,search:""
   },cookie,state.csrfToken);
   assert.equal(bookable.status,200,"Shared real-roster picker must open");
-  const choices=await bookable.json();
-  assert.ok(Array.isArray(choices.talent));
-  const eligible=choices.talent.filter((x:{available:boolean})=>x.available);
+  const bookableData=await bookable.json();
+  assert.ok(Array.isArray(bookableData.talent));
+  const eligible=bookableData.talent.filter((x:{available:boolean})=>x.available);
   assert.ok(eligible.length>=2,
    "An original independent company cannot play Week 1 without two contracted wrestlers");
   assert.ok(eligible.every((x:{personId:string;finisherMove:string|null})=>
