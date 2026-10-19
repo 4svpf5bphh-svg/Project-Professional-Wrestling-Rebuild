@@ -1123,7 +1123,7 @@ test("Calendar shows only owned booked venues and opens the correct six-week PPV
  await expect.poll(()=>calls.filter(x=>x.method==="planShow").length).toBe(1);
  const saved=calls.find(x=>x.method==="planShow")!.payload;
  expect(saved).toMatchObject({year:1,week:6,showSeriesId:"premium",eventType:"MAJOR"});
- expect(calls.map(x=>x.method)).toEqual(["calendar","planner","planShow","planner"]);
+ await expect.poll(()=>calls.map(x=>x.method)).toEqual(["calendar","planner","planShow","planner"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
