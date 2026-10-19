@@ -8,7 +8,8 @@ const ready:PreviewPopulation={
  promotions:13,activePromotions:13,wrestlers:643,signedContracts:400,
  venues:60,markets:20,championships:26,availableTakeovers:5,
  controlledPromotions:0,humanManagers:0,
- women:203,protectedRealPromotions:8,activeTagTeams:14,genesisImports:1
+ women:203,protectedRealPromotions:8,activeTagTeams:14,
+ activePersonas:643,genesisImports:1
 };
 test("a complete population with two claimable promotions can be previewed",()=>{
  assert.deepEqual(assessPlaytestPopulation(ready).issues,[]);
@@ -34,11 +35,13 @@ test("a toy fixture cannot masquerade as a full-content player preview",()=>{
 
 test("a synthetic 643-person World cannot bypass original-content preflight",()=>{
  const invalid=assessPlaytestPopulation({...ready,promotions:8,activePromotions:8,
-  women:100,protectedRealPromotions:0,activeTagTeams:1,genesisImports:0});
+  women:100,protectedRealPromotions:0,activeTagTeams:1,
+  activePersonas:0,genesisImports:0});
  assert.equal(invalid.ready,false);
  assert.match(invalid.issues.join(" "),/promotion ecosystem/i);
  assert.match(invalid.issues.join(" "),/women's division/i);
  assert.match(invalid.issues.join(" "),/eight protected real/i);
  assert.match(invalid.issues.join(" "),/tag partnerships/i);
+ assert.match(invalid.issues.join(" "),/wrestler-owned moves/i);
  assert.match(invalid.issues.join(" "),/verified original Genesis/i);
 });

@@ -67,6 +67,9 @@ jobs:
           const source=JSON.parse(readFileSync(process.env.FRESH_SOURCE,"utf8"));
           assert.equal(source.world.currentDate.week,1);
           assert.equal(source.people.length,643);
+          assert.equal(source.personas.length,643);
+          assert.ok(source.personas.every(x=>x.persona.finishingMoves.length>=1 &&
+           x.persona.signatureMoves.length>=2));
           assert.equal(source.promotions.length,13);
           assert.ok(source.contracts.length>=200);
           assert.ok(source.teams.length>=10);

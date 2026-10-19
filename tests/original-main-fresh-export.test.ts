@@ -28,7 +28,13 @@ function freshOriginalState():OriginalMainFreshState{
     x.marketId===m.id)!,promotionId:p.id
   })))];
  const identities=f.people.map(p=>({
-  personId:p.id,active:{gimmickId:p.portableGimmickId!}
+  personId:p.id,active:{
+   gimmickId:"HERO",personaName:p.name,
+   primaryStyle:"ALL_ROUNDER",secondaryStyle:"TECHNICAL",
+   signatureMoves:[{name:"Suplex",category:"GRAPPLE" as const,source:"PPW_AUTHORED" as const}],
+   finishingMoves:[{name:"Flying Lariat",category:"STRIKE" as const,source:"PPW_AUTHORED" as const}],
+   provenance:"CURATED" as const
+  }
  }));
  const people=f.people.map(p=>({
   ...p,division:p.bookingDivision,
@@ -48,7 +54,10 @@ test("true original-main WorldState produces exact real-world population and pro
  assert.equal(out.promotions.length,13);
  assert.equal(out.promotions.filter(x=>x.playerTakeoverEligibility==="LOCKED").length,8);
  assert.equal(out.promotions.filter(x=>x.playerTakeoverEligibility==="STANDARD").length,5);
- assert.equal(out.people[0]?.portableGimmickId,"gimmick-0");
+ assert.equal(out.people[0]?.portableGimmickId,"HERO");
+ assert.equal(out.personas?.length,643);
+ assert.equal(out.personas?.[0]?.persona.finishingMoves[0]?.name,"Flying Lariat");
+ assert.equal(projectOriginalGenesis(out).personas.length,643);
  assert.equal(out.people[0]?.bookingDivision,"WOMEN");
  assert.equal(projectOriginalGenesis(out).contracts.length,400);
  assert.equal(projectOriginalGenesis(out).teams[0]?.name,"Actual Partners");

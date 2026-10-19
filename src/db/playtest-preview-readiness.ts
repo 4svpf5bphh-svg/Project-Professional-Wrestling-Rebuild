@@ -9,7 +9,8 @@ export interface PreviewPopulation{
  promotions:number;activePromotions:number;wrestlers:number;
  signedContracts:number;venues:number;markets:number;championships:number;
  availableTakeovers:number;controlledPromotions:number;humanManagers:number;
- women:number;protectedRealPromotions:number;activeTagTeams:number;genesisImports:number;
+ women:number;protectedRealPromotions:number;activeTagTeams:number;
+ activePersonas:number;genesisImports:number;
 }
 export interface PreviewReadiness{
  ready:boolean;issues:string[];counts:PreviewPopulation;
@@ -34,6 +35,8 @@ export function assessPlaytestPopulation(counts:PreviewPopulation):PreviewReadin
   issues.push("The eight protected real promotion identities are missing");
  if(counts.activeTagTeams<10)
   issues.push("Original seeded tag partnerships are incomplete");
+ if(counts.activePersonas<counts.wrestlers)
+  issues.push("Original wrestler-owned moves and character identities are incomplete");
  if(counts.genesisImports!==1)
   issues.push("Exactly one verified original Genesis import is required");
  if(counts.controlledPromotions+counts.availableTakeovers<2)
@@ -53,7 +56,8 @@ export async function inspectPlaytestPopulation(
   promotions:number;active_promotions:number;wrestlers:number;
   signed_contracts:number;venues:number;markets:number;championships:number;
   available_takeovers:number;controlled_promotions:number;human_managers:number;
-  women:number;protected_real_promotions:number;active_tag_teams:number;genesis_imports:number;
+  women:number;protected_real_promotions:number;active_tag_teams:number;
+  active_personas:number;genesis_imports:number;
  }>(`
   SELECT w.world_id,w.year,w.week,w.phase,
    (SELECT count(*)::integer FROM ppw_promotions p WHERE p.world_id=w.world_id)
@@ -88,6 +92,8 @@ export async function inspectPlaytestPopulation(
      'CMLL','ROH','STARDOM']::text[])) AS protected_real_promotions,
    (SELECT count(*)::integer FROM ppw_tag_teams t
     WHERE t.world_id=w.world_id AND t.status='ACTIVE') AS active_tag_teams,
+   (SELECT count(*)::integer FROM ppw_portable_personas p
+    WHERE p.world_id=w.world_id) AS active_personas,
    (SELECT count(*)::integer FROM ppw_ledger_events l
     WHERE l.world_id=w.world_id AND l.event_type='WORLD_GENESIS_IMPORTED')
     AS genesis_imports
@@ -103,6 +109,7 @@ export async function inspectPlaytestPopulation(
   availableTakeovers:r.available_takeovers,controlledPromotions:r.controlled_promotions,
   humanManagers:r.human_managers,
   women:r.women,protectedRealPromotions:r.protected_real_promotions,
-  activeTagTeams:r.active_tag_teams,genesisImports:r.genesis_imports
+  activeTagTeams:r.active_tag_teams,activePersonas:r.active_personas,
+  genesisImports:r.genesis_imports
  });
 }

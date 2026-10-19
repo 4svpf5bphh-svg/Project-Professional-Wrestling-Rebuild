@@ -80,6 +80,14 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
   {worldId:world,teamId:"tag-duo",personId:"person-0",active:true},
   {worldId:world,teamId:"tag-duo",personId:"person-1",active:true}
  ];
+ for(const person of source.people)person.portableGimmickId="HERO";
+ source.personas=source.people.map(p=>({
+  personId:p.id,persona:{personaName:p.name,gimmickId:"HERO",
+   primaryStyle:"ALL_ROUNDER",secondaryStyle:"TECHNICAL",
+   signatureMoves:[{name:"Suplex",category:"GRAPPLE",source:"PPW_AUTHORED"}],
+   finishingMoves:[{name:"Flying Lariat",category:"STRIKE",source:"PPW_AUTHORED"}],
+   source:"CURATED"}
+ }));
  try{
   const meter=new MeasuredQuerySession("original-genesis-one-time-bootstrap");
   const measured:TransactionPool={async connect(){
@@ -90,10 +98,10 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,tagTeams:1,teamMembers:2,sqlStatements:12});
-  const sample=meter.assertBudget({maxQueries:14,maxResultBytes:2_650});
-  assert.equal(sample.queryCount,14);
-  assert.equal(sample.resultRows,11);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,personas:643,tagTeams:1,teamMembers:2,sqlStatements:13});
+  const sample=meter.assertBudget({maxQueries:15,maxResultBytes:2_850});
+  assert.equal(sample.queryCount,15);
+  assert.equal(sample.resultRows,12);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
   assert.equal(preview.ready,false,
@@ -104,6 +112,14 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
   assert.equal(preview.counts.availableTakeovers,6,
    "Protected real promotions must not appear as available player takeovers");
 
+  const importedPersonas=await withWorldTransaction(db.pool,tx=>tx.query<{
+   person_id:string;persona:{finishingMoves:{name:string}[]}}>(`
+   SELECT person_id,persona FROM ppw_portable_personas
+   WHERE world_id=$1 AND person_id IN('person-0','person-1')
+   ORDER BY person_id`,[world]));
+  assert.equal(importedPersonas.length,2);
+  assert.deepEqual(importedPersonas.map(p=>p.persona.finishingMoves[0]?.name),
+   ["Flying Lariat","Flying Lariat"]);
   const restoredTeams=await withWorldTransaction(db.pool,tx=>tx.query<{
    name:string;person_id:string}>(`
    SELECT t.name,m.person_id FROM ppw_tag_teams t
@@ -217,7 +233,8 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
-    "ppw_ledger_events","ppw_command_receipts","ppw_tag_team_members",
+    "ppw_ledger_events","ppw_command_receipts","ppw_portable_personas",
+    "ppw_tag_team_members",
     "ppw_tag_teams","ppw_show_series",
     "ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
