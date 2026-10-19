@@ -61,14 +61,18 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);
 });
-test("Original 643-person/8-promotion Genesis imports markets and championships with 12 PostgreSQL statements",{
+test("643-person authentic Genesis seeds complete real calendars in one bounded transaction",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
   player="manager-"+randomUUID();
  const source=originalGenesisFixture(world);
+ source.promotions[0]!.name="WWE";
  source.promotions[0]!.identity={origin:"REAL_WORLD"};
  source.promotions[0]!.playerTakeoverEligibility="LOCKED";
+ source.promotions[1]!.name="AEW";
+ source.promotions[1]!.identity={origin:"REAL_WORLD"};
+ source.promotions[1]!.playerTakeoverEligibility="LOCKED";
  try{
   const meter=new MeasuredQuerySession("original-genesis-one-time-bootstrap");
   const measured:TransactionPool={async connect(){
@@ -79,18 +83,32 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,sqlStatements:10});
-  const sample=meter.assertBudget({maxQueries:12,maxResultBytes:2_200});
-  assert.equal(sample.queryCount,12);
-  assert.equal(sample.resultRows,9);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,showSeries:37,sqlStatements:11});
+  const sample=meter.assertBudget({maxQueries:13,maxResultBytes:2_500});
+  assert.equal(sample.queryCount,13);
+  assert.equal(sample.resultRows,10);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
   assert.equal(preview.ready,true);
   assert.equal(preview.counts.wrestlers,643);
   assert.equal(preview.counts.promotions,8);
-  assert.equal(preview.counts.availableTakeovers,7,
+  assert.equal(preview.counts.availableTakeovers,6,
    "Protected real promotions must not appear as available player takeovers");
 
+  const annual=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;name:string;role:string}>(`
+   SELECT promotion_id,name,role FROM ppw_show_series
+   WHERE world_id=$1 AND promotion_id IN('promotion-0','promotion-1')
+   ORDER BY promotion_id,name`,[world]));
+  const wwe=annual.filter(x=>x.promotion_id==="promotion-0").map(x=>x.name);
+  const aew=annual.filter(x=>x.promotion_id==="promotion-1").map(x=>x.name);
+  for(const name of ["Monday Night Raw","Friday Night SmackDown",
+   "Royal Rumble","WrestleMania","SummerSlam","Survivor Series"])
+   assert.ok(wwe.includes(name),"Original Genesis missing WWE identity: "+name);
+  for(const name of ["AEW Dynamite","AEW Collision","Revolution",
+   "Double or Nothing","All In","All Out","Full Gear","Worlds End"])
+   assert.ok(aew.includes(name),"Original Genesis missing AEW identity: "+name);
+  assert.equal(annual.length,25,"No duplicate generic WWE/AEW event series");
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
     injury_rate_multiplier:string;year:number;week:number;revision:string}>(`
@@ -153,8 +171,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   await assert.rejects(importOriginalGenesis(db.pool,source),/duplicate key/);
   await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join-"+world,expectedRevision:0});
   const claimable=await listAvailablePromotions(db.pool,world,null,25);
-  assert.equal(claimable.length,7);
-  assert.equal(claimable[0]?.homeMarketName,"Territory 1");
+  assert.equal(claimable.length,6);
+  assert.equal(claimable[0]?.homeMarketName,"Territory 2");
   assert.equal(claimable[0]?.rosterSize,50);
   assert.equal(claimable.some(p=>p.id==="promotion-0"),false,
    "The imported real company cannot be advertised for takeover");
@@ -162,8 +180,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
    promotionId:"promotion-0",requestId:"protected-"+world,expectedRevision:1}),
    /Promotion not found/);
   await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
-   promotionId:"promotion-1",requestId:"claim-"+world,expectedRevision:1});
-  const desk=await readContractDesk(db.pool,world,player,"promotion-1");
+   promotionId:"promotion-2",requestId:"claim-"+world,expectedRevision:1});
+  const desk=await readContractDesk(db.pool,world,player,"promotion-2");
   assert.equal(desk.summary.signed,50);
   assert.equal(desk.summary.pendingOffers,0);
   assert.ok(desk.roster.every(c=>c.weeklyGuarantee>0));
@@ -174,7 +192,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
-    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
+    "ppw_ledger_events","ppw_command_receipts","ppw_show_series",
+    "ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
     await tx.query(`DELETE FROM ${name} WHERE world_id=$1`,[world]);
    }
@@ -205,7 +224,9 @@ test("Concurrent bootstraps cannot create duplicate or partial Genesis Worlds",{
   assert.deepEqual(counts[0],{worlds:1,people:15,contracts:15,promotions:8,venues:16,championships:16});
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
+   for(const table of ["ppw_ledger_events","ppw_show_series","ppw_contracts",
+    "ppw_championships","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());
