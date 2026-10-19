@@ -45,7 +45,20 @@ export function evaluateAuthoredSegmentCrowd(
   const performer=featured.reduce((n,p)=>n+
    p.popularity*0.45+p.presentation*0.4+p.momentum*0.15,0)/featured.length;
   const storyline=(storylineHeat-50)*0.14;
-  const kind=baseByKind[segment.kind]+
+  // A live arrival is scripted by the booker. Its presentation and chosen
+  // purpose shape reception, but never replace the arrival or invent a rival.
+  const debut=segment.kind==="DEBUT"&&segment.creativeBeat?.kind==="DEBUT"?
+   segment.creativeBeat:null;
+  const arrivalFit=debut?(
+   (debut.presentation==="SURPRISE_REVEAL"?1:0)+
+   (debut.objective==="ESTABLISH_STAR"?(performer<70?2:0):
+    debut.objective==="BUILD_EXCITEMENT"?1:
+    debut.objective==="CREATE_MYSTERY"?
+     (debut.presentation==="SURPRISE_REVEAL"?2:0):
+    debut.objective==="UNSETTLE_RIVAL"?(storylineHeat>=60?2:-1):
+    debut.objective==="REIGNITE_PROGRAMME"?(storylineHeat>=65?3:-2):0)
+  ):0;
+  const kind=baseByKind[segment.kind]+arrivalFit+
    (segment.videoPurpose?videoByPurpose[segment.videoPurpose]:0);
   const repetition=-Math.min(14,repetitionCount*2);
   const crowdResponse=round1(clamp(performer+storyline+kind+repetition,0,100));
