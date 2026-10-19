@@ -454,11 +454,21 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    // Fetch all promotion-owned sides ONCE, never once per wrestler or match.
    const programmePeople=await tx.query<{
     programme_id:string;person_id:string;side:"A"|"B"}>([
-    "SELECT pp.programme_id,pp.person_id,pp.side FROM ppw_programme_participants pp",
-    "JOIN ppw_programmes p ON p.world_id=pp.world_id",
-    "AND p.promotion_id=pp.promotion_id AND p.programme_id=pp.programme_id",
-    "WHERE pp.world_id=$1 AND pp.promotion_id=$2 AND p.status='ACTIVE'",
-    "ORDER BY pp.programme_id,pp.person_id LIMIT 401"
+    // The original Programme authority is the side-ref roster, including
+    // expanded tag memberships. The legacy participant projection can be
+    // absent in imported/rerolled Worlds; don't silently lose match links.
+    "SELECT r.programme_id,r.side,",
+    "CASE WHEN r.ref_kind='PERSON' THEN r.ref_id ELSE tm.person_id END AS person_id",
+    "FROM ppw_programme_side_refs r",
+    "JOIN ppw_programmes p ON p.world_id=r.world_id",
+    "AND p.promotion_id=r.promotion_id AND p.programme_id=r.programme_id",
+    "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id",
+    "AND t.team_id=r.ref_id AND r.ref_kind='TEAM'",
+    "LEFT JOIN ppw_tag_team_members tm ON tm.world_id=r.world_id",
+    "AND tm.team_id=r.ref_id AND tm.active",
+    "WHERE r.world_id=$1 AND r.promotion_id=$2 AND p.status='ACTIVE'",
+    "AND (r.ref_kind='PERSON' OR (t.status='ACTIVE' AND tm.person_id IS NOT NULL))",
+    "ORDER BY r.programme_id,person_id LIMIT 401"
    ].join(" "),[input.worldId,input.promotionId]);
    if(programmePeople.length>400)throw new Error("Too many active programme members");
    const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
