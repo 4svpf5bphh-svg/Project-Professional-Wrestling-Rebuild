@@ -105,6 +105,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
   division:"ALL"|"MEN"|"WOMEN"}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
+ let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
@@ -156,15 +157,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  async function findTalent(query:string,append=false){
   if(!picker)return;
   const request=picker;
+  const sequence=++talentRequestSequence;
   const cursor=append?request.cursor:null;
   try{
    const page=await port.talent(query,cursor);
-   if(picker!==request)return;
+   if(picker!==request||sequence!==talentRequestSequence)return;
    picker.query=query;picker.items=append?[...picker.items,...page.talent]:page.talent;
    picker.cursor=page.cursor;
    for(const p of page.talent)roster.set(p.personId,{...p});
    error="";render();
-  }catch(e){error=errorText(e);render();}
+  }catch(e){
+   if(picker===request&&sequence===talentRequestSequence){error=errorText(e);render();}
+  }
  }
  function pickFor(slotId:string,side:number,member:number){
   picker={slotId,side,member,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
