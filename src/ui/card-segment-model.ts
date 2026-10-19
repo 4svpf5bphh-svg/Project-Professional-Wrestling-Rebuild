@@ -1,6 +1,7 @@
 /** Typed mobile angle editor. A segment's outcome belongs to the player. */
 import {buildBookedSegmentPayload,type BookedSegmentPayload}
  from "../domain/segment-booking.js";
+import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose}
  from "../simulation/legacy/show-segments.js";
 import {initialCreativeBeat,isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
@@ -71,6 +72,13 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
  if(!person.personId||!person.contractId||
   [...s.actors,...s.targets].some(p=>p.personId===person.personId))
   throw new Error("A wrestler cannot fill two roles in one angle");
+ const rules=SEGMENT_BOOKING_RULES[s.kind];
+ if(role==="targets"&&!rules.allowTargets)
+  throw new Error("This angle has no target role");
+ if(s.actors.length+s.targets.length>=30)
+  throw new Error("An angle cannot include more than 30 wrestlers");
+ if(role==="actors"&&s.actors.length>=rules.maxActors)
+  throw new Error("Angle performer capacity exceeded");
  if(role==="actors"&&LIMITED_ACTORS.has(s.kind)&&s.actors.length>=1)
   throw new Error("This angle has one lead wrestler");
  const max=role==="actors"?
