@@ -213,9 +213,26 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   const persisted=await reloaded.json();
   assert.equal(persisted.slots?.length,1);
   assert.equal(persisted.slots[0].payload.scriptedWinnerSide,"A");
+  const ready=await call("ready",{
+   showId:draftId,requestId:"real-confirm-"+manager.id,
+   expectedRevision:(await auth()).overview.world.revision
+  });
+  assert.equal(ready.status,200,
+   "The actual original Wrestler booking must satisfy creative, appearance and venue readiness");
+  assert.equal((await ready.json()).status,"APPLIED",
+   "Only the player's explicit confirmation makes a booked show ready for the single World Lock");
+  const confirmed=await call("load",{showId:draftId});
+  assert.equal(confirmed.status,200);
+  assert.equal((await confirmed.json()).ready,true);
   prepared.push(draftId);
  }
  const owner=managers[0]!,other=managers[1]!;
+ const otherCard=await send("/api/card","POST",{
+  method:"load",worldId,promotionId:other.promotionId,
+  showId:prepared[1]!
+ },owner.cookie,owner.csrf);
+ assert.equal(otherCard.status,400,
+  "An unrelated manager cannot inspect the rival's confirmed card");
  const illicit=await send("/api/card","POST",{
   method:"business",worldId,promotionId:other.promotionId,showId:""
  },owner.cookie,owner.csrf);
@@ -226,5 +243,5 @@ test("authentic original-main Genesis: two humans independently claim fictional 
  assert.equal(visible.status,200);
  console.log(JSON.stringify({status:"AUTHENTIC_TWO_MANAGER_PREVIEW_SMOKE_PASSED",
   realPromotionPopulation:reserved.size,claimablePopulation:permitted.size,
-  distinctClaimed:2,authoredFirstShows:prepared.length,worldWeek:1}));
+  distinctClaimed:2,confirmedFirstShows:prepared.length,worldWeek:1}));
 });
