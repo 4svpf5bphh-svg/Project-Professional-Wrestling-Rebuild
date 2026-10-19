@@ -21,12 +21,16 @@ const labels:Readonly<Record<string,string>>={
  BEATDOWN:"Sustained beatdown",PULL_APART_BRAWL:"Pull-apart brawl",
  GENERATE_HEAT:"Stoke hostility",BUILD_SYMPATHY:"Rally sympathy",
  ESCALATE_RIVALRY:"Escalate the feud",SIGNED:"Papers signed",
- REJECTED:"Signing rejected",BRAWL:"Signing erupts into a brawl"
+ REJECTED:"Signing rejected",BRAWL:"Signing erupts into a brawl",
+ INTRODUCTION:"Announced arrival",SURPRISE_REVEAL:"Surprise reveal",
+ ESTABLISH_STAR:"Establish a new star",BUILD_EXCITEMENT:"Build anticipation",
+ CREATE_MYSTERY:"Create mystery",UNSETTLE_RIVAL:"Unsettle a rival",
+ REIGNITE_PROGRAMME:"Reignite a rivalry"
 };
 const fieldNames:Readonly<Record<string,string>>={
  purpose:"The message",format:"Interview setting",topic:"Interview subject",
  response:"The answer",occasion:"Occasion",ending:"How it ends",
- presentation:"Attack style",objective:"The intention"
+ presentation:"Presentation",objective:"The intention"
 };
 export function creativeLabel(value:string):string{
  return labels[value]??value.replaceAll("_"," ").toLowerCase()
