@@ -23,6 +23,7 @@ const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  let progressedFrom:{year:number;week:number}|null=null;
+ let expiredOnScreen:string|null=null;
  const dismissing=new Set<string>();
  let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
@@ -135,17 +136,27 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    return;
   }
   const {world,promotion,membership}=overview;
+  const key=world.year+":"+world.week;
+  const deadlineDue=world.phase==="OPEN"&&(
+   expiredOnScreen===key||
+   (Number.isFinite(world.nextLockEpoch)&&Number.isFinite(world.serverEpoch)
+    &&world.nextLockEpoch<=world.serverEpoch));
+  const bookingOpen=world.phase==="OPEN"&&!deadlineDue;
   const hero=el("section","ppw-home-hero");
   const heroTop=el("div","ppw-home-hero-top");
   heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
-  const live=el("span","ppw-home-phase ppw-home-phase-"+world.phase.toLowerCase(),
-   world.phase==="OPEN"?"● BOOKING OPEN":world.phase==="LOCKED"?"● CARDS LOCKED":"● SHOWS IN PROGRESS");
+  const live=el("span","ppw-home-phase ppw-home-phase-"+
+   (deadlineDue?"due":world.phase.toLowerCase()),
+   bookingOpen?"● BOOKING OPEN":deadlineDue?"● DEADLINE REACHED":
+    world.phase==="LOCKED"?"● CARDS LOCKED":"● SHOWS IN PROGRESS");
   heroTop.append(live);
   hero.append(heroTop,
    el("h2","",promotion?.name??"Choose a promotion"),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
-   el("p","ppw-home-small",world.phase==="OPEN"?
+   el("p","ppw-home-small",deadlineDue?
+    "Booking has closed. Check the World before making further plans.":
+    world.phase==="OPEN"?
     "The booking window is open. Your creative choices remain yours.":
     world.phase==="LOCKED"?"This week's cards are locked. The show lineup is final.":
     "This week's shows are taking place. The new standings will follow."));
@@ -158,13 +169,17 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    loading?"Checking World…":"Check World status") as HTMLButtonElement;
   check.type="button";check.disabled=loading;check.onclick=()=>void load();
   if(world.phase==="OPEN"){
-   const countdown=el("p","ppw-home-countdown","Checking this week's deadline…");
+   const countdown=el("p","ppw-home-countdown",
+    deadlineDue?"Booking deadline reached · check World status":
+     "Checking this week's deadline…");
    countdown.setAttribute("aria-live","off");
    hero.append(countdown);
-   // Do not poll or advance the World. Only offer a deliberate read when due.
-   check.hidden=true;
+   check.hidden=!deadlineDue;
    hero.append(check);
-   startClock(countdown,world,()=>{check.hidden=false;});
+   if(!deadlineDue)startClock(countdown,world,()=>{
+    expiredOnScreen=key;
+    draw();
+   });
   }else if(world.phase==="LOCKED"||world.phase==="RESOLVING"){
    hero.append(el("p","ppw-home-countdown",
     "This week's booking has closed. Shows settle for everyone at the same World Lock."));
@@ -209,16 +224,16 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   // Tolerate previously cached session projections and historical test fixtures.
   // Unavailable telemetry must never be interpreted as a confirmed alert.
   const attention=promotion.attention;
-  if(world.phase==="OPEN"&&world.year>1||world.phase==="OPEN"&&world.week>1){
+  if(bookingOpen&&(world.year>1||world.week>1)){
    if(!progressedFrom)items.push({title:"Last week's results",detail:
     "The previous week's shows have been completed. Read your latest broadcasts.",
     action:port.results,icon:"★",level:"normal"});
   }
-  if(world.phase==="OPEN"&&attention?.plannedShows===0)
+  if(bookingOpen&&attention?.plannedShows===0)
    items.push({title:"Plan this week's show",detail:
     "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
     action:port.planner,icon:"◷",level:"priority"});
-  if(world.phase==="OPEN"&&attention?.unpreparedShow)
+  if(bookingOpen&&attention?.unpreparedShow)
    items.push({title:"Finish your booking card",detail:
     "Your card still needs confirming before the weekly deadline.",
     action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
