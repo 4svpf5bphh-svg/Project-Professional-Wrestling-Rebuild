@@ -1424,7 +1424,7 @@ test("iPhone restores the exact premium card instead of reopening the weekly sho
  await expect(page.getByText("The Big Event")).toBeVisible();
  expect(selected).toEqual(["premium","premium"]);
  expect(page.url()).not.toContain("premium");
- await page.getByRole("button",{name:/Back to planner/i}).click();
+ await page.getByRole("button",{name:"← Planner"}).click();
  await expect(page).toHaveURL(/#\\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
 });
