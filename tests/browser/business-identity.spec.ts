@@ -27,7 +27,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  });
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
- await expect(page.getByText("Territory 0",{exact:true})).toBeVisible();
+ await expect(page.locator(".ppw-business-metric").filter({hasText:"HOME TERRITORY"}).getByText("Territory 0",{exact:true})).toBeVisible();
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
  await expect(page.getByText("90",{exact:true})).toBeVisible();
  await expect(page.getByText(/Based in Territory 0/)).toBeVisible();
