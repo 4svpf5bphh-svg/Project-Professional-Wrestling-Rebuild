@@ -29,6 +29,14 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
   assert.equal(zero.liveAppearances[0]?.status,"DEBUT_ELIGIBLE");
   assert.equal(zero.liveAppearances[0]?.recordedShows,0);
   await withWorldTransaction(db.pool,async tx=>{
+   // Show-resolution records may only reference a truly submitted draft.
+   await tx.query(`
+    INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
+    VALUES ($1,$2,'career-show',1,1,'SUBMITTED'),
+     ($1,$2,'live-show',1,6,'SUBMITTED'),
+     ($1,$2,'video-show',1,8,'SUBMITTED'),
+     ($1,'promotion-1','other-live',1,2,'SUBMITTED')
+   `,[world,promotionId]);
    await tx.query(
     "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
     "resolution_id,crowd_response,receipt_json,receipt_digest)"+
@@ -135,7 +143,7 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
    for(const table of [
     "ppw_completed_match_report_facts","ppw_individual_field_career_effects",
     "ppw_completed_show_matches","ppw_completed_show_segments",
-    "ppw_completed_shows","ppw_show_resolutions",
+    "ppw_completed_shows","ppw_show_resolutions","ppw_booking_drafts",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
