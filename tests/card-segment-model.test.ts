@@ -123,3 +123,27 @@ test("interruption, rescue and post-match assault retain explicitly directed rol
   assert.equal(payload.targetIds[0],"victim");
  }
 });
+
+test("booker cannot cast targets into targetless scenes or exceed the shared 30-person limit",()=>{
+ const p=(id:string)=>({personId:id,contractId:"contract-"+id});
+ for(const kind of ["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"] as const){
+  const scene=newEditorSegment("scene",kind);
+  assert.throws(()=>addSegmentPerson(scene,"targets",p("intruder")),/no target role/);
+ }
+ let confrontation=newEditorSegment("crowd","CONFRONTATION");
+ for(let i=0;i<29;i++)
+  confrontation=addSegmentPerson(confrontation,"actors",p("actor-"+i));
+ confrontation=addSegmentPerson(confrontation,"targets",p("target"));
+ assert.throws(()=>addSegmentPerson(confrontation,"targets",p("overflow")),/more than 30/);
+ assert.equal(buildEditorSegment(confrontation).participants.length,30);
+});
+test("specialist angle performer capacity remains explicit",()=>{
+ const person=(id:string)=>({personId:id,contractId:"contract-"+id});
+ let rescue=newEditorSegment("save","RESCUE");
+ rescue=addSegmentPerson(rescue,"actors",person("attacker"));
+ rescue=addSegmentPerson(rescue,"actors",person("rescuer"));
+ assert.throws(()=>addSegmentPerson(rescue,"actors",person("third")),/capacity/);
+ let debut=newEditorSegment("arrival","DEBUT");
+ debut=addSegmentPerson(debut,"actors",person("entrant"));
+ assert.throws(()=>addSegmentPerson(debut,"actors",person("second")),/lead wrestler/);
+});
