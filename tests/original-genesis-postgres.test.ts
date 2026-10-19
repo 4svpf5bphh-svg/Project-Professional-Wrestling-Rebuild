@@ -73,6 +73,11 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
  source.promotions[1]!.name="AEW";
  source.promotions[1]!.identity={origin:"REAL_WORLD"};
  source.promotions[1]!.playerTakeoverEligibility="LOCKED";
+ source.teams=[{worldId:world,id:"tag-duo",name:"The Original Duo",status:"ACTIVE"}];
+ source.teamMemberships=[
+  {worldId:world,teamId:"tag-duo",personId:"person-0",active:true},
+  {worldId:world,teamId:"tag-duo",personId:"person-1",active:true}
+ ];
  try{
   const meter=new MeasuredQuerySession("original-genesis-one-time-bootstrap");
   const measured:TransactionPool={async connect(){
@@ -83,10 +88,10 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,showSeries:37,sqlStatements:11});
-  const sample=meter.assertBudget({maxQueries:13,maxResultBytes:2_500});
-  assert.equal(sample.queryCount,13);
-  assert.equal(sample.resultRows,10);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,showSeries:37,tagTeams:1,teamMembers:2,sqlStatements:13});
+  const sample=meter.assertBudget({maxQueries:15,maxResultBytes:2_700});
+  assert.equal(sample.queryCount,15);
+  assert.equal(sample.resultRows,12);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
   assert.equal(preview.ready,true);
@@ -95,6 +100,16 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
   assert.equal(preview.counts.availableTakeovers,6,
    "Protected real promotions must not appear as available player takeovers");
 
+  const restoredTeams=await withWorldTransaction(db.pool,tx=>tx.query<{
+   name:string;person_id:string}>(`
+   SELECT t.name,m.person_id FROM ppw_tag_teams t
+    JOIN ppw_tag_team_members m ON m.world_id=t.world_id
+     AND m.team_id=t.team_id AND m.active
+   WHERE t.world_id=$1 ORDER BY m.person_id`,[world]));
+  assert.deepEqual(restoredTeams,[
+   {name:"The Original Duo",person_id:"person-0"},
+   {name:"The Original Duo",person_id:"person-1"}
+  ]);
   const annual=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string;role:string}>(`
    SELECT promotion_id,name,role FROM ppw_show_series
@@ -192,7 +207,8 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
-    "ppw_ledger_events","ppw_command_receipts","ppw_show_series",
+    "ppw_ledger_events","ppw_command_receipts","ppw_tag_team_members",
+    "ppw_tag_teams","ppw_show_series",
     "ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_championships","ppw_people","ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"]){
     await tx.query(`DELETE FROM ${name} WHERE world_id=$1`,[world]);
