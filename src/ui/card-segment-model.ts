@@ -77,10 +77,10 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
   throw new Error("This angle has no target role");
  if(s.actors.length+s.targets.length>=30)
   throw new Error("An angle cannot include more than 30 wrestlers");
- if(role==="actors"&&s.actors.length>=rules.maxActors)
-  throw new Error("Angle performer capacity exceeded");
  if(role==="actors"&&LIMITED_ACTORS.has(s.kind)&&s.actors.length>=1)
   throw new Error("This angle has one lead wrestler");
+ if(role==="actors"&&s.actors.length>=rules.maxActors)
+  throw new Error("Angle performer capacity exceeded");
  const max=role==="actors"?
   s.kind==="RESCUE"?2:["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)?1:20:
   ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)?1:20;
