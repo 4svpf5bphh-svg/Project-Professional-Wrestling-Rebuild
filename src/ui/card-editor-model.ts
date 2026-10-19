@@ -181,6 +181,9 @@ export function resizeMatch(match:EditorMatch,count:number,size?:number):EditorM
  if(!Number.isInteger(teamSize)||teamSize<1||teamSize>5||
   (match.format==="MULTI_TEAM"&&teamSize<2)||
   count*teamSize>30)throw new Error("Invalid team size");
+ const displaced=match.teams.some((team,i)=>team.some((person,j)=>
+  person!==null&&(i>=count||j>=teamSize)));
+ if(displaced)throw new Error("Remove wrestlers from the affected positions before reducing the match size");
  const teams=Array.from({length:count},(_,i)=>
   Array.from({length:teamSize},(_,j)=>match.teams[i]?.[j]??null));
  const winnerSide=Math.min(match.winnerSide,count-1);
