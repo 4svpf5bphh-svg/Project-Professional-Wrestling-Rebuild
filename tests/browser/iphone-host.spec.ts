@@ -1431,3 +1431,38 @@ test("iPhone restores the exact premium card instead of reopening the weekly sho
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
 });
+
+test("two-manager claim race keeps the losing iPhone out of private desks",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let claimed=false,attempts=0,sessionReads=0;
+ await page.route("**/api/session",async route=>{
+  sessionReads++;
+  await route.fulfill({json:{...current,
+   overview:{...overview,membership:"ACTIVE",
+    promotion:claimed?overview.promotion:null},
+   availablePromotions:claimed?[]:[{id:"aew",name:"Takeover Company",
+    tier:"INDEPENDENT",homeMarketName:"Leeds",rosterSize:16}]
+  }});
+ });
+ await page.route("**/api/claim",async route=>{
+  const body=route.request().postDataJSON();
+  expect(body.promotionId).toBe("aew");
+  expect(body.playerId).toBeUndefined();
+  attempts++;
+  if(attempts===2)claimed=true;
+  await route.fulfill({json:{status:attempts===1?"REJECTED":"APPLIED"}});
+ });
+ await page.route("**/api/card",route=>route.fulfill({json:overview}));
+ await page.goto("/#/home");
+ await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ await expect(page.getByText("Home territory · Leeds")).toBeVisible();
+ await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByText(/Another manager may have taken this company/)).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ expect(sessionReads).toBe(1,"Rejected claims do not silently enter or reload a private desk");
+ await page.getByRole("button",{name:"Refresh available promotions"}).click();
+ await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ expect(attempts).toBe(2);
+});
