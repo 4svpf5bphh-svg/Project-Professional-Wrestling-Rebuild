@@ -129,6 +129,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  function setMatch(slotId:string,next:EditorMatch){
   matches.set(slotId,next);markDirty();render();
  }
+ function changeSize(match:EditorMatch,count:number,size?:number){
+  try{setMatch(match.slotId,resizeMatch(match,count,size));}
+  catch(e){error=errorText(e);render();}
+ }
  async function load(){
   loading=true;render();
   try{
@@ -878,11 +882,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      sizing.append(field(m.format==="BATTLE_ROYAL"?"Entrants":"Teams",
       numberField(m.teams.length,m.format==="BATTLE_ROYAL"?6:3,
        m.format==="BATTLE_ROYAL"?30:6,
-       value=>setMatch(slotId,resizeMatch(m,value)),!mutable())));
+       value=>changeSize(m,value),!mutable())));
      if(m.format==="MULTI_TEAM")
       sizing.append(field("Wrestlers per team",
        numberField(m.teams[0]!.length,2,5,
-        value=>setMatch(slotId,resizeMatch(m,m.teams.length,value)),!mutable())));
+        value=>changeSize(m,m.teams.length,value),!mutable())));
      body.append(sizing);
     }
     for(let side=0;side<m.teams.length;side++){
