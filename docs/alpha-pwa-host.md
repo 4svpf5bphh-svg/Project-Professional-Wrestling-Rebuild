@@ -26,7 +26,7 @@ alter the old PPW Neon project.
 ## Release prerequisites — do not perform without explicit approval
 
 1. Choose the **new isolated rebuild Neon database**, not the original PPW
-   project. Apply the repository's numbered migrations 0001–0068 to that new
+   project. Apply the repository's numbered migrations 0001–0079 to that new
    database through an explicit migration workflow, not from a player request.
    No host code automatically creates a World. `PPW_WORLD_ID` must refer to an
    existing, migrated World in that database.
@@ -55,6 +55,37 @@ alter the old PPW Neon project.
    exactly once only after user approval, and disable it again. The
    `vercel.json` release guard must be changed only on a separately authorized
    deployment.
+
+## Isolated playtest World preparation (not yet authorised)
+
+The preview has two explicit safeguards: the starting World must be built from
+a *fresh, actual original-main Genesis export*, not the synthetic 643-person
+test fixture, and the active promotion list must allow two different managers
+to claim separate companies. The original real promotions may be deliberately
+locked against takeover; the preflight refuses to treat a World with no
+player-eligible companies as playable. Do not bypass that by changing the
+original's protected promotion contracts.
+
+After migrations on an **authorised isolated database**, a trusted operator can
+validate and import an offline source through `npm run playtest:genesis`.
+It requires `PPW_PLAYTEST_DB_URL`, `PPW_PLAYTEST_WORLD_ID`,
+`PPW_GENESIS_IMPORT_AUTHORIZED=YES`, and explicit `--world`,
+`--source`, `--confirm-world`, `--confirm-host`. The import is atomic,
+rejects non-Genesis game data, and never overwrites an existing World.
+No original database connection or export API is involved. A compatible
+original-main fresh Genesis source still needs to be supplied; the tooling
+does not fabricate a roster or silently initialise the live World.
+
+The operator then runs `npm run playtest:preflight -- --world <id>` with
+`PPW_PLAYTEST_DB_URL`. This is read-only and reports compact population
+counts and reasons the World is not yet previewable.
+
+A full manual week can **only be run after separate explicit approval** via
+`npm run playtest:week -- --world <id> --resolve --confirm-world <id>
+--confirm-host <isolated-host>`, with `PPW_PLAYTEST_DB_URL`,
+`PPW_PLAYTEST_WORLD_ID` and `PPW_ONE_SHOT_AUTHORIZED=YES` set. It does not
+bypass the single World deadline, start a cron, or choose human booking
+outcomes. Do not run this on production or on the original PPW project.
 
 ## Local and CI verification
 
