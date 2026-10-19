@@ -10,7 +10,7 @@ import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
-import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
+import {inferProgrammeMatchLinks,validateProgrammeAngleLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
@@ -471,6 +471,10 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     "ORDER BY r.programme_id,person_id LIMIT 401"
    ].join(" "),[input.worldId,input.promotionId]);
    if(programmePeople.length>400)throw new Error("Too many active programme members");
+   if(authored)validateProgrammeAngleLinks(authored.filter(s=>s.programmeId).map(s=>({
+    slotId:s.slotId,programmeId:s.programmeId!,
+    personIds:s.payload.participants.map(p=>p.personId)
+   })),programmePeople);
    const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
     const layout=readCanonicalMatchLayout(m.payload);
     return layout.sides.length===2?[{
