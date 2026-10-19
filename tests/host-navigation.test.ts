@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {HOST_SECTIONS,hostSectionHash,readHostSection,
- contractAttentionHash,readContractFocus,plannerCardHash,backstageUnreadHash}
+ contractAttentionHash,readContractFocus,plannerCardHash,backstageUnreadHash,
+ bookingHistoryState,readBookingHistory}
  from "../src/web/host-navigation.js";
 test("every workspace is addressable and all routes avoid private credentials",()=>{
  for(const item of HOST_SECTIONS){
@@ -52,4 +53,19 @@ test("Home alerts open the unfinished card or unread inbox without exposing iden
  for(const bad of ["#/planner/card/person-3","#/backstage/unread?name=John",
   "#/backstage/unread/secret","#/planner/card#token"])
   assert.equal(readHostSection(bad),"home");
+});
+
+test("private selected-card history survives a reload but never crosses promotion or World",()=>{
+ const state=bookingHistoryState("w1","mine","ppv-night");
+ assert.equal(readHostSection("#/card"),"card");
+ assert.equal(readBookingHistory(state,"w1","mine"),"ppv-night");
+ assert.equal(readBookingHistory(state,"w1","rival"),null);
+ assert.equal(readBookingHistory(state,"w2","mine"),null);
+ assert.equal(readBookingHistory(null,"w1","mine"),null);
+ assert.equal(readBookingHistory({ppwBooking:{worldId:"w1",promotionId:"mine",
+  showId:""}}, "w1","mine"),null);
+ assert.equal(readBookingHistory({ppwBooking:{worldId:"w1",promotionId:"mine",
+  showId:"x".repeat(201)}}, "w1","mine"),null);
+ assert.throws(()=>bookingHistoryState("w1","mine",""));
+ assert.equal("#/card".includes("ppv-night"),false);
 });
