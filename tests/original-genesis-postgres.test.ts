@@ -3,6 +3,7 @@ import test from "node:test";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
+import {inspectPlaytestPopulation} from "../src/db/playtest-preview-readiness.js";
 import {projectOriginalGenesis} from "../src/domain/original-genesis-projection.js";
 import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
@@ -77,6 +78,13 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   assert.equal(sample.queryCount,12);
   assert.equal(sample.resultRows,9);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
+  const preview=await inspectPlaytestPopulation(db.pool,world);
+  assert.equal(preview.ready,true);
+  assert.equal(preview.counts.wrestlers,643);
+  assert.equal(preview.counts.promotions,8);
+  assert.equal(preview.counts.availableTakeovers,8,
+   "Fixture companies are explicitly eligible; real locked companies must not be exposed");
+
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
     injury_rate_multiplier:string;year:number;week:number;revision:string}>(`
