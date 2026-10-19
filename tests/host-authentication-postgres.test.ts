@@ -172,9 +172,9 @@ test("End-to-end host: two signed players, one World, independent claims and pri
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
    [world]));
   const worldState=await withWorldTransaction(db.pool,tx=>tx.query<{
-   revision:number}>("SELECT revision FROM ppw_worlds WHERE world_id=$1",[world]));
+   revision:number|string}>("SELECT revision FROM ppw_worlds WHERE world_id=$1",[world]));
   assert.equal((await lockWorldWeek(db.pool,{worldId:world,
-   requestId:"host-journey-lock",expectedRevision:worldState[0]!.revision})).status,"APPLIED");
+   requestId:"host-journey-lock",expectedRevision:Number(worldState[0]!.revision)})).status,"APPLIED");
   const resolution=await driveWorldResolution(db.pool,{
    worldId:world,resolutionId:"host-journey-resolution",maxStages:16});
   assert.equal(resolution.status,"PUBLISHED",
