@@ -6,7 +6,9 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
  const promotions=Array.from({length:8},(_,i)=>({
   id:"promotion-"+i,worldId,name:"Promotion "+i,homeMarketId:"market-"+(i%4),
   tier:(i===0?"GLOBAL":i<3?"NATIONAL":i<5?"RISING":"INDEPENDENT") as "GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT",
-  lifecycle:"ACTIVE",controllerType:"AI" as const,cash:5_000_000+i*1_000,
+  lifecycle:"ACTIVE",controllerType:"AI" as const,
+  identity:{origin:"FICTIONAL" as const},playerTakeoverEligibility:"STANDARD" as const,
+  cash:5_000_000+i*1_000,
   debt:0,mediaReach:90-i*7,eventCadenceWeeks:1,
   aiProfile:{financialCaution:65,riskTolerance:63,
    matchQualityPreference:70,starPreference:75},
