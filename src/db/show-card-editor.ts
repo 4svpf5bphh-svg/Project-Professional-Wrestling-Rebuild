@@ -474,7 +474,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    if(authored)validateProgrammeAngleLinks(authored.filter(s=>s.programmeId).map(s=>({
     slotId:s.slotId,programmeId:s.programmeId!,
     personIds:s.payload.participants.map(p=>p.personId)
-   })),programmePeople);
+   })),programmePeople.map(p=>({programmeId:p.programme_id,personId:p.person_id,side:p.side})));
    const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
     const layout=readCanonicalMatchLayout(m.payload);
     return layout.sides.length===2?[{
