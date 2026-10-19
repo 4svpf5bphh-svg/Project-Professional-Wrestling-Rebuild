@@ -60,8 +60,8 @@ test("End-to-end host: two signed players, one World, independent claims and pri
     ["show-a",promoA,"arena-a",3],["show-b",promoB,"arena-b",5]
    ] as const){
     await tx.query(
-     "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id)"+
-     " VALUES($1,$2,$3,1,1,'DRAFT',$4,$5,'home')",[world,show,promo,day,venue]);
+     "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,event_importance)"+
+     " VALUES($1,$2,$3,1,1,'DRAFT',$4,$5,'home',65)",[world,show,promo,day,venue]);
    }
   });
   const invalid=await post("/api/auth",{playerId:p1,accessCode:secret2});
