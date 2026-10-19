@@ -1524,3 +1524,55 @@ test("reaching a World deadline on iPhone offers a refresh without silently reso
  await expect(page.getByText(/CARDS LOCKED/)).toBeVisible();
  expect(reads).toBe(2);
 });
+
+test("iPhone unsaved show authorship survives browser back and can be deliberately discarded",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const a={personId:"alice",contractId:"deal-a"};
+ const b={personId:"bob",contractId:"deal-b"};
+ const booking={matchType:"SINGLES",family:"INDIVIDUAL",participants:[a,b],
+  sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:18};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  canEdit:true,worldRevision:4,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,canEdit:true,required:true,major:false,
+   scheduled:[],shows:[{draftId:"weekly",showName:"Showtime",
+    year:1,week:5,eventType:"REGULAR",bookingClass:"REGULAR",status:"DRAFT",
+    day:5,venueId:"arena",marketId:"home",venueName:"Arena",marketName:"Home",
+    ticketStrategy:"STANDARD",ready:false,slots:1,showSeriesId:null}]}]};
+ const card={showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+  worldRevision:4,day:5,venueId:"arena",showName:"Showtime",
+  venueName:"Arena",marketName:"Home",promotionName:"AEW",
+  bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+  championships:[],programmes:[],programmeLinks:[],
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+   {personId:"bob",name:"Bob",division:"MEN"}],
+  slots:[{slotId:"main",kind:"MATCH",position:0,payload:booking}]};
+ const calls:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const method=String(route.request().postDataJSON().method);calls.push(method);
+  await route.fulfill({json:method==="planner"?planner:method==="load"?card:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page).toHaveURL(/#\/card$/);
+ await page.locator(".ppw-card-bar .ppw-expand").click();
+ const editor=page.getByRole("dialog",{name:"Edit match"});
+ await editor.getByLabel("Minutes").fill("26");
+ await editor.getByLabel("Minutes").press("Tab");
+ await expect(page.getByText("Unsaved changes")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
+ page.once("dialog",d=>d.dismiss());
+ await page.goBack();
+ await expect(page).toHaveURL(/#\/card$/);
+ await expect(page.getByText("Unsaved changes")).toBeVisible();
+ expect(calls).not.toContain("save");
+ page.once("dialog",d=>d.accept());
+ await page.getByRole("button",{name:"Discard unsaved edits"}).click();
+ await expect(page.getByText("Unsaved changes")).toHaveCount(0);
+ await expect(page.getByText("18 of 120 min TV guide")).toBeVisible();
+ await page.getByRole("button",{name:"← Planner"}).click();
+ await expect(page).toHaveURL(/#\/planner$/);
+ expect(calls).not.toContain("save");
+});
