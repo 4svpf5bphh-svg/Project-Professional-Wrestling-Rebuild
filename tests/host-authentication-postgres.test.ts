@@ -44,6 +44,8 @@ test("End-to-end host: two signed players, one World, independent claims and pri
    await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[world]);
    await tx.query("UPDATE ppw_promotions SET media_reach=70 WHERE world_id=$1",[world]);
    await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'home','Home',60,70,100)",[world]);
+   await tx.query("UPDATE ppw_promotions SET home_market_id='home' WHERE world_id=$1",
+    [world]);
    for(const venue of ["arena-a","arena-b"])
     await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,$2,$3,'home')",[world,venue,venue]);
    for(let i=0;i<4;i++){
@@ -92,6 +94,11 @@ test("End-to-end host: two signed players, one World, independent claims and pri
    undefined,cookie1))).json();
   assert.equal(beforeClaim.overview.membership,"ACTIVE");
   assert.equal(beforeClaim.availablePromotions.length,2);
+  assert.equal(beforeClaim.availablePromotions[0]?.homeMarketName,"Home");
+  assert.equal(beforeClaim.availablePromotions[0]?.rosterSize,2);
+  assert.equal(beforeClaim.availablePromotions[1]?.rosterSize,2);
+  assert.equal("cash" in beforeClaim.availablePromotions[0],false,
+   "Company selection must not disclose private finances");
   assert.equal((await post("/api/claim",{requestId:"claim1",expectedRevision:1,
    promotionId:promoA,playerId:p2},cookie1,csrf1)).status,200);
   assert.equal((await post("/api/join",{requestId:"join2",expectedRevision:2},
