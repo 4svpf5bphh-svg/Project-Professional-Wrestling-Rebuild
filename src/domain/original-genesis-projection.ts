@@ -39,6 +39,10 @@ export interface OriginalGenesisSource {
   lastEvaluatedYear:number}>;
  venues:Array<{id:string;worldId:string;name:string;marketId:string;capacity:number;
   weeklyHireCost:number;prestige:number;productionSuitability:number}>;
+ /** Direct original-main tag-team identities, never synthetic pairings. */
+ teams?:Array<{id:string;worldId:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
+ teamMemberships?:Array<{teamId:string;worldId:string;personId:string;active:boolean}>;
+
  contracts:Array<{id:string;worldId:string;personId:string;promotionId:string;
   status:"SIGNED"|"EXPIRED"|"TERMINATED";family:Family;
   exclusivity:"OPEN"|"NON_EXCLUSIVE"|"EXCLUSIVE";
@@ -67,6 +71,9 @@ export interface GenesisProjection {
  priorities:PersonEconomics["priorities"];division:string|null;
  alignment:string|null;gimmick:string|null}>;
  venues:Array<{id:string;name:string;marketId:string;capacity:number;cost:number;prestige:number;suitability:number}>;
+ teams:Array<{id:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
+ teamMemberships:Array<{teamId:string;personId:string;active:boolean}>;
+
  contracts:Array<{id:string;person:string;promotion:string;family:Family;status:string;
  remaining:number|null;start:number;expires:number;entitlement:number;weekly:number;
  appearance:number;bonus:number;role:Role;creative:Creative}>;
@@ -215,6 +222,29 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    prestige:v.prestige,suitability:v.productionSuitability};
  });
  const ids=new Set(people.map(p=>p.id)),promos=new Set(promotions.map(p=>p.id));
+ // Fresh real teams, distinct from promotion-owned stables and booking sides.
+ // Empty for legacy test fixtures; when provided, both collections must agree.
+ if((source.teams===undefined)!==(source.teamMemberships===undefined))
+  throw new Error("Original team roster and memberships must be supplied together");
+ const sourceTeams=source.teams??[],sourceMembers=source.teamMemberships??[];
+ if(sourceTeams.length>500||sourceMembers.length>1500)
+  throw new Error("Original World has too many team identities");
+ unique(sourceTeams.map(t=>t.id),"tag team");
+ const teams=sourceTeams.map(t=>{
+  if(!isText(t.id)||!isText(t.name)||t.worldId!==worldId||
+   !["ACTIVE","DISBANDED"].includes(t.status))
+   throw new Error("Invalid original tag team");
+  return {id:t.id,name:t.name,status:t.status};
+ });
+ const teamIds=new Set(teams.map(t=>t.id));
+ unique(sourceMembers.map(x=>x.teamId+"\\u0000"+x.personId),"team membership");
+ const teamMemberships=sourceMembers.map(m=>{
+  const team=teams.find(t=>t.id===m.teamId);
+  if(m.worldId!==worldId||!teamIds.has(m.teamId)||!ids.has(m.personId)||
+   typeof m.active!=="boolean"||(m.active&&team?.status!=="ACTIVE"))
+   throw new Error("Invalid original tag team member");
+  return {teamId:m.teamId,personId:m.personId,active:m.active};
+ });
  const contracts=source.contracts.map(c=>{
   if(!isText(c.id)||c.worldId!==worldId||!ids.has(c.personId)||!promos.has(c.promotionId)
    ||!["SIGNED","EXPIRED","TERMINATED"].includes(c.status)
@@ -252,5 +282,6 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   rulesetVersion:source.world.rulesetVersion,acceptance:source.ruleset.offerAcceptanceThreshold,
   injury:source.ruleset.injuryRateMultiplier,
   majorEventIntervalWeeks:source.ruleset.majorEventIntervalWeeks},
-  markets,promotionMarketStates,promotionStandings,promotions,people,venues,contracts};
+  markets,promotionMarketStates,promotionStandings,promotions,people,venues,
+  teams,teamMemberships,contracts};
 }
