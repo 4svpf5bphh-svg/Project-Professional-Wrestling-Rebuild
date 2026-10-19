@@ -20,7 +20,8 @@ type SessionView={
   membership:"ACTIVE"|"INACTIVE"|"NONE";
   promotion:null|{id:string;name:string};
  };
- availablePromotions:{id:string;name:string;tier:string}[];
+ availablePromotions:{id:string;name:string;tier:string;
+  homeMarketName?:string|null;rosterSize?:number}[];
 };
 const game=document.querySelector<HTMLElement>("#game")!;
 const account=document.querySelector<HTMLElement>("#account")!;
@@ -345,7 +346,15 @@ function showClaim(){
  }
  for(const p of session.availablePromotions){
   const item=el("div","ppw-access-promotion");
-  item.append(el("strong","",p.name),el("small","",p.tier));
+  const identity=el("div","ppw-access-promotion-info");
+  identity.append(el("strong","",p.name),
+   el("small","",p.tier.replaceAll("_"," ").toLowerCase()));
+  const facts=el("div","ppw-access-promotion-facts");
+  if(p.homeMarketName)facts.append(el("span","","Home territory · "+p.homeMarketName));
+  if(typeof p.rosterSize==="number"&&p.rosterSize>=0)
+   facts.append(el("span","",p.rosterSize.toLocaleString("en-GB")+" signed wrestlers"));
+  if(facts.childElementCount)identity.append(facts);
+  item.append(identity);
   item.append(button("Run this promotion",async()=>{
    try{
     await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
