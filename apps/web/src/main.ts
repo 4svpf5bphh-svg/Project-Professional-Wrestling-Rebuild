@@ -10,6 +10,7 @@ import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hos
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
  type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
+import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
 import "../screen.css";
 import "../polish.css";
 
@@ -381,8 +382,7 @@ function showClaim(){
    try{
     const outcome=await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
      expectedRevision:session!.overview.world.revision},session!.csrfToken);
-    if(!commandAccepted(outcome))
-     throw new Error("Another manager may have taken this company. Refresh the available promotions.");
+    requireSuccessfulPromotionClaim(outcome);
     await loadSession();
    }catch(e){
     choosing=false;
