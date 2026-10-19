@@ -32,9 +32,14 @@ test("unlinked match or angle moves independently, respecting bounds",()=>{
 test("nonadjacent older linked assaults cannot move ahead of their source",()=>{
  const old=["match","interview","assault","closing"];
  const links=[assault("match")];
- assert.equal(moveLinkedRunningOrder(old,"assault",-1,links),null);
- assert.equal(moveLinkedRunningOrder(old,"match",1,links)===null,false);
- assert.deepEqual(moveLinkedRunningOrder(["match","assault"],"assault",-1,links),null);
+ assert.deepEqual(moveLinkedRunningOrder(old,"assault",-1,links),
+  ["match","assault","interview","closing"]);
+ assert.deepEqual(moveLinkedRunningOrder(old,"match",1,links),
+  ["interview","match","assault","closing"]);
+ assert.equal(moveLinkedRunningOrder(["assault","match","closing"],
+  "closing",-1,links),null,"An invalid historical link may not be made worse");
+ assert.equal(moveLinkedRunningOrder(["match","assault"],
+  "assault",-1,links),null);
 });
 test("moves never break multiple attached match/assault pairs",()=>{
  const order=["a","attackA","b","attackB","closing"];

@@ -1254,11 +1254,10 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(orphan.getByText("Choose a wrestler who appeared in the selected match."))
   .toBeVisible();
  await orphan.getByLabel("After which match?").selectOption("opener");
- await expect(orphan.getByText(/Add wrestler from the match/)).toBeVisible();
+ await expect(orphan.getByText("This angle needs a target.")).toBeVisible();
  await orphan.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
- expect(methods).toEqual(["planner","load","save","load"],
-  "Unlinking a removed bout and reselecting the source is entirely local");
+ expect(methods).toEqual(["planner","load","save","load"]);
 });
 
 test("iPhone scripts and reopens a specialist attack with one card save",async({page})=>{
