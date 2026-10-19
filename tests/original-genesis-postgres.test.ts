@@ -154,6 +154,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join-"+world,expectedRevision:0});
   const claimable=await listAvailablePromotions(db.pool,world,null,25);
   assert.equal(claimable.length,7);
+  assert.equal(claimable[0]?.homeMarketName,"Territory 1");
+  assert.equal(claimable[0]?.rosterSize,50);
   assert.equal(claimable.some(p=>p.id==="promotion-0"),false,
    "The imported real company cannot be advertised for takeover");
   await assert.rejects(submitPromotionClaim(db.pool,{worldId:world,playerId:player,
