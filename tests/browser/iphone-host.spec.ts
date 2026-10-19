@@ -1378,3 +1378,53 @@ test("Home contract news opens the exact wrestler dossier without losing the des
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
  expect(methods).toEqual(["overview","wrestlerProfile"]);
 });
+
+test("iPhone restores the exact premium card instead of reopening the weekly show",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const a={personId:"alice",contractId:"deal-alice"};
+ const b={personId:"bob",contractId:"deal-bob"};
+ const booking={matchType:"SINGLES",family:"INDIVIDUAL",
+  participants:[a,b],sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18};
+ const shows=[
+  {draftId:"weekly",showName:"Wednesday Show",eventType:"REGULAR",bookingClass:"REGULAR"},
+  {draftId:"premium",showName:"The Big Event",eventType:"MAJOR",bookingClass:"PREMIUM"}
+ ].map(show=>({...show,year:1,week:5,status:"DRAFT",day:5,
+  marketId:"home",venueId:"arena",marketName:"Home",venueName:"Arena",
+  ticketStrategy:"STANDARD",ready:false,slots:1,showSeriesId:null}));
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  canEdit:true,worldRevision:4,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:true,
+   canEdit:true,scheduled:[],shows}]};
+ const selected:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON();
+  const method=String(request.method);
+  if(method==="load")selected.push(String(request.showId));
+  const show=shows.find(x=>x.draftId===request.showId)??shows[0]!;
+  const body=method==="planner"?planner:method==="load"?{
+   showId:show.draftId,year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:show.showName,promotionName:"AEW",
+   venueName:"Arena",marketName:"Home",bookingClass:show.bookingClass,
+   ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+    {personId:"bob",name:"Bob",division:"MEN"}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:booking}]
+  }:{};
+  await route.fulfill({json:body});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).nth(1).click();
+ await expect(page).toHaveURL(/#\\/card$/);
+ await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+ await expect(page.getByText("The Big Event")).toBeVisible();
+ await page.reload();
+ await expect(page.getByText("The Big Event")).toBeVisible();
+ expect(selected).toEqual(["premium","premium"]);
+ expect(page.url()).not.toContain("premium");
+ await page.getByRole("button",{name:/Back to planner/i}).click();
+ await expect(page).toHaveURL(/#\\/planner$/);
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+});
