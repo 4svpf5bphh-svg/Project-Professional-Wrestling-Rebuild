@@ -90,7 +90,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
 }
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope,
- onReturnToPlanner?:()=>void){
+ onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void){
  const call=createCardClient(scope);
  function openProgrammeDesk(){
   const openResults=(showId:string)=>{
@@ -101,6 +101,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
    ()=>{mountCardEditor(root,port);});
  }
  const port:CardEditorPort={
+  onDraftChange,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
