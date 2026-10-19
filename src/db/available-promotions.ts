@@ -14,8 +14,9 @@ export interface AvailablePromotion {
 export async function listAvailablePromotions(
  pool:TransactionPool,worldId:string,afterId:string|null=null,limit=25,
 ):Promise<AvailablePromotion[]>{
- if(!worldId||worldId.length>200||!Number.isSafeInteger(limit)||limit<1||limit>50)
-  throw new Error("Invalid promotion selection");
+ if(!worldId||worldId.length>200)throw new Error("Invalid World scope");
+ if(!Number.isSafeInteger(limit)||limit<1||limit>50)
+  throw new Error("Invalid page size");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{promotion_id:string;name:string;tier:string;
    lifecycle:string;home_market_name:string|null;roster_size:number}>(`
