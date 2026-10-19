@@ -588,24 +588,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
     }
     if(segment.kind==="POST_MATCH_ASSAULT"){
-     const victim=segment.targets[0]?.personId;
      const eligible=order.flatMap(matchSlot=>{
       const match=matches.get(matchSlot);
       if(!match)return [];
-      const people=match.teams.flat().filter((p):p is PersonPick=>p!==null);
-      if(victim&&!people.some(p=>p.personId===victim))return [];
       return [[matchSlot,matchLabel(match)] as [string,string]];
      });
      controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
       [["",eligible.length?"Choose the match":"Add a match for this angle"],
        ...eligible],value=>{
         const next=value?attachPostMatchAngle(order,slotId,value):null;
-        segments.set(slotId,{...segment,sourceMatchSlotId:value||null});
+        const selected=value?matches.get(value):null;
+        const candidates=new Set(selected?.teams.flat().flatMap(p=>p?[p.personId]:[])??[]);
+        segments.set(slotId,{...segment,sourceMatchSlotId:value||null,
+         targets:value?segment.targets.filter(p=>candidates.has(p.personId)):
+          segment.targets});
         if(next)order=next;
         markDirty();render();
        },!mutable())));
       controls.append(el("p","ppw-angle-guidance",
-       "Selecting a match places this angle immediately after it. Both then move together."));
+       "Selecting a match moves this angle immediately after it. If the victim did not compete in that match, choose a new victim."));
      if(!eligible.some(([id])=>id===segment.sourceMatchSlotId))
       controls.append(el("p","ppw-angle-guidance",
        "Choose a wrestler who appeared in the selected match."));
@@ -922,6 +923,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     body.append(elimination);
     body.append(button("Remove match",()=>{
      matches.delete(slotId);order=order.filter(x=>x!==slotId);
+     for(const [angleId,angle] of segments){
+      if(angle.kind==="POST_MATCH_ASSAULT"&&angle.sourceMatchSlotId===slotId)
+       segments.set(angleId,{...angle,sourceMatchSlotId:null,targets:[]});
+     }
      expanded=null;markDirty();render();
     },!mutable(),"ppw-remove"));
     card.append(body);

@@ -1244,6 +1244,21 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  expect(methods).toEqual(["planner","load","save","load"]);
+ await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
+  {name:"Remove match"}).click();
+ await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
+ await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ const orphan=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(orphan.getByLabel("After which match?")).toHaveValue("");
+ await expect(orphan.getByText("Choose a wrestler who appeared in the selected match."))
+  .toBeVisible();
+ await orphan.getByLabel("After which match?").selectOption("opener");
+ await expect(orphan.getByText(/Add wrestler from the match/)).toBeVisible();
+ await orphan.getByRole("button",{name:"Close card editor"}).click();
+ await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
+ expect(methods).toEqual(["planner","load","save","load"],
+  "Unlinking a removed bout and reselecting the source is entirely local");
 });
 
 test("iPhone scripts and reopens a specialist attack with one card save",async({page})=>{
