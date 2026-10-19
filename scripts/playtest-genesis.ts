@@ -39,8 +39,14 @@ async function main(){
  if(!input||input.world?.id!==args.worldId)
   throw new Error("Original Genesis source does not match the isolated World");
  const checked=projectOriginalGenesis(input);
- if(checked.people.length<400||checked.promotions.length<4)
-  throw new Error("Do not initialise a player preview from a toy/test World");
+ const locked=checked.promotions.filter(p=>p.takeoverEligibility==="LOCKED");
+ const fictional=checked.promotions.filter(p=>p.takeoverEligibility==="STANDARD");
+ if(checked.people.length!==643||checked.promotions.length!==13||
+  checked.personas.length!==643||checked.teams.length<10||
+  checked.teamMemberships.length<20||
+  checked.people.filter(p=>p.division==="WOMEN").length<150||
+  locked.length!==8||fictional.length!==5)
+  throw new Error("A two-player preview requires the complete authentic original-main 643-person, 13-promotion ecosystem and wrestler identities");
  // A validated source is not permission to overwrite an existing World.
  // The imported rows are one atomic transaction with a unique World key.
  const db=postgresPool(dsn,2);
