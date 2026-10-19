@@ -1459,7 +1459,7 @@ test("two-manager claim race keeps the losing iPhone out of private desks",async
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByText(/Another manager may have taken this company/)).toBeVisible();
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
- expect(sessionReads).toBe(1,"Rejected claims do not silently enter or reload a private desk");
+ expect(sessionReads,"Rejected claims must not enter or reload a private desk").toBe(1);
  await page.getByRole("button",{name:"Refresh available promotions"}).click();
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
