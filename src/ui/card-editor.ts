@@ -18,7 +18,7 @@ import type {readShowCardEditor,readBookableCardTalent,
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
-import {matchCastingReadiness,angleCastingReadiness} from "./card-booking-readiness.js";
+import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
@@ -1042,9 +1042,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     picker=null;render();
    }));
    const rows=el("div","ppw-talent-rows");
-   const takenIds=new Set(current.role==="RUN_IN"?
-    (matchForPicker?assignedIds(matchForPicker):[]):
-    [...matches.values()].flatMap(m=>assignedIds(m)));
+   const sceneForPicker=segments.get(current.slotId);
+   const takenIds=reservedPickerPeople(current.role,
+    [...matches.values()].flatMap(m=>assignedIds(m)),
+    matchForPicker?assignedIds(matchForPicker):[],
+    sceneForPicker?[...sceneForPicker.actors,...sceneForPicker.targets].map(p=>p.personId):[]);
    const sorted=current.items
     .filter(p=>current.division==="ALL"||p.division===current.division)
     .sort((a,b)=>{
@@ -1076,7 +1078,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const entry=el("div","ppw-picker-wrestler");
     entry.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
      status:label},{
-     context:"BOOKING",compact:true,label:taken?"ALREADY BOOKED":label,
+     context:"BOOKING",compact:true,label:taken?
+      (current.role==="actors"||current.role==="targets"?"ALREADY IN SCENE":
+       current.role==="RUN_IN"?"IN THIS MATCH":"ALREADY BOOKED"):label,
      disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
     if(port.openProfile)entry.append(button("View full wrestler profile",()=>{
      const overlay=el("div","ppw-profile-overlay");
