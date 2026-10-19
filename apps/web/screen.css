@@ -36,6 +36,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{
  padding:13px 0;border-top:1px solid #38516a;flex-wrap:wrap}
 .ppw-access-promotion>strong{flex:1;min-width:130px}
 .ppw-access-promotion>small{color:#8eb8d2}
+.ppw-access-promotion-info{display:flex;flex:1;min-width:175px;
+ flex-direction:column;gap:4px}
+.ppw-access-promotion-info>strong{font-size:17px;color:#f0f9ff}
+.ppw-access-promotion-info>small{color:#8eb8d2;
+ text-transform:capitalize;font-size:12px}
+.ppw-access-promotion-facts{display:flex;gap:5px 12px;
+ flex-wrap:wrap;font-size:12px;color:#bfd5e7}
+.ppw-access-promotion-facts>span{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:480px){
+ .ppw-access-promotion{align-items:stretch}
+ .ppw-access-promotion>.ppw-access-button{width:100%}
+}
 .ppw-access-error{color:#ffd2bd;background:rgba(140,54,28,.24);
  border:1px solid rgba(247,136,83,.35);border-radius:10px;
  padding:11px;font-size:13px;line-height:1.4}
