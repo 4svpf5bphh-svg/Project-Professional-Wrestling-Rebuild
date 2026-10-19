@@ -68,6 +68,16 @@ async function main(){
   throw new Error("Original main lacks its verified fresh World factory");
  const generated=original.createAlphaWorldAggregate({
   seed:args.seed,playerId:"rebuild-export-offline",worldName:args.name});
+ // The original main creates standings lazily in its canonical reputation
+ // system. Materialise those *actual original rules* on this disposable
+ // in-memory World, not inferred tier values in the rebuild.
+ const reputationUrl=pathToFileURL(join(root,"packages/sim-core/src/reputation.ts")).href;
+ const reputation=await import(reputationUrl) as {
+  ensurePromotionStandings(state:OriginalMainFreshState):unknown;
+ };
+ if(typeof reputation.ensurePromotionStandings!=="function")
+  throw new Error("Original main promotion standings factory is missing");
+ reputation.ensurePromotionStandings(generated.state);
  const source=extractOriginalMainFreshGenesis(generated.state);
  // Exclusive create; never overwrite another source or checkout artifact.
  const out=resolve(args.out);
