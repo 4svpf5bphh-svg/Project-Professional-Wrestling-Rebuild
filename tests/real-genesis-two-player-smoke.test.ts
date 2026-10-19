@@ -157,25 +157,12 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   const plannerResponse=await call("planner");
   assert.equal(plannerResponse.status,200);
   const planner=await plannerResponse.json();
-  const venue=planner.venues.find((v:{home:boolean})=>v.home)??planner.venues[0];
-  assert.ok(venue,"Each authentic promotion has a selectable home venue");
-  const weekly=planner.weeks[0]?.scheduled?.find(
-   (s:{eventType:string;role:string})=>s.eventType==="REGULAR"&&s.role==="FLAGSHIP")??
-   planner.weeks[0]?.scheduled?.find(
-    (s:{eventType:string})=>s.eventType==="REGULAR");
-  const current=await auth();
-  const planned=await call("planShow",{
-   requestId:"real-plan-"+manager.id,
-   expectedRevision:current.overview.world.revision,
-   year:1,week:1,day:index===0?3:5,
-   venueId:venue.venueId,marketId:venue.marketId,
-   ticketStrategy:"STANDARD",eventType:"REGULAR",
-   ...(weekly?{showSeriesId:weekly.seriesId}:{})
-  });
-  assert.equal(planned.status,200,"Authentic player can schedule first show");
-  const plannedBody=await planned.json();
-  assert.equal(plannedBody.status,"APPLIED");
-  const draftId=plannedBody.result.draftId as string;
+  const existing=planner.weeks[0]?.shows?.filter(
+   (show:{status:string;bookingClass:string})=>
+    show.status==="DRAFT"&&show.bookingClass==="REGULAR");
+  assert.equal(existing?.length,1,
+   "The existing authored show must be reused, not booked twice");
+  const draftId=existing[0].draftId as string;
   assert.ok(draftId.startsWith("planner-"));
   const picker=await call("talent",{showId:draftId});
   assert.equal(picker.status,200,"Real roster picker opens on the scheduled show");
