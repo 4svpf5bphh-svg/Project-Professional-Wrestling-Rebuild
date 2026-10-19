@@ -40,16 +40,16 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     INSERT INTO ppw_promotions(world_id,promotion_id,name,home_market_id,tier,lifecycle,
      management_mode,cash,debt,media_reach,ai_financial_caution,
      ai_risk_tolerance,ai_match_quality_preference,ai_star_preference,
-     event_cadence_weeks,weekly_media_income,
+     takeover_eligibility,event_cadence_weeks,weekly_media_income,
      weekly_sponsor_income,weekly_fixed_overhead,last_weekly_net,financial_distress)
     SELECT $1,x.id,x.name,x.home_market_id,x.tier,x.lifecycle,x.mode,x.cash,x.debt,x.media,
      x.ai_financial_caution,x.ai_risk_tolerance,x.ai_match_quality_preference,
-     x.ai_star_preference,x.event_cadence_weeks,x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
+     x.ai_star_preference,x.takeover_eligibility,x.event_cadence_weeks,x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
     FROM jsonb_to_recordset($2::jsonb) AS x(
      id text,name text,home_market_id text,tier text,lifecycle text,mode text,cash bigint,debt bigint,
      media double precision,ai_financial_caution double precision,
      ai_risk_tolerance double precision,ai_match_quality_preference double precision,
-     ai_star_preference double precision,event_cadence_weeks integer,weekly_media bigint,weekly_sponsor bigint,
+     ai_star_preference double precision,takeover_eligibility text,event_cadence_weeks integer,weekly_media bigint,weekly_sponsor bigint,
      weekly_overhead bigint,last_net bigint,distress text)
     RETURNING promotion_id
    ) SELECT count(*)::integer AS count FROM inserted`,
@@ -59,6 +59,7 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     ai_risk_tolerance:p.aiRiskTolerance,
     ai_match_quality_preference:p.aiMatchQualityPreference,
     ai_star_preference:p.aiStarPreference,
+    takeover_eligibility:p.takeoverEligibility,
     event_cadence_weeks:p.eventCadenceWeeks,
     weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
