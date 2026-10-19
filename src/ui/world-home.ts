@@ -9,7 +9,7 @@ export interface WorldHomePort{
  openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
- industry():void;calendar():void;
+ industry():void;calendar():void;championships():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
  dismissAttentionBatch?(attentionIds:string[]):Promise<unknown>;
  openWrestler?(personId:string):void;
@@ -69,6 +69,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const backstage=overview?.promotion?.attention?.backstageResults;
    if(backstage)overview!.promotion!.attention.backstageResults=
     backstage.filter(x=>x.id!==id);
+   const titles=overview?.promotion?.attention?.titleNews;
+   if(titles)overview!.promotion!.attention.titleNews=titles.filter(x=>x.id!==id);
    const business=overview?.promotion?.attention?.businessUpdates;
    if(business)overview!.promotion!.attention.businessUpdates=
     business.filter(x=>x.id!==id);
@@ -80,7 +82,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
   const attention=overview?.promotion?.attention;
   const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[]),
-   ...(attention?.businessUpdates??[])].slice(0,10).map(item=>item.id);
+   ...(attention?.businessUpdates??[]),...(attention?.titleNews??[])]
+   .slice(0,10).map(item=>item.id);
   if(keys.length<2||keys.length>10)return;
   clearing=true;error="";draw();
   try{
@@ -90,6 +93,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     attention.offerResults=attention.offerResults?.filter(x=>!cleared.has(x.id));
     attention.backstageResults=attention.backstageResults?.filter(x=>!cleared.has(x.id));
     attention.businessUpdates=attention.businessUpdates?.filter(x=>!cleared.has(x.id));
+    attention.titleNews=attention.titleNews?.filter(x=>!cleared.has(x.id));
    }
   }catch(e){error=e instanceof Error?e.message:"Could not clear the updates";}
   finally{clearing=false;draw();}
@@ -350,7 +354,37 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    root.append(wire);
   }
-  const resolvedCount=results.length+resolved.length+businessUpdates.length;
+  const titleNews=attention?.titleNews??[];
+  if(titleNews.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE TITLE PICTURE"),
+    el("h3","","New champions"));
+   for(const item of titleNews){
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status ppw-home-wire-accepted",
+     item.holderType==="TEAM"?"TAG TITLE":"SINGLES TITLE"),
+     el("strong","",item.winnerName+" won "+item.titleName),
+     el("p","","A verified championship change at Year "+item.year+
+      ", Week "+item.week+". Explore the title and its reign history."));
+    const actions=el("div","ppw-home-wire-actions");
+    const go=el("button","ppw-home-wire-button","Open Championships") as HTMLButtonElement;
+    go.type="button";go.onclick=port.championships;actions.append(go);
+    if(item.personId&&port.openWrestler){
+     const person=el("button","ppw-home-wire-button","View "+item.winnerName) as HTMLButtonElement;
+     person.type="button";person.onclick=()=>port.openWrestler?.(item.personId!);
+     actions.append(person);
+    }
+    if(port.dismissAttention){
+     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
+     dismiss.setAttribute("aria-label","Dismiss "+item.titleName+" title change");
+     dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
+  const resolvedCount=results.length+resolved.length+businessUpdates.length+titleNews.length;
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
     clearing?"Clearing updates…":"Clear "+Math.min(resolvedCount,10)+" resolved updates") as HTMLButtonElement;

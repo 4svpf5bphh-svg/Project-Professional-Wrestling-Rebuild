@@ -9,21 +9,56 @@ export interface DismissalScope{
 export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:DismissalScope){
  const {worldId,promotionId,playerId,attentionId}=scope;
  const prefix="offer-result:",backstagePrefix="backstage-result:",
-  businessPrefix="business-update:";
+  businessPrefix="business-update:",titlePrefix="title-reign:";
  const isBackstage=typeof attentionId==="string"&&attentionId.startsWith(backstagePrefix);
  const isBusiness=typeof attentionId==="string"&&attentionId.startsWith(businessPrefix);
+ const isTitle=typeof attentionId==="string"&&attentionId.startsWith(titlePrefix);
  if(![worldId,promotionId,playerId].every(x=>
   typeof x==="string"&&!!x.trim()&&x.length<=200)||
   typeof attentionId!=="string"||
-  !(attentionId.startsWith(prefix)||isBackstage||isBusiness)||
+  !(attentionId.startsWith(prefix)||isBackstage||isBusiness||isTitle)||
   attentionId.length>230||
   (isBackstage?!/^[1-9][0-9]{0,14}$/.test(attentionId.slice(backstagePrefix.length)):
    isBusiness?!/^[1-9][0-9]{0,18}$/.test(attentionId.slice(businessPrefix.length)):
+   isTitle?(attentionId.length<=titlePrefix.length||attentionId.length>212):
    attentionId.length<=prefix.length))
   throw new Error("Invalid dismissible news");
- const offerId=isBackstage||isBusiness?"":attentionId.slice(prefix.length);
+ const offerId=isBackstage||isBusiness||isTitle?"":attentionId.slice(prefix.length);
  return withSqlClient(pool,async tx=>{
-  const result=await tx.query<{permitted:boolean;inserted:boolean}>(isBusiness?[
+  const result=await tx.query<{permitted:boolean;inserted:boolean}>(isTitle?[
+   "WITH permitted AS (",
+   "SELECT reign.reign_id FROM ppw_championship_reigns reign",
+   "JOIN ppw_championships title ON title.world_id=reign.world_id",
+   "AND title.promotion_id=reign.promotion_id",
+   "AND title.championship_id=reign.championship_id",
+   "JOIN ppw_championship_contests contest ON contest.world_id=reign.world_id",
+   "AND contest.promotion_id=reign.promotion_id",
+   "AND contest.championship_id=reign.championship_id",
+   "AND contest.title_changed",
+   "AND reign.reign_id=contest.show_id||':'||contest.slot_id||",
+   "CASE title.division WHEN 'TAG' THEN ':tag-reign' ELSE ':new-reign' END",
+   "JOIN ppw_completed_shows show ON show.world_id=contest.world_id",
+   "AND show.show_id=contest.show_id AND show.promotion_id=contest.promotion_id",
+   "JOIN ppw_promotion_controls c ON c.world_id=reign.world_id",
+   "AND c.promotion_id=reign.promotion_id AND c.player_id=$3 AND c.active",
+   "JOIN ppw_memberships m ON m.world_id=c.world_id",
+   "AND m.player_id=c.player_id AND m.status='ACTIVE'",
+   "JOIN ppw_promotions owner ON owner.world_id=c.world_id",
+   "AND owner.promotion_id=c.promotion_id AND owner.lifecycle='ACTIVE'",
+   "JOIN ppw_worlds w ON w.world_id=reign.world_id",
+   "WHERE reign.world_id=$1 AND reign.promotion_id=$2 AND reign.reign_id=$4",
+   "AND length(reign.reign_id)<=200",
+   "AND (show.year-1)*52+show.week-1 BETWEEN",
+   "greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1",
+   "LIMIT 1",
+   "), created AS (",
+   "INSERT INTO ppw_player_attention_dismissals",
+   "(world_id,player_id,promotion_id,attention_id)",
+   "SELECT $1,$3,$2,$5 FROM permitted ON CONFLICT DO NOTHING",
+   "RETURNING attention_id",
+   ") SELECT EXISTS(SELECT 1 FROM permitted) AS permitted,",
+   "EXISTS(SELECT 1 FROM created) AS inserted"
+  ].join(" "):isBusiness?[
    "WITH permitted AS (",
    "SELECT event.event_id FROM ppw_ledger_events event",
    "JOIN ppw_promotion_controls c ON c.world_id=event.world_id",
@@ -105,7 +140,9 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
    "RETURNING attention_id",
    ") SELECT EXISTS(SELECT 1 FROM permitted) AS permitted,",
    "EXISTS(SELECT 1 FROM created) AS inserted"
-  ].join(" "),isBusiness?
+  ].join(" "),isTitle?
+   [worldId,promotionId,playerId,attentionId.slice(titlePrefix.length),attentionId]:
+   isBusiness?
    [worldId,promotionId,playerId,attentionId.slice(businessPrefix.length),attentionId]:
    isBackstage?
    [worldId,promotionId,playerId,attentionId.slice(backstagePrefix.length),attentionId]:
@@ -126,7 +163,8 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
  const valid=(id:string)=>(
   id.startsWith("offer-result:")&&id.length>13&&id.length<=230
  )||/^backstage-result:[1-9][0-9]{0,14}$/.test(id)||
-  /^business-update:[1-9][0-9]{0,18}$/.test(id);
+  /^business-update:[1-9][0-9]{0,18}$/.test(id)||
+  (id.startsWith("title-reign:")&&id.length>12&&id.length<=212);
  if(![worldId,promotionId,playerId].every(x=>
   typeof x==="string"&&x.trim().length>0&&x.length<=200)||
   !Array.isArray(attentionIds)||attentionIds.length<1||attentionIds.length>10||
@@ -181,10 +219,27 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "AND jsonb_typeof(event.payload->'prestige')='number'))",
    "AND (event.year-1)*52+event.week-1 BETWEEN",
    "greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1)",
+   "OR EXISTS (SELECT 1 FROM ppw_championship_reigns reign",
+   "JOIN ppw_championships title ON title.world_id=reign.world_id",
+   "AND title.promotion_id=reign.promotion_id",
+   "AND title.championship_id=reign.championship_id",
+   "JOIN ppw_championship_contests contest ON contest.world_id=reign.world_id",
+   "AND contest.promotion_id=reign.promotion_id",
+   "AND contest.championship_id=reign.championship_id",
+   "AND contest.title_changed",
+   "AND reign.reign_id=contest.show_id||':'||contest.slot_id||",
+   "CASE title.division WHEN 'TAG' THEN ':tag-reign' ELSE ':new-reign' END",
+   "JOIN ppw_completed_shows show ON show.world_id=contest.world_id",
+   "AND show.show_id=contest.show_id AND show.promotion_id=contest.promotion_id",
+   "WHERE reign.world_id=w.world_id AND reign.promotion_id=$2",
+   "AND requested.attention_id='title-reign:'||reign.reign_id",
+   "AND length(reign.reign_id)<=200",
+   "AND (show.year-1)*52+show.week-1 BETWEEN",
+   "greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1)",
    "), inserted AS (",
    "INSERT INTO ppw_player_attention_dismissals",
    "(world_id,player_id,promotion_id,attention_id)",
-   "SELECT $1,$3,$2,attention_id FROM permitted",
+   "SELECT $1,$3,$2,attention_id FROM permitted"
    "WHERE (SELECT count(*) FROM permitted)=cardinality($4::text[])",
    "ON CONFLICT DO NOTHING RETURNING attention_id",
    ") SELECT (SELECT count(*)::integer FROM permitted) AS permitted_count,",

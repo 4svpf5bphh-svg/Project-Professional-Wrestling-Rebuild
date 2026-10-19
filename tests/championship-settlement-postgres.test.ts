@@ -10,6 +10,10 @@ import {settleCanonicalTagTitleContests} from "../src/db/tag-championship-settle
 import {readChampionshipDirectory,readChampionshipHistory}
  from "../src/db/championship-history.js";
 import type {TransactionPool} from "../src/db/transaction.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
+import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch}
+ from "../src/db/player-attention-dismissals.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -95,6 +99,55 @@ test("Canonical singles titles defend, transfer once on clean results and remain
   const old=await withWorldTransaction(pool.pool,tx=>tx.query<{status:string}>(`
    SELECT status FROM ppw_championship_reigns WHERE world_id=$1 AND reign_id='first'`,[world]));
   assert.equal(old[0]!.status,"ENDED");
+  const actor="champ-owner-"+randomUUID();
+  await withWorldTransaction(pool.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[actor]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",
+    [world,actor]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id)"+
+    " VALUES($1,$2,$3)",[world,actor,promotion]);
+   await tx.query("UPDATE ppw_worlds SET week=4 WHERE world_id=$1",[world]);
+  });
+  const meter=new MeasuredQuerySession("verified-championship-news-home");
+  const measured:TransactionPool={async connect(){
+   const client=await pool.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
+  const home=await readPlayerWorldOverview(measured,world,actor);
+  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:3500}).queryCount,1);
+  assert.deepEqual(home?.promotion?.attention.titleNews,[{
+   id:"title-reign:change:main:new-reign",
+   championshipId:"title",titleName:"World Title",
+   winnerName:"Challenger",holderType:"PERSON",personId:"challenger",year:1,week:2
+  }],"Protected finish and successful defense must never masquerade as title transfers");
+  assert.equal((await readPlayerWorldOverview(pool.pool,world,"unowned"))?.promotion,null);
+  const id="title-reign:change:main:new-reign";
+  await assert.rejects(dismissResolvedOfferAttention(pool.pool,{
+   worldId:world,promotionId:promotion,playerId:"unowned",attentionId:id
+  }),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedAttentionBatch(pool.pool,{
+   worldId:world,promotionId:promotion,playerId:actor,
+   attentionIds:[id,"title-reign:forged:main:new-reign"]
+  }),/unavailable|cannot be dismissed/);
+  assert.equal((await readPlayerWorldOverview(pool.pool,world,actor))
+   ?.promotion?.attention.titleNews?.length,1,"A failed batch must be atomic");
+  assert.deepEqual(await dismissResolvedOfferAttention(pool.pool,{
+   worldId:world,promotionId:promotion,playerId:actor,attentionId:id
+  }),{dismissed:true,firstDismissal:true});
+  assert.deepEqual(await dismissResolvedOfferAttention(pool.pool,{
+   worldId:world,promotionId:promotion,playerId:actor,attentionId:id
+  }),{dismissed:true,firstDismissal:false});
+  assert.deepEqual((await readPlayerWorldOverview(pool.pool,world,actor))
+   ?.promotion?.attention.titleNews,[]);
+  await withWorldTransaction(pool.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_player_attention_dismissals WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[actor]);
+  });
  }finally{
   await withWorldTransaction(pool.pool,async tx=>{
    for(const table of ["ppw_championship_contests","ppw_ledger_events",

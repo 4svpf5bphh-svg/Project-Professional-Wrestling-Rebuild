@@ -13,6 +13,9 @@ export interface PlayerWorldOverview {
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
    backstageResults?:{id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"}[];
+   titleNews?:{id:string;championshipId:string;titleName:string;
+    winnerName:string;holderType:"PERSON"|"TEAM";personId:string|null;
+    year:number;week:number}[];
    contractAlerts?:{contractId:string;personId:string;name:string;
     kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean}[];
    businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
@@ -45,7 +48,7 @@ export async function readPlayerWorldOverview(
    pending_backstage:boolean|null;expiring_talent:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
-   contract_alerts:unknown;
+   contract_alerts:unknown;title_news:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -58,7 +61,7 @@ export async function readPlayerWorldOverview(
     notices.planned_shows,notices.unprepared_show,
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.backstage_requests,notices.backstage_results,
-    notices.business_updates,notices.contract_alerts
+    notices.business_updates,notices.contract_alerts,notices.title_news
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -224,7 +227,48 @@ export async function readPlayerWorldOverview(
           OR c.expires_week_index<=((w.year-1)*52+w.week+1))
        ORDER BY priority,c.expires_week_index,c.contract_id LIMIT 5
       ) relevant
-     ) AS contract_alerts
+     ) AS contract_alerts,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+       'id','title-reign:'||recent.reign_id,
+       'championshipId',recent.championship_id,'titleName',recent.title_name,
+       'winnerName',recent.winner_name,'holderType',recent.holder_type,
+       'personId',recent.person_id,'year',recent.year,'week',recent.week)
+       ORDER BY recent.year DESC,recent.week DESC,recent.reign_id DESC),'[]'::jsonb)
+      FROM (
+       SELECT reign.reign_id,contest.championship_id,title.name AS title_name,
+        coalesce(person.name,team.name) AS winner_name,
+        reign.holder_type,reign.person_id,show.year,show.week
+       FROM ppw_championship_contests contest
+       JOIN ppw_completed_shows show ON show.world_id=contest.world_id
+        AND show.show_id=contest.show_id
+        AND show.promotion_id=contest.promotion_id
+       JOIN ppw_championships title ON title.world_id=contest.world_id
+        AND title.promotion_id=contest.promotion_id
+        AND title.championship_id=contest.championship_id
+       JOIN ppw_championship_reigns reign ON reign.world_id=contest.world_id
+        AND reign.promotion_id=contest.promotion_id
+        AND reign.championship_id=contest.championship_id
+        AND reign.reign_id=contest.show_id||':'||contest.slot_id||
+         CASE title.division WHEN 'TAG' THEN ':tag-reign' ELSE ':new-reign' END
+       LEFT JOIN ppw_people person ON person.world_id=reign.world_id
+        AND person.person_id=reign.person_id
+       LEFT JOIN ppw_tag_teams team ON team.world_id=reign.world_id
+        AND team.team_id=reign.team_id
+       WHERE contest.world_id=w.world_id
+        AND contest.promotion_id=owned.promotion_id
+        AND contest.title_changed
+        AND coalesce(person.name,team.name) IS NOT NULL
+        AND length(reign.reign_id)<=200
+        AND (show.year-1)*52+show.week-1 BETWEEN
+         greatest(0,(w.year-1)*52+w.week-1-11)
+         AND (w.year-1)*52+w.week-1
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals dismissal
+          WHERE dismissal.world_id=contest.world_id
+           AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
+           AND dismissal.attention_id='title-reign:'||reign.reign_id)
+       ORDER BY show.year DESC,show.week DESC,reign.reign_id DESC LIMIT 5
+      ) recent
+     ) AS title_news
    ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -266,6 +310,20 @@ export async function readPlayerWorldOverview(
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
        (news.status==="FULFILLED"||news.status==="BROKEN")):[],
+     titleNews:Array.isArray(x.title_news)?
+      x.title_news.filter((item):item is {
+       id:string;championshipId:string;titleName:string;
+       winnerName:string;holderType:"PERSON"|"TEAM";personId:string|null;
+       year:number;week:number
+      }=>item!==null&&typeof item==="object"&&
+       typeof item.id==="string"&&item.id.startsWith("title-reign:")&&
+       item.id.length<=212&&
+       typeof item.championshipId==="string"&&typeof item.titleName==="string"&&
+       typeof item.winnerName==="string"&&
+       (item.holderType==="PERSON"||item.holderType==="TEAM")&&
+       (item.personId===null||typeof item.personId==="string")&&
+       Number.isInteger(item.year)&&Number.isInteger(item.week)&&
+       item.week>=1&&item.week<=52):[],
      contractAlerts:Array.isArray(x.contract_alerts)?
       x.contract_alerts.filter((alert):alert is {
        contractId:string;personId:string;name:string;
