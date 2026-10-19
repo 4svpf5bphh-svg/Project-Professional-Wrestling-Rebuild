@@ -101,6 +101,77 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   assert.equal(data.weeks.length,6);
  }
  assert.notEqual(managers[0]!.promotionId,managers[1]!.promotionId);
+ // Booking must also work with the actual original-main contracts, personas
+ // and venue markets. No invented wrestler IDs or prepared-card fixtures.
+ const prepared:string[]=[];
+ for(let index=0;index<managers.length;index++){
+  const manager=managers[index]!;
+  const call=async(method:string,rest:Record<string,unknown>={})=>
+   send("/api/card","POST",{method,worldId,
+    promotionId:manager.promotionId,...rest},manager.cookie,manager.csrf);
+  const auth=async()=>(await(await send("/api/session","GET",null,
+   manager.cookie)).json());
+  const plannerResponse=await call("planner");
+  assert.equal(plannerResponse.status,200);
+  const planner=await plannerResponse.json();
+  const venue=planner.venues.find((v:{home:boolean})=>v.home)??planner.venues[0];
+  assert.ok(venue,"Each authentic promotion has a selectable home venue");
+  const weekly=planner.weeks[0]?.scheduled?.find(
+   (s:{eventType:string;role:string})=>s.eventType==="REGULAR"&&s.role==="FLAGSHIP")??
+   planner.weeks[0]?.scheduled?.find(
+    (s:{eventType:string})=>s.eventType==="REGULAR");
+  const current=await auth();
+  const planned=await call("planShow",{
+   requestId:"real-plan-"+manager.id,
+   expectedRevision:current.overview.world.revision,
+   year:1,week:1,day:index===0?3:5,
+   venueId:venue.venueId,marketId:venue.marketId,
+   ticketStrategy:"STANDARD",eventType:"REGULAR",
+   ...(weekly?{showSeriesId:weekly.seriesId}:{})
+  });
+  assert.equal(planned.status,200,"Authentic player can schedule first show");
+  const plannedBody=await planned.json();
+  assert.equal(plannedBody.status,"APPLIED");
+  const draftId=plannedBody.result.draftId as string;
+  assert.ok(draftId.startsWith("planner-"));
+  const picker=await call("talent",{showId:draftId});
+  assert.equal(picker.status,200,"Real roster picker opens on the scheduled show");
+  const listing=await picker.json() as {talent:Array<{
+   personId:string;contractId:string;name:string;division:string;
+   available:boolean;signatureMove:string|null;finisherMove:string|null
+  }>};
+  const eligible=listing.talent.filter(p=>p.available);
+  const pair=["MEN","WOMEN"].map(division=>
+   eligible.filter(p=>p.division===division)).find(group=>group.length>=2);
+  assert.ok(pair,
+   "At least two available same-division original wrestlers are needed for a first show");
+  const [winner,opponent]=pair!;
+  assert.ok(winner!.signatureMove&&winner!.finisherMove,
+   "Authentic wrestler signature and finisher must be visible in the shared booking picker");
+  const competitor=(p:typeof winner)=>({personId:p!.personId,contractId:p!.contractId});
+  const booked={
+   matchType:"SINGLES",family:"INDIVIDUAL",
+   participants:[competitor(winner),competitor(opponent)],
+   sides:[{sideId:"A",participants:[competitor(winner)]},
+    {sideId:"B",participants:[competitor(opponent)]}],
+   scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+   intent:"COMPETITIVE",plannedLengthMinutes:18
+  };
+  const revision=(await auth()).overview.world.revision;
+  const saved=await call("save",{
+   showId:draftId,requestId:"real-save-"+manager.id,
+   expectedRevision:revision,matches:[{slotId:"main",payload:booked}],
+   segments:[],runningOrder:["main"]
+  });
+  assert.equal(saved.status,200,"One original main bout can be authored on the fresh rebuild");
+  assert.equal((await saved.json()).status,"APPLIED");
+  const reloaded=await call("load",{showId:draftId});
+  assert.equal(reloaded.status,200);
+  const persisted=await reloaded.json();
+  assert.equal(persisted.slots?.length,1);
+  assert.equal(persisted.slots[0].payload.scriptedWinnerSide,"A");
+  prepared.push(draftId);
+ }
  const owner=managers[0]!,other=managers[1]!;
  const illicit=await send("/api/card","POST",{
   method:"business",worldId,promotionId:other.promotionId,showId:""
@@ -112,5 +183,5 @@ test("authentic original-main Genesis: two humans independently claim fictional 
  assert.equal(visible.status,200);
  console.log(JSON.stringify({status:"AUTHENTIC_TWO_MANAGER_PREVIEW_SMOKE_PASSED",
   realPromotionPopulation:reserved.size,claimablePopulation:permitted.size,
-  distinctClaimed:2,worldWeek:1}));
+  distinctClaimed:2,authoredFirstShows:prepared.length,worldWeek:1}));
 });
