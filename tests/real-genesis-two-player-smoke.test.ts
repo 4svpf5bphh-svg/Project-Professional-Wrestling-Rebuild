@@ -94,7 +94,10 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   },cookie,state.csrfToken);
   assert.equal(planner.status,200,"Real calendar planner must open for each manager");
   const data=await planner.json();
-  assert.equal(data.promotionId,target.id);
+  assert.equal(data.promotionName,state.overview.promotion.name);
+  assert.equal(data.year,1);
+  assert.equal(data.week,1);
+  assert.ok(data.venues.length>0,"Actual venues must load in the first-week planner");
   assert.equal(data.weeks.length,6);
  }
  assert.notEqual(managers[0]!.promotionId,managers[1]!.promotionId);
