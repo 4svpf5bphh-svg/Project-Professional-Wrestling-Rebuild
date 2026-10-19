@@ -202,7 +202,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   const drilldown=el("details","ppw-profile-career") as HTMLDetailsElement;
   const summary=el("summary","ppw-profile-career-trigger");
   summary.append(el("span","ppw-profile-kicker","THE RECORD BOOK"),
-   el("strong","","Matches, victories, injuries & championships"),
+   el("strong","","Matches, appearances, victories & championships"),
    el("small","","See their full career record"));
   drilldown.append(summary);
   const careerBody=el("div","ppw-profile-career-body");
@@ -234,6 +234,37 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     tile.append(el("small","",title),el("strong","",value));stats.append(tile);
    }
    careerBody.append(stats);
+   const appearances=el("section","ppw-profile-career-honors");
+   appearances.append(el("h3","","On-screen appearances"),
+    el("p","ppw-profile-muted",
+     "Only completed matches and live moments count. Video packages and unused bookings do not."));
+   const history=career.liveAppearances??[];
+   if(!history.length)appearances.append(el("p","ppw-profile-muted",
+    "No verified promotion appearance history is available."));
+   for(const record of history){
+    const row=el("article","ppw-profile-career-match");
+    const note=record.status==="DEBUT_ELIGIBLE"?
+     "First in-person appearance available":
+     record.status==="RETURN_ELIGIBLE"?
+      "Return available · "+record.weeksSinceLast+" weeks since last appearance":
+     record.status==="ESTABLISHED"?"Recently seen in person":
+     "Earlier on-screen history is incomplete";
+    row.append(el("strong","",record.promotion),
+     el("span","",note));
+    if(record.recordedShows>0){
+     row.append(el("p","ppw-profile-muted",
+      record.historyComplete?"Shows appeared on: "+record.recordedShows:
+       "Verified appearances: "+record.recordedShows+" · older records may be missing"),
+      el("small","ppw-profile-muted",
+       "First verified: "+
+       (record.firstWeekIndex===null?"Unknown":timelineWeek(record.firstWeekIndex))+
+       " · Latest verified: "+
+       (record.lastWeekIndex===null?"Unknown":timelineWeek(record.lastWeekIndex))));
+    }else if(record.status==="DEBUT_ELIGIBLE")row.append(
+     el("p","ppw-profile-muted","No completed in-person appearance recorded here."));
+    appearances.append(row);
+   }
+   careerBody.append(appearances);
    const honors=el("section","ppw-profile-career-honors");
    honors.append(el("h3","","Singles championship honours"));
    if(!career.singlesTitles.length)honors.append(el("p","ppw-profile-muted",

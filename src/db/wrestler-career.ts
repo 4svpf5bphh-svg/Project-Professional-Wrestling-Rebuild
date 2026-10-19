@@ -1,6 +1,7 @@
 /** Wrestler career: on-demand, exact-person history; nothing preloaded by lists. */
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
+import {liveAppearanceStatus,type LiveAppearanceStatus} from "../domain/live-appearance-history.js";
 export interface CareerScope{worldId:string;playerId:string;promotionId:string;personId:string}
 export interface CareerMatch{
  showId:string;matchId:string;showName:string;promotion:string;
@@ -13,6 +14,11 @@ export interface CareerView{
  summary:{matches:number;wins:number;losses:number;singles:number;tag:number;
   ratedMatches:number;averageStars:number|null;bestStars:number|null;injuries:number};
  recent:CareerMatch[];
+ /** Verified physical appearances: video-only promotion cannot establish a debut. */
+ liveAppearances:{promotionId:string;promotion:string;
+  status:LiveAppearanceStatus;
+  recordedShows:number;firstWeekIndex:number|null;lastWeekIndex:number|null;
+  weeksSinceLast:number|null;historyComplete:boolean}[];
  singlesTitles:{name:string;promotion:string;startWeekIndex:number;
   endedWeekIndex:number|null;defenses:number}[];
 }
@@ -81,6 +87,68 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
    "WHERE reign.world_id=$1 AND reign.person_id=$2",
    "ORDER BY reign.start_week_index DESC,reign.reign_id DESC LIMIT 8"
   ].join(" "),[scope.worldId,scope.personId]);
+  // A single additional person-keyed read, ONLY on explicit dossier expansion.
+  // Match effects and immutable completed angle stories are proof of a live
+  // appearance. Never treat video packages, booking-date consumption or an
+  // interrupted/declined off-screen pitch as proof of a completed in-person act.
+  // Older shows without complete proof remain UNKNOWN, not a fabricated debut.
+  const history=await tx.query<{
+   promotion_id:string;promotion_name:string;recorded_shows:string;
+   first_week_index:number|null;last_week_index:number|null;
+   missing_proof:boolean;current_week_index:number;
+  }>([
+   "WITH physical AS (",
+   "SELECT world_id,show_id FROM ppw_individual_field_career_effects",
+   "WHERE world_id=$1 AND person_id=$2",
+   "UNION SELECT world_id,show_id FROM ppw_tag_match_career_effects",
+   "WHERE world_id=$1 AND person_id=$2",
+   "UNION SELECT world_id,show_id FROM ppw_completed_show_segments",
+   "WHERE world_id=$1 AND kind<>'VIDEO_PACKAGE'",
+   "AND authored_outcome IN ('HAPPENS','INTERRUPTED')",
+   "AND (story_json @> jsonb_build_object('actorIds',jsonb_build_array($2::text))",
+   "OR story_json @> jsonb_build_object('targetIds',jsonb_build_array($2::text)))",
+   "), visits AS (",
+   "SELECT show.promotion_id,show.show_id,(show.year-1)*52+show.week-1 AS week_index",
+   "FROM physical JOIN ppw_completed_shows show ON show.world_id=physical.world_id",
+   "AND show.show_id=physical.show_id",
+   "JOIN ppw_worlds w ON w.world_id=show.world_id",
+   "WHERE (show.year-1)*52+show.week-1<=(w.year-1)*52+w.week-1",
+   "), aggregates AS (",
+   "SELECT promotion_id,count(*)::text AS recorded_shows,",
+   "min(week_index)::integer AS first_week_index,",
+   "max(week_index)::integer AS last_week_index FROM visits GROUP BY promotion_id",
+   "), employers AS (",
+   "SELECT promotion_id FROM aggregates UNION SELECT $3::text",
+   ")",
+   "SELECT p.promotion_id,p.name AS promotion_name,",
+   "coalesce(a.recorded_shows,'0') AS recorded_shows,",
+   "a.first_week_index,a.last_week_index,",
+   "(SELECT (w.year-1)*52+w.week-1 FROM ppw_worlds w",
+   "WHERE w.world_id=p.world_id) AS current_week_index,",
+   "EXISTS(SELECT 1 FROM ppw_completed_shows done",
+   "LEFT JOIN ppw_show_resolutions r ON r.world_id=done.world_id",
+   "AND r.show_id=done.show_id",
+   "WHERE done.world_id=p.world_id AND done.promotion_id=p.promotion_id",
+   "AND (r.appearance_person_ids IS NULL",
+   "OR EXISTS(SELECT 1 FROM ppw_completed_show_segments angle",
+   "WHERE angle.world_id=done.world_id AND angle.show_id=done.show_id",
+   "AND angle.kind<>'VIDEO_PACKAGE' AND angle.story_json IS NULL))",
+   "LIMIT 1) AS missing_proof",
+   "FROM employers e JOIN ppw_promotions p",
+   "ON p.world_id=$1 AND p.promotion_id=e.promotion_id",
+   "LEFT JOIN aggregates a ON a.promotion_id=p.promotion_id",
+   "ORDER BY (p.promotion_id=$3) DESC,p.name,p.promotion_id LIMIT 17"
+  ].join(" "),[scope.worldId,scope.personId,scope.promotionId]);
+  if(history.length>16)throw new Error("Too many company appearance histories");
+  const liveAppearances=history.map(h=>{
+   const weeksSince=h.last_week_index===null?null:
+    h.current_week_index-h.last_week_index;
+   const status=liveAppearanceStatus(!h.missing_proof,h.last_week_index,h.current_week_index);
+   return {promotionId:h.promotion_id,promotion:h.promotion_name,status,
+    recordedShows:Number(h.recorded_shows),firstWeekIndex:h.first_week_index,
+    lastWeekIndex:h.last_week_index,weeksSinceLast:weeksSince,
+    historyComplete:!h.missing_proof};
+  });
   const total=matches[0];
   const n=(v:string|null|undefined)=>v==null?0:Number(v);
   const count=n(total?.total_matches),wins=n(total?.total_wins);
@@ -91,6 +159,7 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
     averageStars:total?.average_stars==null?null:Number(total.average_stars),
     bestStars:total?.best_stars==null?null:Number(total.best_stars),
     injuries:n(total?.total_injuries)},
+   liveAppearances,
    recent:matches.map(m=>({
     showId:m.show_id,matchId:m.match_id,showName:m.show_name??"PPW event",
     promotion:m.promotion_name,year:m.year,week:m.week,format:m.format,
