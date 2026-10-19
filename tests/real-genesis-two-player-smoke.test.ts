@@ -43,6 +43,7 @@ test("authentic original-main Genesis: two humans independently claim fictional 
  const request=(path:string,method:"POST"|"GET",body:unknown,
   cookie="",csrf="")=>new Request(origin+path,{
    method,headers:{"host":"ppw-ci.example",
+    ...(body!==null?{"content-type":"application/json"}:{}),
     ...(method==="POST"?{"origin":origin}:{}),
     ...(cookie?{"cookie":cookie}:{}),
     ...(csrf?{"x-ppw-csrf":csrf}:{})},
