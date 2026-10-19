@@ -7,7 +7,6 @@
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {projectOriginalGenesis,type OriginalGenesisSource} from "../domain/original-genesis-projection.js";
-import {defaults,validateSchedule} from "../domain/show-calendar.js";
 
 export async function importOriginalGenesis(pool:TransactionPool,source:OriginalGenesisSource){
  // Verify the complete input BEFORE acquiring a PostgreSQL connection.
@@ -65,34 +64,6 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
    })))]);
-  // Restore all real-show and player-entry identities at Genesis, rather than
-  // lazily rebuilding them after a claim. The enhanced rebuild calendar keeps
-  // WWE/AEW's full annual PPVs, not the original's generic monthly placeholder.
-  // One write for every company, never one SQL call per PPV.
-  const seedSeries=g.promotions.filter(p=>p.lifecycle!=="CLOSED").flatMap(p=>{
-   const series=defaults(p.name,p.eventCadenceWeeks,
-    g.world.majorEventIntervalWeeks);
-   validateSchedule(series);
-   return series.map(row=>({promotion_id:p.id,series_id:row.seriesId,
-    name:row.name,role:row.role,event_type:row.eventType,
-    cadence_weeks:row.cadenceWeeks,anchor_week:row.anchorWeek,
-    importance:row.importance,active:row.active}));
-  });
-  if(seedSeries.length>512)throw new Error("Genesis show calendar exceeds seed budget");
-  const calendar=await tx.query<{count:number}>(`
-   WITH inserted AS (
-    INSERT INTO ppw_show_series(world_id,promotion_id,series_id,
-     name,role,event_type,cadence_weeks,anchor_week,importance,active)
-    SELECT $1,x.promotion_id,x.series_id,x.name,x.role,x.event_type,
-     x.cadence_weeks,x.anchor_week,x.importance,x.active
-    FROM jsonb_to_recordset($2::jsonb) AS x(
-     promotion_id text,series_id text,name text,role text,event_type text,
-     cadence_weeks integer,anchor_week integer,importance integer,active boolean)
-    RETURNING series_id
-   ) SELECT count(*)::integer AS count FROM inserted`,
-   [g.world.id,JSON.stringify(seedSeries)]);
-  if(calendar[0]?.count!==seedSeries.length)
-   throw new Error("Incomplete authentic Genesis show calendar");
   // Preserve the exact original standings in one normalized, bounded insert.
   const standings=await tx.query<{count:number}>(`
    WITH inserted AS (
@@ -224,8 +195,8 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    venues:g.venues.length,contracts:g.contracts.length,
    markets:g.markets.length,promotionMarketStates:g.promotionMarketStates.length,
    championships:titles[0]!.count,standings:standings[0]!.count,
-   showSeries:seedSeries.length,tagTeams:g.teams.length,
+   tagTeams:g.teams.length,
    teamMembers:g.teamMemberships.length,
-   sqlStatements:11+Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
+   sqlStatements:10+Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
  });
 }
