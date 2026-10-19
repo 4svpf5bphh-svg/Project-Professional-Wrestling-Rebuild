@@ -131,9 +131,10 @@ test("booker cannot cast targets into targetless scenes or exceed the shared 30-
   assert.throws(()=>addSegmentPerson(scene,"targets",p("intruder")),/no target role/);
  }
  let confrontation=newEditorSegment("crowd","CONFRONTATION");
- for(let i=0;i<29;i++)
+ for(let i=0;i<20;i++)
   confrontation=addSegmentPerson(confrontation,"actors",p("actor-"+i));
- confrontation=addSegmentPerson(confrontation,"targets",p("target"));
+ for(let i=0;i<10;i++)
+  confrontation=addSegmentPerson(confrontation,"targets",p("target-"+i));
  assert.throws(()=>addSegmentPerson(confrontation,"targets",p("overflow")),/more than 30/);
  assert.equal(buildEditorSegment(confrontation).participants.length,30);
 });
