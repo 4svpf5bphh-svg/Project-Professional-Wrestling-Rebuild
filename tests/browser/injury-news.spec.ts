@@ -37,8 +37,8 @@ test("iPhone shows verified match injury without fabricating current medical cle
  await expect(page.getByText("Alice suffered an injury")).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  await page.reload();
+ await expect.poll(()=>calls).toEqual(["overview","dismissAttention","overview"]);
  await expect(page.getByText("Alice suffered an injury")).toHaveCount(0);
- expect(calls).toEqual(["overview","dismissAttention","overview"]);
 });
 test("iPhone clears mixed injury and title news without touching mandatory actions",async({page})=>{
  await page.setViewportSize({width:390,height:844});
