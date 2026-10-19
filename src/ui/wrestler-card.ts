@@ -90,7 +90,9 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
   ["RING",p.inRingQuality],["CRAFT",p.matchCraft],["PRES",p.presentation]];
  for(const [key,n] of numbers)if(n!==undefined)stats.append(metric(key,n));
  copy.append(stats);
- if(p.finisherMove&&!options.compact)
+ if(p.signatureMove&&!options.compact)
+  copy.append(span("ppw-wrestler-finisher","SIGNATURE  /  "+p.signatureMove));
+ if(p.finisherMove&&(!options.compact||options.context==="BOOKING"))
   copy.append(span("ppw-wrestler-finisher","FINISHER  /  "+p.finisherMove));
  const footer=span("ppw-wrestler-status",options.label??p.status??"");
  footer.setAttribute("aria-live","off");
