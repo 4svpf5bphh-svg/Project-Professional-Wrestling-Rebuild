@@ -618,7 +618,8 @@ test("verified player can join, claim and reach World without bypassing session 
    if(path==="/api/claim")expect(body.promotionId).toBe("aew");
    mutated.push(path);
    stage++;
-   await route.fulfill({json:{status:"APPLIED"}});
+   await route.fulfill({json:{status:"APPLIED",result:path==="/api/claim"?
+    {claimed:true}:{joined:true}}});
   });
  }
  await page.route("**/api/card",async route=>route.fulfill({json:overview}));
@@ -1450,7 +1451,8 @@ test("two-manager claim race keeps the losing iPhone out of private desks",async
   expect(body.playerId).toBeUndefined();
   attempts++;
   if(attempts===2)claimed=true;
-  await route.fulfill({json:{status:attempts===1?"REJECTED":"APPLIED"}});
+  await route.fulfill({json:{status:"APPLIED",result:attempts===1?
+   {claimed:false,reason:"PROMOTION_TAKEN"}:{claimed:true}}});
  });
  await page.route("**/api/card",route=>route.fulfill({json:overview}));
  await page.goto("/#/home");
