@@ -23,6 +23,11 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
   contracts:[],teams:[],stables:[],connections:[],history:[]};
  const career={personId:"alice",summary:{matches:3,wins:2,losses:1,singles:3,
   tag:0,ratedMatches:3,averageStars:3.25,bestStars:4.0,injuries:0},
+  currentChampionships:[
+   {name:"Women's World Title",promotion:"AEW",holderType:"PERSON",
+    teamName:null,startWeekIndex:49,defenses:4},
+   {name:"World Tag Titles",promotion:"AEW",holderType:"TEAM",
+    teamName:"The Outlaws",startWeekIndex:51,defenses:2}],
   recent:[{showId:"show-2",matchId:"main",showName:"Friday Night Fights",
    promotion:"AEW",year:2,week:3,format:"TAG",won:true,stars:4.5,
    minutes:21,finish:"CLEAN_PIN",injury:null,weeksOut:null,
@@ -59,6 +64,9 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByText("Earlier on-screen history is incomplete")).toBeVisible();
  await expect(dialog.getByText(/Video packages and unused bookings do not/)).toBeVisible();
  await expect(dialog.getByText("First verified: Y1 W1 · Latest verified: Y1 W52")).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Current championships"})).toBeVisible();
+ await expect(dialog.getByText("Women's World Title")).toBeVisible();
+ await expect(dialog.getByText(/Tag champions · The Outlaws/)).toBeVisible();
  await expect(dialog.getByText("Tag partners: Kate  /  Opponents: Bob · Duke")).toBeVisible();
  await expect(dialog.getByText("Opponents not verified in older match records.")).toBeVisible();
  expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(1);

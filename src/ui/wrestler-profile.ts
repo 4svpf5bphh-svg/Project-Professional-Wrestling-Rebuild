@@ -265,6 +265,21 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     appearances.append(row);
    }
    careerBody.append(appearances);
+   const championship=el("section","ppw-profile-career-honors");
+   championship.append(el("h3","","Current championships"));
+   const held=career.currentChampionships??[];
+   if(!held.length)championship.append(el("p","ppw-profile-muted",
+    "No currently held singles or tag titles on record."));
+   for(const belt of held){
+    const item=el("article","ppw-profile-career-match");
+    item.append(el("strong","",belt.name),
+     el("span","",belt.promotion+" · "+
+      (belt.holderType==="TEAM"?"Tag champions"+(belt.teamName?" · "+belt.teamName:""):
+       "Singles champion")+" · Since "+timelineWeek(belt.startWeekIndex)+
+      " · "+belt.defenses+" defences"));
+    championship.append(item);
+   }
+   careerBody.append(championship);
    const honors=el("section","ppw-profile-career-honors");
    honors.append(el("h3","","Singles championship honours"));
    if(!career.singlesTitles.length)honors.append(el("p","ppw-profile-muted",

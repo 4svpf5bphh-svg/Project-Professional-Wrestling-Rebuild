@@ -24,6 +24,9 @@ export interface CareerView{
   weeksSinceLast:number|null;historyComplete:boolean}[];
  singlesTitles:{name:string;promotion:string;startWeekIndex:number;
   endedWeekIndex:number|null;defenses:number}[];
+ /** Current titles only: inactive/broken team membership cannot imply past ownership. */
+ currentChampionships:{name:string;promotion:string;holderType:"PERSON"|"TEAM";
+  teamName:string|null;startWeekIndex:number;defenses:number}[];
 }
 const id=(s:string)=>typeof s==="string"&&s.length>0&&s.length<=200;
 type MatchRow={
@@ -98,15 +101,28 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
    "FROM career ORDER BY year DESC,week DESC,show_id DESC,match_id DESC LIMIT 12"
   ].join(" "),[scope.worldId,scope.personId]);
   const titles=await tx.query<{name:string;promotion_name:string;
-   start_week_index:number;ended_week_index:number|null;defenses:number}>([
+   start_week_index:number;ended_week_index:number|null;defenses:number;
+   holder_type:"PERSON"|"TEAM";team_name:string|null;is_current:boolean}>([
    "SELECT title.name,p.name AS promotion_name,reign.start_week_index,",
-   "reign.ended_week_index,reign.defenses FROM ppw_championship_reigns reign",
+   "reign.ended_week_index,reign.defenses,reign.holder_type,",
+   "team.name AS team_name,",
+   "(title.status='ACTIVE' AND reign.status='ACTIVE'",
+   "AND title.current_reign_id=reign.reign_id) AS is_current",
+   "FROM ppw_championship_reigns reign",
    "JOIN ppw_championships title ON title.world_id=reign.world_id",
    "AND title.promotion_id=reign.promotion_id AND title.championship_id=reign.championship_id",
    "JOIN ppw_promotions p ON p.world_id=reign.world_id",
    "AND p.promotion_id=reign.promotion_id",
-   "WHERE reign.world_id=$1 AND reign.person_id=$2",
-   "ORDER BY reign.start_week_index DESC,reign.reign_id DESC LIMIT 8"
+   "LEFT JOIN ppw_tag_team_members member ON member.world_id=reign.world_id",
+   "AND member.team_id=reign.team_id AND member.person_id=$2 AND member.active",
+   "LEFT JOIN ppw_tag_teams team ON team.world_id=reign.world_id",
+   "AND team.team_id=member.team_id AND team.status='ACTIVE'",
+   "WHERE reign.world_id=$1 AND (",
+   "(reign.holder_type='PERSON' AND reign.person_id=$2) OR",
+   "(reign.holder_type='TEAM' AND team.team_id IS NOT NULL",
+   "AND title.status='ACTIVE' AND reign.status='ACTIVE'",
+   "AND title.current_reign_id=reign.reign_id))",
+   "ORDER BY reign.start_week_index DESC,reign.reign_id DESC LIMIT 17"
   ].join(" "),[scope.worldId,scope.personId]);
   // A single additional person-keyed read, ONLY on explicit dossier expansion.
   // Match effects and immutable completed angle stories are proof of a live
@@ -189,8 +205,13 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
     injury:m.injury_severity,weeksOut:m.injury_weeks_out,
     ...careerMatchLineup(m.lineup_json,scope.personId)
    })),
-   singlesTitles:titles.map(t=>({name:t.name,promotion:t.promotion_name,
-    startWeekIndex:t.start_week_index,endedWeekIndex:t.ended_week_index,
-    defenses:t.defenses}))};
+   singlesTitles:titles.filter(t=>t.holder_type==="PERSON").slice(0,8)
+    .map(t=>({name:t.name,promotion:t.promotion_name,
+     startWeekIndex:t.start_week_index,endedWeekIndex:t.ended_week_index,
+     defenses:t.defenses})),
+   currentChampionships:titles.filter(t=>t.is_current).slice(0,8).map(t=>({
+    name:t.name,promotion:t.promotion_name,holderType:t.holder_type,
+    teamName:t.team_name,startWeekIndex:t.start_week_index,defenses:t.defenses
+   }))};
  });
 }

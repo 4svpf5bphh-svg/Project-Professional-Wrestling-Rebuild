@@ -95,6 +95,39 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
     "chemistry_modifier,actual_minutes)"+
     " VALUES($1,'career-show','match-1',4.25,85,0,18)",[world]);
   });
+  // Original-current-title parity: one owned singles reign and one active
+  // World tag team held by this wrestler, verified from current title pointers.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`
+    INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
+    VALUES($1,'career-team','The Team','ACTIVE')
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_tag_team_members(world_id,team_id,person_id,active)
+    VALUES($1,'career-team','person-0',true),
+     ($1,'career-team','person-2',true)
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_championships(world_id,promotion_id,championship_id,
+     name,division,status,prestige)
+    VALUES($1,$2,'career-single','World Title','SINGLES','ACTIVE',80),
+     ($1,$2,'career-tag','Tag Titles','TAG','ACTIVE',65)
+   `,[world,promotionId]);
+   await tx.query(`
+    INSERT INTO ppw_championship_reigns(world_id,promotion_id,championship_id,
+     reign_id,holder_type,person_id,team_id,status,start_week_index,defenses)
+    VALUES($1,$2,'career-single','career-single-reign','PERSON',
+     'person-0',NULL,'ACTIVE',0,3),
+     ($1,$2,'career-tag','career-tag-reign','TEAM',NULL,
+     'career-team','ACTIVE',5,2)
+   `,[world,promotionId]);
+   await tx.query(`
+    UPDATE ppw_championships SET current_reign_id=CASE championship_id
+     WHEN 'career-single' THEN 'career-single-reign' ELSE 'career-tag-reign' END
+    WHERE world_id=$1 AND promotion_id=$2 AND championship_id IN
+     ('career-single','career-tag')
+   `,[world,promotionId]);
+  });
   const meter=new MeasuredQuerySession("wrestler-career-on-demand");
   const measured:TransactionPool={async connect(){
    const client=await db.pool.connect();
@@ -111,6 +144,14 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
   assert.equal(view.recent[0]?.finish,"CLEAN_PIN");
   assert.equal(view.recent[0]?.weeksOut,2);
   assert.equal(view.recent[0]?.stars,4.25);
+  assert.deepEqual(view.currentChampionships,[
+   {name:"Tag Titles",promotion:"Promotion 0",holderType:"TEAM",
+    teamName:"The Team",startWeekIndex:5,defenses:2},
+   {name:"World Title",promotion:"Promotion 0",holderType:"PERSON",
+    teamName:null,startWeekIndex:0,defenses:3}
+  ]);
+  assert.deepEqual(view.singlesTitles,[{name:"World Title",promotion:"Promotion 0",
+   startWeekIndex:0,endedWeekIndex:null,defenses:3}]);
   assert.equal(view.recent[0]?.format,"SINGLES");
   assert.deepEqual(view.recent[0]?.partners,[]);
   assert.deepEqual(view.recent[0]?.opponents,["Wrestler 1"]);
@@ -121,6 +162,15 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
    {company:promotionId,status:"RETURN_ELIGIBLE",shows:2,first:0,last:5,weeksSince:4},
    {company:"promotion-1",status:"RETURN_ELIGIBLE",shows:1,first:1,last:1,weeksSince:8}
   ],"One visit per completed physical show; video clips and refused angles do not count");
+  // Losing team membership ends entitlement to a CURRENT team title claim,
+  // without mutating either the belt or the individual's verified singles reign.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_tag_team_members SET active=false"+
+   " WHERE world_id=$1 AND team_id='career-team' AND person_id=$2",
+   [world,personId]));
+  const withdrawn=await readWrestlerCareer(db.pool,scope);
+  assert.deepEqual(withdrawn.currentChampionships.map(t=>t.name),["World Title"]);
+  assert.equal(withdrawn.singlesTitles.length,1);
   const videoOnly=await readWrestlerCareer(db.pool,{...scope,personId:"person-1"});
   assert.equal(videoOnly.liveAppearances[0]?.status,"DEBUT_ELIGIBLE");
   assert.equal(videoOnly.liveAppearances[0]?.recordedShows,0);
@@ -157,6 +207,7 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
     "ppw_completed_match_report_facts","ppw_individual_field_career_effects",
     "ppw_completed_show_matches","ppw_completed_show_segments",
     "ppw_completed_shows","ppw_show_resolutions","ppw_booking_drafts",
+    "ppw_championship_reigns","ppw_tag_team_members","ppw_tag_teams",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
