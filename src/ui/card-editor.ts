@@ -24,7 +24,7 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
-import {moveLinkedRunningOrder} from "./card-running-order.js";
+import {moveLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -598,7 +598,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      });
      controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
       [["",earlier.length?"Choose the earlier match":"Book the match above this angle"],
-       ...earlier],value=>editSegment(segment,{sourceMatchSlotId:value||null}),!mutable())));
+       ...earlier],value=>{
+        const next=value?attachPostMatchAngle(order,slotId,value):null;
+        segments.set(slotId,{...segment,sourceMatchSlotId:value||null});
+        if(next)order=next;
+        markDirty();render();
+       },!mutable())));
+      controls.append(el("p","ppw-angle-guidance",
+       "Selecting a match places this angle immediately after it. Both then move together."));
      if(!earlier.some(([id])=>id===segment.sourceMatchSlotId))
       controls.append(el("p","ppw-angle-guidance",
        "Move this angle after the match and choose a wrestler from that bout."));

@@ -1183,12 +1183,15 @@ test("iPhone reorders a match together with its attached post-match angle",async
  const slots=[
   {slotId:"opener",kind:"MATCH",position:0,payload:bout([c,d])},
   {slotId:"main",kind:"MATCH",position:1,payload:bout([a,b])},
-  {slotId:"assault",kind:"SEGMENT",position:2,payload:{
-   kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:"main",
+  {slotId:"interview",kind:"SEGMENT",position:2,payload:{
+   kind:"INTERVIEW",actorIds:["charlie"],targetIds:[],outcome:"HAPPENS",
+   participants:[c]}},
+  {slotId:"assault",kind:"SEGMENT",position:3,payload:{
+   kind:"POST_MATCH_ASSAULT",
    actorIds:["alice"],targetIds:["bob"],outcome:"HAPPENS",
    participants:[a,b]}}
  ];
- let order=["opener","main","assault"],revision=4;
+ let order=["opener","main","interview","assault"],revision=4;
  const methods:string[]=[];
  const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
   worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
@@ -1196,7 +1199,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
    scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
     eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
     marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
-    ready:false,slots:3,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]};
+    ready:false,slots:4,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]};
  const view=()=>({
   showId:"weekly",year:1,week:5,canEdit:true,ready:false,
   worldRevision:revision,day:5,venueId:"arena",showName:"Dynamite",
@@ -1215,7 +1218,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
   methods.push(String(input.method));
   if(input.method==="save"){
    order=input.runningOrder as string[];revision++;
-   expect(order).toEqual(["main","assault","opener"]);
+   expect(order).toEqual(["main","assault","opener","interview"]);
    expect((input.segments as {slotId:string;payload:Record<string,unknown>}[])
     .find(s=>s.slotId==="assault")?.payload.sourceMatchSlotId).toBe("main");
   }
@@ -1225,8 +1228,13 @@ test("iPhone reorders a match together with its attached post-match angle",async
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
- await expect(page.getByRole("button",{name:"Move angle in slot 3 earlier"})).toBeEnabled();
+ await expect(page.locator(".ppw-card-bar")).toHaveCount(4);
+ await page.locator(".ppw-card-bar .ppw-expand").nth(3).click();
+ await page.getByRole("dialog",{name:"Edit angle"}).getByLabel("After which match?")
+  .selectOption("main");
+ await page.getByRole("dialog",{name:"Edit angle"}).getByRole("button",
+  {name:"Close card editor"}).click();
+ await expect(page.locator(".ppw-card-bar").nth(2)).toContainText("Follows its match");
  await page.getByRole("button",{name:"Move match in slot 2 earlier"}).click();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");

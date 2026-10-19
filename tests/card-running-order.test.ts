@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {runningOrderBlocks,moveLinkedRunningOrder,
+import {runningOrderBlocks,moveLinkedRunningOrder,attachPostMatchAngle,
  type LinkedRunningOrderAngle} from "../src/ui/card-running-order.js";
 const assault=(source:string):LinkedRunningOrderAngle=>({
  slotId:"assault",kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:source
@@ -45,4 +45,15 @@ test("moves never break multiple attached match/assault pairs",()=>{
  assert.deepEqual(moveLinkedRunningOrder(order,"a",1,links),
   ["b","attackB","a","attackA","closing"]);
  assert.equal(moveLinkedRunningOrder(order,"closing",1,links),null);
+});
+
+test("choosing a source match explicitly attaches an assault directly to its bout",()=>{
+ const old=["opener","main","interview","assault","closing"];
+ assert.deepEqual(attachPostMatchAngle(old,"assault","main"),
+  ["opener","main","assault","interview","closing"]);
+ assert.deepEqual(attachPostMatchAngle(["main","assault"],"assault","main"),
+  ["main","assault"]);
+ assert.equal(attachPostMatchAngle(old,"main","main"),null);
+ assert.equal(attachPostMatchAngle(old,"assault","missing"),null);
+ assert.equal(attachPostMatchAngle(old,"missing","main"),null);
 });

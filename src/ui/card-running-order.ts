@@ -36,3 +36,17 @@ export function moveLinkedRunningOrder(order:readonly string[],id:string,
  }
  return flattened;
 }
+
+/** Explicitly choosing a source match places its follow-up immediately next.
+ * No match/angle payloads change, only their written running-order sequence.
+ */
+export function attachPostMatchAngle(order:readonly string[],
+ angleId:string,matchId:string):string[]|null{
+ if(angleId===matchId||!order.includes(angleId)||!order.includes(matchId))
+  return null;
+ const without=order.filter(id=>id!==angleId);
+ const at=without.indexOf(matchId);
+ const next=[...without];
+ next.splice(at+1,0,angleId);
+ return next;
+}
