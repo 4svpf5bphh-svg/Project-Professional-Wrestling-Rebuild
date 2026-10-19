@@ -13,7 +13,10 @@ export interface OriginalGenesisSource {
  ruleset:{version:string;weeksPerYear:number;offerAcceptanceThreshold:number;injuryRateMultiplier:number;
   majorEventIntervalWeeks:number};
  promotions:Array<{id:string;worldId:string;name:string;tier:Tier;lifecycle:string;
-  controllerType:"AI"|"HUMAN";cash:number;debt:number;mediaReach:number;
+  controllerType:"AI"|"HUMAN";
+  playerTakeoverEligibility:"LOCKED"|"STANDARD";
+  identity?:{origin:"REAL_WORLD"|"FICTIONAL"};
+  cash:number;debt:number;mediaReach:number;
   weeklyMediaIncome:number;weeklySponsorIncome:number;weeklyFixedOverhead:number;
   lastWeeklyNet:number;financialDistress:string;homeMarketId:string;
   eventCadenceWeeks:number;aiProfile:{financialCaution:number;riskTolerance:number;
@@ -132,6 +135,10 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    ||!stat(p.aiProfile?.starPreference)
    ||!["GLOBAL","NATIONAL","RISING","INDEPENDENT","LOCAL"].includes(p.tier)
    ||!lifecycles.has(p.lifecycle)||!["AI","HUMAN"].includes(p.controllerType)
+   ||!["LOCKED","STANDARD"].includes(p.playerTakeoverEligibility)
+   ||(p.identity?.origin==="REAL_WORLD"&&p.playerTakeoverEligibility!=="LOCKED")
+   ||(p.identity!==undefined&&
+    !["REAL_WORLD","FICTIONAL"].includes(p.identity.origin))
    ||!int(p.cash,-2_000_000_000_000,2_000_000_000_000)
    ||!int(p.debt,0,2_000_000_000_000)||!stat(p.mediaReach)
    ||![p.weeklyMediaIncome,p.weeklySponsorIncome,p.weeklyFixedOverhead].every(fee)
@@ -139,7 +146,8 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    ||!distress.has(p.financialDistress))
    throw new Error("Incomplete original promotion finance profile: "+p.id);
   return {id:p.id,name:p.name,homeMarketId:p.homeMarketId,tier:p.tier,lifecycle:p.lifecycle,
-   mode:p.controllerType,cash:p.cash,debt:p.debt,media:p.mediaReach,
+   mode:p.controllerType,takeoverEligibility:p.playerTakeoverEligibility,
+   cash:p.cash,debt:p.debt,media:p.mediaReach,
    eventCadenceWeeks:p.eventCadenceWeeks,aiFinancialCaution:p.aiProfile.financialCaution,
    aiRiskTolerance:p.aiProfile.riskTolerance,
    aiMatchQualityPreference:p.aiProfile.matchQualityPreference,
