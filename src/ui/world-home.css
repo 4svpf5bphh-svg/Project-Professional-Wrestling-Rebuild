@@ -148,3 +148,24 @@
  font-size:13px;font-weight:800;letter-spacing:.02em;cursor:pointer}
 .ppw-home-clear-resolved:focus-visible{outline:3px solid #9ae5f7;outline-offset:2px}
 .ppw-home-clear-resolved:disabled{opacity:.6;cursor:wait}
+
+/* One deliberate World-status read after the shared deadline. No background
+   polling or fabricated match results, with a comfortable iPhone touch target. */
+.ppw-home-status-refresh{
+ display:block;width:100%;min-height:48px;margin:13px 0 0;
+ padding:12px 14px;text-align:center;font:inherit;font-size:14px;
+ font-weight:850;letter-spacing:.02em;color:#d7f7ff;
+ border-radius:12px;border:1px solid #69c6e8;
+ background:linear-gradient(110deg,#18506a,#233d63);cursor:pointer;
+}
+.ppw-home-status-refresh[hidden]{display:none}
+.ppw-home-status-refresh:disabled{opacity:.55;cursor:wait}
+.ppw-home-status-refresh:focus-visible{outline:3px solid #9ae5f7;outline-offset:3px}
+.ppw-home-week-complete{
+ margin:0 0 17px;padding:18px 16px;border-radius:17px;
+ background:linear-gradient(120deg,#193e4c,#17243f);
+ border:1px solid #64b9ce;
+}
+.ppw-home-week-complete h3{margin:7px 0 5px;font-size:20px}
+.ppw-home-week-complete p{font-size:13px;color:#bddce9;line-height:1.5}
+.ppw-home-week-complete>.ppw-home-tile{margin-top:13px;background:#204860}
