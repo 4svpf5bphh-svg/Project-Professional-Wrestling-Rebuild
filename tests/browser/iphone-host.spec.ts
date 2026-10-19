@@ -1518,6 +1518,8 @@ test("reaching a World deadline on iPhone offers a refresh without silently reso
  });
  await page.goto("/#/home");
  await expect(page.getByText(/Booking deadline reached/)).toBeVisible();
+ await expect(page.getByText(/DEADLINE REACHED/)).toBeVisible();
+ await expect(page.getByText(/BOOKING OPEN/)).toHaveCount(0);
  await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
  expect(reads).toBe(1);
  await page.getByRole("button",{name:"Check World status"}).click();
