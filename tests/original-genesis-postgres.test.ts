@@ -96,7 +96,9 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
   assert.equal(sample.resultRows,11);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
-  assert.equal(preview.ready,true);
+  assert.equal(preview.ready,false,
+   "The eight-promotion synthetic fixture must never be certified as real-playtest ready");
+  assert.match(preview.issues.join(" "),/eight protected real promotion|promotion ecosystem/);
   assert.equal(preview.counts.wrestlers,643);
   assert.equal(preview.counts.promotions,8);
   assert.equal(preview.counts.availableTakeovers,6,

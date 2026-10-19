@@ -5,17 +5,18 @@ import {assessPlaytestPopulation,type PreviewPopulation}
 
 const ready:PreviewPopulation={
  worldId:"original-new",year:1,week:1,phase:"OPEN",
- promotions:8,activePromotions:8,wrestlers:643,signedContracts:400,
- venues:16,markets:4,championships:16,availableTakeovers:2,
- controlledPromotions:0,humanManagers:0
+ promotions:13,activePromotions:13,wrestlers:643,signedContracts:400,
+ venues:60,markets:20,championships:26,availableTakeovers:5,
+ controlledPromotions:0,humanManagers:0,
+ women:203,protectedRealPromotions:8,activeTagTeams:14,genesisImports:1
 };
 test("a complete population with two claimable promotions can be previewed",()=>{
  assert.deepEqual(assessPlaytestPopulation(ready).issues,[]);
  assert.equal(assessPlaytestPopulation(ready).ready,true);
- const afterClaims={...ready,availableTakeovers:0,controlledPromotions:2,humanManagers:2};
+ const afterClaims={...ready,availableTakeovers:3,controlledPromotions:2,humanManagers:2};
  assert.equal(assessPlaytestPopulation(afterClaims).ready,true);
 });
-test("real eight-promotion World with locked claims is not falsely called playable",()=>{
+test("authentic 13-promotion World with unavailable claims is not falsely called playable",()=>{
  const x=assessPlaytestPopulation({...ready,availableTakeovers:0});
  assert.equal(x.ready,false);
  assert.match(x.issues.join(" "),/Fewer than two distinct promotions/);
@@ -29,4 +30,15 @@ test("a toy fixture cannot masquerade as a full-content player preview",()=>{
  assert.ok(x.issues.length>=5);
  assert.equal(assessPlaytestPopulation({...ready,controlledPromotions:2,
   humanManagers:1}).ready,false);
+});
+
+test("a synthetic 643-person World cannot bypass original-content preflight",()=>{
+ const invalid=assessPlaytestPopulation({...ready,promotions:8,activePromotions:8,
+  women:100,protectedRealPromotions:0,activeTagTeams:1,genesisImports:0});
+ assert.equal(invalid.ready,false);
+ assert.match(invalid.issues.join(" "),/promotion ecosystem/i);
+ assert.match(invalid.issues.join(" "),/women's division/i);
+ assert.match(invalid.issues.join(" "),/eight protected real/i);
+ assert.match(invalid.issues.join(" "),/tag partnerships/i);
+ assert.match(invalid.issues.join(" "),/verified original Genesis/i);
 });

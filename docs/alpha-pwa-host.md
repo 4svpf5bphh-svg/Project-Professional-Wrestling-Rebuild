@@ -102,7 +102,11 @@ does not fabricate a roster or silently initialise the live World.
 
 The operator then runs `npm run playtest:preflight -- --world <id>` with
 `PPW_PLAYTEST_DB_URL`. This is read-only and reports compact population
-counts and reasons the World is not yet previewable.
+counts and reasons the World is not yet previewable. The release gate expects
+**13 promotions (eight protected real-world, five original fictional-entry),
+643 wrestlers, a substantial women\u0027s division, at least ten real tag teams,
+championships, and one authentic Genesis import receipt**. A synthetic 643-person
+test fixture must never pass the playable-preview release gate.
 
 A full manual week can **only be run after separate explicit approval** via
 `npm run playtest:week -- --world <id> --resolve --confirm-world <id>
