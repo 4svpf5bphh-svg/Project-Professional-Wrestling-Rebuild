@@ -1189,6 +1189,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
   {slotId:"assault",kind:"SEGMENT",position:3,payload:{
    kind:"POST_MATCH_ASSAULT",
    actorIds:["alice"],targetIds:["bob"],outcome:"HAPPENS",
+   creativeBeat:{kind:"POST_MATCH_ASSAULT",ending:"ATTACKER_STANDS_TALL"},
    participants:[a,b]}}
  ];
  let order=["opener","assault","interview","main"],revision=4;
