@@ -52,7 +52,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.deepEqual(after?.promotion?.attention,{
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
-     backstageRequests:[],offerResults:[],backstageResults:[]});
+     backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[]});
     assert.equal(after?.membership,"ACTIVE");
     assert.ok(after!.world.nextLockEpoch>after!.world.serverEpoch);
     const outsider=await readPlayerWorldOverview(measured,worldId,"outsider-"+id);
