@@ -32,6 +32,15 @@ let drawerExpanded=false;
 let selectedDrawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
 let pendingBackstagePersonId:string|null=null;
+let bookingDirty=false;
+let activeBooking:{worldId:string;promotionId:string;showId:string}|null=null;
+function confirmLeavingBooking(next:HostSection){
+ if(!bookingDirty||next==="card")return true;
+ if(!window.confirm("You have unsaved changes to this show. Leave without saving?"))
+  return false;
+ bookingDirty=false;activeBooking=null;
+ return true;
+}
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
@@ -64,6 +73,7 @@ function commandAccepted(result:unknown){
 }
 /** Mobile shell is independent of the workspace root and remains accessible. */
 function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
+ if(!confirmLeavingBooking(section))return;
  drawerExpanded=false;
  pendingBackstagePersonId=section==="backstage"&&personId?personId:null;
  const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
@@ -84,6 +94,7 @@ function openBooking(showId:string){
  if(!session?.overview.promotion)return;
  const worldId=session.worldId,promotionId=session.overview.promotion.id;
  const state=bookingHistoryState(worldId,promotionId,showId);
+ bookingDirty=false;activeBooking={worldId,promotionId,showId};
  if(location.hash===plannerCardHash)
   history.replaceState(null,"",hostSectionHash("planner"));
  history.pushState(state,"",hostSectionHash("card"));
@@ -161,6 +172,7 @@ document.addEventListener("keydown",e=>{
 function renderSection(){
  if(!session?.overview?.promotion)return;
  const section=readHostSection(location.hash);
+ if(section!=="card"){bookingDirty=false;activeBooking=null;}
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
  pendingBackstagePersonId=null;
  const scope:CardSessionScope={worldId:session.worldId,
@@ -181,9 +193,17 @@ function renderSection(){
   case "card":{
    const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
    if(!showId){
+    bookingDirty=false;activeBooking=null;
     history.replaceState(null,"",hostSectionHash("planner"));
     mountPlannerPage(view,scope,back,false,undefined,openBooking);
-   }else mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"));
+   }else{
+    activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
+    mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
+     dirty=>{
+      if(view.isConnected&&readHostSection(location.hash)==="card"&&
+       activeBooking?.showId===showId)bookingDirty=dirty;
+     });
+   }
    break;
   }
   case "roster":mountRosterPage(view,scope);break;
@@ -240,7 +260,20 @@ function renderSection(){
   }
  }
 }
-window.addEventListener("hashchange",()=>{drawerExpanded=false;renderSection();});
+window.addEventListener("hashchange",()=>{
+ const section=readHostSection(location.hash);
+ if(!confirmLeavingBooking(section)){
+  const booking=activeBooking;
+  if(booking)history.pushState(
+   bookingHistoryState(booking.worldId,booking.promotionId,booking.showId),
+   "",hostSectionHash("card"));
+  return;
+ }
+ drawerExpanded=false;renderSection();
+});
+window.addEventListener("beforeunload",event=>{
+ if(bookingDirty){event.preventDefault();event.returnValue="";}
+});
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
