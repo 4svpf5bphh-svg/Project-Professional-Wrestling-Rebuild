@@ -36,3 +36,29 @@ export function inferProgrammeMatchLinks(
  }
  return links;
 }
+
+/** An explicitly attached story must feature at least one wrestler from that
+ * active programme. A solo speech can advance a rivalry without both sides
+ * being present, but unrelated cast cannot borrow another feud's momentum.
+ */
+export function validateProgrammeAngleLinks(
+ angles:readonly {slotId:string;programmeId:string;personIds:readonly string[]}[],
+ members:readonly ProgrammePersonSide[],
+):void{
+ if(angles.length>100||members.length>400)
+  throw new Error("Programme angle input too large");
+ const byProgramme=new Map<string,Set<string>>();
+ for(const member of members){
+  const people=byProgramme.get(member.programmeId)??new Set<string>();
+  people.add(member.personId);byProgramme.set(member.programmeId,people);
+ }
+ const linkedSlots=new Set<string>();
+ for(const angle of angles){
+  if(!angle.slotId||!angle.programmeId||linkedSlots.has(angle.slotId))
+   throw new Error("Invalid or repeated angle story link");
+  linkedSlots.add(angle.slotId);
+  const people=byProgramme.get(angle.programmeId);
+  if(!people||!angle.personIds.some(id=>people.has(id)))
+   throw new Error("Choose a wrestler from the linked rivalry before adding this angle");
+ }
+}
