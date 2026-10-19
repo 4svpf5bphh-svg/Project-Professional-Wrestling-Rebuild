@@ -7,6 +7,7 @@ on:
       - "src/domain/original-main-fresh-export.ts"
       - "src/domain/original-genesis-projection.ts"
       - "src/db/import-original-genesis.ts"
+      - "scripts/playtest-genesis.ts"
       - "tests/real-genesis-two-player-smoke.test.ts"
       - "src/db/playtest-preview-readiness.ts"
   workflow_dispatch:
