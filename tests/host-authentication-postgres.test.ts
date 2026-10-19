@@ -6,6 +6,8 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {handlePpwHostApi} from "../src/web/ppw-host-api.js";
 import {inviteDigest} from "../src/web/invite-session.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
 const database=process.env.PPW_NEON_TEST_URL;
 const origin="https://ppw.example";
 const request=(path:string,method:string,body?:Record<string,unknown>,
@@ -39,22 +41,27 @@ test("End-to-end host: two signed players, one World, independent claims and pri
    await createWorld(tx,{id:world,name:"Two Managers",seed:77,rulesetVersion:"test"});
    await addPromotion(tx,world,{id:promoA,name:"First Company",tier:"LOCAL"});
    await addPromotion(tx,world,{id:promoB,name:"Second Company",tier:"LOCAL"});
+   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_promotions SET media_reach=70 WHERE world_id=$1",[world]);
    await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'home','Home',60,70,100)",[world]);
-   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'arena','Arena','home')",[world]);
+   for(const venue of ["arena-a","arena-b"])
+    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,$2,$3,'home')",[world,venue,venue]);
    for(let i=0;i<4;i++){
     const person="wrestler-"+i;
     await tx.query(
-     "INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
+     "INSERT INTO ppw_people(world_id,person_id,name,booking_division,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,default_alignment) VALUES($1,$2,$3,'MEN',80,80,75,85,95,5,5,65,65,70,'FACE')",
      [world,person,"Wrestler "+i]);
     await tx.query(
      "INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)"+
      " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52)",
      [world,"deal-"+i,person,i<2?promoA:promoB]);
    }
-   for(const [show,promo] of [["show-a",promoA],["show-b",promoB]]){
+   for(const [show,promo,venue,day] of [
+    ["show-a",promoA,"arena-a",3],["show-b",promoB,"arena-b",5]
+   ] as const){
     await tx.query(
      "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id)"+
-     " VALUES($1,$2,$3,1,1,'DRAFT',5,'arena','home')",[world,show,promo]);
+     " VALUES($1,$2,$3,1,1,'DRAFT',$4,$5,'home')",[world,show,promo,day,venue]);
    }
   });
   const invalid=await post("/api/auth",{playerId:p1,accessCode:secret2});
@@ -159,14 +166,63 @@ test("End-to-end host: two signed players, one World, independent claims and pri
    " WHERE world_id=$1 ORDER BY draft_id",[world]));
   assert.equal(prepared.length,2);
   assert.ok(prepared.every(x=>!!x.lock_ready_fingerprint));
+  // The single World Lock hands off both separately authorised bookings.
+  // This test uses only its disposable PostgreSQL World, never a live clock.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
+   [world]));
+  const worldState=await withWorldTransaction(db.pool,tx=>tx.query<{
+   revision:number}>("SELECT revision FROM ppw_worlds WHERE world_id=$1",[world]));
+  assert.equal((await lockWorldWeek(db.pool,{worldId:world,
+   requestId:"host-journey-lock",expectedRevision:worldState[0]!.revision})).status,"APPLIED");
+  const resolution=await driveWorldResolution(db.pool,{
+   worldId:world,resolutionId:"host-journey-resolution",maxStages:16});
+  assert.equal(resolution.status,"PUBLISHED",
+   "Two confirmed human shows must settle without the booking UI picking any winners");
+  const next=await (await handlePpwHostApi(request("/api/session","GET",
+   undefined,cookie1))).json();
+  assert.equal(next.overview.world.week,2);
+  assert.equal(next.overview.world.phase,"OPEN");
+  for(const [promotion,show,cookie,csrf] of [
+   [promoA,"show-a",cookie1,csrf1],[promoB,"show-b",cookie2,csrf2]
+  ] as const){
+   const result=await post("/api/card",{method:"results",worldId:world,
+    promotionId:promotion,showId:show},cookie,csrf);
+   assert.equal(result.status,200);
+   const resultBody=await result.json();
+   assert.equal(resultBody.matches.length,1);
+   assert.equal(resultBody.matches[0].actualWinnerSide,"A",
+    "Resolution must honour the booker's winner unless a genuine medical stoppage occurs");
+   const archive=await post("/api/card",{method:"resultsArchive",worldId:world,
+    promotionId:promotion,showId:""},cookie,csrf);
+   assert.equal(archive.status,200);
+   assert.equal((await archive.json()).items.length,1);
+  }
+  assert.equal((await post("/api/card",{method:"results",worldId:world,
+   promotionId:promoB,showId:"show-b"},cookie1,csrf1)).status,400,
+   "Published results remain scoped to the owning human promotion");
+  const dates=await withWorldTransaction(db.pool,tx=>tx.query<{
+   remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",
+   [world]));
+  assert.deepEqual(dates.map(x=>x.remaining_dates),[4,4,4,4],
+   "A real completed appearance must consume exactly one booked date");
   const logout=await handlePpwHostApi(request("/api/auth","DELETE",
    undefined,cookie1,csrf1));
   assert.equal(logout.status,200);
   assert.match(logout.headers.get("set-cookie")!,/Max-Age=0/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
-    "ppw_card_slots","ppw_booking_drafts","ppw_contracts",
+   for(const table of [
+    "ppw_programme_resolved_activities","ppw_wrestler_relationship_changes",
+    "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
+    "ppw_completed_match_evidence","ppw_completed_show_segments",
+    "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
+    "ppw_week_resolution_seals","ppw_week_resource_clearances",
+    "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
+    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_alignment_changes",
+    "ppw_programme_match_activities","ppw_programme_participants",
+    "ppw_programmes","ppw_card_slots","ppw_booking_drafts","ppw_contracts",
     "ppw_people","ppw_venues","ppw_markets","ppw_promotion_controls",
     "ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
