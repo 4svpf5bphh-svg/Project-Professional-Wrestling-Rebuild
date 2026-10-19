@@ -53,6 +53,9 @@ test("choosing a source match explicitly attaches an assault directly to its bou
   ["opener","main","assault","interview","closing"]);
  assert.deepEqual(attachPostMatchAngle(["main","assault"],"assault","main"),
   ["main","assault"]);
+ assert.deepEqual(attachPostMatchAngle(
+  ["assault","interview","main","closing"],"assault","main"),
+  ["interview","main","assault","closing"]);
  assert.equal(attachPostMatchAngle(old,"main","main"),null);
  assert.equal(attachPostMatchAngle(old,"assault","missing"),null);
  assert.equal(attachPostMatchAngle(old,"missing","main"),null);

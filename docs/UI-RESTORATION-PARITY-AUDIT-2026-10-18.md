@@ -226,3 +226,5 @@ Original screen decisions are restored by functionality, not by reinstating olde
 - Added pure tests for multi-pair reordering, older nonadjacent links, ordinary slots and boundary cases; mobile browser test verifies move controls and exact persisted `runningOrder` plus unchanged `sourceMatchSlotId`. This adds **zero Neon operations**, new writes, dependencies or polling; Results and original main remain unmodified.
 
 - Also restored the original explicit post-match-angle placement: selecting its source bout moves the saved angle identity immediately behind that bout in the locally edited running order, without changing any wrestler or scripted finish. The same iPhone test now exercises the complete **choose source → auto-place → move linked block → save** lifecycle. No automatic action occurs until the player selects the source.
+
+- Source-match selector now lists every compatible match on the same card, including bouts currently **below** the angle, because the explicit selection automatically repositions the angle immediately after its source. The iPhone regression exercises this formerly blocked case before grouping, reordering and saving.

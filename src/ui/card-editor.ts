@@ -588,8 +588,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
     }
     if(segment.kind==="POST_MATCH_ASSAULT"){
-     const index=order.indexOf(slotId),victim=segment.targets[0]?.personId;
-     const earlier=order.slice(0,index).flatMap(matchSlot=>{
+     const victim=segment.targets[0]?.personId;
+     const eligible=order.flatMap(matchSlot=>{
       const match=matches.get(matchSlot);
       if(!match)return [];
       const people=match.teams.flat().filter((p):p is PersonPick=>p!==null);
@@ -597,8 +597,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       return [[matchSlot,matchLabel(match)] as [string,string]];
      });
      controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
-      [["",earlier.length?"Choose the earlier match":"Book the match above this angle"],
-       ...earlier],value=>{
+      [["",eligible.length?"Choose the match":"Add a match for this angle"],
+       ...eligible],value=>{
         const next=value?attachPostMatchAngle(order,slotId,value):null;
         segments.set(slotId,{...segment,sourceMatchSlotId:value||null});
         if(next)order=next;
@@ -606,9 +606,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        },!mutable())));
       controls.append(el("p","ppw-angle-guidance",
        "Selecting a match places this angle immediately after it. Both then move together."));
-     if(!earlier.some(([id])=>id===segment.sourceMatchSlotId))
+     if(!eligible.some(([id])=>id===segment.sourceMatchSlotId))
       controls.append(el("p","ppw-angle-guidance",
-       "Move this angle after the match and choose a wrestler from that bout."));
+       "Choose a wrestler who appeared in the selected match."));
     }
     if(view.programmes.length)
      controls.append(field("Storyline / programme",selector(segment.programmeId??"",

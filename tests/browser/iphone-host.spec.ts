@@ -1191,7 +1191,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
    actorIds:["alice"],targetIds:["bob"],outcome:"HAPPENS",
    participants:[a,b]}}
  ];
- let order=["opener","main","interview","assault"],revision=4;
+ let order=["opener","assault","interview","main"],revision=4;
  const methods:string[]=[];
  const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
   worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
@@ -1229,12 +1229,13 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.locator(".ppw-card-bar")).toHaveCount(4);
- await page.locator(".ppw-card-bar .ppw-expand").nth(3).click();
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  await page.getByRole("dialog",{name:"Edit angle"}).getByLabel("After which match?")
   .selectOption("main");
  await page.getByRole("dialog",{name:"Edit angle"}).getByRole("button",
   {name:"Close card editor"}).click();
- await expect(page.locator(".ppw-card-bar").nth(2)).toContainText("Follows its match");
+ await expect(page.locator(".ppw-card-bar").nth(3)).toContainText("Follows its match");
+ await page.getByRole("button",{name:"Move match in slot 3 earlier"}).click();
  await page.getByRole("button",{name:"Move match in slot 2 earlier"}).click();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
