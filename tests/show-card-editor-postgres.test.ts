@@ -227,7 +227,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
     for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
-     "ppw_programmes","ppw_card_slots",
+     "ppw_programme_side_refs","ppw_programmes","ppw_card_slots",
      "ppw_booking_drafts","ppw_portable_personas","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",
      "ppw_promotions","ppw_markets"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
