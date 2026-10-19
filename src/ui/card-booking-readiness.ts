@@ -57,3 +57,18 @@ export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
  return {complete:true,label:"CAST COMPLETE",
   hint:"The roles are filled. Save the card to validate contracts and storyline eligibility."};
 }
+
+/** Booking eligibility depends on the part being cast. Wrestlers may work a
+ * match AND a storyline scene; only duplicate match entries, a wrestler
+ * interfering in their own bout, or double-casting within a scene are blocked.
+ * Contract and appearance permissions remain server-authoritative.
+ */
+export function reservedPickerPeople(
+ role:"actors"|"targets"|"RUN_IN"|undefined,
+ allMatchIds:readonly string[],
+ currentBoutIds:readonly string[],
+ currentSceneIds:readonly string[],
+):ReadonlySet<string>{
+ return new Set(role==="RUN_IN"?currentBoutIds:
+  role==="actors"||role==="targets"?currentSceneIds:allMatchIds);
+}
