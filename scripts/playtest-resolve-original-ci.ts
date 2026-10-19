@@ -68,9 +68,16 @@ async function main(){
    status=result.status;
    stages.push(...result.steps.map(x=>x.action));
    if(result.status==="PUBLISHED")break;
-   if(result.status==="BLOCKED")
+   if(result.status==="BLOCKED"){
+    const diagnostic=await withWorldTransaction(db.pool,tx=>
+     tx.query<{payload:unknown}>(`
+      SELECT payload FROM ppw_ledger_events WHERE world_id=$1
+       AND event_type='STAFF_FALLBACK_CARDS_CREATED'
+      ORDER BY event_id DESC LIMIT 1`,[worldId]));
     throw new Error("Real World resolution blocked: "+
-     JSON.stringify(result.blockers));
+     JSON.stringify({blockers:result.blockers,
+      staff:diagnostic[0]?.payload??null,stages}));
+   }
   }
   assert.equal(status,"PUBLISHED",
    "Two actual human shows and the remaining AI promotions must settle a complete World week");
