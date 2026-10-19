@@ -19,7 +19,7 @@ export function matchCastingReadiness(match:EditorMatch):SlotReadiness{
  try{buildBookedMatch(match);}
  catch(e){return {complete:false,label:"CHECK MATCH PLAN",
   hint:e instanceof Error?e.message:"Review the selected match format and finish."};}
- return {complete:true,label:"CARD READY",
+ return {complete:true,label:"CAST COMPLETE",
   hint:"All positions and finish choices are valid. Save to confirm contracts, divisions and title rules."};
 }
 export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
