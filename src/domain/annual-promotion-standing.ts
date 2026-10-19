@@ -20,7 +20,7 @@ const tiers:Record<StandingTier,number>={GLOBAL:90,NATIONAL:74,RISING:57,INDEPEN
 const finances:Record<Distress,number>={HEALTHY:88,WATCH:66,DISTRESSED:40,CRISIS:18};
 const clamp=(n:number)=>Math.max(0,Math.min(100,n));
 const round1=(n:number)=>Math.round(n*10)/10;
-const blend=(current:number,evidence:number,weight:number)=
+const blend=(current:number,evidence:number,weight:number)=>
  round1(clamp(current+(evidence-current)*weight));
 const safe=(value:number)=>Number.isFinite(value)&&value>=0&&value<=100;
 export function evaluateAnnualStanding(old:StandingValues,e:StandingEvidence):StandingValues {
