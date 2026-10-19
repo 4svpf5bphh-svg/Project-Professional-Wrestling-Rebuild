@@ -167,3 +167,14 @@ test("team and battle-royal bookings reveal factual participant condition withou
  const battle=newEditorMatch("royal","BATTLE_ROYAL");
  assert.deepEqual(bookedConditionReport(battle,new Map()),[]);
 });
+
+test("resizing a multi-entrant match cannot rewrite an authored winner",()=>{
+ const royal=changeWinner(newEditorMatch("royal","BATTLE_ROYAL"),19);
+ assert.throws(()=>resizeMatch(royal,19),/Choose a new winner/);
+ const repaired=changeWinner(royal,0);
+ assert.equal(resizeMatch(repaired,19).winnerSide,0);
+ let teams=resizeMatch(newEditorMatch("teams","MULTI_TEAM"),6,2);
+ teams=changeWinner(teams,5);
+ assert.throws(()=>resizeMatch(teams,5,2),/Choose a new winner/);
+ assert.equal(resizeMatch(changeWinner(teams,4),5,2).winnerSide,4);
+});
