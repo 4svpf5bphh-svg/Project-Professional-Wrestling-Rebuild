@@ -54,6 +54,13 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
  return r.json();
 }
 
+/** Even a successful HTTP response can contain a rejected World command.
+ * Never advance from an unclaimed promotion into private workspaces.
+ */
+function commandAccepted(result:unknown){
+ return !!result&&typeof result==="object"&&
+  ["APPLIED","REPLAYED"].includes(String((result as {status?:unknown}).status));
+}
 /** Mobile shell is independent of the workspace root and remains accessible. */
 function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
  drawerExpanded=false;
@@ -324,13 +331,24 @@ function showJoin(){
   el("h1","","Join "+session.overview.world.name),
   el("p","ppw-access-muted",
    "Your invitation is verified. Join the shared World to pick a promotion."));
- card.append(button("Join World",async()=>{
+ const join=button("Join World",async()=>{
+  join.disabled=true;
   try{
-   await command("/api/join",{requestId:crypto.randomUUID(),
+   const outcome=await command("/api/join",{requestId:crypto.randomUUID(),
     expectedRevision:session!.overview.world.revision},session!.csrfToken);
+   if(!commandAccepted(outcome))
+    throw new Error("The World changed before you joined. Refresh and try again.");
    await loadSession();
-  }catch(e){showError(card,e instanceof Error?e.message:"Join failed");}
- }));
+  }catch(e){
+   join.disabled=false;
+   showError(card,e instanceof Error?e.message:"Join failed");
+   if(!card.querySelector(".ppw-access-refresh")){
+    const refresh=button("Refresh World",()=>void loadSession());
+    refresh.className+=" ppw-access-refresh";card.append(refresh);
+   }
+  }
+ });
+ card.append(join);
  game.replaceChildren(card);
 }
 function showClaim(){
@@ -344,6 +362,7 @@ function showClaim(){
   card.append(el("p","ppw-access-muted","No unclaimed promotions are currently available."),
    button("Refresh World",()=>void loadSession()));
  }
+ let choosing=false;
  for(const p of session.availablePromotions){
   const item=el("div","ppw-access-promotion");
   const identity=el("div","ppw-access-promotion-info");
@@ -356,11 +375,24 @@ function showClaim(){
   if(facts.childElementCount)identity.append(facts);
   item.append(identity);
   item.append(button("Run this promotion",async()=>{
+   if(choosing)return;
+   choosing=true;
+   card.querySelectorAll<HTMLButtonElement>("button").forEach(b=>{b.disabled=true;});
    try{
-    await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
+    const outcome=await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
      expectedRevision:session!.overview.world.revision},session!.csrfToken);
+    if(!commandAccepted(outcome))
+     throw new Error("Another manager may have taken this company. Refresh the available promotions.");
     await loadSession();
-   }catch(e){showError(card,e instanceof Error?e.message:"Claim failed");}
+   }catch(e){
+    choosing=false;
+    card.querySelectorAll<HTMLButtonElement>("button").forEach(b=>{b.disabled=false;});
+    showError(card,e instanceof Error?e.message:"Claim failed");
+    if(!card.querySelector(".ppw-access-refresh")){
+     const refresh=button("Refresh available promotions",()=>void loadSession());
+     refresh.className+=" ppw-access-refresh";card.append(refresh);
+    }
+   }
   }));
   card.append(item);
  }
