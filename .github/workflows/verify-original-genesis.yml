@@ -119,3 +119,11 @@ jobs:
             --world "$WORLD" --source "$SOURCE_FILE" \
             --confirm-world "$WORLD" --confirm-host localhost
           npm run playtest:preflight -- --world "$WORLD"
+      - name: Log in two independent bookers and open authentic private workspaces
+        working-directory: rebuild
+        env:
+          CI: "true"
+          PPW_REAL_WORLD_SMOKE_AUTHORIZED: "YES"
+          PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
+          SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
+        run: npx tsx --test tests/real-genesis-two-player-smoke.test.ts
