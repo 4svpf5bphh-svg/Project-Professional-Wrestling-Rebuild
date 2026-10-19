@@ -52,9 +52,45 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.deepEqual(after?.promotion?.attention,{
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
-     backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[]});
+     backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[],
+     contractAlerts:[]});
     assert.equal(after?.membership,"ACTIVE");
     assert.ok(after!.world.nextLockEpoch>after!.world.serverEpoch);
+    await withWorldTransaction(db.pool,async tx=>{
+     await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES"+
+      " ($1,'no-dates','Ada'),($1,'expiring','Bert'),"+
+      " ($1,'future','Cora'),($1,'outsider','Dylan')",[worldId]);
+     await tx.query(
+      "INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,"+
+      "family,status,start_week_index,expires_week_index,remaining_dates) VALUES"+
+      " ($1,'none','no-dates',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',0,25,0),"+
+      " ($1,'soon','expiring',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',0,1,3),"+
+      " ($1,'later','future',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',5,25,0),"+
+      " ($1,'private','outsider',$3,'LIMITED_NON_EXCLUSIVE','SIGNED',0,0,0)",
+      [worldId,first,second]);
+     await tx.query("INSERT INTO ppw_contract_date_requests("+
+      "world_id,request_id,contract_id,promotion_id,person_id,"+
+      "additional_dates,status,created_week_index)"+
+      " VALUES($1,'date-request','none',$2,'no-dates',5,'PENDING',0)",
+      [worldId,first]);
+    });
+    const contractMeter=new MeasuredQuerySession("named-owner-contract-alerts");
+    const contractPool:TransactionPool={async connect(){
+     const client=await db.pool.connect();
+     return {release(){client.release();},
+      async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+       return contractMeter.execute(()=>client.query<T>(sql,params));
+      }};
+    }};
+    const named=await readPlayerWorldOverview(contractPool,worldId,playerId);
+    assert.equal(contractMeter.assertBudget({maxQueries:1,maxResultBytes:4500}).queryCount,1);
+    assert.deepEqual(named?.promotion?.attention.contractAlerts,[
+     {contractId:"none",personId:"no-dates",name:"Ada",
+      kind:"DATES_EXHAUSTED",weeksRemaining:25,waiting:true},
+     {contractId:"soon",personId:"expiring",name:"Bert",
+      kind:"EXPIRING",weeksRemaining:1,waiting:false}
+    ]);
+    assert.equal(named?.promotion?.attention.expiringTalent,true);
     const outsider=await readPlayerWorldOverview(measured,worldId,"outsider-"+id);
     assert.equal(outsider?.promotion,null);
     assert.equal(outsider?.membership,"NONE");
@@ -63,6 +99,9 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     await assert.rejects(listAvailablePromotions(db.pool,worldId,null,51),/page size/);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_contract_date_requests WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);

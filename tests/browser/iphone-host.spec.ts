@@ -101,6 +101,39 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
+test("named contract alerts give the right negotiation and expiry routes without hiding booking",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:0,unpreparedShow:false,pendingBackstage:false,
+  expiringTalent:true,pendingContractOffers:false,
+  contractAlerts:[
+   {contractId:"unused",personId:"ada",name:"Ada",kind:"DATES_EXHAUSTED",
+    weeksRemaining:25,waiting:true},
+   {contractId:"soon",personId:"bert",name:"Bert",kind:"EXPIRING",
+    weeksRemaining:1,waiting:false}]
+ }}};
+ const contracts={year:1,week:5,worldRevision:4,canEdit:true,currentWeekIndex:4,
+  roster:[],requests:[],renewals:[],offers:[],
+  summary:{signed:0,expiringSoon:0,noDates:0,backstageContractDiscussions:0,
+   pendingNegotiations:0,pendingRenewals:0,pendingOffers:0,weeklyGuarantees:0}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  calls.push(method);
+  return route.fulfill({json:method==="overview"?home:method==="contracts"?contracts:{}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+ await page.getByRole("button",{name:/Ada has a negotiation pending/}).click();
+ await expect(page).toHaveURL(/#\\/contracts\\/pending$/);
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
+ await expect(page).toHaveURL(/#\\/contracts\\/expiring$/);
+ expect(calls).toEqual(["overview","contracts","overview","contracts"]);
+});
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];

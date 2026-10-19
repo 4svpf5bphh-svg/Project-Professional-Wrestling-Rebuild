@@ -200,9 +200,27 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "Wrestlers are waiting for a decision. Open your private Backstage conversations.",
     action:port.openUnreadBackstage??port.backstage,icon:"✉",level:"important"});
   }
-  if(attention?.expiringTalent)
+  const contractAlerts=(attention?.contractAlerts??[]).slice(0,5);
+  for(const item of contractAlerts){
+   const noDates=item.kind==="DATES_EXHAUSTED";
+   const when=item.weeksRemaining===0?"this week":
+    "in "+item.weeksRemaining+" week"+(item.weeksRemaining===1?"":"s");
+   const title=item.waiting?item.name+" has a negotiation pending":
+    noDates?item.name+" has no contracted dates left":
+     item.name+"'s contract expires "+when;
+   const detail=item.waiting?
+    (noDates?"All contracted appearances are used. A new proposal is awaiting a decision.":
+     "A new proposal is pending. The existing agreement still expires "+when+"."):
+    noDates?"No contracted appearances remain. Consider negotiating more dates before booking them again.":
+    "The current agreement expires "+when+". Review renewal terms before the deadline.";
+   items.push({title,detail,action:item.waiting?
+    port.contractsPending??port.contracts:
+    noDates?port.contracts:port.contractsExpiring??port.contracts,
+    icon:noDates?"◇":"◈",level:noDates?"priority":"important"});
+  }
+  if(attention?.expiringTalent&&!contractAlerts.some(x=>x.kind==="EXPIRING"))
    items.push({title:"Contracts approaching expiry",detail:
-    "A wrestler's contract expires within the next two weeks.",
+    "Additional wrestler contracts approach expiry. Review all expiring agreements.",
     action:port.contractsExpiring??port.contracts,icon:"◈",level:"important"});
   if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:

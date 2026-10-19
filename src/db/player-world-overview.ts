@@ -13,6 +13,8 @@ export interface PlayerWorldOverview {
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
    backstageResults?:{id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"}[];
+   contractAlerts?:{contractId:string;personId:string;name:string;
+    kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean}[];
    businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
     year:number;week:number;prestigeDelta:number|null;
     before:string|null;after:string|null}[];};
@@ -43,6 +45,7 @@ export async function readPlayerWorldOverview(
    pending_backstage:boolean|null;expiring_talent:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
+   contract_alerts:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -55,7 +58,7 @@ export async function readPlayerWorldOverview(
     notices.planned_shows,notices.unprepared_show,
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.backstage_requests,notices.backstage_results,
-    notices.business_updates
+    notices.business_updates,notices.contract_alerts
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -187,7 +190,41 @@ export async function readPlayerWorldOverview(
           AND dismissal.attention_id='business-update:'||e.event_id::text)
        ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 6
       ) recent
-     ) AS business_updates
+     ) AS business_updates,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'contractId',relevant.contract_id,'personId',relevant.person_id,
+      'name',relevant.name,'kind',relevant.kind,
+      'weeksRemaining',relevant.weeks_remaining,'waiting',relevant.waiting)
+      ORDER BY relevant.priority,relevant.weeks_remaining,relevant.contract_id),
+      '[]'::jsonb)
+      FROM (
+       SELECT c.contract_id,c.person_id,person.name,
+        CASE WHEN c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0
+         THEN 'DATES_EXHAUSTED' ELSE 'EXPIRING' END AS kind,
+        c.expires_week_index-((w.year-1)*52+w.week-1) AS weeks_remaining,
+        CASE WHEN EXISTS(SELECT 1 FROM ppw_contract_offers offer
+          WHERE offer.world_id=c.world_id AND offer.promotion_id=c.promotion_id
+           AND offer.person_id=c.person_id AND offer.status='PENDING')
+         OR EXISTS(SELECT 1 FROM ppw_contract_date_requests dates
+          WHERE dates.world_id=c.world_id AND dates.promotion_id=c.promotion_id
+           AND dates.contract_id=c.contract_id AND dates.status='PENDING')
+         OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals renew
+          WHERE renew.world_id=c.world_id AND renew.promotion_id=c.promotion_id
+           AND renew.contract_id=c.contract_id AND renew.status='PENDING')
+        THEN true ELSE false END AS waiting,
+        CASE WHEN c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0
+         THEN 0 ELSE 1 END AS priority
+       FROM ppw_contracts c JOIN ppw_people person
+        ON person.world_id=c.world_id AND person.person_id=c.person_id
+       WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
+        AND c.status='SIGNED' AND person.status='ACTIVE'
+        AND c.start_week_index<=((w.year-1)*52+w.week-1)
+        AND c.expires_week_index>=((w.year-1)*52+w.week-1)
+        AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0)
+          OR c.expires_week_index<=((w.year-1)*52+w.week+1))
+       ORDER BY priority,c.expires_week_index,c.contract_id LIMIT 5
+      ) relevant
+     ) AS contract_alerts
    ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -229,6 +266,16 @@ export async function readPlayerWorldOverview(
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
        (news.status==="FULFILLED"||news.status==="BROKEN")):[],
+     contractAlerts:Array.isArray(x.contract_alerts)?
+      x.contract_alerts.filter((alert):alert is {
+       contractId:string;personId:string;name:string;
+       kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean
+      }=>alert!==null&&typeof alert==="object"&&
+       typeof alert.contractId==="string"&&typeof alert.personId==="string"&&
+       typeof alert.name==="string"&&
+       (alert.kind==="DATES_EXHAUSTED"||alert.kind==="EXPIRING")&&
+       Number.isInteger(alert.weeksRemaining)&&alert.weeksRemaining>=0&&
+       typeof alert.waiting==="boolean"):[],
      businessUpdates:Array.isArray(x.business_updates)?
       x.business_updates.filter((entry):entry is {
        id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
