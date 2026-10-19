@@ -100,7 +100,7 @@ async function main(){
   assert.equal(settled.seal[0]?.certified_promotions,13);
   console.log(JSON.stringify({status:"AUTHENTIC_TWO_MANAGER_WEEK_PUBLISHED",
    promotionCount:13,wrestlers:643,confirmedHumanShows:state.drafts.length,
-   completedShows:settled.completed,year:2===settled.world.year?2:1,
+   completedShows:settled.completed,year:settled.world.year,
    nextWeek:settled.world.week,stages}));
  }finally{await db.close();}
 }

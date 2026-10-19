@@ -130,3 +130,11 @@ jobs:
           PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
           SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
         run: npx tsx --test tests/real-genesis-two-player-smoke.test.ts
+      - name: Publish exactly one genuine original World week in disposable CI
+        working-directory: rebuild
+        env:
+          CI: "true"
+          PPW_REAL_WORLD_RESOLUTION_SMOKE: "YES"
+          PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
+          SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
+        run: npx tsx scripts/playtest-resolve-original-ci.ts
