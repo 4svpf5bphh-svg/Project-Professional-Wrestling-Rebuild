@@ -310,7 +310,7 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "), inserted AS (",
    "INSERT INTO ppw_player_attention_dismissals",
    "(world_id,player_id,promotion_id,attention_id)",
-   "SELECT $1,$3,$2,attention_id FROM permitted"
+   "SELECT $1,$3,$2,attention_id FROM permitted",
    "WHERE (SELECT count(*) FROM permitted)=cardinality($4::text[])",
    "ON CONFLICT DO NOTHING RETURNING attention_id",
    ") SELECT (SELECT count(*)::integer FROM permitted) AS permitted_count,",
