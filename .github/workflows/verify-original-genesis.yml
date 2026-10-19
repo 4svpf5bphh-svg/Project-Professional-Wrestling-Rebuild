@@ -1,0 +1,80 @@
+name: Verify authentic original-main Genesis
+on:
+  push:
+    paths:
+      - ".github/workflows/verify-original-genesis.yml"
+      - "scripts/playtest-export-original.ts"
+      - "src/domain/original-main-fresh-export.ts"
+      - "src/domain/original-genesis-projection.ts"
+      - "src/db/import-original-genesis.ts"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fresh-world-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout rebuilt PPW main
+        uses: actions/checkout@v4
+        with:
+          path: rebuild
+          persist-credentials: false
+      - name: Checkout original PPW main (NEVER alpha-1a)
+        uses: actions/checkout@v4
+        with:
+          repository: 4svpf5bphh-svg/Project-Professional-Wrestling
+          ref: main
+          path: original
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install original's published dependencies, no build or database
+        working-directory: original
+        run: npm install --no-audit --no-fund
+      - name: Install rebuild's TypeScript runner
+        working-directory: rebuild
+        run: npm install --no-audit --no-fund
+      - name: Execute genuine original-main 643-person factory and validate export
+        working-directory: rebuild
+        run: |
+          npm run playtest:export-original -- \
+            --original-root "$GITHUB_WORKSPACE/original" \
+            --seed 20261019 \
+            --out "$RUNNER_TEMP/fresh-original-main-genesis.json"
+      - name: Certify offline original main identity, contracts, titles and takeovers
+        env:
+          FRESH_SOURCE: ${{ runner.temp }}/fresh-original-main-genesis.json
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          import assert from "node:assert/strict";
+          const source=JSON.parse(readFileSync(process.env.FRESH_SOURCE,"utf8"));
+          assert.equal(source.world.currentDate.week,1);
+          assert.equal(source.people.length,643);
+          assert.equal(source.promotions.length,13);
+          assert.ok(source.contracts.length>=200);
+          assert.ok(source.teams.length>=10);
+          assert.ok(source.teamMemberships.length>=20);
+          assert.ok(source.people.filter(p=>p.bookingDivision==="WOMEN").length>=150);
+          const names=new Set(source.people.map(p=>p.name));
+          assert.ok(names.has("Cody Rhodes")&&names.has("Rhea Ripley"));
+          assert.ok(source.people.every(p=>typeof p.portableGimmickId==="string"));
+          const protectedReal=source.promotions.filter(p=>
+           p.identity?.origin==="REAL_WORLD"&&p.playerTakeoverEligibility==="LOCKED");
+          const eligible=source.promotions.filter(p=>
+           p.playerTakeoverEligibility==="STANDARD");
+          assert.equal(protectedReal.length,8);
+          assert.equal(eligible.length,5);
+          for(const name of ["WWE","AEW","NJPW","NXT","TNA Wrestling","ROH","CMLL","STARDOM"])
+           assert.ok(protectedReal.some(p=>p.name===name));
+          console.log(JSON.stringify({
+           status:"AUTHENTIC_MAIN_GENESIS_VERIFIED",
+           wrestlers:source.people.length,
+           women:source.people.filter(p=>p.bookingDivision==="WOMEN").length,
+           promotions:source.promotions.length,realProtected:protectedReal.length,
+           claimable:eligible.length,teams:source.teams.length,
+           contracts:source.contracts.length
+          }));
+          NODE
