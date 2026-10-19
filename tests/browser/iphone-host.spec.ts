@@ -1561,6 +1561,7 @@ test("iPhone unsaved show authorship survives browser back and can be deliberate
  const editor=page.getByRole("dialog",{name:"Edit match"});
  await editor.getByLabel("Minutes").fill("26");
  await editor.getByLabel("Minutes").press("Tab");
+ await editor.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.getByText("Unsaved changes")).toBeVisible();
  await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
  page.once("dialog",d=>d.dismiss());
