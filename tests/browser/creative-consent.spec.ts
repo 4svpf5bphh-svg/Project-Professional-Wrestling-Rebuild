@@ -51,9 +51,16 @@ test("mobile booker asks for one saved wrestler agreement and sees the actual an
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.getByText("1 match approval to resolve")).toBeVisible();
- await page.getByRole("button",{name:"Ask Bob"}).click();
+ await page.getByRole("button",{name:"Edit this match"}).click();
+ await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",{name:"Ask Bob"}).click();
  await expect(page.getByText("AGREED",{exact:true})).toBeVisible();
  await expect(page.getByText(/wrestler has agreed/)).toBeVisible();
  expect(calls).toEqual(["planner","load","creativeConsent","load"]);
+ await page.getByRole("button",{name:"Edit this match"}).click();
+ const editor=page.getByRole("dialog",{name:"Edit match"});
+ await editor.getByLabel("Finish").selectOption("PROTECTED_FINISH");
+ await expect(editor.getByText("Recheck needed")).toBeVisible();
+ await expect(page.getByText("RECHECK AFTER SAVE")).toBeVisible();
+ expect(calls.filter(x=>x==="creativeConsent")).toHaveLength(1);
  expect(page.url()).not.toContain("bob");
 });
