@@ -232,8 +232,8 @@ test("End-to-end host: two signed players, one World, independent claims and pri
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_alignment_changes",
     "ppw_programme_match_activities","ppw_programme_participants",
     "ppw_programmes","ppw_card_slots","ppw_booking_drafts","ppw_contracts",
-    "ppw_people","ppw_venues","ppw_markets","ppw_promotion_controls",
-    "ppw_memberships","ppw_promotions"])
+    "ppw_people","ppw_venues","ppw_promotion_controls",
+    "ppw_memberships","ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[p1,p2]]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
