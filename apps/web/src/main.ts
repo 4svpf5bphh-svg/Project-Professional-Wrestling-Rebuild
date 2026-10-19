@@ -2,11 +2,13 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
  mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
- mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage}
+ mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
+ mountBookingPage as mountBookingPageForHost}
  from "../../../src/web/card-browser.js";
 import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
- plannerCardHash,backstageUnreadHash,type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
+ plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
+ type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
 import "../screen.css";
 import "../polish.css";
@@ -63,6 +65,20 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
  if(location.hash!==target)location.hash=target;
  else if(pendingBackstagePersonId)renderSection();
  else renderNavigation(section);
+}
+
+/** One private browser-history entry per show; reloading the same entry keeps
+ * its exact card, including a second PPV. World and promotion must still match.
+ * No player, contract, or show identity appears in the shareable URL.
+ */
+function openBooking(showId:string){
+ if(!session?.overview.promotion)return;
+ const worldId=session.worldId,promotionId=session.overview.promotion.id;
+ const state=bookingHistoryState(worldId,promotionId,showId);
+ if(location.hash===plannerCardHash)
+  history.replaceState(null,"",hostSectionHash("planner"));
+ history.pushState(state,"",hostSectionHash("card"));
+ renderSection();
 }
 
 /** No always-visible tab bar. All departments live inside this one menu. */
@@ -151,7 +167,16 @@ function renderSection(){
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
   case "home":mountWorldHomePage(view,scope,openSection);break;
-  case "planner":mountPlannerPage(view,scope,back,location.hash===plannerCardHash);break;
+  case "planner":mountPlannerPage(view,scope,back,
+   location.hash===plannerCardHash,undefined,openBooking);break;
+  case "card":{
+   const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
+   if(!showId){
+    history.replaceState(null,"",hostSectionHash("planner"));
+    mountPlannerPage(view,scope,back,false,undefined,openBooking);
+   }else mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"));
+   break;
+  }
   case "roster":mountRosterPage(view,scope);break;
   case "backstage":mountPersonaPage(view,scope,
    location.hash===backstageUnreadHash?"UNREAD":"ALL",
@@ -161,7 +186,7 @@ function renderSection(){
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "industry":mountIndustryPage(view,scope);break;
-  case "calendar":mountCalendarPage(view,scope,back);break;
+  case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;
   case "programmes":mountProgrammePage(view,scope);break;
   case "championships":void mountChampionshipsPage(view,scope,back);break;
