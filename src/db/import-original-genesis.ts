@@ -158,6 +158,32 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     RETURNING person_id
    ) SELECT count(*)::integer AS count FROM inserted`,
    [g.world.id,JSON.stringify(g.people.map(p=>({...p,career_stage:p.careerStage})))]);
+  // The original-main factory seeds real tag identities and their exact
+  // participants. Two bulk inserts preserve them; no inferred partnerships,
+  // per-person round trips, or promotions owning duplicated team identities.
+  const tagTeams=g.teams.length?await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
+    SELECT $1,x.id,x.name,x.status
+    FROM jsonb_to_recordset($2::jsonb) AS x(
+     id text,name text,status text)
+    RETURNING team_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id,JSON.stringify(g.teams)]):[{count:0}];
+  const teamMembers=g.teamMemberships.length?await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_tag_team_members(world_id,team_id,person_id,active)
+    SELECT $1,x.team_id,x.person_id,x.active
+    FROM jsonb_to_recordset($2::jsonb) AS x(
+     team_id text,person_id text,active boolean)
+    RETURNING person_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id,JSON.stringify(g.teamMemberships.map(m=>({
+    team_id:m.teamId,person_id:m.personId,active:m.active
+   })))]):[{count:0}];
+  if(tagTeams[0]?.count!==g.teams.length||
+   teamMembers[0]?.count!==g.teamMemberships.length)
+   throw new Error("Incomplete original tag-team identities");
   const venues=await tx.query<{count:number}>(`
    WITH inserted AS (
     INSERT INTO ppw_venues(world_id,venue_id,name,market_id,status,capacity,weekly_hire_cost,
@@ -198,6 +224,8 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    venues:g.venues.length,contracts:g.contracts.length,
    markets:g.markets.length,promotionMarketStates:g.promotionMarketStates.length,
    championships:titles[0]!.count,standings:standings[0]!.count,
-   showSeries:seedSeries.length,sqlStatements:11};
+   showSeries:seedSeries.length,tagTeams:g.teams.length,
+   teamMembers:g.teamMemberships.length,
+   sqlStatements:11+Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
  });
 }
