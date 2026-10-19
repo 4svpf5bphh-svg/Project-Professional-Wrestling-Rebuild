@@ -142,6 +142,21 @@ export function bookedStyleReadiness(match:EditorMatch,
  }
  return {known:reports.length,missing,reports};
 }
+/** All match formations can display factual readiness. This makes no claim
+ * about clearance or consent, and never alters a player-scripted finish.
+ */
+export function bookedConditionReport(match:EditorMatch,
+ byPerson:ReadonlyMap<string,ConditionSnapshot>){
+ const members=match.teams.flat().filter((p):p is PersonPick=>p!==null);
+ return members.map(person=>{
+  const condition=byPerson.get(person.personId);
+  const values=condition?[condition.stamina,condition.safety,condition.fatigue,condition.wear]:[];
+  return {personId:person.personId,
+   known:values.length===4&&values.every(n=>typeof n==="number"&&Number.isFinite(n)),
+   stamina:condition?.stamina??null,safety:condition?.safety??null,
+   fatigue:condition?.fatigue??null,wear:condition?.wear??null};
+ });
+}
 export function assignedIds(match:EditorMatch):string[]{
  return match.teams.flatMap(s=>s.flatMap(p=>p?[p.personId]:[]));
 }
