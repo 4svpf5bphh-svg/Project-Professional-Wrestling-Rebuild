@@ -69,6 +69,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const backstage=overview?.promotion?.attention?.backstageResults;
    if(backstage)overview!.promotion!.attention.backstageResults=
     backstage.filter(x=>x.id!==id);
+   const business=overview?.promotion?.attention?.businessUpdates;
+   if(business)overview!.promotion!.attention.businessUpdates=
+    business.filter(x=>x.id!==id);
    error="";
   }catch(e){error=e instanceof Error?e.message:"Unable to dismiss the update";}
   finally{dismissing.delete(id);draw();}
@@ -76,8 +79,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  async function clearResolvedUpdates(){
   if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
   const attention=overview?.promotion?.attention;
-  const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[])]
-   .map(item=>item.id);
+  const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[]),
+   ...(attention?.businessUpdates??[])].slice(0,10).map(item=>item.id);
   if(keys.length<2||keys.length>10)return;
   clearing=true;error="";draw();
   try{
@@ -86,6 +89,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(attention){
     attention.offerResults=attention.offerResults?.filter(x=>!cleared.has(x.id));
     attention.backstageResults=attention.backstageResults?.filter(x=>!cleared.has(x.id));
+    attention.businessUpdates=attention.businessUpdates?.filter(x=>!cleared.has(x.id));
    }
   }catch(e){error=e instanceof Error?e.message:"Could not clear the updates";}
   finally{clearing=false;draw();}
@@ -287,10 +291,51 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    root.append(wire);
   }
-  const resolvedCount=results.length+resolved.length;
+  const businessUpdates=attention?.businessUpdates??[];
+  if(businessUpdates.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE BUSINESS WIRE"),
+    el("h3","","Company updates"));
+   const label:Record<string,string>={HEALTHY:"Healthy",WATCH:"On watch",
+    DISTRESSED:"Under pressure",CRISIS:"In crisis"};
+   for(const item of businessUpdates){
+    const annual=item.kind==="ANNUAL_REVIEW";
+    const delta=item.prestigeDelta;
+    const improved=annual?delta!==null&&delta>=0:item.after==="HEALTHY";
+    const title=annual?"Your annual company review is in":
+     "Your financial outlook has changed";
+    const detail=annual?(delta===null?
+     "Your company reputation has been evaluated. Review the ratings in Business.":
+     "Your prestige "+(delta>=0?"rose by ":"fell by ")+
+     Math.abs(delta).toLocaleString("en-GB",{maximumFractionDigits:1})+
+     " points. Review your fan, business and talent reputation in Business."):
+     "Your financial position moved from "+(label[item.before??""]??"its previous status")+
+     " to "+(label[item.after??""]??"a new status")+
+     ". Review your latest income, spending and runway.";
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status "+
+     (improved?"ppw-home-wire-accepted":"ppw-home-wire-declined"),
+     annual?"YEAR-END REVIEW":"FINANCIAL UPDATE"),
+     el("strong","",title),
+     el("p","",detail),
+     el("small","ppw-home-small","Year "+item.year+" · Week "+item.week));
+    const actions=el("div","ppw-home-wire-actions");
+    const open=el("button","ppw-home-wire-button","Open Business") as HTMLButtonElement;
+    open.type="button";open.onclick=port.business;actions.append(open);
+    if(port.dismissAttention){
+     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
+     dismiss.setAttribute("aria-label","Dismiss "+title.toLowerCase());
+     dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
+  const resolvedCount=results.length+resolved.length+businessUpdates.length;
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
-    clearing?"Clearing updates…":"Clear "+resolvedCount+" resolved updates") as HTMLButtonElement;
+    clearing?"Clearing updates…":"Clear "+Math.min(resolvedCount,10)+" resolved updates") as HTMLButtonElement;
    clear.type="button";clear.disabled=clearing||dismissing.size>0;
    clear.setAttribute("aria-label","Clear all resolved updates");
    clear.onclick=()=>void clearResolvedUpdates();
