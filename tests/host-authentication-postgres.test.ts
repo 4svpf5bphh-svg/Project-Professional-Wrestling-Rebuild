@@ -190,9 +190,11 @@ test("End-to-end host: two signed players, one World, independent claims and pri
     promotionId:promotion,showId:show},cookie,csrf);
    assert.equal(result.status,200);
    const resultBody=await result.json();
-   assert.equal(resultBody.matches.length,1);
-   assert.equal(resultBody.matches[0].actualWinnerSide,"A",
-    "Resolution must honour the booker's winner unless a genuine medical stoppage occurs");
+   assert.equal(resultBody.matchCount,1);
+   assert.equal(resultBody.entries.filter((entry:{type:string})=>entry.type==="MATCH").length,1);
+   assert.deepEqual(resultBody.entries.find((entry:{type:string})=>entry.type==="MATCH")
+    ?.matchContext?.winnerNames,["Wrestler "+(promotion===promoA?0:2)],
+    "The resolved broadcast must name the booked winner, with no outcome reroll");
    const archive=await post("/api/card",{method:"resultsArchive",worldId:world,
     promotionId:promotion,showId:""},cookie,csrf);
    assert.equal(archive.status,200);
