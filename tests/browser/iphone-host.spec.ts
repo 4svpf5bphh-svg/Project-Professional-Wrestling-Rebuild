@@ -128,10 +128,10 @@ test("named contract alerts give the right negotiation and expiry routes without
  await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
  await page.getByRole("button",{name:/Ada has a negotiation pending/}).click();
- await expect(page).toHaveURL(/#\\/contracts\\/pending$/);
+  await expect(page).toHaveURL(/#\/contracts\/pending$/);
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
- await expect(page).toHaveURL(/#\\/contracts\\/expiring$/);
+  await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  expect(calls).toEqual(["overview","contracts","overview","contracts"]);
 });
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
