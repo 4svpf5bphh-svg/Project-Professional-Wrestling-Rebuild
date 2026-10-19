@@ -447,15 +447,15 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await page.reload();
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await page.goBack();
- await expect(page).toHaveURL(/#\\/planner$/);
+ await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goForward();
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await expect(page.getByText("18 of 120 min TV guide")).toBeVisible();
  await expect(page.getByRole("progressbar",{name:"Booked match minutes against the television running-time guide"}))
@@ -1417,7 +1417,7 @@ test("iPhone restores the exact premium card instead of reopening the weekly sho
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).nth(1).click();
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await expect(page.getByText("The Big Event")).toBeVisible();
  await page.reload();
@@ -1425,6 +1425,6 @@ test("iPhone restores the exact premium card instead of reopening the weekly sho
  expect(selected).toEqual(["premium","premium"]);
  expect(page.url()).not.toContain("premium");
  await page.getByRole("button",{name:"← Planner"}).click();
- await expect(page).toHaveURL(/#\\/planner$/);
+ await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
 });
