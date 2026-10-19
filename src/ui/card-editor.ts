@@ -17,6 +17,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {matchCastingReadiness,angleCastingReadiness} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
@@ -673,7 +674,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         !mutable()));
       section.append(line);
      }
-     const targetAllowed=!["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(segment.kind);
+     const targetAllowed=SEGMENT_BOOKING_RULES[segment.kind].allowTargets;
      if(role==="actors"||targetAllowed)
       section.append(button("+ Add "+(role==="actors"?
        specialist?(segment.actors.length?"rescuer":"attacker"):
@@ -683,11 +684,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         segment.kind==="INTERRUPTION"?"speaker":
         segment.kind==="POST_MATCH_ASSAULT"?"wrestler from the match":"target"),()=>{
        chooseSegmentTalent(slotId,role);
-      },!mutable()||(role==="actors"&&
-       (LIMITED_ACTORS.has(segment.kind)&&segment.actors.length===1||
-        specialist&&segment.actors.length>=2))||
-       role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
-        segment.targets.length>=1));
+      },!mutable()||segment.actors.length+segment.targets.length>=30||
+       (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
+       (role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
+        segment.targets.length>=1)));
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));
      body.append(section);
