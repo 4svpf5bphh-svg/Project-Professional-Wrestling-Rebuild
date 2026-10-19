@@ -25,7 +25,7 @@ test("iPhone publishes only verified championship history and links to the title
  await expect(page.getByRole("heading",{name:"New champions"})).toBeVisible();
  await expect(page.getByText("Alice won World Championship")).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- expect(methods).toEqual(["overview"],"Home must not separately fetch Championships");
+ expect(methods).toEqual(["overview"]);
  await page.getByRole("button",{name:"Open Championships"}).click();
  await expect(page).toHaveURL(/#\/championships$/);
  await expect(page.getByText("Championships").first()).toBeVisible();
