@@ -7,7 +7,7 @@ on:
       - "src/domain/original-main-fresh-export.ts"
       - "src/domain/original-genesis-projection.ts"
       - "src/db/import-original-genesis.ts"
-      - "scripts/verify-authentic-two-manager.ts"
+      - "tests/real-genesis-two-player-smoke.test.ts"
       - "src/db/playtest-preview-readiness.ts"
   workflow_dispatch:
 permissions:
@@ -129,16 +129,3 @@ jobs:
           PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
           SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
         run: npx tsx --test tests/real-genesis-two-player-smoke.test.ts
-      - name: Two independent authenticated managers join and claim actual fresh World
-        working-directory: rebuild
-        env:
-          CI: "true"
-          PPW_AUTHENTIC_CI_SMOKE: "YES"
-          PPW_NEON_TEST_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
-          SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
-        run: |
-          WORLD="$(node --input-type=module -e '
-            import {readFileSync} from "node:fs";
-            console.log(JSON.parse(readFileSync(process.env.SOURCE_FILE,"utf8")).world.id);
-          ')"
-          PPW_CI_REAL_GENESIS_WORLD="$WORLD" npx tsx scripts/verify-authentic-two-manager.ts
