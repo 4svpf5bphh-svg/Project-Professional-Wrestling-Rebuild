@@ -293,6 +293,22 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     honors.append(row);
    }
    careerBody.append(honors);
+   const medical=el("section","ppw-profile-career-honors");
+   medical.append(el("h3","","Recorded match injuries"));
+   const incidents=career.injuryHistory??[];
+   if(!incidents.length)medical.append(el("p","ppw-profile-muted",
+    "No verified match injuries on record."));
+   for(const injury of incidents){
+    const item=el("article","ppw-profile-career-match");
+    item.append(el("strong","",wrestlerLabel(injury.severity)+" injury"),
+     el("span","",injury.promotion+" · Y"+injury.year+" W"+injury.week+
+      " · "+injury.format+" · original estimate "+
+      injury.originalWeeksOut+" week"+(injury.originalWeeksOut===1?"":"s")+" out"),
+     el("small","ppw-profile-muted",
+      "This incident record does not establish current recovery or medical clearance."));
+    medical.append(item);
+   }
+   careerBody.append(medical);
    const recents=el("section","ppw-profile-career-recents");
    recents.append(el("h3","","Latest completed matches"));
    if(!career.recent.length)recents.append(el("p","ppw-profile-muted",

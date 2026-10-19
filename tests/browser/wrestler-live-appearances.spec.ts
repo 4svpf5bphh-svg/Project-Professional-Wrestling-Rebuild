@@ -22,7 +22,9 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
    secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
   contracts:[],teams:[],stables:[],connections:[],history:[]};
  const career={personId:"alice",summary:{matches:3,wins:2,losses:1,singles:3,
-  tag:0,ratedMatches:3,averageStars:3.25,bestStars:4.0,injuries:0},
+  tag:0,ratedMatches:3,averageStars:3.25,bestStars:4.0,injuries:1},
+  injuryHistory:[{showId:"show-2",matchId:"main",year:2,week:3,
+   severity:"MODERATE",originalWeeksOut:4,promotion:"AEW",format:"TAG"}],
   currentChampionships:[
    {name:"Women's World Title",promotion:"AEW",holderType:"PERSON",
     teamName:null,startWeekIndex:49,defenses:4},
@@ -67,6 +69,10 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByRole("heading",{name:"Current championships"})).toBeVisible();
  await expect(dialog.getByText("Women's World Title")).toBeVisible();
  await expect(dialog.getByText(/Tag champions · The Outlaws/)).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Recorded match injuries"})).toBeVisible();
+ await expect(dialog.getByText(/original estimate 4 weeks out/)).toBeVisible();
+ await expect(dialog.getByText(/does not establish current recovery or medical clearance/))
+  .toBeVisible();
  await expect(dialog.getByText("Tag partners: Kate  /  Opponents: Bob · Duke")).toBeVisible();
  await expect(dialog.getByText("Opponents not verified in older match records.")).toBeVisible();
  expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(1);

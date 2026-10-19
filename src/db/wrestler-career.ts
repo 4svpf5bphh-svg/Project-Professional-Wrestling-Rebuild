@@ -3,6 +3,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {liveAppearanceStatus,type LiveAppearanceStatus} from "../domain/live-appearance-history.js";
 import {careerMatchLineup} from "../domain/career-match-lineup.js";
+import {readInjuryIncidents,type InjuryIncident} from "../domain/career-injury-incidents.js";
 export interface CareerScope{worldId:string;playerId:string;promotionId:string;personId:string}
 export interface CareerMatch{
  showId:string;matchId:string;showName:string;promotion:string;
@@ -27,6 +28,8 @@ export interface CareerView{
  /** Current titles only: inactive/broken team membership cannot imply past ownership. */
  currentChampionships:{name:string;promotion:string;holderType:"PERSON"|"TEAM";
   teamName:string|null;startWeekIndex:number;defenses:number}[];
+ /** Up to six verified match injury INCIDENTS; medical recovery state is unknown. */
+ injuryHistory:InjuryIncident[];
 }
 const id=(s:string)=>typeof s==="string"&&s.length>0&&s.length<=200;
 type MatchRow={
@@ -34,7 +37,7 @@ type MatchRow={
  year:number;week:number;format:"SINGLES"|"TAG";won:boolean;
  rating_stars:string|null;actual_minutes:number|null;actual_finish:string;
  injury_severity:string|null;injury_weeks_out:number|null;
- lineup_json:unknown;
+ lineup_json:unknown;injury_history:unknown;
  total_matches:string;total_wins:string;total_singles:string;total_tags:string;
  total_rated:string;average_stars:string|null;best_stars:string|null;total_injuries:string;
 };
@@ -90,7 +93,22 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
    ") lineup ON TRUE",
    "LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=a.world_id",
    "AND f.show_id=a.show_id AND f.match_id=a.match_id)",
-   "SELECT *,count(*) OVER()::text AS total_matches,",
+   ", recent_injuries AS (",
+   "SELECT show_id,match_id,year,week,format,injury_severity,",
+   "injury_weeks_out,promotion_name FROM career",
+   "WHERE injury_severity IS NOT NULL AND injury_weeks_out IS NOT NULL",
+   "ORDER BY year DESC,week DESC,show_id DESC,match_id DESC LIMIT 6",
+   "), injury_summary AS (",
+   "SELECT coalesce(jsonb_agg(jsonb_build_object(",
+   "'showId',inc.show_id,'matchId',inc.match_id,",
+   "'year',inc.year,'week',inc.week,'severity',inc.injury_severity,",
+   "'originalWeeksOut',inc.injury_weeks_out,'promotion',inc.promotion_name,",
+   "'format',inc.format)",
+   "ORDER BY inc.year DESC,inc.week DESC,inc.show_id DESC,inc.match_id DESC),",
+   "'[]'::jsonb) AS injury_history FROM recent_injuries inc",
+   ")",
+   "SELECT career.*,injury_summary.injury_history,",
+   "count(*) OVER()::text AS total_matches,",
    "count(*) FILTER(WHERE won) OVER()::text AS total_wins,",
    "count(*) FILTER(WHERE format='SINGLES') OVER()::text AS total_singles,",
    "count(*) FILTER(WHERE format='TAG') OVER()::text AS total_tags,",
@@ -98,7 +116,8 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
    "avg(rating_stars) OVER()::text AS average_stars,",
    "max(rating_stars) OVER()::text AS best_stars,",
    "count(*) FILTER(WHERE injury_severity IS NOT NULL) OVER()::text AS total_injuries",
-   "FROM career ORDER BY year DESC,week DESC,show_id DESC,match_id DESC LIMIT 12"
+   "FROM career CROSS JOIN injury_summary",
+   "ORDER BY year DESC,week DESC,show_id DESC,match_id DESC LIMIT 12"
   ].join(" "),[scope.worldId,scope.personId]);
   const titles=await tx.query<{name:string;promotion_name:string;
    start_week_index:number;ended_week_index:number|null;defenses:number;
@@ -197,6 +216,7 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
     bestStars:total?.best_stars==null?null:Number(total.best_stars),
     injuries:n(total?.total_injuries)},
    liveAppearances,
+   injuryHistory:readInjuryIncidents(total?.injury_history),
    recent:matches.map(m=>({
     showId:m.show_id,matchId:m.match_id,showName:m.show_name??"PPW event",
     promotion:m.promotion_name,year:m.year,week:m.week,format:m.format,

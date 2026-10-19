@@ -26,6 +26,7 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
   const zero=await readWrestlerCareer(db.pool,scope);
   assert.deepEqual(zero.summary,{matches:0,wins:0,losses:0,singles:0,tag:0,
    ratedMatches:0,averageStars:null,bestStars:null,injuries:0});
+  assert.deepEqual(zero.injuryHistory,[]);
   assert.equal(zero.liveAppearances[0]?.status,"DEBUT_ELIGIBLE");
   assert.equal(zero.liveAppearances[0]?.recordedShows,0);
   await withWorldTransaction(db.pool,async tx=>{
@@ -142,6 +143,10 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
    ratedMatches:1,averageStars:4.25,bestStars:4.25,injuries:1});
   assert.equal(view.recent[0]?.showId,"career-show");
   assert.equal(view.recent[0]?.finish,"CLEAN_PIN");
+  assert.deepEqual(view.injuryHistory,[{
+   showId:"career-show",matchId:"match-1",year:1,week:1,
+   severity:"MINOR",originalWeeksOut:2,promotion:"Promotion 0",format:"SINGLES"
+  }]);
   assert.equal(view.recent[0]?.weeksOut,2);
   assert.equal(view.recent[0]?.stars,4.25);
   assert.deepEqual(view.currentChampionships,[
