@@ -2,6 +2,7 @@
 export const HOST_SECTIONS=[
  {id:"home",label:"World",glyph:"W",primary:true},
  {id:"planner",label:"Plan",glyph:"P",primary:true},
+ {id:"card",label:"The Card",glyph:"▤"},
  {id:"roster",label:"Talent",glyph:"T",primary:true},
  {id:"backstage",label:"Backstage",glyph:"☷"},
  {id:"more",label:"More",glyph:"☰"},
@@ -67,8 +68,26 @@ export const HOST_DRAWER_ROOTS=[
 export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
 export function drawerRootForSection(section:HostSection):HostDrawerRoot{
  if(["roster","market","contracts","backstage","teams","stables","connections"].includes(section))return "talent";
- if(["planner","calendar","programmes"].includes(section))return "plan";
+ if(["planner","card","calendar","programmes"].includes(section))return "plan";
  if(["business","staff"].includes(section))return "business";
  if(section==="results")return "results";
  return "world";
+}
+
+/** Selected show IDs remain in this browser history entry, never in the URL.
+ * The authenticated booking endpoint still verifies World/promotion control.
+ */
+export function bookingHistoryState(worldId:string,promotionId:string,showId:string){
+ if(![worldId,promotionId,showId].every(v=>v.trim().length>0&&v.length<=200))
+  throw new Error("Invalid booking route");
+ return {ppwBooking:{worldId,promotionId,showId}};
+}
+export function readBookingHistory(state:unknown,worldId:string,promotionId:string):string|null{
+ if(!state||typeof state!=="object"||Array.isArray(state))return null;
+ const entry=(state as Record<string,unknown>).ppwBooking;
+ if(!entry||typeof entry!=="object"||Array.isArray(entry))return null;
+ const p=entry as Record<string,unknown>;
+ return p.worldId===worldId&&p.promotionId===promotionId&&
+  typeof p.showId==="string"&&p.showId.trim().length>0&&p.showId.length<=200?
+  p.showId:null;
 }
