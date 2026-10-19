@@ -39,6 +39,8 @@ export interface CardEditorPort{
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
   slotId:string;personId:string}):Promise<unknown>;
+ /** Notify the host only when the active editor has locally unsaved authorship. */
+ onDraftChange?(dirty:boolean):void;
  openPlanner?():void;
  openProgrammes?():void;
  openChampionships?():void;
@@ -125,7 +127,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    m.teams.reduce((a,s)=>a+s.length,0)+" booked · "+
    m.plannedLengthMinutes+" min · "+nice(m.plannedFinish);
  };
- function markDirty(){dirty=true;pendingRequestId=null;error="";success="";}
+ function markDirty(){dirty=true;pendingRequestId=null;error="";success="";
+  port.onDraftChange?.(true);}
  function setMatch(slotId:string,next:EditorMatch){
   matches.set(slotId,next);markDirty();render();
  }
@@ -156,6 +159,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
    }
    expanded=null;dirty=false;pendingRequestId=null;error="";success="";
+   port.onDraftChange?.(false);
   }catch(e){error=errorText(e);}
   finally{loading=false;render();}
  }
@@ -306,6 +310,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const top=el("header","ppw-top");
   if(port.openPlanner)top.append(button("← Planner",()=>port.openPlanner?.(),
    dirty||saving,"ppw-card-back"));
+  if(dirty&&!saving)top.append(button("Discard unsaved edits",()=>{
+   if(window.confirm("Discard the changes you have not saved to this show?"))
+    void load();
+  },false,"ppw-card-discard"));
   top.append(el("div","ppw-eyebrow","CREATIVE / SHOW BOOKING"),
    el("h1","","The Card"));
   const headline=el("p","ppw-muted",loading?"Loading your show…":
