@@ -135,3 +135,18 @@ test("contracted run-in survives booking and winner edits without writing an unw
  const defeated=assignPerformer(changed,1,0,{personId:"outside",contractId:"deal-outside"});
  assert.equal(defeated.interference,undefined,"Booked participant cannot remain their own interferer");
 });
+
+test("reducing battle royals and team formations never silently discards wrestlers",()=>{
+ let battle=newEditorMatch("battle","BATTLE_ROYAL");
+ battle=assignPerformer(battle,19,0,{personId:"last",contractId:"last-deal"});
+ assert.throws(()=>resizeMatch(battle,19),/Remove wrestlers/);
+ const shorter=resizeMatch(assignPerformer(battle,19,0,null),19);
+ assert.equal(shorter.teams.length,19);
+ let team=newEditorMatch("team","MULTI_TEAM");
+ team=assignPerformer(team,0,1,{personId:"partner",contractId:"partner-deal"});
+ assert.throws(()=>resizeMatch(team,3,1),/Invalid team size/);
+ assert.equal(resizeMatch(team,3,2).teams[0]?.[1]?.personId,"partner");
+ team=resizeMatch(team,3,3);
+ team=assignPerformer(team,0,2,{personId:"third",contractId:"third-deal"});
+ assert.throws(()=>resizeMatch(team,3,2),/Remove wrestlers/);
+});
