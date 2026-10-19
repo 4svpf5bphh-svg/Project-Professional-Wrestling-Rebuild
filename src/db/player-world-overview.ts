@@ -42,8 +42,7 @@ export async function readPlayerWorldOverview(
    planned_shows:number|null;unprepared_show:boolean|null;
    pending_backstage:boolean|null;expiring_talent:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;
-   backstage_requests:unknown;backstage_results:unknown;
-   business_updates:unknown;
+   backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -180,7 +179,16 @@ export async function readPlayerWorldOverview(
           AND e.payload->>'to' IN ('HEALTHY','WATCH','DISTRESSED','CRISIS')
           AND e.payload->>'from'<>e.payload->>'to')
          OR (e.event_type='PROMOTION_STANDING_UPDATED'
-          AND (e.payload->>'prestigeDelta') ~ '^-?[0-9]{1,3}(\\.[0-9])?
+          AND jsonb_typeof(e.payload->'prestigeDelta')='number'
+          AND jsonb_typeof(e.payload->'prestige')='number'))
+        AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
+         WHERE dismissal.world_id=e.world_id AND dismissal.player_id=$2
+          AND dismissal.promotion_id=owned.promotion_id
+          AND dismissal.attention_id='business-update:'||e.event_id::text)
+       ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 6
+      ) recent
+     ) AS business_updates
+   ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
@@ -234,60 +242,6 @@ export async function readPlayerWorldOverview(
         typeof entry.prestigeDelta==="number"&&Number.isFinite(entry.prestigeDelta))&&
        (entry.before===null||typeof entry.before==="string")&&
        (entry.after===null||typeof entry.after==="string")):[]}
-   }:null
-  };
- });
-}
-
-          AND (e.payload->>'prestige') IS NOT NULL))
-        AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
-         WHERE dismissal.world_id=e.world_id AND dismissal.player_id=$2
-          AND dismissal.promotion_id=owned.promotion_id
-          AND dismissal.attention_id='business-update:'||e.event_id::text)
-       ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 6
-      ) recent
-     ) AS business_updates
-   ) notices ON owned.promotion_id IS NOT NULL
-   WHERE w.world_id=$1`,[worldId,playerId]);
-  if(!rows.length)return null;
-  const x=rows[0]!;
-  return {
-   world:{id:x.world_id,name:x.world_name,
-    year:x.year,week:x.week,day:x.day,phase:x.phase,
-    revision:Number(x.revision),nextLockEpoch:Number(x.next_lock_epoch),
-    serverEpoch:Number(x.server_epoch)},
-   membership:x.membership_status??"NONE",
-   promotion:x.promotion_id!==null?{
-    id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
-    homeMarketName:x.home_market_name,
-    cash:Number(x.cash),debt:Number(x.debt),
-    lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),
-    runwayWeeks:x.runway_weeks,financialDistress:x.financial_distress,
-    attention:{unpreparedShow:x.unprepared_show===true,
-     pendingBackstage:x.pending_backstage===true,
-     expiringTalent:x.expiring_talent===true,
-     pendingContractOffers:x.pending_contract_offers===true,
-     plannedShows:x.planned_shows??0,
-     backstageRequests:Array.isArray(x.backstage_requests)?
-      x.backstage_requests.filter((request):request is {
-       personId:string;name:string;kind:string;
-      }=>request!==null&&typeof request==="object"&&
-       typeof request.personId==="string"&&typeof request.name==="string"&&
-       typeof request.kind==="string"):[],
-     offerResults:Array.isArray(x.offer_results)?
-      x.offer_results.filter((news):news is {
-       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"
-      }=>news!==null&&typeof news==="object"&&
-       typeof news.id==="string"&&typeof news.personId==="string"&&
-       typeof news.name==="string"&&
-       (news.status==="ACCEPTED"||news.status==="REJECTED")):[],
-     backstageResults:Array.isArray(x.backstage_results)?
-      x.backstage_results.filter((news):news is {
-       id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"
-      }=>news!==null&&typeof news==="object"&&
-       typeof news.id==="string"&&typeof news.personId==="string"&&
-       typeof news.name==="string"&&
-       (news.status==="FULFILLED"||news.status==="BROKEN")):[]}
    }:null
   };
  });
