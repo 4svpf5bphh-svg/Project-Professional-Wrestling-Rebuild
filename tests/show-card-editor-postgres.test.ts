@@ -159,9 +159,15 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     runningOrder:["angle","main"]}),/contract rights|Multiple contracts/);
    // Storyline links are promotion-owned, authenticated, revision-gated and
    // saved atomically with the angle rather than inferred at resolution.
-   await withWorldTransaction(db.pool,tx=>tx.query(
-    "INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition)"+
-    " VALUES($1,$2,'feud','ACTIVE',72,2)",[world,promotion]));
+   await withWorldTransaction(db.pool,async tx=>{
+    await tx.query(
+     "INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition)"+
+     " VALUES($1,$2,'feud','ACTIVE',72,2)",[world,promotion]);
+    await tx.query(
+     "INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,side,position,ref_kind,ref_id)"+
+     " VALUES($1,$2,'feud','A',0,'PERSON',$3),($1,$2,'feud','B',0,'PERSON',$4)",
+     [world,promotion,ids[0],ids[1]]);
+   });
    const linked=await saveCardEditorAsActor(context,{...identity,
     requestId:"link-feud",expectedRevision:4,
     matches:[{slotId:"main",payload:raw}],
