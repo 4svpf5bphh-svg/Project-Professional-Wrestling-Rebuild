@@ -33,3 +33,24 @@ test("invalid roster stats, missing talent and duplicate slots fail closed",()=>
  assert.throws(()=>evaluateAuthoredSegmentCrowd([{...c,storylineHeat:101}]));
  assert.throws(()=>evaluateAuthoredSegmentCrowd([c,c]));
 });
+
+test("booked live debuts retain the arrival but give different story objectives different reception",()=>{
+ const base:SegmentCrowdContext={...c,segment:{slotId:"arrival",position:2,
+  kind:"DEBUT",actorIds:["a"],targetIds:[],outcome:"HAPPENS"},
+  storylineHeat:75,repetitionCount:0};
+ const classic=evaluateAuthoredSegmentCrowd([base])[0]!;
+ const reveal=evaluateAuthoredSegmentCrowd([{...base,segment:{...base.segment,
+  creativeBeat:{kind:"DEBUT",presentation:"SURPRISE_REVEAL",
+   objective:"REIGNITE_PROGRAMME"}}}])[0]!;
+ const mismatch=evaluateAuthoredSegmentCrowd([{...base,storylineHeat:20,
+  segment:{...base.segment,creativeBeat:{kind:"DEBUT",presentation:"INTRODUCTION",
+   objective:"REIGNITE_PROGRAMME"}}}])[0]!;
+ assert.equal(classic.components.kind,5,"Historical generic debuts are unchanged");
+ assert.equal(reveal.components.kind,9);
+ assert.equal(mismatch.components.kind,3);
+ assert.equal(reveal.outcome,"HAPPENS");
+ const refused=evaluateAuthoredSegmentCrowd([{...base,segment:{...base.segment,
+  outcome:"REFUSED",creativeBeat:{kind:"DEBUT",presentation:"SURPRISE_REVEAL",
+   objective:"CREATE_MYSTERY"}}}])[0]!;
+ assert.equal(refused.outcome,"REFUSED","No scripted arrival is forced by performance");
+});
