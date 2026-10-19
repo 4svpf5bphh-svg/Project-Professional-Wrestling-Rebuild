@@ -360,7 +360,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const slotNumber=order.indexOf(c.slotId)+1;
     box.append(el("small","ppw-card-creative-match-ref",
      (slotNumber>0?"Slot "+slotNumber+" · ":"")+
-     (match?matchLabel(match):"Previously saved match"));
+     (match?matchLabel(match):"Previously saved match")));
     if(!dirty&&c.decision==="APPROVED"&&c.approvalSource==="STANDING_PROGRAMME")
      box.append(el("small","","Covered by an active Programme agreement."));
     if(!dirty&&c.decision==="APPROVED"&&c.approvalSource==="EXACT_MATCH")
