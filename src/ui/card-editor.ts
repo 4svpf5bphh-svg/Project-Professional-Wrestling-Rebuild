@@ -337,6 +337,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    [...segments.values()].filter(x=>angleCastingReadiness(x).complete).length;
   summary.append(el("span","",matches.size+" matches"),
    el("span","",segments.size+" angles"),
+   el("span","",[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0)+
+    " match minutes · angles extra"),
    el("span","",order.length+" card slots"),
    el("span","",castReady+" / "+order.length+" cast complete"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
