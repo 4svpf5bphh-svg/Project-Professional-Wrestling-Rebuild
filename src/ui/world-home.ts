@@ -22,11 +22,13 @@ const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
  style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
+ let progressedFrom:{year:number;week:number}|null=null;
  const dismissing=new Set<string>();
  let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
  function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
- function startClock(node:HTMLElement,world:PlayerWorldOverview["world"]){
+ function startClock(node:HTMLElement,world:PlayerWorldOverview["world"],
+  onDeadline:()=>void){
   if(world.phase!=="OPEN"||!Number.isFinite(world.nextLockEpoch)||
    !Number.isFinite(world.serverEpoch))return;
   const origin=Date.now(),serverStart=world.serverEpoch;
@@ -34,8 +36,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(!root.isConnected||!root.contains(node)){clearClock();return;}
    const seconds=Math.max(0,Math.ceil(world.nextLockEpoch-
     (serverStart+(Date.now()-origin)/1000)));
-   if(seconds===0){node.textContent="Booking deadline reached · refresh";
-    clearClock();return;}
+   if(seconds===0){node.textContent="Booking deadline reached · check World status";
+    onDeadline();clearClock();return;}
    const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),
     mins=Math.floor(seconds%3600/60),secs=seconds%60;
    node.textContent="Booking closes in "+(days?days+"d ":"")+
@@ -54,8 +56,18 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   return b;
  };
  async function load(){
+  if(loading)return;
   loading=true;draw();
-  try{overview=await port.load();error="";loaded=true;}
+  try{
+   const previous=overview?.world;
+   const updated=await port.load();
+   if(updated&&previous){
+    const before=(previous.year-1)*52+previous.week;
+    const after=(updated.world.year-1)*52+updated.world.week;
+    if(after>before)progressedFrom={year:previous.year,week:previous.week};
+   }
+   overview=updated;error="";loaded=true;
+  }
   catch(e){error=e instanceof Error?e.message:"Your promotion is unavailable";}
   finally{loading=false;draw();}
  }
@@ -142,15 +154,34 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    el("span","",promotion?.tier??membership),
    el("span","","One shared wrestling universe"));
   hero.append(tags);
+  const check=el("button","ppw-home-status-refresh",
+   loading?"Checking World…":"Check World status") as HTMLButtonElement;
+  check.type="button";check.disabled=loading;check.onclick=()=>void load();
   if(world.phase==="OPEN"){
    const countdown=el("p","ppw-home-countdown","Checking this week's deadline…");
    countdown.setAttribute("aria-live","off");
    hero.append(countdown);
-   startClock(countdown,world);
+   // Do not poll or advance the World. Only offer a deliberate read when due.
+   check.hidden=true;
+   hero.append(check);
+   startClock(countdown,world,()=>{check.hidden=false;});
   }else if(world.phase==="LOCKED"||world.phase==="RESOLVING"){
-   hero.append(el("p","ppw-home-countdown","Booking reopens when this week's shows are complete."));
+   hero.append(el("p","ppw-home-countdown",
+    "This week's booking has closed. Shows settle for everyone at the same World Lock."));
+   hero.append(check);
   }
   root.append(hero);
+  if(progressedFrom){
+   const completed=el("section","ppw-home-week-complete");
+   completed.append(el("span","ppw-home-brand","WEEK COMPLETED"),
+    el("h3","","The World has moved on"),
+    el("p","", "Year "+progressedFrom.year+" · Week "+progressedFrom.week+
+     " is complete. Your show's broadcast and verified outcomes are ready to read."));
+   completed.append(control("Read completed shows",
+    "See your broadcast reports, title changes and match outcomes.",
+    port.results,"★"));
+   root.append(completed);
+  }
   if(!promotion){
    root.append(el("p","ppw-home-small",
     "Choose a promotion to take charge of talent, bookings and business."));
@@ -178,6 +209,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   // Tolerate previously cached session projections and historical test fixtures.
   // Unavailable telemetry must never be interpreted as a confirmed alert.
   const attention=promotion.attention;
+  if(world.phase==="OPEN"&&world.year>1||world.phase==="OPEN"&&world.week>1){
+   if(!progressedFrom)items.push({title:"Last week's results",detail:
+    "The previous week's shows have been completed. Read your latest broadcasts.",
+    action:port.results,icon:"★",level:"normal"});
+  }
   if(world.phase==="OPEN"&&attention?.plannedShows===0)
    items.push({title:"Plan this week's show",detail:
     "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
