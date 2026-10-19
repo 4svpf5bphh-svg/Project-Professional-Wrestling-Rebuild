@@ -18,6 +18,8 @@ export interface OriginalMainFreshState{
  people:PersonSource[];
  venues:OriginalGenesisSource["venues"];
  contracts:OriginalGenesisSource["contracts"];
+ teams?:OriginalGenesisSource["teams"];
+ teamMemberships?:OriginalGenesisSource["teamMemberships"];
  wrestlerIdentities?:Array<{
   personId:string;active:{gimmickId:string};
  }>;
@@ -50,6 +52,9 @@ export function extractOriginalMainFreshGenesis(
    defaultAlignment:person.defaultAlignment??null,
    portableGimmickId:gimmickId};
  });
+ if(!Array.isArray(state.teams)||!Array.isArray(state.teamMemberships)||
+  state.teams.length===0||state.teamMemberships.length<2)
+  throw new Error("Original main fresh tag teams have not been seeded");
  const source:OriginalGenesisSource={
   world:structuredClone(state.world),ruleset:structuredClone(state.ruleset),
   markets:structuredClone(state.markets),
@@ -57,7 +62,9 @@ export function extractOriginalMainFreshGenesis(
   promotionStandings:structuredClone(standing),
   promotions:structuredClone(state.promotions),
   people,venues:structuredClone(state.venues),
-  contracts:structuredClone(state.contracts)
+  contracts:structuredClone(state.contracts),
+  teams:structuredClone(state.teams),
+  teamMemberships:structuredClone(state.teamMemberships)
  };
  const checked=projectOriginalGenesis(source);
  if(checked.people.length!==643||checked.promotions.length!==13||
