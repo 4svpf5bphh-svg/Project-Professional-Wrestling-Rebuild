@@ -304,6 +304,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   root.classList.add("ppw-editor");
   root.classList.toggle("ppw-editing-card",expanded!==null);
   const top=el("header","ppw-top");
+  if(port.openPlanner)top.append(button("← Planner",()=>port.openPlanner?.(),
+   dirty||saving,"ppw-card-back"));
   top.append(el("div","ppw-eyebrow","CREATIVE / SHOW BOOKING"),
    el("h1","","The Card"));
   const headline=el("p","ppw-muted",loading?"Loading your show…":
