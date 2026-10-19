@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
- bookedStyleReadiness}
+ bookedStyleReadiness,bookedConditionReport}
  from "../src/ui/card-editor-model.js";
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../src/domain/match-sides.js";
@@ -149,4 +149,21 @@ test("reducing battle royals and team formations never silently discards wrestle
  team=resizeMatch(team,3,3);
  team=assignPerformer(team,0,2,{personId:"third",contractId:"third-deal"});
  assert.throws(()=>resizeMatch(team,3,2),/Remove wrestlers/);
+});
+
+test("team and battle-royal bookings reveal factual participant condition without changing finishes",()=>{
+ let match=newEditorMatch("tag","TAG");
+ match=assignPerformer(match,0,0,{personId:"a",contractId:"a"});
+ match=assignPerformer(match,1,1,{personId:"b",contractId:"b"});
+ const snapshot={inRingQuality:75,matchCraft:70,presentation:60,
+  stamina:80,safety:90,fatigue:35,wear:20};
+ const reports=bookedConditionReport(match,new Map([["a",snapshot]]));
+ assert.equal(reports.length,2);
+ assert.deepEqual(reports[0],{personId:"a",known:true,
+  stamina:80,safety:90,fatigue:35,wear:20});
+ assert.equal(reports[1]?.known,false);
+ assert.equal(reports[1]?.wear,null);
+ assert.equal(match.winnerSide,0);
+ const battle=newEditorMatch("royal","BATTLE_ROYAL");
+ assert.deepEqual(bookedConditionReport(battle,new Map()),[]);
 });
