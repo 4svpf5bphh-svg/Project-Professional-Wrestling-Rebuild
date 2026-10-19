@@ -1,4 +1,5 @@
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
+import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
@@ -9,8 +10,9 @@ export interface PlannerPort {
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
 export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
- openUnfinishedCard=false){
+ openUnfinishedCard=false,initialTarget?:CalendarPlanningTarget){
  let cardRoutePending=openUnfinishedCard;
+ let focusTarget=initialTarget;
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
  let selectedDraft="",marketId="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
  let selectedSeriesId="";
@@ -22,6 +24,18 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   busy=true;draw();let navigated=false;
   try{
    data=await port.load();error="";
+   if(focusTarget){
+    const target=focusTarget;focusTarget=undefined;
+    const week=data.weeks.find(w=>w.year===target.year&&w.week===target.week);
+    const draft=week?.shows.find(s=>s.draftId===target.draftId||
+     (!!s.showSeriesId&&s.showSeriesId===target.seriesId));
+    const scheduled=week?.scheduled.some(s=>s.seriesId===target.seriesId);
+    if(week?.canEdit&&(draft?.status==="DRAFT"||!draft&&scheduled)){
+     edit(week,draft,target.seriesId);
+    }else if(!week)error="This event is outside the six-week planning window.";
+    else if(draft?.status==="SUBMITTED")error="This card is already submitted.";
+    else error="This event is no longer available for planning.";
+   }
    if(cardRoutePending){
     cardRoutePending=false;
     const draft=data.weeks.find(w=>w.offset===0)?.shows.find(s=>

@@ -190,6 +190,30 @@ test("two independent calendar identities can be planned for the same week with 
   assert.equal(planned.weeks[4]!.shows.length,2);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
    ["Monday Night Raw","Royal Rumble"]);
+  const calendar=await readPromotionCalendar(db.pool,scope);
+  assert.equal(calendar.promotionId,"wwe");
+  assert.deepEqual(calendar.bookings.map(b=>({
+   name:b.showName,day:b.day,status:b.status,series:b.showSeriesId,
+   venue:b.venueName,market:b.marketName
+  })).sort((a,b)=>a.name.localeCompare(b.name)),[
+   {name:"Monday Night Raw",day:5,status:"DRAFT",
+    series:"calendar-default-flagship",venue:"Arena A",market:"Midlands"},
+   {name:"Royal Rumble",day:7,status:"DRAFT",
+    series:"calendar-default-ppv-royal-rumble",venue:"Arena B",market:"Midlands"}
+  ],"The owner's two upcoming real bookings are attached to their event identities");
+  assert.ok(!JSON.stringify(calendar.worldWeeks).includes("draftId"),
+   "Rival public agenda must not include any privately planned draft or venue");
+  const visibilityMeter=new MeasuredQuerySession("calendar-owner-private-commitments");
+  const privatePool:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return visibilityMeter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  await readPromotionCalendar(privatePool,scope);
+  assert.equal(visibilityMeter.assertBudget({
+   maxQueries:3,maxResultBytes:17000}).queryCount,3);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.bookingClass).sort(),
    ["PREMIUM","REGULAR"]);
   await assert.rejects(planShowWeek(db.pool,{...input,requestId:"same-day",expectedRevision:2,

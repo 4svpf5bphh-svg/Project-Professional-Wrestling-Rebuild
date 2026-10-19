@@ -16,6 +16,15 @@ export interface SeriesMutation extends CalendarScope {
 export interface ArchiveSeries extends CalendarScope {
  requestId:string;expectedRevision:number;seriesId:string;
 }
+/** Owner-only, already booked shows within the six-week planning window.
+ * Private venue, day and draft details never enter the public World agenda.
+ */
+export interface CalendarBooking {
+ draftId:string;year:number;week:number;bookingClass:"REGULAR"|"PREMIUM";
+ showSeriesId:string|null;showName:string;status:"DRAFT"|"SUBMITTED";
+ day:number|null;venueName:string|null;marketName:string|null;
+ ready:boolean;
+}
 type Owner={name:string;year:number;week:number;revision:string|number;
  booking_open:boolean;cadence:number;major_interval:number|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
@@ -85,18 +94,59 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    major_interval:number|null;series_id:string|null;name:string|null;
    role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
    cadence_weeks:number|null;anchor_week:number|null;
-   importance:number|null;
+   importance:number|null;owned_bookings:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
-   "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance",
+   "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
+   "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
+   "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
+   "'draftId',d.draft_id,'year',d.year,'week',d.week,",
+   "'bookingClass',d.booking_class,'showSeriesId',d.show_series_id,",
+   "'showName',coalesce(d.show_name,'Planned show'),'status',d.status,",
+   "'day',d.show_day,'venueName',v.name,'marketName',market.name,",
+   "'ready',d.lock_ready_fingerprint IS NOT NULL)",
+   "ORDER BY d.year,d.week,d.draft_id),'[]'::jsonb)",
+   "FROM (SELECT draft_id,world_id,venue_id,market_id,year,week,",
+   "booking_class,show_series_id,show_name,status,show_day,lock_ready_fingerprint",
+   "FROM ppw_booking_drafts WHERE world_id=$1 AND promotion_id=$2",
+   "AND status IN ('DRAFT','SUBMITTED')",
+   "AND (year-1)*52+week-1 BETWEEN $3 AND $3+5",
+   "ORDER BY year,week,draft_id LIMIT 13) d",
+   "LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id",
+   "LEFT JOIN ppw_markets market ON market.world_id=d.world_id",
+   "AND market.market_id=d.market_id)",
+   "END AS owned_bookings",
    "FROM ppw_promotions p JOIN ppw_worlds w ON w.world_id=p.world_id",
    "LEFT JOIN ppw_show_series s ON s.world_id=p.world_id",
    "AND s.promotion_id=p.promotion_id AND s.active",
    "WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'",
    "ORDER BY p.promotion_id,s.series_id LIMIT 513"
-  ].join(" "),[scope.worldId]);
+  ].join(" "),[scope.worldId,scope.promotionId,weekIndex(owned.year,owned.week)]);
   if(rows.length>512)throw new Error("World calendar would exceed the read budget");
+  const rawBookings=rows.find(row=>Array.isArray(row.owned_bookings))?.owned_bookings;
+  if(rawBookings!==undefined&&!Array.isArray(rawBookings))
+   throw new Error("Invalid private Calendar bookings");
+  const bookingItems=rawBookings??[];
+  if(bookingItems.length>12)throw new Error("Calendar bookings exceed six-week budget");
+  const bookings:CalendarBooking[]=bookingItems.map((raw:unknown)=>{
+   if(!raw||typeof raw!=="object")throw new Error("Invalid Calendar booking");
+   const b=raw as Record<string,unknown>;
+   if(typeof b.draftId!=="string"||typeof b.year!=="number"||
+    typeof b.week!=="number"||
+    (b.bookingClass!=="REGULAR"&&b.bookingClass!=="PREMIUM")||
+    (b.status!=="DRAFT"&&b.status!=="SUBMITTED")||
+    typeof b.showName!=="string"||typeof b.ready!=="boolean"||
+    (b.showSeriesId!==null&&typeof b.showSeriesId!=="string")||
+    (b.day!==null&&typeof b.day!=="number")||
+    (b.venueName!==null&&typeof b.venueName!=="string")||
+    (b.marketName!==null&&typeof b.marketName!=="string"))
+    throw new Error("Invalid private Calendar booking");
+   return {draftId:b.draftId,year:b.year,week:b.week,
+    bookingClass:b.bookingClass,showSeriesId:b.showSeriesId,
+    showName:b.showName,status:b.status,day:b.day,venueName:b.venueName,
+    marketName:b.marketName,ready:b.ready} as CalendarBooking;
+  });
   const promotions=new Map<string,{name:string;series:ShowSeries[]}>();
   for(const row of rows){
    let promotion=promotions.get(row.promotion_id);
@@ -125,7 +175,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
-  return {worldWeeks,promotionName:owned.name,year:owned.year,week:owned.week,
+  return {worldWeeks,bookings,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
    weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};

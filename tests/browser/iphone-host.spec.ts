@@ -1060,6 +1060,73 @@ test("Calendar highlights flagship and premium broadcasts without additional rea
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
+test("Calendar shows only owned booked venues and opens the correct six-week PPV planning form",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const flagship={seriesId:"weekly",name:"Dynamite",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
+ const ppv={seriesId:"premium",name:"All In",role:"PREMIUM",
+  eventType:"MAJOR",cadenceWeeks:52,anchorWeek:5,importance:95,active:true};
+ const calendar={promotionId:"aew",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,series:[flagship,ppv],
+  bookings:[{draftId:"own",year:1,week:5,bookingClass:"REGULAR",showSeriesId:"weekly",
+   showName:"Dynamite",status:"DRAFT",day:5,venueName:"AEW Arena",
+   marketName:"New York",ready:false}],
+  weeks:[{year:1,week:5,offset:0,shows:[flagship]},
+   {year:1,week:6,offset:1,shows:[flagship,ppv]}],
+  worldWeeks:[{year:1,week:5,offset:0,events:[{
+   promotionId:"wwe",promotionName:"WWE",seriesId:"wwe-weekly",
+   name:"Raw",role:"FLAGSHIP",eventType:"REGULAR",importance:85
+  }]},{year:1,week:6,offset:1,events:[{
+   promotionId:"wwe",promotionName:"WWE",seriesId:"wwe-ppv",
+   name:"WrestleMania",role:"PREMIUM",eventType:"MAJOR",importance:99
+  }]}]};
+ const venue={venueId:"arena",marketId:"home",marketName:"Home Market",
+  name:"AEW Arena",capacity:3000,weeklyHireCost:6000,
+  awareness:70,liveStrength:68,loyalty:72,
+  audiencePotential:75,wrestlingInterest:80,spendingIndex:95,
+  prestige:80,productionSuitability:84,home:true,strongestRival:null};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",venues:[venue],
+  venuePressure:[],weeks:[{year:1,week:5,offset:0,
+   required:true,major:false,canEdit:true,shows:[],scheduled:[flagship]},
+   {year:1,week:6,offset:1,required:true,major:true,canEdit:true,
+    shows:[],scheduled:[flagship,ppv]}]};
+ const calls:{method:string;payload:Record<string,unknown>}[]=[];
+ await page.route("**/api/session",async route=>route.fulfill({json:current}));
+ await page.route("**/api/card",async route=>{
+  const payload=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(payload.method);calls.push({method,payload});
+  await route.fulfill({json:method==="calendar"?calendar:
+   method==="planner"?planner:
+   method==="planShow"?{status:"APPLIED",result:{draftId:"new-premium"}}:{}});
+ });
+ await page.goto("/#/calendar");
+ await expect(page.getByText("Card in progress")).toBeVisible();
+ await expect(page.getByText("Day 5 · AEW Arena · New York")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Open this card"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Plan this show"})).toHaveCount(2);
+ await page.getByRole("button",{name:"Across the World"}).click();
+ await expect(page.getByText("WrestleMania")).toBeVisible();
+ await expect(page.getByText("Raw")).toBeVisible();
+ await expect(page.getByText("AEW Arena")).toHaveCount(0);
+ await page.getByRole("button",{name:"PPVs & specials"}).click();
+ await expect(page.getByText("Raw")).toHaveCount(0);
+ await expect(page.getByText("WrestleMania")).toBeVisible();
+ await page.getByRole("button",{name:"My shows"}).click();
+ await page.getByRole("button",{name:"All events"}).click();
+ const premium=page.locator(".ppw-calendar-event-major");
+ await premium.getByRole("button",{name:"Plan this show"}).click();
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await expect(page.getByText("Booking: All In")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
+ await page.getByRole("button",{name:"Save show"}).click();
+ await expect.poll(()=>calls.filter(x=>x.method==="planShow").length).toBe(1);
+ const saved=calls.find(x=>x.method==="planShow")!.payload;
+ expect(saved).toMatchObject({year:1,week:6,showSeriesId:"premium",eventType:"MAJOR"});
+ expect(calls.map(x=>x.method)).toEqual(["calendar","planner","planShow","planner"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
 test("iPhone venue choices show rival interest and save without repeated Planner reads",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];

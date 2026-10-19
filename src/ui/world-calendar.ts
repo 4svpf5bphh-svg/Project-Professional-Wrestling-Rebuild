@@ -1,9 +1,20 @@
-import type {ShowSeries,ShowRole} from "../domain/show-calendar.js";
+import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
+ from "../domain/show-calendar.js";
+import type {CalendarBooking} from "../db/calendar-workspace.js";
+import {calendarBookingForSeries,calendarBookingLocation,calendarBookingState}
+ from "./calendar-booked-show.js";
 import {calendarSeriesPreview,setSeriesCadence,SERIES_CADENCES}
  from "./calendar-series-preview.js";
+export interface CalendarPlanningTarget {
+ year:number;week:number;seriesId:string;draftId?:string;
+}
 export interface CalendarPort{
- load():Promise<{promotionName:string;year:number;week:number;worldRevision:number;
- canEdit:boolean;series:ShowSeries[];weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
+ openPlanner?(target:CalendarPlanningTarget):void;
+ openCard?(draftId:string):void;
+ load():Promise<{promotionId?:string;promotionName:string;year:number;week:number;worldRevision:number;
+ canEdit:boolean;series:ShowSeries[];
+ bookings?:CalendarBooking[];
+ weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
  worldWeeks?:{year:number;week:number;offset:number;events:{
  promotionId:string;promotionName:string;seriesId:string;name:string;
  role:ShowRole;eventType:string;importance:number}[]}[]}>;
@@ -161,6 +172,33 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    node("span",label(role),"ppw-calendar-event-role"));
   card.append(emblem,copy);return card;
  }
+ function ownTile(s:ShowSeries,year:number,week:number,
+  due:readonly ShowSeries[],owner?:string){
+  const card=eventTile(s.name,s.role,s.eventType,owner);
+  const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
+  const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
+  const near=offset>=0&&offset<6;
+  if(booking){
+   card.append(node("span",calendarBookingState(booking),
+    "ppw-calendar-booked-state"),
+    node("span",calendarBookingLocation(booking),
+     "ppw-calendar-booked-place"));
+   if(offset===0&&data!.canEdit&&booking.status==="DRAFT"&&port.openCard)
+    card.append(button("Open this card",()=>port.openCard?.(booking.draftId)));
+   else if(near&&data!.canEdit&&booking.status==="DRAFT"&&port.openPlanner)
+    card.append(button("Change venue / day",()=>port.openPlanner?.({
+     year,week,seriesId:s.seriesId,draftId:booking.draftId
+    })));
+  }else{
+   card.append(node("span",near?"Not yet booked":"Calendar announcement",
+    "ppw-calendar-unbooked-state"));
+   if(near&&data!.canEdit&&port.openPlanner)
+    card.append(button("Plan this show",()=>port.openPlanner?.({
+     year,week,seriesId:s.seriesId
+    })));
+  }
+  return card;
+ }
  function render(){
   root.replaceChildren();root.classList.add("ppw-world-calendar");
   const head=node("header","","ppw-calendar-header");
@@ -205,23 +243,31 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     heading.append(node("strong","YEAR "+w.year+" · WEEK "+w.week),
      ...(w.offset===0?[node("span","THIS WEEK","ppw-calendar-now")]:[]));
     article.append(heading);
-    for(const s of shows)article.append(eventTile(s.name,s.role,s.eventType));
+    for(const s of shows)article.append(ownTile(s,w.year,w.week,w.shows));
     upcoming.append(article);
    }
    if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
     expanded=!expanded;render();
    }));
   }else{
-   upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."));
+   upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."),
+    button("All events",()=>{ppvOnly=false;render();},!ppvOnly),
+    button("PPVs & specials",()=>{ppvOnly=true;render();},ppvOnly));
    for(const w of data.worldWeeks??[]){
-    if(!w.events.length)continue;
+    const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;
+    if(!visible.length)continue;
     const article=node("article","","ppw-calendar-occurrence"+
      (w.offset===0?" ppw-calendar-current":""));
     const heading=node("div","","ppw-calendar-week-head");
     heading.append(node("strong","YEAR "+w.year+" · WEEK "+w.week));
     article.append(heading);
-    for(const e of w.events)
-     article.append(eventTile(e.name,e.role,e.eventType,e.promotionName));
+    const myShows=data.weeks.find(x=>x.year===w.year&&x.week===w.week)?.shows??[];
+    for(const e of visible){
+     const mySeries=myShows.find(s=>s.seriesId===e.seriesId);
+     if(mySeries&&e.promotionId===data.promotionId)
+      article.append(ownTile(mySeries,w.year,w.week,myShows,e.promotionName));
+     else article.append(eventTile(e.name,e.role,e.eventType,e.promotionName));
+    }
     upcoming.append(article);
    }
   }

@@ -89,3 +89,15 @@
 .ppw-calendar-occurrence.ppw-calendar-current .ppw-calendar-week-head{
  color:#b5fff0}
 .ppw-calendar-button:focus-visible{outline:2px solid #9febfa;outline-offset:2px}
+
+/* Confirmed booking facts belong only to the controlled promotion and are
+   shown inside the recurring event, never on a separate noisy screen. */
+.ppw-calendar-booked-state,.ppw-calendar-unbooked-state{
+ grid-column:2;justify-self:start;border-radius:7px;padding:4px 8px;
+ font-size:11px;font-weight:800;letter-spacing:.03em;
+ background:#12394a;color:#8cf0db;border:1px solid #4b9f95}
+.ppw-calendar-unbooked-state{color:#e6d8aa;background:#463b27;border-color:#8c7e53}
+.ppw-calendar-booked-place{grid-column:2;color:#c4d8e8;font-size:12px;overflow-wrap:anywhere}
+.ppw-calendar-event .ppw-calendar-button{grid-column:2;justify-self:start;
+ margin:3px 0 1px;max-width:100%;background:#1d5661;
+ border-color:#84c4c8;font-size:13px}

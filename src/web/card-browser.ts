@@ -431,7 +431,7 @@ export function mountPersonaPage(root:HTMLElement,scope:Scope,
  * authoritative booking surface, with the selected draft's ID in scope.
  */
 export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
- openUnfinishedCard=false){
+ openUnfinishedCard=false,initialTarget?:import("../ui/world-calendar.js").CalendarPlanningTarget){
  const call=createCardClient(scope);
  const port:PlannerPort={
   load:()=>call("planner"),
@@ -439,7 +439,7 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
   openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
   openCalendar:()=>mountCalendarPage(root,scope,()=>mountPlannerPage(root,scope,onBack))
  };
- return mountPlanner(root,port,onBack,openUnfinishedCard);
+ return mountPlanner(root,port,onBack,openUnfinishedCard,initialTarget);
 }
 
 /** Show identity recurrence editor; no private rival draft plans are exposed. */
@@ -448,7 +448,10 @@ export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void)
  const port:CalendarPort={
   load:()=>call("calendar"),
   save:input=>call("saveCalendar",input),
-  archive:input=>call("archiveCalendar",input)
+  archive:input=>call("archiveCalendar",input),
+  openCard:draftId=>mountBookingPage(root,{...scope,showId:draftId}),
+  openPlanner:target=>mountPlannerPage(root,scope,
+   ()=>mountCalendarPage(root,scope,onBack),false,target)
  };
  return mountWorldCalendar(root,port,onBack??(()=>mountPlannerPage(root,scope)));
 }
