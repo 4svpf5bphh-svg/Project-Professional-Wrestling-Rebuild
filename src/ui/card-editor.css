@@ -326,3 +326,17 @@
 .ppw-top .ppw-card-back:focus-visible{
  outline:2px solid var(--ppw-accent);outline-offset:3px
 }
+
+.ppw-top .ppw-card-discard{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:44px;padding:8px 12px;margin:0 0 10px 9px;
+ border:1px solid #bc7a70;border-radius:12px;
+ background:rgba(102,46,43,.35);color:#ffddd2;
+ font-size:13px;font-weight:700;cursor:pointer;
+}
+.ppw-top .ppw-card-discard:focus-visible{
+ outline:2px solid #ffbcac;outline-offset:3px;
+}
+@media(max-width:390px){
+ .ppw-top .ppw-card-discard{margin-left:0}
+}
