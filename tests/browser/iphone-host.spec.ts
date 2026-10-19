@@ -604,7 +604,8 @@ test("verified player can join, claim and reach World without bypassing session 
    world:{...overview.world,revision:stage},
    membership:stage===0?"NONE":"ACTIVE",
    promotion:stage===2?overview.promotion:null},
-   availablePromotions:stage===1?[{id:"aew",name:"AEW",tier:"GLOBAL"}]:[]};
+   availablePromotions:stage===1?[{id:"aew",name:"AEW",tier:"GLOBAL",
+    homeMarketName:"Chicago",rosterSize:43}]:[]};
   await route.fulfill({json:snapshot});
  });
  for(const path of ["/api/join","/api/claim"]){
@@ -626,6 +627,8 @@ test("verified player can join, claim and reach World without bypassing session 
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
  await page.getByRole("button",{name:"Join World"}).click();
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ await expect(page.getByText("Home territory · Chicago")).toBeVisible();
+ await expect(page.getByText("43 signed wrestlers")).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
