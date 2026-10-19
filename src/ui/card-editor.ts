@@ -626,6 +626,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
       v=>editSegment(segment,{programmeId:v||null}),!mutable())));
     const linked=view.programmes.find(p=>p.programmeId===segment.programmeId);
+    if(linked)controls.append(el("p","ppw-angle-guidance",
+     "Feature at least one wrestler from this rivalry. The story will only advance when its own wrestlers take part."));
     if(linked?.latestFollowUp){
      const followUp=el("p","ppw-card-angle-continuity",
       storyDirectionHint(linked.latestFollowUp,"SEGMENT"));
