@@ -32,10 +32,10 @@ test("wrestler career is scoped, three-query and reproduces only verified comple
    // Show-resolution records may only reference a truly submitted draft.
    await tx.query(`
     INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
-    VALUES ($1,$2,'career-show',1,1,'SUBMITTED'),
-     ($1,$2,'live-show',1,6,'SUBMITTED'),
-     ($1,$2,'video-show',1,8,'SUBMITTED'),
-     ($1,'promotion-1','other-live',1,2,'SUBMITTED')
+    VALUES ($1,'career-show',$2,1,1,'SUBMITTED'),
+     ($1,'live-show',$2,1,6,'SUBMITTED'),
+     ($1,'video-show',$2,1,8,'SUBMITTED'),
+     ($1,'other-live','promotion-1',1,2,'SUBMITTED')
    `,[world,promotionId]);
    await tx.query(
     "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
