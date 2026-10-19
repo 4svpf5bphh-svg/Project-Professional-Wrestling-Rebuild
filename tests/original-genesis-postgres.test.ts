@@ -13,6 +13,8 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readContractDesk} from "../src/db/contract-desk-workspace.js";
 import {listTalentAvailability} from "../src/db/talent-availability.js";
 import {listAvailablePromotions} from "../src/db/available-promotions.js";
+import {readPromotionCalendar} from "../src/db/calendar-workspace.js";
+import {defaults} from "../src/domain/show-calendar.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
 test("Original Genesis projection retains real economics and rejects incompatible contracts",()=>{
@@ -61,7 +63,7 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);
 });
-test("643-person authentic Genesis seeds complete real calendars in one bounded transaction",{
+test("643-person authentic Genesis preserves protected promotions and real tag teams with bounded import",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
@@ -88,10 +90,10 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,showSeries:37,tagTeams:1,teamMembers:2,sqlStatements:13});
-  const sample=meter.assertBudget({maxQueries:15,maxResultBytes:2_700});
-  assert.equal(sample.queryCount,15);
-  assert.equal(sample.resultRows,12);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,tagTeams:1,teamMembers:2,sqlStatements:12});
+  const sample=meter.assertBudget({maxQueries:14,maxResultBytes:2_650});
+  assert.equal(sample.queryCount,14);
+  assert.equal(sample.resultRows,11);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
   assert.equal(preview.ready,true);
@@ -110,20 +112,6 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
    {name:"The Original Duo",person_id:"person-0"},
    {name:"The Original Duo",person_id:"person-1"}
   ]);
-  const annual=await withWorldTransaction(db.pool,tx=>tx.query<{
-   promotion_id:string;name:string;role:string}>(`
-   SELECT promotion_id,name,role FROM ppw_show_series
-   WHERE world_id=$1 AND promotion_id IN('promotion-0','promotion-1')
-   ORDER BY promotion_id,name`,[world]));
-  const wwe=annual.filter(x=>x.promotion_id==="promotion-0").map(x=>x.name);
-  const aew=annual.filter(x=>x.promotion_id==="promotion-1").map(x=>x.name);
-  for(const name of ["Monday Night Raw","Friday Night SmackDown",
-   "Royal Rumble","WrestleMania","SummerSlam","Survivor Series"])
-   assert.ok(wwe.includes(name),"Original Genesis missing WWE identity: "+name);
-  for(const name of ["AEW Dynamite","AEW Collision","Revolution",
-   "Double or Nothing","All In","All Out","Full Gear","Worlds End"])
-   assert.ok(aew.includes(name),"Original Genesis missing AEW identity: "+name);
-  assert.equal(annual.length,25,"No duplicate generic WWE/AEW event series");
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
     injury_rate_multiplier:string;year:number;week:number;revision:string}>(`
@@ -196,6 +184,26 @@ test("643-person authentic Genesis seeds complete real calendars in one bounded 
    /Promotion not found/);
   await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
    promotionId:"promotion-2",requestId:"claim-"+world,expectedRevision:1});
+  // WWE/AEW retain their fuller PPV schedules through the existing lazy
+  // Calendar projection, with NO additional Genesis inserts or replicated rows.
+  const wwe=defaults("WWE",1,13).map(s=>s.name);
+  const aew=defaults("AEW",1,13).map(s=>s.name);
+  for(const name of ["Monday Night Raw","Friday Night SmackDown",
+   "Royal Rumble","WrestleMania","SummerSlam","Survivor Series"])
+   assert.ok(wwe.includes(name),"WWE show identity missing: "+name);
+  for(const name of ["AEW Dynamite","AEW Collision","Revolution",
+   "Double or Nothing","All In","All Out","Full Gear","Worlds End"])
+   assert.ok(aew.includes(name),"AEW show identity missing: "+name);
+  const calendar=await readPromotionCalendar(db.pool,{
+   worldId:world,promotionId:"promotion-2",playerId:player});
+  const publicNames=calendar.worldWeeks.flatMap(w=>w.events.map(e=>e.name));
+  assert.ok(publicNames.includes("Royal Rumble"));
+  assert.ok(publicNames.includes("Revolution"));
+  const stored=await withWorldTransaction(db.pool,tx=>tx.query<{total:number}>(`
+   SELECT count(*)::integer AS total FROM ppw_show_series WHERE world_id=$1`,
+   [world]));
+  assert.equal(stored[0]?.total,0,
+   "Untouched real series must be computed without needless Genesis writes");
   const desk=await readContractDesk(db.pool,world,player,"promotion-2");
   assert.equal(desk.summary.signed,50);
   assert.equal(desk.summary.pendingOffers,0);
