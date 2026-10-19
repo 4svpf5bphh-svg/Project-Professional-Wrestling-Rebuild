@@ -105,8 +105,9 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         }
       }
       await tx.query(
-        "INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged) VALUES($1,$2,$3,$4,$5,$6,$7)",
-        [input.worldId,input.showId,input.promotionId,weekIndex,input.requestId,appearances.length,charged],
+        "INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,command_request_id,performers_count,dates_charged,appearance_person_ids) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)",
+        [input.worldId,input.showId,input.promotionId,weekIndex,input.requestId,
+         appearances.length,charged,JSON.stringify(appearances.map(a=>a.personId).sort())],
       );
       return {performers:appearances.length,datesCharged:charged};
     },
