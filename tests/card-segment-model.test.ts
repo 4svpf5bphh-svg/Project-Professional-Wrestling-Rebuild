@@ -148,3 +148,18 @@ test("specialist angle performer capacity remains explicit",()=>{
  debut=addSegmentPerson(debut,"actors",person("entrant"));
  assert.throws(()=>addSegmentPerson(debut,"actors",person("second")),/lead wrestler/);
 });
+
+test("original live arrival reveals and objectives survive canonical save and reload",()=>{
+ let arrival=newEditorSegment("debut","DEBUT");
+ arrival=addSegmentPerson(arrival,"actors",{personId:"newcomer",contractId:"appearance"});
+ arrival.creativeBeat={kind:"DEBUT",presentation:"SURPRISE_REVEAL",
+  objective:"UNSETTLE_RIVAL"};
+ const saved=buildEditorSegment(arrival);
+ assert.equal(saved.outcome,"HAPPENS");
+ assert.deepEqual(saved.actorIds,["newcomer"]);
+ assert.deepEqual(saved.creativeBeat,arrival.creativeBeat);
+ assert.deepEqual(buildEditorSegment(restoreEditorSegment("debut",saved)),saved);
+ assert.throws(()=>buildEditorSegment({...arrival,creativeBeat:{
+  kind:"DEBUT",presentation:"UNSCRIPTED",objective:"UNSETTLE_RIVAL"
+ } as never}),/Invalid|creative|segment/i);
+});
