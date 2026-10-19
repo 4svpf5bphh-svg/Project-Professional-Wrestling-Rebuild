@@ -175,3 +175,113 @@ test("Private contract news is individually dismissible without hiding mandatory
   }).finally(()=>db.close());
  }
 });
+
+test("Verified singles/tag injury reports are owner-scoped, dismissible, and do not imply current clearance",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="injury-news-"+randomUUID(),player="injury-owner-"+randomUUID();
+ const db=postgresPool(url!,4),promotionId="promotion-0";
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,40));
+  await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId,requestId:"claim",expectedRevision:1});
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=5 WHERE world_id=$1",[world]);
+   await tx.query(`
+    INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
+    VALUES($1,'injury-singles','promotion-0',1,4,'SUBMITTED'),
+     ($1,'injury-tag','promotion-1',1,5,'SUBMITTED')
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+      resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,'promotion-0','injury-singles',1,4,'single-injury',75,'{}'::jsonb,repeat('f',64)),
+     ($1,'promotion-1','injury-tag',1,5,'tag-injury',74,'{}'::jsonb,repeat('e',64))
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,
+     crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,'injury-singles','singles',0,75,'CLEAN_PIN','A'),
+     ($1,'injury-tag','tag',0,74,'CLEAN_PIN','B')
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_individual_field_career_effects(world_id,show_id,match_id,
+      person_id,actual_winner_side,performer_side,won,before_stats,after_stats,
+      injury_severity,injury_weeks_out)
+    VALUES($1,'injury-singles','singles','person-0','A','A',true,'{}'::jsonb,'{}'::jsonb,'MINOR',2),
+     ($1,'injury-singles','singles','person-1','A','B',false,'{}'::jsonb,'{}'::jsonb,'MAJOR',7)
+   `,[world]);
+   await tx.query(`
+    INSERT INTO ppw_tag_match_career_effects(world_id,show_id,match_id,
+      person_id,actual_winner_side,performer_side,won,before_stats,after_stats,
+      injury_severity,injury_weeks_out)
+    VALUES($1,'injury-tag','tag','person-8','B','B',true,'{}'::jsonb,'{}'::jsonb,'MODERATE',5)
+   `,[world]);
+  });
+  const meter=new MeasuredQuerySession("verified-injury-news-one-query");
+  const measured:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
+  const view=await readPlayerWorldOverview(measured,world,player);
+  assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:5100}).queryCount,1);
+  const injuries=view?.promotion?.attention.injuryNews??[];
+  assert.deepEqual(injuries.map(x=>({
+   person:x.personId,severity:x.severity,weeks:x.originalWeeksOut,week:x.week
+  })),[
+   {person:"person-8",severity:"MODERATE",weeks:5,week:5},
+   {person:"person-0",severity:"MINOR",weeks:2,week:4}
+  ],"Only signed roster members' verified incidents; rival show injuries still count");
+  assert.ok(injuries.every(x=>/^injury-report:[a-f0-9]{32}$/.test(x.id)));
+  const revision=view?.world.revision;
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{worldId:world,
+   promotionId,playerId:"outsider",attentionId:injuries[0]!.id}),
+   /unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{worldId:world,
+   promotionId,playerId:player,attentionId:"injury-report:invalid"}),
+   /Invalid dismissible/);
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{worldId:world,
+   promotionId,playerId:player,attentionIds:[injuries[0]!.id,
+    "injury-report:"+"a".repeat(32)]}),/unavailable|cannot be dismissed/);
+  assert.equal((await readPlayerWorldOverview(db.pool,world,player))
+   ?.promotion?.attention.injuryNews?.length,2,"The forged batch must not clear genuine injuries");
+  const response=await dismissResolvedOfferAttention(db.pool,{
+   worldId:world,promotionId,playerId:player,attentionId:injuries[0]!.id});
+  assert.deepEqual(response,{dismissed:true,firstDismissal:true});
+  assert.deepEqual(await dismissResolvedOfferAttention(db.pool,{
+   worldId:world,promotionId,playerId:player,attentionId:injuries[0]!.id}),
+   {dismissed:true,firstDismissal:false});
+  assert.equal((await readPlayerWorldOverview(db.pool,world,player))
+   ?.promotion?.attention.injuryNews?.length,1);
+  assert.deepEqual(await dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId,playerId:player,attentionIds:[injuries[1]!.id]}),
+   {dismissed:1,firstDismissals:1});
+  assert.deepEqual((await readPlayerWorldOverview(db.pool,world,player))
+   ?.promotion?.attention.injuryNews,[]);
+  assert.equal((await readPlayerWorldOverview(db.pool,world,player))?.world.revision,revision);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=14 WHERE world_id=$1",[world]));
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{
+   worldId:world,promotionId,playerId:player,attentionId:injuries[0]!.id}),
+   /unavailable|cannot be dismissed/,"Expired news cannot be acknowledged again");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_player_attention_dismissals",
+    "ppw_individual_field_career_effects","ppw_tag_match_career_effects",
+    "ppw_completed_show_matches","ppw_completed_shows","ppw_booking_drafts",
+    "ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
+    "ppw_promotion_controls","ppw_memberships","ppw_contracts",
+    "ppw_championships","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotion_standings",
+    "ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

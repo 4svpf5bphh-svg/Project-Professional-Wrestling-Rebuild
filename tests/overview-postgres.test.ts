@@ -53,7 +53,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
      backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[],
-     contractAlerts:[],titleNews:[]});
+     contractAlerts:[],titleNews:[],injuryNews:[]});
     assert.equal(after?.membership,"ACTIVE");
     assert.ok(after!.world.nextLockEpoch>after!.world.serverEpoch);
     await withWorldTransaction(db.pool,async tx=>{
