@@ -1,7 +1,7 @@
 /** Readable preflight for the booker's working card.
  * It is not the authoritative save/World Lock check, which runs on the server.
  */
-import type {EditorMatch} from "./card-editor-model.js";
+import {buildBookedMatch,type EditorMatch} from "./card-editor-model.js";
 import type {EditorSegment} from "./card-segment-model.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 export interface SlotReadiness{complete:boolean;label:string;hint:string}
@@ -16,8 +16,11 @@ export function matchCastingReadiness(match:EditorMatch):SlotReadiness{
    hint:"A match cannot include the same wrestler twice."};
  if(match.winnerSide<0||match.winnerSide>=match.teams.length)
   return {complete:false,label:"CHOOSE A WINNER",hint:"Select the side that goes over."};
- return {complete:true,label:"CAST COMPLETE",
-  hint:"All wrestling positions are filled. Save to confirm contracts, divisions and title rules."};
+ try{buildBookedMatch(match);}
+ catch(e){return {complete:false,label:"CHECK MATCH PLAN",
+  hint:e instanceof Error?e.message:"Review the selected match format and finish."};}
+ return {complete:true,label:"CARD READY",
+  hint:"All positions and finish choices are valid. Save to confirm contracts, divisions and title rules."};
 }
 export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
  const rules=SEGMENT_BOOKING_RULES[angle.kind];
