@@ -36,6 +36,10 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(business.name,"Promotion 0");
   assert.equal(business.homeMarketName,"Territory 0",
    "The promotion's founding territory comes from its own market, not any rival");
+  assert.deepEqual(business.standing,{
+   prestige:82,fanReputation:78,businessReputation:82,
+   talentReputation:74,lastEvaluatedYear:0
+  });
   assert.equal(business.mediaReach,90,
    "Keep the original broadcast distribution measure, not a derived estimate");
   assert.equal(business.cash,5_000_000);
@@ -60,6 +64,14 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(actorRead.name,"Promotion 0");
   assert.equal(actorRead.homeMarketName,"Territory 0");
   assert.equal(actorRead.mediaReach,90);
+  assert.deepEqual(actorRead.standing,business.standing);
+  // A historical World without a verified record must never get invented scores.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "DELETE FROM ppw_promotion_standings WHERE world_id=$1 AND promotion_id=$2",
+   [world,promotion]));
+  const historical=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.equal(historical.standing,null);
   // A real economics receipt is displayed as an archived fact, not
   // recomputed or applied twice to the promotion's cash.
   await withWorldTransaction(db.pool,async tx=>{

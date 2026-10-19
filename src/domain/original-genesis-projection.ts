@@ -30,6 +30,10 @@ export interface OriginalGenesisSource {
   wrestlingInterest:number;spendingIndex:number}>;
  promotionMarketStates:Array<{worldId:string;promotionId:string;marketId:string;
   awareness:number;liveStrength:number;loyalty:number}>;
+ /** Exact records from original-main promotionStandings; never infer values. */
+ promotionStandings:Array<{worldId:string;promotionId:string;prestige:number;
+  fanReputation:number;businessReputation:number;talentReputation:number;
+  lastEvaluatedYear:number}>;
  venues:Array<{id:string;worldId:string;name:string;marketId:string;capacity:number;
   weeklyHireCost:number;prestige:number;productionSuitability:number}>;
  contracts:Array<{id:string;worldId:string;personId:string;promotionId:string;
@@ -46,6 +50,8 @@ export interface GenesisProjection {
   wrestlingInterest:number;spendingIndex:number}>;
  promotionMarketStates:Array<{promotionId:string;marketId:string;
   awareness:number;liveStrength:number;loyalty:number}>;
+ promotionStandings:Array<{promotionId:string;prestige:number;fanReputation:number;
+  businessReputation:number;talentReputation:number;lastEvaluatedYear:number}>;
  promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
  cash:number;debt:number;media:number;eventCadenceWeeks:number;aiFinancialCaution:number;
  aiRiskTolerance:number;aiMatchQualityPreference:number;aiStarPreference:number;
@@ -96,6 +102,8 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
  ||!Array.isArray(source.markets)||source.markets.length<1||source.markets.length>128
  ||!Array.isArray(source.promotionMarketStates)||source.promotionMarketStates.length<1
  ||source.promotionMarketStates.length>16384
+ ||!Array.isArray(source.promotionStandings)
+ ||source.promotionStandings.length!==source.promotions.length
  ||!Array.isArray(source.venues)||source.venues.length<1||source.venues.length>2048
  ||!Array.isArray(source.contracts)||source.contracts.length>10000)
  throw new Error("Original Genesis population outside import bounds");
@@ -141,6 +149,19 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    distress:p.financialDistress};
  });
  const knownPromotions=new Set(promotions.map(p=>p.id));
+ // Source-only ratings: no tier, finance or media heuristics.
+ unique(source.promotionStandings.map(s=>s.promotionId),"promotion standing");
+ const promotionStandings=source.promotionStandings.map(s=>{
+  if(s.worldId!==worldId||!knownPromotions.has(s.promotionId)
+   ||![s.prestige,s.fanReputation,s.businessReputation,s.talentReputation].every(stat)
+   ||!int(s.lastEvaluatedYear,0,source.world.currentDate.year))
+   throw new Error("Invalid original promotion standing");
+  return {promotionId:s.promotionId,prestige:s.prestige,
+   fanReputation:s.fanReputation,businessReputation:s.businessReputation,
+   talentReputation:s.talentReputation,lastEvaluatedYear:s.lastEvaluatedYear};
+ });
+ if(new Set(promotionStandings.map(s=>s.promotionId)).size!==promotions.length)
+  throw new Error("Missing original promotion standing");
  unique(source.promotionMarketStates.map(s=>s.promotionId+"\\u0000"+s.marketId),"promotion-market");
  const promotionMarketStates=source.promotionMarketStates.map(m=>{
   if(m.worldId!==worldId||!knownPromotions.has(m.promotionId)||!marketIds.has(m.marketId)
@@ -222,5 +243,5 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   rulesetVersion:source.world.rulesetVersion,acceptance:source.ruleset.offerAcceptanceThreshold,
   injury:source.ruleset.injuryRateMultiplier,
   majorEventIntervalWeeks:source.ruleset.majorEventIntervalWeeks},
-  markets,promotionMarketStates,promotions,people,venues,contracts};
+  markets,promotionMarketStates,promotionStandings,promotions,people,venues,contracts};
 }

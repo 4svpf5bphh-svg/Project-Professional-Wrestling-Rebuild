@@ -17,11 +17,24 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  const source=originalGenesisFixture("genesis-validate");
  const projected=projectOriginalGenesis(source);
  assert.equal(projected.people.length,643);
+ assert.deepEqual(projected.promotionStandings[0],{
+  promotionId:"promotion-0",prestige:82,fanReputation:78,
+  businessReputation:82,talentReputation:74,lastEvaluatedYear:0
+ });
  assert.equal(projected.promotions.length,8);
  assert.equal(projected.contracts.length,400);
  assert.equal(projected.contracts[1]!.remaining,6);
  assert.equal(projected.contracts[0]!.remaining,null);
  assert.equal(projected.people[0]!.priorities.money,65);
+ const missingStanding=originalGenesisFixture("genesis-missing-standing");
+ missingStanding.promotionStandings.pop();
+ assert.throws(()=>projectOriginalGenesis(missingStanding),/Genesis population outside import bounds/);
+ const invalidStanding=originalGenesisFixture("genesis-corrupt-standing");
+ invalidStanding.promotionStandings[0]!.fanReputation=101;
+ assert.throws(()=>projectOriginalGenesis(invalidStanding),/Invalid original promotion standing/);
+ const mismatchedStanding=originalGenesisFixture("genesis-wrong-standing");
+ mismatchedStanding.promotionStandings[0]!.promotionId="promotion-7";
+ assert.throws(()=>projectOriginalGenesis(mismatchedStanding),/Duplicate promotion standing/);
  const missingLocal=originalGenesisFixture("genesis-missing-market");
  missingLocal.promotionMarketStates.pop();
  assert.throws(()=>projectOriginalGenesis(missingLocal),/Missing original promotion market state/);
@@ -43,7 +56,7 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  corrupt.people[0]!.skills.inRingQuality=88.5;
  assert.throws(()=>projectOriginalGenesis(corrupt),/wrestler/);
 });
-test("Original 643-person/8-promotion Genesis imports markets and championships with 11 PostgreSQL statements",{
+test("Original 643-person/8-promotion Genesis imports markets and championships with 12 PostgreSQL statements",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
@@ -59,10 +72,10 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,sqlStatements:9});
-  const sample=meter.assertBudget({maxQueries:11,maxResultBytes:2_000});
-  assert.equal(sample.queryCount,11);
-  assert.equal(sample.resultRows,8);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,sqlStatements:10});
+  const sample=meter.assertBudget({maxQueries:12,maxResultBytes:2_200});
+  assert.equal(sample.queryCount,12);
+  assert.equal(sample.resultRows,9);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
@@ -90,7 +103,11 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
     FROM ppw_promotions WHERE world_id=$1 AND promotion_id='promotion-0'`,[world]);
    const imports=await tx.query<{payload:{wrestlers:number;contracts:number}}>(`
     SELECT payload FROM ppw_ledger_events WHERE world_id=$1 AND event_type='WORLD_GENESIS_IMPORTED'`,[world]);
-   return {worldRow,rows,values,contract,venue,promotion,titleCount,imports};
+   const standing=await tx.query<{prestige:number;fan_reputation:number;
+    business_reputation:number;talent_reputation:number;last_evaluated_year:number}>(`
+    SELECT prestige,fan_reputation,business_reputation,talent_reputation,last_evaluated_year
+    FROM ppw_promotion_standings WHERE world_id=$1 AND promotion_id='promotion-0'`,[world]);
+   return {worldRow,rows,values,contract,venue,promotion,standing,titleCount,imports};
   });
   assert.equal(Number(state.worldRow[0]!.seed),7);
   assert.equal(state.worldRow[0]!.year,1);
@@ -98,6 +115,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   assert.equal(Number(state.worldRow[0]!.revision),0);
   assert.equal(state.rows[0]!.count,643);
   assert.equal(state.titleCount[0]!.count,16);
+  assert.deepEqual(state.standing[0],{prestige:82,fan_reputation:78,
+   business_reputation:82,talent_reputation:74,last_evaluated_year:0});
   assert.equal(state.values[0]!.career_stage,"PRIME");
   assert.equal(state.values[0]!.in_ring_quality,61);
   assert.equal(state.values[0]!.contract_priorities.money,65);

@@ -13,6 +13,18 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
   weeklyMediaIncome:300_000,weeklySponsorIncome:25_000,
   weeklyFixedOverhead:60_000,lastWeeklyNet:0,financialDistress:"HEALTHY",
  }));
+ // Exact initial standing records from original main's reputation.ts.
+ const initial=[
+  {prestige:82,fanReputation:78,businessReputation:82,talentReputation:74},
+  {prestige:67,fanReputation:65,businessReputation:70,talentReputation:65},
+  {prestige:50,fanReputation:52,businessReputation:56,talentReputation:55},
+  {prestige:36,fanReputation:40,businessReputation:44,talentReputation:47}
+ ];
+ const promotionStandings=promotions.map(p=>({
+  worldId,promotionId:p.id,
+  ...initial[p.tier==="GLOBAL"?0:p.tier==="NATIONAL"?1:p.tier==="RISING"?2:3]!,
+  lastEvaluatedYear:0
+ }));
  const markets=Array.from({length:4},(_,i)=>({
   id:"market-"+i,worldId,name:"Territory "+i,audiencePotential:65+i*5,
   wrestlingInterest:70+i*3,spendingIndex:90+i*5,
@@ -52,5 +64,5 @@ export function originalGenesisFixture(worldId:string,peopleCount=643):OriginalG
  return {world:{id:worldId,name:"PPW Genesis",seed:7,rulesetVersion:"sim0.0.11",
    currentDate:{year:1,week:1,day:1}},
   ruleset:{version:"sim0.0.11",weeksPerYear:52,offerAcceptanceThreshold:50,
-   injuryRateMultiplier:1,majorEventIntervalWeeks:13},markets,promotionMarketStates,promotions,people,venues,contracts};
+   injuryRateMultiplier:1,majorEventIntervalWeeks:13},markets,promotionMarketStates,promotionStandings,promotions,people,venues,contracts};
 }

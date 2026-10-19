@@ -16,6 +16,8 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
   return route.fulfill({json:{
    name:"Home",tier:"LOCAL",year:1,week:5,phase:"OPEN",
    homeMarketName:"Territory 0",mediaReach:90,cash:5_000_000,debt:0,
+   standing:{prestige:82,fanReputation:78,businessReputation:82,
+    talentReputation:74,lastEvaluatedYear:0},
    weeklyMediaIncome:300_000,weeklySponsorIncome:25_000,
    weeklyFixedOverhead:60_000,weeklyGuarantees:15_000,weeklyStaffPayroll:0,
    recurringMargin:250_000,lastWeeklyNet:0,runwayWeeks:null,
@@ -31,10 +33,16 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
  await expect(page.getByText("90",{exact:true})).toBeVisible();
  await expect(page.getByText(/Based in Territory 0/)).toBeVisible();
+ await page.getByRole("button",{name:"Standing"}).click();
+ await expect(page.getByRole("heading",{name:"Company standing"})).toBeVisible();
+ await expect(page.getByText("82 / 100")).toHaveCount(2);
+ await expect(page.getByText("78 / 100")).toBeVisible();
+ await expect(page.getByText("74 / 100")).toBeVisible();
+ await expect(page.getByText(/first annual review has not taken place/)).toBeVisible();
  await page.getByRole("button",{name:"Territories"}).click();
  await expect(page.getByRole("heading",{name:"Your markets"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Territory 0 · Home market"})).toBeVisible();
  await page.getByRole("button",{name:"Finances"}).click();
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
- expect(methods).toEqual(["business"],"Switching reports must never requery the database");
+ expect(methods).toEqual(["business"]);
 });

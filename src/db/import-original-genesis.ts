@@ -63,6 +63,23 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
    })))]);
+  // Preserve the exact original standings in one normalized, bounded insert.
+  const standings=await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_promotion_standings(world_id,promotion_id,prestige,
+     fan_reputation,business_reputation,talent_reputation,last_evaluated_year)
+    SELECT $1,x.promotion_id,x.prestige,x.fan_reputation,
+     x.business_reputation,x.talent_reputation,x.last_evaluated_year
+    FROM jsonb_to_recordset($2::jsonb) AS x(
+     promotion_id text,prestige double precision,fan_reputation double precision,
+     business_reputation double precision,talent_reputation double precision,
+     last_evaluated_year integer)
+    RETURNING promotion_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id,JSON.stringify(g.promotionStandings.map(s=>({
+    promotion_id:s.promotionId,prestige:s.prestige,fan_reputation:s.fanReputation,
+    business_reputation:s.businessReputation,talent_reputation:s.talentReputation,
+    last_evaluated_year:s.lastEvaluatedYear})))]);
   // Original PPW starts with a singles and a tag belt for every live promotion.
   // An inaugural reign is never invented: the first title winner must be
   // established by the verified title-booking/resolution path.
@@ -137,7 +154,7 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    [g.world.id,JSON.stringify(g.contracts)]);
   if(markets[0]?.count!==g.markets.length||
     promotionMarkets[0]?.count!==g.promotionMarketStates.length||
-    promotions[0]?.count!==g.promotions.length||titles[0]?.count!==
+    promotions[0]?.count!==g.promotions.length||standings[0]?.count!==g.promotionStandings.length||titles[0]?.count!==
      g.promotions.filter(p=>p.lifecycle!=='CLOSED').length*2||people[0]?.count!==g.people.length
    ||venues[0]?.count!==g.venues.length||contracts[0]?.count!==g.contracts.length)
    throw new Error("Incomplete relational Genesis import");
@@ -150,6 +167,6 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
   return {worldId:g.world.id,promotions:g.promotions.length,people:g.people.length,
    venues:g.venues.length,contracts:g.contracts.length,
    markets:g.markets.length,promotionMarketStates:g.promotionMarketStates.length,
-   championships:titles[0]!.count,sqlStatements:9};
+   championships:titles[0]!.count,standings:standings[0]!.count,sqlStatements:10};
  });
 }

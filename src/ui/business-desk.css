@@ -79,3 +79,11 @@
  .ppw-business-trend-pick{transition:border-color .15s,transform .15s}
  .ppw-business-trend-pick:hover{border-color:#86dfff;transform:translateY(-2px)}
 }
+
+/* Original promotion standing, kept distinct from finance and territory scores. */
+.ppw-business-standing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+.ppw-business-standing-card{min-width:0;display:grid;gap:8px;background:#1b3244;border-radius:12px;border:1px solid rgba(139,200,236,.18);padding:13px}
+.ppw-business-standing-card>span{font-size:12px;color:#a8d8ef;font-weight:800}
+.ppw-business-standing-card>strong{font-size:clamp(18px,4.5vw,24px);font-variant-numeric:tabular-nums}
+.ppw-business-standing-card>small{font-size:12px;color:#b0c4d4;line-height:1.4}
+@media(max-width:340px){.ppw-business-standing-grid{grid-template-columns:1fr}}

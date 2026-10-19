@@ -19,6 +19,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
    last_weekly_net:string|null;runway_weeks:number|null;
    financial_distress:string|null;guarantees:string;staff_payroll:string;
+   standing_prestige:number|null;standing_fan:number|null;
+   standing_business:number|null;standing_talent:number|null;
+   standing_year:number|null;
   }>(`
    SELECT w.year,w.week,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
      p.media_reach,
@@ -28,6 +31,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,p.last_weekly_net::text,
      p.runway_weeks,p.financial_distress,
+     standing.prestige AS standing_prestige,
+     standing.fan_reputation AS standing_fan,
+     standing.business_reputation AS standing_business,
+     standing.talent_reputation AS standing_talent,
+     standing.last_evaluated_year AS standing_year,
      COALESCE((SELECT sum(c.weekly_guarantee)
       FROM ppw_contracts c WHERE c.world_id=p.world_id
        AND c.promotion_id=p.promotion_id AND c.status='SIGNED'
@@ -43,6 +51,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     AND m.player_id=c.player_id AND m.status='ACTIVE'
    JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=c.promotion_id
     AND p.lifecycle='ACTIVE'
+   LEFT JOIN ppw_promotion_standings standing
+    ON standing.world_id=p.world_id AND standing.promotion_id=p.promotion_id
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(rows.length!==1)throw new Error("Business access denied");
   const w=rows[0]!;
@@ -86,6 +96,13 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,
+   standing:w.standing_prestige===null||w.standing_fan===null
+    ||w.standing_business===null||w.standing_talent===null
+    ||w.standing_year===null?null:{
+     prestige:w.standing_prestige,fanReputation:w.standing_fan,
+     businessReputation:w.standing_business,talentReputation:w.standing_talent,
+     lastEvaluatedYear:w.standing_year
+    },
    cash:Number(w.cash),debt:Number(w.debt),
    weeklyMediaIncome:weeklyMedia,weeklySponsorIncome:weeklySponsor,
    weeklyFixedOverhead:weeklyOverhead,weeklyGuarantees:guarantees,

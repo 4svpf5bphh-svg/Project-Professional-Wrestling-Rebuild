@@ -20,7 +20,7 @@ const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  let view:BusinessView|null=null,error="",loading=false,
-  pane:"FINANCES"|"EVENTS"|"TERRITORIES"="FINANCES";
+  pane:"FINANCES"|"STANDING"|"EVENTS"|"TERRITORIES"="FINANCES";
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
@@ -50,7 +50,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   const nav=el("nav","ppw-business-nav");
   nav.setAttribute("aria-label","Business reports");
   for(const [id,title] of [
-   ["FINANCES","Finances"],["EVENTS","Events"],["TERRITORIES","Territories"]
+   ["FINANCES","Finances"],["STANDING","Standing"],["EVENTS","Events"],["TERRITORIES","Territories"]
   ] as const){
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
@@ -92,6 +92,38 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      view.recurringMargin===null?"Not configured":money(view.recurringMargin)));
    flow.append(total);
    root.append(flow);
+  }
+  if(pane==="STANDING"){
+   const section=el("section","ppw-business-panel ppw-business-standing");
+   section.append(el("h2","","Company standing"),
+    el("p","ppw-business-muted",
+     "Your promotion's official standing in the wrestling industry. Ratings change at the annual review."));
+   if(!view.standing){
+    section.append(el("p","ppw-business-muted",
+     "No verified company standing is recorded for this world."));
+   }else{
+    const score=el("div","ppw-business-standing-grid");
+    for(const [label,value,description] of [
+     ["Prestige",view.standing.prestige,"Your promotion's standing in the industry"],
+     ["Fan reputation",view.standing.fanReputation,"Your reputation with wrestling fans"],
+     ["Business reputation",view.standing.businessReputation,"Confidence in how the company operates"],
+     ["Talent reputation",view.standing.talentReputation,"How wrestlers view the promotion"]
+    ] as const){
+     const tile=el("article","ppw-business-standing-card");
+     tile.append(el("span","",label),
+      el("strong","",value.toLocaleString("en-GB",{maximumFractionDigits:1})+" / 100"),
+      el("small","",description));
+     const meter=el("div","ppw-business-meter");
+     const fill=el("span","");
+     fill.style.width=Math.max(0,Math.min(100,value))+"%";
+     meter.append(fill);tile.append(meter);score.append(tile);
+    }
+    section.append(score,el("p","ppw-business-muted",
+     view.standing.lastEvaluatedYear===0
+      ?"Opening standing · first annual review has not taken place"
+      :"Last evaluated: Year "+view.standing.lastEvaluatedYear));
+   }
+   root.append(section);
   }
   if(pane==="EVENTS"){
    const section=el("section","ppw-business-panel");
