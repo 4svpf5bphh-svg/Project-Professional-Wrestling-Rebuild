@@ -5,7 +5,7 @@
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,buildBookedMatch,assignedIds,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
- bookedStyleReadiness,type ConditionSnapshot,
+ bookedStyleReadiness,bookedConditionReport,type ConditionSnapshot,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
 import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
@@ -814,6 +814,32 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         "A successful run-in supports the wrestler or team you've selected to win."));
      }
      body.append(run);
+    }
+    if(m.format!=="SINGLES"){
+     const snapshots=new Map<string,ConditionSnapshot>();
+     for(const [personId,profile] of roster)
+      snapshots.set(personId,{inRingQuality:profile.inRingQuality??null,
+       matchCraft:profile.matchCraft??null,presentation:profile.presentation??null,
+       stamina:profile.stamina??null,safety:profile.safety??null,
+       fatigue:profile.fatigue??null,wear:profile.wear??null});
+     const condition=bookedConditionReport(m,snapshots);
+     if(condition.length){
+      const sheet=document.createElement("details");
+      sheet.className="ppw-match-style";
+      sheet.append(el("summary","","Wrestler condition · all competitors"));
+      sheet.append(el("p","ppw-match-style-fineprint",
+       "Review the current condition of every booked wrestler. These figures do not confirm medical clearance or creative approval."));
+      for(const person of condition){
+       const line=el("p","ppw-match-style-fitness-row");
+       line.append(el("strong","",roster.get(person.personId)?.name??person.personId),
+        el("span","",person.known?
+         "Stamina "+person.stamina+" · Safety "+person.safety+
+         " · Fatigue "+person.fatigue+" · Wear "+person.wear:
+         "Current condition unavailable"));
+       sheet.append(line);
+      }
+      body.append(sheet);
+     }
     }
     if(m.format==="SINGLES"){
      const sheet=document.createElement("details");
