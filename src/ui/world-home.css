@@ -169,3 +169,8 @@
 .ppw-home-week-complete h3{margin:7px 0 5px;font-size:20px}
 .ppw-home-week-complete p{font-size:13px;color:#bddce9;line-height:1.5}
 .ppw-home-week-complete>.ppw-home-tile{margin-top:13px;background:#204860}
+
+.ppw-home-phase-due{
+ color:#ffd4aa;border-color:#bd865a;
+ background:rgba(84,43,26,.5);
+}
