@@ -12,6 +12,7 @@ import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readContractDesk} from "../src/db/contract-desk-workspace.js";
 import {listTalentAvailability} from "../src/db/talent-availability.js";
+import {listAvailablePromotions} from "../src/db/available-promotions.js";
 const url=process.env.PPW_NEON_TEST_URL;
 
 test("Original Genesis projection retains real economics and rejects incompatible contracts",()=>{
@@ -27,6 +28,9 @@ test("Original Genesis projection retains real economics and rejects incompatibl
  assert.equal(projected.contracts[1]!.remaining,6);
  assert.equal(projected.contracts[0]!.remaining,null);
  assert.equal(projected.people[0]!.priorities.money,65);
+ const forgedReal=originalGenesisFixture("genesis-forged-real");
+ forgedReal.promotions[0]!.identity={origin:"REAL_WORLD"};
+ assert.throws(()=>projectOriginalGenesis(forgedReal),/Incomplete original promotion/);
  const missingStanding=originalGenesisFixture("genesis-missing-standing");
  missingStanding.promotionStandings.pop();
  assert.throws(()=>projectOriginalGenesis(missingStanding),/Genesis population outside import bounds/);
@@ -63,6 +67,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
  const db=postgresPool(url!,3),world="original-genesis-"+randomUUID(),
   player="manager-"+randomUUID();
  const source=originalGenesisFixture(world);
+ source.promotions[0]!.identity={origin:"REAL_WORLD"};
+ source.promotions[0]!.playerTakeoverEligibility="LOCKED";
  try{
   const meter=new MeasuredQuerySession("original-genesis-one-time-bootstrap");
   const measured:TransactionPool={async connect(){
@@ -82,8 +88,8 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   assert.equal(preview.ready,true);
   assert.equal(preview.counts.wrestlers,643);
   assert.equal(preview.counts.promotions,8);
-  assert.equal(preview.counts.availableTakeovers,8,
-   "Fixture companies are explicitly eligible; real locked companies must not be exposed");
+  assert.equal(preview.counts.availableTakeovers,7,
+   "Protected real promotions must not appear as available player takeovers");
 
   const state=await withWorldTransaction(db.pool,async tx=>{
    const worldRow=await tx.query<{seed:string;offer_acceptance_threshold:number;
@@ -146,9 +152,16 @@ test("Original 643-person/8-promotion Genesis imports markets and championships 
   assert.deepEqual(metadata[0],{enabled:true,markets:4,states:32});
   await assert.rejects(importOriginalGenesis(db.pool,source),/duplicate key/);
   await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join-"+world,expectedRevision:0});
+  const claimable=await listAvailablePromotions(db.pool,world,null,25);
+  assert.equal(claimable.length,7);
+  assert.equal(claimable.some(p=>p.id==="promotion-0"),false,
+   "The imported real company cannot be advertised for takeover");
+  await assert.rejects(submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId:"promotion-0",requestId:"protected-"+world,expectedRevision:1}),
+   /Promotion not found/);
   await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
-   promotionId:"promotion-0",requestId:"claim-"+world,expectedRevision:1});
-  const desk=await readContractDesk(db.pool,world,player,"promotion-0");
+   promotionId:"promotion-1",requestId:"claim-"+world,expectedRevision:1});
+  const desk=await readContractDesk(db.pool,world,player,"promotion-1");
   assert.equal(desk.summary.signed,50);
   assert.equal(desk.summary.pendingOffers,0);
   assert.ok(desk.roster.every(c=>c.weeklyGuarantee>0));
