@@ -23,6 +23,7 @@ import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
+import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -339,7 +340,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      pending.length+" match approval"+(pending.length===1?"":"s")+" to resolve":
      "Your wrestlers' creative terms"));
    if(dirty)desk.append(el("p","ppw-card-creative-advice",
-    "Save the latest card before reviewing the wrestlers' terms."));
+    "These creative decisions apply to the last saved version. Save the revised card to reassess them."));
    for(const c of concerns){
     const box=el("div","ppw-card-creative-item");
     const reason=c.reason==="MATCH_APPROVAL"?
@@ -347,13 +348,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      c.reason==="PROTECTED_LOSS"?
       "A clean or submission loss needs agreement":
       "The wrestler has asked to be consulted";
-    const label=c.decision==="APPROVED"?"AGREED":
+    const label=dirty?"RECHECK AFTER SAVE":
+     c.decision==="APPROVED"?"AGREED":
      c.decision==="DECLINED"?"DECLINED":
      c.requiresConsent?"AWAITING ANSWER":"CONSULTATION";
     const wrestler=el("strong","",c.name);
     const state=el("span","ppw-card-creative-state",label);
-    state.dataset.status=c.decision;
+    state.dataset.status=dirty?"NOT_REQUESTED":c.decision;
     box.append(wrestler,state,el("p","",reason));
+    const match=matches.get(c.slotId);
+    const slotNumber=order.indexOf(c.slotId)+1;
+    box.append(el("small","ppw-card-creative-match-ref",
+     (slotNumber>0?"Slot "+slotNumber+" · ":"")+
+     (match?matchLabel(match):"Previously saved match"));
+    if(!dirty&&c.decision==="APPROVED"&&c.approvalSource==="STANDING_PROGRAMME")
+     box.append(el("small","","Covered by an active Programme agreement."));
+    if(!dirty&&c.decision==="APPROVED"&&c.approvalSource==="EXACT_MATCH")
+     box.append(el("small","","Approved for the exact saved match."));
+    if(match)box.append(button("Edit this match",()=>{
+     expanded=c.slotId;render();
+    },false,"ppw-card-creative-edit"));
     if(!dirty&&c.requiresConsent&&c.decision==="NOT_REQUESTED"&&
      port.requestCreativeConsent&&view.canEdit&&!view.ready)
      box.append(button("Ask "+c.name,()=>void requestAgreement(c.slotId,c.personId),
@@ -483,6 +497,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     indicator.dataset.complete=String(status.complete);
     indicator.title=status.hint;
     label.append(indicator);
+   }
+   if(m){
+    const review=creativeForSlot(slotId,concerns,dirty);
+    if(review.required||review.consultation){
+     const badge=el("span","ppw-card-match-creative",review.label);
+     badge.dataset.state=review.needsSavedReview?"UNSAVED":
+      review.declined?"DECLINED":review.unanswered?"REQUIRED":
+      review.required?"APPROVED":"CONSULTATION";
+     label.append(badge);
+    }
    }
    bar.append(button(expanded===slotId?"▴":"▾",()=>{
     expanded=expanded===slotId?null:slotId;render();
@@ -649,6 +673,40 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
+    const matchConcerns=concerns.filter(x=>x.slotId===slotId);
+    if(matchConcerns.length){
+     const review=el("section","ppw-card-match-consents");
+     review.append(el("h3","","Creative agreement for this match"));
+     if(dirty)review.append(el("p","ppw-card-creative-advice",
+      "The current agreements apply to the last saved version. Save to check these edits."));
+     for(const issue of matchConcerns){
+      const row=el("p","ppw-card-match-consent");
+      const status=dirty?"Recheck needed":
+       issue.reason==="CONSULTATION_REQUESTED"?"Consultation only":
+       issue.decision==="APPROVED"?
+        issue.approvalSource==="STANDING_PROGRAMME"?"Programme agreement":
+         "Exact match agreed":
+       issue.decision==="DECLINED"?"Declined":
+       "Approval needed";
+      row.append(el("strong","",issue.name+" · "),el("span","",status));
+      review.append(row);
+      if(!dirty&&issue.requiresConsent&&issue.decision==="NOT_REQUESTED"&&
+       port.requestCreativeConsent&&view.canEdit&&!view.ready)
+       review.append(button("Ask "+issue.name,()=>{
+        expanded=null;void requestAgreement(slotId,issue.personId);
+       },saving,"ppw-card-creative-ask"));
+      if(!dirty&&issue.decision==="DECLINED"){
+       const advice=consentRebookingAdvice(issue,m.plannedFinish);
+       if(advice)review.append(el("p","ppw-card-creative-advice",advice));
+       if(issue.reason==="PROTECTED_LOSS"&&
+        ["CLEAN_PIN","SUBMISSION"].includes(m.plannedFinish)&&view.canEdit&&!view.ready)
+        review.append(button("Try a protected finish",()=>{
+         edit(m,{plannedFinish:"PROTECTED_FINISH",cheatingWrestlerId:undefined});
+        },saving,"ppw-card-creative-edit"));
+      }
+     }
+     body.append(review);
+    }
     const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),
      m.teams.map((_,index)=>[String(index),m.format==="BATTLE_ROYAL"?

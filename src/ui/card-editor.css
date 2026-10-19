@@ -294,3 +294,17 @@
  background:#274e63;color:#f3fbff;border:1px solid #7bcce6;
  border-radius:9px;text-align:left;font:inherit;padding:11px}
 .ppw-card-creative-ask:focus-visible{outline:3px solid #9aeaff;outline-offset:2px}
+
+.ppw-card-match-creative{display:inline-block;font-size:11px;font-weight:700;
+ border:1px solid #568ca7;border-radius:7px;padding:4px 7px;margin-top:5px;color:#daf5ff}
+.ppw-card-match-creative[data-state="DECLINED"]{border-color:#b78b66;color:#ffe0bb}
+.ppw-card-match-creative[data-state="UNSAVED"]{border-color:#8d8ab3;color:#e7dfff}
+.ppw-card-match-creative[data-state="APPROVED"]{border-color:#5c9b7b;color:#c5ffe7}
+
+.ppw-card-creative-edit{grid-column:1/-1;min-height:44px;text-align:left;
+ padding:10px 12px;border:1px solid #6389a5;border-radius:9px;
+ background:#193b52;color:#ecfaff;font:inherit;font-weight:700}
+.ppw-card-creative-match-ref{font-weight:700;color:#def3ff!important}
+
+.ppw-card-match-consents{margin:0 0 15px;padding:13px 14px;background:#102b43;border:1px solid #537792;border-radius:12px}
+.ppw-card-match-consents h3{font-size:14px;margin:0 0 9px;color:#effaff}
