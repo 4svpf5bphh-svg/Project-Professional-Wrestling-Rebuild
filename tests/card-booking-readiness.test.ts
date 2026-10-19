@@ -33,3 +33,18 @@ test("faction decisions, alignment and signing require real choices",()=>{
  assert.equal(angleCastingReadiness({...turn,actors:[p("a")],turnTargetAlignment:null}).label,
   "CHOOSE ALLEGIANCE");
 });
+
+test("preflight catches incompatible scripted finishes and interference before save",()=>{
+ let match=newEditorMatch("interference","SINGLES");
+ match=assignPerformer(match,0,0,p("winner"));
+ match=assignPerformer(match,1,0,p("loser"));
+ assert.equal(matchCastingReadiness(match).complete,true);
+ match={...match,interference:{personId:"visitor",contractId:"visitor-deal",
+  aidedSide:"B",plannedOutcome:"SUCCESS"}};
+ assert.equal(matchCastingReadiness(match).label,"CHECK MATCH PLAN");
+ assert.match(matchCastingReadiness(match).hint,/support the winner/);
+ match={...match,interference:{...match.interference!,aidedSide:"A"}};
+ assert.equal(matchCastingReadiness(match).complete,true);
+ const multi={...match,plannedFinish:"OVER_THE_TOP_ROPE"};
+ assert.equal(matchCastingReadiness(multi).label,"CHECK MATCH PLAN");
+});
