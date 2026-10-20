@@ -187,7 +187,15 @@ function renderSection(){
  const back=()=>openSection("home");
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
-  case "home":mountWorldHomePage(view,scope,openSection);break;
+  case "home":mountWorldHomePage(view,scope,openSection,updated=>{
+   // An explicit World status check can update the shell without another read.
+   if(!updated||!view.isConnected||!session?.overview.promotion||
+    session.worldId!==scope.worldId||session.overview.promotion.id!==scope.promotionId)return;
+   session.overview.world=updated.world;
+   const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
+   if(line)line.textContent="Y"+updated.world.year+" W"+updated.world.week+
+    " · "+updated.world.name;
+  });break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
   case "card":{
@@ -202,7 +210,7 @@ function renderSection(){
      dirty=>{
       if(view.isConnected&&readHostSection(location.hash)==="card"&&
        activeBooking?.showId===showId)bookingDirty=dirty;
-     });
+     },section=>openSection(section));
    }
    break;
   }

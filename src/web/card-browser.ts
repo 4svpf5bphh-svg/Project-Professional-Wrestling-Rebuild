@@ -6,6 +6,7 @@ import "../ui/world-calendar.css";
 import "../ui/show-planner.css";
 import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
+import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
  type HomeAttentionFocus} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
@@ -44,12 +45,17 @@ type Scope=CardSessionScope;
  * Navigating does not advance simulation or create a new World.
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
- onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void){
+ onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void,
+ onOverview?:(overview:PlayerWorldOverview|null)=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
-  load:()=>call("overview"),
+  load:async()=>{
+   const latest=await call("overview") as PlayerWorldOverview|null;
+   onOverview?.(latest);
+   return latest;
+  },
   dismissAttention:attentionId=>call("dismissAttention",{attentionId}),
   dismissAttentionBatch:attentionIds=>call("dismissAttentionBatch",{attentionIds}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
@@ -90,8 +96,11 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
 }
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope,
- onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void){
+ onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void,
+ onNavigate?:(section:HostSection)=>void){
  const call=createCardClient(scope);
+ const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
+  ()=>onNavigate(section):fallback;
  function openProgrammeDesk(){
   const openResults=(showId:string)=>{
    void mountResultsPage(root,{...scope,showId},()=>{openProgrammeDesk();});
@@ -122,21 +131,21 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
    }
    mountPlannerPage(root,scope,()=>mountCardEditor(root,port));
   },
-  openProgrammes:()=>{openProgrammeDesk();},
-  openChampionships:()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));},
-  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),()=>mountCardEditor(root,port)),
-  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),()=>mountCardEditor(root,port)),
-  openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
-  openMarket:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET"),
-  openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
-  openStaff:()=>mountStaffDesk(root,staffPort(root,scope,call)),
-  openIndustry:()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),
-  openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
-   ()=>mountCardEditor(root,port)),
-  openWorkingConnections:()=>mountWorkingConnections(root,workingPort(call,root,scope),
-   ()=>mountCardEditor(root,port)),
-  openPersona:()=>mountPersonaDesk(root,personaPort(call,root,scope),
-   ()=>mountCardEditor(root,port),()=>openProgrammeDesk()),
+  openProgrammes:navigate("programmes",()=>{openProgrammeDesk();}),
+  openChampionships:navigate("championships",()=>{void mountChampionshipsPage(root,scope,()=>mountCardEditor(root,port));}),
+  openTagTeams:navigate("teams",()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),()=>mountCardEditor(root,port))),
+  openContracts:navigate("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),()=>mountCardEditor(root,port))),
+  openRoster:navigate("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
+  openMarket:navigate("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
+  openBusiness:navigate("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  openStaff:navigate("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
+  openIndustry:navigate("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
+  openStables:navigate("stables",()=>mountStableDesk(root,stablePort(call,root,scope),
+   ()=>mountCardEditor(root,port))),
+  openWorkingConnections:navigate("connections",()=>mountWorkingConnections(root,workingPort(call,root,scope),
+   ()=>mountCardEditor(root,port))),
+  openPersona:navigate("backstage",()=>mountPersonaDesk(root,personaPort(call,root,scope),
+   ()=>mountCardEditor(root,port),()=>openProgrammeDesk())),
   openProfile:(personId,holder,onClose)=>mountWrestlerProfile(holder,
    wrestlerProfilePort(call,holder,scope,onClose),personId,onClose),
  };
