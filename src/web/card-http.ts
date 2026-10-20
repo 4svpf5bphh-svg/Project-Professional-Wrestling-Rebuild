@@ -1,5 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
 import {dispatchCardRpc} from "./card-rpc.js";
+import {bookingErrorCode} from "./card-error-feedback.js";
 export interface VerifiedCardSession {
  context:WorldApiContext;
  csrfToken:string;
@@ -45,6 +46,8 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
  }catch(error){
   const message=error instanceof Error?error.message:"";
   if(/revision|stale|conflict/i.test(message))return json(409,{error:"Card changed. Reload to continue"});
-  return json(400,{error:"Booking request rejected"});
+  const code=bookingErrorCode(message);
+  return json(400,code?{error:"Booking request rejected",code}:
+   {error:"Booking request rejected"});
  }
 }
