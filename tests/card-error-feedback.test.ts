@@ -13,7 +13,14 @@ test("player-actionable canonical booking errors resolve to safe, stable categor
   ["Invalid match participants","MATCH"],
   ["Book at least one match","MATCH"],
   ["This angle has no target role","ANGLE"],
-  ["Choose a wrestler from the linked rivalry before adding this angle","PROGRAMME"]
+  ["Choose a wrestler from the linked rivalry before adding this angle","PROGRAMME"],
+  ["Mixed or missing booking division in match","DIVISION"],
+  ["Running order must include each match and segment exactly once","ORDER"],
+  ["A tag title requires 2v2 with the reigning team","TITLE"],
+  ["Show exceeds 120-minute TV slot","BUDGET"],
+  ["Show is not an editable current-week draft","CONFIRMED"],
+  ["Invalid authored segment","ANGLE"],
+  ["Booked wrestler lacks current contract rights","TALENT"]
  ] as const;
  for(const [message,code] of examples){
   assert.equal(bookingErrorCode(message),code,message);

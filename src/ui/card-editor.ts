@@ -250,6 +250,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  async function save(){
   if(!mutable()||!view||needsRevisionRefresh)return;
   try{
+   const incomplete=order.map((slotId,index)=>({index,slotId,match:matches.get(slotId),angle:segments.get(slotId)}))
+    .find(x=>x.match&&!matchCastingReadiness(x.match).complete||
+     x.angle&&!angleCastingReadiness(x.angle).complete);
+   if(incomplete){
+    expanded=incomplete.slotId;
+    throw new Error("Slot "+(incomplete.index+1)+": "+
+     (incomplete.match?matchCastingReadiness(incomplete.match).hint:
+      angleCastingReadiness(incomplete.angle!).hint));
+   }
    const segmentPayloads=[...segments.values()].map(s=>({
     slotId:s.slotId,payload:buildEditorSegment(s),programmeId:s.programmeId}));
    const payloads=[...matches.values()].map(m=>({slotId:m.slotId,
@@ -399,9 +408,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   summary.append(el("span","",matches.size+" matches"),
    el("span","",segments.size+" angles"),
    el("span","",[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0)+
-    " match minutes · angles extra"),
+    " match minutes · angles scheduled separately"),
    el("span","",order.length+" card slots"),
-   el("span","",castReady+" / "+order.length+" cast complete"),
+   el("span","",castReady+" / "+order.length+" ready to book"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
   const concerns=view.creativeConcerns??[];
@@ -555,12 +564,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const card=el("article","ppw-card");
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
+   if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
    const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
    const anglePeople=segment?[...segment.actors,...segment.targets]
     .map(person=>selectedName(person)).slice(0,3).join(" · "):"";
    const angleDetails=segment?creativeSummary(segment.creativeBeat):"";
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):angleName),
+    ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]),
     el("small","ppw-card-lineup",m?matchSubtitle(m):
       [anglePeople,angleDetails].filter(Boolean).join(" · ")||
        "Choose the wrestlers for this moment"));
@@ -1079,13 +1090,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   root.append(list);
   const foot=el("div","ppw-save");
-  foot.append(el("p","ppw-muted","Save the card, then confirm your show before the booking deadline."),
-   button(saving?"Saving…":"Save card",()=>{void save();},
+  foot.setAttribute("role","group");
+  foot.setAttribute("aria-label","Save and confirm show");
+  foot.append(button(saving?"Saving…":dirty?"Save changes":"Save card",()=>{void save();},
     !mutable()||needsRevisionRefresh||matches.size===0,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
-   view.ready?"Show confirmed":"Confirm this week’s card",
+   view.ready?"Confirmed":"Confirm show",
    ()=>{void confirm();},
    !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
+  foot.append(el("small","ppw-save-status",dirty?"Edits not saved":
+   view.ready?"Show confirmed for Week "+view.week:"Save first, then confirm"));
   root.append(foot);
   if(editShade){
    root.append(editShade);

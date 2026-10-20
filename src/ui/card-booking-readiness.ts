@@ -19,7 +19,7 @@ export function matchCastingReadiness(match:EditorMatch):SlotReadiness{
  try{buildBookedMatch(match);}
  catch(e){return {complete:false,label:"CHECK MATCH PLAN",
   hint:e instanceof Error?e.message:"Review the selected match format and finish."};}
- return {complete:true,label:"CAST COMPLETE",
+ return {complete:true,label:"READY TO BOOK",
   hint:"All positions and finish choices are valid. Save to confirm contracts, divisions and title rules."};
 }
 export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
@@ -54,7 +54,7 @@ export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
   hint:"Decide how the invited or returning wrestler responds."};
  if(angle.kind==="TURN"&&!angle.turnTargetAlignment)
   return {complete:false,label:"CHOOSE ALLEGIANCE",hint:"Set the wrestler's new alignment."};
- return {complete:true,label:"CAST COMPLETE",
+ return {complete:true,label:"READY TO BOOK",
   hint:"The roles are filled. Save the card to validate contracts and storyline eligibility."};
 }
 

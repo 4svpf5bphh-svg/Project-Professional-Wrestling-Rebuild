@@ -39,14 +39,16 @@ export function createCardClient(scope:CardSessionScope,
     try{
      const rejected:unknown=await response.json();
      if(rejected&&typeof rejected==="object"&&!Array.isArray(rejected))
-      correction=bookingErrorMessage((rejected as Record<string,unknown>).code);
+      correction=bookingErrorMessage((rejected as Record<string,unknown>).code)??
+       "The server rejected this booking, but did not identify the slot. Your edits are still on screen. Review contract dates, match divisions and angle targets, then try again.";
     }catch{ /* Unknown or proxy error: never expose its response body. */ }
    }
    throw new Error(correction??(response.status===409?
     "The World changed. Reload and review your card.":
     response.status===401?"Please sign in again":
     response.status===403?"Booking session expired. Refresh and sign in again.":
-    "Booking request failed"));
+    response.status>=500?"The game server could not save the booking. Your edits have not been discarded; retry when it is available.":
+    "The booking request was rejected. Your edits are still on screen. Check the show and try again."));
   }
   return response.json();
  };
