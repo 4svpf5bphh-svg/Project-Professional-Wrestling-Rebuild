@@ -1081,7 +1081,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const foot=el("div","ppw-save");
   foot.append(el("p","ppw-muted","Save the card, then confirm your show before the booking deadline."),
    button(saving?"Saving…":"Save card",()=>{void save();},
-    !mutable()||matches.size===0,"ppw-primary"));
+    !mutable()||needsRevisionRefresh||matches.size===0,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
    view.ready?"Show confirmed":"Confirm this week’s card",
    ()=>{void confirm();},
