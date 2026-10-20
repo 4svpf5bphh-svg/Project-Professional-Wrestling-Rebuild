@@ -88,6 +88,30 @@ test("missing or forged tag affiliations never become fake live teams",()=>{
  outsider.teamMemberships![0]!.personId="not-in-world";
  assert.throws(()=>extractOriginalMainFreshGenesis(outsider),/Invalid original tag team member/);
 });
+test("parent-booking affiliation never grants a new contract or invents one",()=>{
+ const state=freshOriginalState();
+ const mapped=extractOriginalMainFreshGenesis(state);
+ const pair=mapped.wrestlerPromotionAffiliations!.find(a=>
+  a.basis==="PARENT_COMPANY"&&a.promotionId===state.promotions[3]!.id)!;
+ assert.equal(pair.personId,state.people[0]!.id);
+ assert.equal(state.contracts.some(c=>c.personId===pair.personId&&
+  c.promotionId===state.promotions[3]!.id),false,
+  "A child's roster identity must not duplicate WWE's original contract");
+ const outsider=freshOriginalState();
+ outsider.wrestlerPromotionAffiliations!.find(a=>
+  a.basis==="PARENT_COMPANY")!.personId=outsider.people[2]!.id;
+ assert.throws(()=>extractOriginalMainFreshGenesis(outsider),
+  /affiliation lacks owner contract/);
+ const forged=freshOriginalState();
+ forged.promotions[3]!.identity!.parentPromotionId=null;
+ assert.throws(()=>extractOriginalMainFreshGenesis(forged),
+  /affiliation lacks owner contract/);
+ const duplicate=freshOriginalState();
+ duplicate.wrestlerPromotionAffiliations!.push({
+  ...duplicate.wrestlerPromotionAffiliations![0]!
+ });
+ assert.throws(()=>extractOriginalMainFreshGenesis(duplicate),/Duplicate original wrestler affiliation/);
+});
 test("missing portable identity, standings and forged unlocked real company block export",()=>{
  const missing=freshOriginalState();
  missing.wrestlerIdentities!.pop();
