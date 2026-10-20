@@ -22,6 +22,7 @@ export interface OriginalMainFreshState{
  contracts:OriginalGenesisSource["contracts"];
  teams?:OriginalGenesisSource["teams"];
  teamMemberships?:OriginalGenesisSource["teamMemberships"];
+ wrestlerPromotionAffiliations?:OriginalGenesisSource["wrestlerPromotionAffiliations"];
  wrestlerIdentities?:Array<{
   personId:string;active:{
    gimmickId:string;personaName:string;
@@ -62,6 +63,9 @@ export function extractOriginalMainFreshGenesis(
  if(!Array.isArray(state.teams)||!Array.isArray(state.teamMemberships)||
   state.teams.length===0||state.teamMemberships.length<2)
   throw new Error("Original main fresh tag teams have not been seeded");
+ if(!Array.isArray(state.wrestlerPromotionAffiliations)||
+  state.wrestlerPromotionAffiliations.length<50)
+  throw new Error("Original main is missing its parent-company roster affiliations");
  const source:OriginalGenesisSource={
   world:structuredClone(state.world),ruleset:structuredClone(state.ruleset),
   markets:structuredClone(state.markets),
@@ -72,6 +76,7 @@ export function extractOriginalMainFreshGenesis(
   contracts:structuredClone(state.contracts),
   teams:structuredClone(state.teams),
   teamMemberships:structuredClone(state.teamMemberships),
+  wrestlerPromotionAffiliations:structuredClone(state.wrestlerPromotionAffiliations),
   personas:identities.map(identity=>({
    personId:identity.personId,
    persona:{
