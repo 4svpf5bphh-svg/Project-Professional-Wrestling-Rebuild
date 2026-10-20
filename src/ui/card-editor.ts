@@ -17,7 +17,6 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
-import {createAlignmentGuide} from "./alignment-guide.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
@@ -514,7 +513,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const id="angle-"+crypto.randomUUID();
    segments.set(id,newEditorSegment(id));
    order.push(id);expanded=id;markDirty();render();
-  },!mutable()));
+  },!mutable(),"ppw-add-angle"));
+  toolbar.append(button("↪ Book a turn",()=>{
+   const id="angle-"+crypto.randomUUID();
+   segments.set(id,newEditorSegment(id,"TURN"));
+   order.push(id);expanded=id;markDirty();render();
+  },!mutable(),"ppw-add-turn"));
   const extras=el("div","ppw-management-links");
   if(port.openPlanner)
    extras.append(button("Show Planner",()=>port.openPlanner?.(),dirty||saving));
@@ -620,15 +624,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(!next||!mutable())return;
     order=next;markDirty();render();
    };
-   const earlier=button("↑",move(up),!mutable()||!up);
-   const later=button("↓",move(down),!mutable()||!down);
+   const earlier=button("↑",move(up),!mutable()||!up,"ppw-reorder-accessible");
+   const later=button("↓",move(down),!mutable()||!down,"ppw-reorder-accessible");
    earlier.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" earlier");
    later.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" later");
    earlier.title="Move earlier";later.title="Move later";
    // Touch/Pen/Mouse drag handle, while labelled arrows remain the accessible
    // keyboard alternative. No item moves or saves until pointer release.
    const grip=el("span","ppw-card-grip","⠿");
-   grip.title="Drag to change running order; arrow buttons also work";
+   grip.title="Drag to change running order. Keyboard: focus handle then use Up or Down.";
    grip.setAttribute("aria-hidden","true");
    let dragPointer:number|null=null,dragStartY=0,dragging=false,dropId=slotId;
    let pointerX=0,pointerY=0,edgeSpeed=0,edgeFrame=0;
@@ -729,14 +733,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
       .map(x=>[x.value,x.label]),value=>
       setAngle(value as EditorSegment["kind"]),!mutable())));
-    controls.append(field("On-screen outcome",selector(segment.outcome,
-     [["HAPPENS","Plays out as booked"],["REFUSED","Wrestler refuses to take part"],["INTERRUPTED","Interrupted on screen"]],
-     v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
-    controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
+     controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
      [2,3,4,5,6,8,10,12,15,20,25,30].map(n=>[String(n),n+" min"]),
      value=>editSegment(segment,{durationMinutes:Number(value)}),!mutable())));
-    controls.append(el("p","ppw-angle-guidance","This is a scripted wrestling show: you choose the finish of the scene. ‘Plays out as booked’ means your angle happens; ‘refuses’ and ‘interrupted’ are deliberate story directions, not a random simulation override."));
-    if(supportsCreativeBeat(segment.kind)){
+     if(supportsCreativeBeat(segment.kind)){
      if(!segment.creativeBeat){
       controls.append(button("Script the exact angle",()=>{
        editSegment(segment,{creativeBeat:initialCreativeBeat(segment.kind)});
@@ -905,25 +905,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
      body.append(review);
     }
-    if(m.format==="SINGLES"&&m.teams.length===2){
-     const left=m.teams[0]?.[0],right=m.teams[1]?.[0];
-     const a=left?roster.get(left.personId)?.alignment:null;
-     const b=right?roster.get(right.personId)?.alignment:null;
-     if(a||b){
-      const clash=el("div","ppw-alignment-context");
-      clash.append(el("strong","","Crowd roles · "+(a??"Unknown")+" vs "+(b??"Unknown")),
-       el("span","",
-        a&&b&&((a==="FACE"&&b==="HEEL")||(a==="HEEL"&&b==="FACE"))?
-         "Classic face versus heel: a clear favourite and antagonist helps the crowd invest.":
-        a&&b&&a===b?
-         "Both wrestlers share the same alignment. Fans may be split on who to support.":
-        a==="TWEENER"||b==="TWEENER"?
-         "A tweener blurs the good-guy/bad-guy divide and adds unpredictability.":
-         "Alignment is part of crowd reaction. Face versus heel usually makes the rivalry easier to follow."));
-      body.append(clash);
-     }
-    }
-    const controls=el("div","ppw-control-grid");
+     const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),
      m.teams.map((_,index)=>[String(index),m.format==="BATTLE_ROYAL"?
       "Entrant "+(index+1):"Side "+sideLabel(index)]),
@@ -1214,7 +1196,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    view.ready?"Show confirmed for Week "+view.week:"Save first, then confirm"));
   root.append(foot);
   if(editShade){
-   root.append(editShade);
+   document.body.append(editShade);
    if(!priorModal){
     editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
    }
@@ -1250,7 +1232,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     value=>{current.division=value as typeof current.division;render();});
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
-   sheet.append(createAlignmentGuide());
+
    const matchForPicker=matches.get(current.slotId);
    const chosen=current.role==="RUN_IN"?null:
     matchForPicker?.teams[current.side]?.[current.member]??null;
@@ -1313,10 +1295,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    sheet.append(rows);
    if(current.cursor)sheet.append(button("Load more",()=>{void findTalent(current.query,true);}));
-   shade.append(sheet);root.append(shade);
+   shade.append(sheet);document.body.append(shade);
   }
  }
  function sideLabel(index:number){return String.fromCharCode(65+index);}
  void load();
- return {reload:load,destroy:()=>{root.replaceChildren();root.classList.remove("ppw-editor");}};
+ return {reload:load,destroy:()=>{
+  document.querySelectorAll(".ppw-card-edit-shade,.ppw-sheet-shade").forEach(x=>x.remove());
+  root.replaceChildren();root.classList.remove("ppw-editor");
+ }};
 }

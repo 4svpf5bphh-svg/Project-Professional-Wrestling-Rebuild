@@ -104,3 +104,17 @@
 .ppw-wrestler-card[data-alignment="HEEL"] .ppw-wrestler-alignment{background:#85264c66;color:#ffd2df}
 .ppw-wrestler-card[data-alignment="TWEENER"] .ppw-wrestler-alignment{background:#68419d80;color:#ead4ff}
 @media(min-width:610px){.ppw-wrestler-card{grid-template-columns:minmax(0,1fr) auto}}
+
+.ppw-wrestler-division[data-division="MEN"]{color:#85eaff;background:#123b55;
+ border:1px solid #2fa8d8;padding:5px 8px;border-radius:6px}
+.ppw-wrestler-division[data-division="WOMEN"]{color:#ffd8f1;background:#602657;
+ border:1px solid #ef70bf;padding:5px 8px;border-radius:6px}
+.ppw-wrestler-division[data-division="UNKNOWN"]{color:#edd6ac;background:#574325;
+ border:1px solid #b99352;padding:5px 8px;border-radius:6px}
+.ppw-wrestler-status,.ppw-wrestler-finisher{
+ border-radius:8px!important;padding:8px 11px!important;
+ background:linear-gradient(110deg,#1b4b53,#19334e)!important;
+ border:1px solid #62afbc!important;color:#c5fff1!important}
+.ppw-wrestler-card .ppw-wrestler-status-blocked{
+ background:linear-gradient(110deg,#67294c,#402a4c)!important;
+ color:#ffe0e9!important;border-color:#d579a8!important}

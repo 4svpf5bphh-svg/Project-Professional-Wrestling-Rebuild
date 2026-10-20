@@ -295,3 +295,11 @@
 .ppw-messenger .ppw-gimmick-choice strong{color:#eafbff;font-size:14px}
 .ppw-messenger .ppw-gimmick-choice small{color:#a4b8f8;font-size:11px}
 .ppw-messenger .ppw-gimmick-choice span{color:#bed2e3;font-size:12px}
+
+.ppw-messenger .ppw-backstage-tabs{border:0!important;box-shadow:none!important;
+ padding:3px!important;background:#dbe6f5!important;border-radius:15px!important}
+.ppw-messenger .ppw-backstage-tabs button{color:#33435b!important;
+ border-radius:12px!important;background:transparent!important}
+.ppw-messenger .ppw-backstage-tabs button.ppw-persona-selected{
+ background:white!important;color:#1554a2!important;
+ box-shadow:0 2px 7px #19294e28!important}

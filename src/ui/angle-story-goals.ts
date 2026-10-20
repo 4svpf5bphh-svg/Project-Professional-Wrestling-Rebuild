@@ -2,7 +2,7 @@
  * Each goal selects an already-supported segment, not a new outcome type.
  */
 import {ANGLE_TYPES,type EditorSegment} from "./card-segment-model.js";
-export type AngleGoal="CHARACTER"|"RIVALRY"|"CHALLENGE"|"FACTION"|"ARRIVAL"|"VIDEO";
+export type AngleGoal="CHARACTER"|"RIVALRY"|"CHALLENGE"|"FACTION"|"TURN"|"ARRIVAL"|"VIDEO";
 type Kind=EditorSegment["kind"];
 export const ANGLE_STORY_GOALS:readonly{
  value:AngleGoal;label:string;description:string;types:readonly Kind[];
@@ -14,7 +14,8 @@ export const ANGLE_STORY_GOALS:readonly{
  {value:"CHALLENGE",label:"Challenge",description:"Issue a challenge or stage a tense signing in front of the crowd.",
   types:["CHALLENGE","CONTRACT_SIGNING"]},
  {value:"FACTION",label:"Alliances",description:"Invite, reject, betray, expel or reunite wrestlers.",
-  types:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION","TURN"]},
+  types:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"]},
+ {value:"TURN",label:"Wrestler turn",description:"Book a face, heel or tweener turn on television.",types:["TURN"]},
  {value:"ARRIVAL",label:"Arrival",description:"Introduce a new face live in front of the audience.",
   types:["DEBUT"]},
  {value:"VIDEO",label:"Video",description:"Build anticipation with a package, recap or teaser.",

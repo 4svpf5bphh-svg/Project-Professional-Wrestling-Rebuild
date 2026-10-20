@@ -375,3 +375,62 @@ body:has(.ppw-card-edit-shade) .ppw-shell-menu{visibility:hidden;pointer-events:
 .ppw-angle-direct-target{grid-column:1/-1;padding:9px 10px;
  background:linear-gradient(110deg,#263c59,#242548);
  border:1px solid #667bc1;border-radius:10px;color:#cde2f8}
+
+/* One viewport-level booking dialog; Safari scrolling stays on this sheet.
+   Do not apply transforms to a fixed modal nested inside an animated page. */
+body>.ppw-card-edit-shade{z-index:505!important;position:fixed!important;
+ inset:0!important;display:flex!important;align-items:flex-end;
+ justify-content:center;overflow:hidden!important;overscroll-behavior:none}
+body>.ppw-card-edit-shade>.ppw-card-edit-sheet{
+ width:100%;height:auto;max-height:min(88dvh,calc(100dvh - env(safe-area-inset-top) - 16px));
+ overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;touch-action:pan-y;background:#13263d;
+ border-radius:24px 24px 0 0;box-shadow:0 -30px 90px #010710c9;
+ padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+body>.ppw-card-edit-shade .ppw-card-body{overflow:visible!important;max-height:none!important}
+body>.ppw-sheet-shade{z-index:550!important}
+body:has(>.ppw-card-edit-shade){overflow:hidden}
+body:has(>.ppw-sheet-shade){overflow:hidden}
+.ppw-editor .ppw-reorder-accessible{position:absolute;clip-path:inset(50%);
+ width:1px;height:1px;overflow:hidden;white-space:nowrap;border:0;padding:0}
+.ppw-editor .ppw-reorder-accessible:focus-visible{clip-path:none;position:relative;
+ width:44px;height:44px;outline:2px solid #68def9;background:#253d69;z-index:2}
+.ppw-editor .ppw-actions{position:relative}
+.ppw-main-event-flag{background:#ffd15e!important;color:#24142b!important;
+ border-color:#ffe4a0!important;font-weight:950!important;text-shadow:none!important}
+.ppw-booking-readiness[data-complete="true"]{border:1px solid #46bfa6!important;
+ color:#092c2b!important;background:#8cf1cf!important;border-radius:7px!important;
+ padding:5px 9px!important;letter-spacing:.055em;font-weight:900!important}
+.ppw-editor .ppw-add-angle,.ppw-editor .ppw-add-turn{
+ border:2px solid #ffb7de;background:linear-gradient(115deg,#be237d,#6f44ca)!important;
+ color:white!important;font-weight:900;min-height:48px;
+ box-shadow:0 3px 0 #552444,0 10px 22px #0004}
+.ppw-editor .ppw-add-turn{background:linear-gradient(115deg,#44327b,#2674b4)!important;
+ border-color:#94c4ff}
+.ppw-editor .ppw-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ppw-editor .ppw-toolbar>select{grid-column:1/-1}
+.ppw-editor .ppw-field select,.ppw-editor .ppw-field input,
+body>.ppw-card-edit-shade select,body>.ppw-card-edit-shade input{
+ background:#222641!important;color:#fdf4d7!important;border:1.5px solid #796fb4!important;
+ border-radius:13px!important;min-height:50px!important;padding:10px 13px!important;
+ font-size:16px!important;box-shadow:inset 0 1px #ffffff18,0 3px 0 #0a0d24;
+ max-width:100%;min-width:0}
+body>.ppw-card-edit-shade .ppw-field{color:#a9defa;font-weight:850;
+ letter-spacing:.025em;gap:7px}
+body>.ppw-card-edit-shade .ppw-side{display:block;width:auto;margin:14px 0;
+ padding:14px;border:1.5px solid #7367b4;background:linear-gradient(130deg,#222a51,#19243d);
+ box-shadow:inset 4px 0 #b18cf9;border-radius:15px}
+body>.ppw-card-edit-shade .ppw-side h3{font-size:15px;color:#ffe1a5}
+body>.ppw-card-edit-shade .ppw-picker-button{min-height:48px;border-radius:11px;
+ background:linear-gradient(105deg,#25526a,#40336c);border:1px solid #8bafd9;
+ color:#effcff;font-weight:800}
+@media(min-width:840px){body>.ppw-card-edit-shade{align-items:center;padding:22px}
+ body>.ppw-card-edit-shade>.ppw-card-edit-sheet{border-radius:23px;max-height:calc(100dvh - 50px)}}
+@media(prefers-reduced-motion:no-preference){
+ body>.ppw-card-edit-shade{animation:ppw-modal-scrim .18s ease-out both}
+ body>.ppw-card-edit-shade>.ppw-card-edit-sheet{
+ animation:ppw-modal-arrival .29s cubic-bezier(.18,.75,.24,1.04) both}
+ @keyframes ppw-modal-scrim{from{opacity:0}to{opacity:1}}
+ @keyframes ppw-modal-arrival{from{transform:translateY(48px);opacity:.4}
+ to{transform:translateY(0);opacity:1}}
+}

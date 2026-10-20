@@ -87,3 +87,17 @@
 .ppw-business-standing-card>strong{font-size:clamp(18px,4.5vw,24px);font-variant-numeric:tabular-nums}
 .ppw-business-standing-card>small{font-size:12px;color:#b0c4d4;line-height:1.4}
 @media(max-width:340px){.ppw-business-standing-grid{grid-template-columns:1fr}}
+
+/* Financial ledger: absolutely no invisible figures or broken currency words. */
+.ppw-business-line{display:grid!important;grid-template-columns:minmax(0,1fr) max-content!important;
+ column-gap:15px;align-items:center!important;min-height:50px}
+.ppw-business-line>span{min-width:0}
+.ppw-business-line>strong{display:block!important;visibility:visible!important;
+ opacity:1!important;color:#fff7d9!important;font-size:15px!important;line-height:1.2;
+ white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important;
+ text-align:right;min-width:max-content}
+.ppw-business-total{align-items:start!important;grid-template-columns:minmax(0,1fr) auto!important}
+.ppw-business-total>strong{color:#85ffcf!important}
+.ppw-business-panel{overflow:visible!important}
+@media(max-width:420px){.ppw-business-total>strong{font-size:14px!important}
+ .ppw-business-line{font-size:13px}}

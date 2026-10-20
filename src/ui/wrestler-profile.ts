@@ -2,7 +2,6 @@
  * Loaded explicitly on open; quick cards use their existing bounded pages.
  */
 import {createWrestlerCard,wrestlerLabel} from "./wrestler-card.js";
-import {createAlignmentGuide} from "./alignment-guide.js";
 import type {readWrestlerProfile} from "../db/wrestler-profile.js";
 import type {editWrestlerRepertoire} from "../db/wrestler-profile.js";
 import type {CareerView} from "../db/wrestler-career.js";
@@ -91,7 +90,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    status:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
   },{context:view.onYourRoster?"ROSTER":"MARKET",
    label:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"NOT ON YOUR ROSTER"}));
-  root.append(createAlignmentGuide());
+
   const attrs=section("Performance & standing");
   const grid=el("div","ppw-profile-statgrid");
   for(const [label,number] of [

@@ -462,3 +462,33 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
 @media(prefers-reduced-motion:reduce){
  #game *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* Legacy form/button finishing across all departments, not just Home. */
+#game :is(select,input:not([type="checkbox"]),textarea){
+ accent-color:#db64d4;transition:border-color .14s,box-shadow .14s;
+ border:1.5px solid #7671b0;border-radius:12px;
+ background:linear-gradient(120deg,#222745,#1a2942);color:#fff4e6;
+ box-shadow:inset 0 1px #ffffff17,0 3px 0 #0c1026;
+ font-size:max(16px,1rem);min-width:0}
+#game :is(select,input,textarea):focus-visible{outline:2px solid #4be5f8;
+ outline-offset:2px;box-shadow:0 0 0 4px #4be5f828}
+#game :is(.ppw-directory-button,.ppw-calendar-button,.ppw-contract-button,
+ .ppw-picker-button,.ppw-business-action,.ppw-profile-action,.ppw-persona-button){
+ background:linear-gradient(115deg,#233e66,#44306a);border:1px solid #8a81c2;
+ color:#fff1d5;font-weight:800;box-shadow:inset 0 1px #ffffff18,0 3px 0 #121125}
+#game :is(.ppw-directory-button,.ppw-calendar-button,.ppw-contract-button,
+ .ppw-business-action,.ppw-profile-action,.ppw-persona-button):active{
+ filter:brightness(1.15)}
+#game :is(.ppw-business-head,.ppw-calendar-header,.ppw-planner-header){
+ padding-top:15px!important}
+#game :is(.ppw-calendar-week,.ppw-calendar-week-header,.ppw-calendar-week-heading){
+ padding-inline:12px!important}
+#game .ppw-business-panel{isolation:isolate}
+#game .ppw-business-line>strong{overflow-wrap:normal!important;white-space:nowrap}
+@media(prefers-reduced-motion:no-preference){
+ #game button:not(:disabled):active{filter:brightness(1.15)}
+ #game :is(.ppw-calendar-week,.ppw-wrestler-card,.ppw-business-metric,.ppw-card){
+ transition:border-color .19s ease,box-shadow .19s ease}
+ #game :is(.ppw-calendar-week,.ppw-wrestler-card,.ppw-business-metric):focus-within{
+ box-shadow:0 0 0 2px #4ce8ff6a,0 13px 32px #0005}
+}
