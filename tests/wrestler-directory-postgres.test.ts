@@ -142,7 +142,9 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   const sample=await readWrestlerDirectory(measured,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",limit:25});
   assert.equal(sample.people.length,25);
-  assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:18000}).queryCount,2);
+  // The single existing auth row now carries the original World seed for
+  // authentic deterministic wrestler alignments. This adds only a few bytes.
+  assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:18080}).queryCount,2);
   // Real card RPC uses the actor from auth, not a browser-provided ID.
   const rpc=await dispatchCardRpc(context,"wrestlerDirectory",{
    worldId:world,promotionId,playerId:"attacker",filter:{view:"ROSTER",limit:5}}) as unknown as Awaited<ReturnType<typeof readWrestlerDirectory>>;
