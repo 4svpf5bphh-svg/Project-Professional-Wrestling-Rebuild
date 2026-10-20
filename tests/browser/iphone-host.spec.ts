@@ -325,6 +325,47 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  expect(methods).not.toContain("wrestlerProfile");
  expect(methods.filter(x=>x==="tagTeams").length).toBe(2);
 });
+test("parent-company affiliates remain visible on the iPhone roster without editable parent contracts",async({page})=>{
+ const people=[{
+  personId:"nxt-entrant",name:"NXT Rookie",ringName:"NXT Rookie",division:"WOMEN",
+  popularity:64,recognition:60,momentum:72,inRingQuality:71,matchCraft:67,
+  presentation:74,morale:80,availability:"YOUR_ROSTER",family:"EXCLUSIVE",
+  remainingDates:null,startsInWeeks:0,weeksRemaining:26,
+  affiliatedViaParent:true,contractOwnerName:"WWE",
+  weeklyGuarantee:12000,appearanceFee:0,pendingOffer:false
+ },{
+  personId:"own-entrant",name:"Direct Wrestler",ringName:"Direct Wrestler",division:"MEN",
+  popularity:65,recognition:63,momentum:68,inRingQuality:73,matchCraft:66,
+  presentation:70,morale:70,availability:"YOUR_ROSTER",family:"LIMITED_NON_EXCLUSIVE",
+  remainingDates:4,startsInWeeks:0,weeksRemaining:6,
+  affiliatedViaParent:false,contractOwnerName:null,
+  weeklyGuarantee:0,appearanceFee:5000,pendingOffer:false
+ }];
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const body=route.request().postDataJSON();
+  methods.push(String(body.method));
+  return route.fulfill({json:body.method==="wrestlerDirectory"?{
+   view:"ROSTER",year:1,week:5,worldRevision:4,canEdit:true,
+   hasMore:false,currentWeekIndex:4,people}:{}});
+ });
+ await page.goto("/#/roster");
+ await expect(page.getByText("NXT Rookie")).toBeVisible();
+ const cards=page.locator(".ppw-directory-card");
+ await expect(cards).toHaveCount(2);
+ const child=cards.first();
+ await expect(child.getByText("PARENT-COMPANY ROSTER")).toBeVisible();
+ await child.locator("summary").click();
+ await expect(child.getByText(/Roster appearance through WWE/)).toBeVisible();
+ await expect(child.getByText(/The parent owns the contract and wages/)).toBeVisible();
+ await expect(child.getByRole("button",{name:"Manage contract →"})).toHaveCount(0);
+ const direct=cards.nth(1);
+ await direct.locator("summary").click();
+ await expect(direct.getByRole("button",{name:"Manage contract →"})).toBeVisible();
+ expect(methods).toEqual(["wrestlerDirectory"],
+  "These details must come from the same bounded roster read");
+});
 test("Roster dossiers preserve filters and expanded cards without reloading the directory",async({page})=>{
  const methods:string[]=[];
  const directory={view:"ROSTER",year:1,week:5,worldRevision:4,canEdit:true,
