@@ -10,7 +10,8 @@ import {parseOriginalExportArgs,verifyOriginalMainRepository}
 function freshOriginalState():OriginalMainFreshState{
  const f=originalGenesisFixture("original-fresh");
  const originalEight=f.promotions.map((p,i)=>({
-  ...p,identity:{origin:"REAL_WORLD" as const},
+  ...p,identity:{origin:"REAL_WORLD" as const,
+   parentPromotionId:i===3?f.promotions[0]!.id:i===6?f.promotions[1]!.id:null},
   playerTakeoverEligibility:"LOCKED" as const
  }));
  const extra=Array.from({length:5},(_,i)=>{
@@ -36,12 +37,23 @@ function freshOriginalState():OriginalMainFreshState{
    provenance:"CURATED" as const
   }
  }));
+ const affiliations=[
+  ...f.contracts.slice(0,50).map(c=>({
+   worldId:f.world.id,personId:c.personId,promotionId:c.promotionId,
+   role:"PRIMARY" as const,basis:"CONTRACT" as const
+  })),
+  {worldId:f.world.id,personId:f.people[0]!.id,promotionId:originalEight[3]!.id,
+   role:"PRIMARY" as const,basis:"PARENT_COMPANY" as const},
+  {worldId:f.world.id,personId:f.people[1]!.id,promotionId:originalEight[6]!.id,
+   role:"PRIMARY" as const,basis:"PARENT_COMPANY" as const}
+ ];
  const people=f.people.map(p=>({
   ...p,division:p.bookingDivision,
   bookingDivision:undefined,portableGimmickId:undefined
  }));
  return {...f,promotions,promotionStandings:standings,
   promotionMarketStates:markets,people,wrestlerIdentities:identities,
+  wrestlerPromotionAffiliations:affiliations,
   teams:[{worldId:f.world.id,id:"original-team",name:"Actual Partners",status:"ACTIVE"}],
   teamMemberships:[{worldId:f.world.id,teamId:"original-team",personId:people[0]!.id,active:true},
    {worldId:f.world.id,teamId:"original-team",personId:people[1]!.id,active:true}]};
@@ -60,6 +72,9 @@ test("true original-main WorldState produces exact real-world population and pro
  assert.equal(projectOriginalGenesis(out).personas.length,643);
  assert.equal(out.people[0]?.bookingDivision,"WOMEN");
  assert.equal(projectOriginalGenesis(out).contracts.length,400);
+ assert.equal(projectOriginalGenesis(out).rosterAffiliations.length,52);
+ assert.equal(projectOriginalGenesis(out).promotions[3]?.parentPromotionId,
+  state.promotions[0]!.id);
  assert.equal(projectOriginalGenesis(out).teams[0]?.name,"Actual Partners");
  assert.equal(projectOriginalGenesis(out).teamMemberships.length,2);
  assert.equal(JSON.stringify(state),raw,
