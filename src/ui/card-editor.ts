@@ -633,8 +633,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    let dragPointer:number|null=null,dragStartY=0,dragging=false,dropId=slotId;
    let pointerX=0,pointerY=0,edgeSpeed=0,edgeFrame=0;
    const chooseTarget=()=>{
-    const candidate=document.elementFromPoint(pointerX,pointerY)
-     ?.closest<HTMLElement>(".ppw-card[data-booking-slot-id]");
+    // Coordinate hit testing remains reliable during pointer capture, even
+    // when an iPhone browser has lifted the dragged grip above other elements.
+    const candidate=[...root.querySelectorAll<HTMLElement>(
+     ".ppw-card[data-booking-slot-id]")].find(node=>{
+      const box=node.getBoundingClientRect();
+      return pointerX>=box.left-14&&pointerX<=box.right+14&&
+       pointerY>=box.top&&pointerY<=box.bottom;
+     });
     const id=candidate?.dataset.bookingSlotId;
     if(!id||id===dropId)return;
     root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
