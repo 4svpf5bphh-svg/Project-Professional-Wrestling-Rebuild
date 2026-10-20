@@ -30,6 +30,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
  let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
  let mode:"mine"|"world"="mine",ppvOnly=false;
+ let pendingChange:{fingerprint:string;requestId:string}|null=null;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -49,18 +50,32 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const checked=calendarSeriesPreview(editing,data.series,data.year,data.week);
    if(!checked.valid){error=checked.message;render();return;}
   }
-  busy=true;render();
+  const input=archiveId?{expectedRevision:data.worldRevision,seriesId:archiveId}:
+   {expectedRevision:data.worldRevision,series:{...editing!}};
+  const fingerprint=JSON.stringify(input);
+  if(!pendingChange||pendingChange.fingerprint!==fingerprint)
+   pendingChange={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingChange.requestId;
+  busy=true;error="";render();
   try{
-   const shared={requestId:crypto.randomUUID(),expectedRevision:data.worldRevision};
    const result=archiveId?
-    await port.archive({...shared,seriesId:archiveId}):
-    await port.save({...shared,series:editing!});
-   if(result&&typeof result==="object"&&"status" in result&&
-    result.status==="STALE"){
+    await port.archive({requestId,expectedRevision:data.worldRevision,seriesId:archiveId}):
+    await port.save({requestId,expectedRevision:data.worldRevision,series:{...editing!}});
+   const status=result&&typeof result==="object"&&"status" in result?
+    result.status:null;
+   if(status==="STALE"){
+    // A second manager may have changed a contract in this same World.
+    // Refresh the authoritative revision without discarding this event edit.
+    pendingChange=null;
     data=await port.load();
-    throw new Error("The schedule has changed. Review the latest dates before saving.");
+    throw new Error("The World changed. Your event choices are preserved. Review the dates and save again.");
    }
-   data=await port.load();editing=null;error="";
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("The calendar change was not confirmed. Your choices remain available to retry.");
+   // The command receipt survives a lost HTTP reply OR failed post-save read.
+   // A retry with the same ID replays the result, not a second series INSERT.
+   const refreshed=await port.load();
+   data=refreshed;editing=null;pendingChange=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Calendar change failed";}
   finally{busy=false;render();}
  }
