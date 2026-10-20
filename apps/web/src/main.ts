@@ -217,7 +217,7 @@ function renderSection(){
  const host=document as Document&{
   startViewTransition?:(update:()=>void)=>{finished:Promise<void>};
  };
- if(!reduced&&host.startViewTransition&&game.firstElementChild)
+ if(section!=="card"&&!reduced&&host.startViewTransition&&game.firstElementChild)
   void host.startViewTransition(()=>game.replaceChildren(view)).finished.catch(()=>{});
  else game.replaceChildren(view);
  const back=()=>openSection("home");
