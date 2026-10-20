@@ -254,7 +254,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     .find(x=>x.match&&!matchCastingReadiness(x.match).complete||
      x.angle&&!angleCastingReadiness(x.angle).complete);
    if(incomplete){
-    expanded=incomplete.slotId;
     throw new Error("Slot "+(incomplete.index+1)+": "+
      (incomplete.match?matchCastingReadiness(incomplete.match).hint:
       angleCastingReadiness(incomplete.angle!).hint));
