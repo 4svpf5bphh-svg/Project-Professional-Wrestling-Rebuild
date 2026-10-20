@@ -9,7 +9,7 @@ const ready:PreviewPopulation={
  venues:60,markets:20,championships:26,availableTakeovers:5,
  controlledPromotions:0,humanManagers:0,
  women:203,protectedRealPromotions:8,activeTagTeams:14,
- activePersonas:643,genesisImports:1
+ activePersonas:643,genesisImports:1,viableParentRosters:2
 };
 test("a complete population with two claimable promotions can be previewed",()=>{
  assert.deepEqual(assessPlaytestPopulation(ready).issues,[]);
@@ -44,4 +44,10 @@ test("a synthetic 643-person World cannot bypass original-content preflight",()=
  assert.match(invalid.issues.join(" "),/tag partnerships/i);
  assert.match(invalid.issues.join(" "),/wrestler-owned moves/i);
  assert.match(invalid.issues.join(" "),/verified original Genesis/i);
+});
+
+test("preview blocks missing WWE/NXT and AEW/ROH signed roster lineage before World Lock",()=>{
+ const broken=assessPlaytestPopulation({...ready,viableParentRosters:1});
+ assert.equal(broken.ready,false);
+ assert.match(broken.issues.join(" "),/Original parent-company NXT\/ROH/);
 });
