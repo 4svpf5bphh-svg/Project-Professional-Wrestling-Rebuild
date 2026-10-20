@@ -58,3 +58,30 @@ test("iPhone clears confirmed title and business news but never the unprepared s
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(methods).toEqual(["overview","dismissAttentionBatch"]);
 });
+
+test("championship directory renders distinctive original title engravings without extra requests",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);calls.push(method);
+  return route.fulfill({json:method==="championships"?{
+   worldName:"Genesis",year:1,week:5,viewerPromotionId:"local",
+   titles:[
+    {promotionId:"local",championshipId:"singles",promotionName:"Home",
+     name:"World Championship",division:"SINGLES",status:"ACTIVE",prestige:90,
+     currentReignId:"one",holderId:"alice",holderType:"PERSON",holderName:"Alice",defenses:1},
+    {promotionId:"local",championshipId:"tag",promotionName:"Home",
+     name:"Tag Team Championship",division:"TAG",status:"ACTIVE",prestige:75,
+     currentReignId:null,holderId:null,holderType:null,holderName:null,defenses:0}
+   ]
+  }:method==="overview"?world:{}});
+ });
+ await page.goto("/#/championships");
+ await expect(page.locator(".ppw-belt-card")).toHaveCount(2);
+ await expect(page.locator(".ppw-title-engraving")).toHaveCount(2);
+ await expect(page.locator(".ppw-belt-tag .ppw-title-engraving-crown")).toHaveCount(1);
+ await expect(page.locator(".ppw-belt-singles .ppw-title-engraving-crown")).toHaveCount(1);
+ await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();
+ expect(calls).toEqual(["championships"]);
+});

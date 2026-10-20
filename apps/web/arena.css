@@ -223,3 +223,66 @@ transition:transform .13s ease,border-color .13s ease,filter .13s ease}
  #game .ppw-card-grip{width:20px;font-size:20px}
  #game .ppw-card-bar{gap:5px}
 }
+
+/* PRESTIGE: original engraved title art, generated locally with inline SVG. */
+#game .ppw-championship-desk .ppw-title-hero h1{color:#fff0d2;
+ font-size:clamp(38px,10vw,62px);font-style:italic;text-transform:uppercase;
+ text-shadow:3px 3px 0 #a76e2590}
+#game .ppw-title-overview-fact{background:linear-gradient(145deg,#ffe7a4,#dcb962)!important;
+ border:1px solid #fff4c0;border-radius:5px 13px 5px 5px}
+#game .ppw-title-overview-fact small{color:#634b38;font-weight:950}
+#game .ppw-title-overview-fact strong{color:#211d31;font-weight:950}
+#game .ppw-championship-desk .ppw-belt-card{border:2px solid #c4a15e;
+ border-radius:5px 18px 5px 5px;
+ background:linear-gradient(110deg,#38313a,#181a32 85%);box-shadow:5px 6px 0 #7d612f55}
+#game .ppw-championship-desk .ppw-belt-tag{border-color:#8dbad4;background:
+ linear-gradient(112deg,#273f59,#1b1e38 84%)}
+#game .ppw-belt-name{font-style:italic;text-transform:uppercase;font-weight:950}
+#game .ppw-belt-plate{padding:0;overflow:visible}
+#game .ppw-title-engraving{display:block;width:100%;height:100%;overflow:visible;
+ filter:drop-shadow(0 2px 2px #0007)}
+#game .ppw-title-engraving-frame{fill:#c99941;stroke:#fff0be;stroke-width:2}
+#game .ppw-title-engraving-field{fill:#322739;stroke:#dfaf5b;stroke-width:1.5}
+#game .ppw-title-engraving-inlay{fill:none;stroke:#dfaf5b;stroke-width:1.5;opacity:.85}
+#game .ppw-title-engraving-crown{fill:#ffdb80;stroke:#ffe7a4;stroke-width:.8}
+#game .ppw-title-gem{fill:#fff4c5}
+#game .ppw-belt-tag .ppw-title-engraving-frame{fill:#98b6d4;stroke:#e1f3ff}
+#game .ppw-belt-tag .ppw-title-engraving-field{fill:#223852;stroke:#adcedb}
+#game .ppw-belt-tag .ppw-title-engraving-inlay{stroke:#c0e3ec}
+#game .ppw-belt-tag .ppw-title-engraving-crown{fill:#effaff;stroke:#a5d6eb}
+/* Existing Backstage selectors include important backgrounds: override deliberately
+   so the lighter thread and inbox both remain legible. */
+html[data-ppw-screen=backstage] #game .ppw-messenger.ppw-messenger-thread,
+html[data-ppw-screen=backstage] #game .ppw-messenger.ppw-messenger-profile{
+ background:#eef2f7!important;color:#18283d!important;border:1px solid #d5dce7}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-header h1,
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-phone-identity strong{
+ color:#16283b!important;text-shadow:none}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-chat{
+ background:#fff!important;border:1px solid #d0d9e6!important;box-shadow:none}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-phone-header{
+ background:#fbfdff!important;border-bottom:1px solid #d4deec!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-phone-identity small,
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-date{
+ color:#566c82!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-chat .ppw-persona-in{
+ background:#e8edf3!important;color:#1b2b3e!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-chat .ppw-persona-out{
+ background:#b8f0e1!important;color:#133e36!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-composer{
+ background:#e8eef6!important;border:1px solid #bcc8d9!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-backstage-composer-caption{
+ color:#425b74!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-chat
+ .ppw-backstage-composer .ppw-persona-button{background:#d6e5f5!important;
+ color:#143b64!important;border:1px solid #91b7d4!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-active,
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-history,
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-persona-alternates{
+ background:#fff!important;border-color:#c9d4e3;color:#1e324a}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice{
+ background:#e2e8f3!important;border-color:#a9bed7!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice strong{
+ color:#142f4b!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(small,span){
+ color:#465f80!important}
