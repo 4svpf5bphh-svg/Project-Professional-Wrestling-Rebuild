@@ -67,3 +67,41 @@ for(const stale of [false,true]){
   expect(requests).toBe(2);
  });
 }
+
+test("a lost response for a newly generated PPV replays the same one-time creation",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const seen:string[]=[];
+ let exists=false;
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",async route=>{
+  const input=route.request().postDataJSON();
+  if(input.method==="calendar"){
+   await route.fulfill({json:{...calendar(4,80),series:[
+    flagship,cup,...(exists?[{seriesId:"new-autumn-slam",name:"Autumn Slam",
+     role:"SPECIAL",eventType:"MAJOR",cadenceWeeks:52,anchorWeek:4,
+     importance:90,active:true}]:[])
+   ]}});
+   return;
+  }
+  if(input.method!=="saveCalendar")throw Error("Unexpected "+input.method);
+  expect(input.series.seriesId).toBe("NEW");
+  expect(input.series.name).toBe("Autumn Slam");
+  seen.push(String(input.requestId));
+  if(seen.length===1){
+   exists=true; // saved but Vercel acknowledgement was lost.
+   await route.fulfill({status:503,body:"",contentType:"text/plain"});
+  }else await route.fulfill({json:{status:"REPLAYED",revision:5,
+   result:{status:"CREATED",seriesId:"new-autumn-slam"}}});
+ });
+ await page.goto("/#/calendar");
+ await page.getByRole("button",{name:"+ Add event"}).click();
+ await page.getByLabel("Event name").fill("Autumn Slam");
+ await page.getByLabel("Event importance").fill("90");
+ await page.getByRole("button",{name:"Save event"}).click();
+ await expect(page.getByText(/Booking request failed/)).toBeVisible();
+ await expect(page.getByLabel("Event name")).toHaveValue("Autumn Slam");
+ await page.getByRole("button",{name:"Save event"}).click();
+ await expect(page.getByText("Autumn Slam",{exact:true})).toHaveCount(1);
+ expect(seen).toHaveLength(2);
+ expect(seen[0]).toBe(seen[1],"The server must replay creation, never create a duplicate special");
+});
