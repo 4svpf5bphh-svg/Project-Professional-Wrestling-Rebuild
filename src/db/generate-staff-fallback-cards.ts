@@ -105,20 +105,29 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const existingDrafts=new Set(draftRows.filter(x=>x.booking_class==="REGULAR").map(x=>x.promotion_id));
       const existingPremiums=new Set(draftRows.filter(x=>x.booking_class==="PREMIUM").map(x=>x.promotion_id));
       const candidates=await tx.query<SignedCandidate>(
-        `SELECT c.promotion_id,c.person_id,c.contract_id,p.booking_division,
+        `SELECT booking.promotion_id,c.person_id,c.contract_id,p.booking_division,
                 p.weekly_service_capacity,p.momentum,p.recognition,p.popularity,
                 p.presentation,p.match_craft,c.remaining_dates
-           FROM ppw_contracts c
+           FROM ppw_promotions booking
+           JOIN ppw_contracts c ON c.world_id=booking.world_id
+            AND (c.promotion_id=booking.promotion_id OR
+             (c.promotion_id=booking.parent_promotion_id AND EXISTS (
+              SELECT 1 FROM ppw_wrestler_promotion_affiliations affiliation
+               WHERE affiliation.world_id=c.world_id
+                AND affiliation.person_id=c.person_id
+                AND affiliation.promotion_id=booking.promotion_id
+                AND affiliation.basis='PARENT_COMPANY')))
            JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
-          WHERE c.world_id=$1 AND c.promotion_id=ANY($2::text[])
+          WHERE booking.world_id=$1 AND booking.promotion_id=ANY($2::text[])
             AND c.status='SIGNED' AND c.expires_week_index >= $3
+            AND c.start_week_index <= $3
             AND (c.remaining_dates>0 OR (c.family='EXCLUSIVE' AND c.remaining_dates IS NULL))
             AND p.status='ACTIVE' AND p.booking_division IS NOT NULL
             AND NOT EXISTS (SELECT 1 FROM ppw_contracts x
                  WHERE x.world_id=c.world_id AND x.person_id=c.person_id
                    AND x.promotion_id<>c.promotion_id AND x.status='SIGNED'
                    AND x.family='EXCLUSIVE' AND x.expires_week_index >= $3)
-          ORDER BY c.promotion_id,c.person_id,c.contract_id LIMIT 10001`,
+          ORDER BY booking.promotion_id,c.person_id,c.contract_id LIMIT 10001`,
         [input.worldId,priority,weekIndex],
       );
       if(candidates.length>10000)throw new Error("Staff roster eligibility batch too large");
