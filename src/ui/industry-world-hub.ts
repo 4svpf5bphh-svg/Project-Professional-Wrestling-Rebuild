@@ -159,6 +159,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     for(const p of visible){
      const card=document.createElement("details");card.className="ppw-industry-company";
      if(p.isYours)card.classList.add("ppw-industry-own");
+      card.dataset.promotionTier=p.tier.toLowerCase();
      const summary=document.createElement("summary");summary.className="ppw-industry-company-summary";
      const crest=el("span","ppw-industry-company-crest",
       p.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase());

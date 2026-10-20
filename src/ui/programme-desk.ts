@@ -152,7 +152,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    };
    header.append(side(p.sideA),element("span","ppw-programme-versus","VS"),side(p.sideB));
    const heat=p.heat===null?null:Math.max(0,Math.min(100,p.heat));
-   const pulse=element("div","ppw-programme-signals");
+   panel.dataset.storyHeat=heat===null?"unrated":heat>=75?"hot":heat>=45?"building":"developing";
+    const pulse=element("div","ppw-programme-signals");
    for(const [caption,value,percent] of [
     ["HEAT",heat===null?"NOT RATED":Math.round(heat)+"/100",heat??0],
     ["REPETITION",Math.round(p.repetition).toString(),Math.max(0,Math.min(100,p.repetition))]

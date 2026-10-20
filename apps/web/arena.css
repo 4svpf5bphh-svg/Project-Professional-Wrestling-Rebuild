@@ -286,3 +286,138 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice strong{
  color:#142f4b!important}
 html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(small,span){
  color:#465f80!important}
+
+/* THE EVENT MARQUEE: calendar tiles are broadcast posters, not list entries. */
+#game .ppw-calendar-header h1,#game .ppw-planner-header h1{
+ font-size:clamp(35px,9vw,60px);font-weight:950;font-style:italic;
+ text-transform:uppercase;line-height:1;color:#fff0d2;text-shadow:3px 3px #e9368155}
+#game .ppw-world-calendar .ppw-calendar-event{
+ position:relative;isolation:isolate;overflow:hidden;min-height:98px;
+ padding:13px;border:2px solid #6b83b0;border-radius:4px 17px 4px 4px;
+ background:linear-gradient(119deg,#213e61,#29224f 85%);
+ box-shadow:4px 5px 0 #090c26b0}
+#game .ppw-world-calendar .ppw-calendar-event:before{
+ content:"";position:absolute;z-index:-1;inset:0;
+ background:repeating-linear-gradient(139deg,transparent 0 19px,#77d3ff10 20px 21px);
+ pointer-events:none}
+#game .ppw-calendar-event-emblem{background:#fff0d2;color:#202344;
+ border-radius:5px 13px 5px 5px;transform:rotate(-5deg);
+ border:1px solid #fff6e3;box-shadow:2px 3px #090a228a}
+#game .ppw-calendar-event-name{font-weight:950;text-transform:uppercase;
+ letter-spacing:-.03em;color:#fff0d2}
+#game .ppw-calendar-event-strap{color:#9aeeff;font-weight:900;letter-spacing:.08em}
+#game .ppw-calendar-event-major{border-color:#ffd15e!important;
+ background:radial-gradient(circle at 110% 0,#ff367956,transparent 50%),
+ linear-gradient(120deg,#6d315d,#342046 80%)!important;
+ box-shadow:5px 6px 0 #ffd15e5d!important}
+#game .ppw-calendar-event-major .ppw-calendar-event-emblem{
+ background:#ffd15e;border-color:#ffedb4;color:#411f3e}
+#game .ppw-calendar-event[data-event-role=flagship]{border-left:6px solid #39dbf5}
+#game .ppw-calendar-event[data-event-role=secondary]{border-left:6px solid #9068f4}
+#game .ppw-calendar-event[data-event-role=developmental]{border-left:6px solid #66eccb}
+#game .ppw-calendar-event[data-event-role=premium]{border-left:6px solid #ffd15e}
+#game .ppw-calendar-event[data-event-role=special]{border-left:6px solid #ff3679}
+#game .ppw-calendar-week-head{border-bottom:2px solid #806aa0}
+#game .ppw-calendar-current{box-shadow:inset 4px 0 #39dbf5}
+#game .ppw-calendar-form{background:linear-gradient(145deg,#292446,#1b2340);
+ border:1px solid #9a83d0;border-radius:8px;padding:16px}
+#game .ppw-calendar-forecast{border-color:#3bd6eb}
+#game .ppw-calendar-forecast-kicker{color:#ffd15e}
+/* ACTIVE RIVALRIES: opposing corners and a physical versus sign. */
+#game .ppw-programme-list>h2{font-size:clamp(21px,6vw,30px);
+ font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2}
+#game .ppw-programme-card{position:relative;overflow:hidden;
+ border:2px solid #9b78d3;border-radius:4px 19px 4px 4px;
+ background:linear-gradient(140deg,#37244c,#1e203c 72%);
+ box-shadow:5px 6px 0 #0a0b22bd}
+#game .ppw-programme-card[data-story-heat=hot]{
+ border-color:#ff547d;box-shadow:5px 6px 0 #dd3b7066}
+#game .ppw-programme-card[data-story-heat=building]{border-color:#ffd15e}
+#game .ppw-programme-eyebrow{color:#ffd15e!important;letter-spacing:.14em}
+#game .ppw-programme-broadcast{position:relative;isolation:isolate;
+ border:0;border-radius:5px;background:linear-gradient(103deg,#294b78,#4b2766 90%);
+ padding:14px 9px;box-shadow:inset 0 2px 0 #ffffff24}
+#game .ppw-programme-broadcast-side{font-size:clamp(15px,5vw,24px);
+ font-weight:950;font-style:italic;text-transform:uppercase;
+ letter-spacing:-.045em;text-shadow:1px 2px #0008}
+#game .ppw-programme-broadcast-side:first-child{color:#acefff}
+#game .ppw-programme-broadcast-side:last-child{color:#ffb4d0}
+#game .ppw-programme-versus{display:grid;place-items:center;
+ width:45px;height:45px;min-width:45px;border:2px solid #fff0d2;
+ border-radius:50%;background:#ff3679;color:#fff;
+ transform:rotate(-12deg);box-shadow:3px 3px #0009;
+ font-size:16px;font-weight:950}
+#game .ppw-programme-signal{border-color:#7e69aa;background:#1a1934}
+#game .ppw-programme-signal-fill{background:linear-gradient(90deg,#39dbf5,#ff3679)}
+#game .ppw-programme-record-item{background:#1b1b35}
+#game .ppw-programme-next{border-left:4px solid #ffd15e;
+ background:#25223e;border-radius:5px}
+#game .ppw-programme-directions button[aria-pressed=true]{
+ background:#ffd15e;border-color:#fff1ae;color:#1c1832}
+/* FINANCE LEDGER: vivid numbers atop ivory accountant paper. */
+#game .ppw-business-head h1{font-size:clamp(35px,9vw,56px)}
+#game .ppw-business-panel{background:linear-gradient(150deg,#2b2743,#1b213b);
+ border:1px solid #8374ac;border-radius:6px 18px 6px 6px;
+ box-shadow:4px 5px 0 #0a0d24}
+#game .ppw-business-event-stats{gap:7px}
+#game .ppw-business-event-stat{background:#fff0d2;
+ border:0;border-radius:5px 13px 5px 5px;box-shadow:3px 3px 0 #c995658c}
+#game .ppw-business-event-stat span,
+#game .ppw-business-event-stat small{color:#69516c}
+#game .ppw-business-event-stat strong{color:#231c34;font-weight:950;
+ font-variant-numeric:tabular-nums}
+#game .ppw-business-event-stat strong.ppw-positive{color:#155a53}
+#game .ppw-business-event-stat strong.ppw-negative{color:#9d3158}
+#game .ppw-business-line{border-bottom:1px dashed #88739e;
+ padding-top:12px;padding-bottom:12px}
+#game .ppw-business-line strong{font-variant-numeric:tabular-nums}
+#game .ppw-business-trend{border-color:#8b74b7;border-radius:7px}
+#game .ppw-business-standing-card{border-color:#9a8ac4;
+ background:linear-gradient(135deg,#2b3154,#211e40)}
+/* INDUSTRY: public rankings have branded company crests and an editorial hierarchy. */
+#game .ppw-industry-head h1{font-size:clamp(36px,9vw,57px);
+ font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2}
+#game .ppw-industry-status{background:linear-gradient(120deg,#363060,#1f3155);
+ border:1px solid #8e6ee6;border-left:6px solid #39dbf5;border-radius:5px 16px 5px 5px}
+#game .ppw-industry-company{border:1px solid #7a72a8;
+ border-radius:6px 17px 6px 6px;box-shadow:4px 5px 0 #0c0c20;
+ background:#211e3c}
+#game .ppw-industry-company-crest{background:linear-gradient(130deg,#ff3679,#7955d7);
+ border:2px solid #fff0d2;color:#fff6e8;border-radius:4px 12px 4px 4px;
+ transform:skew(-5deg);font-weight:950}
+#game .ppw-industry-company[data-promotion-tier=global] .ppw-industry-company-crest{
+ background:linear-gradient(115deg,#d1a54a,#79508a)}
+#game .ppw-industry-company[data-promotion-tier=independent] .ppw-industry-company-crest{
+ background:linear-gradient(115deg,#16949d,#31639b)}
+#game .ppw-industry-company-name{font-weight:950;color:#fff0d2;text-transform:uppercase}
+#game .ppw-industry-company-standing{background:#fff0d2;color:#251b3d;
+ border:1px solid #ffd15e;border-radius:5px;padding:7px}
+#game .ppw-industry-company-standing small{color:#58476b}
+#game .ppw-industry-own{outline:2px solid #ffd15e;outline-offset:1px}
+/* Restore the important alignment signals in every quick-view context. */
+#game .ppw-wrestler-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#game .ppw-wrestler-alignment{display:inline-block;border-radius:3px;
+ font-weight:950;font-size:10px;letter-spacing:.04em;padding:4px 8px}
+#game .ppw-wrestler-card[data-alignment=FACE] .ppw-wrestler-alignment{
+ background:#9af1e2;color:#143d46;border:1px solid #e2fff4}
+#game .ppw-wrestler-card[data-alignment=HEEL] .ppw-wrestler-alignment{
+ background:#ff3679;color:#fff;border:1px solid #ffa4ca}
+#game .ppw-wrestler-card[data-alignment=TWEENER] .ppw-wrestler-alignment{
+ background:#9068f4;color:#fff;border:1px solid #c9afff}
+#game .ppw-wrestler-card[data-alignment=FACE]{border-left-color:#66eccb}
+#game .ppw-wrestler-card[data-alignment=HEEL]{border-left-color:#ff3679}
+#game .ppw-wrestler-card[data-alignment=TWEENER]{border-left-color:#9068f4}
+#game .ppw-directory-card>summary{touch-action:manipulation}
+#game .ppw-directory-advanced{border:1px dashed #8e79bf;border-radius:9px;
+ background:#24233d;padding:9px}
+@media(prefers-reduced-motion:no-preference){
+ #game .ppw-calendar-event,#game .ppw-programme-card,#game .ppw-industry-company{
+ transition:transform .14s ease,filter .14s ease}
+ #game .ppw-calendar-event:active{filter:brightness(1.1)}
+ #game .ppw-industry-company[open]{border-color:#ffca83}
+}
+@media(max-width:360px){
+ #game .ppw-programme-versus{width:34px;height:34px;min-width:34px;font-size:12px}
+ #game .ppw-programme-broadcast{padding:10px 5px}
+ #game .ppw-industry-company-standing{padding:4px}
+}

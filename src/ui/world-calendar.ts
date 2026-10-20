@@ -177,7 +177,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const major=eventType==="MAJOR";
   const card=node("div","","ppw-calendar-event "+(major?
    "ppw-calendar-event-major":"ppw-calendar-event-weekly"));
-  const emblem=node("span",major?"★":role==="FLAGSHIP"?"◆":"◇",
+  card.dataset.eventRole=role.toLowerCase();
+   const emblem=node("span",major?"★":role==="FLAGSHIP"?"◆":"◇",
    "ppw-calendar-event-emblem");
   emblem.setAttribute("aria-hidden","true");
   const copy=node("div","","ppw-calendar-event-copy");
