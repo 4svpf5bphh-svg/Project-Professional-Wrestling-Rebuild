@@ -1748,6 +1748,7 @@ test("dragging booking tickets on iPhone changes only local order until Save",as
  await page.mouse.down();
  console.log("PPW_DND after down",JSON.stringify(await grip.evaluate(el=>({
   capture:(el as HTMLElement).className,down:(el as HTMLElement).dataset.ppwDown,move:(el as HTMLElement).dataset.ppwMove,rect:(el as HTMLElement).getBoundingClientRect().toJSON(),
+  hit:(()=>{const b=el.getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {tag:hit?.tagName,className:hit?.className,html:hit?.outerHTML?.slice(0,150),css:getComputedStyle(el).pointerEvents,position:getComputedStyle(el).position}})(),
   cardCount:document.querySelectorAll(".ppw-card[data-booking-slot-id]").length
  }))));
  await page.mouse.move(second!.x+second!.width/2,second!.y+second!.height/2,{steps:7});
