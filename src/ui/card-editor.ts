@@ -362,11 +362,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
+ let activeEditShade:HTMLElement|null=null;
+ let activePickerShade:HTMLElement|null=null;
  function render(){
-  // Retain the focused editor's scroll position through controlled updates.
-  // The underlying running order never needs reloading or re-querying.
-  const priorModal=root.querySelector<HTMLElement>(".ppw-card-edit-sheet");
+  // Keep one modal per mounted editor. Foreground sheets are portalled out
+  // of the scrolling card and its animated containing block.
+  const priorModal=activeEditShade?.querySelector<HTMLElement>(".ppw-card-edit-sheet")??null;
   const previousScroll=priorModal?.scrollTop??0;
+  activeEditShade?.remove();activeEditShade=null;
+  activePickerShade?.remove();activePickerShade=null;
   root.replaceChildren();
   root.classList.add("ppw-editor");
   root.classList.toggle("ppw-editing-card",expanded!==null);
@@ -1204,7 +1208,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    view.ready?"Show confirmed for Week "+view.week:"Save first, then confirm"));
   root.append(foot);
   if(editShade){
-   document.body.append(editShade);
+   activeEditShade=editShade;
+   (root.isConnected?document.body:root).append(editShade);
    if(!priorModal){
     editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
    }
@@ -1303,13 +1308,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    sheet.append(rows);
    if(current.cursor)sheet.append(button("Load more",()=>{void findTalent(current.query,true);}));
-   shade.append(sheet);document.body.append(shade);
+   shade.append(sheet);
+   activePickerShade=shade;
+   (root.isConnected?document.body:root).append(shade);
   }
  }
  function sideLabel(index:number){return String.fromCharCode(65+index);}
  void load();
  return {reload:load,destroy:()=>{
-  document.querySelectorAll(".ppw-card-edit-shade,.ppw-sheet-shade").forEach(x=>x.remove());
+  activeEditShade?.remove();activePickerShade?.remove();
   root.replaceChildren();root.classList.remove("ppw-editor");
  }};
 }
