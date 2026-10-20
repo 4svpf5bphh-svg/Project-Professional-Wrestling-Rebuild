@@ -117,7 +117,7 @@ export async function readWrestlerDirectory(
    LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id
     AND parent.promotion_id=owner.parent_promotion_id
    LEFT JOIN LATERAL (
-    SELECT c.contract_id,c.family,c.role_expectation,c.remaining_dates,c.expires_week_index,
+    SELECT c.contract_id,c.promotion_id,c.family,c.role_expectation,c.remaining_dates,c.expires_week_index,
      c.start_week_index,
      c.weekly_guarantee,c.appearance_fee
     FROM ppw_contracts c WHERE c.world_id=p.world_id
