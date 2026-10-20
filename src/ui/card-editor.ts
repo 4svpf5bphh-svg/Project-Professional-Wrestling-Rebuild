@@ -686,6 +686,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    };
    grip.onpointerdown=event=>{
     if(!mutable()||event.button!==0||dragPointer!==null)return;
+    grip.dataset.ppwDown=String(event.pointerId);
     event.preventDefault();dragPointer=event.pointerId;dragStartY=event.clientY;
     dropId=slotId;pointerX=event.clientX;pointerY=event.clientY;
     grip.setPointerCapture(event.pointerId);
@@ -694,6 +695,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     document.addEventListener("pointercancel",clearDrag);
    };
    const dragMove=(event:PointerEvent)=>{
+    grip.dataset.ppwMove=String(event.pointerId)+":"+event.clientY;
     if(dragPointer!==event.pointerId)return;
     pointerX=event.clientX;pointerY=event.clientY;
     if(!dragging&&Math.abs(event.clientY-dragStartY)<9)return;
