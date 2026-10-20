@@ -71,9 +71,9 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await dialog.getByRole("button",{name:"Script the exact angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("The message").selectOption("AIR_GRIEVANCE");
- await dialog.getByLabel("Scripted outcome").selectOption("REFUSED");
+ await dialog.getByLabel("On-screen outcome").selectOption("REFUSED");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
- await page.getByRole("button",{name:"Save card"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Air a grievance"}))
   .toBeVisible();
@@ -85,7 +85,7 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByLabel("The message")).toHaveValue("AIR_GRIEVANCE");
- await expect(dialog.getByLabel("Scripted outcome")).toHaveValue("REFUSED");
+ await expect(dialog.getByLabel("On-screen outcome")).toHaveValue("REFUSED");
 });
 
 test("iPhone anchors a post-match attack to its preceding bout without a new roster request",async({page})=>{
@@ -137,7 +137,7 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await dialog.getByLabel("How it ends").selectOption("VICTIM_FIGHTS_BACK");
  await expect(dialog.getByText("Victim from the match")).toBeVisible();
  await dialog.getByRole("button",{name:"Close card editor"}).click();
- await page.getByRole("button",{name:"Save card"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:/Victim Fights Back/i})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();

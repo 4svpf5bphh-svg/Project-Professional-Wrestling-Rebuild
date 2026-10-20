@@ -72,7 +72,7 @@ for(const conflicting of [false,true]){
   await expect(dialog.getByLabel("Winner")).toHaveValue("1");
   await dialog.getByRole("button",{name:"Close card editor"}).click();
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
-  await page.getByRole("button",{name:"Save card"}).click();
+  await page.getByRole("button",{name:/Save card|Save changes/}).click();
   const msg=conflicting?/saved card changed elsewhere/:/Another manager changed the World/;
   await expect(page.getByText(msg)).toBeVisible();
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
@@ -81,7 +81,7 @@ for(const conflicting of [false,true]){
    .toHaveValue("1");
   await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
    {name:"Close card editor"}).click();
-  await page.getByRole("button",{name:"Save card"}).click();
+  await page.getByRole("button",{name:/Save card|Save changes/}).click();
   await expect(page.getByText("Show card saved")).toBeVisible();
   expect(submissions).toHaveLength(2);
   expect(submissions.map(x=>x.expectedRevision)).toEqual([4,5]);

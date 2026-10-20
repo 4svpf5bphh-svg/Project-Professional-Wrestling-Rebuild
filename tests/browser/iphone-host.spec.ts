@@ -177,7 +177,7 @@ test("named Home concerns open only the intended wrestler conversation",async({p
  expect(methods).toEqual(["overview","backstage","markBackstageRead"]);
  expect(page.url()).not.toContain("p-adams");
  await page.getByRole("button",{name:"Back to messages"}).click();
- await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  expect(methods).toHaveLength(3);
 });
 test("completed locker-room updates dismiss privately without hiding current tasks",async({page})=>{
@@ -498,7 +498,7 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await page.goForward();
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
- await expect(page.getByText("18 of 120 min TV guide")).toBeVisible();
+ await expect(page.getByText("18 / 120 min")).toBeVisible();
  await expect(page.getByRole("progressbar",{name:"Booked match minutes against the television running-time guide"}))
   .toHaveAttribute("aria-valuenow","18");
  await page.locator(".ppw-card-bar .ppw-expand").click();
@@ -521,7 +521,7 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
  await focused.getByRole("button",{name:"Close card editor"}).click();
  await expect(focused).toHaveCount(0);
- await page.getByRole("button",{name:"Save card"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect((saved.interference as {contractId:string}).contractId).toBe("deal-outside");
  expect((saved.interference as {plannedOutcome:string}).plannedOutcome).toBe("SUCCESS");
@@ -579,7 +579,7 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Your locker room has messages/}).click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
- await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
  await expect(page.getByRole("button",{name:/Charlie/})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load","planner","overview","backstage"]);
@@ -739,7 +739,7 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
   await route.fulfill({json:{}});
  });
  await page.goto("/#/backstage");
- await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-messenger.ppw-messenger-inbox")).toHaveCount(1);
  await expect(page.getByRole("navigation",{name:"Backstage messages and contacts"})).toBeVisible();
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 threads");
@@ -797,7 +797,7 @@ test("Backstage messages read and archive in place without fetching the entire i
  await expect.poll(()=>methods.filter(m=>m==="markBackstageRead").length).toBe(1);
  await expect(page.locator(".ppw-persona-chat .ppw-backstage-date")).toContainText(["Y1 · W5"]);
  await page.getByRole("button",{name:"Back to messages"}).click();
- await expect(page.locator(".ppw-messenger-inbox-count")).toHaveText("1 threads");
+ await expect(page.locator(".ppw-messenger-inbox-count")).toHaveText("1 chats");
  await expect(page.locator(".ppw-backstage-unread-dot")).toHaveCount(0);
  expect(methods.filter(m=>m==="backstage").length).toBe(initial+1);
  await page.locator(".ppw-backstage-contact").first().click();
@@ -952,7 +952,7 @@ test("Industry featured wrestlers load only on expansion, cache through local fi
  await restored.locator("summary").click();
  await expect(restored.getByText("Cody Rhodes",{exact:true})).toBeVisible();
  await expect(restored.locator(".ppw-wrestler-badges")).toContainText("WWE");
- await expect(restored.locator(".ppw-wrestler-alignment")).toContainText("FAN FAVOURITE");
+ await expect(restored.locator(".ppw-wrestler-alignment")).toContainText("FACE · CHEERED");
  await expect(restored.locator(".ppw-wrestler-stat[data-ability=outstanding]")).toHaveCount(6);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
@@ -1295,7 +1295,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeDisabled();
- await page.getByRole("button",{name:"Save card"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  expect(methods).toEqual(["planner","load","save","load"]);
@@ -1376,7 +1376,7 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  await expect(dialog.getByLabel("The intention")).toHaveValue("ESCALATE_RIVALRY");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
- await page.getByRole("button",{name:"Save card"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(angle.creativeBeat).toEqual({kind:"ATTACK",
   presentation:"PULL_APART_BRAWL",objective:"ESCALATE_RIVALRY"});
@@ -1615,7 +1615,7 @@ test("iPhone unsaved show authorship survives browser back and can be deliberate
  page.once("dialog",d=>d.accept());
  await page.getByRole("button",{name:"Discard unsaved edits"}).click();
  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
- await expect(page.getByText("18 of 120 min TV guide")).toBeVisible();
+ await expect(page.getByText("18 / 120 min")).toBeVisible();
  await page.getByRole("button",{name:"← Planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  expect(calls).not.toContain("save");

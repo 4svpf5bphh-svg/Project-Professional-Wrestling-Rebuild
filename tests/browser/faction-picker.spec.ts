@@ -112,7 +112,7 @@ test("iPhone tag selection and Backstage thread keep their place when scouting a
  await expect(picked).toHaveAttribute("aria-pressed","true");
  expect(calls.filter(x=>x==="tagTeams")).toHaveLength(1);
  await page.goto("/#/backstage");
- await expect(page.getByRole("heading",{name:"Conversations"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await page.locator(".ppw-backstage-contact").first().click();
  const thread=page.getByLabel("Conversation with Ada Stone");
  await expect(thread).toBeVisible();
