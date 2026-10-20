@@ -111,3 +111,45 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     }).finally(()=>db.close());
   }
 });
+
+
+test("a premium-only booking never conceals the mandatory weekly-show reminder",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const id=randomUUID(),worldId="premium-home-"+id,playerId="premium-manager-"+id;
+ const promotionId="company-"+id,db=postgresPool(url!,2);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"One weekly plus premium",seed:22,
+    rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"Independent",tier:"LOCAL"});
+  });
+  await joinWorld(db.pool,{worldId,playerId,requestId:"join-"+id,expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId,playerId,promotionId,
+   requestId:"claim-"+id,expectedRevision:1});
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,booking_class)"+
+   " VALUES($1,'premium-draft',$2,1,1,'PREMIUM')",[worldId,promotionId]));
+  const onlyPremium=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.equal(onlyPremium?.promotion?.attention.plannedShows,0,
+   "The Home screen must still offer to plan this week's regular show");
+  assert.equal(onlyPremium?.promotion?.attention.unpreparedShow,true,
+   "An unconfirmed premium show still needs to be completed");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,booking_class)"+
+   " VALUES($1,'weekly-draft',$2,1,1,'REGULAR')",[worldId,promotionId]));
+  const together=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.equal(together?.promotion?.attention.plannedShows,1,
+   "The required normal show is now planned; optional premium must not count twice");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});

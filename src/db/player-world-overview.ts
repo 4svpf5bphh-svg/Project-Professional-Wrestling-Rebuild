@@ -85,7 +85,8 @@ export async function readPlayerWorldOverview(
     SELECT
      (SELECT count(*)::integer FROM ppw_booking_drafts d
        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
-        AND d.year=w.year AND d.week=w.week) AS planned_shows,
+        AND d.year=w.year AND d.week=w.week
+        AND d.booking_class='REGULAR') AS planned_shows,
      EXISTS (SELECT 1 FROM ppw_booking_drafts d
        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
         AND d.year=w.year AND d.week=w.week AND d.status='DRAFT'
