@@ -1,3 +1,4 @@
+import {bookingErrorMessage} from "./card-error-feedback.js";
 /** Browser transport for the authenticated PPW booking and results surface.
  * The hosting app supplies a CSRF token from the verified session.
  * Neither the actor identity nor World state comes from browser payloads.
@@ -32,11 +33,21 @@ export function createCardClient(scope:CardSessionScope,
   });
   if(response.status===401&&typeof window!=="undefined")
    window.dispatchEvent(new Event("ppw:session-lost"));
-  if(!response.ok)throw new Error(response.status===409?
-   "The World changed. Reload and review your card.":
-   response.status===401?"Please sign in again":
-   response.status===403?"Booking session expired. Refresh and sign in again.":
-   "Booking request failed");
+  if(!response.ok){
+   let correction:string|null=null;
+   if(response.status===400){
+    try{
+     const rejected:unknown=await response.json();
+     if(rejected&&typeof rejected==="object"&&!Array.isArray(rejected))
+      correction=bookingErrorMessage((rejected as Record<string,unknown>).code);
+    }catch{ /* Unknown or proxy error: never expose its response body. */ }
+   }
+   throw new Error(correction??(response.status===409?
+    "The World changed. Reload and review your card.":
+    response.status===401?"Please sign in again":
+    response.status===403?"Booking session expired. Refresh and sign in again.":
+    "Booking request failed"));
+  }
   return response.json();
  };
 }
