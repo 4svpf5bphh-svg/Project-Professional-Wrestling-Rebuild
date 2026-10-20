@@ -499,7 +499,7 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await expect(page.getByText("18 / 120 min")).toBeVisible();
- await expect(page.getByRole("progressbar",{name:"Booked match minutes against the television running-time guide"}))
+ await expect(page.getByRole("progressbar",{name:"Total match and angle minutes against the television running-time guide"}))
   .toHaveAttribute("aria-valuenow","18");
  await page.locator(".ppw-card-bar .ppw-expand").click();
  const focused=page.getByRole("dialog",{name:"Edit match"});
@@ -742,7 +742,7 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-messenger.ppw-messenger-inbox")).toHaveCount(1);
  await expect(page.getByRole("navigation",{name:"Backstage messages and contacts"})).toBeVisible();
- await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 threads");
+ await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 chats");
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("1 unread");
  await expect(page.locator(".ppw-messenger-awaiting")).toHaveCount(1);
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(2);
