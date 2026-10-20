@@ -191,6 +191,13 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   const confirmed=await call("load",{showId:draftId});
   assert.equal(confirmed.status,200);
   assert.equal((await confirmed.json()).ready,true);
+  // Genuine imported booking must clear the weekly Home reminder without
+  // giving an optional premium event credit for the compulsory normal show.
+  const home=await call("overview");
+  assert.equal(home.status,200);
+  const attention=(await home.json()).promotion?.attention;
+  assert.equal(attention?.plannedShows,1);
+  assert.equal(attention?.unpreparedShow,false);
   prepared.push(draftId);
  }
  const owner=managers[0]!,other=managers[1]!;
