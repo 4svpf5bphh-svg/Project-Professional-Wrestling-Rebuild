@@ -305,6 +305,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
    actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
    outcome:p.outcome as SegmentOutcome,
+   ...(p.durationMinutes===undefined?{}:{durationMinutes:p.durationMinutes as number}),
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
    ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
    ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
@@ -351,6 +352,10 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    const segments=authored??existingSegments.map(s=>({
     slotId:s.slot_id,payload:s.payload
    }));
+   const usedMinutes=matches.reduce((n,m)=>n+m.payload.plannedLengthMinutes,0)+
+    segments.reduce((n,a)=>n+(a.payload.durationMinutes??5),0);
+   if(show.booking_class==="REGULAR"&&usedMinutes>120)
+    throw new Error("Show exceeds the 120-minute TV slot");
    if(matches.length+segments.length>100||
     input.runningOrder.length!==matches.length+segments.length)
     throw new Error("Show card slot capacity exceeded");
