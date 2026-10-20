@@ -11,7 +11,8 @@ import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
-import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
+import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
+import {readShowCardEditor} from "../src/db/show-card-editor.js";
 
 async function main(){
  const value=process.env.PPW_PLAYTEST_DB_URL;
@@ -129,9 +130,30 @@ async function main(){
    assert.equal(nextPlan.week,2);
    assert.equal(nextPlan.weeks[0]?.week,2);
    assert.ok(nextPlan.venues.length>0);
+   const weekly=nextPlan.weeks[0]?.scheduled.find(x=>x.eventType==="REGULAR");
+   const venue=nextPlan.venues.find(x=>x.home)??nextPlan.venues[0];
+   assert.ok(weekly&&venue,
+    "A second PPW week must offer the same real promotion a show and venue");
+   const continued=await planShowWeek(db.pool,{...owner,
+    requestId:"ci-week2-"+owner.promotionId,
+    expectedRevision:nextPlan.worldRevision,
+    year:nextPlan.year,week:nextPlan.week,
+    day:owner.promotionId===state.drafts[0]!.promotion_id?3:5,
+    marketId:venue.marketId,venueId:venue.venueId,
+    ticketStrategy:"STANDARD",eventType:"REGULAR",
+    showSeriesId:weekly.seriesId});
+   assert.equal(continued.status,"APPLIED",
+    "Each player must be able to plan a new show after the next week opens");
+   if(continued.status!=="APPLIED")throw new Error("Week 2 planning was not applied");
+   const nextDraft=await readShowCardEditor(db.pool,{...owner,
+    showId:continued.result.draftId});
+   assert.equal(nextDraft.week,2);
+   assert.equal(nextDraft.slots.length,0,
+    "The newly planned week must not carry accidental previous match cards");
+   assert.equal(nextDraft.canEdit,true);
    readableResults.push({promotionId:owner.promotionId,
     showId:draft.draft_id,winner:bouts[0]!.matchContext!.winnerNames[0],
-    nextWeek:nextPlan.week});
+    nextWeek:nextPlan.week,nextDraftId:continued.result.draftId});
   }
   await assert.rejects(readCompletedShowView(db.pool,{
    worldId,playerId:state.drafts[0]!.player_id,
