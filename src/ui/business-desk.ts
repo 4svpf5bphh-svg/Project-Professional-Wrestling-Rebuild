@@ -89,7 +89,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     ["Talent office wages",-view.weeklyStaffPayroll]
    ] as const){
     const line=el("div","ppw-business-line");
-    line.append(el("span","",label),el("strong",n===null?"Not configured":money(n)));
+    line.append(el("span","",label),el("strong","",n===null?"Not configured":money(n)));
     flow.append(line);
    }
    const total=el("div","ppw-business-line ppw-business-total");
