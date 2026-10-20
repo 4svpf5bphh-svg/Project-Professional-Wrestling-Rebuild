@@ -55,7 +55,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   if(!data||!editing||busy)return;
   const venue=data.venues.find(v=>v.venueId===venueId);
   if(!venue){error="Choose a venue.";draw();return;}
-  const input={
+  const input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId"|"requestId">={
    expectedRevision:data.worldRevision,
    year:editing.year,week:editing.week,
    eventType:editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.eventType??"REGULAR",
