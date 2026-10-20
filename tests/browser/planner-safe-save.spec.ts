@@ -51,7 +51,7 @@ test("iPhone retries a committed show with the SAME receipt after its response i
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Plan weekly show"}).click();
  await page.getByRole("button",{name:"Save show"}).click();
- await expect(page.getByText(/Network interrupted/)).toBeVisible();
+ await expect(page.getByText(/Booking request failed/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
  await expect(page.getByLabel("Show venue")).toHaveValue("home-hall");
  await page.getByRole("button",{name:"Save show"}).click();
