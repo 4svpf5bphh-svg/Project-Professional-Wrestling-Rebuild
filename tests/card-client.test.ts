@@ -203,3 +203,29 @@ test("browser action cannot replace authenticated scope",async()=>{
  assert.equal(payload.showId,scope.showId);
  assert.equal(payload.method,"overview");
 });
+
+test("authenticated iPhone card errors are useful but never reveal server diagnostics",async()=>{
+ const server=async(_url:RequestInfo|URL,_init?:RequestInit)=>
+  new Response(JSON.stringify({
+   error:"Private contract fee £9,000,000 for unauthorised wrestler",
+   code:"TALENT"
+  }),{status:400,headers:{"content-type":"application/json"}});
+ const actor=createCardClient(scope,server as typeof fetch);
+ await assert.rejects(actor("save"),error=>{
+  assert.ok(error instanceof Error);
+  assert.match(error.message,/wrestler.*unavailable|out of dates/i);
+  assert.doesNotMatch(error.message,/9,000,000|Private contract/i);
+  return true;
+ });
+ const forged=createCardClient(scope,async()=>new Response(JSON.stringify({
+  error:"SQL password and secrets",code:"DATABASE_SECRET"
+ }),{status:400}));
+ await assert.rejects(forged("save"),error=>{
+  assert.ok(error instanceof Error);
+  assert.equal(error.message,"Booking request failed");
+  return true;
+ });
+ const gateway=createCardClient(scope,async()=>new Response("<html>Proxy error</html>",
+  {status:503}));
+ await assert.rejects(gateway("save"),/Booking request failed/);
+});
