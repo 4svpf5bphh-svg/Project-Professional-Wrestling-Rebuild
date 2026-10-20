@@ -258,10 +258,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      (incomplete.match?matchCastingReadiness(incomplete.match).hint:
       angleCastingReadiness(incomplete.angle!).hint));
    }
-   const segmentPayloads=[...segments.values()].map(s=>({
-    slotId:s.slotId,payload:buildEditorSegment(s),programmeId:s.programmeId}));
-   const payloads=[...matches.values()].map(m=>({slotId:m.slotId,
-    payload:buildBookedMatch(m)}));
+   const segmentPayloads=[...segments.values()].map(s=>{
+    try{return {slotId:s.slotId,payload:buildEditorSegment(s),programmeId:s.programmeId};}
+    catch(e){throw new Error("Slot "+(order.indexOf(s.slotId)+1)+" (angle): "+errorText(e));}
+   });
+   const payloads=[...matches.values()].map(m=>{
+    try{return {slotId:m.slotId,payload:buildBookedMatch(m)};}
+    catch(e){throw new Error("Slot "+(order.indexOf(m.slotId)+1)+" (match): "+errorText(e));}
+   });
    if(!payloads.length)throw new Error("Book at least one match");
    const usedMinutes=payloads.reduce((n,m)=>n+m.payload.plannedLengthMinutes,0)+
     segmentPayloads.reduce((n,a)=>n+(a.payload.durationMinutes??5),0);
@@ -745,6 +749,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       VIDEO_PURPOSES.map(v=>[v,nice(v)]),
       v=>editSegment(segment,{videoPurpose:v as EditorSegment["videoPurpose"]}),!mutable())));
     body.append(controls);
+    if(!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)
+     body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
+      "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
     const direction=el("p","ppw-angle-guidance");
     direction.append(el("strong","",ANGLE_STORY_GOALS.find(x=>x.value===goal)!.label+" / "),
      el("span","",angleDirection(segment.kind)));
@@ -1128,7 +1135,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    view.ready?"Confirmed":"Confirm show",
    ()=>{void confirm();},
    !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
-  foot.append(el("small","ppw-save-status",dirty?"Edits not saved":
+  if(error){
+   const notice=el("small","ppw-save-status ppw-save-error",error);
+   notice.setAttribute("role","alert");
+   foot.append(notice);
+  }else foot.append(el("small","ppw-save-status",dirty?"Edits not saved":
    view.ready?"Show confirmed for Week "+view.week:"Save first, then confirm"));
   root.append(foot);
   if(editShade){

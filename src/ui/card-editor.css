@@ -366,3 +366,12 @@ body:has(.ppw-card-edit-shade) .ppw-shell-menu{visibility:hidden;pointer-events:
 .ppw-alignment-context{margin:8px 0 16px;padding:10px 12px;display:grid;gap:5px;border-radius:11px;border:1px solid #7f72c5;background:linear-gradient(110deg,#272c55,#13243f)}
 .ppw-alignment-context strong{color:#e5cdff;font-size:12px}
 .ppw-alignment-context span{color:#bcccdf;font-size:12px;line-height:1.5}
+
+/* The user can see a failed save even when scrolled to the bottom of a long
+   card. Bounded text protects the compact action rail. */
+.ppw-save-status.ppw-save-error{font-size:11px;font-weight:750;text-align:left;
+ line-height:1.4;padding:7px 9px;background:#512338;color:#ffe0e3;
+ border:1px solid #da6a87;border-radius:9px;max-height:86px;overflow-y:auto}
+.ppw-angle-direct-target{grid-column:1/-1;padding:9px 10px;
+ background:linear-gradient(110deg,#263c59,#242548);
+ border:1px solid #667bc1;border-radius:10px;color:#cde2f8}
