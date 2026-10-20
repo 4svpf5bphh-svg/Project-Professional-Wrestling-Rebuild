@@ -550,3 +550,27 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(sma
 @media(min-width:800px){
  .ppw-navigation .ppw-nav-drawer-entry{min-height:70px}
 }
+
+/* Standalone iPhone viewport-fit=cover: promotion identity must clear the notch. */
+body{padding-top:env(safe-area-inset-top)}
+.ppw-account-banner{padding-left:max(14px,env(safe-area-inset-left));
+ padding-right:max(14px,env(safe-area-inset-right))}
+.ppw-account-banner .ppw-shell-identity{min-width:0;overflow:hidden}
+.ppw-account-banner .ppw-shell-brand{min-width:0}
+.ppw-account-banner .ppw-shell-brand strong,
+.ppw-account-banner .ppw-shell-brand small{display:block;max-width:100%;
+ overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ppw-account-banner .ppw-shell-signout{flex-shrink:0;min-height:44px}
+@media(max-width:350px){
+ .ppw-account-banner{padding-left:8px;padding-right:8px;gap:5px}
+ .ppw-account-banner .ppw-shell-identity{gap:6px}
+ .ppw-account-banner .ppw-shell-logo{width:36px;height:36px;font-size:11px}
+ .ppw-account-banner .ppw-shell-brand strong{font-size:12px}
+ .ppw-account-banner .ppw-shell-brand small{font-size:10px}
+ .ppw-account-banner .ppw-shell-signout{padding:8px}
+}
+/* A focused form owns the thumb zone; the menu returns on blur. */
+@supports selector(body:has(input:focus)){
+ body:has(#game :is(input,textarea,select):focus) .ppw-account-banner .ppw-shell-menu{
+  opacity:0;pointer-events:none}
+}

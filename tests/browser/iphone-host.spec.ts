@@ -615,6 +615,8 @@ test("small iPhones have one accessible menu, no permanent bottom tabs or horizo
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
+ expect(await page.locator(".ppw-account-banner").evaluate(el=>
+  getComputedStyle(el).paddingTop)).toMatch(/px$/);
  await expect(menu).toBeVisible();await expect(nav).toBeHidden();
  await expect(page.locator(".ppw-navigation .ppw-tab")).toHaveCount(0);
  let overflow=()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
