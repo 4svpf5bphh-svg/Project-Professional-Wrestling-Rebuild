@@ -52,7 +52,7 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
   // A single opaque support reference connects the player's screenshot to
   // a server diagnostic. Never log SQL text, raw exception messages, player
   // identity, booking participants, contract prices or entire payloads.
-  const reference=randomUUID().slice(0,12);
+  const reference=randomUUID().replaceAll("-","").slice(0,12);
   const kind=error instanceof Error?error.name:"UNKNOWN";
   const candidate=error&&typeof error==="object"&&"code" in error?
    (error as {code?:unknown}).code:null;
