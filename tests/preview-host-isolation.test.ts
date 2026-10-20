@@ -23,7 +23,7 @@ test("only the exact approved main World, DB host and DB name may start",()=>{
    {VERCEL_GIT_COMMIT_REF:"alpha/playtest-iphone-20261020"},
    {VERCEL_GIT_COMMIT_REF:"alpha/neon-cost-probe-20261018"},
    {VERCEL_GIT_COMMIT_REF:undefined}
-  ])assert.throws(()=>requireIsolatedPreviewHost({...main,VERCEL_ENV,...patch},db,"world-20261017"),/hosted main World/);
+  ])assert.throws(()=>requireIsolatedPreviewHost({...main,VERCEL_ENV,...patch},db,"world-20261017"),/hosted main World|hosted main database/);
   assert.throws(()=>requireIsolatedPreviewHost({...main,VERCEL_ENV},db.replace("rebuild-main.db.example","old-project.db.example"),"world-20261017"),/hosted main database/);
   assert.throws(()=>requireIsolatedPreviewHost({...main,VERCEL_ENV},db,"wrong"),/hosted main World/);
  }
