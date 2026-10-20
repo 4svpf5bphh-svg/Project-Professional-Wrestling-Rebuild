@@ -116,7 +116,12 @@ export async function readWrestlerDirectory(
      c.start_week_index,
      c.weekly_guarantee,c.appearance_fee
     FROM ppw_contracts c WHERE c.world_id=p.world_id
-     AND c.person_id=p.person_id AND c.promotion_id=$2
+     AND c.person_id=p.person_id
+     AND (c.promotion_id=$2 OR
+      (c.promotion_id=owner.parent_promotion_id AND EXISTS (
+       SELECT 1 FROM ppw_wrestler_promotion_affiliations a
+        WHERE a.world_id=p.world_id AND a.person_id=p.person_id
+         AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY')))
      AND c.status='SIGNED' AND c.expires_week_index >= $3
     ORDER BY (c.start_week_index<=$3) DESC,
      c.expires_week_index DESC,c.contract_id DESC LIMIT 1
@@ -219,11 +224,11 @@ export async function readWrestlerDirectory(
     estimatedWeeklyValue:p.estimated_value,
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.
-    availability:p.exclusive_to&&p.exclusive_to!==who.promotionId?
-     "EXCLUSIVE_ELSEWHERE":p.contract_id?
+    availability:p.contract_id?
       (p.start_week_index!==null&&p.start_week_index>now?
        "SIGNED_FUTURE_YOURS":"YOUR_ROSTER"):
-     p.future_exclusive_to&&p.future_exclusive_to!==who.promotionId?
+      p.exclusive_to&&p.exclusive_to!==who.promotionId?
+     "EXCLUSIVE_ELSEWHERE":p.future_exclusive_to&&p.future_exclusive_to!==who.promotionId?
       "FUTURE_EXCLUSIVE_ELSEWHERE":
      p.future_contracts>0?"CONTRACTED_SOON":
      p.active_contracts===0?"FREE_AGENT":"NON_EXCLUSIVE" as const
