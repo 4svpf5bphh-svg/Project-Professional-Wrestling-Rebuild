@@ -1223,10 +1223,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   root.append(foot);
   if(editShade){
    activeEditShade=editShade;
+   // Controlled form changes redraw the same sheet. Keep its scroll and
+   // skip the opening animation; only genuinely opening a card animates.
+   if(priorModal)editShade.classList.add("ppw-card-edit-retained");
    (root.isConnected?document.body:root).append(editShade);
-   if(!priorModal){
-    editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
-   }
+   if(priorModal){
+    const scroll=editShade.querySelector<HTMLElement>(".ppw-card-edit-sheet");
+    if(scroll)scroll.scrollTop=previousScroll;
+   }else editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
   }
   if(picker){
    const current=picker;

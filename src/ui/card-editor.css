@@ -455,3 +455,18 @@ body>.ppw-card-edit-shade .ppw-card-edit-head strong{
 body>.ppw-card-edit-shade .ppw-card-edit-close{
  background:linear-gradient(135deg,#7c365c,#363970)!important;
  border:1px solid #d08dc7;border-radius:13px!important}
+
+/* Retain one calm scrolling surface when changing picks inside a long card. */
+@media(prefers-reduced-motion:no-preference){
+ body>.ppw-card-edit-shade.ppw-card-edit-retained,
+ body>.ppw-card-edit-shade.ppw-card-edit-retained>.ppw-card-edit-sheet{
+  animation:none!important;
+ }
+ #game .ppw-success{
+  animation:ppw-saved-confirmation .26s ease-out both;
+ }
+ @keyframes ppw-saved-confirmation{
+  from{opacity:.5;transform:scale(.985);filter:brightness(1.32)}
+  to{opacity:1;transform:scale(1);filter:brightness(1)}
+ }
+}
