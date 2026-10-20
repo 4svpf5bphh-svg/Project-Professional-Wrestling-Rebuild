@@ -525,3 +525,28 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(sma
  #game .ppw-card-grip{width:20px}
  #game .ppw-card-bar .ppw-actions button{min-width:36px;width:36px}
 }
+
+/* Final iPhone drawer fit: unlike a desktop submenu, destinations must never
+ * be crushed into two narrow cards by the legacy responsive grid. */
+.ppw-navigation .ppw-nav-drawer-entries{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:7px;min-width:0;width:100%}
+.ppw-navigation .ppw-nav-drawer-entry{min-width:0;width:100%;min-height:65px}
+.ppw-navigation .ppw-nav-entry-copy{flex:1 1 0;min-width:0}
+.ppw-navigation .ppw-nav-entry-copy strong{line-height:1.2;overflow-wrap:anywhere}
+.ppw-navigation .ppw-nav-entry-copy small{line-height:1.32;overflow-wrap:anywhere}
+.ppw-navigation .ppw-nav-rootbar{width:100%;min-width:0}
+.ppw-navigation .ppw-nav-rootbar .ppw-tab{min-width:0}
+.ppw-navigation .ppw-nav-drawer-heading{display:flex;align-items:center;
+ justify-content:space-between;gap:9px}
+.ppw-navigation .ppw-nav-drawer-heading strong{min-width:0}
+.ppw-navigation .ppw-nav-drawer-close{flex-shrink:0;min-width:44px;min-height:44px}
+@media(max-height:680px){
+ .ppw-navigation,.ppw-navigation.ppw-navigation-open{
+  max-height:calc(100dvh - 109px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+ .ppw-navigation .ppw-nav-drawer{padding:11px}
+ .ppw-navigation .ppw-nav-drawer-heading strong{font-size:22px}
+ .ppw-navigation .ppw-nav-rootbar .ppw-tab{min-height:54px}
+}
+@media(min-width:800px){
+ .ppw-navigation .ppw-nav-drawer-entry{min-height:70px}
+}
