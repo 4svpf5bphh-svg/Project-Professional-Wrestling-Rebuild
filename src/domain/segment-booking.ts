@@ -24,7 +24,7 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 };
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
- targetIds:readonly string[];outcome:SegmentOutcome;videoPurpose?:VideoPurpose;
+ targetIds:readonly string[];outcome:SegmentOutcome;durationMinutes?:number;videoPurpose?:VideoPurpose;
  creativeBeat?:SegmentCreativeBeat;sourceMatchSlotId?:string;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";

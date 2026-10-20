@@ -8,7 +8,7 @@ import {initialCreativeBeat,isSegmentCreativeBeat,type SegmentCreativeBeat} from
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
- outcome:SegmentOutcome;videoPurpose:VideoPurpose;programmeId:string|null;
+ outcome:SegmentOutcome;durationMinutes:number;videoPurpose:VideoPurpose;programmeId:string|null;
  creativeBeat:SegmentCreativeBeat|null;sourceMatchSlotId:string|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
@@ -34,7 +34,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 ]);
 export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
- return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",videoPurpose:"WRESTLER_HYPE",programmeId:null,
+ return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
   creativeBeat:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
    initialCreativeBeat(kind):null,sourceMatchSlotId:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
@@ -52,6 +52,7 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   actors:find(Array.isArray(p.actorIds)?p.actorIds:
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
+  durationMinutes:typeof p.durationMinutes==="number"&&Number.isSafeInteger(p.durationMinutes)&&p.durationMinutes>=1&&p.durationMinutes<=30?p.durationMinutes:5,
   sourceMatchSlotId:typeof p.sourceMatchSlotId==="string"&&p.sourceMatchSlotId.trim()?
    p.sourceMatchSlotId:null,
   creativeBeat:p.creativeBeat===undefined?null:
@@ -95,7 +96,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
  return buildBookedSegmentPayload({
   slotId:s.slotId,position:0,kind:s.kind,
   actorIds:s.actors.map(p=>p.personId),
-  targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,
+  targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,durationMinutes:s.durationMinutes,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
   ...(s.kind==="POST_MATCH_ASSAULT"&&s.sourceMatchSlotId?

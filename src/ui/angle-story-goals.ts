@@ -38,8 +38,8 @@ export function firstAngleFor(goal:AngleGoal):Kind{
 /** Guidance is advisory; match finishes and scripted angles never change here. */
 export function angleDirection(kind:Kind):string{
  switch(kind){
-  case "PROMO":return "Choose who addresses the crowd and how the speech ends.";
-  case "INTERVIEW":return "Give a wrestler the floor, whether they answer or walk away.";
+  case "PROMO":return "A microphone moment to build a wrestler’s character. For a direct verbal attack on a rival, book a Challenge or Confrontation with a named target.";
+  case "INTERVIEW":return "A one-person interview focused on their response; to interrupt or confront someone, choose an angle with an explicit target.";
   case "CELEBRATION":return "A victory lap, a taunt or an awkward celebration.";
   case "CONFRONTATION":return "The rivals face off. You decide who gets the last word.";
   case "ATTACK":return "Choose the aggressor and target before staging the assault.";

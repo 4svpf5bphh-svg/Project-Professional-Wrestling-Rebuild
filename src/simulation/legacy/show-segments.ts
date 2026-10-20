@@ -11,6 +11,8 @@ export interface AuthoredSegment {
  slotId:string;position:number;kind:SegmentKind;
  actorIds:readonly string[];targetIds:readonly string[];
  outcome:SegmentOutcome;
+ /** Booker-controlled airtime in minutes. Legacy angles default to five. */
+ durationMinutes?:number;
  videoPurpose?:VideoPurpose;
  /** Absent on historical generic angles; no unscripted response is fabricated. */
  creativeBeat?:SegmentCreativeBeat;
@@ -35,6 +37,7 @@ export function validateAuthoredSegments(
    !["PROMO","INTERVIEW","CONFRONTATION","CHALLENGE","CELEBRATION","ATTACK","INTERRUPTION","RESCUE","POST_MATCH_ASSAULT","TURN","CONTRACT_SIGNING","INTERFERENCE","DEBUT",
      "VIDEO_PACKAGE","STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(s.kind)||
    !["HAPPENS","REFUSED","INTERRUPTED"].includes(s.outcome)||
+   (s.durationMinutes!==undefined&&(!Number.isSafeInteger(s.durationMinutes)||s.durationMinutes<1||s.durationMinutes>30))||
    !Array.isArray(s.actorIds)||!Array.isArray(s.targetIds)||
    s.actorIds.length>20||s.targetIds.length>20||
    ![...s.actorIds,...s.targetIds].every(id=>knownPeople.has(id))||

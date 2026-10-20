@@ -264,6 +264,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const payloads=[...matches.values()].map(m=>({slotId:m.slotId,
     payload:buildBookedMatch(m)}));
    if(!payloads.length)throw new Error("Book at least one match");
+   const usedMinutes=payloads.reduce((n,m)=>n+m.payload.plannedLengthMinutes,0)+
+    segmentPayloads.reduce((n,a)=>n+(a.payload.durationMinutes??5),0);
+   if(view.bookingClass==="REGULAR"&&usedMinutes>120)
+    throw new Error("Your card needs "+usedMinutes+" minutes but only has 120. Reduce match or angle durations.");
    const all=payloads.flatMap(m=>m.payload.participants.map(p=>p.personId));
    if(new Set(all).size!==all.length)
     throw new Error("One wrestler cannot be in two matches");
@@ -408,7 +412,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   summary.append(el("span","",matches.size+" matches"),
    el("span","",segments.size+" angles"),
    el("span","",[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0)+
-    " match minutes · angles scheduled separately"),
+    " match minutes · "+[...segments.values()].reduce((n,a)=>n+a.durationMinutes,0)+" angle minutes"),
    el("span","",order.length+" card slots"),
    el("span","",castReady+" / "+order.length+" ready to book"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
@@ -464,29 +468,33 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // Match timing is already authored and available in memory. Present only a
   // truthful partial estimate: angles and entrances have their own air-time.
   const matchMinutes=[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0);
+  const angleMinutes=[...segments.values()].reduce((n,a)=>n+a.durationMinutes,0);
+  const usedMinutes=matchMinutes+angleMinutes;
   const airtime=el("section","ppw-card-airtime");
   const clock=el("div","ppw-card-airtime-heading");
-  clock.append(el("span","ppw-eyebrow","MATCH TIME"),
+  clock.append(el("span","ppw-eyebrow","SHOW RUNDOWN"),
    el("strong","",view.bookingClass==="REGULAR"?
-    matchMinutes+" of 120 min TV guide":
-    matchMinutes+" min of booked matches"));
+    usedMinutes+" / 120 min":
+    usedMinutes+" min booked"));
   airtime.append(clock);
   if(view.bookingClass==="REGULAR"){
    const track=el("div","ppw-card-airtime-track");
    track.setAttribute("role","progressbar");
-   track.setAttribute("aria-label","Booked match minutes against the television running-time guide");
+   track.setAttribute("aria-label","Total match and angle minutes against the television running-time guide");
    track.setAttribute("aria-valuemin","0");track.setAttribute("aria-valuemax","120");
-   track.setAttribute("aria-valuenow",String(Math.min(120,matchMinutes)));
+   track.setAttribute("aria-valuenow",String(Math.min(120,usedMinutes)));
    const progress=el("span","ppw-card-airtime-fill");
-   progress.style.width=Math.min(100,matchMinutes/120*100)+"%";
-   if(matchMinutes>120)track.classList.add("ppw-card-airtime-overrun");
+   progress.style.width=Math.min(100,usedMinutes/120*100)+"%";
+   if(usedMinutes>120)track.classList.add("ppw-card-airtime-overrun");
    track.append(progress);airtime.append(track);
   }
-  airtime.append(el("small","",view.bookingClass==="REGULAR"?
-   (matchMinutes>120?
-    "Match time exceeds the TV guide. Review the card before adding entrances or angles.":
-    "Angles, entrances and breaks need time too. Keep space for them."):
-   "Entrances and angles are additional to these match minutes."));
+  airtime.append(el("small","",matchMinutes+" min wrestling + "+angleMinutes+" min angles"+
+   (view.bookingClass==="REGULAR"?" · "+Math.max(0,120-usedMinutes)+" min left for entrances, breaks and commentary":
+   " · add venue production time separately"));
+  if(view.bookingClass==="REGULAR"&&usedMinutes>110)
+   airtime.append(el("small","ppw-card-time-warning",usedMinutes>120?
+    "Over the TV limit — shorten your booking to save.":
+    "Very little time left for entrances, breaks and commentary."));
   root.append(airtime);
   const toolbar=el("div","ppw-toolbar");
   const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
@@ -647,9 +655,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
       .map(x=>[x.value,x.label]),value=>
       setAngle(value as EditorSegment["kind"]),!mutable())));
-    controls.append(field("Scripted outcome",selector(segment.outcome,
-     [["HAPPENS","Goes ahead"],["REFUSED","Refused"],["INTERRUPTED","Interrupted"]],
+    controls.append(field("On-screen outcome",selector(segment.outcome,
+     [["HAPPENS","Plays out as booked"],["REFUSED","Wrestler refuses to take part"],["INTERRUPTED","Interrupted on screen"]],
      v=>editSegment(segment,{outcome:v as EditorSegment["outcome"]}),!mutable())));
+    controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
+     [2,3,4,5,6,8,10,12,15,20,25,30].map(n=>[String(n),n+" min"]),
+     value=>editSegment(segment,{durationMinutes:Number(value)}),!mutable())));
+    controls.append(el("p","ppw-angle-guidance","This is a scripted wrestling show: you choose the finish of the scene. ‘Plays out as booked’ means your angle happens; ‘refuses’ and ‘interrupted’ are deliberate story directions, not a random simulation override."));
     if(supportsCreativeBeat(segment.kind)){
      if(!segment.creativeBeat){
       controls.append(button("Script the exact angle",()=>{
@@ -739,6 +751,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      el("span","",angleDirection(segment.kind)));
     body.append(direction);
     for(const role of ["actors","targets"] as const){
+     if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
      const section=el("div","ppw-side");
      const specialist=segment.kind==="RESCUE";
      const heading=specialist?role==="actors"?
