@@ -14,7 +14,6 @@ import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-
 import "../screen.css";
 import "../polish.css";
 import "../arena.css";
-import "../../../src/ui/alignment-guide.css";
 
 type SessionView={
  worldId:string;playerId:string;csrfToken:string;

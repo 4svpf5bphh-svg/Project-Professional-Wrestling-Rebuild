@@ -446,3 +446,12 @@ body>.ppw-card-edit-shade .ppw-picker-button{min-height:48px;border-radius:11px;
  background:linear-gradient(125deg,#342a58,#1a3653)}
 .ppw-editor .ppw-card-grip-active{box-shadow:0 0 0 2px #76eaff,
  0 8px 25px #1115;transform:scale(1.04)}
+
+body>.ppw-card-edit-shade .ppw-card-edit-head{
+ background:linear-gradient(105deg,#254c73,#24254e 65%,#462550);
+ border-bottom:2px solid #6ba9d9;box-shadow:0 3px 18px #0005}
+body>.ppw-card-edit-shade .ppw-card-edit-head strong{
+ font-size:20px;color:#fff7e4;letter-spacing:-.025em}
+body>.ppw-card-edit-shade .ppw-card-edit-close{
+ background:linear-gradient(135deg,#7c365c,#363970)!important;
+ border:1px solid #d08dc7;border-radius:13px!important}

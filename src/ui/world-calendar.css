@@ -101,3 +101,13 @@
 .ppw-calendar-event .ppw-calendar-button{grid-column:2;justify-self:start;
  margin:3px 0 1px;max-width:100%;background:#1d5661;
  border-color:#84c4c8;font-size:13px}
+
+/* The current-week ruler breathes: the left rail cannot touch the text. */
+.ppw-calendar-occurrence.ppw-calendar-current{
+ padding-left:16px;padding-right:9px;
+ border-left:4px solid #45d9f7;border-top:2px solid #85ffdd;
+ background:linear-gradient(140deg,#16344c,#201e44 70%);
+ border-radius:15px;margin-inline:0;overflow:hidden}
+.ppw-calendar-occurrence .ppw-calendar-week-head{padding:10px 7px 16px!important}
+.ppw-calendar-week-head strong{line-height:1.45;white-space:normal}
+.ppw-calendar-current .ppw-calendar-now{flex:none}

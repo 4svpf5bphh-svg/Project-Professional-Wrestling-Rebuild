@@ -1311,8 +1311,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
  expect(methods).toEqual(["planner","load","save","load"]);
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const matchup=page.getByRole("dialog",{name:"Edit match"});
- await expect(matchup.getByText("Crowd roles · FACE vs HEEL")).toBeVisible();
- await expect(matchup.getByText(/clear favourite and antagonist/)).toBeVisible();
+ await expect(matchup.getByText(/Crowd roles|clear favourite and antagonist/)).toHaveCount(0);
  await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
   {name:"Remove match"}).click();
  await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
