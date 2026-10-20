@@ -21,7 +21,7 @@ test("incomplete legacy schema refuses playtest before expensive population quer
   /schema is outdated.*0080/
  );
  assert.equal(statements.filter(s=>s.includes("SELECT")).length,1);
- assert.ok(statements.some(s=>s==="ROLLBACK"));
+ assert.ok(statements.some(s=>s==="COMMIT"));
  assert.ok(!statements.some(s=>s.includes("FROM ppw_worlds w")));
 });
 test("invalid World identity is rejected before touching the pool",async()=>{
