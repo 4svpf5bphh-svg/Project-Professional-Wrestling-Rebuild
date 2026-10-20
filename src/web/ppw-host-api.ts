@@ -3,6 +3,7 @@
  * Single small connection pool reused within each warm function instance.
  */
 import {postgresPool} from "../db/postgres.js";
+import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -17,6 +18,7 @@ function runtime(){
  const cfg=cache.config??requireInviteConfig(process.env);
  const url=process.env.DATABASE_URL;
  if(!url)throw new Error("Missing PPW isolated database connection");
+ requireIsolatedPreviewHost(process.env,url,cfg.worldId);
  if(!cache.pool||cache.dbUrl!==url){
   cache.pool=postgresPool(url,3).pool;cache.dbUrl=url;
  }
