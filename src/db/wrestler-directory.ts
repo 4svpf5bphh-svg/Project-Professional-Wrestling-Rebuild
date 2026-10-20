@@ -5,6 +5,7 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
+import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 export type DirectoryView="ROSTER"|"MARKET";
 export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
@@ -79,8 +80,8 @@ export async function readWrestlerDirectory(
  const f=validateDirectoryFilter(filter);
  return withSqlClient(pool,async tx=>{
   const auth=await tx.query<{year:number;week:number;revision:string|number;
-   can_edit:boolean}>(`
-   SELECT w.year,w.week,w.revision,
+   seed:string|number;can_edit:boolean}>(`
+   SELECT w.year,w.week,w.revision,w.seed,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
@@ -205,7 +206,7 @@ export async function readWrestlerDirectory(
     primaryStyle:fallback.primaryStyle,
     signatureMove:fallback.signatureMoves[0]?.name??null,
     finisherMove:fallback.finishingMoves[0]?.name??null,
-    alignment:p.active_alignment??p.default_alignment,
+    alignment:effectiveWrestlerAlignment(auth[0]!.seed,p.person_id,p.default_alignment,p.active_alignment),
     inRingQuality:p.in_ring_quality,
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,

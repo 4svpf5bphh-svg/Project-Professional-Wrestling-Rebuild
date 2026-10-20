@@ -17,6 +17,7 @@ import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
+import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {creativeReviewsInTransaction} from "./match-creative-consent.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
@@ -33,7 +34,7 @@ export interface SaveCardEditorInput extends CardEditorIdentity{
 }
 const validId=(v:unknown):v is string=>
  typeof v==="string"&&v.trim().length>0&&v.length<=200;
-type ShowRow={year:number;week:number;status:string;revision:string|number;
+type ShowRow={year:number;week:number;status:string;revision:string|number;seed:string|number;
  show_day:number|null;venue_id:string|null;lock_ready_fingerprint:string|null;
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
@@ -54,7 +55,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
  if(![id.worldId,id.playerId,id.promotionId,id.showId].every(validId))
   throw new Error("Invalid card editor identity");
  const rows=await tx.query<ShowRow>([
-  "SELECT w.year,w.week,w.revision,d.status,d.show_day,d.venue_id,",
+  "SELECT w.year,w.week,w.revision,w.seed,d.status,d.show_day,d.venue_id,",
   "d.lock_ready_fingerprint,d.show_name,d.booking_class,d.ticket_strategy,",
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open",
@@ -159,7 +160,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
   return {creativeConcerns,selectedPeople:selectedPeople.map(p=>({
-   personId:p.person_id,name:p.name,division:p.booking_division,alignment:p.alignment,
+   personId:p.person_id,name:p.name,division:p.booking_division,
+   alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
    stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
    championships:titles.map(c=>({championshipId:c.championship_id,
@@ -259,7 +261,7 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
    return {personId:c.person_id,contractId:c.contract_id,name:c.name,
     ringName,gimmickId:gimmick??null,primaryStyle:identityStyle,
     signatureMove:signatureName,finisherMove:finisherName,
-    alignment:c.active_alignment??c.default_alignment,
+    alignment:effectiveWrestlerAlignment(show.seed,c.person_id,c.default_alignment,c.active_alignment),
     popularity:c.popularity,recognition:c.recognition,momentum:c.momentum,
     inRingQuality:c.in_ring_quality,matchCraft:c.match_craft,presentation:c.presentation,
     stamina:c.stamina,safety:c.safety,fatigue:c.fatigue,wear:c.wear,

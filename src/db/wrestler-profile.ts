@@ -4,6 +4,7 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
+import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {originalPersonaBaseline,validatePortablePersona,WRESTLING_STYLES}
  from "../domain/portable-persona.js";
@@ -34,8 +35,8 @@ type Contract={promotion_id:string;promotion_name:string;family:string;
  role_expectation:string|null;weekly_guarantee:string|null;
  appearance_fee:string|null;creative_control:string|null};
 const authorised=async(tx:SqlRows,s:ProfileScope)=>{
- const row=await tx.query<{year:number;week:number;revision:string|number;can_edit:boolean}>(
-  "SELECT w.year,w.week,w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit"+
+ const row=await tx.query<{year:number;week:number;revision:string|number;seed:string|number;can_edit:boolean}>(
+  "SELECT w.year,w.week,w.revision,w.seed,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit"+
   " FROM ppw_worlds w JOIN ppw_promotion_controls c ON c.world_id=w.world_id"+
   " AND c.promotion_id=$2 AND c.player_id=$3 AND c.active"+
   " JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id"+
@@ -129,7 +130,7 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
    morale:p.morale,inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
    presentation:p.presentation,stamina:p.stamina,safety:p.safety,
-   fatigue:p.fatigue,wear:p.wear,alignment:p.alignment,
+   fatigue:p.fatigue,wear:p.wear,alignment:effectiveWrestlerAlignment(auth.seed,p.person_id,p.default_alignment,p.alignment),
    persona:parsedPersona(p),
    contracts:contracts.map(c=>({promotionId:c.promotion_id,promotion:c.promotion_name,
     isYours:c.promotion_id===s.promotionId,family:c.family,

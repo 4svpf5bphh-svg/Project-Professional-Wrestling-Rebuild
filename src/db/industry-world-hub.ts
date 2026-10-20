@@ -4,6 +4,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 export async function readIndustryWorldHub(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
@@ -105,8 +106,8 @@ export async function readIndustryFeaturedTalent(pool:TransactionPool,input:{
   typeof s==="string"&&s.length>0&&s.length<=200))
   throw new Error("Invalid featured talent scope");
  return withSqlClient(pool,async tx=>{
-  const authority=await tx.query<{target_name:string;week_index:number}>([
-   "SELECT rival.name AS target_name,(w.year-1)*52+w.week-1 AS week_index",
+  const authority=await tx.query<{target_name:string;week_index:number;seed:string|number}>([
+   "SELECT rival.name AS target_name,(w.year-1)*52+w.week-1 AS week_index,w.seed",
    "FROM ppw_worlds w JOIN ppw_promotion_controls control",
    "ON control.world_id=w.world_id AND control.player_id=$2",
    "AND control.promotion_id=$3 AND control.active",
@@ -140,7 +141,7 @@ export async function readIndustryFeaturedTalent(pool:TransactionPool,input:{
     personId:p.person_id,name:p.name,division:p.booking_division,
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
-    presentation:p.presentation,alignment:p.default_alignment,
+    presentation:p.presentation,alignment:effectiveWrestlerAlignment(authority[0]!.seed,p.person_id,p.default_alignment,null),
     gimmickId:p.portable_gimmick_id
    }))};
  });
