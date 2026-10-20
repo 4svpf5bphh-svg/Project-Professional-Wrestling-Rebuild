@@ -960,7 +960,7 @@ test("Industry featured wrestlers load only on expansion, cache through local fi
  await restored.locator("summary").click();
  await expect(restored.getByText("Cody Rhodes",{exact:true})).toBeVisible();
  await expect(restored.locator(".ppw-wrestler-badges")).toContainText("WWE");
- await expect(restored.locator(".ppw-wrestler-alignment")).toContainText("FACE · CHEERED");
+ await expect(restored.locator(".ppw-wrestler-alignment")).toHaveText("FACE");
  await expect(restored.locator(".ppw-wrestler-stat[data-ability=outstanding]")).toHaveCount(6);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
@@ -1687,7 +1687,7 @@ test("failed card save explains the roster problem beside Save and retries the s
  expect(submissions[1]!.requestId).toBe(submissions[0]!.requestId);
 });
 
-test("iPhone roster explains crowd character alignments without an extra read",async({page})=>{
+test("iPhone roster uses familiar wrestling terminology without redundant alignment lectures",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:current}));
@@ -1700,13 +1700,7 @@ test("iPhone roster explains crowd character alignments without an extra read",a
  });
  await page.goto("/#/roster");
  await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
- const guide=page.locator(".ppw-alignment-guide");
- await expect(guide).toHaveCount(1);
- await expect(guide).not.toHaveAttribute("open");
- await guide.locator("summary").click();
- await expect(guide.locator('[data-alignment="FACE"]')).toContainText("Crowd favourite");
- await expect(guide.locator('[data-alignment="HEEL"]')).toContainText("Crowd antagonist");
- await expect(guide.locator('[data-alignment="TWEENER"]')).toContainText("Unpredictable");
+ await expect(page.locator(".ppw-alignment-guide")).toHaveCount(0);
  expect(methods).toEqual(["wrestlerDirectory"]);
 });
 

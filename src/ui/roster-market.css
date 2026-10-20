@@ -113,3 +113,16 @@
 .ppw-directory-nav .ppw-directory-button:disabled{opacity:.37;cursor:not-allowed}
 
 .ppw-directory-nav .ppw-directory-button[aria-current=page]:disabled{opacity:1;cursor:default}
+
+/* Real roster/market chip identity: no leftover flat navy legacy pills. */
+.ppw-directory-status,.ppw-directory-interest{
+ display:inline-flex;align-items:center;max-width:100%;
+ padding:6px 10px;border-radius:8px;
+ background:linear-gradient(110deg,#153c55,#263767)!important;
+ border:1px solid #60bfe4;color:#c4f5ff!important;
+ font-weight:850;letter-spacing:.045em;text-transform:uppercase;font-size:10px;
+ box-shadow:inset 0 1px #ffffff20}
+.ppw-directory-offer{background:linear-gradient(110deg,#242449,#15263d);
+ border:1px solid #8c7ccd;border-radius:16px}
+.ppw-directory-card[open]{border-color:#bd85f8;
+ box-shadow:0 8px 24px #0004}

@@ -101,3 +101,14 @@
 .ppw-business-panel{overflow:visible!important}
 @media(max-width:420px){.ppw-business-total>strong{font-size:14px!important}
  .ppw-business-line{font-size:13px}}
+
+/* A money ledger is two columns, never a currency shredded by wrapping. */
+.ppw-business-line>strong{max-width:none!important;white-space:nowrap!important;
+ overflow:visible!important;text-overflow:clip!important;
+ font-variant-numeric:tabular-nums;color:#f6f7ff!important;
+ font-weight:850;word-break:keep-all!important}
+.ppw-business-line.ppw-business-total{border-top:2px solid #7968ae;
+ margin-top:9px;padding-top:18px}
+.ppw-business-line.ppw-business-total>strong{color:#8cf1ce!important}
+@media(max-width:380px){.ppw-business-line{gap:8px!important}
+ .ppw-business-line>strong{font-size:12px!important}}

@@ -78,3 +78,13 @@
 /* Verified names from one completed bout; no extra career lookups. */
 .ppw-profile-career-lineup{margin:7px 0 4px;color:#d0ecf0;font-size:12px;
  line-height:1.55;overflow-wrap:anywhere;word-break:normal}
+
+.ppw-profile-info{overflow-wrap:normal;word-break:normal}
+.ppw-profile-section{border-color:#7968ae!important;
+ background:linear-gradient(135deg,#292b55,#15243c)!important}
+.ppw-profile-action{border:1px solid #8ed6fa!important;
+ background:linear-gradient(110deg,#1a5279,#594182)!important;
+ color:#f5f9ff!important;border-radius:11px;font-weight:850}
+.ppw-profile-move-group textarea,.ppw-profile-style select{
+ background:linear-gradient(115deg,#232948,#1a304a)!important;
+ border:1.5px solid #897bbe!important}
