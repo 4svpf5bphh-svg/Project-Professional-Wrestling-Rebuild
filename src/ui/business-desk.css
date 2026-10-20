@@ -112,3 +112,25 @@
 .ppw-business-line.ppw-business-total>strong{color:#8cf1ce!important}
 @media(max-width:380px){.ppw-business-line{gap:8px!important}
  .ppw-business-line>strong{font-size:12px!important}}
+
+/* A phone ledger cannot depend on squeezing two long columns together.
+   Give every value its own readable row at the exact iPhone widths. */
+@media(max-width:570px){
+ .ppw-business .ppw-business-line{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  gap:5px!important;padding:13px 1px!important;
+  align-items:start!important;
+ }
+ .ppw-business .ppw-business-line>span{
+  display:block;white-space:normal;line-height:1.45;
+ }
+ .ppw-business .ppw-business-line>strong{
+  justify-self:start!important;text-align:left!important;
+  min-width:0!important;max-width:100%!important;
+  white-space:nowrap!important;word-break:keep-all!important;
+  overflow:visible!important;line-height:1.35!important;
+  font-size:clamp(17px,4.7vw,22px)!important;
+  color:#fff0c9!important;
+ }
+ .ppw-business .ppw-business-total>strong{color:#98ffd6!important}
+}

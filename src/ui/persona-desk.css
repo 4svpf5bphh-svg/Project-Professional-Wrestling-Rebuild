@@ -315,3 +315,18 @@
 .ppw-messenger-inbox .ppw-backstage-filters{
  margin:4px 0 8px!important;background:transparent!important;
  box-shadow:none!important;outline:none!important;border:0!important}
+
+/* Backstage's two primary tabs are one native-feeling segmented control:
+   no legacy black outline, double border or ornamental game container. */
+#game .ppw-messenger .ppw-backstage-tabs{
+ border:0!important;outline:0!important;box-shadow:none!important;
+ background:#dbe5f3!important;padding:4px!important;
+}
+#game .ppw-messenger .ppw-backstage-tabs .ppw-persona-button{
+ border:0!important;outline:0!important;box-shadow:none!important;
+ background:transparent!important;color:#37506d!important;
+}
+#game .ppw-messenger .ppw-backstage-tabs .ppw-persona-selected{
+ color:#0c4c9b!important;background:#fff!important;
+ box-shadow:0 1px 5px #1b3b5b1c!important;
+}

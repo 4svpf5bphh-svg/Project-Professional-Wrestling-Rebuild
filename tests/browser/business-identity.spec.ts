@@ -40,6 +40,24 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
  await expect(page.getByText("90",{exact:true})).toBeVisible();
  await expect(page.getByText(/Based in Territory 0/)).toBeVisible();
+ // Actual currency values must stay visible inside the iPhone viewport.
+ // This covers the finance screenshot regression, not only the data payload.
+ const figures=page.locator(".ppw-business-line>strong");
+ await expect(figures).toHaveCount(6);
+ const amounts=await figures.allTextContents();
+ expect(amounts).toContain("US$300,000");
+ expect(amounts).toContain("US$25,000");
+ expect(amounts).toContain("-US$60,000");
+ expect(amounts).toContain("-US$15,000");
+ expect(amounts).toContain("US$250,000");
+ for(const item of await figures.all()){
+  const rect=await item.boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect!.x).toBeGreaterThanOrEqual(0);
+  expect(rect!.x+rect!.width).toBeLessThanOrEqual(391);
+  expect(rect!.height).toBeGreaterThan(14);
+  expect(await item.evaluate(el=>getComputedStyle(el).visibility)).toBe("visible");
+ }
  await page.getByRole("button",{name:"Standing"}).click();
  await expect(page.getByRole("heading",{name:"Company standing"})).toBeVisible();
  await expect(page.getByText("82 / 100")).toHaveCount(2);

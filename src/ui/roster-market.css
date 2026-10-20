@@ -126,3 +126,21 @@
  border:1px solid #8c7ccd;border-radius:16px}
 .ppw-directory-card[open]{border-color:#bd85f8;
  box-shadow:0 8px 24px #0004}
+
+/* Final shared tag treatment for free agents, appearance dates and
+   nonexclusive signings — these are useful filters, not generic navy labels. */
+.ppw-directory .ppw-directory-status{
+ background:linear-gradient(115deg,#1d4563,#333168)!important;
+ color:#d9efff!important;border:1px solid #7cb6ed!important;
+ border-radius:7px!important;letter-spacing:.07em;
+}
+.ppw-directory .ppw-directory-status[data-availability="FREE_AGENT"],
+.ppw-directory .ppw-directory-status[data-status="FREE_AGENT"]{
+ color:#18362b!important;background:#98e7ba!important;
+ border-color:#bffed7!important;
+}
+.ppw-directory .ppw-directory-status[data-availability="NON_EXCLUSIVE"],
+.ppw-directory .ppw-directory-status[data-status="NON_EXCLUSIVE"]{
+ background:linear-gradient(115deg,#643e8a,#382d67)!important;
+ color:#f6e9ff!important;border-color:#d6a7fc!important;
+}

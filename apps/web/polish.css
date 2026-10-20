@@ -532,3 +532,19 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
   to{opacity:1;transform:none;filter:none}
  }
 }
+
+/* Brand-led micro motion in a management session. No animation blocks a tap. */
+@media(prefers-reduced-motion:no-preference){
+ #game .ppw-business-metric{
+  animation:ppw-ledger-reveal .22s cubic-bezier(.22,.8,.3,1) backwards;
+ }
+ #game .ppw-business-metric:nth-child(2n){animation-delay:45ms}
+ #game .ppw-business-metric:nth-child(3n){animation-delay:75ms}
+ @keyframes ppw-ledger-reveal{
+  from{opacity:.45;transform:translateY(8px)}
+  to{opacity:1;transform:none}
+ }
+ #game .ppw-business-action:active,#game .ppw-directory-button:active{
+  transform:scale(.985);filter:brightness(1.12);
+ }
+}
