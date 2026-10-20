@@ -1,0 +1,29 @@
+/* One shared alignment reference on roster, talent market, profile & booking. */
+#game .ppw-alignment-guide,.ppw-sheet .ppw-alignment-guide{
+ margin:12px 0 16px;border:1px solid #7c72af;
+ border-radius:5px 15px 5px 5px;background:#25213f;color:#f6eafa;overflow:hidden}
+#game .ppw-alignment-guide summary,.ppw-sheet .ppw-alignment-guide summary{
+ cursor:pointer;min-height:46px;padding:12px 14px;font-size:13px;
+ font-weight:900;color:#fff0d2;background:linear-gradient(100deg,#392a5e,#222449)}
+#game .ppw-alignment-guide[open] summary,.ppw-sheet .ppw-alignment-guide[open] summary{
+ border-bottom:1px solid #6d6391}
+#game .ppw-alignment-guide>p,.ppw-sheet .ppw-alignment-guide>p{
+ margin:12px 14px;color:#e1d8e8;font-size:12px;line-height:1.5}
+#game .ppw-alignment-guide-grid,.ppw-sheet .ppw-alignment-guide-grid{
+ display:grid;gap:7px;padding:0 12px 12px}
+#game .ppw-alignment-guide-item,.ppw-sheet .ppw-alignment-guide-item{
+ display:grid;gap:4px;padding:11px 12px;border-left:5px solid #66eccb;
+ border-radius:4px;background:#13182c}
+#game .ppw-alignment-guide-item[data-alignment=HEEL],
+.ppw-sheet .ppw-alignment-guide-item[data-alignment=HEEL]{border-left-color:#ff3679}
+#game .ppw-alignment-guide-item[data-alignment=TWEENER],
+.ppw-sheet .ppw-alignment-guide-item[data-alignment=TWEENER]{border-left-color:#9068f4}
+#game .ppw-alignment-guide-item strong,.ppw-sheet .ppw-alignment-guide-item strong{
+ color:#fff0d2;font-size:13px}
+#game .ppw-alignment-guide-item span,.ppw-sheet .ppw-alignment-guide-item span{
+ color:#d7d2e8;font-size:12px;line-height:1.45}
+html[data-ppw-screen=backstage] #game .ppw-alignment-guide{
+ border-color:#a5b9d4;background:#fff;color:#19334b}
+html[data-ppw-screen=backstage] #game .ppw-alignment-guide summary{
+ background:#e8edf6;color:#203854}
+html[data-ppw-screen=backstage] #game .ppw-alignment-guide>p{color:#46607a}

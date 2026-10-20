@@ -1680,3 +1680,26 @@ test("failed card save explains the roster problem beside Save and retries the s
  expect(submissions.map(x=>x.runningOrder)).toEqual([["bout"],["bout"]]);
  expect(submissions[1]!.requestId).toBe(submissions[0]!.requestId);
 });
+
+test("iPhone roster explains crowd character alignments without an extra read",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);methods.push(method);
+  return route.fulfill({json:method==="wrestlerDirectory"?{
+   view:"ROSTER",year:1,week:5,worldRevision:4,canEdit:true,currentWeekIndex:4,
+   people:[],total:0,hasMore:false
+  }:method==="overview"?overview:{}});
+ });
+ await page.goto("/#/roster");
+ await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
+ const guide=page.locator(".ppw-alignment-guide");
+ await expect(guide).toHaveCount(1);
+ await expect(guide).not.toHaveAttribute("open");
+ await guide.locator("summary").click();
+ await expect(guide.locator('[data-alignment="FACE"]')).toContainText("Crowd favourite");
+ await expect(guide.locator('[data-alignment="HEEL"]')).toContainText("Crowd antagonist");
+ await expect(guide.locator('[data-alignment="TWEENER"]')).toContainText("Unpredictable");
+ expect(methods).toEqual(["wrestlerDirectory"]);
+});

@@ -17,6 +17,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {createAlignmentGuide} from "./alignment-guide.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
@@ -1221,6 +1222,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     value=>{current.division=value as typeof current.division;render();});
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
+   sheet.append(createAlignmentGuide());
    const matchForPicker=matches.get(current.slotId);
    const chosen=current.role==="RUN_IN"?null:
     matchForPicker?.teams[current.side]?.[current.member]??null;

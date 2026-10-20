@@ -5,6 +5,7 @@ import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {createAlignmentGuide} from "./alignment-guide.js";
 export type WrestlerDirectoryData=Awaited<ReturnType<typeof readWrestlerDirectory>>;
 export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
@@ -177,6 +178,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    sections.append(trios);
    root.append(sections);
   }
+  root.append(createAlignmentGuide());
   const controls=el("section","ppw-directory-filters");
   const search=document.createElement("input");
   search.type="search";search.placeholder="Search wrestlers by name";
