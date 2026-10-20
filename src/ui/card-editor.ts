@@ -654,8 +654,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const candidate=[...root.querySelectorAll<HTMLElement>(
      ".ppw-card[data-booking-slot-id]")].find(node=>{
       const box=node.getBoundingClientRect();
-      return pointerX>=box.left-14&&pointerX<=box.right+14&&
-       pointerY>=box.top&&pointerY<=box.bottom;
+      // The dragged handle is narrower than the ticket on mobile. Hit-test
+      // vertically against the entire ticket rather than requiring its X span.
+      return pointerY>=box.top&&pointerY<=box.bottom;
      });
     const id=candidate?.dataset.bookingSlotId;
     if(!id||id===dropId)return;
@@ -676,6 +677,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     edgeFrame=0;edgeSpeed=0;
     root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
     grip.classList.remove("ppw-card-grip-active");
+    document.removeEventListener("pointermove",dragMove);
+    document.removeEventListener("pointerup",dragFinish);
+    document.removeEventListener("pointercancel",clearDrag);
     if(dragPointer!==null&&grip.hasPointerCapture(dragPointer))
      grip.releasePointerCapture(dragPointer);
     dragPointer=null;dragging=false;
@@ -685,8 +689,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     event.preventDefault();dragPointer=event.pointerId;dragStartY=event.clientY;
     dropId=slotId;pointerX=event.clientX;pointerY=event.clientY;
     grip.setPointerCapture(event.pointerId);
+    document.addEventListener("pointermove",dragMove);
+    document.addEventListener("pointerup",dragFinish);
+    document.addEventListener("pointercancel",clearDrag);
    };
-   grip.onpointermove=event=>{
+   const dragMove=(event:PointerEvent)=>{
     if(dragPointer!==event.pointerId)return;
     pointerX=event.clientX;pointerY=event.clientY;
     if(!dragging&&Math.abs(event.clientY-dragStartY)<9)return;
@@ -699,7 +706,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      window.cancelAnimationFrame(edgeFrame);edgeFrame=0;
     }
    };
-   grip.onpointerup=event=>{
+   const dragFinish=(event:PointerEvent)=>{
     if(dragPointer!==event.pointerId)return;
     const target=dropId,wasDragging=dragging;
     clearDrag();
@@ -708,6 +715,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(!next)return;
     order=next;markDirty();render();
    };
+   grip.onpointermove=dragMove;
+   grip.onpointerup=dragFinish;
    grip.onpointercancel=clearDrag;
    arrows.append(grip,earlier,later);
    if(segment?.kind==="POST_MATCH_ASSAULT"&&segment.sourceMatchSlotId&&
