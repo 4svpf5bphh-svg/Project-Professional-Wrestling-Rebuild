@@ -20,7 +20,10 @@ test("player-actionable canonical booking errors resolve to safe, stable categor
   ["Show exceeds 120-minute TV slot","BUDGET"],
   ["Show is not an editable current-week draft","CONFIRMED"],
   ["Invalid authored segment","ANGLE"],
-  ["Booked wrestler lacks current contract rights","TALENT"]
+  ["Booked wrestler lacks current contract rights","TALENT"],
+  ["Incomplete contract lookup for booked show","TALENT"],
+  ["Wrestler may appear in only one match on a card","MATCH"],
+  ["Incomplete segment write","ORDER"]
  ] as const;
  for(const [message,code] of examples){
   assert.equal(bookingErrorCode(message),code,message);

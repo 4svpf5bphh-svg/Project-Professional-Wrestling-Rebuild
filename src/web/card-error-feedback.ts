@@ -29,18 +29,18 @@ export function bookingErrorCode(message:string):BookingErrorCode|null{
   return "SCHEDULE";
  if(/choose an available venue|venue.*market|venue.*not available|market.*not available|invalid venue|venue.*contested/i.test(message))
   return "VENUE";
- if(/wrestler.*unavailable|contract.*(?:dates|active|valid|expiry|expired|eligible|rights)|not enough.*(?:contract|dates)|exclusive elsewhere|appearance.*(?:rights|dates)|person.*inactive|lacks current contract rights/i.test(message))
+ if(/wrestler.*unavailable|contract.*(?:dates|active|valid|expiry|expired|eligible|rights|lookup)|not enough.*(?:contract|dates)|exclusive elsewhere|appearance.*(?:rights|dates)|person.*inactive|lacks current contract rights|multiple contracts.*booked|incomplete contract lookup/i.test(message))
   return "TALENT";
  if(/mixed or missing booking division|same booking division/i.test(message))return "DIVISION";
- if(/running order|duplicate card slot|card slot capacity|incomplete segment running order/i.test(message))return "ORDER";
+ if(/running order|duplicate card slot|card slot capacity|incomplete segment running order|incomplete match card write|incomplete segment write|incomplete automatic rivalry match links|duplicate match slot/i.test(message))return "ORDER";
  if(/title.*(?:requires|champion|contested|division)|championship.*(?:requires|champion|division)/i.test(message))return "TITLE";
  if(/120.minutes|airtime|running.time|show.*duration|TV slot/i.test(message))return "BUDGET";
  if(/not an editable current.week draft|show is not editable|already confirmed/i.test(message))return "CONFIRMED";
- if(/match.*(?:participants|format|winner|finish|sides|booked|invalid)|invalid match|scripted winner|book at least one match|match card|one wrestler cannot be in two matches/i.test(message))
+ if(/match.*(?:participants|format|winner|finish|sides|booked|invalid)|invalid match|scripted winner|book at least one match|match card|one wrestler cannot be in two matches|wrestler may appear in only one match|unsupported scoring layout|missing match family|individual bout|invalid canonical.*layout/i.test(message))
   return "MATCH";
  if(/programme.*(?:rivalry|participants|link|active)|linked rivalry|creative consent|creative agreement|rivalry.*(?:participants|consent)/i.test(message))
   return "PROGRAMME";
- if(/angle|segment|stable before|faction|scripted angle|role capacity|authored segment|invalid segment|wrestler.*two roles/i.test(message))
+ if(/angle|segment|stable before|faction|scripted angle|role capacity|authored segment|invalid segment|wrestler.*two roles|invalid.*role|invalid.*scene/i.test(message))
   return "ANGLE";
  return null;
 }

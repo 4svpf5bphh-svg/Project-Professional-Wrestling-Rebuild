@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import type {WorldApiContext} from "../api/world-service.js";
 import {dispatchCardRpc} from "./card-rpc.js";
 import {bookingErrorCode} from "./card-error-feedback.js";
@@ -47,7 +48,18 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
   const message=error instanceof Error?error.message:"";
   if(/revision|stale|conflict/i.test(message))return json(409,{error:"Card changed. Reload to continue"});
   const code=bookingErrorCode(message);
-  return json(400,code?{error:"Booking request rejected",code}:
-   {error:"Booking request rejected"});
+  if(code)return json(400,{error:"Booking request rejected",code});
+  // A single opaque support reference connects the player's screenshot to
+  // a server diagnostic. Never log SQL text, raw exception messages, player
+  // identity, booking participants, contract prices or entire payloads.
+  const reference=randomUUID().slice(0,12);
+  const kind=error instanceof Error?error.name:"UNKNOWN";
+  const candidate=error&&typeof error==="object"&&"code" in error?
+   (error as {code?:unknown}).code:null;
+  const dbCode=typeof candidate==="string"&&/^[A-Z0-9]{5}$/.test(candidate)?
+   candidate:null;
+  console.warn("PPW card action rejected",{
+   reference,action:"booking-or-desk",exceptionClass:kind,dbCode});
+  return json(400,{error:"Booking request rejected",reference});
  }
 }

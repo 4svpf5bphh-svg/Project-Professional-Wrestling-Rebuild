@@ -230,3 +230,15 @@ test("authenticated iPhone card errors are useful but never reveal server diagno
   {status:503}));
  await assert.rejects(gateway("save"),/Booking request failed/);
 });
+
+test("unclassified save rejection shows an opaque support reference, never server diagnostics",async()=>{
+ const call=createCardClient(scope,async()=>new Response(JSON.stringify({
+  error:"Private SQL error: payroll £9m",reference:"deadbeef1234"
+ }),{status:400}));
+ await assert.rejects(call("save"),error=>{
+  assert.ok(error instanceof Error);
+  assert.match(error.message,/support reference deadbeef1234/);
+  assert.doesNotMatch(error.message,/payroll|Private|SQL|£9m/);
+  return true;
+ });
+});

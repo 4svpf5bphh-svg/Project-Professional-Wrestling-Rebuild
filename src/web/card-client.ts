@@ -39,8 +39,17 @@ export function createCardClient(scope:CardSessionScope,
     try{
      const rejected:unknown=await response.json();
      if(rejected&&typeof rejected==="object"&&!Array.isArray(rejected))
-      correction=bookingErrorMessage((rejected as Record<string,unknown>).code)??
-       "Booking request failed — the server could not identify a specific slot. Your edits are still on screen. Review contract dates, match divisions and angle targets, then try again.";
+      {
+       const record=rejected as Record<string,unknown>;
+       const mapped=bookingErrorMessage(record.code);
+       const ref=record.reference;
+       correction=mapped??(
+        "Booking request failed — the server could not identify a specific slot. Your edits are still on screen. "+
+        "Review contract dates, match divisions and angle targets, then try again."+
+        (typeof ref==="string"&&/^[a-f0-9]{12}$/.test(ref)?
+         " If it keeps happening, quote support reference "+ref+".":"")
+       );
+      }
     }catch{ /* Unknown or proxy error: never expose its response body. */ }
    }
    throw new Error(correction??(response.status===409?
