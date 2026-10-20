@@ -84,3 +84,23 @@
  color:#ffd7d2;border-left:2px solid #ffaba5;padding:6px 9px;background:#63333245}
 .ppw-wrestler-card:where(button):focus-visible{outline:3px solid #a8eeff;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.ppw-wrestler-card{transition:none!important;animation:none!important}}
+
+/* The original names and abilities deserve the space; no made-up portraits or
+   initials masquerading as photography. */
+.ppw-wrestler-card,.ppw-wrestler-compact{
+ display:grid;grid-template-columns:minmax(0,1fr);padding:13px 15px;gap:8px;
+ border-radius:15px;
+ background:linear-gradient(132deg,#243856,#1a2241 65%,#211f39);
+ border:1px solid #56648dc0;
+}
+.ppw-wrestler-card[data-alignment="FACE"]{border-left:4px solid #42d6ad}
+.ppw-wrestler-card[data-alignment="HEEL"]{border-left:4px solid #ff688a}
+.ppw-wrestler-card[data-alignment="TWEENER"]{border-left:4px solid #c8a0ff}
+.ppw-wrestler-portrait{display:none!important}
+.ppw-wrestler-card .ppw-wrestler-status{grid-column:1/-1;max-width:none;text-align:left}
+.ppw-wrestler-name{font-size:19px;line-height:1.2}
+.ppw-wrestler-badges{gap:6px}
+.ppw-wrestler-alignment{font-size:10px;letter-spacing:.02em}
+.ppw-wrestler-card[data-alignment="HEEL"] .ppw-wrestler-alignment{background:#85264c66;color:#ffd2df}
+.ppw-wrestler-card[data-alignment="TWEENER"] .ppw-wrestler-alignment{background:#68419d80;color:#ead4ff}
+@media(min-width:610px){.ppw-wrestler-card{grid-template-columns:minmax(0,1fr) auto}}

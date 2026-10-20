@@ -131,12 +131,11 @@ export function mountPersonaDesk(root:HTMLElement,
   root.classList.add("ppw-messenger-"+pane.toLowerCase());
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
-  if(onBack)head.append(button("← Back to card",onBack));
-  head.append(el("span","ppw-eyebrow","THE LOCKER ROOM / MESSAGES"),
-   el("h1","",pane==="INBOX"?"Messages":"Contact details"),
-   el("p","ppw-muted",
-    pane==="INBOX"?"Private conversations and locker-room decisions.":
-     "Wrestler-owned identity, career and character history."));
+  if(onBack)head.append(button("← Back",onBack));
+  if(pane==="INBOX")head.append(el("h1","","Messages"));
+  else head.append(el("span","ppw-eyebrow","CONTACTS"),
+   el("h1","","Contact details"),
+   el("p","ppw-muted","Private career conversations and character history."));
   if(pane!=="THREAD")root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){root.append(button(loading?"Loading…":"Retry",()=>void load(personId),loading));return;}
@@ -154,11 +153,10 @@ export function mountPersonaDesk(root:HTMLElement,
    const unreadCount=view.roster.filter(w=>w.isCurrent&&w.latestIncoming&&
     w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length;
    const topline=el("div","ppw-messenger-inbox-topline");
-   topline.append(el("span","ppw-messenger-inbox-label","PRIVATE MESSAGES"),
+   topline.append(el("span","ppw-messenger-inbox-label","MY CONVERSATIONS"),
     el("span","ppw-messenger-inbox-count",
-     threadCount+" threads"+(unreadCount?" · "+unreadCount+" unread":"")));
-   inbox.append(topline,el("h2","","Conversations"),
-    el("p","ppw-muted","Wrestler requests, promises and replies in one place."));
+     threadCount+" chats"+(unreadCount?" · "+unreadCount+" unread":"")));
+   inbox.append(topline);
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["HISTORY","History"],
@@ -481,7 +479,8 @@ export function mountPersonaDesk(root:HTMLElement,
   if(cooldown)chat.append(el("p","ppw-muted",
    "Reconsideration available in "+(view.nextPitchWeek-now)+" weeks."));
   if(view.canEdit&&!cooldown&&persona){
-   chat.append(el("h3","","Suggest a character change"));
+   chat.append(el("h3","","Pitch a new character"),
+    el("p","ppw-muted","These are creative archetypes, not simple face/heel switches. Your wrestler can accept or reject the pitch, and retains ownership of their identity."));
    const filter=document.createElement("input");
    filter.type="search";filter.placeholder="Search gimmicks or families";
    filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
@@ -489,12 +488,24 @@ export function mountPersonaDesk(root:HTMLElement,
    const availableArchetypes=view.archetypes;
    const refreshOptions=()=>{
     options.replaceChildren();
-    const matches=availableArchetypes.filter(x=>x.id!==persona.gimmickId&&(
+    // Surface the catalogue's variety on first opening; the initial
+    // classic Hero/Villain entries must not hide the deeper wrestling ideas.
+    const eligible=availableArchetypes.filter(x=>x.id!==persona.gimmickId&&(
      !search||[x.label,x.familyLabel,x.description].some(y=>
-      y.toLowerCase().includes(search.trim().toLowerCase())))).slice(0,24);
+      y.toLowerCase().includes(search.trim().toLowerCase()))));
+    const familyFirst=eligible.filter(x=>x.familyLabel!=="Classic Wrestling");
+    const perFamily=new Set<string>();
+    const featured=familyFirst.filter(x=>{
+     if(perFamily.has(x.familyLabel))return false;
+     perFamily.add(x.familyLabel);return true;
+    });
+    const matches=(search?eligible:[...featured,...familyFirst.filter(x=>!featured.includes(x)),
+     ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")]).slice(0,24);
     for(const p of matches){
-     const item=button(p.label+" · "+p.familyLabel,()=>{
-      chosen=p.id;render();},loading);
+     const item=button("",()=>{chosen=p.id;render();},loading);
+     item.classList.add("ppw-gimmick-choice");
+     item.append(el("strong","",p.label),el("small","",p.familyLabel),
+      el("span","",p.description));
      if(chosen===p.id)item.classList.add("ppw-persona-selected");
      item.title=p.description;options.append(item);
     }

@@ -64,6 +64,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      Math.round(view.mediaReach).toLocaleString("en-GB"),
      "Current distribution strength"),
     metric("CASH",money(view.cash)),metric("DEBT",money(view.debt)),
+    metric("BASE WEEKLY OVERHEAD",view.weeklyFixedOverhead===null?
+     "Not configured":money(view.weeklyFixedOverhead),
+     "Premises, operations and running the company · excludes talent, staff and live shows"),
+    metric("TOTAL RECURRING SPEND",view.weeklyFixedOverhead===null?
+     "Not configured":money(view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll),
+     "Fixed overhead + signed guarantees + staff wages"),
     metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":money(view.lastWeeklyNet),
      "Actual result, including settled shows and contracts"),
     metric("RUNWAY",view.runwayWeeks===null?
