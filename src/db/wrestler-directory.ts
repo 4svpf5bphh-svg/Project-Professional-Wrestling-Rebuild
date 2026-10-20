@@ -26,7 +26,8 @@ type PersonRow={
  popularity:number|null;recognition:number|null;momentum:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;interest_score:number|null;
- contract_id:string|null;family:string|null;role_expectation:string|null;remaining_dates:number|null;
+ contract_id:string|null;contract_owner_id:string|null;parent_name:string|null;
+ family:string|null;role_expectation:string|null;remaining_dates:number|null;
  start_week_index:number|null;
  expires_week_index:number|null;weekly_guarantee:string|null;
  appearance_fee:string|null;
@@ -98,7 +99,9 @@ export async function readWrestlerDirectory(
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS interest_score,
-    mine.contract_id,mine.family,mine.role_expectation,mine.remaining_dates,mine.expires_week_index,
+    mine.contract_id,mine.promotion_id AS contract_owner_id,
+    parent.name AS parent_name,mine.family,mine.role_expectation,
+    mine.remaining_dates,mine.expires_week_index,
     mine.start_week_index,
     mine.weekly_guarantee::text,mine.appearance_fee::text,
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
@@ -111,6 +114,8 @@ export async function readWrestlerDirectory(
    LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
     AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
    JOIN ppw_promotions owner ON owner.world_id=p.world_id AND owner.promotion_id=$2
+   LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id
+    AND parent.promotion_id=owner.parent_promotion_id
    LEFT JOIN LATERAL (
     SELECT c.contract_id,c.family,c.role_expectation,c.remaining_dates,c.expires_week_index,
      c.start_week_index,
@@ -205,6 +210,9 @@ export async function readWrestlerDirectory(
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
     careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
+    affiliatedViaParent:p.contract_id!==null&&p.contract_owner_id!==who.promotionId,
+    contractOwnerName:p.contract_id!==null&&p.contract_owner_id!==who.promotionId?
+     p.parent_name:null,
     roleExpectation:p.role_expectation,
     interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
      p.interest_score===null?"UNKNOWN":p.interest_score>=78?"KEEN":
