@@ -353,7 +353,13 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     slotId:s.slot_id,payload:s.payload
    }));
    const usedMinutes=matches.reduce((n,m)=>n+m.payload.plannedLengthMinutes,0)+
-    segments.reduce((n,a)=>n+(a.payload.durationMinutes??5),0);
+    segments.reduce((n,a)=>{
+     const raw=a.payload;
+     const minutes=raw&&typeof raw==="object"&&!Array.isArray(raw)?
+      (raw as {durationMinutes?:unknown}).durationMinutes:null;
+     return n+(typeof minutes==="number"&&Number.isSafeInteger(minutes)&&
+      minutes>=1&&minutes<=30?minutes:5);
+    },0);
    if(show.booking_class==="REGULAR"&&usedMinutes>120)
     throw new Error("Show exceeds the 120-minute TV slot");
    if(matches.length+segments.length>100||
