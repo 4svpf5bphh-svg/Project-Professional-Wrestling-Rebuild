@@ -176,12 +176,19 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
            c.status AS contract_status,c.family,c.remaining_dates,c.expires_week_index,
            EXISTS(SELECT 1 FROM ppw_contracts x
              WHERE x.world_id=$1 AND x.person_id=req.person_id
-               AND x.promotion_id<>req.promotion_id AND x.status='SIGNED'
+               AND x.promotion_id<>c.promotion_id AND x.status='SIGNED'
                AND x.family='EXCLUSIVE' AND x.expires_week_index >= $5) AS exclusive_elsewhere
          FROM unnest($2::text[],$3::text[],$4::text[]) AS req(promotion_id,person_id,contract_id)
          LEFT JOIN ppw_people p ON p.world_id=$1 AND p.person_id=req.person_id
          LEFT JOIN ppw_contracts c ON c.world_id=$1 AND c.contract_id=req.contract_id
-           AND c.person_id=req.person_id AND c.promotion_id=req.promotion_id`,
+           AND c.person_id=req.person_id
+           AND (c.promotion_id=req.promotion_id OR EXISTS (
+             SELECT 1 FROM ppw_wrestler_promotion_affiliations a
+             JOIN ppw_promotions target ON target.world_id=a.world_id
+              AND target.promotion_id=a.promotion_id
+             WHERE a.world_id=c.world_id AND a.person_id=c.person_id
+              AND a.promotion_id=req.promotion_id AND a.basis='PARENT_COMPANY'
+              AND target.parent_promotion_id=c.promotion_id))`,
       [worldId,requested.map(a=>a.promotionId),requested.map(a=>a.personId),
         requested.map(a=>a.contractId),weekIndex],
     );
