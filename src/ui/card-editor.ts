@@ -631,7 +631,27 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    grip.title="Drag to change running order; arrow buttons also work";
    grip.setAttribute("aria-hidden","true");
    let dragPointer:number|null=null,dragStartY=0,dragging=false,dropId=slotId;
+   let pointerX=0,pointerY=0,edgeSpeed=0,edgeFrame=0;
+   const chooseTarget=()=>{
+    const candidate=document.elementFromPoint(pointerX,pointerY)
+     ?.closest<HTMLElement>(".ppw-card[data-booking-slot-id]");
+    const id=candidate?.dataset.bookingSlotId;
+    if(!id||id===dropId)return;
+    root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
+    dropId=id;
+    if(dropId!==slotId)candidate?.classList.add("ppw-card-drop-target");
+   };
+   // Continuous edge scroll exists only while a touch is held near a boundary.
+   // It works on long iPhone cards without scrolling or mutating saved World data.
+   const edgeStep=()=>{
+    edgeFrame=0;
+    if(!dragging||dragPointer===null||edgeSpeed===0)return;
+    window.scrollBy(0,edgeSpeed);chooseTarget();
+    edgeFrame=window.requestAnimationFrame(edgeStep);
+   };
    const clearDrag=()=>{
+    if(edgeFrame)window.cancelAnimationFrame(edgeFrame);
+    edgeFrame=0;edgeSpeed=0;
     root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
     grip.classList.remove("ppw-card-grip-active");
     if(dragPointer!==null&&grip.hasPointerCapture(dragPointer))
@@ -641,19 +661,21 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    grip.onpointerdown=event=>{
     if(!mutable()||event.button!==0||dragPointer!==null)return;
     event.preventDefault();dragPointer=event.pointerId;dragStartY=event.clientY;
-    dropId=slotId;grip.setPointerCapture(event.pointerId);
+    dropId=slotId;pointerX=event.clientX;pointerY=event.clientY;
+    grip.setPointerCapture(event.pointerId);
    };
    grip.onpointermove=event=>{
     if(dragPointer!==event.pointerId)return;
+    pointerX=event.clientX;pointerY=event.clientY;
     if(!dragging&&Math.abs(event.clientY-dragStartY)<9)return;
     dragging=true;grip.classList.add("ppw-card-grip-active");
-    const candidate=document.elementFromPoint(event.clientX,event.clientY)
-     ?.closest<HTMLElement>(".ppw-card[data-booking-slot-id]");
-    const id=candidate?.dataset.bookingSlotId;
-    if(!id||id===dropId)return;
-    root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
-    dropId=id;
-    if(dropId!==slotId)candidate?.classList.add("ppw-card-drop-target");
+    chooseTarget();
+    const bottom=window.innerHeight-125;
+    edgeSpeed=event.clientY<78?-12:event.clientY>bottom?12:0;
+    if(edgeSpeed&&!edgeFrame)edgeFrame=window.requestAnimationFrame(edgeStep);
+    else if(!edgeSpeed&&edgeFrame){
+     window.cancelAnimationFrame(edgeFrame);edgeFrame=0;
+    }
    };
    grip.onpointerup=event=>{
     if(dragPointer!==event.pointerId)return;

@@ -512,3 +512,16 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(sma
 @media(prefers-reduced-motion:reduce){
  #game .ppw-result-hero{animation:none!important}
 }
+
+/* Drag handles may never force horizontal overflow on narrow iPhones. */
+#game .ppw-card-bar{min-width:0}
+#game .ppw-card-bar>div:nth-child(2){min-width:0;overflow-wrap:anywhere}
+#game .ppw-card-bar .ppw-actions{flex-shrink:0;align-items:center;gap:3px}
+#game .ppw-card-grip{touch-action:none;user-select:none;
+ -webkit-user-select:none;-webkit-touch-callout:none}
+@media(max-width:380px){
+ #game .ppw-card-bar{gap:5px;padding:12px 6px 12px 12px}
+ #game .ppw-card-bar .ppw-actions{gap:2px}
+ #game .ppw-card-grip{width:20px}
+ #game .ppw-card-bar .ppw-actions button{min-width:36px;width:36px}
+}

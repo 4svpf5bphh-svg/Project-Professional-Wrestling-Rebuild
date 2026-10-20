@@ -1703,3 +1703,48 @@ test("iPhone roster explains crowd character alignments without an extra read",a
  await expect(guide.locator('[data-alignment="TWEENER"]')).toContainText("Unpredictable");
  expect(methods).toEqual(["wrestlerDirectory"]);
 });
+
+test("dragging booking tickets on iPhone changes only local order until Save",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const a={personId:"alice",contractId:"da"},b={personId:"bob",contractId:"db"};
+ const booking={matchType:"SINGLES",family:"INDIVIDUAL",
+  participants:[a,b],sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:12};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+   scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+    eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+    marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+    ready:false,slots:2,bookingClass:"REGULAR",showSeriesId:null,showName:"Dynamite"}]}]};
+ const card={showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+  worldRevision:4,day:5,venueId:"arena",showName:"Dynamite",
+  promotionName:"AEW",venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+  ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN",alignment:"FACE"},
+   {personId:"bob",name:"Bob",division:"MEN",alignment:"HEEL"}],
+  slots:[{slotId:"first",kind:"MATCH",position:0,payload:booking},
+   {slotId:"second",kind:"MATCH",position:1,payload:booking}]};
+ const calls:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  calls.push(method);
+  return route.fulfill({json:method==="planner"?planner:method==="load"?card:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ const tickets=page.locator(".ppw-card[data-booking-slot-id]");
+ await expect(tickets).toHaveCount(2);
+ const grip=tickets.first().locator(".ppw-card-grip");
+ const first=await grip.boundingBox(),second=await tickets.nth(1).boundingBox();
+ expect(first&&second).toBeTruthy();
+ await page.mouse.move(first!.x+first!.width/2,first!.y+first!.height/2);
+ await page.mouse.down();
+ await page.mouse.move(second!.x+second!.width/2,second!.y+second!.height/2,{steps:7});
+ await page.mouse.up();
+ await expect(tickets.first()).toHaveAttribute("data-booking-slot-id","second");
+ await expect(page.getByText("Unsaved changes")).toBeVisible();
+ expect(calls).toEqual(["planner","load"]);
+});
