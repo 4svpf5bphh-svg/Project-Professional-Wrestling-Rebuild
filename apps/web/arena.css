@@ -1,0 +1,212 @@
+/* LIVE CIRCUIT — a wrestling broadcast, an editorial desk and a private phone.
+   All presentation: no extra SQL calls, assets, media, audio or haptics. */
+:root{--ppw-canvas:#101225;--ppw-raised:#1b1b38;--ppw-surface:#232342;
+--ppw-outline:#ffffff30;--ppw-outline-strong:#8a83df;
+--ppw-ink:#fff0d2;--ppw-secondary:#d3cce1;--ppw-cyan:#39dbf5;
+--ppw-green:#66eccb;--ppw-gold:#ffd15e;--ppw-pink:#ff3679;
+--ppw-violet:#9068f4;--ppw-ivory:#fff0d2}
+html{background:#101225;scroll-padding-bottom:110px}
+body{padding-bottom:calc(99px + env(safe-area-inset-bottom));color:#fff0d2;
+background:radial-gradient(ellipse at 90% -12%,#e8358a38,transparent 65%),
+radial-gradient(ellipse at -20% 20%,#39dbf524,transparent 60%),
+linear-gradient(165deg,#171532,#101225 49%,#15132c)}
+#game :is(h1,h2,h3){letter-spacing:-.045em}
+#game :is(button,a):focus-visible,.ppw-navigation button:focus-visible{
+outline:3px solid #ffd15e;outline-offset:3px}
+#account{background:#111229cf;border-bottom:1px solid #fff4e32b}
+.ppw-account-banner{min-height:64px}
+.ppw-shell-logo{display:grid;place-items:center;width:43px;height:43px;
+border:2px solid #ffd15e;border-radius:4px 13px 4px 13px;transform:skew(-4deg);
+background:linear-gradient(135deg,#f35b92,#8d53df 65%,#151b42);
+color:#fff6e4;font-style:italic;font-weight:950;box-shadow:3px 3px 0 #ffd15e54}
+.ppw-shell-brand strong{font-weight:900;color:#fff0d2}
+.ppw-shell-brand small{color:#b4aeca}
+.ppw-shell-signout{border:1px solid #676284;background:#20203b;color:#fff0d2}
+.ppw-account-banner .ppw-shell-menu{position:fixed;top:auto;left:50%;right:auto;
+bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);
+display:flex;align-items:center;justify-content:center;gap:10px;
+width:min(420px,calc(100vw - 24px));max-width:95vw;min-height:56px!important;
+padding:11px 15px;z-index:130;border:2px solid #ffe19e;
+border-radius:8px 8px 18px 18px;background:linear-gradient(115deg,#ff3679,#c73eaa 49%,#6c52e6);
+box-shadow:0 5px 0 #5d225d,0 13px 33px #000a,0 0 28px #e72d8170;
+font-size:14px;font-weight:950;letter-spacing:.12em;color:#fff8e9;text-shadow:0 1px #0005}
+.ppw-account-banner .ppw-shell-menu:before,.ppw-account-banner .ppw-shell-menu:after{
+content:"";width:9px;height:9px;background:#ffd15e;transform:rotate(45deg);flex:none}
+.ppw-account-banner .ppw-shell-menu[aria-expanded=true]{
+background:linear-gradient(120deg,#493476,#ae3e83);border-color:#ffd15e}
+.ppw-navigation,.ppw-navigation.ppw-navigation-open{position:fixed;top:auto;
+left:50%;right:auto;bottom:calc(83px + env(safe-area-inset-bottom));
+transform:translateX(-50%);width:min(470px,calc(100vw - 20px));
+max-height:calc(100dvh - 120px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+overflow:auto;overscroll-behavior:contain;z-index:120;border:2px solid #b883ff;
+border-radius:21px 21px 9px 9px!important;
+background:linear-gradient(156deg,#292044,#13152c 85%);box-shadow:0 20px 0 #0a091c99,0 21px 55px #000c}
+.ppw-drawer-backdrop{z-index:110;background:#090618bc;backdrop-filter:blur(6px)}
+.ppw-nav-drawer{padding:17px;max-height:none;overflow:visible;color:#fff0d2}
+.ppw-nav-drawer-heading{padding-bottom:6px}
+.ppw-nav-drawer-heading span{color:#39dbf5;font-size:10px}
+.ppw-nav-drawer-heading strong{font-size:29px;text-transform:uppercase;
+font-style:italic;color:#fff0d2}
+.ppw-nav-drawer-close{background:#482447;border:2px solid #ff75ae;color:#fff}
+.ppw-nav-eyebrow{margin:0 0 14px;font-size:10px;color:#c9b4fc;font-weight:900;letter-spacing:.15em}
+.ppw-nav-rootbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+gap:4px;padding:5px;background:#0b0e22;border:1px solid #70559b;border-radius:14px;margin-bottom:14px}
+.ppw-nav-rootbar .ppw-tab{display:flex;align-items:center;gap:5px;flex-direction:column;
+min-height:65px;max-width:none;padding:6px 2px;color:#c8bcd8;border-radius:10px}
+.ppw-nav-rootbar .ppw-tab-active{background:linear-gradient(140deg,#ed3476,#724fe2);
+color:#fff6e7;box-shadow:inset 0 0 0 1px #ffabc5}
+.ppw-nav-rootbar .ppw-tab-icon{display:grid;place-items:center;min-height:26px}
+.ppw-nav-rootbar .ppw-tab-icon svg{height:24px;width:24px;display:block}
+.ppw-nav-rootbar .ppw-tab-label{font-size:10px;font-weight:850;letter-spacing:0}
+.ppw-nav-drawer-entries{gap:8px}
+.ppw-nav-drawer-entry{display:flex;align-items:center;gap:9px;min-height:76px;
+padding:10px;text-align:left;border:1px solid #70638d;border-radius:8px;
+background:linear-gradient(120deg,#282445,#191a33);color:#fff4e3}
+.ppw-nav-drawer-entry:nth-child(3n+1){border-left:3px solid #ff3679}
+.ppw-nav-drawer-entry:nth-child(3n+2){border-left:3px solid #39dbf5}
+.ppw-nav-drawer-entry:nth-child(3n){border-left:3px solid #ffd15e}
+.ppw-nav-drawer-entry[aria-current=page]{background:linear-gradient(125deg,#50315a,#252951);border-color:#ffc66f}
+.ppw-nav-entry-index{font-weight:950;color:#ffd15e;font-size:11px;align-self:flex-start}
+.ppw-nav-entry-copy{display:block;min-width:0;flex:1}
+.ppw-nav-entry-copy strong{display:block;font-size:14px;text-transform:uppercase;font-weight:850}
+.ppw-nav-entry-copy small{display:block;font-size:11px;color:#c6bbd5;line-height:1.3;margin-top:3px}
+.ppw-nav-entry-arrow{font-size:19px;color:#39dbf5;align-self:flex-start}
+body.ppw-drawer-active{overflow:hidden}
+/* The television layer — angular marquee and authentic financial tickets. */
+#game .ppw-home-head h1{font-size:clamp(38px,11vw,66px);font-style:italic;
+text-transform:uppercase;font-weight:950;line-height:.98;color:#fff0d2;
+text-shadow:3px 3px 0 #ff367975}
+#game .ppw-home-hero{isolation:isolate;min-height:280px;position:relative;
+padding:25px 21px 23px;border:2px solid #ea68a2;border-radius:9px 25px 9px 9px;
+background:radial-gradient(ellipse 70% 100% at 112% 105%,#ff327650,transparent 86%),
+linear-gradient(116deg,#483076,#1a2455 58%,#0e223b);
+box-shadow:7px 8px 0 #fd357b37,0 22px 50px #05061480}
+#game .ppw-home-hero:before{z-index:-1;opacity:.75;background:
+repeating-linear-gradient(168deg,transparent 0 22px,#d18ffb18 23px 24px),
+radial-gradient(ellipse at 2% -42%,#9ff6ff70,transparent 63%)}
+#game .ppw-home-broadcast{margin:18px 0 -9px;font-size:10px;font-weight:950;
+color:#ffd15e;letter-spacing:.2em}
+#game .ppw-home-hero h2{font-size:clamp(34px,9.3vw,62px);font-weight:950;
+font-style:italic;text-transform:uppercase;line-height:.93;
+letter-spacing:-.055em;text-shadow:2px 4px 0 #0007}
+#game .ppw-home-kicker{color:#fff0d2}
+#game .ppw-home-phase{border-color:#ffd15e;border-radius:5px;background:#0c122f;color:#8af4e8}
+#game .ppw-home-territory{color:#19203b;background:#ffd15e;border:0;border-radius:3px;font-weight:950}
+#game .ppw-home-countdown{border:1px solid #8ddff9;background:#101630d9;color:#fff0d2;border-radius:5px}
+#game .ppw-home-tags span{border-color:#ac91d8;background:#160f33b8;border-radius:4px}
+#game .ppw-home-finances{gap:7px;margin-top:23px}
+#game .ppw-home-stat{background:#fff0d2!important;border:0;
+border-radius:4px 4px 12px 4px;min-height:87px;padding:12px 10px;
+box-shadow:3px 4px 0 #e44d9299}
+#game .ppw-home-stat:nth-child(2){background:#ffe3a0!important}
+#game .ppw-home-stat:nth-child(3){background:#c3f4fa!important}
+#game .ppw-home-stat span{color:#513c67;font-weight:950}
+#game .ppw-home-stat strong{color:#17162b;font-weight:950}
+#game .ppw-home-brief{border-radius:6px 18px 6px 6px;
+background:linear-gradient(145deg,#282143,#171936);border-color:#715d99}
+#game .ppw-home-brief-title h3{font-size:24px;text-transform:uppercase;font-style:italic;color:#fff0d2}
+#game .ppw-home-brief>.ppw-home-tile{background:#1f2b4d;border-left:4px solid #39dbf5}
+#game .ppw-home-brief>.ppw-home-action-priority{border-left-color:#ff3679}
+#game .ppw-home-icon{border-radius:5px;background:linear-gradient(120deg,#6b3ab0,#293b8a);color:#fff0d2}
+#game .ppw-home-tile{border-radius:5px 12px 5px 5px;background:#202545;border-color:#68608c}
+/* The booker's desk — match and angle tickets, championship-gold main event. */
+#game .ppw-editor .ppw-top h1{font-size:clamp(39px,10vw,64px);
+font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2}
+#game .ppw-card-show-identity{border:2px solid #62daf8;border-radius:5px 20px 5px 5px;
+background:linear-gradient(122deg,#204769,#23224f 68%,#442451);
+box-shadow:5px 6px 0 #39dbf54d}
+#game .ppw-card-show-copy>strong{font-weight:950;font-style:italic;
+text-transform:uppercase;font-size:clamp(22px,6.6vw,40px)}
+#game .ppw-card-airtime{border-radius:6px 15px 6px 6px;
+border:2px solid #63cff5;background:linear-gradient(115deg,#1c3d68,#262046)}
+#game .ppw-card-airtime-fill{background:linear-gradient(90deg,#3fd9ef,#ffe077,#ff3679)}
+#game .ppw-summary span{border-radius:4px;background:#272345;border-color:#75669c;color:#ebdff1}
+#game .ppw-editor .ppw-primary{background:linear-gradient(110deg,#f22f76,#aa3ed1);
+border:1px solid #ff9fbd;border-radius:6px;font-weight:950}
+#game .ppw-card-list{gap:14px}
+#game .ppw-card{position:relative;border:2px solid #7b77a6!important;
+border-radius:5px 16px 5px 5px!important;overflow:hidden;
+box-shadow:5px 6px 0 #06081778;background:linear-gradient(118deg,#282849,#171c37)!important}
+#game .ppw-card:before{content:"";position:absolute;inset:0 auto 0 0;
+width:6px;background:#39dbf5;pointer-events:none}
+#game .ppw-angle-card{border-color:#ae639e!important;
+background:linear-gradient(116deg,#432247,#261e41)!important}
+#game .ppw-angle-card:before{background:#ff3679}
+#game .ppw-main-event{border-color:#ffd15e!important;
+background:linear-gradient(120deg,#4b3441,#252249)!important;
+box-shadow:5px 6px 0 #ffd15e48}
+#game .ppw-main-event:before{background:#ffd15e;width:8px}
+#game .ppw-card-bar{padding:15px 11px 15px 16px;gap:8px;align-items:start}
+#game .ppw-card-bar strong{font-size:clamp(14px,4vw,19px);font-weight:900}
+#game .ppw-main-event-flag{background:#ffd15e;color:#1f1b30;
+font-weight:950;border-radius:3px;padding:3px 9px;transform:skew(-6deg)}
+#game .ppw-editor .ppw-expand{background:#fff0d2;color:#1c1b35;
+border-color:#ffd15e;border-radius:5px}
+#game .ppw-save{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+gap:8px;padding:8px;border:1px solid #846aaf;border-radius:11px;
+background:#15132df5;backdrop-filter:blur(14px)}
+#game .ppw-save button{margin:0;min-width:0;border-radius:5px;font-size:13px;font-weight:950}
+#game .ppw-save .ppw-confirm{background:#ffd15e;color:#1c1b35}
+#game .ppw-save :is(.ppw-save-status,.ppw-alert){grid-column:1/-1}
+#game .ppw-editor .ppw-save{bottom:calc(79px + env(safe-area-inset-bottom))}
+/* No imaginary portraits; text-first universal wrestler identity. */
+#game .ppw-wrestler-card{display:flex;flex-direction:column;gap:7px;
+padding:14px 15px;border:1px solid #8575a6;border-left:5px solid #39dbf5;
+border-radius:5px 16px 5px 5px;background:linear-gradient(118deg,#262441,#161a34)}
+#game .ppw-wrestler-card .ppw-wrestler-portrait{display:none}
+#game .ppw-wrestler-copy{width:100%;gap:5px}
+#game .ppw-wrestler-name{font-size:clamp(18px,4.8vw,24px);
+font-weight:950;color:#fff0d2;font-style:italic;text-transform:uppercase}
+#game .ppw-wrestler-division{color:#39dbf5;font-weight:950}
+#game .ppw-wrestler-finisher{color:#ffd98e}
+#game .ppw-wrestler-stats{width:100%}
+#game .ppw-wrestler-stat{background:#0c1129;border-radius:4px}
+#game .ppw-wrestler-track{height:5px}
+#game .ppw-wrestler-fill{background:linear-gradient(90deg,#39dbf5,#ff3679)}
+/* Prestige and financial office retain their own information architecture. */
+#game :is(.ppw-business-head,.ppw-industry-head,.ppw-staff-head,
+.ppw-directory-header,.ppw-calendar-head,.ppw-programme-head) h1{
+color:#fff0d2;font-weight:950;text-transform:uppercase;font-style:italic}
+#game :is(.ppw-business-panel,.ppw-staff-panel,.ppw-contract-card,
+.ppw-calendar-panel,.ppw-programme-card,.ppw-directory-card){
+border-radius:6px 16px 6px 6px;border-color:#77709c}
+#game .ppw-title-hero{background:linear-gradient(145deg,#493a3f,#202440)!important;
+border:2px solid #c5a45d}
+#game .ppw-title-hero h1{color:#ffd15e}
+/* The private phone: a separate light-message experience, not a wrestling dashboard. */
+html[data-ppw-screen=backstage] body{background:#101c2c}
+html[data-ppw-screen=backstage] #game .ppw-messenger{
+color:#162438;--ppw-ink:#18283d;--ppw-muted:#596d83;
+background:#f0f3f6;max-width:780px;min-height:70dvh;
+border-radius:20px 20px 0 0;padding:17px 14px 120px}
+html[data-ppw-screen=backstage] #game .ppw-messenger :is(h1,h2,h3,strong){
+color:#15283e;text-shadow:none}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact{
+border:0;border-bottom:1px solid #dee4eb;border-radius:0;
+background:#fff;box-shadow:none;color:#17273c}
+html[data-ppw-screen=backstage] #game .ppw-backstage-inbox{
+background:white;border-radius:14px;overflow:hidden;gap:0}
+html[data-ppw-screen=backstage] #game .ppw-persona-chat{
+background:#f7f8fa;border:0;border-radius:16px;box-shadow:none}
+html[data-ppw-screen=backstage] #game .ppw-persona-bubble{
+color:#26384d;background:#e4e8ee;box-shadow:none}
+html[data-ppw-screen=backstage] #game .ppw-persona-out{
+color:#122937;background:#a7e9dc}
+html[data-ppw-screen=backstage] #game .ppw-persona-button{
+background:#e6ebf2;color:#173450;border:1px solid #cbd7e5}
+@media(prefers-reduced-motion:no-preference){
+.ppw-nav-drawer{animation:ppw-drawer-arrive .22s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ppw-drawer-arrive{from{opacity:.72;transform:translateY(18px) scale(.98)}
+to{opacity:1;transform:none}}
+#game .ppw-card,#game .ppw-wrestler-card,#game .ppw-home-tile{
+transition:transform .13s ease,border-color .13s ease,filter .13s ease}
+#game :is(.ppw-card,.ppw-wrestler-card,.ppw-home-tile):active{filter:brightness(1.08)}
+.ppw-account-banner .ppw-shell-menu:not(:disabled):active{transform:translateX(-50%) scale(.98)}}
+@media(prefers-reduced-motion:reduce){
+*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-width:360px){
+.ppw-nav-drawer{padding:12px}.ppw-nav-drawer-entry{min-height:65px;padding:7px;gap:4px}
+.ppw-nav-entry-arrow{display:none}.ppw-nav-entry-copy strong{font-size:12px}
+#game .ppw-save{gap:5px}#game .ppw-save button{font-size:12px}}
+@media(min-width:800px){.ppw-account-banner .ppw-shell-menu{width:360px}
+.ppw-navigation,.ppw-navigation.ppw-navigation-open{width:460px}}

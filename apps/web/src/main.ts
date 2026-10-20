@@ -13,6 +13,7 @@ import type {CardSessionScope} from "../../../src/web/card-client.js";
 import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
 import "../screen.css";
 import "../polish.css";
+import "../arena.css";
 
 type SessionView={
  worldId:string;playerId:string;csrfToken:string;
@@ -105,6 +106,23 @@ function openBooking(showId:string){
  renderSection();
 }
 
+/** Original vector icons, deliberately local to the menu (no artwork downloads). */
+const drawerPaths:Record<HostDrawerRoot,string>={
+ world:"M3 20V8l9-5 9 5v12M3 11h18M8 20v-5h8v5",
+ talent:"M16 20v-2a4 4 0 0 0-8 0v2M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM3 20v-2a4 4 0 0 1 3-3.87M21 20v-2a4 4 0 0 0-3-3.87",
+ plan:"M3 4h18v16H3zM3 9h18M8 4v5M16 4v5M8 14h3M13 14h3",
+ business:"M3 21V8l6-4 6 4v13M15 11h6v10M7 11h4M7 15h4M7 19h4",
+ results:"M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4ZM7 6H3v3a4 4 0 0 0 4 4M17 6h4v3a4 4 0 0 1-4 4"
+};
+function drawerIcon(key:HostDrawerRoot){
+ const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+ svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("fill","none");
+ svg.setAttribute("stroke","currentColor");svg.setAttribute("stroke-width","1.75");
+ svg.setAttribute("stroke-linejoin","round");svg.setAttribute("stroke-linecap","round");
+ svg.setAttribute("aria-hidden","true");
+ const path=document.createElementNS(ns,"path");
+ path.setAttribute("d",drawerPaths[key]);svg.append(path);return svg;
+}
 /** No always-visible tab bar. All departments live inside this one menu. */
 function renderNavigation(section:HostSection){
  navigation.replaceChildren();
@@ -113,7 +131,8 @@ function renderNavigation(section:HostSection){
  navigation.hidden=!drawerExpanded;
  document.body.classList.toggle("ppw-drawer-active",drawerExpanded);
  const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
- if(menu)menu.setAttribute("aria-expanded",String(drawerExpanded));
+ if(menu){menu.setAttribute("aria-expanded",String(drawerExpanded));
+  menu.textContent=drawerExpanded?"×  CLOSE CONTROL ROOM":"☰  OPEN CONTROL ROOM";}
  if(!drawerExpanded)return;
  const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
  backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
@@ -129,6 +148,7 @@ function renderNavigation(section:HostSection){
  close.className="ppw-nav-drawer-close";
  close.setAttribute("aria-label","Close promotion menu");
  head.append(close);drawer.append(head);
+ drawer.append(el("p","ppw-nav-eyebrow","WORLD OPERATIONS / "+selected.label.toUpperCase()));
  const roots=el("div","ppw-nav-rootbar");
  roots.setAttribute("aria-label","Departments");
  for(const root of HOST_DRAWER_ROOTS){
@@ -142,7 +162,8 @@ function renderNavigation(section:HostSection){
   tab.className="ppw-tab"+(active?" ppw-tab-active":"");
   tab.setAttribute("aria-label",root.label);
   tab.setAttribute("aria-pressed",String(active));
-  tab.append(el("span","ppw-tab-icon",root.glyph),el("span","ppw-tab-label",root.label));
+  const pictogram=el("span","ppw-tab-icon");pictogram.append(drawerIcon(root.key));
+  tab.append(pictogram,el("span","ppw-tab-label",root.label));
   roots.append(tab);
  }
  drawer.append(roots);
@@ -150,7 +171,10 @@ function renderNavigation(section:HostSection){
  for(const [id,label,description] of selected.destinations){
   const entry=button("",()=>openSection(id as HostSection));
   entry.className="ppw-nav-drawer-entry";
-  entry.append(el("strong","",label),el("small","",description));
+  const number=el("span","ppw-nav-entry-index",String(entries.children.length+1).padStart(2,"0"));
+  const copy=el("span","ppw-nav-entry-copy");
+  copy.append(el("strong","",label),el("small","",description));
+  entry.append(number,copy,el("span","ppw-nav-entry-arrow","↗"));
   if(id===section)entry.setAttribute("aria-current","page");
   entries.append(entry);
  }
@@ -327,7 +351,7 @@ async function loadSession(){
     session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
   const actions=el("div","ppw-shell-actions");
-  const menu=button("☰ Menu",()=>{
+  const menu=button("☰  OPEN CONTROL ROOM",()=>{
    const section=readHostSection(location.hash);
    if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(section);
    drawerExpanded=!drawerExpanded;renderNavigation(section);

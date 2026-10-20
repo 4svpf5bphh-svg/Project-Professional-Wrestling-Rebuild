@@ -155,6 +155,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     world.phase==="LOCKED"?"● CARDS LOCKED":"● SHOWS IN PROGRESS");
   heroTop.append(live);
   hero.append(heroTop,
+   el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
    el("h2","",promotion?.name??"Choose a promotion"),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),

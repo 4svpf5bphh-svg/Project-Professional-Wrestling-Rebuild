@@ -572,7 +572,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   for(const [i,slotId] of order.entries()){
    const m=matches.get(slotId);
    const segment=segments.get(slotId);
-   const card=el("article","ppw-card");
+   const card=el("article","ppw-card "+(m?"ppw-match-card":"ppw-angle-card"));
+   card.dataset.slot=String(i+1).padStart(2,"0");
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
    if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
