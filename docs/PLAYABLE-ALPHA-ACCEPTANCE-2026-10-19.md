@@ -71,3 +71,66 @@ See `docs/alpha-pwa-host.md`. All Genesis/preflight/week tools are
 deliberately operator-only and explicitly scoped to a fresh isolated database.
 Release to real people requires an approved preview target and valid credentials;
 a green automated workflow does not constitute deployment or a live iPhone test.
+
+
+## Verified restoration pass — 20 October iPhone playtest fixes
+
+**Source control:** rebuild Git `main` only, original reference `main` only. The
+single existing rebuild Neon `main` World is `world-20261017` (Year 1,
+Week 1). No extra alpha branch, alternative database timeline or production
+deploy was made by this restoration pass.
+
+**Confirmed implemented and covered in code/CI:**
+- Installed-iPhone bottom drawer repositioned to a permanent thumb control;
+  foreground match and wrestler editors sit above it. The old overlapping
+  editor control bug has a passing iPhone regression.
+- Booking Save/Confirm rail reduced to two compact actions; validation now
+  identifies the slot and persists errors beside the Save control without
+  discarding local authoring. Safe error categories and non-sensitive
+  correlation references cover otherwise unknown server failures.
+- Booking card highlights the final match as the main event, restores show
+  duration contributions from every authored angle and prevents 120-minute
+  broadcast overrun at both browser and server levels.
+- Angle scene goals explain why one-person promos lack an on-screen target;
+  challenge, attack, confrontation etc. have distinct target roles.
+- Face/Heel/Tweener baseline is computed exactly as original-main's World
+  seed/person ID algorithm when a canonical value is missing. Existing
+  promotion-specific and canonical values still win. This is a *read-only
+  presentation/booking* fallback, not a claim that all historical simulation
+  modifiers have been restored. Labels and role meaning appear in quick cards.
+- Gimmick picker surfaces original thematic families instead of stopping at
+  generic hero/villain; the main World contains 643 personas and 58 distinct
+  canonical gimmick types (read-only verification).
+- Business shows fixed overhead and recurring costs. Backstage inbox has a
+  visually separate Messages-inspired treatment and clearer contact rows.
+- Static broadcast colour and constrained page transitions are stronger;
+  no autoplay sequences or extra database reads are required.
+- A preview-only, designated-operator manual Week control exists with explicit
+  shared-World confirmation and its own permission gate. Stale actions cannot
+  move the World deadline because the lock and cutoff are atomic. It is not
+  enabled in the deployed preview by a Git commit.
+- Disposable PostgreSQL integration verifies replacing wrestler assignments
+  on a confirmed multi-match, multi-angle card, invalidating the previous
+  confirmation and then reconfirming; legacy angles have five-minute defaults.
+  The original-main authentic Genesis check remains green.
+
+**Release status and remaining acceptance evidence:**
+- Last completed standard CI on the final implemented code at this checkpoint:
+  #39458769066 **passed**, commit `b51b1852`.
+- The existing Vercel preview at
+  `project-professional-wrestling-rebuild-5gubbp8le.vercel.app`
+  was still deployed from `ba7eec13` when inspected; it does **not**
+  contain this restoration batch. Building and passing CI is not deploying.
+- Before another player tests, the reviewed commit must be expressly
+  approved for a *preview* release with exact existing main World/database
+  guard settings checked, then an operator must opt in to the manual Week
+  feature. Do not auto-deploy or enable a cron.
+- Perform real iPhone Home Screen smoke of the saved Week 1 card, save/revise
+  and confirm a *separate* four-match three-angle show, Backstage inbox,
+  roster alignment labels and screen visibility. Observe and correct failures.
+- Only then do the explicitly authorised two-person lock/settlement scenario,
+  and measure Neon transfer/compute with both users. No affordability claim
+  before measured live network consumption.
+
+These items must not be re-implemented from scratch merely because a generic
+parity audit is reopened. Follow demonstrated defects and acceptance gates.
