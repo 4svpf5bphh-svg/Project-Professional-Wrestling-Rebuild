@@ -74,7 +74,8 @@ for(const conflicting of [false,true]){
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
   const msg=conflicting?/saved card changed elsewhere/:/Another manager changed the World/;
-  await expect(page.getByText(msg)).toBeVisible();
+  await expect(page.locator(".ppw-alert.ppw-error").getByText(msg)).toBeVisible();
+   await expect(page.locator(".ppw-save .ppw-save-error")).toContainText(msg);
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
   await expect(page.getByRole("dialog",{name:"Edit match"}).getByLabel("Winner"))
