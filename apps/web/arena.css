@@ -421,3 +421,94 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(sma
  #game .ppw-programme-broadcast{padding:10px 5px}
  #game .ppw-industry-company-standing{padding:4px}
 }
+
+/* THE FINAL BELL: verified results become a match-night broadcast. */
+#game .ppw-results{--ppw-accent:#ffd15e}
+#game .ppw-result-hero{position:relative;isolation:isolate;overflow:hidden;
+ border:2px solid #ff7ab2;border-radius:7px 24px 7px 7px;
+ background:radial-gradient(circle at 85% 0,#ff367955,transparent 65%),
+ linear-gradient(116deg,#3c2c6d,#202148 75%)!important;
+ box-shadow:6px 7px 0 #ff36794d}
+#game .ppw-result-hero:before{content:"";position:absolute;inset:0;z-index:-1;
+ background:repeating-linear-gradient(145deg,transparent 0 28px,#fca4cd11 29px 30px);
+ pointer-events:none}
+#game .ppw-result-hero h1,#game .ppw-result-title-wrap h1{
+ font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2;
+ font-size:clamp(34px,9vw,62px);line-height:1;letter-spacing:-.05em}
+#game .ppw-result-score{color:#ffd15e;text-shadow:3px 3px 0 #8e3585}
+#game .ppw-result-pulse-stat{background:#fff0d2;border:1px solid #ffdfaa;
+ border-radius:5px 12px 5px 5px}
+#game .ppw-result-pulse-stat :is(strong,small,span){color:#201b38}
+#game .ppw-broadcast-section-title{color:#39dbf5;
+ font-weight:950;text-transform:uppercase;font-style:italic}
+#game .ppw-result-entry{border:1px solid #8072ad;border-radius:6px 17px 6px 6px;
+ background:#201e3a}
+#game .ppw-result-main-event{border:2px solid #ffd15e;box-shadow:4px 5px 0 #79532988}
+#game .ppw-result-angle{border-left:5px solid #ff3679}
+#game .ppw-result-match{border-left:5px solid #39dbf5}
+#game .ppw-result-rating{color:#ffd15e;font-weight:950}
+#game .ppw-result-headline{font-size:clamp(19px,5.3vw,27px);font-weight:950}
+#game .ppw-final-bell{border:2px solid #ffd15e;
+ border-radius:6px 21px 6px 6px;background:linear-gradient(145deg,#382d49,#1c253f)}
+#game .ppw-final-bell-headline{font-weight:950;font-style:italic;color:#ffd15e}
+#game .ppw-finish-replay{border-radius:5px 15px 5px 5px;
+ border-color:#9f6ec7;background:#24203e}
+#game .ppw-crowd-noise-card{background:#fff0d2;border:1px solid #d1aed7;
+ color:#27203d;border-radius:5px 15px 5px 5px;box-shadow:3px 3px 0 #8b5cb388}
+#game .ppw-crowd-noise-card :is(strong,p,span){color:inherit}
+#game .ppw-crowd-noise-voice{color:#743f70!important}
+#game .ppw-crowd-flow{border:1px solid #786ca5;border-radius:6px 18px 6px 6px}
+#game .ppw-flow-fill{background:linear-gradient(90deg,#39dbf5,#ff3679)}
+/* Archive tickets mirror this visual language without loading more results. */
+#game .ppw-archive-hero h1{color:#fff0d2;font-weight:950;font-style:italic;
+ text-transform:uppercase;font-size:clamp(35px,9vw,58px)}
+#game .ppw-archive-show{border:1px solid #a279b5;
+ border-left:5px solid #ff3679;border-radius:5px 17px 5px 5px;
+ background:linear-gradient(110deg,#343157,#1b1c35);box-shadow:4px 5px 0 #0d0e21}
+#game .ppw-archive-score{color:#ffd15e;font-weight:950}
+#game .ppw-archive-open{background:#ff3679;color:white;border-radius:5px}
+/* CONTRACT OFFICE: negotiator's paper and strict attention hierarchy. */
+#game .ppw-contract-header h1{font-size:clamp(35px,9vw,55px);
+ font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2}
+#game .ppw-contract-summary{gap:8px}
+#game .ppw-contract-metric{background:#fff0d2;border:1px solid #ffe4ad;
+ border-radius:5px 12px 5px 5px;box-shadow:3px 4px 0 #9275418e}
+#game .ppw-contract-metric :is(strong,span,small){color:#242033}
+#game .ppw-contract-inbox{border:2px solid #f9b261;background:
+ linear-gradient(145deg,#483453,#282447);border-radius:5px 15px 5px 5px}
+#game .ppw-contract-card{border:1px solid #8176ab;border-radius:5px 14px 5px 5px;
+ background:linear-gradient(120deg,#2a2846,#191a34)}
+#game .ppw-contract-urgent{border-left:5px solid #ffd15e}
+#game .ppw-contract-danger{border-left:5px solid #ff3679}
+#game .ppw-contract-pending-label{background:#ffd15e;color:#2a1d40;
+ border-radius:3px;font-weight:950}
+#game .ppw-contract-renegotiate{border:1px solid #7c75b2;background:#27233f}
+#game .ppw-contract-button{border-radius:5px}
+/* STAFF / TALENT GROUPS: office folders and recruitment papers. */
+#game .ppw-staff-head h1{font-size:clamp(35px,9vw,55px);
+ font-weight:950;font-style:italic;text-transform:uppercase;color:#fff0d2}
+#game .ppw-staff-panel{background:linear-gradient(136deg,#2b2542,#1e2342);
+ border:1px solid #8676ab;border-radius:6px 18px 6px 6px}
+#game .ppw-staff-manager{border:2px solid #cbaa63;
+ background:linear-gradient(126deg,#544149,#242748)}
+#game .ppw-staff-candidate{border:1px solid #7f76aa;border-radius:5px 13px 5px 5px}
+#game .ppw-staff-employed{border-left:5px solid #66eccb}
+#game .ppw-pair-card{border:1px solid #8f75bd;border-radius:5px 18px 5px 5px;
+ background:linear-gradient(125deg,#30244b,#212643)}
+#game .ppw-pair-belt{color:#ffd15e}
+#game .ppw-pair-selected{border-color:#66eccb}
+#game .ppw-stable-card{border:1px solid #7e75bd;border-radius:5px 18px 5px 5px;
+ background:linear-gradient(130deg,#382448,#222245)}
+#game .ppw-stable-member{border-left:3px solid #39dbf5}
+#game .ppw-stable-followthrough{border-left:3px solid #ffd15e}
+/* Focus is always keyboard-visible; the PWA stays comfortably tappable. */
+#game :is(.ppw-contract-card,.ppw-staff-candidate,.ppw-belt-card,
+ .ppw-archive-show) :is(button,summary){touch-action:manipulation}
+@media(prefers-reduced-motion:no-preference){
+ #game .ppw-result-hero{animation:ppw-broadcast-in .5s ease-out both}
+ @keyframes ppw-broadcast-in{from{opacity:.5;transform:translateY(12px)}
+ to{opacity:1;transform:none}}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-result-hero{animation:none!important}
+}
