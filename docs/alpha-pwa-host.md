@@ -17,7 +17,7 @@ alter the old PPW Neon project.
   sessions, per-session CSRF token and timing-safe invite-code checking.
 - `src/web/card-http.ts`: verifies same-origin, CSRF, active authentication and
   request-size limits before calling the real authoritatively owned World API.
-- `vercel.json`: **main Git deployment deliberately disabled**. No crons
+- `vercel.json`: **automatic main Git deployment remains disabled pending reviewed, authorised release**. No crons
   configured. Building in CI is not permission to publish.
 - Tests: session forging/expiry, browser transport, two distinct players on one
   real PostgreSQL World, independent control, private business records and
@@ -56,7 +56,29 @@ alter the old PPW Neon project.
    `vercel.json` release guard must be changed only on a separately authorized
    deployment.
 
-## Isolated iPhone preview branch — fail-closed database approval
+## Single main development World — fail-closed hosted database approval
+
+Use **rebuild Git `main` and rebuild Neon `main` only** for the active
+playtest. The existing disposable one-week World is `world-20261017` in
+`neondb`; its Genesis and ownership should be verified before inviting
+another player. No `alpha-1a` World, alternative main/alpha state, or new
+long-lived test branch is necessary.
+
+Before any Vercel release of the reviewed `main` commit, set protected
+server-side settings `PPW_MAIN_WORLD_APPROVED=YES`, `PPW_MAIN_WORLD_ID`,
+`PPW_MAIN_DB_HOST`, and `PPW_MAIN_DB_NAME`. The last three must **exactly**
+match `PPW_WORLD_ID` and the PostgreSQL `DATABASE_URL` for the rebuild
+Neon **main** branch. The host refuses `main` in preview **or production**
+unless all four match; unrelated deployment branches cannot use these
+approvals. This avoids confusing two live World timelines without silently
+allowing a production deployment to use the original project's credentials.
+
+No Git commit here permits automatic deployment: `vercel.json` continues
+to disable Git deployments of `main` until the host configuration, rate
+limiting, private invitations, and intended release are verified and approved.
+There are no World Lock crons. CI uses its own disposable PostgreSQL.
+
+## Legacy isolated iPhone preview branch — fail-closed database approval
 
 The Vercel host refuses to start **any** `VERCEL_ENV=preview` instance
 unless its deployment branch, World and PostgreSQL host/database all match
