@@ -10,7 +10,7 @@ export interface PreviewPopulation{
  signedContracts:number;venues:number;markets:number;championships:number;
  availableTakeovers:number;controlledPromotions:number;humanManagers:number;
  women:number;protectedRealPromotions:number;activeTagTeams:number;
- activePersonas:number;genesisImports:number;
+ activePersonas:number;genesisImports:number;viableParentRosters:number;
 }
 export interface PreviewReadiness{
  ready:boolean;issues:string[];counts:PreviewPopulation;
@@ -37,6 +37,8 @@ export function assessPlaytestPopulation(counts:PreviewPopulation):PreviewReadin
   issues.push("Original seeded tag partnerships are incomplete");
  if(counts.activePersonas<counts.wrestlers)
   issues.push("Original wrestler-owned moves and character identities are incomplete");
+ if(counts.viableParentRosters<2)
+  issues.push("Original parent-company NXT/ROH rosters lack usable legal affiliates");
  if(counts.genesisImports!==1)
   issues.push("Exactly one verified original Genesis import is required");
  if(counts.controlledPromotions+counts.availableTakeovers<2)
@@ -57,7 +59,7 @@ export async function inspectPlaytestPopulation(
   signed_contracts:number;venues:number;markets:number;championships:number;
   available_takeovers:number;controlled_promotions:number;human_managers:number;
   women:number;protected_real_promotions:number;active_tag_teams:number;
-  active_personas:number;genesis_imports:number;
+  active_personas:number;genesis_imports:number;viable_parent_rosters:number;
  }>(`
   SELECT w.world_id,w.year,w.week,w.phase,
    (SELECT count(*)::integer FROM ppw_promotions p WHERE p.world_id=w.world_id)
@@ -94,6 +96,19 @@ export async function inspectPlaytestPopulation(
     WHERE t.world_id=w.world_id AND t.status='ACTIVE') AS active_tag_teams,
    (SELECT count(*)::integer FROM ppw_portable_personas p
     WHERE p.world_id=w.world_id) AS active_personas,
+   (SELECT count(*)::integer FROM ppw_promotions child
+    WHERE child.world_id=w.world_id AND child.parent_promotion_id IS NOT NULL
+     AND (SELECT count(DISTINCT a.person_id) FROM ppw_wrestler_promotion_affiliations a
+      JOIN ppw_contracts c ON c.world_id=a.world_id
+       AND c.person_id=a.person_id AND c.promotion_id=child.parent_promotion_id
+      JOIN ppw_people person ON person.world_id=a.world_id
+       AND person.person_id=a.person_id AND person.status='ACTIVE'
+      WHERE a.world_id=child.world_id AND a.promotion_id=child.promotion_id
+       AND a.basis='PARENT_COMPANY' AND c.status='SIGNED'
+       AND c.start_week_index<=(w.year-1)*52+w.week-1
+       AND c.expires_week_index>=(w.year-1)*52+w.week-1
+       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)) >= 2)
+      AS viable_parent_rosters,
    (SELECT count(*)::integer FROM ppw_ledger_events l
     WHERE l.world_id=w.world_id AND l.event_type='WORLD_GENESIS_IMPORTED')
     AS genesis_imports
@@ -110,6 +125,6 @@ export async function inspectPlaytestPopulation(
   humanManagers:r.human_managers,
   women:r.women,protectedRealPromotions:r.protected_real_promotions,
   activeTagTeams:r.active_tag_teams,activePersonas:r.active_personas,
-  genesisImports:r.genesis_imports
+  viableParentRosters:r.viable_parent_rosters,genesisImports:r.genesis_imports
  });
 }
