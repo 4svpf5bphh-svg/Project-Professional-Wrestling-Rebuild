@@ -9,6 +9,9 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
+import {readCompletedShowView} from "../src/db/show-results-view.js";
+import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
+import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
 
 async function main(){
  const value=process.env.PPW_PLAYTEST_DB_URL;
@@ -35,8 +38,8 @@ async function main(){
     [worldId]);
    assert.equal(world.length,1);
    const rows=await tx.query<{promotion_id:string;draft_id:string;
-    lock_ready_fingerprint:string}>(`
-    SELECT d.promotion_id,d.draft_id,d.lock_ready_fingerprint
+    player_id:string;lock_ready_fingerprint:string}>(`
+    SELECT d.promotion_id,d.draft_id,c.player_id,d.lock_ready_fingerprint
     FROM ppw_booking_drafts d
     JOIN ppw_promotion_controls c ON c.world_id=d.world_id
      AND c.promotion_id=d.promotion_id AND c.active
@@ -105,10 +108,41 @@ async function main(){
   assert.ok(settled.humans.every(x=>x.n===1),
    "Both managers must receive durable results for their authored show");
   assert.equal(settled.seal[0]?.certified_promotions,13);
+  // Prove both separate managers can continue playing through THEIR genuine
+  // Results, historical archive and week-two planner, without reading a rival.
+  const readableResults=[];
+  for(const draft of state.drafts){
+   const owner={worldId,playerId:draft.player_id,promotionId:draft.promotion_id};
+   const result=await readCompletedShowView(db.pool,{...owner,showId:draft.draft_id});
+   assert.equal(result.showId,draft.draft_id);
+   assert.equal(result.year,1);assert.equal(result.week,1);
+   assert.equal(result.matchCount,1,"Actual authored first-week result must be visible");
+   const bouts=result.entries.filter(e=>e.type==="MATCH");
+   assert.equal(bouts.length,1);
+   assert.equal(bouts[0]?.matchContext?.winnerNames.length,1,
+    "Results must show the player's actual authored winner");
+   const archive=await readCompletedShowArchive(db.pool,owner);
+   assert.ok(archive.items.some(e=>e.showId===draft.draft_id&&e.matchCount===1),
+    "Resolved Week 1 show must survive in the owner's immutable archive");
+   const nextPlan=await readSixWeekPlanner(db.pool,owner);
+   assert.equal(nextPlan.year,1);
+   assert.equal(nextPlan.week,2);
+   assert.equal(nextPlan.weeks[0]?.week,2);
+   assert.ok(nextPlan.venues.length>0);
+   readableResults.push({promotionId:owner.promotionId,
+    showId:draft.draft_id,winner:bouts[0]!.matchContext!.winnerNames[0],
+    nextWeek:nextPlan.week});
+  }
+  await assert.rejects(readCompletedShowView(db.pool,{
+   worldId,playerId:state.drafts[0]!.player_id,
+   promotionId:state.drafts[1]!.promotion_id,
+   showId:state.drafts[1]!.draft_id
+  }),/unavailable to this controller/,
+   "Results from the competing human promotion must remain private");
   console.log(JSON.stringify({status:"AUTHENTIC_TWO_MANAGER_WEEK_PUBLISHED",
    promotionCount:13,wrestlers:643,confirmedHumanShows:state.drafts.length,
    completedShows:settled.completed,year:settled.world.year,
-   nextWeek:settled.world.week,stages}));
+   nextWeek:settled.world.week,readableResults,stages}));
  }finally{await db.close();}
 }
 main().catch(error=>{
