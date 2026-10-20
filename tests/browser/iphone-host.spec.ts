@@ -1261,8 +1261,8 @@ test("iPhone reorders a match together with its attached post-match angle",async
   promotionName:"AEW",venueName:"Arena",marketName:"Home",
   bookingClass:"REGULAR",ticketStrategy:"STANDARD",
   championships:[],programmes:[],programmeLinks:[],
-  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
-   {personId:"bob",name:"Bob",division:"MEN"},
+  selectedPeople:[{personId:"alice",name:"Alice",division:"MEN",alignment:"FACE"},
+   {personId:"bob",name:"Bob",division:"MEN",alignment:"HEEL"},
    {personId:"charlie",name:"Charlie",division:"MEN"},
    {personId:"dana",name:"Dana",division:"WOMEN"}],
   slots:order.map((id,i)=>({...slots.find(slot=>slot.slotId===id)!,position:i}))
@@ -1300,6 +1300,9 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  expect(methods).toEqual(["planner","load","save","load"]);
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ const matchup=page.getByRole("dialog",{name:"Edit match"});
+ await expect(matchup.getByText("Crowd roles · FACE vs HEEL")).toBeVisible();
+ await expect(matchup.getByText(/clear favourite and antagonist/)).toBeVisible();
  await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
   {name:"Remove match"}).click();
  await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
