@@ -53,6 +53,18 @@ export async function inspectPlaytestPopulation(
 ):Promise<PreviewReadiness>{
  if(typeof worldId!=="string"||!worldId.trim()||worldId.length>100)
   throw new Error("Invalid World scope");
+ const installed=await withWorldTransaction(pool,tx=>tx.query<{
+  standings:boolean;affiliations:boolean;parent_column:boolean;
+ }>(`
+  SELECT to_regclass('public.ppw_promotion_standings') IS NOT NULL AS standings,
+   to_regclass('public.ppw_wrestler_promotion_affiliations') IS NOT NULL AS affiliations,
+   EXISTS(SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='ppw_promotions'
+     AND column_name='parent_promotion_id') AS parent_column
+ `,[]));
+ if(!installed[0]?.standings||!installed[0]?.affiliations||
+  !installed[0]?.parent_column)
+  throw new Error("Main database schema is outdated: apply rebuild migrations through 0080 before Genesis preflight");
  const rows=await withWorldTransaction(pool,tx=>tx.query<{
   world_id:string;year:number;week:number;phase:string;
   promotions:number;active_promotions:number;wrestlers:number;
