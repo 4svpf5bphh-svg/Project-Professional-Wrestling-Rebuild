@@ -26,7 +26,7 @@ alter the old PPW Neon project.
 ## Release prerequisites — do not perform without explicit approval
 
 1. Choose the **new isolated rebuild Neon database**, not the original PPW
-   project. Apply the repository's numbered migrations 0001–0079 to that new
+   project. Apply the repository's numbered migrations 0001–0080 to that new
    database through an explicit migration workflow, not from a player request.
    No host code automatically creates a World. `PPW_WORLD_ID` must refer to an
    existing, migrated World in that database.
@@ -55,6 +55,33 @@ alter the old PPW Neon project.
    exactly once only after user approval, and disable it again. The
    `vercel.json` release guard must be changed only on a separately authorized
    deployment.
+
+## Isolated iPhone preview branch — fail-closed database approval
+
+The Vercel host refuses to start **any** `VERCEL_ENV=preview` instance
+unless its deployment branch, World and PostgreSQL host/database all match
+an explicitly approved, independent preview environment. This check runs
+*before* creating a database pool and causes a generic 503 on mismatch.
+
+Configure the following **on the exact new preview branch**, never by
+copying a production or older test-branch connection:
+
+- `VERCEL_GIT_COMMIT_REF`: supplied by Vercel Git integration; the branch
+  must begin `alpha/playtest-` and must never be `main`.
+- `PPW_PREVIEW_ISOLATED=YES` and `PPW_PREVIEW_GIT_BRANCH`: the exact branch.
+- `PPW_PREVIEW_DB_HOST` and `PPW_PREVIEW_DB_NAME`: independently confirmed
+  hostname and database name of the **new isolated** preview database.
+- `PPW_PREVIEW_WORLD_ID`: exact immutable World imported and verified by
+  `npm run playtest:preflight`.
+- Existing authenticated host secrets: `DATABASE_URL`, `PPW_WORLD_ID`,
+  `PPW_SESSION_SECRET`, `PPW_PLAYER_ACCESS_HASHES`, with the World ID
+  and database URL matching those approved above.
+
+These are **environment names only**. Do not paste credentials or invite
+codes into source, GitHub Actions logs or this document. A ready static
+Vercel build does **not** mean a player is authorised to use a World;
+the isolated runtime guard and invite authentication must both succeed.
+Normal production and disposable CI execution remain unchanged.
 
 ## Isolated playtest World preparation (not yet authorised)
 
