@@ -592,6 +592,10 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  const manifest=await request.get("/manifest.webmanifest");
  expect(manifest.ok()).toBeTruthy();
  expect((await manifest.json()).display).toBe("standalone");
+ expect((await manifest.json()).theme_color).toBe("#101225");
+ const appIcon=await request.get("/icon.svg");
+ expect(appIcon.ok()).toBeTruthy();
+ expect(await appIcon.text()).toContain("#ff3679");
  const worker=await request.get("/sw.js");
  expect(worker.ok()).toBeTruthy();
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');

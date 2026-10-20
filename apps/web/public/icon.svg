@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-<defs><linearGradient id="a" x1="0" x2="1" y1="0" y2="1">
-<stop stop-color="#a2f0ff"/><stop offset="1" stop-color="#71e3ba"/>
-</linearGradient></defs>
-<rect width="192" height="192" rx="42" fill="#09111b"/>
-<rect x="9" y="9" width="174" height="174" rx="36" fill="#173043" stroke="#47809a" stroke-width="2"/>
-<path d="M27 44H165M27 149H165" stroke="url(#a)" stroke-width="4" stroke-linecap="round"/>
-<text x="96" y="112" text-anchor="middle" font-family="Arial,sans-serif" font-size="49" font-weight="900" letter-spacing="-4" fill="#f4fbff">PPW</text>
-<path d="M48 130H144" stroke="url(#a)" stroke-width="5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="PPW Live Circuit">
+<defs><linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3c245f"/><stop offset=".55" stop-color="#1c2051"/><stop offset="1" stop-color="#101225"/></linearGradient>
+<linearGradient id="lights" x1="0" y1="0" x2="1" y2=".15"><stop stop-color="#ff3679"/><stop offset=".48" stop-color="#d44ab4"/><stop offset="1" stop-color="#39dbf5"/></linearGradient></defs>
+<rect width="192" height="192" rx="40" fill="#101225"/>
+<rect x="10" y="10" width="172" height="172" rx="34" fill="url(#night)" stroke="#ffb8e1" stroke-width="3"/>
+<path d="M18 52 174 36M18 64 174 48" stroke="url(#lights)" stroke-width="5" opacity=".92"/>
+<path d="M18 141 174 127M18 153 174 139" stroke="#ffd15e" stroke-width="4" opacity=".93"/>
+<path d="M23 112 42 89 160 89 169 103 148 125 31 125Z" fill="#e33188" stroke="#fff0d2" stroke-width="3"/>
+<text x="95" y="116" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="43" font-style="italic" font-weight="900" letter-spacing="-4" fill="#fff0d2">PPW</text>
+<path d="M37 160h118" stroke="#39dbf5" stroke-width="5" stroke-linecap="round"/>
+<path d="m31 29 5-8 5 8 8 5-8 5-5 8-5-8-8-5Z" fill="#ffd15e"/>
 </svg>

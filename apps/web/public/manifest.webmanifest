@@ -1,12 +1,12 @@
 {
   "name": "Project Professional Wrestling",
   "short_name": "PPW",
-  "description": "Persistent shared-world wrestling management",
+  "description": "PPW Live Circuit — your promotion in one persistent wrestling world",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#09111b",
-  "theme_color": "#09111b",
+  "background_color": "#101225",
+  "theme_color": "#101225",
   "icons": [
     {
       "src": "/icon.svg",

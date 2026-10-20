@@ -1,5 +1,5 @@
 /* Static install shell only: never cache authenticated requests or World data. */
-const CACHE="ppw-static-shell-v1";
+const CACHE="ppw-static-shell-v2";
 const CORE=["/offline.html","/icon.svg","/manifest.webmanifest"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));
