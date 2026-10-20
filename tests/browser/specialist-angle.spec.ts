@@ -195,3 +195,55 @@ test("iPhone consults only a saved match and preserves the promoter's planned fi
  expect(methods).not.toContain("talent");
  expect(methods).not.toContain("wrestlerProfile");
 });
+
+test("iPhone booker can author a Face or Heel turn for a contracted wrestler without changing the World immediately",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4,saved:Record<string,unknown>|null=null;
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(request.method);methods.push(method);
+  if(method==="save"){
+   const segments=request.segments as {slotId:string;payload:Record<string,unknown>}[];
+   expect(segments).toHaveLength(1);
+   saved=segments[0]!.payload;revision++;
+  }
+  return route.fulfill({json:method==="planner"?planner:
+   method==="load"?{
+    showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+    day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+    venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+    ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+    selectedPeople:[{personId:"alice",name:"Alice",division:"MEN",alignment:"HEEL"},
+     {personId:"bob",name:"Bob",division:"MEN",alignment:"FACE"}],
+    slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+      ...(saved?[{slotId:"turn",kind:"SEGMENT",position:1,payload:saved}]:[])]
+   }:method==="talent"?{talent:[{
+    personId:"alice",contractId:"contract-alice",name:"Alice",division:"MEN",
+    available:true,reason:"AVAILABLE",remainingDates:6,popularity:76,
+    recognition:83,momentum:68,inRingQuality:70,matchCraft:72,presentation:80
+   }],cursor:null}:
+   method==="save"?{status:"APPLIED",result:{performers:2}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.getByRole("button",{name:"↪ Book a turn"}).click();
+ let dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByLabel("Creative direction")).toHaveValue("TURN");
+ await expect(dialog.getByLabel("Angle")).toHaveValue("TURN");
+ await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
+ await dialog.getByLabel("New alignment").selectOption("FACE");
+ await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ await page.getByRole("dialog",{name:"Choose wrestler"}).locator(".ppw-wrestler-card").first().click();
+ dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByText("Alice",{exact:true})).toBeVisible();
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saved).not.toBeNull();
+ expect(saved).toMatchObject({kind:"TURN",outcome:"HAPPENS",
+  turnTargetAlignment:"FACE",actorIds:["alice"],targetIds:[]});
+ expect(methods.filter(x=>x==="save")).toHaveLength(1);
+ expect(methods).not.toContain("wrestlerProfile");
+});
