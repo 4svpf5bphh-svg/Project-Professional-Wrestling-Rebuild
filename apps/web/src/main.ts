@@ -28,6 +28,8 @@ const game=document.querySelector<HTMLElement>("#game")!;
 const account=document.querySelector<HTMLElement>("#account")!;
 const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
+// Latest session wins when overlapping requests complete out of order.
+let sessionReadSequence=0;
 let drawerExpanded=false;
 let selectedDrawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
@@ -285,6 +287,7 @@ window.addEventListener("beforeunload",event=>{
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
+ const sequence=++sessionReadSequence;
  pendingBackstagePersonId=null;
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
@@ -294,9 +297,12 @@ async function loadSession(){
  try{
   const r=await fetch("/api/session",{credentials:"same-origin",
    cache:"no-store"});
+  if(sequence!==sessionReadSequence)return;
   if(r.status===401){session=null;showLogin();return;}
   if(!r.ok)throw new Error("Your promotion is unavailable. Check your connection.");
-  session=await r.json() as SessionView;
+  const incoming=await r.json() as SessionView;
+  if(sequence!==sessionReadSequence)return;
+  session=incoming;
   if(!session||!session.csrfToken||!session.worldId||!session.overview)
    throw new Error("Incomplete game session");
   const banner=el("div","ppw-account-banner");
@@ -329,6 +335,7 @@ async function loadSession(){
   if(!session.overview.promotion){showClaim();return;}
   renderSection();
  }catch(e){
+  if(sequence!==sessionReadSequence)return;
   game.replaceChildren();
   showError(game,e instanceof Error?e.message:"Could not open PPW");
   game.append(button("Retry",()=>void loadSession()));

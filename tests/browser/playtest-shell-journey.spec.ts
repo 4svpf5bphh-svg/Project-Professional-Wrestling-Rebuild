@@ -76,3 +76,33 @@ test("card management links enter the correct shell desk and Back restores the p
  expect(loaded).toEqual(["premium","premium"]);
  expect(page.url()).not.toContain("premium");
 });
+
+test("old session replies cannot restore a previous manager over the new player's mobile shell",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let started!:()=>void,release!:()=>void;
+ const firstStarted=new Promise<void>(resolve=>{started=resolve;});
+ const hold=new Promise<void>(resolve=>{release=resolve;});
+ let reads=0;
+ await page.route("**/api/session",async route=>{
+  reads++;
+  if(reads===1){
+   started();
+   await hold;
+   return route.fulfill({json:{...session,playerId:"previous",
+    overview:{...session.overview,promotion:{...promotion,name:"Previous Owner"}}}});
+  }
+  return route.fulfill({json:{...session,playerId:"current",
+   overview:{...session.overview,promotion:{...promotion,name:"Current Owner"}}}});
+ });
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  ...session.overview,promotion:{...promotion,name:"Current Owner"}
+ }}));
+ await page.goto("/#/home");
+ await firstStarted;
+ await page.evaluate(()=>window.dispatchEvent(new Event("ppw:session-lost")));
+ await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Current Owner");
+ release();
+ await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Current Owner");
+ await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ expect(reads).toBe(2);
+});
