@@ -26,7 +26,7 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
-import {moveLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
+import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -574,6 +574,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const segment=segments.get(slotId);
    const card=el("article","ppw-card "+(m?"ppw-match-card":"ppw-angle-card"));
    card.dataset.slot=String(i+1).padStart(2,"0");
+   card.dataset.bookingSlotId=slotId;
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
    if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
@@ -623,7 +624,47 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    earlier.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" earlier");
    later.setAttribute("aria-label","Move "+(m?"match":"angle")+" in slot "+(i+1)+" later");
    earlier.title="Move earlier";later.title="Move later";
-   arrows.append(earlier,later);
+   // Touch/Pen/Mouse drag handle, while labelled arrows remain the accessible
+   // keyboard alternative. No item moves or saves until pointer release.
+   const grip=el("span","ppw-card-grip","⠿");
+   grip.title="Drag to change running order; arrow buttons also work";
+   grip.setAttribute("aria-hidden","true");
+   let dragPointer:number|null=null,dragStartY=0,dragging=false,dropId=slotId;
+   const clearDrag=()=>{
+    root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
+    grip.classList.remove("ppw-card-grip-active");
+    if(dragPointer!==null&&grip.hasPointerCapture(dragPointer))
+     grip.releasePointerCapture(dragPointer);
+    dragPointer=null;dragging=false;
+   };
+   grip.onpointerdown=event=>{
+    if(!mutable()||event.button!==0||dragPointer!==null)return;
+    event.preventDefault();dragPointer=event.pointerId;dragStartY=event.clientY;
+    dropId=slotId;grip.setPointerCapture(event.pointerId);
+   };
+   grip.onpointermove=event=>{
+    if(dragPointer!==event.pointerId)return;
+    if(!dragging&&Math.abs(event.clientY-dragStartY)<9)return;
+    dragging=true;grip.classList.add("ppw-card-grip-active");
+    const candidate=document.elementFromPoint(event.clientX,event.clientY)
+     ?.closest<HTMLElement>(".ppw-card[data-booking-slot-id]");
+    const id=candidate?.dataset.bookingSlotId;
+    if(!id||id===dropId)return;
+    root.querySelector(".ppw-card-drop-target")?.classList.remove("ppw-card-drop-target");
+    dropId=id;
+    if(dropId!==slotId)candidate?.classList.add("ppw-card-drop-target");
+   };
+   grip.onpointerup=event=>{
+    if(dragPointer!==event.pointerId)return;
+    const target=dropId,wasDragging=dragging;
+    clearDrag();
+    if(!wasDragging||target===slotId||!mutable())return;
+    const next=dropLinkedRunningOrder(order,slotId,target,linked);
+    if(!next)return;
+    order=next;markDirty();render();
+   };
+   grip.onpointercancel=clearDrag;
+   arrows.append(grip,earlier,later);
    if(segment?.kind==="POST_MATCH_ASSAULT"&&segment.sourceMatchSlotId&&
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));

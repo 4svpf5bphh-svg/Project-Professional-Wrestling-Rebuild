@@ -210,3 +210,16 @@ transition:transform .13s ease,border-color .13s ease,filter .13s ease}
 #game .ppw-save{gap:5px}#game .ppw-save button{font-size:12px}}
 @media(min-width:800px){.ppw-account-banner .ppw-shell-menu{width:360px}
 .ppw-navigation,.ppw-navigation.ppw-navigation-open{width:460px}}
+
+/* Running-order touch grip: small, explicit, and separated from edit controls. */
+#game .ppw-card-grip{display:grid;place-items:center;flex:none;
+ width:27px;min-height:44px;align-self:center;font-size:24px;font-weight:900;
+ color:#ffcf80;cursor:grab;touch-action:none;user-select:none;
+ -webkit-user-select:none;border-right:1px solid #7e6997}
+#game .ppw-card-grip-active{cursor:grabbing;color:#39dbf5}
+#game .ppw-card-drop-target{outline:3px dashed #ffd15e;outline-offset:4px}
+#game .ppw-card-drop-target .ppw-card-bar{background:#ffe18a20}
+@media(max-width:370px){
+ #game .ppw-card-grip{width:20px;font-size:20px}
+ #game .ppw-card-bar{gap:5px}
+}

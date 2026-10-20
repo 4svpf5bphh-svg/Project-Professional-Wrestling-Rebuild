@@ -37,6 +37,30 @@ export function moveLinkedRunningOrder(order:readonly string[],id:string,
  return flattened;
 }
 
+/** Drag a slot onto another slot, moving entire match/linked-angle blocks.
+ * Applies exactly the same script integrity checks as the arrow controls.
+ * The drop target is the slot whose position the dragged block will occupy.
+ */
+export function dropLinkedRunningOrder(order:readonly string[],draggedId:string,
+ targetId:string,angles:readonly LinkedRunningOrderAngle[]):string[]|null{
+ const blocks=runningOrderBlocks(order,angles);
+ const from=blocks.findIndex(block=>block.includes(draggedId));
+ const to=blocks.findIndex(block=>block.includes(targetId));
+ if(from<0||to<0||from===to)return null;
+ const reordered=blocks.map(block=>[...block]);
+ const moving=reordered.splice(from,1)[0]!;
+ reordered.splice(to,0,moving);
+ const flattened=reordered.flat();
+ const positions=new Map(flattened.map((id,i)=>[id,i]));
+ for(const angle of angles){
+  if(angle.kind!=="POST_MATCH_ASSAULT"||!angle.sourceMatchSlotId)continue;
+  const source=positions.get(angle.sourceMatchSlotId);
+  const assault=positions.get(angle.slotId);
+  if(source===undefined||assault===undefined||source>=assault)return null;
+ }
+ return flattened;
+}
+
 /** Explicitly choosing a source match places its follow-up immediately next.
  * No match/angle payloads change, only their written running-order sequence.
  */

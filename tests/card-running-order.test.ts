@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {runningOrderBlocks,moveLinkedRunningOrder,attachPostMatchAngle,
+import {runningOrderBlocks,moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle,
  type LinkedRunningOrderAngle} from "../src/ui/card-running-order.js";
 const assault=(source:string):LinkedRunningOrderAngle=>({
  slotId:"assault",kind:"POST_MATCH_ASSAULT",sourceMatchSlotId:source
@@ -64,4 +64,22 @@ test("choosing a source match explicitly attaches an assault directly to its bou
  assert.equal(attachPostMatchAngle(old,"main","main"),null);
  assert.equal(attachPostMatchAngle(old,"assault","missing"),null);
  assert.equal(attachPostMatchAngle(old,"missing","main"),null);
+});
+
+test("touch drop rearranges blocks but cannot separate their dependent assaults",()=>{
+ const links=[assault("main")];
+ const original=["opening","main","assault","interview","closing"];
+ assert.deepEqual(dropLinkedRunningOrder(original,"assault","closing",links),
+  ["opening","interview","closing","main","assault"]);
+ assert.deepEqual(dropLinkedRunningOrder(original,"closing","main",links),
+  ["opening","closing","main","assault","interview"]);
+ assert.deepEqual(dropLinkedRunningOrder(original,"opening","interview",links),
+  ["main","assault","interview","opening","closing"]);
+ assert.equal(dropLinkedRunningOrder(original,"main","assault",links),null);
+ assert.equal(dropLinkedRunningOrder(original,"missing","closing",links),null);
+ assert.equal(dropLinkedRunningOrder(original,"main","missing",links),null);
+});
+test("touch drop rejects invalid nonadjacent historical linked segment ordering",()=>{
+ assert.equal(dropLinkedRunningOrder(["assault","main","closing"],
+  "closing","main",[assault("main")]),null);
 });
