@@ -206,7 +206,7 @@ export async function readWrestlerDirectory(
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
     careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
     roleExpectation:p.role_expectation,
-    interest:p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
+    interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
      p.interest_score===null?"UNKNOWN":p.interest_score>=78?"KEEN":
      p.interest_score>=63?"INTERESTED":p.interest_score>=40?"OPEN_TO_TALKS":
      p.interest_score>=22?"RELUCTANT":"NOT_INTERESTED",
