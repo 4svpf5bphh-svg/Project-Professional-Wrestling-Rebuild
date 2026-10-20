@@ -5,6 +5,33 @@ This host replaces the original Alpha's server-configured single player with
 World. It does not bootstrap Worlds, migrate an environment, create a cron or
 alter the old PPW Neon project.
 
+## Recovery status — 20 October 2026
+
+The existing rebuild Neon **main** World is `world-20261017`, not an
+alpha save. Migrations 0070–0080 have now been applied in order to the
+existing rebuild database; inspection confirms the required roster and
+standing tables exist. Genuine wrestler personas, tag-team identities,
+original standings and parent-company roster affiliations are **still
+absent** until a separate recovery run.
+
+The tested non-destructive recovery is `npm run playtest:reconcile-main`.
+It rejects any mismatched World seed, wrestler names and IDs, promotion
+IDs, or partially recovered identities. Its one-transaction writes retain
+all player ownership, existing booking drafts and World clock. It has
+passed the authentic original-main Genesis CI restoration test, including
+two-player booking and Week resolution.
+
+The manually gated GitHub Actions workflow
+[`reconcile-rebuild-main.yml`](../.github/workflows/reconcile-rebuild-main.yml)
+is scoped only to rebuild `main`, project `orange-flower-99606272`,
+World `world-20261017` and its verified UK Neon endpoint.
+It requires the protected repository secret
+`PPW_REBUILD_MAIN_DATABASE_URL` pointing to the rebuild Neon **main**
+database, and manual exact World/project confirmations. It will export
+the genuine original repository **main** Genesis from source, reconcile
+the one existing World and run read-only preflight. Never paste database
+credentials into workflow inputs or commit them to GitHub.
+
 ## What is implemented
 
 - `apps/web/`: phone-first installable standalone PWA, World Home, login,
@@ -78,34 +105,20 @@ to disable Git deployments of `main` until the host configuration, rate
 limiting, private invitations, and intended release are verified and approved.
 There are no World Lock crons. CI uses its own disposable PostgreSQL.
 
-## Legacy isolated iPhone preview branch — fail-closed database approval
+## One hosted main World, with fail-closed credentials
 
-The Vercel host refuses to start **any** `VERCEL_ENV=preview` instance
-unless its deployment branch, World and PostgreSQL host/database all match
-an explicitly approved, independent preview environment. This check runs
-*before* creating a database pool and causes a generic 503 on mismatch.
+Only rebuild Git `main` may run the hosted game, in Vercel preview or
+production. The host rejects all old alpha branches before creating a
+database pool. `PPW_MAIN_WORLD_APPROVED=YES`, `PPW_MAIN_WORLD_ID`,
+`PPW_MAIN_DB_HOST` and `PPW_MAIN_DB_NAME` must match the actual
+`PPW_WORLD_ID` and `DATABASE_URL` exactly.
 
-Configure the following **on the exact new preview branch**, never by
-copying a production or older test-branch connection:
+**Main code is not automatically deployed.** Deployment remains disabled
+in `vercel.json` until the authentic World passes preflight, private
+invitations and production edge protections are ready, and the intended
+release is explicitly approved. No cron is enabled.
 
-- `VERCEL_GIT_COMMIT_REF`: supplied by Vercel Git integration; the branch
-  must begin `alpha/playtest-` and must never be `main`.
-- `PPW_PREVIEW_ISOLATED=YES` and `PPW_PREVIEW_GIT_BRANCH`: the exact branch.
-- `PPW_PREVIEW_DB_HOST` and `PPW_PREVIEW_DB_NAME`: independently confirmed
-  hostname and database name of the **new isolated** preview database.
-- `PPW_PREVIEW_WORLD_ID`: exact immutable World imported and verified by
-  `npm run playtest:preflight`.
-- Existing authenticated host secrets: `DATABASE_URL`, `PPW_WORLD_ID`,
-  `PPW_SESSION_SECRET`, `PPW_PLAYER_ACCESS_HASHES`, with the World ID
-  and database URL matching those approved above.
-
-These are **environment names only**. Do not paste credentials or invite
-codes into source, GitHub Actions logs or this document. A ready static
-Vercel build does **not** mean a player is authorised to use a World;
-the isolated runtime guard and invite authentication must both succeed.
-Normal production and disposable CI execution remain unchanged.
-
-## Isolated playtest World preparation (not yet authorised)
+## Genuine original-main Genesis — first import or existing-World recovery
 
 The preview has two explicit safeguards: the starting World must be built from
 a *fresh, actual original-main Genesis export*, not the synthetic 643-person
