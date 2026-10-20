@@ -38,9 +38,9 @@ export function bookingErrorCode(message:string):BookingErrorCode|null{
  if(/not an editable current.week draft|show is not editable|already confirmed/i.test(message))return "CONFIRMED";
  if(/match.*(?:participants|format|winner|finish|sides|booked|invalid)|invalid match|scripted winner|book at least one match|match card|one wrestler cannot be in two matches/i.test(message))
   return "MATCH";
- if(/angle|segment|stable before|faction|scripted angle|role capacity|authored segment|invalid segment|wrestler.*two roles/i.test(message))
-  return "ANGLE";
  if(/programme.*(?:rivalry|participants|link|active)|linked rivalry|creative consent|creative agreement|rivalry.*(?:participants|consent)/i.test(message))
   return "PROGRAMME";
+ if(/angle|segment|stable before|faction|scripted angle|role capacity|authored segment|invalid segment|wrestler.*two roles/i.test(message))
+  return "ANGLE";
  return null;
 }

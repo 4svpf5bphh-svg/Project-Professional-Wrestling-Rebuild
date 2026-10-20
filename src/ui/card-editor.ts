@@ -490,7 +490,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   airtime.append(el("small","",matchMinutes+" min wrestling + "+angleMinutes+" min angles"+
    (view.bookingClass==="REGULAR"?" · "+Math.max(0,120-usedMinutes)+" min left for entrances, breaks and commentary":
-   " · add venue production time separately"));
+   " · add venue production time separately")));
   if(view.bookingClass==="REGULAR"&&usedMinutes>110)
    airtime.append(el("small","ppw-card-time-warning",usedMinutes>120?
     "Over the TV limit — shorten your booking to save.":
