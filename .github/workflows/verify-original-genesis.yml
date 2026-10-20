@@ -24,6 +24,8 @@ on:
       - "tests/real-genesis-two-player-smoke.test.ts"
       - "scripts/playtest-resolve-original-ci.ts"
       - "src/db/playtest-preview-readiness.ts"
+      - "src/db/reconcile-original-main-genesis.ts"
+      - "scripts/playtest-reconcile-main.ts"
   workflow_dispatch:
 permissions:
   contents: read
@@ -133,6 +135,36 @@ jobs:
             console.log(JSON.parse(readFileSync(process.env.SOURCE_FILE,"utf8")).world.id);
           ')"
           PPW_PLAYTEST_WORLD_ID="$WORLD" npm run playtest:genesis -- \
+            --world "$WORLD" --source "$SOURCE_FILE" \
+            --confirm-world "$WORLD" --confirm-host localhost
+          npm run playtest:preflight -- --world "$WORLD"
+      - name: Validate in-place original-main identity recovery in disposable CI
+        working-directory: rebuild
+        env:
+          PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
+          SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
+          PGPASSWORD: ppw_test
+        run: |
+          WORLD="$(node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            console.log(JSON.parse(readFileSync(process.env.SOURCE_FILE,"utf8")).world.id);
+          ')"
+          # Deliberately simulate a pre-reconciliation imported World ONLY in
+          # disposable CI PostgreSQL. Never issue these DELETEs to Neon main.
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 \
+            -v world_id="$WORLD" <<'SQL'
+          BEGIN;
+          DELETE FROM ppw_wrestler_promotion_affiliations WHERE world_id=:'world_id';
+          DELETE FROM ppw_tag_team_members WHERE world_id=:'world_id';
+          DELETE FROM ppw_tag_teams WHERE world_id=:'world_id';
+          DELETE FROM ppw_portable_personas WHERE world_id=:'world_id';
+          DELETE FROM ppw_promotion_standings WHERE world_id=:'world_id';
+          UPDATE ppw_promotions SET parent_promotion_id=NULL WHERE world_id=:'world_id';
+          UPDATE ppw_people SET portable_gimmick_id=NULL WHERE world_id=:'world_id';
+          COMMIT;
+          SQL
+          PPW_PLAYTEST_WORLD_ID="$WORLD" PPW_GENESIS_RECONCILE_AUTHORIZED=YES \
+          npm run playtest:reconcile-main -- \
             --world "$WORLD" --source "$SOURCE_FILE" \
             --confirm-world "$WORLD" --confirm-host localhost
           npm run playtest:preflight -- --world "$WORLD"
