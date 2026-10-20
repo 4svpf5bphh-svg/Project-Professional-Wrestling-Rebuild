@@ -106,3 +106,40 @@ test("old session replies cannot restore a previous manager over the new player'
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  expect(reads).toBe(2);
 });
+
+test("unfinished show shortcut chooses the required weekly card ahead of a drafted premium",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const shows=[["premium","PREMIUM"],["weekly","REGULAR"]].map(([draftId,bookingClass])=>({
+  draftId,bookingClass,year:1,week:5,status:"DRAFT",ready:false,
+  eventType:bookingClass==="PREMIUM"?"MAJOR":"REGULAR",
+  day:5,marketId:"home",venueId:"arena",marketName:"Home",venueName:"Arena",
+  showName:bookingClass==="PREMIUM"?"Premium Event":"Weekly Show",
+  ticketStrategy:"STANDARD",slots:0,showSeriesId:null
+ }));
+ const requested:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const b=route.request().postDataJSON();
+  if(b.method==="planner")return route.fulfill({json:{
+   worldName:"Genesis",promotionName:"Independent",year:1,week:5,
+   canEdit:true,worldRevision:4,homeMarketId:"home",venues:[],
+   weeks:[{year:1,week:5,offset:0,required:true,major:true,
+    canEdit:true,scheduled:[],shows}]
+  }});
+  if(b.method==="load"){
+   requested.push(b.showId);
+   return route.fulfill({json:{
+    showId:b.showId,year:1,week:5,worldRevision:4,canEdit:true,ready:false,
+    day:5,venueId:"arena",showName:b.showId==="weekly"?"Weekly Show":"Premium Event",
+    promotionName:"Independent",venueName:"Arena",marketName:"Home",
+    bookingClass:b.showId==="weekly"?"REGULAR":"PREMIUM",ticketStrategy:"STANDARD",
+    championships:[],programmes:[],programmeLinks:[],selectedPeople:[],slots:[]
+   }});
+  }
+  throw new Error("Unexpected request "+b.method);
+ });
+ await page.goto("/#/planner/card");
+ await expect(page).toHaveURL(/#\/card$/);
+ await expect(page.getByText("Weekly Show")).toBeVisible();
+ expect(requested).toEqual(["weekly"]);
+});

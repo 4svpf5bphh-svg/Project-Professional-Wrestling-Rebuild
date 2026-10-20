@@ -41,8 +41,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    if(cardRoutePending){
     cardRoutePending=false;
-    const draft=data.weeks.find(w=>w.offset===0)?.shows.find(s=>
-     s.status==="DRAFT"&&!s.ready);
+    const unfinished=data.weeks.find(w=>w.offset===0)?.shows.filter(s=>
+     s.status==="DRAFT"&&!s.ready)??[];
+    // Optional premiums cannot displace the compulsory normal broadcast.
+    const draft=unfinished.find(s=>s.bookingClass==="REGULAR")??unfinished[0];
     if(draft&&data.canEdit){
      navigated=true;port.openCard(draft.draftId);return;
     }
