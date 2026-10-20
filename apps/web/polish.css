@@ -515,3 +515,8 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
 }
 @media(prefers-reduced-motion:reduce){::view-transition-old(ppw-stage),
  ::view-transition-new(ppw-stage){animation:none!important}}
+
+/* Native page-change snapshot graphics are decorative. They must never swallow
+   a fresh booking tap or grip gesture before the 250ms broadcast cut ends. */
+::view-transition,::view-transition-group(*),
+::view-transition-old(*),::view-transition-new(*){pointer-events:none!important}
