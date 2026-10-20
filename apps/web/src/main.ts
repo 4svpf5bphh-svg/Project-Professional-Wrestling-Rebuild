@@ -51,6 +51,7 @@ const button=(label:string,action:()=>void)=>{
  b.type="button";b.onclick=action;return b;
 };
 function showError(target:HTMLElement,message:string){
+ target.querySelector(":scope > .ppw-access-error")?.remove();
  const x=el("p","ppw-access-error",message);x.setAttribute("role","alert");
  target.prepend(x);
 }
@@ -446,13 +447,27 @@ function showClaim(){
  }
  game.replaceChildren(card);
 }
+let signingOut=false;
 async function signOut(){
- if(!confirmLeavingBooking("home"))return;
- if(session)try{
-  await fetch("/api/auth",{method:"DELETE",credentials:"same-origin",
-   headers:{"x-ppw-csrf":session.csrfToken}});
- }catch{/* A failed sign-out does not imply local sign-out. */}
- await loadSession();
+ if(signingOut||!confirmLeavingBooking("home"))return;
+ signingOut=true;
+ const control=account.querySelector<HTMLButtonElement>(".ppw-shell-signout");
+ if(control)control.disabled=true;
+ try{
+  if(session){
+   const response=await fetch("/api/auth",{method:"DELETE",credentials:"same-origin",
+    headers:{"x-ppw-csrf":session.csrfToken}});
+   if(!response.ok&&response.status!==401)
+    throw new Error("Sign-out was not confirmed. Your promotion is still signed in.");
+  }
+  await loadSession();
+ }catch{
+  // Do not claim logout or hide an active account on network/host errors.
+  showError(account,"Could not confirm sign-out. Check your connection and try again.");
+ }finally{
+  signingOut=false;
+  if(control?.isConnected)control.disabled=false;
+ }
 }
 void loadSession();
 if("serviceWorker" in navigator){
