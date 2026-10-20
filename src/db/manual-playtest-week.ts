@@ -31,18 +31,13 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    ORDER BY c.promotion_id LIMIT 129`,[worldId,expectedYear,expectedWeek]);
   if(owners.length<1||owners.length>128||owners.some(x=>!x.ready))
    throw new Error("Every active human promotion must confirm its regular show before a manual World Lock.");
-  if(w.phase==="OPEN"){
-   // Explicitly brought forward only by this button; checked while holding
-   // the shared World row lock to stop racing with two distinct managers.
-   await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1 AND phase='OPEN'",
-    [worldId]);
-  }
+  // Preflight only: the authoritative command atomically applies cutoff and locks.
   return {phase:w.phase,revision:Number(w.revision)};
  });
  const resolutionId="manual-preview:"+worldId+":"+expectedYear+":"+expectedWeek;
  if(gate.phase==="OPEN"){
   const lock=await lockWorldWeek(pool,{worldId,
-   requestId:resolutionId+":lock",expectedRevision:gate.revision});
+   requestId:resolutionId+":lock",expectedRevision:gate.revision,manualPreview:true});
   if(lock.status==="STALE")throw new Error("Another manager changed the World. Refresh and review.");
  }
  const result=await driveWorldResolution(pool,{worldId,resolutionId,maxStages:6});

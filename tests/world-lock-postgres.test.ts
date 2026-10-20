@@ -71,3 +71,29 @@ test("server cutoff blocks a booking write even if scheduler is delayed",{skip:!
     }).finally(()=>db.close());
   }
 });
+
+test("manual preview lock cannot expire an open World on stale revisions",{
+ skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,3),worldId="manual-lock-"+randomUUID();
+ try{
+  await withWorldTransaction(db.pool,tx=>createWorld(tx,{id:worldId,name:"Manual Preview",seed:20,rulesetVersion:"test"}));
+  const state=async()=>withWorldTransaction(db.pool,tx=>tx.query<{
+   revision:string;phase:string;open:boolean}>(
+   "SELECT revision,phase,(next_lock_at>clock_timestamp()) AS open FROM ppw_worlds WHERE world_id=$1",[worldId]));
+  assert.equal((await state())[0]!.open,true);
+  const stale=await lockWorldWeek(db.pool,{worldId,requestId:"stale-button",expectedRevision:99,manualPreview:true});
+  assert.equal(stale.status,"STALE");
+  assert.equal((await state())[0]!.phase,"OPEN");
+  assert.equal((await state())[0]!.open,true);
+  const locked=await lockWorldWeek(db.pool,{worldId,requestId:"manual-button",expectedRevision:0,manualPreview:true});
+  assert.equal(locked.status,"APPLIED");
+  assert.equal((await state())[0]!.phase,"LOCKED");
+  assert.equal((await state())[0]!.open,false);
+  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"manual-button",expectedRevision:0,manualPreview:true})).status,"REPLAYED");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});

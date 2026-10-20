@@ -3,6 +3,8 @@ import { applyWorldCommand } from "./world-commands.js";
 
 export interface LockWorldWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
+  /** Restricted to the authenticated private-preview World operator. */
+  manualPreview?:boolean;
 }
 
 /** The ONE weekly deadline. Only server scheduler code invokes this.
@@ -21,13 +23,16 @@ export async function lockWorldWeek(pool:TransactionPool,input:LockWorldWeekInpu
       if(clocks.length!==1) throw new Error("World not found");
       const {year,week,phase,due}=clocks[0]!;
       if(phase!=="OPEN") throw new Error("World is not open");
-      if(!due) throw new Error("World deadline not reached");
+      if(!due&&!input.manualPreview) throw new Error("World deadline not reached");
       if(!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52) throw new Error("Invalid World clock");
       const weekIndex=(year-1)*52+week-1;
       if(!Number.isSafeInteger(weekIndex)) throw new Error("Invalid World week");
       const locked=await tx.query<{world_id:string}>(
-        "UPDATE ppw_worlds SET phase='LOCKED' WHERE world_id=$1 AND phase='OPEN' AND next_lock_at<=clock_timestamp() RETURNING world_id",
-        [input.worldId],
+        "UPDATE ppw_worlds SET phase='LOCKED',"+
+        " next_lock_at=CASE WHEN $2::boolean THEN clock_timestamp()-interval '1 second'"+
+        " ELSE next_lock_at END WHERE world_id=$1 AND phase='OPEN'"+
+        " AND ($2::boolean OR next_lock_at<=clock_timestamp()) RETURNING world_id",
+        [input.worldId,input.manualPreview===true],
       );
       if(locked.length!==1) throw new Error("World lock failed");
       return {year,week,weekIndex};
