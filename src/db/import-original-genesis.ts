@@ -40,16 +40,16 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     INSERT INTO ppw_promotions(world_id,promotion_id,name,home_market_id,tier,lifecycle,
      management_mode,cash,debt,media_reach,ai_financial_caution,
      ai_risk_tolerance,ai_match_quality_preference,ai_star_preference,
-     takeover_eligibility,event_cadence_weeks,weekly_media_income,
+     takeover_eligibility,parent_promotion_id,event_cadence_weeks,weekly_media_income,
      weekly_sponsor_income,weekly_fixed_overhead,last_weekly_net,financial_distress)
     SELECT $1,x.id,x.name,x.home_market_id,x.tier,x.lifecycle,x.mode,x.cash,x.debt,x.media,
      x.ai_financial_caution,x.ai_risk_tolerance,x.ai_match_quality_preference,
-     x.ai_star_preference,x.takeover_eligibility,x.event_cadence_weeks,x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
+     x.ai_star_preference,x.takeover_eligibility,x.parent_promotion_id,x.event_cadence_weeks,x.weekly_media,x.weekly_sponsor,x.weekly_overhead,x.last_net,x.distress
     FROM jsonb_to_recordset($2::jsonb) AS x(
      id text,name text,home_market_id text,tier text,lifecycle text,mode text,cash bigint,debt bigint,
      media double precision,ai_financial_caution double precision,
      ai_risk_tolerance double precision,ai_match_quality_preference double precision,
-     ai_star_preference double precision,takeover_eligibility text,event_cadence_weeks integer,weekly_media bigint,weekly_sponsor bigint,
+     ai_star_preference double precision,takeover_eligibility text,parent_promotion_id text,event_cadence_weeks integer,weekly_media bigint,weekly_sponsor bigint,
      weekly_overhead bigint,last_net bigint,distress text)
     RETURNING promotion_id
    ) SELECT count(*)::integer AS count FROM inserted`,
@@ -60,6 +60,7 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     ai_match_quality_preference:p.aiMatchQualityPreference,
     ai_star_preference:p.aiStarPreference,
     takeover_eligibility:p.takeoverEligibility,
+    parent_promotion_id:p.parentPromotionId,
     event_cadence_weeks:p.eventCadenceWeeks,
     weekly_media:p.weeklyMedia,weekly_sponsor:p.weeklySponsor,
     weekly_overhead:p.weeklyOverhead,last_net:p.lastWeeklyNet
@@ -196,6 +197,23 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     RETURNING contract_id
    ) SELECT count(*)::integer AS count FROM inserted`,
    [g.world.id,JSON.stringify(g.contracts)]);
+  // The original's affiliate roster is not the legal contract list.
+  // Parent-signed WWE/AEW agreements grant only individually listed NXT/ROH
+  // talent booking access, with the same canonical contract and date balance.
+  const affiliations=g.rosterAffiliations.length?await tx.query<{count:number}>(`
+   WITH inserted AS (
+    INSERT INTO ppw_wrestler_promotion_affiliations(
+     world_id,person_id,promotion_id,role,basis)
+    SELECT $1,x.person_id,x.promotion_id,x.role,x.basis
+    FROM jsonb_to_recordset($2::jsonb) AS x(
+     person_id text,promotion_id text,role text,basis text)
+    RETURNING person_id
+   ) SELECT count(*)::integer AS count FROM inserted`,
+   [g.world.id,JSON.stringify(g.rosterAffiliations.map(a=>({
+    person_id:a.personId,promotion_id:a.promotionId,role:a.role,basis:a.basis
+   })))]):[{count:0}];
+  if(affiliations[0]?.count!==g.rosterAffiliations.length)
+   throw new Error("Incomplete original wrestler parent-company affiliations");
   if(markets[0]?.count!==g.markets.length||
     promotionMarkets[0]?.count!==g.promotionMarketStates.length||
     promotions[0]?.count!==g.promotions.length||standings[0]?.count!==g.promotionStandings.length||titles[0]?.count!==
@@ -214,7 +232,9 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
    championships:titles[0]!.count,standings:standings[0]!.count,
    personas:g.personas.length,tagTeams:g.teams.length,
    teamMembers:g.teamMemberships.length,
+   rosterAffiliations:g.rosterAffiliations.length,
    sqlStatements:10+Number(g.personas.length>0)+
-    Number(g.teams.length>0)+Number(g.teamMemberships.length>0)};
+    Number(g.teams.length>0)+Number(g.teamMemberships.length>0)+
+    Number(g.rosterAffiliations.length>0)};
  });
 }
