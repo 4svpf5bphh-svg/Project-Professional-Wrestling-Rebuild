@@ -103,5 +103,5 @@ test("a lost response for a newly generated PPV replays the same one-time creati
  await page.getByRole("button",{name:"Save event"}).click();
  await expect(page.getByText("Autumn Slam",{exact:true})).toHaveCount(1);
  expect(seen).toHaveLength(2);
- expect(seen[0]).toBe(seen[1],"The server must replay creation, never create a duplicate special");
+ expect(seen[0]).toBe(seen[1]);
 });
