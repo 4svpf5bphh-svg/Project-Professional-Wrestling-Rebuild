@@ -1290,12 +1290,16 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.getByRole("dialog",{name:"Edit angle"}).getByRole("button",
   {name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(3)).toContainText("Follows its match");
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-move");
  await page.getByRole("button",{name:"Move match in slot 3 earlier"}).click();
  await page.getByRole("button",{name:"Move match in slot 2 earlier"}).click();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeDisabled();
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-save",JSON.stringify({order,revision}));
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC after-save",JSON.stringify({methods,errors:await page.locator(".ppw-alert.ppw-error").allTextContents(),success:await page.locator(".ppw-success").allTextContents()}));
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-saved-assertion",JSON.stringify({methods,errors:await page.locator(".ppw-alert.ppw-error").allTextContents()}));
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  expect(methods).toEqual(["planner","load","save","load"]);
