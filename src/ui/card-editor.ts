@@ -752,10 +752,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Creative direction",selector(goal,
      ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
       setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
-    controls.append(field("Angle type",selector(segment.kind,
-     ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
-      .map(x=>[x.value,x.label]),value=>
-      setAngle(value as EditorSegment["kind"]),!mutable())));
+    // A dedicated wrestler turn already defines its angle type.
+    // Show the second selector only where it offers a real choice.
+    if(anglesForGoal(goal).length>1)
+     controls.append(field("Angle type",selector(segment.kind,
+      ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
+       .map(x=>[x.value,x.label]),value=>
+       setAngle(value as EditorSegment["kind"]),!mutable())));
      controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
      [2,3,4,5,6,8,10,12,15,20,25,30].map(n=>[String(n),n+" min"]),
      value=>editSegment(segment,{durationMinutes:Number(value)}),!mutable())));
