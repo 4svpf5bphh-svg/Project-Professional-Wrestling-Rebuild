@@ -145,18 +145,21 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const selectedPeople=personIds.length?await tx.query<{
    person_id:string;name:string;booking_division:string|null;
    in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
-   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null}>(
-    "SELECT person_id,name,booking_division,in_ring_quality,match_craft,"+
-    "presentation,stamina,safety,fatigue,wear FROM ppw_people"+
-    " WHERE world_id=$1 AND person_id=ANY($2::text[])",
-    [id.worldId,personIds]):[];
+   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;alignment:string|null}>(
+    "SELECT p.person_id,p.name,p.booking_division,p.in_ring_quality,p.match_craft,"+
+    "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,"+
+    "COALESCE(a.alignment,p.default_alignment) AS alignment FROM ppw_people p"+
+    " LEFT JOIN ppw_promotion_wrestler_alignments a ON a.world_id=p.world_id"+
+    " AND a.person_id=p.person_id AND a.promotion_id=$3"+
+    " WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])",
+    [id.worldId,personIds,id.promotionId]):[];
   const creativeConcerns=await creativeReviewsInTransaction(tx,id.worldId,[{
    showId:id.showId,promotionId:id.promotionId,
    weekIndex:(show.year-1)*52+show.week-1,slots,
    checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
   return {creativeConcerns,selectedPeople:selectedPeople.map(p=>({
-   personId:p.person_id,name:p.name,division:p.booking_division,
+   personId:p.person_id,name:p.name,division:p.booking_division,alignment:p.alignment,
    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
    stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
    championships:titles.map(c=>({championshipId:c.championship_id,

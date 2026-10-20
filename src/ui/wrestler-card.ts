@@ -68,10 +68,18 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  const badges=span("ppw-wrestler-badges","");
  badges.append(span("ppw-wrestler-division",p.division==="WOMEN"?
   "WOMEN":p.division==="MEN"?"MEN":"ROSTER"));
- if(p.alignment)badges.append(span("ppw-wrestler-alignment",
-  p.alignment.toUpperCase()==="FACE"?"FACE · CHEERED":
-   p.alignment.toUpperCase()==="HEEL"?"HEEL · BOOED":
-   p.alignment.toUpperCase()==="TWEENER"?"TWEENER · UNPREDICTABLE":wrestlerLabel(p.alignment).toUpperCase()));
+ if(p.alignment){
+  const badge=span("ppw-wrestler-alignment",
+   p.alignment.toUpperCase()==="FACE"?"FACE · CHEERED":
+    p.alignment.toUpperCase()==="HEEL"?"HEEL · BOOED":
+    p.alignment.toUpperCase()==="TWEENER"?"TWEENER · UNPREDICTABLE":wrestlerLabel(p.alignment).toUpperCase());
+  badge.title=p.alignment.toUpperCase()==="FACE"?
+   "The crowd is encouraged to cheer. Face versus heel usually makes for clearer fan support.":
+   p.alignment.toUpperCase()==="HEEL"?
+    "An antagonist the crowd is encouraged to boo. Opposing a face makes the crowd dynamic clearer.":
+    "A morally unpredictable character. Tweeners create tension, but a less obvious favourite.";
+  badges.append(badge);
+ }
  if(p.promotion)badges.append(span("ppw-wrestler-promotion",p.promotion));
  copy.append(badges,span("ppw-wrestler-name",p.ringName||p.name));
  if(p.ringName&&p.ringName!==p.name)

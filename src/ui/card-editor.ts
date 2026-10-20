@@ -102,7 +102,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
-  division:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
+  division:string|null;alignment?:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
@@ -155,7 +155,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
     roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
-     division:p.division,contractId:prior?.contractId??"",
+     division:p.division,alignment:p.alignment??prior?.alignment??null,contractId:prior?.contractId??"",
      available:prior?.available??false,reason:prior?.reason??"BOOKED",
      inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
      stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
@@ -302,7 +302,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const person of fresh.selectedPeople){
     const existing=roster.get(person.personId);
     roster.set(person.personId,{...existing,personId:person.personId,
-     name:person.name,division:person.division,
+     name:person.name,division:person.division,alignment:person.alignment??existing?.alignment??null,
      contractId:existing?.contractId??"",
      available:existing?.available??false,
      reason:existing?.reason??"BOOKED",
@@ -826,6 +826,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       }
      }
      body.append(review);
+    }
+    if(m.format==="SINGLES"&&m.teams.length===2){
+     const left=m.teams[0]?.[0],right=m.teams[1]?.[0];
+     const a=left?roster.get(left.personId)?.alignment:null;
+     const b=right?roster.get(right.personId)?.alignment:null;
+     if(a||b){
+      const clash=el("div","ppw-alignment-context");
+      clash.append(el("strong","","Crowd roles · "+(a??"Unknown")+" vs "+(b??"Unknown")),
+       el("span","",
+        a&&b&&((a==="FACE"&&b==="HEEL")||(a==="HEEL"&&b==="FACE"))?
+         "Classic face versus heel: a clear favourite and antagonist helps the crowd invest.":
+        a&&b&&a===b?
+         "Both wrestlers share the same alignment. Fans may be split on who to support.":
+        a==="TWEENER"||b==="TWEENER"?
+         "A tweener blurs the good-guy/bad-guy divide and adds unpredictability.":
+         "Alignment is part of crowd reaction. Face versus heel usually makes the rivalry easier to follow."));
+      body.append(clash);
+     }
     }
     const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),

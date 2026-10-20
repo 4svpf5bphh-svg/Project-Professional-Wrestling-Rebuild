@@ -362,3 +362,7 @@
 #game .ppw-card-edit-shade{z-index:150}
 #game .ppw-sheet-shade{z-index:210}
 body:has(.ppw-card-edit-shade) .ppw-shell-menu{visibility:hidden;pointer-events:none}
+
+.ppw-alignment-context{margin:8px 0 16px;padding:10px 12px;display:grid;gap:5px;border-radius:11px;border:1px solid #7f72c5;background:linear-gradient(110deg,#272c55,#13243f)}
+.ppw-alignment-context strong{color:#e5cdff;font-size:12px}
+.ppw-alignment-context span{color:#bcccdf;font-size:12px;line-height:1.5}
