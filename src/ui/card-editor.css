@@ -355,3 +355,10 @@
  color:#ffdf89!important;border:1px solid #c79844!important;background:#4d3415;
  border-radius:6px;padding:2px 7px;margin:3px 0}
 @media(max-width:540px){.ppw-editor .ppw-save{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom))}}
+
+/* The bottom Home Screen drawer sits at z-index 100. A foreground booking
+   editor must be ABOVE it, especially the destructive controls at the foot
+   of a long iPhone edit sheet. Talent selection nests above the edit sheet. */
+#game .ppw-card-edit-shade{z-index:150}
+#game .ppw-sheet-shade{z-index:210}
+body:has(.ppw-card-edit-shade) .ppw-shell-menu{visibility:hidden;pointer-events:none}
