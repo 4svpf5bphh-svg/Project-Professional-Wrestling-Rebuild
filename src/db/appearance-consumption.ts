@@ -65,8 +65,15 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
                   c.remaining_dates,c.expires_week_index,c.start_week_index,c.appearance_fee
              FROM unnest($3::text[],$4::text[]) AS booked(person_id,contract_id)
              LEFT JOIN ppw_contracts c ON c.world_id=$1
-               AND c.promotion_id=$2 AND c.person_id=booked.person_id
-               AND c.contract_id=booked.contract_id`,
+               AND c.person_id=booked.person_id
+               AND c.contract_id=booked.contract_id
+               AND (c.promotion_id=$2 OR EXISTS (
+                SELECT 1 FROM ppw_wrestler_promotion_affiliations a
+                JOIN ppw_promotions target ON target.world_id=a.world_id
+                 AND target.promotion_id=a.promotion_id
+                WHERE a.world_id=c.world_id AND a.person_id=c.person_id
+                 AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'
+                 AND target.parent_promotion_id=c.promotion_id))`,
           [input.worldId,input.promotionId,people,ids],
         );
         if(contracts.length!==appearances.length) throw new Error("Invalid contract batch");
@@ -91,8 +98,16 @@ export async function consumeShowAppearances(pool:TransactionPool,input:ConsumeA
         if(finite.length>0) {
           const updated=await tx.query<{contract_id:string}>(
             `UPDATE ppw_contracts SET remaining_dates=remaining_dates-1
-              WHERE world_id=$1 AND promotion_id=$2
+              WHERE world_id=$1
                 AND contract_id=ANY($3::text[]) AND status='SIGNED'
+                AND (promotion_id=$2 OR EXISTS (
+                 SELECT 1 FROM ppw_wrestler_promotion_affiliations a
+                 JOIN ppw_promotions target ON target.world_id=a.world_id
+                  AND target.promotion_id=a.promotion_id
+                 WHERE a.world_id=ppw_contracts.world_id
+                  AND a.person_id=ppw_contracts.person_id
+                  AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'
+                  AND target.parent_promotion_id=ppw_contracts.promotion_id))
                 AND remaining_dates>0 AND expires_week_index>=$4
                 AND family IN ('ONE_OFF','LIMITED_NON_EXCLUSIVE','EXCLUSIVE')
               RETURNING contract_id`,
