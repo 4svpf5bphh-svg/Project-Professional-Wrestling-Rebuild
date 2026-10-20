@@ -23,6 +23,7 @@ test("parent-owned contracts are visibly bookable for named affiliates and consu
  const parent="promotion-0",child="promotion-3",show="child-show";
  const source=originalGenesisFixture(world,64);
  source.promotions[3]!.identity={origin:"FICTIONAL",parentPromotionId:parent};
+ source.contracts=source.contracts.filter(c=>c.promotionId!==child);
  source.wrestlerPromotionAffiliations=[
   {worldId:world,personId:"person-0",promotionId:child,
    role:"PRIMARY",basis:"PARENT_COMPANY"},
