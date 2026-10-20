@@ -16,6 +16,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
  let selectedDraft="",marketId="",venueId="",day=5,strategy:PlanWeekInput["ticketStrategy"]="STANDARD";
  let selectedSeriesId="";
+ // Retain the exact World command identity if the server committed a plan
+ // but the mobile connection died before the receipt reached the browser.
+ let pendingSave:{fingerprint:string;requestId:string}|null=null;
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
@@ -52,24 +55,43 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   if(!data||!editing||busy)return;
   const venue=data.venues.find(v=>v.venueId===venueId);
   if(!venue){error="Choose a venue.";draw();return;}
-  const requestId=crypto.randomUUID();
-  busy=true;draw();
+  const input={
+   expectedRevision:data.worldRevision,
+   year:editing.year,week:editing.week,
+   eventType:editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.eventType??"REGULAR",
+   showSeriesId:selectedSeriesId||undefined,
+   day,venueId,marketId:venue.marketId,ticketStrategy:strategy,
+   ...(selectedDraft?{draftId:selectedDraft}:{})
+  };
+  const fingerprint=JSON.stringify(input);
+  if(!pendingSave||pendingSave.fingerprint!==fingerprint)
+   pendingSave={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingSave.requestId;
+  busy=true;error="";draw();
   try{
-   const result=await port.save({requestId,expectedRevision:data.worldRevision,
-    year:editing.year,week:editing.week,eventType:editing.scheduled.find(s=>s.seriesId===selectedSeriesId)?.eventType??
-      "REGULAR",showSeriesId:selectedSeriesId||undefined,
-    day,venueId,marketId:venue.marketId,ticketStrategy:strategy,
-    ...(selectedDraft?{draftId:selectedDraft}:{})});
-   if(result&&typeof result==="object"&&"status" in result&&
-    result.status==="STALE"){
+   const response=await port.save({requestId,...input});
+   const status=response&&typeof response==="object"&&"status" in response?
+    response.status:null;
+   if(status==="STALE"){
+    // The other manager changed the World. This edit stays visible and cannot
+    // accidentally claim success or replace the booker's chosen venue/day.
+    pendingSave=null;
     data=await port.load();
+    editing=data.weeks.find(w=>w.year===input.year&&w.week===input.week)??editing;
     throw new Error("Plans have changed. Review the updated schedule before saving.");
    }
-   editing=null;selectedDraft="";data=await port.load();error="";
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("The show was not confirmed. Retry without changing your choices.");
+   // If the acknowledgement arrived but refreshing failed, the *same*
+   // requestId can be retried and safely REPLAYED, never creating a second
+   // weekly/PPV draft or charging twice.
+   const refreshed=await port.load();
+   data=refreshed;editing=null;selectedDraft="";pendingSave=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}
   finally{busy=false;draw();}
  }
  function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],seriesId=""){
+  pendingSave=null;
   editing=week;selectedDraft=draft?.draftId??"";
   selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
@@ -226,7 +248,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    ticket.value=strategy;ticket.onchange=()=>{strategy=ticket.value as typeof strategy;};
    form.append(node("label","Ticket strategy"),ticket,
     button(busy?"Saving…":"Save show",()=>void save(),busy),
-    button("Cancel",()=>{editing=null;draw();},busy));
+    button("Cancel",()=>{editing=null;pendingSave=null;draw();},busy));
    root.append(form);return;
   }
   for(const week of data.weeks){
