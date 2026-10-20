@@ -312,3 +312,74 @@ test("authored run-ins are roster-contracted, charged as an appearance and remai
   }).finally(()=>db.close());
  }
 });
+
+// Reproduces the iPhone playtest: an existing confirmed four-bout card with
+// three separately scripted angles is revised using a newly signed wrestler.
+// The saved show stays intact until the replacement is accepted atomically.
+test("a confirmed four-match three-angle card can be recast, saved and reconfirmed",
+ {skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const db=postgresPool(url!,3),world="recast-"+randomUUID(),promotion="office",show="friday",player="booker-"+randomUUID();
+ const context={pool:db.pool,actor:{playerId:player}};
+ const id={worldId:world,promotionId:promotion,showId:show};
+ const pick=(n:number)=>({personId:"w"+n,contractId:"deal-w"+n});
+ const match=(slot:string,a:number,b:number)=>({slotId:slot,payload:{
+  matchType:"SINGLES",family:"INDIVIDUAL",
+  sides:[{sideId:"A",participants:[pick(a)]},{sideId:"B",participants:[pick(b)]}],
+  participants:[pick(a),pick(b)],scriptedWinnerSide:"A",
+  plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18
+ }});
+ const angle=(slot:string,kind:"ATTACK"|"PROMO"|"INTERVIEW",actors:number[],targets:number[],durationMinutes:number)=>({
+  slotId:slot,payload:{kind,actorIds:actors.map(n=>"w"+n),targetIds:targets.map(n=>"w"+n),
+   participants:[...actors,...targets].map(pick),outcome:"HAPPENS",durationMinutes}
+ });
+ const segments=[angle("angle1","ATTACK",[0],[1],5),
+  angle("angle2","PROMO",[2],[],4),angle("angle3","INTERVIEW",[6],[],6)];
+ const runningOrder=["angle1","bout1","bout2","angle2","bout3","angle3","bout4"];
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Rebooking Playtest",seed:75,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promotion,name:"Crown",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'home','Home',65,75,100)",[world]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'arena','Arena','home')",[world]);
+   for(let n=0;n<9;n++){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,default_alignment) VALUES($1,$2,$3,'MEN',$4)",
+     [world,"w"+n,"Wrestler "+n,n%2?"HEEL":"FACE"]);
+    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52)",
+     [world,"deal-w"+n,"w"+n,promotion]);
+   }
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',5,'arena','home','Friday Wrestling','REGULAR')",
+    [world,show,promotion]);
+  });
+  const original=[match("bout1",0,1),match("bout2",2,3),match("bout3",4,5),match("bout4",6,7)];
+  const saved=await saveCardEditorAsActor(context,{...id,requestId:"initial-card",expectedRevision:0,
+   matches:original,segments,runningOrder});
+  assert.equal(saved.status,"APPLIED");
+  const first=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(first.slots.length,7);
+  assert.equal(first.selectedPeople.find(x=>x.personId==="w0")?.alignment,"FACE");
+  assert.equal(first.selectedPeople.find(x=>x.personId==="w1")?.alignment,"HEEL");
+  const prepared=await markPreparedShowReadyAsActor(context,{...id,requestId:"ready-initial",
+   expectedRevision:1,confirmReadyToRun:true});
+  assert.equal(prepared.status,"APPLIED");
+  assert.equal((await showCardEditorAsActor(context,world,promotion,show)).ready,true);
+  const revised=[...original.slice(0,2),match("bout3",8,5),original[3]!];
+  const amended=await saveCardEditorAsActor(context,{...id,requestId:"recast-card",expectedRevision:2,
+   matches:revised,segments,runningOrder});
+  assert.equal(amended.status,"APPLIED");
+  const after=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(after.ready,false,"Recasting must invalidate the previous confirmation");
+  assert.equal(after.slots.length,7);
+  assert.equal(after.slots.filter(s=>s.kind==="MATCH").length,4);
+  assert.equal(after.slots.filter(s=>s.kind==="SEGMENT").length,3);
+  assert.equal(after.selectedPeople.some(p=>p.personId==="w8"),true);
+  assert.equal(after.selectedPeople.some(p=>p.personId==="w4"),false);
+  assert.equal((after.slots.find(s=>s.slotId==="angle2")?.payload as {durationMinutes:number}).durationMinutes,4);
+  const confirmed=await markPreparedShowReadyAsActor(context,{...id,requestId:"ready-recast",
+   expectedRevision:3,confirmReadyToRun:true});
+  assert.equal(confirmed.status,"APPLIED");
+  assert.equal((await showCardEditorAsActor(context,world,promotion,show)).ready,true);
+ }finally{await db.close();}
+});
