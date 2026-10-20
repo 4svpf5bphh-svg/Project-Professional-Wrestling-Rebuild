@@ -28,8 +28,8 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    FROM ppw_promotion_controls c
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
    WHERE c.world_id=$1 AND c.active AND p.lifecycle='ACTIVE'
-   ORDER BY c.promotion_id LIMIT 10`,[worldId,expectedYear,expectedWeek]);
-  if(owners.length<1||owners.some(x=>!x.ready))
+   ORDER BY c.promotion_id LIMIT 129`,[worldId,expectedYear,expectedWeek]);
+  if(owners.length<1||owners.length>128||owners.some(x=>!x.ready))
    throw new Error("Every active human promotion must confirm its regular show before a manual World Lock.");
   if(w.phase==="OPEN"){
    // Explicitly brought forward only by this button; checked while holding
