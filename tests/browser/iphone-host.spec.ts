@@ -1303,11 +1303,17 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  expect(methods).toEqual(["planner","load","save","load"]);
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-edit-match");
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC after-edit-match");
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-remove");
  await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
   {name:"Remove match"}).click();
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC after-remove");
  await expect(page.locator(".ppw-card-bar")).toHaveCount(3);
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC before-orphan-angle");
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ console.log("PPW_LINKED_ANGLE_DIAGNOSTIC after-orphan-angle");
  const orphan=page.getByRole("dialog",{name:"Edit angle"});
  await expect(orphan.getByLabel("After which match?")).toHaveValue("");
  await expect(orphan.getByText("Choose a wrestler who appeared in the selected match."))
