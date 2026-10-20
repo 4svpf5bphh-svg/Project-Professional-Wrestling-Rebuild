@@ -25,6 +25,7 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
+import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {moveLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
@@ -110,6 +111,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let loading=false,saving=false,dirty=false,error="",success="";
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
+ let needsRevisionRefresh=false;
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
@@ -158,9 +160,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
      stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
    }
-   expanded=null;dirty=false;pendingRequestId=null;error="";success="";
+   expanded=null;dirty=false;needsRevisionRefresh=false;
+   pendingRequestId=null;error="";success="";
    port.onDraftChange?.(false);
-  }catch(e){error=errorText(e);}
+   return true;
+  }catch(e){error=errorText(e);return false;}
   finally{loading=false;render();}
  }
  async function findTalent(query:string,append=false){
@@ -244,7 +248,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   setMatch(match.slotId,{...match,...patch});
  }
  async function save(){
-  if(!mutable()||!view)return;
+  if(!mutable()||!view||needsRevisionRefresh)return;
   try{
    const segmentPayloads=[...segments.values()].map(s=>({
     slotId:s.slotId,payload:buildEditorSegment(s),programmeId:s.programmeId}));
@@ -259,15 +263,50 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const result=await port.save({requestId,expectedRevision:view.worldRevision,
     matches:payloads,segments:segmentPayloads,runningOrder:order});
    if(result.status==="STALE"){
-    await load();
-    error="The card has changed. Review the latest booking before saving.";
+    // World revision is shared between promotions. Never discard a player's
+    // locally authored card just because a rival negotiated a contract.
+    pendingRequestId=null;
+    needsRevisionRefresh=true;
+    await refreshRevisionKeepingDraft();
     return;
    }
+   if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
+    throw new Error("The booking command was not confirmed. Keep your draft and retry.");
    const previous=result.status;
-   await load();
-   success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
+   if(await load())
+    success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
+   else
+    error="The booking was accepted, but its refreshed card could not load. Retry without changing your selections.";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
+ }
+ async function refreshRevisionKeepingDraft(){
+  if(!view||!dirty||!needsRevisionRefresh)return;
+  const prior=view;
+  try{
+   const fresh=await port.load();
+   const changed=hasConcurrentCardChange(prior,fresh);
+   view=fresh;
+   for(const person of fresh.selectedPeople){
+    const existing=roster.get(person.personId);
+    roster.set(person.personId,{...existing,personId:person.personId,
+     name:person.name,division:person.division,
+     contractId:existing?.contractId??"",
+     available:existing?.available??false,
+     reason:existing?.reason??"BOOKED",
+     inRingQuality:person.inRingQuality,matchCraft:person.matchCraft,
+     presentation:person.presentation,stamina:person.stamina,
+     safety:person.safety,fatigue:person.fatigue,wear:person.wear});
+   }
+   needsRevisionRefresh=false;
+   error=changed?
+    "This show's saved card changed elsewhere. Your unsaved booking is still here. Review it before choosing Save card to replace the latest version.":
+    "Another manager changed the World. Your unsaved booking is preserved. Review it and choose Save card again.";
+   port.onDraftChange?.(true);
+  }catch(e){
+   error="Could not check the new World revision. Your unsaved booking is preserved. "+
+    errorText(e);
+  }finally{render();}
  }
  async function requestAgreement(slotId:string,personId:string){
   if(!mutable()||!view||dirty||view.ready||!port.requestCreativeConsent)return;
@@ -277,9 +316,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     slotId,personId,requestId:crypto.randomUUID(),
     expectedRevision:view.worldRevision
    }) as {status?:string;result?:{decision?:string}};
-   await load();
+   const current=await load();
    if(response.status==="STALE")
     error="The card has changed. Review the latest terms before asking again.";
+   else if(!current)
+    error="Consent reply received but the card could not be refreshed. Reload before proceeding.";
+   else if(response.status!=="APPLIED"&&response.status!=="REPLAYED")
+    error="Consent was not confirmed. Review the latest terms.";
    else success=response.result?.decision==="DECLINED"?
     "The wrestler declined these terms. You can change the proposed match.":
     "The wrestler has agreed to the match as written.";
@@ -292,10 +335,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   try{
    const response=await port.confirmReady({requestId:crypto.randomUUID(),
     expectedRevision:view.worldRevision});
-   await load();
+   const loaded=await load();
    if(response.status==="STALE")
     error="The show has changed. Review the latest lineup and confirm again.";
-   else success="Your card is confirmed for the weekly deadline";
+   else if(!loaded)
+    error="Confirmation response received but the card could not refresh. Reload and verify readiness.";
+   else if(response.status==="APPLIED"||response.status==="REPLAYED")
+    success="Your card is confirmed for the weekly deadline";
+   else error="The show was not confirmed. Review and try again.";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -310,6 +357,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const top=el("header","ppw-top");
   if(port.openPlanner)top.append(button("← Planner",()=>port.openPlanner?.(),
    dirty||saving,"ppw-card-back"));
+  if(dirty&&needsRevisionRefresh&&!saving)
+   top.append(button("Refresh booking status (keep edits)",()=>{
+    void refreshRevisionKeepingDraft();
+   },false,"ppw-card-retry-status"));
   if(dirty&&!saving)top.append(button("Discard unsaved edits",()=>{
    if(window.confirm("Discard the changes you have not saved to this show?"))
     void load();
