@@ -439,3 +439,10 @@ body>.ppw-card-edit-shade .ppw-picker-button{min-height:48px;border-radius:11px;
  outline-offset:4px;border-radius:8px;color:#fff6d5}
 .ppw-editor .ppw-card-grip{touch-action:none;cursor:grab;user-select:none}
 .ppw-editor .ppw-card-grip:active{cursor:grabbing}
+
+.ppw-editor .ppw-card-grip{display:grid;place-items:center;min-width:44px;min-height:44px;
+ font-size:25px;line-height:1;touch-action:none;position:relative;z-index:1;
+ color:#ffd99e;border:1px solid #866caf;border-radius:10px;
+ background:linear-gradient(125deg,#342a58,#1a3653)}
+.ppw-editor .ppw-card-grip-active{box-shadow:0 0 0 2px #76eaff,
+ 0 8px 25px #1115;transform:scale(1.04)}

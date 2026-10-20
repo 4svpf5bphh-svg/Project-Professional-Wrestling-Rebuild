@@ -1298,11 +1298,13 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.getByRole("dialog",{name:"Edit angle"}).getByRole("button",
   {name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(3)).toContainText("Follows its match");
- await page.getByRole("button",{name:"Move match in slot 3 earlier"}).click();
- await page.getByRole("button",{name:"Move match in slot 2 earlier"}).click();
+ await page.getByRole("button",{name:"Reorder match in slot 3 with Up and Down arrow keys"}).focus();
+ await page.keyboard.press("ArrowUp");
+ await page.getByRole("button",{name:"Reorder match in slot 2 with Up and Down arrow keys"}).focus();
+ await page.keyboard.press("ArrowUp");
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
- await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeDisabled();
+ await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeAttached();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");

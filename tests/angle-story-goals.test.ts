@@ -14,5 +14,7 @@ test("every existing playable angle belongs to one creative direction",()=>{
  }
  assert.equal(firstAngleFor("ARRIVAL"),"DEBUT");
  assert.deepEqual(anglesForGoal("VIDEO"),["VIDEO_PACKAGE"]);
+ assert.deepEqual(anglesForGoal("TURN"),["TURN"]);
+ assert.equal(angleGoalFor("TURN"),"TURN");
  assert.throws(()=>firstAngleFor("NOT_A_GOAL" as never),/Unknown/);
 });

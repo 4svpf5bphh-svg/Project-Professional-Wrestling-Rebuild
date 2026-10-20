@@ -42,7 +42,7 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
    const angles=request.segments as {slotId:string;payload:Record<string,unknown>}[];
    expect(angles).toHaveLength(1);
    saved=angles[0]!.payload;
-   expect(saved.outcome).toBe("REFUSED");
+   expect(saved.outcome).toBe("HAPPENS");
    expect(saved.creativeBeat).toEqual({kind:"PROMO",purpose:"AIR_GRIEVANCE"});
    expect(saved.actorIds).toEqual(["alice"]);
    expect(saved.participants).toEqual([alice]);
@@ -71,7 +71,7 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await dialog.getByRole("button",{name:"Script the exact angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("The message").selectOption("AIR_GRIEVANCE");
- await dialog.getByLabel("On-screen outcome").selectOption("REFUSED");
+ await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
@@ -85,7 +85,7 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByLabel("The message")).toHaveValue("AIR_GRIEVANCE");
- await expect(dialog.getByLabel("On-screen outcome")).toHaveValue("REFUSED");
+ await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
 });
 
 test("iPhone anchors a post-match attack to its preceding bout without a new roster request",async({page})=>{
