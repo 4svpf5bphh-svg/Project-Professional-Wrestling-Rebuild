@@ -245,15 +245,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    return;
   }
   const listing=el("section","ppw-directory-list");
-  listing.setAttribute("aria-label",filter.view==="ROSTER"?"My signed wrestlers":"Talent marketplace");
+  listing.setAttribute("aria-label",filter.view==="ROSTER"?"My wrestlers":"Talent marketplace");
   const heading=el("div","ppw-directory-listheading");
-  heading.append(el("h2","",filter.view==="ROSTER"?"Signed wrestlers":"Available profiles"),
+  heading.append(el("h2","",filter.view==="ROSTER"?"Your roster":"Available profiles"),
    el("span","ppw-directory-muted","Page "+(Math.floor((filter.offset??0)/(filter.limit??25))+1)));
   listing.append(heading);
   for(const p of view.people){
    const card=document.createElement("details");card.className="ppw-directory-card";
    const title=document.createElement("summary");
-   const label=p.pendingOffer?"OFFER PENDING":
+   const label=p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
+    p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
       "STARTS IN "+p.startsInWeeks+" WEEKS":
@@ -278,7 +279,11 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    }
    detail.append(metrics);
    if(filter.view==="ROSTER"){
-    detail.append(el("p","ppw-directory-muted",
+    if(p.affiliatedViaParent){
+     detail.append(el("p","ppw-directory-muted",
+      "Roster appearance through "+(p.contractOwnerName??"parent company")+
+      ". The parent owns the contract and wages; booking uses its existing dates."));
+    }else detail.append(el("p","ppw-directory-muted",
      (p.family??"Contract").replaceAll("_"," ")+" · "+
      (p.startsInWeeks&&p.startsInWeeks>0?
       "Starts in "+p.startsInWeeks+" weeks":
