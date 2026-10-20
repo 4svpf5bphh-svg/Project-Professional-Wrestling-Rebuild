@@ -1,0 +1,75 @@
+name: Export approved original-main recovery identities (temporary)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/export-main-recovery-payload.yml"
+permissions:
+  contents: read
+jobs:
+  verified-public-roster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rebuild
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: 4svpf5bphh-svg/Project-Professional-Wrestling
+          ref: main
+          path: original
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - working-directory: original
+        run: npm install --no-audit --no-fund
+      - working-directory: rebuild
+        run: npm install --no-audit --no-fund
+      - name: Verify exact original main and produce fresh matching Week 1 World
+        working-directory: rebuild
+        run: |
+          npm run playtest:export-original -- \
+            --original-root "$GITHUB_WORKSPACE/original" \
+            --seed 20261017 --name "PPW Rebuild Genesis" \
+            --out "$RUNNER_TEMP/rebuild-main-20261017.json"
+      - name: Emit public original-main identity recovery payload only (no credentials or player state)
+        working-directory: rebuild
+        env:
+          SOURCE_FILE: ${{ runner.temp }}/rebuild-main-20261017.json
+        run: |
+          npx tsx -e '
+          import {readFileSync} from "node:fs";
+          import {projectOriginalGenesis} from "./src/domain/original-genesis-projection.ts";
+          const source=JSON.parse(readFileSync(process.env.SOURCE_FILE,"utf8"));
+          const g=projectOriginalGenesis(source);
+          if(g.world.id!=="world-20261017"||g.world.seed!==20261017||
+             g.people.length!==643||g.promotions.length!==13||
+             g.personas.length!==643||g.teams.length<10||
+             g.rosterAffiliations.length<50||g.promotionStandings.length!==13)
+           throw new Error("Unverified or incomplete original-main recovery identities");
+          const payload={
+           world:{id:g.world.id,seed:g.world.seed,rulesetVersion:g.world.rulesetVersion},
+           people:g.people.map(p=>({id:p.id,name:p.name,gimmick:p.gimmick})),
+           personas:g.personas,teams:g.teams,members:g.teamMemberships,
+           standings:g.promotionStandings,
+           parents:g.promotions.filter(p=>p.parentPromotionId!==null).map(p=>({
+             id:p.id,parentId:p.parentPromotionId
+           })),
+           affiliations:g.rosterAffiliations,
+           promotions:g.promotions.map(p=>({id:p.id,name:p.name,
+            takeoverEligibility:p.takeoverEligibility}))
+          };
+          const raw=JSON.stringify(payload);
+          console.log("VERIFIED_MAIN_RECOVERY_RECORDS",JSON.stringify({
+           wrestlers:payload.people.length,personas:payload.personas.length,
+           teams:payload.teams.length,affiliations:payload.affiliations.length,
+           standings:payload.standings.length,sourceCharacters:raw.length
+          }));
+          for(let i=0;i<raw.length;i+=3000)
+           console.log("PPW_MAIN_SOURCE_CHUNK_20261017:"+
+            String(i/3000).padStart(4,"0")+":"+raw.slice(i,i+3000));
+          '
