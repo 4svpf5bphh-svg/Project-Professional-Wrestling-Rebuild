@@ -575,7 +575,7 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await page.getByRole("button",{name:"Show Planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
- expect(methods).toEqual(["overview","planner","load","planner"]);
+ await expect.poll(()=>methods).toEqual(["overview","planner","load","planner"]);
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Your locker room has messages/}).click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
