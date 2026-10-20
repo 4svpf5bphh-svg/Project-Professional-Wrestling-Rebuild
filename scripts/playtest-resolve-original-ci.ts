@@ -130,30 +130,49 @@ async function main(){
    assert.equal(nextPlan.week,2);
    assert.equal(nextPlan.weeks[0]?.week,2);
    assert.ok(nextPlan.venues.length>0);
-   const weekly=nextPlan.weeks[0]?.scheduled.find(x=>x.eventType==="REGULAR");
+   // Original fictional companies may run on an every-2/3/4-week cadence.
+   // Do not force a weekly programme that is not on the player's calendar.
+   // Verify the next real scheduled show can be planned ahead, while only
+   // opening the editor when that show belongs to the current PPW week.
+   const dueWeek=nextPlan.weeks.find(w=>
+    w.scheduled.some(x=>x.eventType==="REGULAR"));
+   const weekly=dueWeek?.scheduled.find(x=>x.eventType==="REGULAR");
    const venue=nextPlan.venues.find(x=>x.home)??nextPlan.venues[0];
-   assert.ok(weekly&&venue,
-    "A second PPW week must offer the same real promotion a show and venue");
+   assert.ok(dueWeek&&weekly&&venue,
+    "A promotion's real next regular show must be available within the planning window");
    const continued=await planShowWeek(db.pool,{...owner,
-    requestId:"ci-week2-"+owner.promotionId,
+    requestId:"ci-next-show-"+owner.promotionId,
     expectedRevision:nextPlan.worldRevision,
-    year:nextPlan.year,week:nextPlan.week,
+    year:dueWeek.year,week:dueWeek.week,
     day:owner.promotionId===state.drafts[0]!.promotion_id?3:5,
     marketId:venue.marketId,venueId:venue.venueId,
     ticketStrategy:"STANDARD",eventType:"REGULAR",
     showSeriesId:weekly.seriesId});
    assert.equal(continued.status,"APPLIED",
-    "Each player must be able to plan a new show after the next week opens");
-   if(continued.status!=="APPLIED")throw new Error("Week 2 planning was not applied");
-   const nextDraft=await readShowCardEditor(db.pool,{...owner,
-    showId:continued.result.draftId});
-   assert.equal(nextDraft.week,2);
-   assert.equal(nextDraft.slots.length,0,
-    "The newly planned week must not carry accidental previous match cards");
-   assert.equal(nextDraft.canEdit,true);
+    "Both managers must be able to plan their next real show after World progression");
+   if(continued.status!=="APPLIED")throw new Error("Future show plan was not applied");
+   const afterPlanning=await readSixWeekPlanner(db.pool,owner);
+   const future=afterPlanning.weeks.find(w=>
+    w.year===dueWeek.year&&w.week===dueWeek.week);
+   assert.equal(future?.shows.filter(x=>
+    x.draftId===continued.result.draftId).length,1,
+    "The next show must survive in the player's six-week Planner");
+   if(dueWeek.year===nextPlan.year&&dueWeek.week===nextPlan.week){
+    const nextDraft=await readShowCardEditor(db.pool,{...owner,
+     showId:continued.result.draftId});
+    assert.equal(nextDraft.week,nextPlan.week);
+    assert.equal(nextDraft.slots.length,0,
+     "A new week's show cannot carry accidental previous match cards");
+    assert.equal(nextDraft.canEdit,true);
+   }else{
+    await assert.rejects(readShowCardEditor(db.pool,{...owner,
+     showId:continued.result.draftId}),/accessible|Current show/i,
+     "Future shows stay in Planner; their card cannot be edited before its week");
+   }
    readableResults.push({promotionId:owner.promotionId,
     showId:draft.draft_id,winner:bouts[0]!.matchContext!.winnerNames[0],
-    nextWeek:nextPlan.week,nextDraftId:continued.result.draftId});
+    nextWeek:nextPlan.week,nextScheduledWeek:dueWeek.week,
+    nextDraftId:continued.result.draftId});
   }
   await assert.rejects(readCompletedShowView(db.pool,{
    worldId,playerId:state.drafts[0]!.player_id,
