@@ -1,0 +1,88 @@
+name: One-time reconcile existing rebuild main World
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_world:
+        description: "Enter world-20261017 to confirm the existing rebuild main World"
+        required: true
+        type: string
+      confirm_project:
+        description: "Enter orange-flower-99606272 (rebuild Neon project, not original)"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: reconcile-rebuild-neon-main
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      inputs.confirm_world == 'world-20261017' &&
+      inputs.confirm_project == 'orange-flower-99606272'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PPW_PLAYTEST_WORLD_ID: world-20261017
+      PPW_PLAYTEST_DB_URL: ${{ secrets.PPW_REBUILD_MAIN_DATABASE_URL }}
+      PPW_GENESIS_RECONCILE_AUTHORIZED: "YES"
+    steps:
+      - name: Checkout only rebuild main
+        uses: actions/checkout@v4
+        with:
+          path: rebuild
+          ref: main
+          persist-credentials: false
+      - name: Checkout original PPW main (never alpha-1a)
+        uses: actions/checkout@v4
+        with:
+          repository: 4svpf5bphh-svg/Project-Professional-Wrestling
+          ref: main
+          path: original
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify the exact existing rebuild Neon main host and database
+        env:
+          EXPECTED_HOST: ep-green-sunset-zaehxrtf.c-2.eu-west-2.aws.neon.tech
+          EXPECTED_DATABASE: neondb
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          const raw=process.env.PPW_PLAYTEST_DB_URL;
+          assert.ok(raw,"Missing protected PPW_REBUILD_MAIN_DATABASE_URL");
+          const uri=new URL(raw);
+          assert.ok(["postgresql:","postgres:"].includes(uri.protocol));
+          assert.equal(uri.hostname,process.env.EXPECTED_HOST,
+            "Database URL must point to the verified rebuild main Neon endpoint");
+          assert.equal(decodeURIComponent(uri.pathname.slice(1)),process.env.EXPECTED_DATABASE);
+          assert.ok(uri.username && uri.password,"Use a proper credentialed database URL");
+          console.log("Verified rebuild main database identity; no credentials printed.");
+          NODE
+      - name: Install only source dependencies
+        working-directory: original
+        run: npm install --no-audit --no-fund
+      - name: Install rebuild dependencies
+        working-directory: rebuild
+        run: npm install --no-audit --no-fund
+      - name: Export pristine original-main Genesis offline without database access
+        working-directory: rebuild
+        run: |
+          npm run playtest:export-original -- \
+            --original-root "$GITHUB_WORKSPACE/original" \
+            --seed 20261017 \
+            --out "$RUNNER_TEMP/original-main-recovery.json"
+      - name: Recover missing original identities in the SAME Week-1 World atomically
+        working-directory: rebuild
+        env:
+          SOURCE_FILE: ${{ runner.temp }}/original-main-recovery.json
+        run: |
+          npm run playtest:reconcile-main -- \
+            --world "world-20261017" --source "$SOURCE_FILE" \
+            --confirm-world "world-20261017" \
+            --confirm-host "ep-green-sunset-zaehxrtf.c-2.eu-west-2.aws.neon.tech"
+      - name: Verify complete two-player original-main Genesis readiness read-only
+        working-directory: rebuild
+        run: npm run playtest:preflight -- --world world-20261017
