@@ -17,7 +17,7 @@ export interface OriginalGenesisSource {
  promotions:Array<{id:string;worldId:string;name:string;tier:Tier;lifecycle:string;
   controllerType:"AI"|"HUMAN";
   playerTakeoverEligibility:"LOCKED"|"STANDARD";
-  identity?:{origin:"REAL_WORLD"|"FICTIONAL"};
+  identity?:{origin:"REAL_WORLD"|"FICTIONAL";parentPromotionId?:string|null};
   cash:number;debt:number;mediaReach:number;
   weeklyMediaIncome:number;weeklySponsorIncome:number;weeklyFixedOverhead:number;
   lastWeeklyNet:number;financialDistress:string;homeMarketId:string;
@@ -44,6 +44,9 @@ export interface OriginalGenesisSource {
  /** Direct original-main tag-team identities, never synthetic pairings. */
  teams?:Array<{id:string;worldId:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
  teamMemberships?:Array<{teamId:string;worldId:string;personId:string;active:boolean}>;
+ /** Original roster identity, distinct from who legally signs/pays the contract. */
+ wrestlerPromotionAffiliations?:Array<{worldId:string;personId:string;
+  promotionId:string;role:"PRIMARY"|"SECONDARY";basis:"CONTRACT"|"PARENT_COMPANY"}>;
  /** Exact wrestler-owned onscreen persona from genuine main's fresh World. */
  personas?:Array<{personId:string;persona:PortablePersona}>;
 
@@ -64,7 +67,7 @@ export interface GenesisProjection {
  promotionStandings:Array<{promotionId:string;prestige:number;fanReputation:number;
   businessReputation:number;talentReputation:number;lastEvaluatedYear:number}>;
  promotions:Array<{id:string;name:string;homeMarketId:string;tier:Tier;lifecycle:string;mode:string;
- takeoverEligibility:"LOCKED"|"STANDARD";
+ takeoverEligibility:"LOCKED"|"STANDARD";parentPromotionId:string|null;
  cash:number;debt:number;media:number;eventCadenceWeeks:number;aiFinancialCaution:number;
  aiRiskTolerance:number;aiMatchQualityPreference:number;aiStarPreference:number;
  weeklyMedia:number;weeklySponsor:number;
@@ -77,6 +80,8 @@ export interface GenesisProjection {
  venues:Array<{id:string;name:string;marketId:string;capacity:number;cost:number;prestige:number;suitability:number}>;
  teams:Array<{id:string;name:string;status:"ACTIVE"|"DISBANDED"}>;
  teamMemberships:Array<{teamId:string;personId:string;active:boolean}>;
+ rosterAffiliations:Array<{personId:string;promotionId:string;
+  role:"PRIMARY"|"SECONDARY";basis:"CONTRACT"|"PARENT_COMPANY"}>;
  personas:Array<{personId:string;persona:PortablePersona}>;
 
  contracts:Array<{id:string;person:string;promotion:string;family:Family;status:string;
@@ -149,6 +154,7 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    ||!["GLOBAL","NATIONAL","RISING","INDEPENDENT","LOCAL"].includes(p.tier)
    ||!lifecycles.has(p.lifecycle)||!["AI","HUMAN"].includes(p.controllerType)
    ||!["LOCKED","STANDARD"].includes(p.playerTakeoverEligibility)
+   ||(p.identity?.parentPromotionId!=null&&!isText(p.identity.parentPromotionId))
    ||(p.identity?.origin==="REAL_WORLD"&&p.playerTakeoverEligibility!=="LOCKED")
    ||(p.identity!==undefined&&
     !["REAL_WORLD","FICTIONAL"].includes(p.identity.origin))
@@ -160,6 +166,7 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    throw new Error("Incomplete original promotion finance profile: "+p.id);
   return {id:p.id,name:p.name,homeMarketId:p.homeMarketId,tier:p.tier,lifecycle:p.lifecycle,
    mode:p.controllerType,takeoverEligibility:p.playerTakeoverEligibility,
+   parentPromotionId:p.identity?.parentPromotionId??null,
    cash:p.cash,debt:p.debt,media:p.mediaReach,
    eventCadenceWeeks:p.eventCadenceWeeks,aiFinancialCaution:p.aiProfile.financialCaution,
    aiRiskTolerance:p.aiProfile.riskTolerance,
@@ -170,6 +177,9 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    distress:p.financialDistress};
  });
  const knownPromotions=new Set(promotions.map(p=>p.id));
+ for(const p of promotions)if(p.parentPromotionId!==null&&
+  (!knownPromotions.has(p.parentPromotionId)||p.parentPromotionId===p.id))
+  throw new Error("Invalid original parent-company promotion");
  // Source-only ratings: no tier, finance or media heuristics.
  unique(source.promotionStandings.map(s=>s.promotionId),"promotion standing");
  const promotionStandings=source.promotionStandings.map(s=>{
@@ -289,6 +299,29 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    appearance:c.appearanceFee,bonus:c.signingBonus,role:c.roleExpectation,
    creative:c.creativeControl??"NONE"};
  });
+ // Preserve wrestler-owned roster identity, including legal cross-promotion
+ // appearances for original parent-company brands such as NXT and ROH.
+ // A third-party affiliation never grants an uncontracted appearance.
+ const incomingAffiliations=source.wrestlerPromotionAffiliations??[];
+ if(!Array.isArray(incomingAffiliations)||incomingAffiliations.length>5000)
+  throw new Error("Original roster affiliations exceed import bounds");
+ unique(incomingAffiliations.map(a=>a.personId+"\\u0000"+a.promotionId),
+  "original wrestler affiliation");
+ const parents=new Map(promotions.map(p=>[p.id,p.parentPromotionId]));
+ const rosterAffiliations=incomingAffiliations.map(a=>{
+  if(a.worldId!==worldId||!ids.has(a.personId)||
+   !knownPromotions.has(a.promotionId)||
+   !["PRIMARY","SECONDARY"].includes(a.role)||
+   !["CONTRACT","PARENT_COMPANY"].includes(a.basis))
+   throw new Error("Invalid original wrestler roster affiliation");
+  const contractPromotion=a.basis==="PARENT_COMPANY"?
+   parents.get(a.promotionId):a.promotionId;
+  if(!contractPromotion||!contracts.some(c=>c.person===a.personId&&
+   c.promotion===contractPromotion&&c.status==="SIGNED"))
+   throw new Error("Original wrestler affiliation lacks owner contract");
+  return {personId:a.personId,promotionId:a.promotionId,
+   role:a.role,basis:a.basis};
+ });
  // A unique exclusive index alone does not reject overlapping non-exclusive
  // contracts; enforce the original worldwide exclusivity invariant before SQL.
  const byPerson=new Map<string,typeof contracts>();
@@ -306,5 +339,5 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   injury:source.ruleset.injuryRateMultiplier,
   majorEventIntervalWeeks:source.ruleset.majorEventIntervalWeeks},
   markets,promotionMarketStates,promotionStandings,promotions,people,venues,
-  teams,teamMemberships,personas,contracts};
+  teams,teamMemberships,rosterAffiliations,personas,contracts};
 }
