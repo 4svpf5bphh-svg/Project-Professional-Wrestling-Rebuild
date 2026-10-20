@@ -1623,3 +1623,58 @@ test("iPhone unsaved show authorship survives browser back and can be deliberate
  await expect(page).toHaveURL(/#\/planner$/);
  expect(calls).not.toContain("save");
 });
+
+// Failed-card guidance must reach the booker at the bottom action rail without
+// losing the authored running order, even when the server rejects one contract.
+test("failed card save explains the roster problem beside Save and retries the same authored card",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const players=[{personId:"alice",contractId:"deal-alice"},
+  {personId:"bob",contractId:"deal-bob"}];
+ const match={matchType:"SINGLES",family:"INDIVIDUAL",participants:players,
+  sides:[{sideId:"A",participants:[players[0]]},{sideId:"B",participants:[players[1]]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18};
+ const planner={worldName:"Genesis",promotionName:"AEW",year:1,week:5,
+  worldRevision:4,canEdit:true,homeMarketId:"home",venues:[],
+  weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,scheduled:[],
+   shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",eventType:"REGULAR",
+    day:5,marketId:"home",venueId:"arena",marketName:"Home",venueName:"Arena",
+    ticketStrategy:"STANDARD",ready:false,slots:1,bookingClass:"REGULAR",
+    showSeriesId:null,showName:"Dynamite"}]}]};
+ let attempts=0;
+ const submissions:Array<{runningOrder:string[];requestId:string}>=[];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const body=route.request().postDataJSON();
+  if(body.method==="planner")return route.fulfill({json:planner});
+  if(body.method==="load")return route.fulfill({json:{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN",alignment:"FACE"},
+    {personId:"bob",name:"Bob",division:"MEN",alignment:"HEEL"}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match}]
+  }});
+  if(body.method==="save"){
+   attempts++;
+   submissions.push({runningOrder:body.runningOrder,requestId:body.requestId});
+   return attempts===1?route.fulfill({status:400,json:{
+    error:"Booking request rejected",code:"TALENT"}}):
+    route.fulfill({json:{status:"APPLIED",result:{performers:2}}});
+  }
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page.locator(".ppw-card-bar")).toHaveCount(1);
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ const nearSave=page.locator(".ppw-save .ppw-save-error");
+ await expect(nearSave).toContainText("selected wrestlers");
+ await expect(nearSave).toBeVisible();
+ await expect(page.locator(".ppw-card-bar")).toHaveCount(1);
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(submissions.map(x=>x.runningOrder)).toEqual([["bout"],["bout"]]);
+ expect(submissions[1]!.requestId).toBe(submissions[0]!.requestId);
+});
