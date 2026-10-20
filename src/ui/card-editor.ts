@@ -752,7 +752,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Creative direction",selector(goal,
      ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
       setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
-    controls.append(field("Angle",selector(segment.kind,
+    controls.append(field("Angle type",selector(segment.kind,
      ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
       .map(x=>[x.value,x.label]),value=>
       setAngle(value as EditorSegment["kind"]),!mutable())));

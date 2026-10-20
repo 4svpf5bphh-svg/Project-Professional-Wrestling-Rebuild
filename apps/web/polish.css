@@ -520,3 +520,15 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
    a fresh booking tap or grip gesture before the 250ms broadcast cut ends. */
 ::view-transition,::view-transition-group(*),
 ::view-transition-old(*),::view-transition-new(*){pointer-events:none!important}
+
+/* Premium movement that never blocks a quick booking tap with a snapshot. */
+@media(prefers-reduced-motion:no-preference){
+ #game > .ppw-route-arrive:not(.ppw-editor){
+  animation:ppw-broadcast-arrival .24s cubic-bezier(.2,.76,.28,1) both;
+ }
+ @keyframes ppw-broadcast-arrival{
+  from{opacity:.38;transform:translate3d(0,15px,0);filter:brightness(.78)}
+  78%{filter:brightness(1.05)}
+  to{opacity:1;transform:none;filter:none}
+ }
+}

@@ -214,12 +214,10 @@ function renderSection(){
  // Only a real department change gets a broadcast cut. No extra fetches,
  // delays, timers or effects for ordinary UI rerenders.
  const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
- const host=document as Document&{
-  startViewTransition?:(update:()=>void)=>{finished:Promise<void>};
- };
- if(section!=="card"&&!reduced&&host.startViewTransition&&game.firstElementChild)
-  void host.startViewTransition(()=>game.replaceChildren(view)).finished.catch(()=>{});
- else game.replaceChildren(view);
+ // Mount synchronously. Native document transitions can retain old page
+ // snapshots above new buttons during rapid mobile navigation.
+ game.replaceChildren(view);
+ if(!reduced&&section!=="card")view.classList.add("ppw-route-arrive");
  const back=()=>openSection("home");
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){
