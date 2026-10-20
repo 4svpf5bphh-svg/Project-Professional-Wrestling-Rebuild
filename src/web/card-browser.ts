@@ -46,11 +46,13 @@ type Scope=CardSessionScope;
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void,
- onOverview?:(overview:PlayerWorldOverview|null)=>void){
+ onOverview?:(overview:PlayerWorldOverview|null)=>void,
+ manualAdvance?:WorldHomePort["manualAdvance"]){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
+  manualAdvance,
   load:async()=>{
    const latest=await call("overview") as PlayerWorldOverview|null;
    onOverview?.(latest);

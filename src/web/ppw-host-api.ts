@@ -4,6 +4,8 @@
  */
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
+import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
+import {advancePlaytestWeek} from "../db/manual-playtest-week.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -72,7 +74,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -96,6 +98,29 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   return json(200,{ok:true},{"set-cookie":clearSessionCookie(cfg)});
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
+ if(path==="/api/playtest-week"){
+  if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
+   return json(403,{error:"Only the designated preview operator can advance the test World"});
+  if(!post)return json(405,{error:"Only explicit manual action may advance the World"});
+  if(!csrf(req,user))return json(403,{error:"Invalid session"});
+  if(!allow("manual:"+cfg.worldId,8,10*60_000))
+   return json(429,{error:"Wait before continuing World resolution"});
+  const b=await limitedBody(req);
+  if(!b||b.confirm!=="ADVANCE_SHARED_WORLD"||
+   !Number.isSafeInteger(b.year)||!Number.isSafeInteger(b.week))
+   return json(400,{error:"Confirm the exact shared World week before advancing"});
+  try{
+   const result=await advancePlaytestWeek(pool,cfg.worldId,b.year as number,b.week as number);
+   return json(200,result);
+  }catch(e){
+   const message=e instanceof Error?e.message:"";
+   return json(409,{error:/must confirm its regular show/i.test(message)?
+    "A manager still needs to confirm their show. Both promotions must be ready before advancing.":
+    /already progressed/i.test(message)?
+    "The World has moved on. Refresh Home to see the new week.":
+    "Cannot advance this week yet. Review your shows or retry from Home."});
+  }
+ }
  if(path==="/api/card"){
   return handleCardHttp(req,{expectedWorldId:cfg.worldId,authenticate:async()=>({
    context:actor,csrfToken:user.csrfToken
@@ -110,7 +135,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    const options=overview.membership==="ACTIVE"&&!overview.promotion?
     await availablePromotionsAsActor(actor,cfg.worldId,null,40):[];
    return json(200,{worldId:cfg.worldId,playerId:user.playerId,
-    csrfToken:user.csrfToken,overview,availablePromotions:options});
+    csrfToken:user.csrfToken,overview,availablePromotions:options,
+    canManualAdvance:manualPlaytestEnabled(process.env,cfg.worldId,user.playerId)});
   }catch{return json(503,{error:"World data unavailable"});}
  }
  if(path==="/api/join"||path==="/api/claim"){

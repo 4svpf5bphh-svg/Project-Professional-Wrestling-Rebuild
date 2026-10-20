@@ -21,6 +21,7 @@ type SessionView={
   membership:"ACTIVE"|"INACTIVE"|"NONE";
   promotion:null|{id:string;name:string};
  };
+ canManualAdvance?:boolean;
  availablePromotions:{id:string;name:string;tier:string;
   homeMarketName?:string|null;rosterSize?:number}[];
 };
@@ -198,7 +199,18 @@ function renderSection(){
    const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
    if(line)line.textContent="Y"+updated.world.year+" W"+updated.world.week+
     " · "+updated.world.name;
-  });break;
+  },session?.canManualAdvance?async(year,week)=>{
+   const response=await fetch("/api/playtest-week",{
+    method:"POST",credentials:"same-origin",
+    headers:{"content-type":"application/json","x-ppw-csrf":session!.csrfToken},
+    body:JSON.stringify({confirm:"ADVANCE_SHARED_WORLD",year,week})
+   });
+   if(!response.ok){
+    const rejected=await response.json().catch(()=>({error:"Could not advance the World"})) as {error?:string};
+    throw new Error(rejected.error??"Cannot advance World");
+   }
+   return response.json();
+  }:undefined);break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
   case "card":{

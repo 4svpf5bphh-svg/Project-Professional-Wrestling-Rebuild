@@ -4,6 +4,9 @@
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
+ /** Only enabled for the selected private preview operator. Never on a timer. */
+ manualAdvance?:(year:number,week:number)=>Promise<{
+  status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";blockers:string[]}>;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
@@ -24,6 +27,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  let progressedFrom:{year:number;week:number}|null=null;
  let expiredOnScreen:string|null=null;
+ let manualStatus="";let manualBusy=false;
  const dismissing=new Set<string>();
  let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
@@ -186,6 +190,37 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    hero.append(check);
   }
   root.append(hero);
+  if(port.manualAdvance&&promotion){
+   const controls=el("section","ppw-manual-test");
+   controls.append(el("span","ppw-home-brand","PRIVATE PLAYTEST CONTROL"),
+    el("h3","","Advance the shared week"),
+    el("p","ppw-home-small",
+     "Only the playtest operator can run this. It affects every promotion, and every human manager must confirm their show first. No automatic World Lock is active."));
+   if(manualStatus)controls.append(el("p","ppw-home-small",manualStatus));
+   const action=el("button","ppw-home-status-refresh",manualBusy?
+    "Processing World…":world.phase==="OPEN"?"Advance Week "+world.week:
+    "Continue show resolution") as HTMLButtonElement;
+   action.type="button";action.disabled=manualBusy;
+   action.onclick=async()=>{
+    if(manualBusy)return;
+    if(world.phase==="OPEN"&&!window.confirm(
+     "Advance the ENTIRE shared PPW World after all human shows are confirmed? Week "+world.week+
+     " will be locked and simulated; this cannot be undone."))return;
+    manualBusy=true;manualStatus="Processing this week's shows…";draw();
+    try{
+     const result=await port.manualAdvance!(world.year,world.week);
+     if(result.status==="PUBLISHED"){
+      manualStatus="Shows settled. Refreshing your World…";
+      await load();return;
+     }
+     manualStatus=result.status==="BLOCKED"?
+      "World resolution is waiting for a booking or conflict decision. No results have been invented.":
+      "Resolution is in progress. Press Continue when ready.";
+    }catch(e){manualStatus=e instanceof Error?e.message:"Could not advance World";}
+    finally{manualBusy=false;draw();}
+   };
+   controls.append(action);root.append(controls);
+  }
   if(progressedFrom){
    const completed=el("section","ppw-home-week-complete");
    completed.append(el("span","ppw-home-brand","WEEK COMPLETED"),

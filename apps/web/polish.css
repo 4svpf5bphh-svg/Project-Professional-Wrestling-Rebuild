@@ -381,3 +381,6 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
 @media(min-width:900px){
  .ppw-account-banner .ppw-shell-menu{width:min(360px,30vw)}
 }
+
+.ppw-manual-test{margin:18px 15px 30px;padding:18px;border:1px solid #ca81ef;border-radius:18px;background:linear-gradient(125deg,#32234f,#112f4b);box-shadow:0 9px 30px #0005}
+.ppw-manual-test h3{font-size:19px;margin:9px 0}.ppw-manual-test button{min-height:48px;width:100%;border-radius:12px;border:1px solid #b9a1fe;background:linear-gradient(120deg,#5c3dae,#127dab);color:white;font-size:16px;font-weight:800}
