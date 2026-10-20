@@ -26,7 +26,7 @@ type PersonRow={
  popularity:number|null;recognition:number|null;momentum:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;interest_score:number|null;
- contract_id:string|null;contract_owner_id:string|null;parent_name:string|null;
+ contract_id:string|null;aff:string|null;
  family:string|null;role_expectation:string|null;remaining_dates:number|null;
  start_week_index:number|null;
  expires_week_index:number|null;weekly_guarantee:string|null;
@@ -99,8 +99,8 @@ export async function readWrestlerDirectory(
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS interest_score,
-    mine.contract_id,mine.promotion_id AS contract_owner_id,
-    parent.name AS parent_name,mine.family,mine.role_expectation,
+    mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
+     ELSE NULL END AS aff,mine.family,mine.role_expectation,
     mine.remaining_dates,mine.expires_week_index,
     mine.start_week_index,
     mine.weekly_guarantee::text,mine.appearance_fee::text,
@@ -210,9 +210,7 @@ export async function readWrestlerDirectory(
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
     careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
-    affiliatedViaParent:p.contract_id!==null&&p.contract_owner_id!==who.promotionId,
-    contractOwnerName:p.contract_id!==null&&p.contract_owner_id!==who.promotionId?
-     p.parent_name:null,
+    ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),
     roleExpectation:p.role_expectation,
     interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
      p.interest_score===null?"UNKNOWN":p.interest_score>=78?"KEEN":
