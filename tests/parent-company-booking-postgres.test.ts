@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
@@ -60,10 +61,22 @@ test("parent-owned contracts are visibly bookable for named affiliates and consu
   assert.deepEqual(picker.talent.map(p=>p.personId).sort(),["person-0","person-24"]);
   assert.ok(picker.talent.every(p=>p.available&&p.division==="WOMEN"));
   assert.ok(picker.talent.every(p=>p.contractId.startsWith("contract-")));
-  const roster=await readWrestlerDirectory(db.pool,
+  const meter=new MeasuredQuerySession("original-parent-roster");
+  const measuredPool:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  const roster=await readWrestlerDirectory(measuredPool,
    {worldId:world,playerId:player,promotionId:child},{view:"ROSTER",limit:40});
+  meter.assertBudget({maxQueries:2,maxResultBytes:14_000});
   assert.deepEqual(roster.people.map(p=>p.personId).sort(),["person-0","person-24"]);
   assert.ok(roster.people.every(p=>p.availability==="YOUR_ROSTER"));
+  assert.ok(roster.people.every(p=>p.affiliatedViaParent&&
+   p.contractOwnerName==="Promotion 0"),
+   "The roster must show legal parent control without inventing child payroll");
   assert.equal(source.contracts.filter(c=>c.promotionId===child).length,8,
    "Child's directly signed contracts remain separate from explicit affiliate rights");
   const bad=()=>saveCardEditorAsActor(context,{...scope,requestId:"forged",
