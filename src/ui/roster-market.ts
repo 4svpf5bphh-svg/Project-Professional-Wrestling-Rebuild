@@ -294,8 +294,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       "Already signed, but not eligible for booking until the contract starts."));
     else if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
      "No dates remaining — negotiate an addendum before booking."));
-    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)),
-     btn("Manage contract →",()=>port.openContracts()));
+    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)));
+    if(!p.affiliatedViaParent)
+     detail.append(btn("Manage contract →",()=>port.openContracts()));
    }else{
     detail.append(el("p","ppw-directory-interest",
      "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+
