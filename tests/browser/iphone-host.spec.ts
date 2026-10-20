@@ -363,8 +363,8 @@ test("parent-company affiliates remain visible on the iPhone roster without edit
  const direct=cards.nth(1);
  await direct.locator("summary").click();
  await expect(direct.getByRole("button",{name:"Manage contract →"})).toBeVisible();
- expect(methods).toEqual(["wrestlerDirectory"],
-  "These details must come from the same bounded roster read");
+ expect(methods,"These details must come from the same bounded roster read")
+  .toEqual(["wrestlerDirectory"]);
 });
 test("Roster dossiers preserve filters and expanded cards without reloading the directory",async({page})=>{
  const methods:string[]=[];
