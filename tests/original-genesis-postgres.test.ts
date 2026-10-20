@@ -75,6 +75,17 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
  source.promotions[1]!.name="AEW";
  source.promotions[1]!.identity={origin:"REAL_WORLD"};
  source.promotions[1]!.playerTakeoverEligibility="LOCKED";
+ source.promotions[3]!.identity={origin:"FICTIONAL",parentPromotionId:"promotion-0"};
+ source.promotions[6]!.identity={origin:"FICTIONAL",parentPromotionId:"promotion-1"};
+ source.wrestlerPromotionAffiliations=[
+  {worldId:world,personId:"person-0",promotionId:"promotion-3",
+   role:"PRIMARY",basis:"PARENT_COMPANY"},
+  {worldId:world,personId:"person-1",promotionId:"promotion-6",
+   role:"PRIMARY",basis:"PARENT_COMPANY"},
+  {worldId:world,personId:"person-2",promotionId:"promotion-2",
+   role:"PRIMARY",basis:"CONTRACT"}
+ ];
+
  source.teams=[{worldId:world,id:"tag-duo",name:"The Original Duo",status:"ACTIVE"}];
  source.teamMemberships=[
   {worldId:world,teamId:"tag-duo",personId:"person-0",active:true},
@@ -98,10 +109,10 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
     }};
   }};
   const result=await importOriginalGenesis(measured,source);
-  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,personas:643,tagTeams:1,teamMembers:2,sqlStatements:13});
-  const sample=meter.assertBudget({maxQueries:15,maxResultBytes:2_850});
-  assert.equal(sample.queryCount,15);
-  assert.equal(sample.resultRows,12);
+  assert.deepEqual(result,{worldId:world,promotions:8,people:643,venues:16,contracts:400,markets:4,promotionMarketStates:32,championships:16,standings:8,personas:643,tagTeams:1,teamMembers:2,rosterAffiliations:3,sqlStatements:14});
+  const sample=meter.assertBudget({maxQueries:16,maxResultBytes:3_100});
+  assert.equal(sample.queryCount,16);
+  assert.equal(sample.resultRows,13);
   console.log("PPW original Genesis PostgreSQL import budget:",JSON.stringify(sample));
   const preview=await inspectPlaytestPopulation(db.pool,world);
   assert.equal(preview.ready,false,
@@ -112,6 +123,17 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
   assert.equal(preview.counts.availableTakeovers,6,
    "Protected real promotions must not appear as available player takeovers");
 
+  const parentAffiliations=await withWorldTransaction(db.pool,tx=>tx.query<{
+   person_id:string;promotion_id:string;contract_owner:string}>(`
+   SELECT a.person_id,a.promotion_id,p.parent_promotion_id AS contract_owner
+   FROM ppw_wrestler_promotion_affiliations a
+   JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
+   WHERE a.world_id=$1 AND a.basis='PARENT_COMPANY'
+   ORDER BY a.promotion_id`,[world]));
+  assert.deepEqual(parentAffiliations,[
+   {person_id:"person-0",promotion_id:"promotion-3",contract_owner:"promotion-0"},
+   {person_id:"person-1",promotion_id:"promotion-6",contract_owner:"promotion-1"}
+  ]);
   const importedPersonas=await withWorldTransaction(db.pool,tx=>tx.query<{
    person_id:string;persona:{finishingMoves:{name:string}[]}}>(`
    SELECT person_id,persona FROM ppw_portable_personas
@@ -234,6 +256,7 @@ test("643-person authentic Genesis preserves protected promotions and real tag t
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_portable_personas",
+    "ppw_wrestler_promotion_affiliations",
     "ppw_tag_team_members",
     "ppw_tag_teams","ppw_show_series",
     "ppw_promotion_controls","ppw_memberships",
