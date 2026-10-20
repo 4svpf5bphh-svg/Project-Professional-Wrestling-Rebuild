@@ -222,7 +222,8 @@ test("authenticated iPhone card errors are useful but never reveal server diagno
  }),{status:400}));
  await assert.rejects(forged("save"),error=>{
   assert.ok(error instanceof Error);
-  assert.equal(error.message,"Booking request failed");
+  assert.match(error.message,/Booking request failed.*server could not identify/);
+  assert.doesNotMatch(error.message,/SQL password|secrets/);
   return true;
  });
  const gateway=createCardClient(scope,async()=>new Response("<html>Proxy error</html>",

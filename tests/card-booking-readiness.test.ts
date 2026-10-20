@@ -8,13 +8,13 @@ test("unfilled matches and authored angles show specific missing roles before sa
  let m=newEditorMatch("m","TRIPLE_THREAT");
  assert.equal(matchCastingReadiness(m).label,"NEEDS TALENT");
  for(let i=0;i<3;i++)m=assignPerformer(m,i,0,p("w"+i));
- assert.equal(matchCastingReadiness(m).label,"CAST COMPLETE");
+ assert.equal(matchCastingReadiness(m).label,"READY TO BOOK");
  let a=newEditorSegment("a","ATTACK");
  assert.equal(angleCastingReadiness(a).label,"NEEDS PERFORMER");
  a=addSegmentPerson(a,"actors",p("a"));
  assert.equal(angleCastingReadiness(a).label,"NEEDS TARGET");
  a=addSegmentPerson(a,"targets",p("b"));
- assert.equal(angleCastingReadiness(a).label,"CAST COMPLETE");
+ assert.equal(angleCastingReadiness(a).label,"READY TO BOOK");
 });
 test("faction decisions, alignment and signing require real choices",()=>{
  let signing=newEditorSegment("signing","CONTRACT_SIGNING");
