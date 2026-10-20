@@ -633,7 +633,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    // keyboard alternative. No item moves or saves until pointer release.
    const grip=el("span","ppw-card-grip","⠿");
    grip.title="Drag to change running order. Keyboard: focus handle then use Up or Down.";
-   grip.setAttribute("aria-hidden","true");
+   grip.setAttribute("role","button");
+   grip.setAttribute("tabindex","0");
+   grip.setAttribute("aria-label","Reorder "+(m?"match":"angle")+" in slot "+(i+1)+
+    " with Up and Down arrow keys");
+   grip.onkeydown=event=>{
+    if(!mutable())return;
+    if(event.key==="ArrowUp"&&up){event.preventDefault();move(up)();}
+    if(event.key==="ArrowDown"&&down){event.preventDefault();move(down)();}
+   };
    let dragPointer:number|null=null,dragStartY=0,dragging=false,dropId=slotId;
    let pointerX=0,pointerY=0,edgeSpeed=0,edgeFrame=0;
    const chooseTarget=()=>{

@@ -212,7 +212,15 @@ function renderSection(){
  // A fresh mounted viewport prevents slow replies from an abandoned desk
  // replacing the next screen. No extra RPC or global store is involved.
  const view=el("div","ppw-workspace");
- game.replaceChildren(view);
+ // Only a real department change gets a broadcast cut. No extra fetches,
+ // delays, timers or effects for ordinary UI rerenders.
+ const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const host=document as Document&{
+  startViewTransition?:(update:()=>void)=>{finished:Promise<void>};
+ };
+ if(!reduced&&host.startViewTransition&&game.firstElementChild)
+  void host.startViewTransition(()=>game.replaceChildren(view)).finished.catch(()=>{});
+ else game.replaceChildren(view);
  const back=()=>openSection("home");
  if(window.scrollY>0)window.scrollTo(0,0);
  switch(section){

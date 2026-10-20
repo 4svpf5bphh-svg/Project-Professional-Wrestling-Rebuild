@@ -434,3 +434,8 @@ body>.ppw-card-edit-shade .ppw-picker-button{min-height:48px;border-radius:11px;
  @keyframes ppw-modal-arrival{from{transform:translateY(48px);opacity:.4}
  to{transform:translateY(0);opacity:1}}
 }
+
+.ppw-editor .ppw-card-grip:focus-visible{outline:3px solid #85f4ff;
+ outline-offset:4px;border-radius:8px;color:#fff6d5}
+.ppw-editor .ppw-card-grip{touch-action:none;cursor:grab;user-select:none}
+.ppw-editor .ppw-card-grip:active{cursor:grabbing}

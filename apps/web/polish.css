@@ -492,3 +492,26 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom));
  #game :is(.ppw-calendar-week,.ppw-wrestler-card,.ppw-business-metric):focus-within{
  box-shadow:0 0 0 2px #4ce8ff6a,0 13px 32px #0005}
 }
+
+/* PPW broadcast cut: only route navigation uses View Transitions. */
+#game>.ppw-workspace{view-transition-name:ppw-stage}
+@media(prefers-reduced-motion:no-preference){
+ ::view-transition-old(ppw-stage){animation:.15s ease-in both ppw-stage-out}
+ ::view-transition-new(ppw-stage){animation:.25s cubic-bezier(.2,.7,.15,1) both ppw-stage-in}
+ @keyframes ppw-stage-out{to{opacity:0;transform:translateX(-10px) scale(.996)}}
+ @keyframes ppw-stage-in{from{opacity:0;transform:translateX(16px) scale(.994)}
+ to{opacity:1;transform:none}}
+ .ppw-wrestler-fill,.ppw-profile-meter-fill{transform-origin:left;
+  animation:ppw-stat-sweep .46s cubic-bezier(.2,.8,.2,1) both}
+ .ppw-wrestler-stat:nth-child(2) .ppw-wrestler-fill{animation-delay:.06s}
+ .ppw-wrestler-stat:nth-child(3) .ppw-wrestler-fill{animation-delay:.12s}
+ .ppw-wrestler-stat:nth-child(4) .ppw-wrestler-fill{animation-delay:.17s}
+ .ppw-wrestler-stat:nth-child(5) .ppw-wrestler-fill{animation-delay:.2s}
+ .ppw-wrestler-stat:nth-child(6) .ppw-wrestler-fill{animation-delay:.24s}
+ @keyframes ppw-stat-sweep{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+ .ppw-business-panel,.ppw-card-show-identity{animation:ppw-scene-in .28s both}
+ @keyframes ppw-scene-in{from{opacity:.45;filter:brightness(.7)}
+ to{opacity:1;filter:brightness(1)}}
+}
+@media(prefers-reduced-motion:reduce){::view-transition-old(ppw-stage),
+ ::view-transition-new(ppw-stage){animation:none!important}}
