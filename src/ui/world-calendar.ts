@@ -1,6 +1,7 @@
 import {eventDesign} from "./broadcast-identity.js";
 import {eventArtworkSource} from "./event-artwork.js";
 import {createPromotionLogo} from "./promotion-logo.js";
+import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
  from "../domain/show-calendar.js";
 import type {CalendarBooking} from "../db/calendar-workspace.js";
@@ -198,9 +199,18 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   poster.alt="";poster.loading="lazy";poster.decoding="async";
   poster.onerror=()=>poster.remove();
   card.append(poster,emblem,copy);
+  // Keep the promoter identity legible when third-party marks fail to load.
+  const identity=node("span",promotionBrand(owner??data?.promotionName??"").mark,
+   "ppw-calendar-owner-mark");
+  identity.dataset.brand=graphic.brand;
   const ownerLogo=createPromotionLogo(graphic.brand,96);
-  if(ownerLogo){ownerLogo.classList.add("ppw-calendar-promoter-logo");
-   ownerLogo.onerror=()=>ownerLogo.remove();card.append(ownerLogo);}
+  if(ownerLogo&&graphic.brand!=="njpw"&&graphic.brand!=="cmll"){
+   ownerLogo.classList.add("ppw-calendar-promoter-logo");
+   ownerLogo.onload=()=>{identity.dataset.logoReady="true";};
+   ownerLogo.onerror=()=>{ownerLogo.remove();delete identity.dataset.logoReady;};
+   identity.append(ownerLogo);
+  }
+  card.append(identity);
   return card;
  }
  function ownTile(s:ShowSeries,year:number,week:number,

@@ -43,3 +43,48 @@ html[data-ppw-screen="backstage"] #game .ppw-backstage-phone-header{z-index:7}
 #game .ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo{
  max-width:min(78vw,250px);width:auto;height:auto;max-height:115px;object-fit:contain}
 @media(max-width:350px){#game .ppw-calendar-promoter-logo{width:48px;max-width:48px;height:42px}}
+
+/* Never show an unframed raster logo against an alien solid background. The
+   calendar and match boards use the already-known promoter name if a mark
+   is unavailable. No fabricated trademark, requests or simulation changes. */
+#game .ppw-calendar-event .ppw-calendar-owner-mark{grid-column:3;grid-row:2;
+ display:grid;place-items:center;justify-self:end;width:74px;max-width:100%;min-height:48px;
+ padding:4px 5px;border:1px solid #a6c6db45;border-radius:9px;
+ background:linear-gradient(125deg,#151e35,#26304a);color:#ffe2a3;
+ text-shadow:0 2px 6px #000;letter-spacing:.04em;font-size:14px;font-weight:1000;
+ text-align:center;line-height:1.1;overflow:hidden}
+#game .ppw-calendar-owner-mark[data-logo-ready="true"]{font-size:0;color:transparent;
+ background:none;border-color:transparent}
+#game .ppw-calendar-owner-mark .ppw-calendar-promoter-logo{grid-column:1;grid-row:1;
+ width:100%;max-width:74px;height:45px;max-height:45px;display:block;object-fit:contain}
+#game .ppw-broadcast-brand-mark{display:grid;place-items:center;
+ background:linear-gradient(110deg,#182338,#2c2542);border:1px solid #bfa26c66;
+ border-radius:8px;color:#f3dca2;font-size:17px;font-weight:1000;letter-spacing:.08em;
+ text-align:center;padding:4px 8px;max-width:125px;min-width:68px}
+#game .ppw-broadcast-brand-mark[data-logo-ready="true"]{
+ color:transparent;font-size:0;background:transparent;border-color:transparent}
+#game .ppw-broadcast-brand-mark .ppw-broadcast-company-logo{display:block;width:100%;height:55px}
+@media(max-width:350px){#game .ppw-calendar-event .ppw-calendar-owner-mark{width:48px;
+ font-size:10px;min-height:40px;padding:2px}
+ #game .ppw-calendar-owner-mark .ppw-calendar-promoter-logo{max-width:48px;height:36px}}
+/* Separate phone messenger styling: no clipped filter controls or giant blank
+   white footer; enough room for every filter on a narrow iPhone. */
+html[data-ppw-screen="backstage"]{background:#f2f5fb}
+html[data-ppw-screen="backstage"] body{background:#f2f5fb!important;
+ min-height:100dvh;color:#14233b}
+html[data-ppw-screen="backstage"] #game{background:#f2f5fb;min-height:calc(100dvh - 65px)}
+html[data-ppw-screen="backstage"] #game .ppw-messenger{min-height:calc(100dvh - 65px)!important;
+ box-shadow:none;max-width:700px!important;overflow:visible}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-inbox{overflow:visible!important}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-filters{display:grid!important;
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:6px!important;
+ overflow:visible!important;padding-bottom:8px}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-filters button{
+ display:grid;place-items:center;min-width:0;width:100%;min-height:39px!important;
+ padding:6px 3px!important;white-space:normal;line-height:1.15;font-size:11px!important;
+ text-align:center;border-radius:11px!important}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-contact{min-width:0}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-phone-back{
+ color:#cce3ff!important;min-width:65px;font-size:13px!important;font-weight:800}
+@media(max-width:350px){html[data-ppw-screen="backstage"] #game .ppw-persona-header{
+ gap:5px}html[data-ppw-screen="backstage"] #game .ppw-persona-header h1{font-size:27px!important}}

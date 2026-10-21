@@ -33,3 +33,8 @@
  #game .ppw-calendar-event-art{height:85px}
  #game .ppw-calendar-event-major .ppw-calendar-event-art{height:110px}
  #game .ppw-calendar-event .ppw-calendar-promoter-logo{max-width:48px}}
+
+/* A visible modern promo mark now owns column three; the img lives inside it. */
+#game .ppw-calendar-event .ppw-calendar-owner-mark{grid-column:3;grid-row:2}
+#game .ppw-calendar-event .ppw-calendar-owner-mark .ppw-calendar-promoter-logo{
+ grid-column:1;grid-row:1;justify-self:stretch;max-width:100%}
