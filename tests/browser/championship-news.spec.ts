@@ -59,7 +59,7 @@ test("iPhone clears confirmed title and business news but never the unprepared s
  expect(methods).toEqual(["overview","dismissAttentionBatch"]);
 });
 
-test("championship directory renders distinctive original title engravings without extra requests",async({page})=>{
+test("championship directory renders loaded distinct authored belt artwork without extra requests",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -79,9 +79,14 @@ test("championship directory renders distinctive original title engravings witho
  });
  await page.goto("/#/championships");
  await expect(page.locator(".ppw-belt-card")).toHaveCount(2);
- await expect(page.locator(".ppw-title-engraving")).toHaveCount(2);
- await expect(page.locator(".ppw-belt-tag .ppw-title-engraving-crown")).toHaveCount(1);
- await expect(page.locator(".ppw-belt-singles .ppw-title-engraving-crown")).toHaveCount(1);
+ await expect(page.locator(".ppw-belt-graphic")).toHaveCount(2);
+ await expect(page.locator(".ppw-belt-singles .ppw-belt-graphic"))
+  .toHaveAttribute("src",/\/belts\/custom-world\.svg$/);
+ await expect(page.locator(".ppw-belt-tag .ppw-belt-graphic"))
+  .toHaveAttribute("src",/\/belts\/custom-tag\.svg$/);
+ await expect.poll(async()=>page.locator(".ppw-belt-graphic").evaluateAll(
+  images=>images.every(img=>(img as HTMLImageElement).naturalWidth>0)))
+  .toBe(true);
  await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();
  expect(calls).toEqual(["championships"]);
 });
