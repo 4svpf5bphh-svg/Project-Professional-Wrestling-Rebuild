@@ -42,3 +42,10 @@ test("25 Diego Serrano wrestler photographs have unique credited Wikimedia Commo
  const files=new Set<string>();
  for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
 });
+
+test("second 25-photo batch resolves unique credited WWE wrestler identities",()=>{
+ const names=["akam","jaida parker","jey uso","jimmy uso","joe hendry","kairi sane","karrion kross","kevin owens","la knight","liv morgan","logan paul","lyra valkyria","michin","montez ford","naomi","nia jax","nikki bella","penta","r-truth","randy orton","raquel rodriguez","rey mysterio","rezar","roxanne perez","stephanie vaquer"];
+ assert.equal(names.length,25);
+ const files=new Set<string>();
+ for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
+});
