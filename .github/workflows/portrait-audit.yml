@@ -1,0 +1,36 @@
+name: Wikimedia portrait audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/ui/wrestler-portrait.ts'
+      - 'scripts/audit-portraits.ts'
+      - '.github/workflows/portrait-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Check portrait metadata against Commons
+        id: audit
+        continue-on-error: true
+        run: npx tsx scripts/audit-portraits.ts
+      - name: Upload audit findings even on mismatch
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: commons-portrait-audit
+          path: portrait-audit.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Fail on unverified credits
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
