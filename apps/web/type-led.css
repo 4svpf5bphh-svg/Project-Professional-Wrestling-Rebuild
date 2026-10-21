@@ -1,0 +1,83 @@
+/* PPW / typography-led broadcast design. No generated event or title assets. */
+#game .ppw-calendar-event{--type-ink:#f6f6f8;--type-accent:var(--show-border,#8dd0df)}
+#game .ppw-calendar-event[data-event-promotion="wwe"]{--type-ink:#ffe7e7;--type-accent:#fa7079}
+#game .ppw-calendar-event[data-event-promotion="aew"]{--type-ink:#fff0cf;--type-accent:#f3bf70}
+#game .ppw-calendar-event[data-event-promotion="njpw"]{--type-ink:#fff6e8;--type-accent:#e7c47f}
+#game .ppw-calendar-event[data-event-promotion="nxt"]{--type-ink:#f8f9e8;--type-accent:#c7e979}
+#game .ppw-calendar-event[data-event-promotion="stardom"]{--type-ink:#ffedf8;--type-accent:#ee8bc8}
+#game .ppw-calendar-event[data-event-promotion="cmll"]{--type-ink:#e9fff5;--type-accent:#7ee3bc}
+#game .ppw-calendar-event[data-event-promotion="tna"]{--type-ink:#ffe4d1;--type-accent:#f4a675}
+#game .ppw-calendar-event[data-event-promotion="roh"]{--type-ink:#f3f4ff;--type-accent:#a3b9d9}
+#game .ppw-calendar-artwork-shell,#game .ppw-planner-event-shell{
+ position:relative;grid-column:1/-1;grid-row:1;display:flex;flex-direction:column;
+ justify-content:space-between;gap:8px;min-width:0;overflow:hidden;isolation:isolate;
+ background:linear-gradient(120deg,#0c1524,#182739 65%,#111a29);border:1px solid #90b8ca55;
+ border-left:5px solid var(--type-accent,#c7a970);border-radius:10px;
+ padding:16px 17px 14px;box-shadow:inset 0 1px #ffffff18,0 7px 19px #0007}
+#game .ppw-calendar-event-major .ppw-calendar-artwork-shell{min-height:161px;padding:20px}
+#game .ppw-calendar-event-weekly .ppw-calendar-artwork-shell{min-height:121px}
+#game .ppw-calendar-artwork-shell:after,#game .ppw-planner-event-shell:after{
+ content:"";position:absolute;right:-20%;top:29%;width:85%;height:1px;opacity:.4;
+ transform:rotate(-23deg);background:var(--type-accent,#baab7b);pointer-events:none}
+#game .ppw-calendar-artwork-shell .ppw-dynamic-event-heading,
+#game .ppw-planner-event-shell .ppw-dynamic-event-heading{
+ position:relative;inset:auto;display:block;place-items:unset;text-align:left;
+ font:900 clamp(23px,7vw,43px)/.98 Impact,"Arial Narrow","Arial Black",sans-serif;
+ letter-spacing:-.035em;text-transform:uppercase;color:var(--type-ink,#fff1df);
+ overflow-wrap:anywhere;text-shadow:none;pointer-events:none;max-width:100%;margin:3px 0}
+#game .ppw-calendar-event-major .ppw-calendar-artwork-shell .ppw-dynamic-event-heading{
+ font-size:clamp(27px,8vw,51px)}
+#game .ppw-event-type-line,#game .ppw-event-promoter-line{
+ position:relative;display:block;font:850 10px/1.3 system-ui,sans-serif;
+ letter-spacing:.13em;text-transform:uppercase;color:var(--type-accent,#e3c078)}
+#game .ppw-event-promoter-line{font-size:9px;letter-spacing:.09em;color:#d3deeb}
+#game .ppw-planner-event-shell{min-height:116px;margin:13px 0 9px}
+#game .ppw-planner-event-shell[data-premium="true"]{min-height:153px;--type-accent:#e8c275}
+#game .ppw-calendar-event .ppw-calendar-owner-mark,
+#game .ppw-calendar-event .ppw-calendar-promoter-logo,
+#game .ppw-match-broadcast .ppw-broadcast-company-logo{
+ background:transparent!important;border:0!important;box-shadow:none!important}
+#game .ppw-calendar-event .ppw-calendar-promoter-logo{
+ padding:0!important;filter:drop-shadow(0 2px 4px #0006)}
+/* Hosted WWE source has black pixels; screen compositing avoids an opaque sticker. */
+#game .ppw-authentic-promotion-logo[data-promotion-logo="wwe"]{
+ mix-blend-mode:screen;background:transparent!important}
+#game .ppw-championship-desk .ppw-belt-summary{grid-template-columns:minmax(0,1fr)!important}
+#game .ppw-championship-desk .ppw-belt-insignia{width:100%;min-height:0;height:auto}
+#game .ppw-championship-desk .ppw-belt-plate{
+ display:flex;flex-direction:column;justify-content:space-between;gap:12px;
+ width:100%;min-height:125px;padding:16px 17px;border-radius:10px;
+ background:linear-gradient(120deg,#222839,#141f31);
+ border:1px solid #b9a26c7f;border-left:5px solid #dfbc79;box-shadow:inset 0 1px #ffffff1f}
+#game .ppw-belt-card[data-title-family="tag"] .ppw-belt-plate{border-left-color:#8bd3ff;background:linear-gradient(120deg,#192d43,#101b30)}
+#game .ppw-belt-card[data-title-family="women"] .ppw-belt-plate{border-left-color:#eea2d3;background:linear-gradient(120deg,#382640,#171b2f)}
+#game .ppw-belt-card[data-title-family="secondary"] .ppw-belt-plate{border-left-color:#8bdab6;background:linear-gradient(120deg,#183b36,#111e30)}
+#game .ppw-title-typographic-kicker,#game .ppw-title-typographic-rule{
+ display:block;font:850 10px/1.3 system-ui,sans-serif;letter-spacing:.16em;color:#eac889}
+#game .ppw-title-typographic-rule{font-size:9px;color:#b9cbd6}
+#game .ppw-title-typographic-name{
+ display:block;font:900 clamp(23px,6vw,38px)/.98 Impact,"Arial Black",sans-serif;
+ letter-spacing:-.02em;text-transform:uppercase;overflow-wrap:anywhere;color:#fff0dc}
+#game .ppw-belt-card[data-title-family="tag"] .ppw-title-typographic-name{color:#e2f3ff}
+#game .ppw-belt-card[data-title-family="women"] .ppw-title-typographic-name{color:#ffe3f4}
+#game .ppw-belt-card[data-title-family="secondary"] .ppw-title-typographic-name{color:#e1fced}
+.ppw-results .ppw-crowd-flow{min-width:0}
+.ppw-results .ppw-crowd-flow-bars{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:5px;overflow:visible;padding:6px 0}
+.ppw-results .ppw-crowd-flow-point{width:100%;min-width:0;min-height:38px;
+ display:grid;grid-template-columns:27px minmax(0,1fr) 33px 41px;
+ grid-template-rows:1fr;align-items:center;justify-items:stretch;gap:8px;
+ padding:6px 9px;text-align:left;flex:auto}
+.ppw-results .ppw-flow-score{font-size:13px;text-align:right;grid-column:3;grid-row:1}
+.ppw-results .ppw-flow-track{grid-column:2;grid-row:1;width:100%;height:10px;
+ display:block;border-radius:6px}
+.ppw-results .ppw-flow-fill{height:100%!important;min-height:0;border-radius:6px}
+.ppw-results .ppw-flow-slot{grid-column:1;grid-row:1;text-align:center}
+.ppw-results .ppw-flow-kind{grid-column:4;grid-row:1;text-align:right;font-size:9px}
+@media(max-width:350px){
+ #game .ppw-calendar-artwork-shell,#game .ppw-planner-event-shell{padding:13px 11px}
+ #game .ppw-calendar-event-major .ppw-calendar-artwork-shell{padding:16px 12px}
+ #game .ppw-championship-desk .ppw-belt-plate{padding:13px 12px}
+ .ppw-results .ppw-crowd-flow-point{
+ grid-template-columns:21px minmax(0,1fr) 27px 35px;gap:5px;padding:7px 5px}
+}

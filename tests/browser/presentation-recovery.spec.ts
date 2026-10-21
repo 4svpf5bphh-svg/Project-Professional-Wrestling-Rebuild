@@ -54,7 +54,7 @@ for(const width of [320,390]){
   await page.screenshot({path:images+"/wrestler-fallback-"+width+".png",fullPage:true});
   expect(calls).toEqual(["tagTeams"]);
  });
- test("iPhone "+width+"px: actual show posters load without obstructing calendar and actions",async({page},testInfo)=>{
+ test("iPhone "+width+"px: typography-led broadcasts fit the calendar and actions",async({page},testInfo)=>{
   await page.setViewportSize({width,height:844});
   const weekly={seriesId:"dynamite",name:"AEW Dynamite",role:"FLAGSHIP",eventType:"REGULAR",
    cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
@@ -69,17 +69,14 @@ for(const width of [320,390]){
     weeks:[{year:1,week:5,offset:0,shows:[weekly,ppv]}],worldWeeks:[]}:{}});
   });
   await page.goto("/#/calendar");
-  await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(2);
-  await expect(page.locator(".ppw-calendar-event-art").nth(0))
-   .toHaveAttribute("src",/\/events\/dynamite\.svg$/);
-  await expect(page.locator(".ppw-calendar-event-art").nth(1))
-   .toHaveAttribute("src",/\/events\/all-in\.svg$/);
-  await expect.poll(async()=>page.locator(".ppw-calendar-event-art").evaluateAll(
-   images=>images.every(img=>(img as HTMLImageElement).naturalWidth>=1200))).toBe(true);
-  const sizes=await page.locator(".ppw-calendar-event-art").evaluateAll(nodes=>nodes.map(n=>({
-   width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})));
-  expect(sizes[0]?.height).toBeGreaterThanOrEqual(80);
-  expect(sizes[1]?.height).toBeGreaterThan(sizes[0]!.height);
+  await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
+  await expect(page.locator(".ppw-dynamic-event-heading")).toHaveCount(2);
+  await expect(page.locator(".ppw-dynamic-event-heading").nth(0)).toHaveText("AEW Dynamite");
+  await expect(page.locator(".ppw-dynamic-event-heading").nth(1)).toHaveText("All In");
+  const heights=await page.locator(".ppw-calendar-artwork-shell").evaluateAll(nodes=>
+   nodes.map(n=>n.getBoundingClientRect().height));
+  expect(heights[0]).toBeGreaterThanOrEqual(100);
+  expect(heights[1]).toBeGreaterThan(heights[0]!);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await testInfo.attach("event-calendar-"+width,{
    body:await page.screenshot({fullPage:true}),contentType:"image/png"});
