@@ -161,3 +161,8 @@
 .ppw-wrestler-champion{color:#f6e6c2;background:#5a4b34;border:1px solid #a78d5b}
 @media(min-width:610px){.ppw-wrestler-card[data-portrait="unavailable"]{grid-template-columns:84px minmax(0,1fr) auto}.ppw-wrestler-compact[data-portrait="unavailable"]{grid-template-columns:56px minmax(0,1fr) auto}}
 @media(max-width:360px){.ppw-wrestler-card[data-portrait="unavailable"]{grid-template-columns:56px minmax(0,1fr)}}
+
+/* Title status derives from live championship data, not an editorial star tier. */
+.ppw-wrestler-card[data-champion="true"] .ppw-wrestler-name{color:#fff5d8}
+.ppw-wrestler-card[data-champion="true"] .ppw-wrestler-championship-titles{border-left:2px solid #cba96b;padding-left:8px}
+.ppw-wrestler-card[data-title-count="2"] .ppw-wrestler-champion,.ppw-wrestler-card[data-title-count="3"] .ppw-wrestler-champion{background:#6b5331;border-color:#d4b26c}

@@ -27,7 +27,14 @@ const knownAliases:Readonly<Record<string,string>>={
  "sasha banks":"mercedes moné",
  "dean ambrose":"jon moxley",
  "daniel bryan":"bryan danielson",
- "tyler black":"seth rollins"
+ "tyler black":"seth rollins",
+ "the american nightmare":"cody rhodes",
+ "the tribal chief":"roman reigns",
+ "the visionary":"seth rollins",
+ "the best in the world":"cm punk",
+ "the cleaner":"kenny omega",
+ "the rainmaker":"kazuchika okada",
+ "the man":"becky lynch"
 };
 export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/[‘’]/g,"'").replace(/\s+/g," ");
 export function portraitCredit(name:string):PhotoCredit|null{
