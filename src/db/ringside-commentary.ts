@@ -60,21 +60,38 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
 }
 export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  key:string|undefined,transport:typeof fetch=fetch):Promise<RingsideResponse>{
- // This read enforces ACTIVE human promotion ownership, not merely knowledge
- // of an archive ID. Rival / unclaimed AI shows cannot reach Groq.
+ // Single indexed read enforces active human control and retrieves cached
+ // editorial. Reopening an already reviewed show requires no five-query slot
+ // expansion, roster fetch, model call, or polling.
+ const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
+  SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts
+  FROM ppw_completed_shows c
+  JOIN ppw_promotion_controls p ON p.world_id=c.world_id
+   AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
+  JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id
+   AND m.status='ACTIVE'
+  LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
+   AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
+   AND r.prompt_version=$5
+  WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
+  LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,RINGSIDE_PROMPT_VERSION]));
+ if(!current.length)throw new Error("Completed show unavailable to this controller");
+ const saved=current[0];
+ if(saved?.state==="READY"&&saved.model===RINGSIDE_MODEL){
+  const report=saved.report_json;
+  // Only server-validated JSON can be inserted through the writer below.
+  if(report&&typeof report==="object"&&!Array.isArray(report)&&
+   typeof (report as RingsideCopy).showHeadline==="string"&&
+   Array.isArray((report as RingsideCopy).slots))
+    return {status:"ready",review:report as RingsideCopy};
+  return {status:"unavailable"};
+ }
+ if(!key||saved?.state==="READY"||saved?.attempts>=2)
+  return {status:"unavailable"};
  const show=await readCompletedShowView(pool,scope);
  const digest=immutableResultDigest(show),params=scoped(scope);
- const current=await withSqlClient(pool,async db=>db.query<CacheRow>(
-  "SELECT state,report_json,receipt_digest,model,attempts FROM ppw_ringside_reports "+
-  "WHERE world_id=$1 AND promotion_id=$2 AND show_id=$3 AND prompt_version=$4",
-  params));
- const saved=current[0];
- if(saved?.state==="READY"&&saved.receipt_digest===digest&&
-  saved.model===RINGSIDE_MODEL)
-  return {status:"ready",review:validateRingsideCopy(saved.report_json,show)};
- if(!key||show.entries.length>30||JSON.stringify(ringsideFacts(show)).length>26000)
+ if(show.entries.length>30||JSON.stringify(ringsideFacts(show)).length>26000)
   return {status:"unavailable"};
- if(saved?.state==="READY"||saved?.attempts>=2)return {status:"unavailable"};
  const token=randomUUID(),lease=Date.now()+45000;
  const claimed=await withSqlClient(pool,async db=>db.query<{claim_token:string}>(`
   INSERT INTO ppw_ringside_reports (world_id,promotion_id,show_id,prompt_version,
