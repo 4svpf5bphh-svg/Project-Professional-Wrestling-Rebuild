@@ -14,7 +14,7 @@
 <text x="600" y="187" font-family="Arial,sans-serif" text-anchor="middle" font-size="27" letter-spacing="16" font-weight="900" fill="#f3e8ff">WEEKLY BROADCAST</text>
 <circle cx="1010" cy="134" r="110" fill="#0d1729e0" stroke="#f6e3c8" stroke-width="5" opacity=".85"/><circle cx="1010" cy="134" r="102" fill="none" stroke="#c08eec" stroke-width="7" opacity=".6"/><use href="#ppw-event-crest" transform="translate(1010 134) scale(.40) translate(-930 -280)" opacity=".98"/><path d="M87 224H1113V424H87Z" fill="#09101b82" stroke="#a487fb" stroke-width="3"/>
 <path d="M99 234h1001M99 414h1001" stroke="#f3e8ff" stroke-width="1.5" opacity=".7"/>
-<text x="600" y="367" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="156" font-weight="1000" textLength="786.24" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#010914" stroke-width="15" paint-order="stroke">PPW LIVE</text>
+
 <path d="M418 447h364" stroke="#62caff" stroke-width="8"/>
 <text x="600" y="497" text-anchor="middle" fill="#f3e8ff" font-family="Arial,sans-serif" font-size="25" font-weight="900" letter-spacing="12">PPW</text>
 <text x="67" y="570" fill="#f3e8ff" opacity=".8" font-family="Arial,sans-serif" font-size="17" font-weight="900" letter-spacing="4">LIVE FROM THE ARENA</text>
