@@ -354,7 +354,7 @@ export function mountPersonaDesk(root:HTMLElement,
   const chatHead=el("header","ppw-backstage-phone-header");
   const returnToInbox=button("← Chats",returnToMessages);
   returnToInbox.classList.add("ppw-backstage-phone-back");
-  returnToInbox.setAttribute("aria-label","Back to Backstage inbox");
+  returnToInbox.setAttribute("aria-label","Back to messages");
   const monogram=el("span","ppw-backstage-phone-avatar",
    view.personName.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
   monogram.setAttribute("aria-hidden","true");
