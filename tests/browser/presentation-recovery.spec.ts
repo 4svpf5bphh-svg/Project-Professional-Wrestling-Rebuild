@@ -120,6 +120,8 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await page.getByRole("button",{name:"Unread",exact:true}).click();
  await page.getByRole("button",{name:"People",exact:true}).click();
  await expect(menu).toBeHidden();
+ const overflow=await page.locator(".ppw-backstage-filters").evaluate(n=>n.scrollWidth-n.clientWidth);
+ expect(overflow,"Every Backstage inbox filter must be visible without horizontal clipping").toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Chats",exact:true}).click();
  await expect(page.getByRole("button",{name:"Unread",exact:true})).toHaveClass(/ppw-persona-selected/);
  await page.getByRole("button",{name:"All",exact:true}).click();
@@ -150,3 +152,57 @@ for(const width of [320,390]){
   await page.screenshot({path:images+"/home-"+width+".png",fullPage:true});
  });
 }
+
+test("iPhone authentic promotion image failure reveals an intentionally integrated brand badge",async({page})=>{
+ await page.setViewportSize({width:320,height:700});
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/commons.wikimedia.org/**",route=>route.fulfill({status:404,body:""}));
+ const a={seriesId:"a",name:"AEW Dynamite",role:"FLAGSHIP",eventType:"REGULAR",
+   cadenceWeeks:1,anchorWeek:0,importance:72,active:true};
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  promotionId:"aew",promotionName:"AEW",year:1,week:5,worldRevision:4,
+  canEdit:false,series:[a],bookings:[],worldWeeks:[],weeks:[
+   {year:1,week:5,offset:0,shows:[a]}]}}));
+ await page.goto("/#/calendar");
+ const owner=page.locator(".ppw-calendar-owner-mark");
+ await expect(owner).toHaveCount(1);
+ await expect(owner).toContainText("AEW");
+ await expect(owner).not.toHaveAttribute("data-logo-ready","true");
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ const dimensions=await owner.evaluate(n=>({
+  badge:n.getBoundingClientRect().width,visible:getComputedStyle(n).display!=="none",
+  label:getComputedStyle(n).fontSize
+ }));
+ expect(dimensions.badge).toBeGreaterThanOrEqual(40);
+ expect(dimensions.visible).toBe(true);
+ expect(dimensions.label).not.toBe("0px");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ await page.screenshot({path:images+"/logo-fallback-320.png",fullPage:true});
+});
+
+test("Championship visual acceptance: women, singles, tag, and secondary plates are distinct on iPhone",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ const definitions=[
+  {championshipId:"world",name:"World Heavyweight Championship",division:"SINGLES",status:"ACTIVE",prestige:96},
+  {championshipId:"women",name:"Women's Championship",division:"SINGLES",status:"ACTIVE",prestige:88},
+  {championshipId:"tag",name:"World Tag Team Championship",division:"TAG",status:"ACTIVE",prestige:85},
+  {championshipId:"secondary",name:"Intercontinental Championship",division:"SINGLES",status:"ACTIVE",prestige:76}
+ ] as const;
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  worldName:"Genesis",year:1,week:5,viewerPromotionId:"wwe",
+  titles:definitions.map(d=>({...d,promotionId:"wwe",promotionName:"WWE",
+   currentReignId:null,holderId:null,holderType:null,holderName:null,defenses:0}))
+ }}));
+ await page.goto("/#/championships");
+ const belts=page.locator(".ppw-belt-graphic");
+ await expect(belts).toHaveCount(4);
+ await expect.poll(async()=>belts.evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).naturalWidth===1000))).toBe(true);
+ const sources=await belts.evaluateAll(imgs=>imgs.map(i=>(i as HTMLImageElement).getAttribute("src")));
+ expect(new Set(sources).size).toBe(4);
+ expect(sources).toEqual([
+  "/belts/wwe-world.svg","/belts/wwe-women.svg","/belts/wwe-tag.svg","/belts/wwe-secondary.svg"
+ ]);
+ await page.screenshot({path:images+"/four-championship-variants-390.png",fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
