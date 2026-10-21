@@ -1,6 +1,18 @@
 /** Static broadcast identities derived from existing names, never new reads. */
+export const originalFictionalPromotionBrands=Object.freeze({
+ "Crown Wrestling":"crown-wrestling",
+ "Revolution Pro":"revolution-pro",
+ "Frontier Wrestling":"frontier-wrestling",
+ "Atlas Wrestling":"atlas-wrestling",
+ "Titan Combat":"titan-combat"
+} as const);
 export function promotionBrand(name:string){
  const n=name.trim().toLowerCase();
+ // Exact original Genesis name, not a fuzzy substring. If a player renames
+ // this company, it must not keep displaying the old identity.
+ const fictional=Object.entries(originalFictionalPromotionBrands)
+  .find(([original])=>original.toLowerCase()===n);
+ if(fictional)return {key:fictional[1],mark:name.trim().split(/\\s+/).map(x=>x[0]).join("").toUpperCase()};
  const brands:[RegExp,string,string][]=[
  [/\bnxt\b/,"nxt","NXT"],[/\baew\b|all elite wrestling/,"aew","AEW"],
  [/\bnjpw\b|new japan pro/,"njpw","NJPW"],[/\broh\b|ring of honor/,"roh","ROH"],

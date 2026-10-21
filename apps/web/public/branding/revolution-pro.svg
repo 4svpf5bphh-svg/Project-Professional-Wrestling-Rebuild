@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" role="img" aria-labelledby="title desc">
+<title id="title">Revolution Pro</title><desc id="desc">Original Project Professional Wrestling promotion identity</desc>
+<defs>
+ <linearGradient id="chrome" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#ffffff"/><stop offset=".26" stop-color="#d8e2ee"/><stop offset=".49" stop-color="#778392"/><stop offset=".68" stop-color="#f0f2f5"/><stop offset="1" stop-color="#596476"/></linearGradient>
+ <linearGradient id="gold" x1=".13" y1="0" x2=".86" y2="1"><stop stop-color="#fff6b8"/><stop offset=".21" stop-color="#ecc568"/><stop offset=".50" stop-color="#906127"/><stop offset=".73" stop-color="#ffd973"/><stop offset="1" stop-color="#9b6425"/></linearGradient>
+ <linearGradient id="energy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff2b40"/><stop offset=".52" stop-color="#ffac55"/><stop offset="1" stop-color="#ff2b40"/></linearGradient>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#220b19"/><stop offset="1" stop-color="#080a12"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
+</defs>
+<g filter="url(#shadow)">
+<circle cx="498" cy="228" r="176" fill="none" stroke="#310c18" stroke-width="62" stroke-dasharray="165 42 60 42 150 45 63 42"/>
+<circle cx="498" cy="228" r="177" fill="none" stroke="url(#energy)" stroke-width="24" stroke-dasharray="185 28 68 30 171 23 62 30" transform="rotate(-19 498 228)"/>
+<path d="M85 272 314 160 286 238 416 186 340 335 452 268 373 375 184 379 240 302Z" fill="#ff3049" stroke="#0c0b12" stroke-width="13"/>
+<path d="M908 272 694 158 720 238 584 186 654 338 551 267 628 376 804 380 748 301Z" fill="#ff3049" stroke="#0c0b12" stroke-width="13"/>
+<path d="M399 95 H537 Q660 95 650 208 Q645 267 590 277 L669 357 H555 L473 254 441 359 H346L402 95Z" fill="url(#chrome)" stroke="#230b12" stroke-width="19"/>
+<path d="M473 156 454 224 H529 Q558 220 563 194 Q569 163 537 156Z" fill="#171a24"/>
+<path d="M560 39 L536 85 589 85 521 179 547 112 509 112Z" fill="#fff2ad" stroke="#fb344e" stroke-width="4"/>
+</g>
+<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<text x="500" y="443" font-size="105" letter-spacing="2" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">REVOLUTION</text>
+<text x="500" y="443" font-size="105" letter-spacing="2" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">REVOLUTION</text>
+<path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>
+<path d="M185 487 L815 487 777 541 222 541Z" fill="url(#deep)" stroke="url(#energy)" stroke-width="7"/>
+<text x="500" y="529" font-size="48" letter-spacing="13" textLength="490" lengthAdjust="spacingAndGlyphs" fill="#f9f4df">PRO</text>
+</g>
+</svg>

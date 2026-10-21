@@ -226,3 +226,35 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
  object-fit:cover;object-position:center}
 .ppw-broadcast-company-logo[data-promotion-logo="njpw"]{
  width:75px;height:75px;max-height:75px;max-width:75px;object-fit:contain}
+
+/* Bundled fictional promotion identities — independent artworks, not name
+ * guesses, remote image requests or new game state. Player rebrands revert
+ * to custom styling and the new name until given their own logo. */
+.ppw-home-hero[data-promotion="crown-wrestling"] .ppw-home-promotion-mark{background:#492660;color:#f9db8b}
+.ppw-home-hero[data-promotion="revolution-pro"] .ppw-home-promotion-mark{background:#3c1122;color:#ff8391}
+.ppw-home-hero[data-promotion="frontier-wrestling"] .ppw-home-promotion-mark{background:#12464b;color:#f6c17a}
+.ppw-home-hero[data-promotion="atlas-wrestling"] .ppw-home-promotion-mark{background:#163b68;color:#dbefff}
+.ppw-home-hero[data-promotion="titan-combat"] .ppw-home-promotion-mark{background:#391b1d;color:#ffae79}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="crown-wrestling"]{
+ --show-border:#dfb65d;--show-bg:linear-gradient(130deg,#472164,#110f23);
+ --show-pattern:repeating-conic-gradient(#f3c36b3c 0deg 5deg,transparent 5deg 21deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="revolution-pro"]{
+ --show-border:#ff4056;--show-bg:linear-gradient(125deg,#441525,#151322);
+ --show-pattern:repeating-linear-gradient(130deg,#ff355649 0 7px,transparent 7px 32px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="frontier-wrestling"]{
+ --show-border:#eab977;--show-bg:linear-gradient(130deg,#174d53,#352b24);
+ --show-pattern:repeating-linear-gradient(45deg,#eac3893b 0 3px,transparent 3px 22px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="atlas-wrestling"]{
+ --show-border:#79bdff;--show-bg:radial-gradient(circle at 65% 12%,#315b98,#111a32);
+ --show-pattern:repeating-conic-gradient(#99c9fa40 0deg 4deg,transparent 4deg 24deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="titan-combat"]{
+ --show-border:#ef7844;--show-bg:linear-gradient(125deg,#52221e,#19191f);
+ --show-pattern:repeating-linear-gradient(110deg,#ff78483f 0 5px,transparent 5px 20px)}
+/* Full name lives below each badge; logo is decorative and responsive. */
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="crown-wrestling"],
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="revolution-pro"],
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="frontier-wrestling"],
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="atlas-wrestling"],
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="titan-combat"]{
+ max-width:min(78vw,250px);height:112px;width:auto;object-fit:contain;
+ filter:drop-shadow(0 8px 11px #000b)}

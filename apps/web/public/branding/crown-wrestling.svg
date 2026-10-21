@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" role="img" aria-labelledby="title desc">
+<title id="title">Crown Wrestling</title><desc id="desc">Original Project Professional Wrestling promotion identity</desc>
+<defs>
+ <linearGradient id="chrome" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#ffffff"/><stop offset=".26" stop-color="#d8e2ee"/><stop offset=".49" stop-color="#778392"/><stop offset=".68" stop-color="#f0f2f5"/><stop offset="1" stop-color="#596476"/></linearGradient>
+ <linearGradient id="gold" x1=".13" y1="0" x2=".86" y2="1"><stop stop-color="#fff6b8"/><stop offset=".21" stop-color="#ecc568"/><stop offset=".50" stop-color="#906127"/><stop offset=".73" stop-color="#ffd973"/><stop offset="1" stop-color="#9b6425"/></linearGradient>
+ <linearGradient id="energy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2bf57"/><stop offset=".52" stop-color="#ffe48e"/><stop offset="1" stop-color="#f2bf57"/></linearGradient>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#361956"/><stop offset="1" stop-color="#080a12"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
+</defs>
+<g filter="url(#shadow)">
+<path d="M184 302 L226 112 345 212 491 40 643 205 780 99 832 300 785 347 229 347Z" fill="url(#deep)" stroke="url(#gold)" stroke-width="18" stroke-linejoin="round"/>
+<path d="M230 281 242 164 347 248 492 97 640 245 761 160 783 281Z" fill="#512468" stroke="url(#gold)" stroke-width="6"/>
+<path d="M491 98 444 224 492 270 539 224Z" fill="#f7c649" stroke="#fff3ba" stroke-width="8"/>
+<path d="M490 174 466 219 490 243 515 219Z" fill="#9d48df"/>
+<circle cx="324" cy="283" r="20" fill="#9b43cb" stroke="#fff0a6" stroke-width="8"/><circle cx="666" cy="281" r="20" fill="#9b43cb" stroke="#fff0a6" stroke-width="8"/>
+<path d="M235 296 H789 L763 356 H261Z" fill="url(#gold)" stroke="#261330" stroke-width="9"/>
+<path d="M219 327 L146 399 328 356 M778 327 854 398 670 356" fill="none" stroke="url(#gold)" stroke-width="17" stroke-linejoin="round"/>
+</g>
+<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<text x="500" y="443" font-size="139" letter-spacing="5" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">CROWN</text>
+<text x="500" y="443" font-size="139" letter-spacing="5" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">CROWN</text>
+<path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>
+<path d="M185 487 L815 487 777 541 222 541Z" fill="url(#deep)" stroke="url(#energy)" stroke-width="7"/>
+<text x="500" y="529" font-size="48" letter-spacing="13" textLength="490" lengthAdjust="spacingAndGlyphs" fill="#f9f4df">WRESTLING</text>
+</g>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" role="img" aria-labelledby="title desc">
+<title id="title">Atlas Wrestling</title><desc id="desc">Original Project Professional Wrestling promotion identity</desc>
+<defs>
+ <linearGradient id="chrome" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#ffffff"/><stop offset=".26" stop-color="#d8e2ee"/><stop offset=".49" stop-color="#778392"/><stop offset=".68" stop-color="#f0f2f5"/><stop offset="1" stop-color="#596476"/></linearGradient>
+ <linearGradient id="gold" x1=".13" y1="0" x2=".86" y2="1"><stop stop-color="#fff6b8"/><stop offset=".21" stop-color="#ecc568"/><stop offset=".50" stop-color="#906127"/><stop offset=".73" stop-color="#ffd973"/><stop offset="1" stop-color="#9b6425"/></linearGradient>
+ <linearGradient id="energy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#65b5ff"/><stop offset=".52" stop-color="#f7d58a"/><stop offset="1" stop-color="#65b5ff"/></linearGradient>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#112a53"/><stop offset="1" stop-color="#080a12"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
+</defs>
+<g filter="url(#shadow)">
+<circle cx="496" cy="201" r="166" fill="#0f2445" stroke="url(#gold)" stroke-width="14"/>
+<circle cx="496" cy="201" r="141" fill="none" stroke="#83baf4" stroke-width="7" opacity=".8"/>
+<path d="M337 200 H654 M351 140 H639 M353 263 H636 M497 36 V366" stroke="#8dc6fa" stroke-width="8" opacity=".55"/>
+<ellipse cx="497" cy="201" rx="64" ry="164" fill="none" stroke="#9cc9ff" stroke-width="8" opacity=".7"/>
+<path d="M290 323 337 235 408 247 445 312 H549 L586 247 666 239 706 324 633 371 H366Z" fill="url(#chrome)" stroke="#071a32" stroke-width="15"/>
+<path d="M421 118 446 89 541 88 569 123 551 207 526 246 463 246 444 204Z" fill="url(#gold)" stroke="#09152e" stroke-width="15"/>
+<path d="M450 131 545 131 528 165 469 165Z" fill="#263b60"/>
+<path d="M379 258 316 310 350 343 428 316 M606 258 678 312 644 340 567 315" fill="url(#chrome)" stroke="#122944" stroke-width="12"/>
+<path d="M498 9 516 57 499 74 481 57Z" fill="#f2d79b"/>
+</g>
+<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<text x="500" y="443" font-size="151" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">ATLAS</text>
+<text x="500" y="443" font-size="151" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">ATLAS</text>
+<path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>
+<path d="M185 487 L815 487 777 541 222 541Z" fill="url(#deep)" stroke="url(#energy)" stroke-width="7"/>
+<text x="500" y="529" font-size="48" letter-spacing="13" textLength="490" lengthAdjust="spacingAndGlyphs" fill="#f9f4df">WRESTLING</text>
+</g>
+</svg>

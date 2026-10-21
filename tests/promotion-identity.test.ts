@@ -1,5 +1,7 @@
 import {test} from "node:test";import assert from "node:assert/strict";
-import {promotionBrand,eventDesign} from "../src/ui/broadcast-identity.js";
+import {promotionBrand,eventDesign,originalFictionalPromotionBrands}
+ from "../src/ui/broadcast-identity.js";
+import {readFileSync} from "node:fs";
 test("recognises the eight real world companies without creating identities for custom promotions",()=>{
  for(const [name,key] of Object.entries({WWE:"wwe",AEW:"aew",NJPW:"njpw",ROH:"roh",
   TNA:"tna",NXT:"nxt",STARDOM:"stardom",CMLL:"cmll"}))
@@ -23,11 +25,11 @@ test("every original WWE/AEW annual event has its own broadcast palette, not a g
  assert.equal(unknown.length,0);
 });
 
-import {promotionLogoKeys,promotionLogoSource,createPromotionLogo}
+import {promotionLogoKeys,realPromotionLogoKeys,fictionalPromotionLogoSources,promotionLogoSource,createPromotionLogo}
  from "../src/ui/promotion-logo.js";
 test("every original real promotion has a pinned authentic logo source",()=>{
- assert.equal(promotionLogoKeys.length,8);
- for(const key of promotionLogoKeys){
+ assert.equal(realPromotionLogoKeys.length,8);
+ for(const key of realPromotionLogoKeys){
   const src=promotionLogoSource(key);
   assert.ok(src&&src.startsWith("https://"),key);
   assert.ok(src?.includes(key==="njpw"?"New_Japan_Pro_Wrestling_Logo_2":
@@ -46,10 +48,30 @@ test("logo factory requires only local information, not a server or browser fetc
   }};
   for(const key of promotionLogoKeys){
    const logo=createPromotionLogo(key);
-   assert.ok(logo?.src.startsWith("https://"),key);
+   assert.ok(logo?.src.startsWith("https://")||logo?.src.startsWith("/branding/"),key);
    assert.equal(logo?.dataset.promotionLogo,key);
   }
   assert.equal(createPromotionLogo("custom"),null);
-  assert.equal(factoryCalls.length,8);
+  assert.equal(factoryCalls.length,13);
  }finally{(globalThis as {document?:unknown}).document=previous;}
+});
+
+test("all five exact original Genesis fictional companies have their own local artwork",()=>{
+ assert.equal(Object.keys(originalFictionalPromotionBrands).length,5);
+ assert.equal(Object.keys(fictionalPromotionLogoSources).length,5);
+ assert.equal(promotionLogoKeys.length,13);
+ for(const [name,key] of Object.entries(originalFictionalPromotionBrands)){
+  assert.equal(promotionBrand(name).key,key);
+  assert.equal(promotionLogoSource(key),"/branding/"+key+".svg");
+  const raw=readFileSync("apps/web/public/branding/"+key+".svg","utf8");
+  assert.match(raw,/^<svg /);
+  assert.match(raw,/<title id="title">/);
+  assert.ok(raw.includes(name),"logo must carry the actual company name");
+  assert.match(raw,/<\/svg>\s*$/);
+ }
+ assert.equal(promotionBrand("Crown Wrestling Unlimited").key,"custom",
+  "a promotion rebrand must not retain the previous logo");
+ assert.equal(promotionBrand("Revolution Pro UK").key,"custom");
+ assert.equal(promotionLogoSource("custom"),null,
+  "unspecified player-named companies retain generic safe fallback");
 });

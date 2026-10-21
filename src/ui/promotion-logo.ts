@@ -16,14 +16,28 @@ export const promotionLogoExternalSources:Readonly<Record<string,string>>={
  njpw:"https://upload.wikimedia.org/wikipedia/en/thumb/1/1c/New_Japan_Pro_Wrestling_Logo_2.svg/330px-New_Japan_Pro_Wrestling_Logo_2.svg.png",
  cmll:"https://r2.thesportsdb.com/images/media/league/badge/8wi2qv1575807644.png"
 };
-export const promotionLogoKeys=Object.freeze([
+/** Original fictional identities are local, bundled SVG; no remote requests.
+ * Their association is by exact Genesis name in broadcast-identity.ts.
+ * A subsequent rebrand returns to the custom-name fallback automatically.
+ */
+export const fictionalPromotionLogoSources:Readonly<Record<string,string>>={
+ "crown-wrestling":"/branding/crown-wrestling.svg",
+ "revolution-pro":"/branding/revolution-pro.svg",
+ "frontier-wrestling":"/branding/frontier-wrestling.svg",
+ "atlas-wrestling":"/branding/atlas-wrestling.svg",
+ "titan-combat":"/branding/titan-combat.svg"
+};
+export const realPromotionLogoKeys=Object.freeze([
  "wwe","aew","njpw","roh","tna","nxt","stardom","cmll"
+] as const);
+export const promotionLogoKeys=Object.freeze([
+ ...realPromotionLogoKeys,...Object.keys(fictionalPromotionLogoSources)
 ] as const);
 export function promotionLogoSource(key:string,width=145):string|null{
  const named=promotionLogoFileNames[key];
  if(named)return "https://commons.wikimedia.org/wiki/Special:FilePath/"+
   encodeURIComponent(named)+"?width="+Math.max(80,Math.min(320,Math.round(width)));
- return promotionLogoExternalSources[key]??null;
+ return promotionLogoExternalSources[key]??fictionalPromotionLogoSources[key]??null;
 }
 export function createPromotionLogo(key:string,width=145):HTMLImageElement|null{
  const src=promotionLogoSource(key,width);if(!src)return null;
@@ -32,6 +46,7 @@ export function createPromotionLogo(key:string,width=145):HTMLImageElement|null{
  logo.src=src;logo.dataset.promotionLogo=key;
  logo.alt="";logo.loading="lazy";logo.decoding="async";
  logo.width=width;logo.height=75;
- logo.title="Trademark of the relevant promotion · image provenance and notices: broadcast-credits.html";
+ logo.title=fictionalPromotionLogoSources[key]
+  ?"Original fictional PPW promotion logo":"Trademark of the relevant promotion · image provenance and notices: broadcast-credits.html";
  return logo;
 }

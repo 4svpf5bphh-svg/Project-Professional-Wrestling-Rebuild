@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" role="img" aria-labelledby="title desc">
+<title id="title">Frontier Wrestling</title><desc id="desc">Original Project Professional Wrestling promotion identity</desc>
+<defs>
+ <linearGradient id="chrome" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#ffffff"/><stop offset=".26" stop-color="#d8e2ee"/><stop offset=".49" stop-color="#778392"/><stop offset=".68" stop-color="#f0f2f5"/><stop offset="1" stop-color="#596476"/></linearGradient>
+ <linearGradient id="gold" x1=".13" y1="0" x2=".86" y2="1"><stop stop-color="#fff6b8"/><stop offset=".21" stop-color="#ecc568"/><stop offset=".50" stop-color="#906127"/><stop offset=".73" stop-color="#ffd973"/><stop offset="1" stop-color="#9b6425"/></linearGradient>
+ <linearGradient id="energy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6b969"/><stop offset=".52" stop-color="#61d6c2"/><stop offset="1" stop-color="#f6b969"/></linearGradient>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#123b41"/><stop offset="1" stop-color="#080a12"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
+</defs>
+<g filter="url(#shadow)">
+<path d="M497 34 547 113 640 70 664 167 777 158 718 241 799 320 674 330 643 362 345 362 310 318 193 321 274 241 218 158 334 166 359 70 449 113Z" fill="url(#deep)" stroke="url(#gold)" stroke-width="14" stroke-linejoin="round"/>
+<circle cx="498" cy="207" r="120" fill="#152f3e" stroke="#d9a76b" stroke-width="10"/>
+<path d="M375 238 Q497 66 623 238 Q538 204 499 217 Q447 199 375 238Z" fill="#f9bd6b"/>
+<path d="M385 262 458 172 506 226 553 143 623 254 623 296 H375Z" fill="#a6d9cb" stroke="#173c43" stroke-width="9"/>
+<path d="M457 175 481 194 465 210 M553 147 574 174 555 190" fill="none" stroke="#fff1ce" stroke-width="11"/>
+<path d="M498 95 509 170 570 208 508 219 499 293 485 222 424 206 485 194Z" fill="url(#gold)" stroke="#593e26" stroke-width="6"/>
+<path d="M300 316 H698" stroke="url(#energy)" stroke-width="12"/>
+<path d="M188 370 277 312 M812 370 718 312" stroke="#f5b96c" stroke-width="15"/>
+</g>
+<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<text x="500" y="443" font-size="106" letter-spacing="4" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">FRONTIER</text>
+<text x="500" y="443" font-size="106" letter-spacing="4" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">FRONTIER</text>
+<path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>
+<path d="M185 487 L815 487 777 541 222 541Z" fill="url(#deep)" stroke="url(#energy)" stroke-width="7"/>
+<text x="500" y="529" font-size="48" letter-spacing="13" textLength="490" lengthAdjust="spacingAndGlyphs" fill="#f9f4df">WRESTLING</text>
+</g>
+</svg>
