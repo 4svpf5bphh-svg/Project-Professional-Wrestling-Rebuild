@@ -1,22 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550" width="1000" height="550" role="img" aria-label="NJPW WORLD championship belt art">
-<title>NJPW WORLD championship — original PPW engraved belt illustration</title>
-<defs><linearGradient id="leather" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0d1220"/><stop offset=".5" stop-color="#40302b"/><stop offset="1" stop-color="#090c18"/></linearGradient>
-<linearGradient id="gold" x1=".1" y1="0" x2=".8" y2="1"><stop stop-color="#fff7c9"/><stop offset=".25" stop-color="#f4d59f"/><stop offset=".5" stop-color="#c52f42"/><stop offset=".72" stop-color="#78542f"/><stop offset="1" stop-color="#f4d59f"/></linearGradient>
-<radialGradient id="face"><stop stop-color="#f4d59f"/><stop offset=".55" stop-color="#c52f42"/><stop offset="1" stop-color="#301824"/></radialGradient>
-<filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-opacity=".55"/></filter></defs>
-<g filter="url(#shadow)">
-<path d="M22 245 99 193 296 161 380 113 500 85 620 113 704 161 901 193 978 245 978 305 901 355 704 389 620 438 500 467 380 438 296 389 99 355 22 305Z" fill="url(#leather)" stroke="#07090c" stroke-width="13"/>
-<path d="M52 251h92v50H52zM856 251h92v50h-92z" fill="#d1ae73" stroke="#342b25" stroke-width="8"/>
-<g transform="translate(189 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#301824" stroke="#c52f42" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f4d59f" stroke-width="6"/></g><g transform="translate(811 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#301824" stroke="#c52f42" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f4d59f" stroke-width="6"/></g>
-<path d="M500 61L641 119 726 261 656 433 500 481 344 433 274 261 359 119Z" fill="url(#gold)" stroke="#f4e2b7" stroke-width="14"/>
-<path d="M500 61L641 119 726 261 656 433 500 481 344 433 274 261 359 119Z" fill="none" stroke="#301824" stroke-width="28" opacity=".55" transform="translate(500 275) scale(.88) translate(-500 -275)"/>
-<circle cx="500" cy="273" r="137" fill="url(#face)" stroke="#f4d59f" stroke-width="14"/>
-<circle cx="500" cy="273" r="104" fill="none" stroke="#fff3b2" stroke-width="4" opacity=".8"/>
-<circle cx="623.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="606.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="561.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="396.0" r="4" fill="#fff9d6"/><circle cx="438.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="393.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="377.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="393.5" cy="211.5" r="4" fill="#fff9d6"/><circle cx="438.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="150.0" r="4" fill="#fff9d6"/><circle cx="561.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="606.5" cy="211.5" r="4" fill="#fff9d6"/>
-<path d="M500 204l22 45 49 7 -37 34 9 50 -43 -22 -43 22 9 -50 -37 -34 49 -7Z" fill="#f4d59f" opacity="0.53"/>
-<text x="500" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="8" fill="#1c1820" stroke="#f4d59f" stroke-width="1">NJPW</text>
-<text x="500" y="266" text-anchor="middle" textLength="135" lengthAdjust="spacingAndGlyphs" font-family="Impact,'Arial Black',sans-serif" font-size="43" font-weight="1000" fill="#faf5d8" stroke="#191622" stroke-width="7" paint-order="stroke">WORLD</text>
-<text x="500" y="318" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="900" letter-spacing="4" fill="#f8edcf">CROWN OF THE PROMOTION</text>
-<path d="M380 370h240" stroke="#f4d59f" stroke-width="5"/>
-<path d="M372 195l-29 80 29 81M628 195l29 80 -29 81" fill="none" stroke="#f4d59f" stroke-width="6" opacity=".75"/>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="550" viewBox="0 0 1000 550" role="img" aria-label="NJPW WORLD CHAMPIONSHIP illustration">
+<title>NJPW WORLD CHAMPIONSHIP — PPW illustrated championship belt</title>
+<defs>
+ <linearGradient id="leather" x1="0" x2=".2" y1="0" y2="1"><stop stop-color="#151323"/><stop offset=".25" stop-color="#4b3832"/><stop offset=".46" stop-color="#12121c"/><stop offset=".75" stop-color="#4b352b"/><stop offset="1" stop-color="#111017"/></linearGradient>
+ <linearGradient id="metal" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fbf5df"/><stop offset=".16" stop-color="#f7dfb9"/><stop offset=".43" stop-color="#d99d49"/><stop offset=".58" stop-color="#4b3a3b"/><stop offset=".79" stop-color="#f7dfb9"/><stop offset="1" stop-color="#d99d49"/></linearGradient>
+ <radialGradient id="plate"><stop stop-color="#f7dfb9"/><stop offset=".4" stop-color="#d99d49"/><stop offset=".78" stop-color="#ae2534"/><stop offset="1" stop-color="#252436"/></radialGradient>
+</defs>
+<path d="M27 237 148 182 276 195 368 123 500 89 632 123 724 195 852 182 973 237 973 337 852 390 724 368 632 447 500 474 368 447 276 368 148 390 27 337Z" fill="url(#leather)" stroke="#05070d" stroke-width="17"/>
+ <path d="M27 237 148 182 276 195 368 123 500 89 632 123 724 195 852 182 973 237 973 337 852 390 724 368 632 447 500 474 368 447 276 368 148 390 27 337Z" fill="none" stroke="#d99d49" stroke-width="2.5" opacity=".76" transform="translate(500 290) scale(.964 .88) translate(-500 -290)"/><circle cx="60" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="118" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="176" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="234" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="292" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="350" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="408" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="466" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="524" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="582" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="640" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="698" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="756" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="814" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="872" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="930" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><g transform="translate(165 287)">
+ <path d="M0 -81 63 -60 77 0 63 60 0 81 -63 60 -77 0 -63 -60Z" fill="url(#metal)" stroke="#272028" stroke-width="12"/>
+ <path d="M0 -65 49 -47 61 0 49 47 0 65 -49 47 -61 0 -49 -47Z" fill="#ae2534" stroke="#f7dfb9" stroke-width="3"/>
+ <circle r="30" fill="#141b2c" stroke="#d99d49" stroke-width="5"/>
+ <path d="M-21 -12H21V12H-21Z" fill="none" stroke="#f7dfb9" stroke-width="2" />
+ <path d="M0 -19V19M-14 0H14" stroke="#d99d49" stroke-width="4"/>
+ </g><g transform="translate(835 287)">
+ <path d="M0 -81 63 -60 77 0 63 60 0 81 -63 60 -77 0 -63 -60Z" fill="url(#metal)" stroke="#272028" stroke-width="12"/>
+ <path d="M0 -65 49 -47 61 0 49 47 0 65 -49 47 -61 0 -49 -47Z" fill="#ae2534" stroke="#f7dfb9" stroke-width="3"/>
+ <circle r="30" fill="#141b2c" stroke="#d99d49" stroke-width="5"/>
+ <path d="M-21 -12H21V12H-21Z" fill="none" stroke="#f7dfb9" stroke-width="2" />
+ <path d="M0 -19V19M-14 0H14" stroke="#d99d49" stroke-width="4"/>
+ </g>
+ <path d="M500 34 631 63 733 175 769 285 711 402 624 471 500 503 376 471 289 402 231 285 267 175 369 63Z" fill="url(#metal)" stroke="#f7dfb9" stroke-width="11"/>
+ <path d="M500 77 615 100 697 192 722 286 676 391 606 430 500 457 394 430 324 391 278 286 303 192 385 100Z" fill="#12172d" stroke="#ae2534" stroke-width="16"/>
+ <path d="M500 101 600 118 678 200 699 286 663 369 595 406 500 432 405 406 337 369 301 286 322 200 400 118Z" fill="url(#plate)" stroke="#d99d49" stroke-width="9"/>
+ <circle cx="500" cy="283" r="130" fill="#111625" stroke="#f7dfb9" stroke-width="8"/>
+ <ellipse cx="500" cy="283" rx="120" ry="64" fill="none" stroke="#d99d49" stroke-width="4"/>
+ <ellipse cx="500" cy="283" rx="63" ry="122" fill="none" stroke="#d99d49" stroke-width="3"/>
+ <path d="M370 283h260M500 157v252" stroke="#f7dfb9" stroke-width="3" opacity=".65"/>
+ <path d="M500 175 520 224 572 226 532 260 548 311 500 281 452 311 468 260 428 226 480 224Z" fill="#ae2534" stroke="#f7dfb9" stroke-width="6"/>
+ <rect x="335" y="240" width="330" height="79" rx="14" fill="#111725" stroke="#f7dfb9" stroke-width="7"/>
+ <text x="500" y="297" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="66" font-weight="1000" letter-spacing="8" textLength="278" lengthAdjust="spacingAndGlyphs" fill="#f7dfb9">WORLD</text>
+ <circle cx="664.00" cy="283.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="642.03" cy="365.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="582.00" cy="425.03" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="500.00" cy="447.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="418.00" cy="425.03" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="357.97" cy="365.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="336.00" cy="283.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="357.97" cy="201.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="418.00" cy="140.97" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="500.00" cy="119.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="582.00" cy="140.97" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/><circle cx="642.03" cy="201.00" r="5" fill="#f7dfb9" stroke="#42382e" stroke-width="2"/>
+<rect x="382" y="417" width="236" height="41" rx="11" fill="#181628" stroke="#d99d49" stroke-width="5"/>
+<text x="500" y="445" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="29" textLength="190" lengthAdjust="spacingAndGlyphs" font-weight="1000" letter-spacing="2" fill="#f7dfb9">NJPW</text>
+<text x="500" y="523" text-anchor="middle" fill="#f7dfb9" opacity=".73" font-family="Arial,sans-serif" font-size="18" letter-spacing="8" font-weight="900">WORLD HEAVYWEIGHT</text>
+</svg>

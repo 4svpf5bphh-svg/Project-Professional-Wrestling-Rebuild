@@ -1,22 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550" width="1000" height="550" role="img" aria-label="WWE OPENWEIGHT championship belt art">
-<title>WWE OPENWEIGHT championship — original PPW engraved belt illustration</title>
-<defs><linearGradient id="leather" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0d1220"/><stop offset=".5" stop-color="#40302b"/><stop offset="1" stop-color="#090c18"/></linearGradient>
-<linearGradient id="gold" x1=".1" y1="0" x2=".8" y2="1"><stop stop-color="#fff7c9"/><stop offset=".25" stop-color="#f8d4a1"/><stop offset=".5" stop-color="#fb415e"/><stop offset=".72" stop-color="#78542f"/><stop offset="1" stop-color="#f8d4a1"/></linearGradient>
-<radialGradient id="face"><stop stop-color="#f8d4a1"/><stop offset=".55" stop-color="#fb415e"/><stop offset="1" stop-color="#4e1027"/></radialGradient>
-<filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-opacity=".55"/></filter></defs>
-<g filter="url(#shadow)">
-<path d="M22 245 99 193 296 161 380 113 500 85 620 113 704 161 901 193 978 245 978 305 901 355 704 389 620 438 500 467 380 438 296 389 99 355 22 305Z" fill="url(#leather)" stroke="#07090c" stroke-width="13"/>
-<path d="M52 251h92v50H52zM856 251h92v50h-92z" fill="#d1ae73" stroke="#342b25" stroke-width="8"/>
-<g transform="translate(189 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#4e1027" stroke="#fb415e" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f8d4a1" stroke-width="6"/></g><g transform="translate(811 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#4e1027" stroke="#fb415e" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f8d4a1" stroke-width="6"/></g>
-<path d="M500 100L647 145 684 275 647 410 500 450 353 410 316 275 353 145Z" fill="url(#gold)" stroke="#f4e2b7" stroke-width="14"/>
-<path d="M500 100L647 145 684 275 647 410 500 450 353 410 316 275 353 145Z" fill="none" stroke="#4e1027" stroke-width="28" opacity=".55" transform="translate(500 275) scale(.88) translate(-500 -275)"/>
-<circle cx="500" cy="273" r="120" fill="url(#face)" stroke="#f8d4a1" stroke-width="14"/>
-<circle cx="500" cy="273" r="104" fill="none" stroke="#fff3b2" stroke-width="4" opacity=".8"/>
-<circle cx="623.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="606.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="561.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="396.0" r="4" fill="#fff9d6"/><circle cx="438.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="393.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="377.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="393.5" cy="211.5" r="4" fill="#fff9d6"/><circle cx="438.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="150.0" r="4" fill="#fff9d6"/><circle cx="561.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="606.5" cy="211.5" r="4" fill="#fff9d6"/>
-<path d="M500 204l22 45 49 7 -37 34 9 50 -43 -22 -43 22 9 -50 -37 -34 49 -7Z" fill="#f8d4a1" opacity="0.53"/>
-<text x="500" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="8" fill="#1c1820" stroke="#f8d4a1" stroke-width="1">WWE</text>
-<text x="500" y="266" text-anchor="middle" textLength="232" lengthAdjust="spacingAndGlyphs" font-family="Impact,'Arial Black',sans-serif" font-size="31" font-weight="1000" fill="#faf5d8" stroke="#191622" stroke-width="7" paint-order="stroke">OPENWEIGHT</text>
-<text x="500" y="318" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="900" letter-spacing="4" fill="#f8edcf">CHAMPIONSHIP</text>
-<path d="M380 370h240" stroke="#f8d4a1" stroke-width="5"/>
-<path d="M372 195l-29 80 29 81M628 195l29 80 -29 81" fill="none" stroke="#f8d4a1" stroke-width="6" opacity=".75"/>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="550" viewBox="0 0 1000 550" role="img" aria-label="WWE DIVISION CHAMPIONSHIP illustration">
+<title>WWE DIVISION CHAMPIONSHIP — PPW illustrated championship belt</title>
+<defs>
+ <linearGradient id="leather" x1="0" x2=".2" y1="0" y2="1"><stop stop-color="#151323"/><stop offset=".25" stop-color="#4b3832"/><stop offset=".46" stop-color="#12121c"/><stop offset=".75" stop-color="#4b352b"/><stop offset="1" stop-color="#111017"/></linearGradient>
+ <linearGradient id="metal" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fbf5df"/><stop offset=".16" stop-color="#e9eaec"/><stop offset=".43" stop-color="#e5bd75"/><stop offset=".58" stop-color="#4b3a3b"/><stop offset=".79" stop-color="#e9eaec"/><stop offset="1" stop-color="#e5bd75"/></linearGradient>
+ <radialGradient id="plate"><stop stop-color="#e9eaec"/><stop offset=".4" stop-color="#e5bd75"/><stop offset=".78" stop-color="#9f253c"/><stop offset="1" stop-color="#252436"/></radialGradient>
+</defs>
+<path d="M25 238 150 200 304 195 391 133 500 118 609 133 696 195 850 200 975 238 975 320 850 359 696 371 609 449 500 460 391 449 304 371 150 359 25 320Z" fill="url(#leather)" stroke="#05070d" stroke-width="17"/>
+ <path d="M25 238 150 200 304 195 391 133 500 118 609 133 696 195 850 200 975 238 975 320 850 359 696 371 609 449 500 460 391 449 304 371 150 359 25 320Z" fill="none" stroke="#e5bd75" stroke-width="2.5" opacity=".76" transform="translate(500 290) scale(.964 .88) translate(-500 -290)"/><circle cx="60" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="118" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="176" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="234" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="292" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="350" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="408" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="466" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="524" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="582" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="640" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="698" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="756" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="814" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="872" cy="272" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><circle cx="930" cy="314" r="4.3" fill="#e2cca3" stroke="#33231a" stroke-width="2"/><g transform="translate(165 287)">
+ <path d="M0 -81 63 -60 77 0 63 60 0 81 -63 60 -77 0 -63 -60Z" fill="url(#metal)" stroke="#272028" stroke-width="12"/>
+ <path d="M0 -65 49 -47 61 0 49 47 0 65 -49 47 -61 0 -49 -47Z" fill="#9f253c" stroke="#e9eaec" stroke-width="3"/>
+ <circle r="30" fill="#141b2c" stroke="#e5bd75" stroke-width="5"/>
+ <path d="M-21 -12H21V12H-21Z" fill="none" stroke="#e9eaec" stroke-width="2" />
+ <path d="M0 -19V19M-14 0H14" stroke="#e5bd75" stroke-width="4"/>
+ </g><g transform="translate(835 287)">
+ <path d="M0 -81 63 -60 77 0 63 60 0 81 -63 60 -77 0 -63 -60Z" fill="url(#metal)" stroke="#272028" stroke-width="12"/>
+ <path d="M0 -65 49 -47 61 0 49 47 0 65 -49 47 -61 0 -49 -47Z" fill="#9f253c" stroke="#e9eaec" stroke-width="3"/>
+ <circle r="30" fill="#141b2c" stroke="#e5bd75" stroke-width="5"/>
+ <path d="M-21 -12H21V12H-21Z" fill="none" stroke="#e9eaec" stroke-width="2" />
+ <path d="M0 -19V19M-14 0H14" stroke="#e5bd75" stroke-width="4"/>
+ </g>
+ <path d="M500 57 643 88 747 203 738 363 615 451 500 477 385 451 262 363 253 203 357 88Z" fill="url(#metal)" stroke="#e9eaec" stroke-width="9"/>
+ <path d="M500 86 621 111 711 217 703 351 598 425 500 453 402 425 297 351 289 217 379 111Z" fill="#141928" stroke="#9f253c" stroke-width="15"/>
+ <path d="M500 115 606 132 687 230 676 343 583 399 500 424 417 399 324 343 313 230 394 132Z" fill="#d6d7e0" stroke="#4a525c" stroke-width="8"/>
+ <path d="M500 141 586 162 650 247 640 326 563 373 500 394 437 373 360 326 350 247 414 162Z" fill="#141827" stroke="#9f253c" stroke-width="7"/>
+ <path d="M500 160l31 69 77 10 -56 49 16 78 -68 -38 -68 38 16 -78 -56 -49 77 -10Z" fill="#e5bd75" stroke="#e9eaec" stroke-width="6"/>
+ <path d="M345 280h310" stroke="#e9eaec" stroke-width="7"/>
+ <rect x="316" y="243" width="368" height="72" rx="8" fill="#111726" stroke="#e9eaec" stroke-width="5"/>
+ <text x="500" y="292" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="43" font-weight="1000" textLength="295" lengthAdjust="spacingAndGlyphs" letter-spacing="2" fill="#e9eaec">CHAMPION</text>
+ <path d="M340 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M372 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M404 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M436 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M468 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M500 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M532 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M564 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M596 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M628 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/><path d="M660 158l-20 24" stroke="#e9eaec" stroke-width="1.7" opacity=".38"/>
+<rect x="382" y="417" width="236" height="41" rx="11" fill="#181628" stroke="#e5bd75" stroke-width="5"/>
+<text x="500" y="445" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="29" textLength="190" lengthAdjust="spacingAndGlyphs" font-weight="1000" letter-spacing="2" fill="#e9eaec">WWE</text>
+<text x="500" y="523" text-anchor="middle" fill="#e9eaec" opacity=".73" font-family="Arial,sans-serif" font-size="18" letter-spacing="8" font-weight="900">OPENWEIGHT</text>
+</svg>
