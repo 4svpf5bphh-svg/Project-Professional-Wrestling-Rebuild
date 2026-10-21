@@ -14,6 +14,8 @@ import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-
 import "../screen.css";
 import "../polish.css";
 import "../arena.css";
+import "../broadcast-art.css";
+import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 
 type SessionView={
  worldId:string;playerId:string;csrfToken:string;
@@ -199,6 +201,7 @@ document.addEventListener("keydown",e=>{
 });
 function renderSection(){
  if(!session?.overview?.promotion)return;
+ document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
@@ -377,12 +380,33 @@ async function loadSession(){
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
   renderSection();
+  presentOpening();
  }catch(e){
   if(sequence!==sessionReadSequence)return;
   game.replaceChildren();
   showError(game,e instanceof Error?e.message:"Could not open PPW");
   game.append(button("Retry",()=>void loadSession()));
  }
+}
+/** Short, optional bumper. A single cached icon; no network/API work. */
+function presentOpening(){
+ if(!session?.overview.promotion||readHostSection(location.hash)!=="home"||
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ const key="ppw-opening:"+session.worldId+":"+session.overview.promotion.id;
+ try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch{return;}
+ const scene=el("section","ppw-opening");
+ scene.setAttribute("aria-label","PPW opening");
+ const middle=el("div","ppw-opening-centre");
+ const mark=document.createElement("img");
+ mark.src="/icon.svg";mark.alt="PPW";mark.className="ppw-opening-logo";
+ mark.width=192;mark.height=192;
+ middle.append(el("span","ppw-opening-kicker","THE LIVING WRESTLING WORLD"),mark,
+  el("span","ppw-opening-rule"),el("h1","","PROJECT PROFESSIONAL WRESTLING"));
+ let timer=0;
+ const finish=()=>{clearTimeout(timer);scene.remove();};
+ const skip=button("Skip intro →",finish);skip.className="ppw-opening-skip";
+ scene.append(middle,skip);document.body.append(scene);
+ timer=window.setTimeout(finish,1900);
 }
 function showLogin(){
  game.replaceChildren();

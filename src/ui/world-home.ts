@@ -1,6 +1,7 @@
 /** PPW's iPhone-first landing surface. Uses an existing small overview read,
  * never polls, advances time, or invents future show and finance outcomes.
  */
+import {promotionBrand} from "./broadcast-identity.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
@@ -147,6 +148,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     &&world.nextLockEpoch<=world.serverEpoch));
   const bookingOpen=world.phase==="OPEN"&&!deadlineDue;
   const hero=el("section","ppw-home-hero");
+   const brand=promotionBrand(promotion?.name??"");
+   hero.dataset.promotion=brand.key;
   const heroTop=el("div","ppw-home-hero-top");
   heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
   const live=el("span","ppw-home-phase ppw-home-phase-"+
@@ -156,6 +159,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   heroTop.append(live);
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
+    el("span","ppw-home-promotion-mark",brand.mark),
    el("h2","",promotion?.name??"Choose a promotion"),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),

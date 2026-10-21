@@ -1,3 +1,4 @@
+import {eventDesign} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
  from "../domain/show-calendar.js";
 import type {CalendarBooking} from "../db/calendar-workspace.js";
@@ -178,6 +179,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const card=node("div","","ppw-calendar-event "+(major?
    "ppw-calendar-event-major":"ppw-calendar-event-weekly"));
   card.dataset.eventRole=role.toLowerCase();
+   const graphic=eventDesign(name,owner??data?.promotionName??"",major);
+   card.dataset.eventMotif=graphic.motif;
+   card.dataset.eventPromotion=graphic.brand;
    const emblem=node("span",major?"★":role==="FLAGSHIP"?"◆":"◇",
    "ppw-calendar-event-emblem");
   emblem.setAttribute("aria-hidden","true");

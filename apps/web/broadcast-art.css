@@ -1,0 +1,57 @@
+/* Broadcast opening: CSS-lit arena and the existing cached PPW logo. */
+.ppw-opening{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;
+ isolation:isolate;overflow:hidden;color:#fff6dc;background:radial-gradient(ellipse at 50% 95%,#a5327b,#2c244e 42%,#070914 85%)}
+.ppw-opening:before{content:"";position:absolute;z-index:-1;inset:-20%;pointer-events:none;
+ background:repeating-linear-gradient(105deg,transparent 0 14%,#ffe9e92b 14.4% 14.8%,transparent 15% 25%);
+ transform:perspective(420px) rotateX(38deg)}
+.ppw-opening:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;
+ background:radial-gradient(ellipse 9% 70% at 14% 10%,#69c4ff5e,transparent),
+ radial-gradient(ellipse 9% 70% at 87% 10%,#ffd07870,transparent)}
+.ppw-opening-centre{display:grid;justify-items:center;gap:14px;width:min(88vw,410px);text-align:center}
+.ppw-opening-logo{width:clamp(150px,42vw,215px);height:auto;filter:drop-shadow(0 14px 35px #030414c9)}
+.ppw-opening-kicker{color:#ffdb82;letter-spacing:.36em;font-size:10px;font-weight:950}
+.ppw-opening-rule{height:3px;width:70%;background:linear-gradient(90deg,transparent,#ffd15e,#49d7f4,transparent)}
+.ppw-opening h1{font-size:clamp(17px,5vw,24px);font-weight:1000;line-height:1.24;letter-spacing:.1em;margin:0}
+.ppw-opening-skip{position:absolute;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));
+ border:1px solid #fff5cf;background:#1b2140;color:#fff;min-height:44px;padding:10px 16px;border-radius:11px}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-opening{animation:ppw-opening-fade .3s ease-out both}
+ .ppw-opening-logo{animation:ppw-opening-rise .75s cubic-bezier(.1,.7,.2,1) both}
+ @keyframes ppw-opening-fade{from{opacity:0}to{opacity:1}}
+ @keyframes ppw-opening-rise{from{opacity:0;transform:translateY(25px) scale(.85)}to{opacity:1;transform:none}}
+}
+.ppw-home-promotion-mark{display:inline-flex;width:max-content;max-width:100%;
+ padding:5px 14px;margin:5px 0 12px;border:2px solid currentColor;border-radius:3px 13px 3px 3px;
+ transform:skew(-6deg);font-size:clamp(20px,6vw,30px);font-style:italic;font-weight:1000;
+ text-shadow:1px 2px #0009;box-shadow:4px 4px #0005}
+.ppw-home-hero[data-promotion="wwe"] .ppw-home-promotion-mark{color:#fff;background:#b32839}
+.ppw-home-hero[data-promotion="aew"] .ppw-home-promotion-mark{color:#251903;background:linear-gradient(110deg,#f6e6b5,#bb8742);text-shadow:none}
+.ppw-home-hero[data-promotion="njpw"] .ppw-home-promotion-mark{color:#fff;background:#a6182e}
+.ppw-home-hero[data-promotion="roh"] .ppw-home-promotion-mark{color:#fff;background:#282832}
+.ppw-home-hero[data-promotion="tna"] .ppw-home-promotion-mark{color:#fff;background:linear-gradient(100deg,#af2544,#e78c29)}
+.ppw-home-hero[data-promotion="nxt"] .ppw-home-promotion-mark{color:#fce05e;background:#15161f}
+.ppw-home-hero[data-promotion="stardom"] .ppw-home-promotion-mark{color:#fff;background:#ae236e}
+.ppw-home-hero[data-promotion="cmll"] .ppw-home-promotion-mark{color:#fff;background:#175d47}
+.ppw-home-hero[data-promotion="custom"] .ppw-home-promotion-mark{color:#fff;background:#713b8d}
+.ppw-calendar-event[data-event-motif]{position:relative;isolation:isolate;overflow:hidden;border:2px solid var(--show-border,#887fa3);
+ background:var(--show-bg,linear-gradient(135deg,#382943,#101727))}
+.ppw-calendar-event[data-event-motif]:before{content:"";position:absolute;inset:-40%;z-index:-1;opacity:.45;
+ transform:rotate(-15deg);background:var(--show-pattern,repeating-linear-gradient(90deg,#ffffff44 0 2px,transparent 2px 26px))}
+.ppw-calendar-event[data-event-motif] .ppw-calendar-event-name{font-size:clamp(18px,5vw,25px);
+ font-weight:1000;font-style:italic;line-height:1.12;text-transform:uppercase;letter-spacing:-.03em;
+ text-shadow:2px 3px #000a;overflow-wrap:anywhere}
+.ppw-calendar-event[data-event-motif] .ppw-calendar-event-strap{font-weight:900;letter-spacing:.12em;color:#ffe0a0}
+.ppw-calendar-event[data-event-motif="raw"]{--show-bg:linear-gradient(120deg,#7b1225,#1c1525);--show-border:#ff6f71;--show-pattern:repeating-linear-gradient(65deg,#ff656588 0 9px,transparent 9px 34px)}
+.ppw-calendar-event[data-event-motif="smackdown"]{--show-bg:linear-gradient(115deg,#093880,#101a38);--show-border:#64b4fa;--show-pattern:repeating-linear-gradient(145deg,#52a9fe88 0 14px,transparent 14px 50px)}
+.ppw-calendar-event[data-event-motif="dynamite"]{--show-bg:radial-gradient(circle at 72% 25%,#b36924,#30233d 54%,#161526);--show-border:#f5c57b;--show-pattern:repeating-conic-gradient(#ffb15699 0deg 12deg,transparent 12deg 36deg)}
+.ppw-calendar-event[data-event-motif="collision"]{--show-bg:linear-gradient(95deg,#10243d,#175476,#10131e);--show-border:#8dbde9;--show-pattern:repeating-linear-gradient(0deg,#73bbff77 0 2px,transparent 2px 17px)}
+.ppw-calendar-event[data-event-motif="wrestlemania"]{--show-bg:radial-gradient(circle at 65% 15%,#b78c44,#3d255b 58%,#151324);--show-border:#ffdb91;--show-pattern:repeating-conic-gradient(#ffe7ac85 0deg 4deg,transparent 4deg 19deg)}
+.ppw-calendar-event[data-event-motif="rumble"]{--show-bg:linear-gradient(115deg,#173352,#b02d4e,#281d2e);--show-border:#ff9ba9}
+.ppw-calendar-event[data-event-motif="summerslam"]{--show-bg:radial-gradient(circle at 75% 20%,#f18b28,#a83274,#302f80);--show-border:#ffde68}
+.ppw-calendar-event[data-event-motif="survivor"]{--show-bg:linear-gradient(135deg,#1e2a3a,#6d314c,#171c24);--show-border:#c5cbd6}
+.ppw-calendar-event[data-event-motif="all-in"]{--show-bg:linear-gradient(145deg,#291c34,#b8883d,#251926);--show-border:#f7d38d;--show-pattern:repeating-conic-gradient(#fff8 0deg 8deg,transparent 8deg 24deg)}
+.ppw-calendar-event[data-event-motif="all-out"]{--show-bg:linear-gradient(120deg,#201622,#922332,#181b2b);--show-border:#ff837f;--show-pattern:repeating-linear-gradient(145deg,#ff8d6377 0 12px,transparent 12px 30px)}
+.ppw-calendar-event[data-event-motif="double-or-nothing"]{--show-bg:linear-gradient(135deg,#0f4c48,#1c3540,#65451e);--show-border:#f1c67a;--show-pattern:repeating-linear-gradient(0deg,#fff8 0 1px,transparent 1px 12px)}
+.ppw-calendar-event[data-event-motif="revolution"]{--show-bg:radial-gradient(circle at 67% 49%,#b1564e,#382459,#1c152b);--show-border:#ee987a}
+.ppw-calendar-event[data-event-motif="forbidden-door"]{--show-bg:linear-gradient(90deg,#1b2541 0 45%,#d7a853 48% 52%,#191b36 55%);--show-border:#ffdb8a}
+.ppw-calendar-event[data-event-motif="worlds-end"]{--show-bg:radial-gradient(circle,#31475b,#101222 70%);--show-border:#afbfca}
