@@ -28,3 +28,10 @@ test("portrait widths are bounded without database requests",()=>{
  assert.match(portraitSource("Cody Rhodes",999)!,/width=420$/);
  assert.match(portraitSource("Cody Rhodes",1)!,/width=100$/);
 });
+
+test("batch of 25 credited AEW wrestler portraits resolves to individual source files",()=>{
+ const names=["jade cargill","thunder rosa","brody king","dante martin","darius martin","eddie kingston","harley cameron","jamie hayter","jay white","juice robinson","julia hart","jun akiyama","konosuke takeshita","kota ibushi","kyle fletcher","leila grey","marina shafir","matt menard","ricochet","riho","saraya","serena deeb","yuka sakazaki","skye blue","angelo parker"];
+ assert.equal(names.length,25);
+ const files=new Set<string>();
+ for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.license,"CC BY-SA 4.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
+});
