@@ -4,6 +4,7 @@
 import type {EditorMatch,PersonPick} from "./card-editor-model.js";
 import {FORMATS} from "./card-editor-model.js";
 import {eventDesign} from "./broadcast-identity.js";
+import {createPromotionLogo} from "./promotion-logo.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 
 type Title={championshipId:string;name:string;division:"SINGLES"|"TAG";holderName:string|null};
@@ -42,6 +43,9 @@ export function createMatchBroadcast(match:EditorMatch,
  const header=span("ppw-broadcast-event",info.show);
  header.title=info.promotion;
  board.append(header,span("ppw-broadcast-promotion",info.promotion.toUpperCase()));
+ const logo=createPromotionLogo(info.brand,110);
+ if(logo){logo.classList.add("ppw-broadcast-company-logo");
+  logo.onerror=()=>logo.remove();board.append(logo);}
  if(info.mainEvent)board.append(span("ppw-broadcast-main","★ MAIN EVENT"));
  if(info.championship)board.append(span("ppw-broadcast-championship",
   "★ "+info.championship.toUpperCase()+" · CHAMPIONSHIP MATCH"));

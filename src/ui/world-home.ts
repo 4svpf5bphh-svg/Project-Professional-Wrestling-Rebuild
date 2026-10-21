@@ -2,6 +2,7 @@
  * never polls, advances time, or invents future show and finance outcomes.
  */
 import {promotionBrand} from "./broadcast-identity.js";
+import {createPromotionLogo} from "./promotion-logo.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
@@ -150,6 +151,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const hero=el("section","ppw-home-hero");
    const brand=promotionBrand(promotion?.name??"");
    hero.dataset.promotion=brand.key;
+   const logo=createPromotionLogo(brand.key,170);
   const heroTop=el("div","ppw-home-hero-top");
   heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
   const live=el("span","ppw-home-phase ppw-home-phase-"+
@@ -159,7 +161,10 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   heroTop.append(live);
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
-    el("span","ppw-home-promotion-mark",brand.mark),
+    (()=>{const mark=el("span","ppw-home-promotion-mark",brand.mark);
+     if(logo){logo.onload=()=>mark.dataset.logoReady="true";
+      logo.onerror=()=>logo.remove();mark.append(logo);}
+     return mark;})(),
    el("h2","",promotion?.name??"Choose a promotion"),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),

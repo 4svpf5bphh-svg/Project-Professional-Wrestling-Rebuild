@@ -122,3 +122,16 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
  font-size:9px;font-weight:900;color:#ccd9eb}
 @media(max-width:365px){.ppw-match-broadcast{padding:13px 9px}
  .ppw-broadcast-lineup{gap:5px}.ppw-broadcast-preview{margin-left:5px;margin-right:5px}}
+
+/* Verified genuine promotion marks, with fast text-only graceful fallback. */
+.ppw-home-promotion-mark>.ppw-authentic-promotion-logo{display:none}
+.ppw-home-promotion-mark[data-logo-ready="true"]{border:0;transform:none;
+ background:transparent!important;box-shadow:none;text-shadow:none;
+ padding:2px 5px;margin:7px 0 10px;color:transparent!important;font-size:0}
+.ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo{
+ display:block;width:auto;max-width:min(65vw,190px);height:65px;object-fit:contain}
+.ppw-calendar-promoter-logo{object-fit:contain;max-width:71px;max-height:42px;width:71px;
+ height:auto;justify-self:end;align-self:center;background:#07091555;
+ border-radius:5px;padding:4px}
+.ppw-broadcast-company-logo{align-self:center;max-width:100px;max-height:49px;
+ object-fit:contain;width:auto;height:auto;filter:drop-shadow(0 3px 6px #0007)}
