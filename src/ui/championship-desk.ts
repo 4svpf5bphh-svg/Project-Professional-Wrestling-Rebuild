@@ -1,6 +1,7 @@
 /** iPhone-first championship history adapted from original PPW.
  * Opening a belt loads only its first 15 reigns, not the World's history.
  */
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
 export interface ChampionshipPort {
@@ -90,6 +91,8 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    details.classList.add(title.status==="ACTIVE"?"ppw-belt-active":"ppw-belt-inactive");
    details.classList.add(title.division==="TAG"?"ppw-belt-tag":"ppw-belt-singles");
    if(title.promotionId===directory.viewerPromotionId)details.classList.add("ppw-belt-ours");
+   details.dataset.reign=title.currentReignId??"VACANT";
+   if(title.holderId&&title.status==="ACTIVE")details.classList.add("ppw-belt-crowned");
    const head=document.createElement("summary");head.className="ppw-belt-summary";
    const belt=element("span","ppw-belt-insignia");
    const plate=element("span","ppw-belt-plate");
@@ -98,10 +101,19 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const identity=element("span","ppw-belt-identity");
    const promo=element("span","ppw-belt-promotion",
     title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES"));
-   identity.append(promo,element("strong","ppw-belt-name",title.name),
-    element("span","ppw-belt-current",
-     (title.holderId===null?"VACANT · ": "CHAMPION · ")+
-     (title.holderName??"Awaiting first champion")));
+   identity.append(promo,element("strong","ppw-belt-name",title.name));
+   const throne=element("span","ppw-belt-current-display");
+   const portrait=title.holderType==="PERSON"&&title.holderName?
+    createWrestlerPortrait(title.holderName,180):null;
+   if(portrait){
+    portrait.classList.add("ppw-belt-champion-portrait");
+    portrait.onerror=()=>portrait.remove();
+    throne.append(portrait);
+   }
+   const reign=element("span","ppw-belt-champion-copy");
+   reign.append(element("small","ppw-belt-reign-title",title.holderId?"REIGNING CHAMPION":"TITLE VACANT"),
+    element("strong","ppw-belt-current",title.holderName??"Awaiting first champion"));
+   throne.append(reign);identity.append(throne);
    const more=element("span","ppw-belt-meta");
    more.append(element("strong","",Math.round(title.prestige)+""),
     element("small","","PRESTIGE"),

@@ -1,3 +1,4 @@
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
 /** One presentation contract across roster, recruitment and the booking sheet.
  * Caller owns selection/permission decisions; visual cards never query Neon.
  */
@@ -64,6 +65,12 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
   (options.label?" · "+options.label:""));
  if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
 
+ const photo=createWrestlerPortrait(p.name,options.compact?150:220);
+ if(photo){
+  root.dataset.hasPhoto="true";
+  photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;};
+  root.append(photo);
+ }
  const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  const badges=span("ppw-wrestler-badges","");
  const divisionBadge=span("ppw-wrestler-division",p.division==="WOMEN"?

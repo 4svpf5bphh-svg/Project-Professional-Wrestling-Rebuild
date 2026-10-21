@@ -86,3 +86,9 @@
 .ppw-contract-offer-copy .ppw-contract-button{width:max-content;max-width:100%;min-height:40px;padding:7px 10px}
 .ppw-contract-request{align-items:start}
 @media(max-width:550px){.ppw-contract-request>.ppw-contract-button{width:100%;text-align:center}}
+
+.ppw-contract-offer-portrait{width:53px;height:72px;object-fit:cover;object-position:center 20%;
+ border:2px solid #e7c483;border-radius:5px 12px 5px 5px}
+.ppw-contract-request:has(.ppw-contract-offer-portrait){grid-template-columns:53px minmax(0,1fr) auto;align-items:center}
+@media(max-width:550px){.ppw-contract-request:has(.ppw-contract-offer-portrait){grid-template-columns:53px minmax(0,1fr)}
+ .ppw-contract-request:has(.ppw-contract-offer-portrait)>.ppw-contract-button{grid-column:1/-1}}

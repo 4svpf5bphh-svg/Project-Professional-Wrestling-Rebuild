@@ -3,6 +3,7 @@
  */
 import type {readContractDesk} from "../db/contract-desk-workspace.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface ContractDeskPort{
@@ -105,6 +106,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    for(const o of view.offers){
     const row=el("div","ppw-contract-request");
+    const portrait=createWrestlerPortrait(o.person_name,160);
+    if(portrait){portrait.classList.add("ppw-contract-offer-portrait");
+     portrait.onerror=()=>portrait.remove();row.append(portrait);}
     const copy=el("div","ppw-contract-offer-copy");
     const t=(o.terms??{}) as Partial<OfferTerms>;
     copy.append(el("strong","ppw-contract-offer-name",o.person_name),

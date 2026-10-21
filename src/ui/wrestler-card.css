@@ -118,3 +118,21 @@
 .ppw-wrestler-card .ppw-wrestler-status-blocked{
  background:linear-gradient(110deg,#67294c,#402a4c)!important;
  color:#ffe0e9!important;border-color:#d579a8!important}
+
+/* Genuine, credited photographs only for verified catalogue entries. */
+.ppw-wrestler-card[data-has-photo="true"],.ppw-wrestler-compact[data-has-photo="true"]{
+ display:grid;grid-template-columns:72px minmax(0,1fr);align-items:start;gap:10px}
+.ppw-wrestler-card .ppw-real-wrestler-photo{width:72px;height:96px;object-fit:cover;
+ object-position:50% 21%;display:block;border:2px solid #d4b66f;
+ border-radius:7px 17px 7px 7px;background:#111729;filter:contrast(1.05)}
+.ppw-wrestler-compact[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr)}
+.ppw-wrestler-compact .ppw-real-wrestler-photo{width:56px;height:75px}
+.ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-copy{min-width:0}
+.ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-status{grid-column:1/-1}
+@media(min-width:610px){.ppw-wrestler-card[data-has-photo="true"]{grid-template-columns:84px minmax(0,1fr) auto}
+ .ppw-wrestler-card[data-has-photo="true"] .ppw-real-wrestler-photo{width:84px;height:109px}
+ .ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-status{grid-column:auto}
+ .ppw-wrestler-compact[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr) auto}
+ .ppw-wrestler-compact .ppw-real-wrestler-photo{width:56px;height:75px}}
+@media(max-width:360px){.ppw-wrestler-card[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr);gap:8px}
+ .ppw-wrestler-card .ppw-real-wrestler-photo{width:56px;height:75px}}

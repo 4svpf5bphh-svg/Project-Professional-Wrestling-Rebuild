@@ -96,3 +96,16 @@
  .ppw-belt-insignia{width:85px}.ppw-belt-plate{width:66px}}
 @media(max-width:365px){.ppw-title-overview-fact{padding:11px 7px}
  .ppw-title-overview-fact small{font-size:8px}}
+
+/* Holder-driven title treatment uses actual currentReignId/holder in a bounded directory.
+ * A simulation title change updates the next directory read, with zero graphic writes. */
+.ppw-belt-crowned .ppw-belt-identity{background:linear-gradient(105deg,#d9b46a24,transparent 70%);border-radius:9px}
+.ppw-belt-current-display{display:flex;gap:11px;align-items:center;min-width:0;
+ padding:8px 0;border-top:1px solid #e8bf6e44}
+.ppw-belt-champion-portrait{display:block;flex:none;width:59px;height:77px;object-fit:cover;
+ object-position:center 22%;border:2px solid #f5da8d;border-radius:7px 12px 7px 7px}
+.ppw-belt-champion-copy{display:grid;gap:4px;min-width:0}
+.ppw-belt-reign-title{font-size:9px;font-weight:900;letter-spacing:.1em;color:#e8c379}
+.ppw-belt-current-display .ppw-belt-current{font-size:clamp(13px,4.1vw,19px);
+ font-weight:950;line-height:1.14;color:#fff0bb;overflow-wrap:anywhere}
+.ppw-belt-card:not(.ppw-belt-crowned) .ppw-belt-current-display{opacity:.73}
