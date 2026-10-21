@@ -20,7 +20,9 @@ jobs:
         run: |
           set -euo pipefail
           response="$RUNNER_TEMP/ppw-session-response.json"
-          status="$(curl --silent --show-error --location --max-time 25             --output "$response" --write-out '%{http_code}' "$PPW_HOST/api/session")"
+          status="$(curl --silent --show-error --max-time 25 --dump-header "$RUNNER_TEMP/ppw-headers.txt" --output "$response" --write-out '%{http_code}' "$PPW_HOST/api/session")"
+          echo "Unauthenticated session endpoint returned HTTP $status"
+          grep -iE '^(content-type|location|x-vercel-id|x-vercel-error):' "$RUNNER_TEMP/ppw-headers.txt" || true
           if [ "$status" != "401" ]; then
             echo "::error::PPW session endpoint returned HTTP $status; expected PPW's 401 JSON login response"
             exit 1
