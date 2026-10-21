@@ -33,10 +33,10 @@ export const realPromotionLogoKeys=Object.freeze([
 export const promotionLogoKeys=Object.freeze([
  ...realPromotionLogoKeys,...Object.keys(fictionalPromotionLogoSources)
 ] as const);
-export function promotionLogoSource(key:string,width=145):string|null{
+export function promotionLogoSource(key:string,_width=145):string|null{
  const named=promotionLogoFileNames[key];
  if(named)return "https://commons.wikimedia.org/wiki/Special:FilePath/"+
-  encodeURIComponent(named)+"?width="+Math.max(80,Math.min(320,Math.round(width)));
+  encodeURIComponent(named);
  return promotionLogoExternalSources[key]??fictionalPromotionLogoSources[key]??null;
 }
 export function createPromotionLogo(key:string,width=145):HTMLImageElement|null{

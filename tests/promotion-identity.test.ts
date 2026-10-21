@@ -35,6 +35,10 @@ test("every original real promotion has a pinned authentic logo source",()=>{
   assert.ok(src?.includes(key==="njpw"?"New_Japan_Pro_Wrestling_Logo_2":
    key==="cmll"?"8wi2qv1575807644":"Special:FilePath"),key);
  }
+ for(const key of ["wwe","aew","roh","tna","nxt","stardom"]){
+  assert.ok(promotionLogoSource(key)?.endsWith(".svg"),"Keep the original full-resolution vector: "+key);
+  assert.equal(promotionLogoSource(key,80),promotionLogoSource(key,320),"Vector image must not downgrade into 80-pixel thumbnail");
+ }
  assert.equal(promotionLogoSource("custom"),null);
  assert.equal(promotionLogoSource("not-a-promotion"),null);
 });
