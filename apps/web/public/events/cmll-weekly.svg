@@ -1,23 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CMLL LIVE event art">
-<title>CMLL LIVE — CMLL original PPW broadcast poster</title>
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#164d53"/><stop offset=".48" stop-color="#0a1324"/><stop offset="1" stop-color="#164d53"/></linearGradient>
-<radialGradient id="spot"><stop stop-color="#67b895" stop-opacity=".42"/><stop offset="1" stop-color="#67b895" stop-opacity="0"/></radialGradient>
-<linearGradient id="plate"><stop stop-color="#f4deb5"/><stop offset=".5" stop-color="#67b895"/><stop offset="1" stop-color="#f4deb5"/></linearGradient>
-<filter id="ink" x="-8%" y="-30%" width="116%" height="165%"><feDropShadow dx="0" dy="8" stdDeviation="3" flood-opacity=".8"/></filter>
-</defs>
-<path fill="url(#bg)" d="M0 0h1200v630H0z"/>
-<ellipse cx="220" cy="160" rx="750" ry="550" fill="url(#spot)"/>
-<path d="M70 123l60 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4deb5" opacity=".18"/><path d="M170 176l62 -80 -26 101 56 -12 -94 104 35 -107z" fill="#67b895" opacity=".18"/><path d="M270 229l64 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4deb5" opacity=".18"/><path d="M370 22l66 -80 -26 101 56 -12 -94 104 35 -107z" fill="#67b895" opacity=".18"/><path d="M470 75l68 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4deb5" opacity=".18"/><path d="M570 128l70 -80 -26 101 56 -12 -94 104 35 -107z" fill="#67b895" opacity=".18"/><path d="M670 181l72 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4deb5" opacity=".18"/><path d="M770 234l74 -80 -26 101 56 -12 -94 104 35 -107z" fill="#67b895" opacity=".18"/><path d="M70 345h1060M70 390h1060" stroke="#f4deb5" stroke-width="2" opacity=".25"/>
-<path d="M20 20H1180V610H20Z" fill="none" stroke="#67b895" stroke-width="5" opacity=".8"/>
-<path d="M41 41H1159V589H41Z" fill="none" stroke="#f4deb5" stroke-width="2" opacity=".45"/>
-<path d="M40 112h390M770 112h390M40 525h390M770 525h390" fill="none" stroke="url(#plate)" stroke-width="5"/>
-<path d="M540 91l60 -28 60 28 -60 28z" fill="#67b895" stroke="#f4deb5" stroke-width="3"/>
-<text x="600" y="169" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="27" letter-spacing="14" fill="#f4deb5">WEEKLY BROADCAST</text>
-<text x="600" y="342" text-anchor="middle" textLength="774.6299999999999" lengthAdjust="spacingAndGlyphs" font-size="151" font-family="Impact,'Arial Black',sans-serif" font-weight="1000" letter-spacing="2" fill="#f4deb5" stroke="#0a0c1a" stroke-width="16" paint-order="stroke" filter="url(#ink)">CMLL LIVE</text>
-<path d="M275 396h650" stroke="url(#plate)" stroke-width="9"/>
-<text x="600" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="13" fill="#f4deb5">CMLL • LIVE</text>
-<path d="M46 561h1108" stroke="#f4deb5" stroke-width="2" opacity=".37"/>
-<text x="66" y="586" font-family="Arial,sans-serif" letter-spacing="6" font-size="18" fill="#f4deb5">THE ARENA AWAITS</text>
-<text x="1130" y="586" text-anchor="end" font-family="Arial,sans-serif" letter-spacing="4" font-size="18" fill="#f4deb5">THE NEXT CHAPTER</text>
+<title>CMLL LIVE — original PPW event identity for CMLL</title>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#070d1b"/><stop offset=".35" stop-color="#28253e"/><stop offset=".77" stop-color="#080e1d"/><stop offset="1" stop-color="#72c6a7"/></linearGradient>
+<linearGradient id="chrome" x1="0" y1="0" x2="1" y2=".6"><stop stop-color="#fff5dc"/><stop offset=".27" stop-color="#edfae6"/><stop offset=".59" stop-color="#e7b46b"/><stop offset=".81" stop-color="#edfae6"/><stop offset="1" stop-color="#72c6a7"/></linearGradient>
+<radialGradient id="spot"><stop stop-color="#72c6a7" stop-opacity=".39"/><stop offset="1" stop-color="#72c6a7" stop-opacity="0"/></radialGradient></defs>
+<path fill="url(#sky)" d="M0 0h1200v630H0z"/>
+<ellipse cx="935" cy="280" rx="570" ry="390" fill="url(#spot)"/>
+<path d="M600 282L1680.0 282.0" stroke="#72c6a7" stroke-width="50" opacity="0.06"/><path d="M600 282L1535.3 822.0" stroke="#72c6a7" stroke-width="16" opacity="0.12"/><path d="M600 282L1140.0 1217.3" stroke="#72c6a7" stroke-width="16" opacity="0.18"/><path d="M600 282L600.0 1362.0" stroke="#72c6a7" stroke-width="50" opacity="0.06"/><path d="M600 282L60.0 1217.3" stroke="#72c6a7" stroke-width="16" opacity="0.12"/><path d="M600 282L-335.3 822.0" stroke="#72c6a7" stroke-width="16" opacity="0.18"/><path d="M600 282L-480.0 282.0" stroke="#72c6a7" stroke-width="50" opacity="0.06"/><path d="M600 282L-335.3 -258.0" stroke="#72c6a7" stroke-width="16" opacity="0.12"/><path d="M600 282L60.0 -653.3" stroke="#72c6a7" stroke-width="16" opacity="0.18"/><path d="M600 282L600.0 -798.0" stroke="#72c6a7" stroke-width="50" opacity="0.06"/><path d="M600 282L1140.0 -653.3" stroke="#72c6a7" stroke-width="16" opacity="0.12"/><path d="M600 282L1535.3 -258.0" stroke="#72c6a7" stroke-width="16" opacity="0.18"/><path d="M-270 -30L380 660" stroke="#72c6a7" opacity="0.05" stroke-width="34"/><path d="M-156 -30L494 660" stroke="#e7b46b" opacity="0.1" stroke-width="14"/><path d="M-42 -30L608 660" stroke="#72c6a7" opacity="0.15000000000000002" stroke-width="14"/><path d="M72 -30L722 660" stroke="#e7b46b" opacity="0.05" stroke-width="34"/><path d="M186 -30L836 660" stroke="#72c6a7" opacity="0.1" stroke-width="14"/><path d="M300 -30L950 660" stroke="#e7b46b" opacity="0.15000000000000002" stroke-width="14"/><path d="M414 -30L1064 660" stroke="#72c6a7" opacity="0.05" stroke-width="34"/><path d="M528 -30L1178 660" stroke="#e7b46b" opacity="0.1" stroke-width="14"/><path d="M642 -30L1292 660" stroke="#72c6a7" opacity="0.15000000000000002" stroke-width="14"/><path d="M756 -30L1406 660" stroke="#e7b46b" opacity="0.05" stroke-width="34"/><path d="M870 -30L1520 660" stroke="#72c6a7" opacity="0.1" stroke-width="14"/><path d="M984 -30L1634 660" stroke="#e7b46b" opacity="0.15000000000000002" stroke-width="14"/><path d="M1098 -30L1748 660" stroke="#72c6a7" opacity="0.05" stroke-width="34"/><path d="M1212 -30L1862 660" stroke="#e7b46b" opacity="0.1" stroke-width="14"/><path d="M1326 -30L1976 660" stroke="#72c6a7" opacity="0.15000000000000002" stroke-width="14"/>
+<g color="#72c6a7" opacity=".34" transform="translate(-60 0)"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">M905 78l-148 447M1011 78l116 447M960 130v68M952 240v84M941 380v115M775 513h342</g></g>
+<path d="M23 20h1154v590H23Z" fill="none" stroke="#72c6a7" stroke-width="8"/>
+<path d="M42 38h1116v553H42Z" fill="none" stroke="#edfae6" stroke-width="2" opacity=".46"/>
+<path d="M70 121h301M829 121h302M70 526h301M829 526h302" stroke="#e7b46b" stroke-width="5" opacity=".86"/>
+<path d="M600 88l45 28-45 28-45-28Z" fill="#e7b46b" stroke="#edfae6" stroke-width="4"/>
+<text x="600" y="187" font-family="Arial,sans-serif" text-anchor="middle" font-size="27" letter-spacing="16" font-weight="900" fill="#edfae6">WEEKLY BROADCAST</text>
+<path d="M87 224H1113V424H87Z" fill="#09101bc4" stroke="#72c6a7" stroke-width="3"/>
+<path d="M99 234h1001M99 414h1001" stroke="#edfae6" stroke-width="1.5" opacity=".7"/>
+<text x="600" y="367" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="156" font-weight="1000" textLength="884.52" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#010914" stroke-width="15" paint-order="stroke">CMLL LIVE</text>
+<path d="M418 447h364" stroke="#e7b46b" stroke-width="8"/>
+<text x="600" y="497" text-anchor="middle" fill="#edfae6" font-family="Arial,sans-serif" font-size="25" font-weight="900" letter-spacing="12">CMLL</text>
+<text x="67" y="570" fill="#edfae6" opacity=".8" font-family="Arial,sans-serif" font-size="17" font-weight="900" letter-spacing="4">LIVE FROM THE ARENA</text>
+<text x="1132" y="570" text-anchor="end" fill="#edfae6" opacity=".8" font-family="Arial,sans-serif" font-size="17" font-weight="900" letter-spacing="4">THE NEXT CHAPTER</text>
 </svg>

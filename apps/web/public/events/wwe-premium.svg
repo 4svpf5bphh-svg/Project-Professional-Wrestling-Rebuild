@@ -1,23 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="SPECIAL EVENT event art">
-<title>SPECIAL EVENT — WWE original PPW broadcast poster</title>
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4e1027"/><stop offset=".48" stop-color="#0a1324"/><stop offset="1" stop-color="#4e1027"/></linearGradient>
-<radialGradient id="spot"><stop stop-color="#fb415e" stop-opacity=".42"/><stop offset="1" stop-color="#fb415e" stop-opacity="0"/></radialGradient>
-<linearGradient id="plate"><stop stop-color="#f8d4a1"/><stop offset=".5" stop-color="#fb415e"/><stop offset="1" stop-color="#f8d4a1"/></linearGradient>
-<filter id="ink" x="-8%" y="-30%" width="116%" height="165%"><feDropShadow dx="0" dy="8" stdDeviation="3" flood-opacity=".8"/></filter>
-</defs>
-<path fill="url(#bg)" d="M0 0h1200v630H0z"/>
-<ellipse cx="920" cy="160" rx="750" ry="550" fill="url(#spot)"/>
-<rect x="-30" y="437" width="34" height="173" fill="#fb415e" opacity=".13"/><rect x="16" y="546" width="34" height="64" fill="#f8d4a1" opacity=".13"/><rect x="62" y="495" width="34" height="115" fill="#f8d4a1" opacity=".13"/><rect x="108" y="444" width="34" height="166" fill="#fb415e" opacity=".13"/><rect x="154" y="553" width="34" height="57" fill="#f8d4a1" opacity=".13"/><rect x="200" y="502" width="34" height="108" fill="#f8d4a1" opacity=".13"/><rect x="246" y="451" width="34" height="159" fill="#fb415e" opacity=".13"/><rect x="292" y="400" width="34" height="210" fill="#f8d4a1" opacity=".13"/><rect x="338" y="509" width="34" height="101" fill="#f8d4a1" opacity=".13"/><rect x="384" y="458" width="34" height="152" fill="#fb415e" opacity=".13"/><rect x="430" y="407" width="34" height="203" fill="#f8d4a1" opacity=".13"/><rect x="476" y="516" width="34" height="94" fill="#f8d4a1" opacity=".13"/><rect x="522" y="465" width="34" height="145" fill="#fb415e" opacity=".13"/><rect x="568" y="414" width="34" height="196" fill="#f8d4a1" opacity=".13"/><rect x="614" y="523" width="34" height="87" fill="#f8d4a1" opacity=".13"/><rect x="660" y="472" width="34" height="138" fill="#fb415e" opacity=".13"/><rect x="706" y="421" width="34" height="189" fill="#f8d4a1" opacity=".13"/><rect x="752" y="530" width="34" height="80" fill="#f8d4a1" opacity=".13"/><rect x="798" y="479" width="34" height="131" fill="#fb415e" opacity=".13"/><rect x="844" y="428" width="34" height="182" fill="#f8d4a1" opacity=".13"/><rect x="890" y="537" width="34" height="73" fill="#f8d4a1" opacity=".13"/><rect x="936" y="486" width="34" height="124" fill="#fb415e" opacity=".13"/><rect x="982" y="435" width="34" height="175" fill="#f8d4a1" opacity=".13"/><rect x="1028" y="544" width="34" height="66" fill="#f8d4a1" opacity=".13"/><rect x="1074" y="493" width="34" height="117" fill="#fb415e" opacity=".13"/><rect x="1120" y="442" width="34" height="168" fill="#f8d4a1" opacity=".13"/><rect x="1166" y="551" width="34" height="59" fill="#f8d4a1" opacity=".13"/><rect x="1212" y="500" width="34" height="110" fill="#fb415e" opacity=".13"/><circle cx="602" cy="296" r="212" fill="none" stroke="#f8d4a1" stroke-width="5" opacity=".5"/><circle cx="602" cy="296" r="231" fill="none" stroke="#fb415e" stroke-width="14" opacity=".14"/>
-<path d="M20 20H1180V610H20Z" fill="none" stroke="#fb415e" stroke-width="10" opacity=".8"/>
-<path d="M41 41H1159V589H41Z" fill="none" stroke="#f8d4a1" stroke-width="2" opacity=".45"/>
-<path d="M40 112h390M770 112h390M40 525h390M770 525h390" fill="none" stroke="url(#plate)" stroke-width="5"/>
-<path d="M540 91l60 -28 60 28 -60 28z" fill="#fb415e" stroke="#f8d4a1" stroke-width="3"/>
-<text x="600" y="169" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="27" letter-spacing="14" fill="#f8d4a1">PREMIUM EVENT</text>
-<text x="600" y="342" text-anchor="middle" textLength="1000" lengthAdjust="spacingAndGlyphs" font-size="151" font-family="Impact,'Arial Black',sans-serif" font-weight="1000" letter-spacing="2" fill="#f8d4a1" stroke="#0a0c1a" stroke-width="16" paint-order="stroke" filter="url(#ink)">SPECIAL EVENT</text>
-<path d="M275 396h650" stroke="url(#plate)" stroke-width="9"/>
-<text x="600" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="13" fill="#f8d4a1">WWE • LIVE</text>
-<path d="M46 561h1108" stroke="#f8d4a1" stroke-width="2" opacity=".37"/>
-<text x="66" y="586" font-family="Arial,sans-serif" letter-spacing="6" font-size="18" fill="#f8d4a1">THE ARENA AWAITS</text>
-<text x="1130" y="586" text-anchor="end" font-family="Arial,sans-serif" letter-spacing="4" font-size="18" fill="#f8d4a1">THE MAIN ATTRACTION</text>
+<title>SPECIAL EVENT — original PPW event identity for WWE</title>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#070d1b"/><stop offset=".35" stop-color="#28253e"/><stop offset=".77" stop-color="#080e1d"/><stop offset="1" stop-color="#ff4968"/></linearGradient>
+<linearGradient id="chrome" x1="0" y1="0" x2="1" y2=".6"><stop stop-color="#fff5dc"/><stop offset=".27" stop-color="#ecbcc8"/><stop offset=".59" stop-color="#ffcb66"/><stop offset=".81" stop-color="#ecbcc8"/><stop offset="1" stop-color="#ff4968"/></linearGradient>
+<radialGradient id="spot"><stop stop-color="#ff4968" stop-opacity=".39"/><stop offset="1" stop-color="#ff4968" stop-opacity="0"/></radialGradient></defs>
+<path fill="url(#sky)" d="M0 0h1200v630H0z"/>
+<ellipse cx="935" cy="280" rx="570" ry="390" fill="url(#spot)"/>
+<path d="M-270 -30L380 660" stroke="#ff4968" opacity="0.05" stroke-width="34"/><path d="M-156 -30L494 660" stroke="#ffcb66" opacity="0.1" stroke-width="14"/><path d="M-42 -30L608 660" stroke="#ff4968" opacity="0.15000000000000002" stroke-width="14"/><path d="M72 -30L722 660" stroke="#ffcb66" opacity="0.05" stroke-width="34"/><path d="M186 -30L836 660" stroke="#ff4968" opacity="0.1" stroke-width="14"/><path d="M300 -30L950 660" stroke="#ffcb66" opacity="0.15000000000000002" stroke-width="14"/><path d="M414 -30L1064 660" stroke="#ff4968" opacity="0.05" stroke-width="34"/><path d="M528 -30L1178 660" stroke="#ffcb66" opacity="0.1" stroke-width="14"/><path d="M642 -30L1292 660" stroke="#ff4968" opacity="0.15000000000000002" stroke-width="14"/><path d="M756 -30L1406 660" stroke="#ffcb66" opacity="0.05" stroke-width="34"/><path d="M870 -30L1520 660" stroke="#ff4968" opacity="0.1" stroke-width="14"/><path d="M984 -30L1634 660" stroke="#ffcb66" opacity="0.15000000000000002" stroke-width="14"/><path d="M1098 -30L1748 660" stroke="#ff4968" opacity="0.05" stroke-width="34"/><path d="M1212 -30L1862 660" stroke="#ffcb66" opacity="0.1" stroke-width="14"/><path d="M1326 -30L1976 660" stroke="#ff4968" opacity="0.15000000000000002" stroke-width="14"/>
+<g color="#ff4968" opacity=".48" transform="translate(-60 0)"><g fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">M923 80 1080 181l-29 189-128 117-126-117-29-189Z M923 110v355M781 290h280M837 202h175M833 378h184</g></g>
+<path d="M23 20h1154v590H23Z" fill="none" stroke="#ff4968" stroke-width="8"/>
+<path d="M42 38h1116v553H42Z" fill="none" stroke="#ecbcc8" stroke-width="2" opacity=".46"/>
+<path d="M70 121h301M829 121h302M70 526h301M829 526h302" stroke="#ffcb66" stroke-width="5" opacity=".86"/>
+<path d="M600 88l45 28-45 28-45-28Z" fill="#ffcb66" stroke="#ecbcc8" stroke-width="4"/>
+<text x="600" y="187" font-family="Arial,sans-serif" text-anchor="middle" font-size="27" letter-spacing="16" font-weight="900" fill="#ecbcc8">PREMIUM EVENT</text>
+<path d="M87 224H1113V424H87Z" fill="#09101bc4" stroke="#ff4968" stroke-width="3"/>
+<path d="M99 234h1001M99 414h1001" stroke="#ecbcc8" stroke-width="1.5" opacity=".7"/>
+<text x="600" y="367" text-anchor="middle" font-family="Impact,'Arial Black',sans-serif" font-size="156" font-weight="1000" textLength="944" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#010914" stroke-width="15" paint-order="stroke">SPECIAL EVENT</text>
+<path d="M418 447h364" stroke="#ffcb66" stroke-width="8"/>
+<text x="600" y="497" text-anchor="middle" fill="#ecbcc8" font-family="Arial,sans-serif" font-size="25" font-weight="900" letter-spacing="12">WWE</text>
+<text x="67" y="570" fill="#ecbcc8" opacity=".8" font-family="Arial,sans-serif" font-size="17" font-weight="900" letter-spacing="4">THE MAIN ATTRACTION</text>
+<text x="1132" y="570" text-anchor="end" fill="#ecbcc8" opacity=".8" font-family="Arial,sans-serif" font-size="17" font-weight="900" letter-spacing="4">THE NEXT CHAPTER</text>
 </svg>
