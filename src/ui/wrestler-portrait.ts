@@ -16,13 +16,15 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "jon moxley":{file:"Jon Moxley Oct 2021 (headshot).jpg",author:"West Smith",license:"CC BY-SA 4.0"},
  "bryan danielson":{file:"Bryan Danielson 2022-03-23 (cropped).jpg",author:"Ralph Arvesen",license:"CC BY-SA 2.0"},
  "hangman adam page":{file:"Hangman Adam Page Oct 2019 (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
- "adam page":{file:"Hangman Adam Page Oct 2019 (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
+ "samoa joe":{file:"Samoa Joe, 2022 (cropped).jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
+ "hiroshi tanahashi":{file:"Hiroshi Tanahashi 2016.png",author:"Courtney Rose",license:"CC BY-SA 2.0"},
  "aj styles":{file:"AJ Styles RR24 (1).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "kazuchika okada":{file:"Kazuchika Okada - 03-07-2024 EDIT-12.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
  "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
 };
 const knownAliases:Readonly<Record<string,string>>={
  "hangman page":"hangman adam page",
+ "adam page":"hangman adam page",
  "hangman adam page":"hangman adam page",
  "sasha banks":"mercedes moné",
  "dean ambrose":"jon moxley",
