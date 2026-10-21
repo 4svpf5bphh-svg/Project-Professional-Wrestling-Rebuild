@@ -12,9 +12,9 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "kenny omega":{file:"Kenny Omega October 2019.jpg",author:"grenwail",license:"CC BY 2.0"},
  "cm punk":{file:"CM Punk 2022-03-23 (headshot).jpg",author:"Ralph Arvesen",license:"CC BY-SA 2.0"},
  "will ospreay":{file:"Will Ospreay at All In 2024.jpg",author:"McPhail",license:"CC0"},
- "becky lynch":{file:"Becky Lynch 2024.jpg",author:"Carter Sterling",license:"CC BY 2.0"}
+ "becky lynch":{file:"Becky Lynch 2024.jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"}
 };
-export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/\\s+/g," ");
+export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/\s+/g," ");
 export function portraitCredit(name:string):PhotoCredit|null{
  return catalogue[normalizePortraitName(name)]??null;
 }
