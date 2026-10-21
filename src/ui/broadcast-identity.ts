@@ -12,7 +12,7 @@ export function promotionBrand(name:string){
  // this company, it must not keep displaying the old identity.
  const fictional=Object.entries(originalFictionalPromotionBrands)
   .find(([original])=>original.toLowerCase()===n);
- if(fictional)return {key:fictional[1],mark:name.trim().split(/\\s+/).map(x=>x[0]).join("").toUpperCase()};
+ if(fictional)return {key:fictional[1],mark:name.trim().split(/\s+/).map(x=>x[0]).join("").toUpperCase()};
  const brands:[RegExp,string,string][]=[
  [/\bnxt\b/,"nxt","NXT"],[/\baew\b|all elite wrestling/,"aew","AEW"],
  [/\bnjpw\b|new japan pro/,"njpw","NJPW"],[/\broh\b|ring of honor/,"roh","ROH"],
