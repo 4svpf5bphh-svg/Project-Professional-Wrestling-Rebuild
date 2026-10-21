@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {portraitCredit,portraitSource} from "../src/ui/wrestler-portrait.js";
 test("verified wrestler portraits use credited Commons sources",()=>{
- for(const name of ["Roman Reigns","Cody Rhodes","Rhea Ripley","CM Punk","Will Ospreay","Jon Moxley","Bryan Danielson","Adam Page","AJ Styles","Kazuchika Okada","Mercedes Moné","Samoa Joe","Hiroshi Tanahashi"]){
+ for(const name of ["Roman Reigns","Cody Rhodes","Rhea Ripley","CM Punk","Will Ospreay","Jon Moxley","Bryan Danielson","Adam Page","AJ Styles","Kazuchika Okada","Mercedes Moné","Samoa Joe","Hiroshi Tanahashi","Bianca Belair","Sami Zayn","John Cena"]){
   const info=portraitCredit(name);
   assert.ok(info?.file);
   assert.ok(info?.author);
