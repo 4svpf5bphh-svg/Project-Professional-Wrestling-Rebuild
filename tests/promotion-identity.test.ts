@@ -67,6 +67,10 @@ test("all five exact original Genesis fictional companies have their own local a
  for(const [name,key] of Object.entries(originalFictionalPromotionBrands)){
   assert.equal(promotionBrand(name).key,key);
   assert.equal(promotionLogoSource(key),"/branding/"+key+".svg");
+  assert.equal(promotionLogoSource(key,96),"/branding/"+key+"-emblem.svg");
+  const emblem=readFileSync("apps/web/public/branding/"+key+"-emblem.svg","utf8");
+  assert.match(emblem,/viewBox="0 0 240 240"/);
+  assert.ok(emblem.includes(name),"compact mark should belong to the correct original promotion");
   const raw=readFileSync("apps/web/public/branding/"+key+".svg","utf8");
   assert.match(raw,/^<svg /);
   assert.match(raw,/<title id="title">/);

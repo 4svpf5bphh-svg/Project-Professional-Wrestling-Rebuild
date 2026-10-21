@@ -146,6 +146,8 @@ for(const width of [320,390]){
   await page.route("**/api/card",route=>route.fulfill({json:overview}));
   await page.goto("/#/home");
   await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
+   await page.getByRole("button",{name:/Skip intro/}).click();
   await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

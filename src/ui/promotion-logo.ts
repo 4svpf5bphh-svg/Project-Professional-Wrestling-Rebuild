@@ -37,7 +37,9 @@ export function promotionLogoSource(key:string,_width=145):string|null{
  const named=promotionLogoFileNames[key];
  if(named)return "https://commons.wikimedia.org/wiki/Special:FilePath/"+
   encodeURIComponent(named);
- return promotionLogoExternalSources[key]??fictionalPromotionLogoSources[key]??null;
+ const fictional=fictionalPromotionLogoSources[key];
+ if(fictional)return width<=125?fictional.replace(".svg","-emblem.svg"):fictional;
+ return promotionLogoExternalSources[key]??null;
 }
 export function createPromotionLogo(key:string,width=145):HTMLImageElement|null{
  const src=promotionLogoSource(key,width);if(!src)return null;

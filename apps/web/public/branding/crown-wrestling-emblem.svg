@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="Crown Wrestling compact emblem">
+<title>Crown Wrestling — compact original PPW vector symbol</title>
+<defs><linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4d5"/><stop offset=".32" stop-color="#e8bf62"/><stop offset=".61" stop-color="#8d40cb"/><stop offset="1" stop-color="#edf4ff"/></linearGradient></defs>
+<path d="M30 153 49 45 91 87 119 21 153 87 194 45 211 153Z" fill="url(#metal)" stroke="#3a2140" stroke-width="9" stroke-linejoin="round"/><path d="M45 153h152l-16 36H60Z" fill="#40194e" stroke="#f0cf75" stroke-width="10"/><path d="M68 114l22 21 29-48 31 48 22-21" fill="none" stroke="#542771" stroke-width="11" stroke-linecap="round"/><path d="M119 48l-20 30 20 22 20-22Z" fill="#a04ce1" stroke="#fff1ae" stroke-width="7"/></svg>

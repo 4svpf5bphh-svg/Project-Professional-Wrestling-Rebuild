@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="Frontier Wrestling compact emblem">
+<title>Frontier Wrestling — compact original PPW vector symbol</title>
+<defs><linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4d5"/><stop offset=".32" stop-color="#76dbc1"/><stop offset=".61" stop-color="#e4bc74"/><stop offset="1" stop-color="#edf4ff"/></linearGradient></defs>
+<path d="M120 15 210 59v86q-17 48-90 79-76-32-91-79V59Z" fill="#183b48" stroke="url(#metal)" stroke-width="12"/><circle cx="120" cy="112" r="66" fill="#1d5263" stroke="#b7f4e7" stroke-width="9"/><path d="M120 47l20 44 45 21-45 20-20 48-20-48-45-20 45-21Z" fill="#f1ddb1" stroke="#144757" stroke-width="8"/><path d="M120 55v113M63 111h112" stroke="#6ad7c3" stroke-width="5"/></svg>
