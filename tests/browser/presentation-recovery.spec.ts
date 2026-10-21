@@ -1,3 +1,4 @@
+import {readdirSync} from "node:fs";
 import {test,expect} from "@playwright/test";
 import {mkdirSync} from "node:fs";
 const images="test-results/presentation-screenshots";
@@ -207,4 +208,28 @@ test("Championship visual acceptance: women, singles, tag, and secondary plates 
  ]);
  await page.screenshot({path:images+"/four-championship-variants-390.png",fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
+test("all shipped championship and broadcast SVGs parse as real standalone images",async({page})=>{
+ const urls=[
+  ...readdirSync("apps/web/public/events").filter(s=>s.endsWith(".svg")).map(s=>"/events/"+s),
+  ...readdirSync("apps/web/public/belts").filter(s=>s.endsWith(".svg")).map(s=>"/belts/"+s),
+  ...readdirSync("apps/web/public/branding").filter(s=>s.endsWith(".svg")).map(s=>"/branding/"+s)
+ ];
+ await page.route("**/api/session",route=>route.fulfill({status:401,json:{error:"sign in"}}));
+ await page.goto("/");
+ const faults=await page.evaluate(async urls=>{
+  const parser=new DOMParser();
+  const bad:string[]=[];
+  for(const url of urls){
+   const response=await fetch(url);
+   if(!response.ok){bad.push(url+" "+response.status);continue;}
+   const xml=parser.parseFromString(await response.text(),"image/svg+xml");
+   if(xml.querySelector("parsererror")||xml.documentElement.localName!=="svg")
+    bad.push(url+" invalid SVG syntax");
+  }
+  return bad;
+ },urls);
+ expect(faults).toEqual([]);
+ expect(urls.length).toBeGreaterThan(120);
 });
