@@ -1,0 +1,48 @@
+name: Verify live PPW host
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/live-host-smoke.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anonymous-session-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm production host serves PPW's own unauthenticated session response
+        env:
+          PPW_HOST: https://project-professional-wrestling-rebu.vercel.app
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$RUNNER_TEMP/ppw-session-response.json"
+          status="$(curl --silent --show-error --location --max-time 25             --output "$response" --write-out '%{http_code}' "$PPW_HOST/api/session")"
+          if [ "$status" != "401" ]; then
+            echo "::error::PPW session endpoint returned HTTP $status; expected PPW's 401 JSON login response"
+            exit 1
+          fi
+          python3 - "$response" <<'PY'
+          import json,sys
+          with open(sys.argv[1],encoding="utf-8") as f:
+              body=json.load(f)
+          assert body.get("error")=="Sign in required", "Incorrect 401 response: PPW host is not serving its API"
+          print("PPW host configured; its API reaches the authentication guard.")
+          PY
+      - name: Confirm live application and artwork assets
+        env:
+          PPW_HOST: https://project-professional-wrestling-rebu.vercel.app
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in / /events/dynamite.svg /belts/aew-world.svg /branding/crown-wrestling.svg; do
+            status="$(curl --silent --show-error --location --max-time 25               --output /dev/null --write-out '%{http_code}' "$PPW_HOST$route")"
+            if [ "$status" != "200" ]; then
+              echo "::error::Live path $route returned HTTP $status"
+              exit 1
+            fi
+            echo "$route: HTTP $status"
+          done
