@@ -20,6 +20,13 @@ export function eventDesign(name:string,owner:string,major:boolean){
  [/revolution/,"revolution"],[/full gear/,"full-gear"],[/forbidden door/,"forbidden-door"],
  [/wrestledream/,"wrestledream"],[/worlds end|world's end/,"worlds-end"],
  [/dynasty/,"dynasty"],[/backlash/,"backlash"],[/night of champions/,"night-of-champions"],
- [/crown jewel/,"crown-jewel"],[/grand slam/,"grand-slam"],[/wrestle kingdom/,"wrestle-kingdom"]];
+ [/clash in italy/,"clash-in-italy"],[/wrestlepalooza/,"wrestlepalooza"],
+ [/\bredemption\b/,"redemption"],[/\bimpact!?\b/,"impact"],
+ [/bound for glory/,"bound-for-glory"],[/stand\s*(?:and|&)\s*deliver/,"stand-and-deliver"],
+ [/supercard of honor/,"supercard-of-honor"],[/super viernes/,"super-viernes"],
+ [/anniversary show/,"anniversary"],[/dream queendom/,"dream-queendom"],
+ [/\bstardom live\b/,"stardom-live"],[/road series/,"road-series"],
+ [/crown jewel/,"crown-jewel"],[/grand slam/,"grand-slam"],
+ [/wrestle kingdom/,"wrestle-kingdom"],[/\bnxt\b/,"nxt-weekly"]];
  return {brand:promotionBrand(owner).key,motif:patterns.find(([rx])=>rx.test(name.toLowerCase()))?.[1]??(major?"signature":"weekly")};
 }

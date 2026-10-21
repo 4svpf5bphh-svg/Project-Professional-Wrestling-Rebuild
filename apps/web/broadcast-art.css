@@ -41,20 +41,20 @@
  font-weight:1000;font-style:italic;line-height:1.12;text-transform:uppercase;letter-spacing:-.03em;
  text-shadow:2px 3px #000a;overflow-wrap:anywhere}
 .ppw-calendar-event[data-event-motif] .ppw-calendar-event-strap{font-weight:900;letter-spacing:.12em;color:#ffe0a0}
-.ppw-calendar-event[data-event-motif="raw"]{--show-bg:linear-gradient(120deg,#7b1225,#1c1525);--show-border:#ff6f71;--show-pattern:repeating-linear-gradient(65deg,#ff656588 0 9px,transparent 9px 34px)}
-.ppw-calendar-event[data-event-motif="smackdown"]{--show-bg:linear-gradient(115deg,#093880,#101a38);--show-border:#64b4fa;--show-pattern:repeating-linear-gradient(145deg,#52a9fe88 0 14px,transparent 14px 50px)}
-.ppw-calendar-event[data-event-motif="dynamite"]{--show-bg:radial-gradient(circle at 72% 25%,#b36924,#30233d 54%,#161526);--show-border:#f5c57b;--show-pattern:repeating-conic-gradient(#ffb15699 0deg 12deg,transparent 12deg 36deg)}
-.ppw-calendar-event[data-event-motif="collision"]{--show-bg:linear-gradient(95deg,#10243d,#175476,#10131e);--show-border:#8dbde9;--show-pattern:repeating-linear-gradient(0deg,#73bbff77 0 2px,transparent 2px 17px)}
-.ppw-calendar-event[data-event-motif="wrestlemania"]{--show-bg:radial-gradient(circle at 65% 15%,#b78c44,#3d255b 58%,#151324);--show-border:#ffdb91;--show-pattern:repeating-conic-gradient(#ffe7ac85 0deg 4deg,transparent 4deg 19deg)}
-.ppw-calendar-event[data-event-motif="rumble"]{--show-bg:linear-gradient(115deg,#173352,#b02d4e,#281d2e);--show-border:#ff9ba9}
-.ppw-calendar-event[data-event-motif="summerslam"]{--show-bg:radial-gradient(circle at 75% 20%,#f18b28,#a83274,#302f80);--show-border:#ffde68}
-.ppw-calendar-event[data-event-motif="survivor"]{--show-bg:linear-gradient(135deg,#1e2a3a,#6d314c,#171c24);--show-border:#c5cbd6}
-.ppw-calendar-event[data-event-motif="all-in"]{--show-bg:linear-gradient(145deg,#291c34,#b8883d,#251926);--show-border:#f7d38d;--show-pattern:repeating-conic-gradient(#fff8 0deg 8deg,transparent 8deg 24deg)}
-.ppw-calendar-event[data-event-motif="all-out"]{--show-bg:linear-gradient(120deg,#201622,#922332,#181b2b);--show-border:#ff837f;--show-pattern:repeating-linear-gradient(145deg,#ff8d6377 0 12px,transparent 12px 30px)}
-.ppw-calendar-event[data-event-motif="double-or-nothing"]{--show-bg:linear-gradient(135deg,#0f4c48,#1c3540,#65451e);--show-border:#f1c67a;--show-pattern:repeating-linear-gradient(0deg,#fff8 0 1px,transparent 1px 12px)}
-.ppw-calendar-event[data-event-motif="revolution"]{--show-bg:radial-gradient(circle at 67% 49%,#b1564e,#382459,#1c152b);--show-border:#ee987a}
-.ppw-calendar-event[data-event-motif="forbidden-door"]{--show-bg:linear-gradient(90deg,#1b2541 0 45%,#d7a853 48% 52%,#191b36 55%);--show-border:#ffdb8a}
-.ppw-calendar-event[data-event-motif="worlds-end"]{--show-bg:radial-gradient(circle,#31475b,#101222 70%);--show-border:#afbfca}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="raw"]{--show-bg:linear-gradient(120deg,#7b1225,#1c1525);--show-border:#ff6f71;--show-pattern:repeating-linear-gradient(65deg,#ff656588 0 9px,transparent 9px 34px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="smackdown"]{--show-bg:linear-gradient(115deg,#093880,#101a38);--show-border:#64b4fa;--show-pattern:repeating-linear-gradient(145deg,#52a9fe88 0 14px,transparent 14px 50px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="dynamite"]{--show-bg:radial-gradient(circle at 72% 25%,#b36924,#30233d 54%,#161526);--show-border:#f5c57b;--show-pattern:repeating-conic-gradient(#ffb15699 0deg 12deg,transparent 12deg 36deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="collision"]{--show-bg:linear-gradient(95deg,#10243d,#175476,#10131e);--show-border:#8dbde9;--show-pattern:repeating-linear-gradient(0deg,#73bbff77 0 2px,transparent 2px 17px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="wrestlemania"]{--show-bg:radial-gradient(circle at 65% 15%,#b78c44,#3d255b 58%,#151324);--show-border:#ffdb91;--show-pattern:repeating-conic-gradient(#ffe7ac85 0deg 4deg,transparent 4deg 19deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="rumble"]{--show-bg:linear-gradient(115deg,#173352,#b02d4e,#281d2e);--show-border:#ff9ba9}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="summerslam"]{--show-bg:radial-gradient(circle at 75% 20%,#f18b28,#a83274,#302f80);--show-border:#ffde68}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="survivor"]{--show-bg:linear-gradient(135deg,#1e2a3a,#6d314c,#171c24);--show-border:#c5cbd6}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="all-in"]{--show-bg:linear-gradient(145deg,#291c34,#b8883d,#251926);--show-border:#f7d38d;--show-pattern:repeating-conic-gradient(#fff8 0deg 8deg,transparent 8deg 24deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="all-out"]{--show-bg:linear-gradient(120deg,#201622,#922332,#181b2b);--show-border:#ff837f;--show-pattern:repeating-linear-gradient(145deg,#ff8d6377 0 12px,transparent 12px 30px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="double-or-nothing"]{--show-bg:linear-gradient(135deg,#0f4c48,#1c3540,#65451e);--show-border:#f1c67a;--show-pattern:repeating-linear-gradient(0deg,#fff8 0 1px,transparent 1px 12px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="revolution"]{--show-bg:radial-gradient(circle at 67% 49%,#b1564e,#382459,#1c152b);--show-border:#ee987a}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="forbidden-door"]{--show-bg:linear-gradient(90deg,#1b2541 0 45%,#d7a853 48% 52%,#191b36 55%);--show-border:#ffdb8a}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="worlds-end"]{--show-bg:radial-gradient(circle,#31475b,#101222 70%);--show-border:#afbfca}
 
 /* Private threads own the phone thumb zone; inbox retains global navigation. */
 html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) .ppw-account-banner .ppw-shell-menu{display:none!important}
@@ -136,3 +136,76 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
  border-radius:5px;padding:4px}
 .ppw-broadcast-company-logo{align-self:center;max-width:100px;max-height:49px;
  object-fit:contain;width:auto;height:auto;filter:drop-shadow(0 3px 6px #0007)}
+
+/* Complete original WWE/AEW PPV lineup and the other companies' signature shows.
+ * Art is CSS vector-style geometry: no generated images, user content or world writes. */
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="mitb"]{
+ --show-bg:linear-gradient(130deg,#145b37,#142f31 42%,#ac7e1e);--show-border:#f6d65a;
+ --show-pattern:repeating-linear-gradient(90deg,#feeb9e7d 0 4px,transparent 4px 30px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="chamber"]{
+ --show-bg:radial-gradient(ellipse at 65% 60%,#822932,#18253b 65%,#070d1a);--show-border:#d2e4ec;
+ --show-pattern:repeating-linear-gradient(45deg,#adc8d1a8 0 2px,transparent 2px 26px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="backlash"]{
+ --show-bg:linear-gradient(115deg,#721f25,#101528 62%,#6c2030);--show-border:#fc8d6e;
+ --show-pattern:repeating-linear-gradient(160deg,#fcae5f6c 0 8px,transparent 8px 45px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="clash-in-italy"]{
+ --show-bg:linear-gradient(95deg,#146543,#0b2432 55%,#961f39);--show-border:#dfc898;
+ --show-pattern:repeating-linear-gradient(70deg,#fff5 0 4px,transparent 4px 35px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="night-of-champions"]{
+ --show-bg:radial-gradient(circle at 78% 12%,#95723c,#282744 60%,#0c1427);--show-border:#ead690;
+ --show-pattern:repeating-conic-gradient(#f7d78062 0deg 6deg,transparent 6deg 27deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="crown-jewel"]{
+ --show-bg:linear-gradient(138deg,#48374c,#16645c 42%,#13253a);--show-border:#ccdc8a;
+ --show-pattern:repeating-linear-gradient(130deg,#dbf3ae73 0 3px,transparent 3px 21px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="wrestlepalooza"]{
+ --show-bg:radial-gradient(circle at 75% 18%,#c36e40,#772963 50%,#161d39);--show-border:#ffc58d;
+ --show-pattern:repeating-conic-gradient(#ff87b87e 0deg 7deg,transparent 7deg 33deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="dynasty"]{
+ --show-bg:radial-gradient(ellipse at 65% 22%,#bb9e57,#412f4a 56%,#191b2d);--show-border:#fae3a2;
+ --show-pattern:repeating-linear-gradient(0deg,#ffcc6e5c 0 3px,transparent 3px 25px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="wrestledream"]{
+ --show-bg:linear-gradient(140deg,#252d67,#733e78 53%,#141a35);--show-border:#d6bdff;
+ --show-pattern:repeating-conic-gradient(#dab8fb70 0deg 7deg,transparent 7deg 24deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="full-gear"]{
+ --show-bg:linear-gradient(135deg,#1b222c,#9a5046 48%,#151b28);--show-border:#e5a977;
+ --show-pattern:repeating-linear-gradient(115deg,#ffc28655 0 14px,transparent 14px 32px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="redemption"]{
+ --show-bg:linear-gradient(120deg,#2c1b49,#a24d32 55%,#141923);--show-border:#f3b18c;
+ --show-pattern:repeating-linear-gradient(30deg,#f4d5b562 0 6px,transparent 6px 40px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="nxt-weekly"]{
+ --show-bg:linear-gradient(125deg,#25282d,#83623c 48%,#141419);--show-border:#e9d05b;
+ --show-pattern:repeating-linear-gradient(140deg,#ffed6990 0 3px,transparent 3px 18px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="stand-and-deliver"]{
+ --show-bg:radial-gradient(circle at 75% 22%,#dec77b,#443d54 54%,#0e1527);--show-border:#ffefae;
+ --show-pattern:repeating-conic-gradient(#f1daa17f 0deg 4deg,transparent 4deg 18deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="impact"]{
+ --show-bg:linear-gradient(105deg,#115d89,#29314b,#922941);--show-border:#8ed8ff;
+ --show-pattern:repeating-linear-gradient(95deg,#fff7 0 3px,transparent 3px 33px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="bound-for-glory"]{
+ --show-bg:radial-gradient(circle at 70% 17%,#e49c45,#6b304f 47%,#182137);--show-border:#f3c57c;
+ --show-pattern:repeating-conic-gradient(#ffc9889a 0deg 4deg,transparent 4deg 22deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="supercard-of-honor"]{
+ --show-bg:linear-gradient(135deg,#29364d,#78798b 47%,#1f2538);--show-border:#e9f3ff;
+ --show-pattern:repeating-linear-gradient(125deg,#ffffff44 0 4px,transparent 4px 30px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="super-viernes"]{
+ --show-bg:linear-gradient(130deg,#124d3b,#8c7243 50%,#4b203b);--show-border:#d5efb5;
+ --show-pattern:repeating-linear-gradient(90deg,#b4df9d8a 0 6px,transparent 6px 26px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="anniversary"]{
+ --show-bg:radial-gradient(circle at 70% 20%,#e8b65a,#3f3649 60%,#192239);--show-border:#e8dbac;
+ --show-pattern:repeating-conic-gradient(#fff3b35e 0deg 4deg,transparent 4deg 29deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="dream-queendom"]{
+ --show-bg:radial-gradient(circle at 35% 15%,#f38bb9,#663976 55%,#222241);--show-border:#f8cbdd;
+ --show-pattern:repeating-conic-gradient(#fbd4ed90 0deg 4deg,transparent 4deg 20deg)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="stardom-live"]{
+ --show-bg:linear-gradient(120deg,#7b2c62,#b94a7d,#2b275d);--show-border:#f5bdd5;
+ --show-pattern:repeating-linear-gradient(130deg,#f7b2cb8c 0 4px,transparent 4px 23px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="road-series"]{
+ --show-bg:linear-gradient(115deg,#841e2c,#1b2240 50%,#431e2a);--show-border:#efbb9f;
+ --show-pattern:repeating-linear-gradient(70deg,#ffffff46 0 3px,transparent 3px 30px)}
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-motif="wrestle-kingdom"]{
+ --show-bg:radial-gradient(circle at 75% 22%,#bd3e43,#5a2635 50%,#161a2e);--show-border:#f1d19f;
+ --show-pattern:repeating-conic-gradient(#f2d79962 0deg 5deg,transparent 5deg 22deg)}
+/* Custom shows remain free to keep their names and receive their own visual
+ * identity, without being pushed into WWE or AEW likeness. */
+:is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="custom"]{
+ --show-border:#cd8cff}
