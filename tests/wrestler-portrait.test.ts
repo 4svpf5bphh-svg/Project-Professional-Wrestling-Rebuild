@@ -49,3 +49,10 @@ test("second 25-photo batch resolves unique credited WWE wrestler identities",()
  const files=new Set<string>();
  for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
 });
+
+test("third batch of 25 wrestler portraits has distinct attributed files",()=>{
+ const names=["shinsuke nakamura","sheamus","solo sikoa","tama tonga","tonga loa","tiffany stratton","trick williams","zelina vega","zoey stark","xavier woods","kofi kingston","the miz","otís","chad gable","ludwig kaiser","ilja dragunov","bron breakker","bronson reed","grayson waller","andrade","carlito","santos escobar","dragon lee","elektra lopez","ashante thee adonis"];
+ assert.equal(names.length,25);
+ const files=new Set<string>();
+ for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
+});
