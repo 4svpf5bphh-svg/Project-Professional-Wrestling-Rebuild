@@ -82,7 +82,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   if(success)root.append(el("p","ppw-profile-message",success));
   root.append(createWrestlerCard({
    personId:view.personId,name:view.name,ringName:view.persona.personaName,
-   division:view.division,alignment:view.alignment,
+   division:view.division,alignment:view.alignment,championships:view.championships,
    gimmickId:view.persona.gimmickId,primaryStyle:view.persona.primaryStyle,
    popularity:view.popularity,recognition:view.recognition,momentum:view.momentum,
    inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,

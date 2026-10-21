@@ -2,6 +2,7 @@
  * Uses indexed World + wrestler / promotion keys, bounded rows, no snapshots.
  */
 import {withSqlClient} from "./postgres.js";
+import {currentWrestlerTitlesJoin,normaliseCurrentTitles} from "./current-wrestler-titles.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
@@ -21,6 +22,7 @@ export interface RepertoireEdit extends ProfileScope {
 const validId=(x:unknown)=>typeof x==="string"&&!!x.trim()&&x.length<=200;
 const week=(year:number,number:number)=>(year-1)*52+number-1;
 type Person={
+ championship_titles:string[]|null;
  person_id:string;name:string;status:string;booking_division:string|null;
  career_stage:string|null;popularity:number|null;recognition:number|null;
  momentum:number|null;morale:number|null;in_ring_quality:number|null;
@@ -52,6 +54,7 @@ const personSql=String.raw`
   p.match_craft,p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
   p.portable_gimmick_id,p.default_alignment,
   coalesce(aligned.alignment,p.default_alignment) AS alignment,
+  current_titles.championship_titles,
   identity.persona AS persona_record,
   EXISTS (
    SELECT 1 FROM ppw_contracts shared
@@ -63,6 +66,7 @@ const personSql=String.raw`
    LIMIT 1
   ) AS shared_human
  FROM ppw_people p
+ ${currentWrestlerTitlesJoin}
  LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id
   AND identity.person_id=p.person_id
  LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
@@ -126,6 +130,7 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    WHERE world_id=$1 AND person_id=$2 ORDER BY revision DESC LIMIT 11`,
    [s.worldId,s.personId]);
   return {personId:p.person_id,name:p.name,division:p.booking_division,
+   championships:normaliseCurrentTitles(p.championship_titles),
    status:p.status,careerStage:p.career_stage,
    popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
    morale:p.morale,inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,

@@ -10,6 +10,7 @@ export interface WrestlerCardModel{
  popularity?:number|null;recognition?:number|null;momentum?:number|null;
  inRingQuality?:number|null;matchCraft?:number|null;presentation?:number|null;
  remainingDates?:number|null;available?:boolean;reason?:string|null;
+ championships?:readonly string[]|null;
 }
 export function wrestlerLabel(value:string|null|undefined):string{
  return value?value.replaceAll("_"," ").toLowerCase()
@@ -64,6 +65,7 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
   (p.alignment?" · "+wrestlerLabel(p.alignment):"")+
   (options.label?" · "+options.label:""));
  if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
+ if(p.championships?.length)root.dataset.champion="true";
 
  const photo=createWrestlerPortrait(p.name,options.compact?150:220);
  if(photo){
@@ -83,12 +85,22 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
   badges.append(badge);
  }
  if(p.promotion)badges.append(span("ppw-wrestler-promotion",p.promotion));
+ if(p.championships?.length){
+  const crown=span("ppw-wrestler-champion","★ CHAMPION");
+  crown.title=p.championships.join(" · ");
+  badges.append(crown);
+ }
  copy.append(badges,span("ppw-wrestler-name",p.ringName||p.name));
  if(p.ringName&&p.ringName!==p.name)
   copy.append(span("ppw-wrestler-real-name",p.name));
  const identity=[p.gimmickId?wrestlerLabel(p.gimmickId):null,
   p.primaryStyle?wrestlerLabel(p.primaryStyle):null].filter(Boolean);
  if(identity.length)copy.append(span("ppw-wrestler-identity",identity.join(" · ")));
+ if(p.championships?.length){
+  const belts=span("ppw-wrestler-championship-titles",p.championships.join(" · "));
+  belts.title="Current championships";
+  copy.append(belts);
+ }
  const stats=document.createElement("span");stats.className="ppw-wrestler-stats";
  const numbers:[string,number|null|undefined][]=[
   ["POP",p.popularity],["REC",p.recognition],["MOM",p.momentum],

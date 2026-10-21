@@ -3,6 +3,7 @@
  * Both views use indexed world/person keys, fixed-size pages and current clock.
  */
 import {withSqlClient} from "./postgres.js";
+import {currentWrestlerTitlesJoin,normaliseCurrentTitles} from "./current-wrestler-titles.js";
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
@@ -36,6 +37,7 @@ type PersonRow={
  future_contracts:number;next_future_start:number|null;
  future_exclusive_to:string|null;
  pending_offer:boolean;estimated_value:number|null;
+ championship_titles:string[]|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
  if(!f||!["ROSTER","MARKET"].includes(f.view)||
@@ -99,7 +101,7 @@ export async function readWrestlerDirectory(
     p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
-    interest.score AS interest_score,
+    interest.score AS interest_score,current_titles.championship_titles,
     mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
     mine.remaining_dates,mine.expires_week_index,
@@ -115,6 +117,7 @@ export async function readWrestlerDirectory(
    LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
     AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
    JOIN ppw_promotions owner ON owner.world_id=p.world_id AND owner.promotion_id=$2
+   ${currentWrestlerTitlesJoin}
    LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id
     AND parent.promotion_id=owner.parent_promotion_id
    LEFT JOIN LATERAL (
@@ -202,6 +205,7 @@ export async function readWrestlerDirectory(
     const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
+    championships:normaliseCurrentTitles(p.championship_titles),
     ringName:fallback.personaName,gimmickId:fallback.gimmickId,
     primaryStyle:fallback.primaryStyle,
     signatureMove:fallback.signatureMoves[0]?.name??null,
