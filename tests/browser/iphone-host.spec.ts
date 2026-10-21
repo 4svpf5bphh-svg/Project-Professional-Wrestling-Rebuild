@@ -370,6 +370,9 @@ test("parent-company affiliates remain visible on the iPhone roster without edit
 });
 test("Roster dossiers preserve filters and expanded cards without reloading the directory",async({page})=>{
  const methods:string[]=[];
+ let directoryLoads=0;
+ let releaseFilteredLoad!:()=>void;
+ const pendingFilteredLoad=new Promise<void>(resolve=>{releaseFilteredLoad=resolve;});
  const directory={view:"ROSTER",year:1,week:5,worldRevision:4,canEdit:true,
   hasMore:false,currentWeekIndex:4,
   people:[{personId:"alice",name:"Alice",ringName:"Alice",division:"WOMEN",
@@ -389,6 +392,7 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  await page.route("**/api/card",async route=>{
   const method=String(route.request().postDataJSON().method);
   methods.push(method);
+  if(method==="wrestlerDirectory"&&++directoryLoads===2)await pendingFilteredLoad;
   await route.fulfill({json:method==="wrestlerDirectory"?directory:
    method==="wrestlerProfile"?dossier:{}});
  });
@@ -397,6 +401,9 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  const search=page.getByLabel("Search wrestlers");
  await search.fill("Alice");
  await page.getByRole("button",{name:"Search",exact:true}).click();
+ await expect(page.getByText("Updating directory…")).toBeVisible();
+ await expect(page.locator(".ppw-directory-card")).toHaveCount(0);
+ releaseFilteredLoad();
  const alice=page.locator(".ppw-directory-card").first();
  await alice.locator("summary").click();
  await expect(alice).toHaveAttribute("open","");
