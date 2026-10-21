@@ -81,3 +81,6 @@
  .ppw-results .ppw-crowd-flow-point{
  grid-template-columns:21px minmax(0,1fr) 27px 35px;gap:5px;padding:7px 5px}
 }
+
+/* Hosted AEW source uses an opaque field; compositing prevents a sticker. */
+#game .ppw-authentic-promotion-logo[data-promotion-logo="aew"]{mix-blend-mode:screen}

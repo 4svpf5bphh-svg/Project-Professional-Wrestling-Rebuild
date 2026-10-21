@@ -190,7 +190,6 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const copy=node("div","","ppw-calendar-event-copy");
   copy.append(node("small",owner??(major?"PREMIUM / SPECIAL":"WEEKLY BROADCAST"),
    "ppw-calendar-event-strap"),
-   node("strong",name,"ppw-calendar-event-name"),
    node("span",label(role),"ppw-calendar-event-role"));
    const artwork=node("span","","ppw-calendar-artwork-shell");
    artwork.append(node("span",major?"PPW / SPECIAL PRESENTATION":"PPW / WEEKLY BROADCAST","ppw-event-type-line"),

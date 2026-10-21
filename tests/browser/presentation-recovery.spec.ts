@@ -168,7 +168,7 @@ test("iPhone authentic promotion image failure reveals an intentionally integrat
  await expect(owner).toHaveCount(1);
  await expect(owner).toContainText("AEW");
  await expect(owner).not.toHaveAttribute("data-logo-ready","true");
- await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
  const dimensions=await owner.evaluate(n=>({
   badge:n.getBoundingClientRect().width,visible:getComputedStyle(n).display!=="none",
   label:getComputedStyle(n).fontSize
@@ -195,14 +195,14 @@ test("Championship visual acceptance: women, singles, tag, and secondary plates 
    currentReignId:null,holderId:null,holderType:null,holderName:null,defenses:0}))
  }}));
  await page.goto("/#/championships");
- const belts=page.locator(".ppw-belt-graphic");
- await expect(belts).toHaveCount(4);
- await expect.poll(async()=>belts.evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).naturalWidth===1000))).toBe(true);
- const sources=await belts.evaluateAll(imgs=>imgs.map(i=>(i as HTMLImageElement).getAttribute("src")));
- expect(new Set(sources).size).toBe(4);
- expect(sources).toEqual([
-  "/belts/wwe-world.svg","/belts/wwe-women.svg","/belts/wwe-tag.svg","/belts/wwe-secondary.svg"
- ]);
+ const names=page.locator(".ppw-title-typographic-name");
+ await expect(names).toHaveCount(4);
+ await expect(names).toHaveText(["World Heavyweight Championship",
+  "Women's Championship","World Tag Team Championship","Intercontinental Championship"]);
+ const families=await page.locator(".ppw-belt-card").evaluateAll(
+  cards=>cards.map(c=>(c as HTMLElement).dataset.titleFamily));
+ expect(families).toEqual(["world","women","tag","secondary"]);
+ await expect(page.locator(".ppw-belt-graphic")).toHaveCount(0);
  await page.screenshot({path:images+"/four-championship-variants-390.png",fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
@@ -248,9 +248,8 @@ test("player-created shows carry their real names on generic premium and weekly 
  await expect(cards).toHaveCount(2);
  await expect(cards.nth(0).locator(".ppw-dynamic-event-heading")).toHaveText("Tuesday Thunder");
  await expect(cards.nth(1).locator(".ppw-dynamic-event-heading")).toHaveText("Blood Moon Bash");
- const backgrounds=await cards.locator(".ppw-calendar-event-art").evaluateAll(
-  imgs=>imgs.map(img=>(img as HTMLImageElement).getAttribute("src")));
- expect(backgrounds).toEqual(["/events/aew-weekly.svg","/events/aew-premium.svg"]);
+ await expect(cards.locator(".ppw-calendar-event-art")).toHaveCount(0);
+ await expect(cards.locator(".ppw-dynamic-event-heading")).toHaveCount(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
  await page.screenshot({path:images+"/named-custom-events-390.png",fullPage:true});
@@ -274,6 +273,6 @@ test("real AEW logo with an intrinsic black background is visually composited in
  await expect(badge).toHaveAttribute("data-logo-ready","true");
  await expect.poll(async()=>badge.locator("img").evaluate(
   img=>getComputedStyle(img).mixBlendMode)).toBe("screen");
- await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
  await page.screenshot({path:images+"/real-aew-logo-compositing-390.png",fullPage:true});
 });
