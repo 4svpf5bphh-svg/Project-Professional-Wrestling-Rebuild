@@ -1,5 +1,4 @@
 import {eventDesign} from "./broadcast-identity.js";
-import {eventArtworkSource} from "./event-artwork.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
@@ -193,16 +192,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    "ppw-calendar-event-strap"),
    node("strong",name,"ppw-calendar-event-name"),
    node("span",label(role),"ppw-calendar-event-role"));
-  const poster=document.createElement("img");
-  poster.className="ppw-calendar-event-art";
-  poster.src=eventArtworkSource(name,owner??data?.promotionName??"",major);
-  poster.alt="";poster.loading="lazy";poster.decoding="async";
-  poster.onerror=()=>poster.remove();
-  const artwork=node("span","","ppw-calendar-artwork-shell");
-  artwork.append(poster);
-  if(graphic.motif==="signature"||graphic.motif==="weekly")
-   artwork.append(node("strong",name,"ppw-dynamic-event-heading"));
-  card.append(artwork,emblem,copy);
+   const artwork=node("span","","ppw-calendar-artwork-shell");
+   artwork.append(node("span",major?"PPW / SPECIAL PRESENTATION":"PPW / WEEKLY BROADCAST","ppw-event-type-line"),
+    node("strong",name,"ppw-dynamic-event-heading"),
+    node("span",owner??data?.promotionName??"","ppw-event-promoter-line"));
+   card.append(artwork,emblem,copy);
   // Keep the promoter identity legible when third-party marks fail to load.
   const identity=node("span",promotionBrand(owner??data?.promotionName??"").mark,
    "ppw-calendar-owner-mark");

@@ -82,7 +82,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    button.title=point.title;
    const graph=node("span","ppw-flow-track");
    const fill=node("span","ppw-flow-fill");
-   fill.style.height=Math.max(2,point.crowdResponse)+"%";
+   fill.style.width=Math.min(100,Math.max(0,point.crowdResponse))+"%";
    append(graph,fill);
    append(button,node("span","ppw-flow-score",
     String(Math.round(point.crowdResponse))),
