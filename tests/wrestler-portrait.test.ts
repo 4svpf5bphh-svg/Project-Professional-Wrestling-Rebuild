@@ -38,7 +38,7 @@ test("batch of 25 credited AEW wrestler portraits resolves to individual source 
 
 test("25 Diego Serrano wrestler photographs have unique credited Wikimedia Commons files",()=>{
  const names=["alexa bliss","angelo dawkins","asuka","austin theory","b-fab","bayley","bobby lashley","braun strowman","bray wyatt","brock lesnar","bubba ray dudley","candice lerae","carmelo hayes","charlotte flair","chelsea green","dakota kai","damian priest","dominik mysterio","drew mcintyre","finn bálor","giulia","gunther","ivy nile","iyo sky","jacob fatu"];
- assert.equal(names.length,24);
+ assert.equal(names.length,25);
  const files=new Set<string>();
  for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
 });
