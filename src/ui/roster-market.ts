@@ -239,9 +239,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   });
   advanced.append(thresholds,btn("Apply attributes",()=>pick({})));
   controls.append(advanced);root.append(controls);
-  if(loading)root.append(el("p","ppw-directory-loading","Updating directory…"));
+  // Never present stale roster results as actionable while a new filter loads.
+  // Otherwise a tapped dossier can disappear when the pending response rerenders.
+  if(loading){
+   root.append(el("p","ppw-directory-loading","Updating directory…"));
+   return;
+  }
   if(!view){
-   if(!loading)root.append(btn("Retry",()=>void load()));
+   root.append(btn("Retry",()=>void load()));
    return;
   }
   const listing=el("section","ppw-directory-list");
