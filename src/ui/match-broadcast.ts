@@ -82,5 +82,10 @@ export function createMatchBroadcast(match:EditorMatch,
  }
  board.append(line,span("ppw-broadcast-footer",
   info.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
- holder.append(board);return holder;
+ // Only attach the broadcast contents when requested. This avoids extra image
+ // requests and prevents duplicate hidden show names in the booking interface.
+ holder.addEventListener("toggle",()=>{
+  if(holder.open&&!board.isConnected)holder.append(board);
+ });
+ return holder;
 }

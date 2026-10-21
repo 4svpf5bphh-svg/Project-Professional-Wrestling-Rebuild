@@ -162,7 +162,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
     (()=>{const mark=el("span","ppw-home-promotion-mark",brand.mark);
-     if(logo){logo.onload=()=>mark.dataset.logoReady="true";
+     if(logo){logo.loading="eager";logo.onload=()=>mark.dataset.logoReady="true";
       logo.onerror=()=>logo.remove();mark.append(logo);}
      return mark;})(),
    el("h2","",promotion?.name??"Choose a promotion"),
