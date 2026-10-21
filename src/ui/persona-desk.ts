@@ -131,7 +131,13 @@ export function mountPersonaDesk(root:HTMLElement,
   root.classList.add("ppw-messenger-"+pane.toLowerCase());
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
-  if(onBack)head.append(button("← Back",onBack));
+  const exit=pane==="PROFILE"?returnToMessages:onBack;
+   if(exit){
+    const control=button(pane==="PROFILE"?"‹ Chats":"‹ Control room",exit);
+    control.classList.add("ppw-backstage-exit");
+    control.setAttribute("aria-label",pane==="PROFILE"?"Back to messages":"Leave Backstage");
+    head.append(control);
+   }
   if(pane==="INBOX")head.append(el("h1","","Messages"));
   else head.append(el("span","ppw-eyebrow","CONTACTS"),
    el("h1","","Contact details"),

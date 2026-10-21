@@ -8,7 +8,7 @@
  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
  <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
 </defs>
-<g filter="url(#shadow)">
+<g >
 <circle cx="496" cy="201" r="166" fill="#0f2445" stroke="url(#gold)" stroke-width="14"/>
 <circle cx="496" cy="201" r="141" fill="none" stroke="#83baf4" stroke-width="7" opacity=".8"/>
 <path d="M337 200 H654 M351 140 H639 M353 263 H636 M497 36 V366" stroke="#8dc6fa" stroke-width="8" opacity=".55"/>
@@ -19,7 +19,7 @@
 <path d="M379 258 316 310 350 343 428 316 M606 258 678 312 644 340 567 315" fill="url(#chrome)" stroke="#122944" stroke-width="12"/>
 <path d="M498 9 516 57 499 74 481 57Z" fill="#f2d79b"/>
 </g>
-<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<g  text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
 <text x="500" y="443" font-size="151" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">ATLAS</text>
 <text x="500" y="443" font-size="151" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">ATLAS</text>
 <path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>

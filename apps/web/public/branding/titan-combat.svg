@@ -8,7 +8,7 @@
  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
  <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
 </defs>
-<g filter="url(#shadow)">
+<g >
 <path d="M495 20 557 101 659 54 687 169 785 188 747 276 799 346 674 363 310 363 192 344 249 278 212 188 308 169 332 54 431 101Z" fill="#14191f" stroke="url(#chrome)" stroke-width="20" stroke-linejoin="round"/>
 <path d="M365 127 H629 L669 178 628 221 547 221 547 338 H446 V221 H362L324 175Z" fill="url(#chrome)" stroke="#090b11" stroke-width="22"/>
 <path d="M366 159 621 159 600 181 530 181 530 303 464 303 464 181 389 181Z" fill="#232936" stroke="#ef753c" stroke-width="8"/>
@@ -19,7 +19,7 @@
 <circle cx="300" cy="268" r="12" fill="#ff793b"/><circle cx="693" cy="269" r="12" fill="#ff793b"/>
 <path d="M364 347 303 377 M630 347 692 377" stroke="#ff7039" stroke-width="11"/>
 </g>
-<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<g  text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
 <text x="500" y="443" font-size="155" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">TITAN</text>
 <text x="500" y="443" font-size="155" letter-spacing="7" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">TITAN</text>
 <path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>

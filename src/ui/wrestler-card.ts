@@ -68,13 +68,18 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
  if(p.championships?.length){root.dataset.champion="true";root.dataset.titleCount=String(p.championships.length);}
 
- const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220)??(p.ringName?createWrestlerPortrait(p.name,options.compact?150:220):null);
- if(photo){
-  root.dataset.hasPhoto="true";
-  photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};
-  root.append(photo);
- }else root.dataset.portrait="unavailable";
- const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
+ // Keep a genuine, fixed-size art well even with no verified photograph.
+const media=span("ppw-wrestler-media","");
+media.setAttribute("aria-hidden","true");
+media.append(span("ppw-wrestler-media-mark",wrestlerInitials(p.ringName||p.name)));
+const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220)??(p.ringName?createWrestlerPortrait(p.name,options.compact?150:220):null);
+if(photo){
+ root.dataset.hasPhoto="true";
+ photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};
+ media.append(photo);
+}else root.dataset.portrait="unavailable";
+root.append(media);
+const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  const badges=span("ppw-wrestler-badges","");
  const divisionBadge=span("ppw-wrestler-division",p.division==="WOMEN"?
   "WOMEN":p.division==="MEN"?"MEN":"ROSTER");

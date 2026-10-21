@@ -15,6 +15,7 @@ import "../screen.css";
 import "../polish.css";
 import "../arena.css";
 import "../broadcast-art.css";
+import "../presentation-recovery.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 
 type SessionView={
@@ -38,6 +39,7 @@ let drawerExpanded=false;
 let selectedDrawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
 let pendingBackstagePersonId:string|null=null;
+let backstageReturnSection:HostSection="home";
 let bookingDirty=false;
 let activeBooking:{worldId:string;promotionId:string;showId:string}|null=null;
 function confirmLeavingBooking(next:HostSection){
@@ -82,7 +84,11 @@ function commandAccepted(result:unknown){
 function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
  if(!confirmLeavingBooking(section))return;
  drawerExpanded=false;
- pendingBackstagePersonId=section==="backstage"&&personId?personId:null;
+ if(section==="backstage"){
+   const previous=readHostSection(location.hash);
+   if(previous!=="backstage")backstageReturnSection=previous;
+  }
+  pendingBackstagePersonId=section==="backstage"&&personId?personId:null;
  const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
   contractAttentionHash(focus):
   section==="planner"&&focus==="CARD"?plannerCardHash:
@@ -265,7 +271,7 @@ function renderSection(){
   case "roster":mountRosterPage(view,scope);break;
   case "backstage":mountPersonaPage(view,scope,
    location.hash===backstageUnreadHash?"UNREAD":"ALL",
-   backstagePersonId??undefined);break;
+   backstagePersonId??undefined,()=>openSection(backstageReturnSection));break;
   case "market":mountTalentMarketPage(view,scope);break;
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;

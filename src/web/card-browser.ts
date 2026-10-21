@@ -436,9 +436,9 @@ function personaPort(call:ReturnType<typeof createCardClient>,
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope,
- filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
+ filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,onBack?:()=>void){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
-  undefined,()=>mountProgrammePage(root,scope),filter,initialPersonId);
+  onBack,()=>mountProgrammePage(root,scope),filter,initialPersonId);
 }
 
 /** Host-level planner entry point. The existing card editor remains the

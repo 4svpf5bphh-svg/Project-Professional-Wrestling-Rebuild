@@ -8,7 +8,7 @@
  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
  <filter id="shadow" x="-30%" y="-30%" width="180%" height="190%"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-color="#000" flood-opacity=".85"/></filter>
 </defs>
-<g filter="url(#shadow)">
+<g >
 <path d="M497 34 547 113 640 70 664 167 777 158 718 241 799 320 674 330 643 362 345 362 310 318 193 321 274 241 218 158 334 166 359 70 449 113Z" fill="url(#deep)" stroke="url(#gold)" stroke-width="14" stroke-linejoin="round"/>
 <circle cx="498" cy="207" r="120" fill="#152f3e" stroke="#d9a76b" stroke-width="10"/>
 <path d="M375 238 Q497 66 623 238 Q538 204 499 217 Q447 199 375 238Z" fill="#f9bd6b"/>
@@ -18,7 +18,7 @@
 <path d="M300 316 H698" stroke="url(#energy)" stroke-width="12"/>
 <path d="M188 370 277 312 M812 370 718 312" stroke="#f5b96c" stroke-width="15"/>
 </g>
-<g filter="url(#shadow)" text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
+<g  text-anchor="middle" font-family="'Arial Black',Impact,'Arial Narrow',sans-serif" font-weight="1000">
 <text x="500" y="443" font-size="106" letter-spacing="4" textLength="850" lengthAdjust="spacingAndGlyphs" fill="#060810" stroke="#020308" stroke-width="21" paint-order="stroke">FRONTIER</text>
 <text x="500" y="443" font-size="106" letter-spacing="4" textLength="850" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#090a0d" stroke-width="6" paint-order="stroke">FRONTIER</text>
 <path d="M130 467 H870" stroke="url(#energy)" stroke-width="8" stroke-linecap="round"/>
