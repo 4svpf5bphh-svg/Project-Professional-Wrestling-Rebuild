@@ -63,16 +63,17 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  root.setAttribute("aria-label",(p.ringName||p.name)+
   (p.division?" · "+wrestlerLabel(p.division):"")+
   (p.alignment?" · "+wrestlerLabel(p.alignment):"")+
+  (p.championships?.length?" · Current champion: "+p.championships.join(", "):"")+
   (options.label?" · "+options.label:""));
  if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
  if(p.championships?.length)root.dataset.champion="true";
 
- const photo=createWrestlerPortrait(p.name,options.compact?150:220);
+ const photo=createWrestlerPortrait(p.name,options.compact?150:220)??(p.ringName?createWrestlerPortrait(p.ringName,options.compact?150:220):null);
  if(photo){
   root.dataset.hasPhoto="true";
-  photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;};
+  photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};
   root.append(photo);
- }
+ }else root.dataset.portrait="unavailable";
  const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  const badges=span("ppw-wrestler-badges","");
  const divisionBadge=span("ppw-wrestler-division",p.division==="WOMEN"?
@@ -86,7 +87,7 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  }
  if(p.promotion)badges.append(span("ppw-wrestler-promotion",p.promotion));
  if(p.championships?.length){
-  const crown=span("ppw-wrestler-champion","★ CHAMPION");
+  const crown=span("ppw-wrestler-champion","TITLE HOLDER");
   crown.title=p.championships.join(" · ");
   badges.append(crown);
  }

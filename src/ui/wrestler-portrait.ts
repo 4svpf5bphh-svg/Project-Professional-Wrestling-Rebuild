@@ -21,9 +21,18 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "kazuchika okada":{file:"Kazuchika Okada - 03-07-2024 EDIT-12.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
  "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
 };
-export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/\s+/g," ");
+const knownAliases:Readonly<Record<string,string>>={
+ "hangman page":"hangman adam page",
+ "hangman adam page":"hangman adam page",
+ "sasha banks":"mercedes moné",
+ "dean ambrose":"jon moxley",
+ "daniel bryan":"bryan danielson",
+ "tyler black":"seth rollins"
+};
+export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/[‘’]/g,"'").replace(/\s+/g," ");
 export function portraitCredit(name:string):PhotoCredit|null{
- return catalogue[normalizePortraitName(name)]??null;
+ const key=normalizePortraitName(name);
+ return catalogue[knownAliases[key]??key]??null;
 }
 export function portraitSource(name:string,width=220):string|null{
  const photo=portraitCredit(name);
