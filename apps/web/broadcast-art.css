@@ -209,3 +209,20 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
  * identity, without being pushed into WWE or AEW likeness. */
 :is(.ppw-calendar-event,.ppw-match-broadcast)[data-event-promotion="custom"]{
  --show-border:#cd8cff}
+
+/* NJPW lion mark is circular; CMLL's square-source badge has an oval
+ * surrounded by empty space. These rules keep both legible on small phones. */
+.ppw-home-hero[data-promotion="njpw"] .ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo{
+ width:76px;height:76px;max-width:76px;object-fit:contain}
+.ppw-home-hero[data-promotion="cmll"] .ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo{
+ width:min(68vw,190px);height:87px;max-width:190px;object-fit:cover;object-position:center}
+.ppw-calendar-event .ppw-calendar-promoter-logo[data-promotion-logo="njpw"]{
+ width:54px;max-width:54px;max-height:54px;height:54px;object-fit:contain}
+.ppw-calendar-event .ppw-calendar-promoter-logo[data-promotion-logo="cmll"]{
+ width:82px;max-width:82px;height:47px;max-height:47px;
+ object-fit:cover;object-position:center;padding:0}
+.ppw-broadcast-company-logo[data-promotion-logo="cmll"]{
+ width:116px;height:58px;max-height:58px;max-width:116px;
+ object-fit:cover;object-position:center}
+.ppw-broadcast-company-logo[data-promotion-logo="njpw"]{
+ width:75px;height:75px;max-height:75px;max-width:75px;object-fit:contain}
