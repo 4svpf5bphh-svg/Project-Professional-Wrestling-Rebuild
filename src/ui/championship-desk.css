@@ -109,3 +109,10 @@
 .ppw-belt-current-display .ppw-belt-current{font-size:clamp(13px,4.1vw,19px);
  font-weight:950;line-height:1.14;color:#fff0bb;overflow-wrap:anywhere}
 .ppw-belt-card:not(.ppw-belt-crowned) .ppw-belt-current-display{opacity:.73}
+
+/* One artistic family, varied hand-engraved plate silhouettes and promotion stamps. */
+#game .ppw-title-engraving-orbit{fill:none;stroke:#fff0a9;stroke-width:1.1;opacity:.75}
+#game .ppw-title-engraving-label{font-size:6px;fill:#ffe6a5;font-family:system-ui,sans-serif;
+ letter-spacing:.7px;font-weight:900}
+#game .ppw-belt-tag .ppw-title-engraving-label{fill:#effbff}
+.ppw-belt-card .ppw-title-engraving{max-height:74px}

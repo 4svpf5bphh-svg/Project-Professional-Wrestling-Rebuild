@@ -2,6 +2,7 @@
  * Opening a belt loads only its first 15 reigns, not the World's history.
  */
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {promotionBrand} from "./broadcast-identity.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
 export interface ChampionshipPort {
@@ -15,7 +16,7 @@ const element=(tag:string,cls="",text="")=>{
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 /** Locally rendered engraved title artwork, independent of title ownership. */
-function championshipArtwork(division:"SINGLES"|"TAG"){
+function championshipArtwork(division:"SINGLES"|"TAG",name:string,promotion:string){
  const ns="http://www.w3.org/2000/svg";
  const svg=document.createElementNS(ns,"svg");
  svg.setAttribute("viewBox","0 0 80 90");
@@ -25,13 +26,39 @@ function championshipArtwork(division:"SINGLES"|"TAG"){
   const p=document.createElementNS(ns,"path");
   p.setAttribute("d",d);p.setAttribute("class",cls);svg.append(p);
  };
- path("M40 5 58 13 70 29 66 65 40 83 14 65 10 29 22 13Z","ppw-title-engraving-frame");
- path("M40 13 54 19 62 32 59 60 40 74 21 60 18 32 26 19Z","ppw-title-engraving-field");
+ const id=name.toLowerCase();
+ const isWomen=/women|divas|joshi/.test(id);
+ const isWorld=/world|universal|global/.test(id);
+ const isRegional=/international|intercontinental|continental|united states|national/.test(id);
+ // Distinct plate silhouettes and inlays share one engraving system for real
+ // and user-created belts: no static photograph, random asset, or DB write.
+ const frame=isWomen?"M40 5 62 16 71 40 60 68 40 84 20 68 9 40 18 16Z":
+  isWorld?"M40 4 61 10 74 27 69 67 40 85 11 67 6 27 19 10Z":
+  isRegional?"M40 6 68 24 68 64 40 84 12 64 12 24Z":
+  "M40 5 58 13 70 29 66 65 40 83 14 65 10 29 22 13Z";
+ const field=isWorld?"M40 12 56 16 66 31 63 61 40 76 17 61 14 31 24 16Z":
+  "M40 13 54 19 62 32 59 60 40 74 21 60 18 32 26 19Z";
+ path(frame,"ppw-title-engraving-frame");
+ path(field,"ppw-title-engraving-field");
  path("M17 43h46M40 13v61","ppw-title-engraving-inlay");
  if(division==="TAG"){
   path("M23 37 30 29 37 37 43 29 50 37 57 29 54 51 26 51Z","ppw-title-engraving-crown");
   path("M27 57h26M31 62h18","ppw-title-engraving-inlay");
- }else path("M40 22 45 36 60 36 48 45 53 61 40 52 27 61 32 45 20 36 35 36Z","ppw-title-engraving-crown");
+ }else if(isWomen)path("M25 32 31 38 39 28 48 39 56 33 54 51 26 51Z",
+   "ppw-title-engraving-crown");
+ else path("M40 22 45 36 60 36 48 45 53 61 40 52 27 61 32 45 20 36 35 36Z",
+  "ppw-title-engraving-crown");
+ if(division==="SINGLES"&&isWorld){
+  path("M30 46a10 10 0 1 0 20 0a10 10 0 1 0 -20 0",
+   "ppw-title-engraving-orbit");
+  path("M30 46h20M40 36v20M36 37Q47 46 36 55M44 37Q33 46 44 55",
+   "ppw-title-engraving-orbit");
+ }
+ const mark=promotionBrand(promotion).mark.slice(0,6);
+ const etching=document.createElementNS(ns,"text");
+ etching.textContent=mark;etching.setAttribute("x","40");etching.setAttribute("y","70");
+ etching.setAttribute("text-anchor","middle");
+ etching.setAttribute("class","ppw-title-engraving-label");svg.append(etching);
  for(const y of [8,80]){
   const c=document.createElementNS(ns,"circle");
   c.setAttribute("cx","40");c.setAttribute("cy",String(y));
@@ -96,7 +123,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const head=document.createElement("summary");head.className="ppw-belt-summary";
    const belt=element("span","ppw-belt-insignia");
    const plate=element("span","ppw-belt-plate");
-   plate.setAttribute("aria-hidden","true");plate.append(championshipArtwork(title.division));
+   plate.setAttribute("aria-hidden","true");plate.append(championshipArtwork(title.division,title.name,title.promotionName));
    belt.append(plate);
    const identity=element("span","ppw-belt-identity");
    const promo=element("span","ppw-belt-promotion",

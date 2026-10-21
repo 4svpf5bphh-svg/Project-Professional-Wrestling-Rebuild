@@ -85,3 +85,30 @@ test("championship directory renders distinctive original title engravings witho
  await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();
  expect(calls).toEqual(["championships"]);
 });
+
+test("reigning champion art follows authoritative title transfers on refresh with no cosmetic writes",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let champion="Cody Rhodes",reignId="reign-a";
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);methods.push(method);
+  return route.fulfill({json:method==="championships"?{
+   worldName:"Genesis",year:1,week:5,viewerPromotionId:"local",titles:[{
+    promotionId:"local",championshipId:"world",promotionName:"WWE",
+    name:"World Championship",division:"SINGLES",status:"ACTIVE",prestige:97,
+    currentReignId:reignId,holderId:reignId,holderType:"PERSON",
+    holderName:champion,defenses:3
+   }]
+  }:world});
+ });
+ await page.goto("/#/championships");
+ await expect(page.locator(".ppw-belt-crowned")).toHaveCount(1);
+ await expect(page.locator(".ppw-belt-card")).toHaveAttribute("data-reign","reign-a");
+ await expect(page.locator(".ppw-belt-current")).toHaveText("Cody Rhodes");
+ champion="Roman Reigns";reignId="reign-b";
+ await page.reload();
+ await expect(page.locator(".ppw-belt-card")).toHaveAttribute("data-reign","reign-b");
+ await expect(page.locator(".ppw-belt-current")).toHaveText("Roman Reigns");
+ expect(methods).toEqual(["championships","championships"]);
+});
