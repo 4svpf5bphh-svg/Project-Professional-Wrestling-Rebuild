@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="SPECIAL EVENT event art">
+<title>SPECIAL EVENT — ATLAS original PPW broadcast poster</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#183c74"/><stop offset=".48" stop-color="#0a1324"/><stop offset="1" stop-color="#183c74"/></linearGradient>
+<radialGradient id="spot"><stop stop-color="#8bbcf9" stop-opacity=".42"/><stop offset="1" stop-color="#8bbcf9" stop-opacity="0"/></radialGradient>
+<linearGradient id="plate"><stop stop-color="#fff1c7"/><stop offset=".5" stop-color="#8bbcf9"/><stop offset="1" stop-color="#fff1c7"/></linearGradient>
+<filter id="ink" x="-8%" y="-30%" width="116%" height="165%"><feDropShadow dx="0" dy="8" stdDeviation="3" flood-opacity=".8"/></filter>
+</defs>
+<path fill="url(#bg)" d="M0 0h1200v630H0z"/>
+<ellipse cx="920" cy="160" rx="750" ry="550" fill="url(#spot)"/>
+<path d="M90 70l45 180 -45 180 -45 -180z" fill="none" stroke="#fff1c7" opacity=".19" stroke-width="8"/><path d="M205 70l45 180 -45 180 -45 -180z" fill="none" stroke="#8bbcf9" opacity=".19" stroke-width="8"/><path d="M320 70l45 180 -45 180 -45 -180z" fill="none" stroke="#fff1c7" opacity=".19" stroke-width="8"/><path d="M435 70l45 180 -45 180 -45 -180z" fill="none" stroke="#8bbcf9" opacity=".19" stroke-width="8"/><path d="M550 70l45 180 -45 180 -45 -180z" fill="none" stroke="#fff1c7" opacity=".19" stroke-width="8"/><path d="M665 70l45 180 -45 180 -45 -180z" fill="none" stroke="#8bbcf9" opacity=".19" stroke-width="8"/><path d="M780 70l45 180 -45 180 -45 -180z" fill="none" stroke="#fff1c7" opacity=".19" stroke-width="8"/><path d="M895 70l45 180 -45 180 -45 -180z" fill="none" stroke="#8bbcf9" opacity=".19" stroke-width="8"/><path d="M1010 70l45 180 -45 180 -45 -180z" fill="none" stroke="#fff1c7" opacity=".19" stroke-width="8"/><path d="M1125 70l45 180 -45 180 -45 -180z" fill="none" stroke="#8bbcf9" opacity=".19" stroke-width="8"/><circle cx="602" cy="296" r="212" fill="none" stroke="#fff1c7" stroke-width="5" opacity=".5"/><circle cx="602" cy="296" r="231" fill="none" stroke="#8bbcf9" stroke-width="14" opacity=".14"/>
+<path d="M20 20H1180V610H20Z" fill="none" stroke="#8bbcf9" stroke-width="10" opacity=".8"/>
+<path d="M41 41H1159V589H41Z" fill="none" stroke="#fff1c7" stroke-width="2" opacity=".45"/>
+<path d="M40 112h390M770 112h390M40 525h390M770 525h390" fill="none" stroke="url(#plate)" stroke-width="5"/>
+<path d="M540 91l60 -28 60 28 -60 28z" fill="#8bbcf9" stroke="#fff1c7" stroke-width="3"/>
+<text x="600" y="169" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="27" letter-spacing="14" fill="#fff1c7">PREMIUM EVENT</text>
+<text x="600" y="342" text-anchor="middle" textLength="1000" lengthAdjust="spacingAndGlyphs" font-size="151" font-family="Impact,'Arial Black',sans-serif" font-weight="1000" letter-spacing="2" fill="#fff1c7" stroke="#0a0c1a" stroke-width="16" paint-order="stroke" filter="url(#ink)">SPECIAL EVENT</text>
+<path d="M275 396h650" stroke="url(#plate)" stroke-width="9"/>
+<text x="600" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="13" fill="#fff1c7">ATLAS • LIVE</text>
+<path d="M46 561h1108" stroke="#fff1c7" stroke-width="2" opacity=".37"/>
+<text x="66" y="586" font-family="Arial,sans-serif" letter-spacing="6" font-size="18" fill="#fff1c7">THE ARENA AWAITS</text>
+<text x="1130" y="586" text-anchor="end" font-family="Arial,sans-serif" letter-spacing="4" font-size="18" fill="#fff1c7">THE MAIN ATTRACTION</text>
+</svg>

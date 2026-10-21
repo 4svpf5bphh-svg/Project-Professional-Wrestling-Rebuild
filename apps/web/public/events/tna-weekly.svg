@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="TNA LIVE event art">
+<title>TNA LIVE — TNA original PPW broadcast poster</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#253f79"/><stop offset=".48" stop-color="#0a1324"/><stop offset="1" stop-color="#253f79"/></linearGradient>
+<radialGradient id="spot"><stop stop-color="#ff7840" stop-opacity=".42"/><stop offset="1" stop-color="#ff7840" stop-opacity="0"/></radialGradient>
+<linearGradient id="plate"><stop stop-color="#ffe2a4"/><stop offset=".5" stop-color="#ff7840"/><stop offset="1" stop-color="#ffe2a4"/></linearGradient>
+<filter id="ink" x="-8%" y="-30%" width="116%" height="165%"><feDropShadow dx="0" dy="8" stdDeviation="3" flood-opacity=".8"/></filter>
+</defs>
+<path fill="url(#bg)" d="M0 0h1200v630H0z"/>
+<ellipse cx="920" cy="160" rx="750" ry="550" fill="url(#spot)"/>
+<rect x="-30" y="401" width="34" height="209" fill="#ff7840" opacity=".13"/><rect x="16" y="510" width="34" height="100" fill="#ffe2a4" opacity=".13"/><rect x="62" y="459" width="34" height="151" fill="#ffe2a4" opacity=".13"/><rect x="108" y="408" width="34" height="202" fill="#ff7840" opacity=".13"/><rect x="154" y="517" width="34" height="93" fill="#ffe2a4" opacity=".13"/><rect x="200" y="466" width="34" height="144" fill="#ffe2a4" opacity=".13"/><rect x="246" y="415" width="34" height="195" fill="#ff7840" opacity=".13"/><rect x="292" y="524" width="34" height="86" fill="#ffe2a4" opacity=".13"/><rect x="338" y="473" width="34" height="137" fill="#ffe2a4" opacity=".13"/><rect x="384" y="422" width="34" height="188" fill="#ff7840" opacity=".13"/><rect x="430" y="531" width="34" height="79" fill="#ffe2a4" opacity=".13"/><rect x="476" y="480" width="34" height="130" fill="#ffe2a4" opacity=".13"/><rect x="522" y="429" width="34" height="181" fill="#ff7840" opacity=".13"/><rect x="568" y="538" width="34" height="72" fill="#ffe2a4" opacity=".13"/><rect x="614" y="487" width="34" height="123" fill="#ffe2a4" opacity=".13"/><rect x="660" y="436" width="34" height="174" fill="#ff7840" opacity=".13"/><rect x="706" y="545" width="34" height="65" fill="#ffe2a4" opacity=".13"/><rect x="752" y="494" width="34" height="116" fill="#ffe2a4" opacity=".13"/><rect x="798" y="443" width="34" height="167" fill="#ff7840" opacity=".13"/><rect x="844" y="552" width="34" height="58" fill="#ffe2a4" opacity=".13"/><rect x="890" y="501" width="34" height="109" fill="#ffe2a4" opacity=".13"/><rect x="936" y="450" width="34" height="160" fill="#ff7840" opacity=".13"/><rect x="982" y="399" width="34" height="211" fill="#ffe2a4" opacity=".13"/><rect x="1028" y="508" width="34" height="102" fill="#ffe2a4" opacity=".13"/><rect x="1074" y="457" width="34" height="153" fill="#ff7840" opacity=".13"/><rect x="1120" y="406" width="34" height="204" fill="#ffe2a4" opacity=".13"/><rect x="1166" y="515" width="34" height="95" fill="#ffe2a4" opacity=".13"/><rect x="1212" y="464" width="34" height="146" fill="#ff7840" opacity=".13"/><path d="M70 345h1060M70 390h1060" stroke="#ffe2a4" stroke-width="2" opacity=".25"/>
+<path d="M20 20H1180V610H20Z" fill="none" stroke="#ff7840" stroke-width="5" opacity=".8"/>
+<path d="M41 41H1159V589H41Z" fill="none" stroke="#ffe2a4" stroke-width="2" opacity=".45"/>
+<path d="M40 112h390M770 112h390M40 525h390M770 525h390" fill="none" stroke="url(#plate)" stroke-width="5"/>
+<path d="M540 91l60 -28 60 28 -60 28z" fill="#ff7840" stroke="#ffe2a4" stroke-width="3"/>
+<text x="600" y="169" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="27" letter-spacing="14" fill="#ffe2a4">WEEKLY BROADCAST</text>
+<text x="600" y="342" text-anchor="middle" textLength="688.56" lengthAdjust="spacingAndGlyphs" font-size="151" font-family="Impact,'Arial Black',sans-serif" font-weight="1000" letter-spacing="2" fill="#ffe2a4" stroke="#0a0c1a" stroke-width="16" paint-order="stroke" filter="url(#ink)">TNA LIVE</text>
+<path d="M275 396h650" stroke="url(#plate)" stroke-width="9"/>
+<text x="600" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="13" fill="#ffe2a4">TNA • LIVE</text>
+<path d="M46 561h1108" stroke="#ffe2a4" stroke-width="2" opacity=".37"/>
+<text x="66" y="586" font-family="Arial,sans-serif" letter-spacing="6" font-size="18" fill="#ffe2a4">THE ARENA AWAITS</text>
+<text x="1130" y="586" text-anchor="end" font-family="Arial,sans-serif" letter-spacing="4" font-size="18" fill="#ffe2a4">THE NEXT CHAPTER</text>
+</svg>

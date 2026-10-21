@@ -1,4 +1,5 @@
 import {eventDesign} from "./broadcast-identity.js";
+import {eventArtworkSource} from "./event-artwork.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
  from "../domain/show-calendar.js";
@@ -191,7 +192,12 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    "ppw-calendar-event-strap"),
    node("strong",name,"ppw-calendar-event-name"),
    node("span",label(role),"ppw-calendar-event-role"));
-  card.append(emblem,copy);
+  const poster=document.createElement("img");
+  poster.className="ppw-calendar-event-art";
+  poster.src=eventArtworkSource(name,owner??data?.promotionName??"",major);
+  poster.alt="";poster.loading="lazy";poster.decoding="async";
+  poster.onerror=()=>poster.remove();
+  card.append(poster,emblem,copy);
   const ownerLogo=createPromotionLogo(graphic.brand,96);
   if(ownerLogo){ownerLogo.classList.add("ppw-calendar-promoter-logo");
    ownerLogo.onerror=()=>ownerLogo.remove();card.append(ownerLogo);}

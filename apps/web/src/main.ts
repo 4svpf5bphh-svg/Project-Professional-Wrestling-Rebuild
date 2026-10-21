@@ -16,6 +16,7 @@ import "../polish.css";
 import "../arena.css";
 import "../broadcast-art.css";
 import "../presentation-recovery.css";
+import "../graphic-collections.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 
 type SessionView={

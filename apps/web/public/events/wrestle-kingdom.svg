@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="WRESTLE KINGDOM event art">
+<title>WRESTLE KINGDOM — NJPW original PPW broadcast poster</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#301824"/><stop offset=".48" stop-color="#0a1324"/><stop offset="1" stop-color="#301824"/></linearGradient>
+<radialGradient id="spot"><stop stop-color="#c52f42" stop-opacity=".42"/><stop offset="1" stop-color="#c52f42" stop-opacity="0"/></radialGradient>
+<linearGradient id="plate"><stop stop-color="#f4d59f"/><stop offset=".5" stop-color="#c52f42"/><stop offset="1" stop-color="#f4d59f"/></linearGradient>
+<filter id="ink" x="-8%" y="-30%" width="116%" height="165%"><feDropShadow dx="0" dy="8" stdDeviation="3" flood-opacity=".8"/></filter>
+</defs>
+<path fill="url(#bg)" d="M0 0h1200v630H0z"/>
+<ellipse cx="220" cy="160" rx="750" ry="550" fill="url(#spot)"/>
+<path d="M70 103l60 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4d59f" opacity=".18"/><path d="M170 156l62 -80 -26 101 56 -12 -94 104 35 -107z" fill="#c52f42" opacity=".18"/><path d="M270 209l64 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4d59f" opacity=".18"/><path d="M370 2l66 -80 -26 101 56 -12 -94 104 35 -107z" fill="#c52f42" opacity=".18"/><path d="M470 55l68 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4d59f" opacity=".18"/><path d="M570 108l70 -80 -26 101 56 -12 -94 104 35 -107z" fill="#c52f42" opacity=".18"/><path d="M670 161l72 -80 -26 101 56 -12 -94 104 35 -107z" fill="#f4d59f" opacity=".18"/><path d="M770 214l74 -80 -26 101 56 -12 -94 104 35 -107z" fill="#c52f42" opacity=".18"/><circle cx="602" cy="296" r="212" fill="none" stroke="#f4d59f" stroke-width="5" opacity=".5"/><circle cx="602" cy="296" r="231" fill="none" stroke="#c52f42" stroke-width="14" opacity=".14"/>
+<path d="M20 20H1180V610H20Z" fill="none" stroke="#c52f42" stroke-width="10" opacity=".8"/>
+<path d="M41 41H1159V589H41Z" fill="none" stroke="#f4d59f" stroke-width="2" opacity=".45"/>
+<path d="M40 112h390M770 112h390M40 525h390M770 525h390" fill="none" stroke="url(#plate)" stroke-width="5"/>
+<path d="M540 91l60 -28 60 28 -60 28z" fill="#c52f42" stroke="#f4d59f" stroke-width="3"/>
+<text x="600" y="169" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="27" letter-spacing="14" fill="#f4d59f">PREMIUM EVENT</text>
+<text x="600" y="342" text-anchor="middle" textLength="1000" lengthAdjust="spacingAndGlyphs" font-size="151" font-family="Impact,'Arial Black',sans-serif" font-weight="1000" letter-spacing="2" fill="#f4d59f" stroke="#0a0c1a" stroke-width="16" paint-order="stroke" filter="url(#ink)">WRESTLE KINGDOM</text>
+<path d="M275 396h650" stroke="url(#plate)" stroke-width="9"/>
+<text x="600" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="13" fill="#f4d59f">NJPW • LIVE</text>
+<path d="M46 561h1108" stroke="#f4d59f" stroke-width="2" opacity=".37"/>
+<text x="66" y="586" font-family="Arial,sans-serif" letter-spacing="6" font-size="18" fill="#f4d59f">THE ARENA AWAITS</text>
+<text x="1130" y="586" text-anchor="end" font-family="Arial,sans-serif" letter-spacing="4" font-size="18" fill="#f4d59f">THE MAIN ATTRACTION</text>
+</svg>

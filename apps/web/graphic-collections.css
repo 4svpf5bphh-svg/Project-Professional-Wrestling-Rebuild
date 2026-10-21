@@ -1,0 +1,35 @@
+
+/* Hand-authored, local SVG posters and belt plates, independent of gameplay data. */
+#game .ppw-calendar-event{grid-template-columns:46px minmax(0,1fr) 74px;gap:9px}
+#game .ppw-calendar-event-art{grid-column:1/-1;grid-row:1;display:block;width:100%;
+ height:110px;object-fit:cover;object-position:center;border-radius:9px;border:1px solid #b8c9e54d;
+ box-shadow:0 6px 19px #0106178a}
+#game .ppw-calendar-event-major .ppw-calendar-event-art{height:145px;border-color:#f7d38577}
+#game .ppw-calendar-event-emblem{grid-column:1;grid-row:2}
+#game .ppw-calendar-event-copy{grid-column:2;grid-row:2;min-width:0}
+#game .ppw-calendar-event .ppw-calendar-promoter-logo{grid-column:3;grid-row:2;width:100%;max-width:74px}
+#game .ppw-calendar-event :is(.ppw-calendar-booked-state,.ppw-calendar-booked-place,
+ .ppw-calendar-unbooked-state){grid-column:1/-1}
+#game .ppw-calendar-event>button{grid-column:1/-1;justify-self:start}
+#game .ppw-planner-event-art{display:block;width:100%;height:105px;object-fit:cover;
+ border:1px solid #86a8da70;border-radius:10px;margin:13px 0 8px;box-shadow:0 9px 18px #0106179e}
+#game .ppw-match-broadcast .ppw-broadcast-event-art{position:absolute;inset:0;z-index:-1;
+ width:100%;height:100%;object-fit:cover;opacity:.24;pointer-events:none}
+#game .ppw-match-broadcast{isolation:isolate}
+#game .ppw-championship-desk .ppw-belt-summary{grid-template-columns:minmax(0,1fr)!important;gap:9px}
+#game .ppw-championship-desk .ppw-belt-insignia{width:100%;height:auto;min-height:0}
+#game .ppw-championship-desk .ppw-belt-insignia:before{content:none!important}
+#game .ppw-championship-desk .ppw-belt-plate{display:block;width:100%;height:auto;min-height:0;
+ padding:0;border:0;box-shadow:none;background:transparent;border-radius:0}
+#game .ppw-championship-desk .ppw-belt-graphic{display:block;width:100%;height:clamp(116px,36vw,190px);
+ object-fit:contain;filter:drop-shadow(0 7px 11px #010617a9)}
+#game .ppw-championship-desk .ppw-belt-identity{min-width:0}
+#game .ppw-championship-desk .ppw-belt-meta{grid-column:1/-1;display:flex;
+ justify-content:flex-start;align-items:center;border-left:0;border-top:1px solid #64748b44;padding-top:9px}
+@media(min-width:620px){#game .ppw-championship-desk .ppw-belt-summary{
+ grid-template-columns:220px minmax(0,1fr)!important;align-items:center}
+ #game .ppw-championship-desk .ppw-belt-meta{grid-column:2;grid-row:2}}
+@media(max-width:350px){#game .ppw-calendar-event{grid-template-columns:40px minmax(0,1fr) 48px;gap:7px}
+ #game .ppw-calendar-event-art{height:85px}
+ #game .ppw-calendar-event-major .ppw-calendar-event-art{height:110px}
+ #game .ppw-calendar-event .ppw-calendar-promoter-logo{max-width:48px}}

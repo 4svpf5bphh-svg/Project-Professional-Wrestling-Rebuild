@@ -1,6 +1,7 @@
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
+import {eventArtworkSource} from "./event-artwork.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -262,6 +263,11 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      (s.role==="FLAGSHIP"?"A":s.role==="SECONDARY"?"B":s.role==="PREMIUM"?"PPV":s.role)+")").join(" · "),
     "ppw-planner-calendar-label"));
    for(const show of week.shows){
+    const showPoster=node("img","","ppw-planner-event-art") as HTMLImageElement;
+    showPoster.src=eventArtworkSource(show.showName,data.promotionName,show.bookingClass==="PREMIUM");
+    showPoster.alt="";showPoster.loading="lazy";showPoster.decoding="async";
+    showPoster.onerror=()=>showPoster.remove();
+    card.append(showPoster);
     card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));

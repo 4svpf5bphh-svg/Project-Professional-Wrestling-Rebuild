@@ -3,6 +3,7 @@
  */
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {promotionBrand} from "./broadcast-identity.js";
+import {championshipArtworkSource} from "./championship-artwork.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
 export interface ChampionshipPort {
@@ -123,7 +124,13 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const head=document.createElement("summary");head.className="ppw-belt-summary";
    const belt=element("span","ppw-belt-insignia");
    const plate=element("span","ppw-belt-plate");
-   plate.setAttribute("aria-hidden","true");plate.append(championshipArtwork(title.division,title.name,title.promotionName));
+   plate.setAttribute("aria-hidden","true");
+    const graphic=document.createElement("img");
+    graphic.className="ppw-belt-graphic";
+    graphic.src=championshipArtworkSource(title.name,title.division,title.promotionName);
+    graphic.alt="";graphic.loading="lazy";graphic.decoding="async";
+    graphic.onerror=()=>graphic.replaceWith(championshipArtwork(title.division,title.name,title.promotionName));
+    plate.append(graphic);
    belt.append(plate);
    const identity=element("span","ppw-belt-identity");
    const promo=element("span","ppw-belt-promotion",

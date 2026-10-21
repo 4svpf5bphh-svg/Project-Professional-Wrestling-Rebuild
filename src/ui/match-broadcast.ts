@@ -4,6 +4,7 @@
 import type {EditorMatch,PersonPick} from "./card-editor-model.js";
 import {FORMATS} from "./card-editor-model.js";
 import {eventDesign} from "./broadcast-identity.js";
+import {eventArtworkSource} from "./event-artwork.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 
@@ -41,6 +42,12 @@ export function createMatchBroadcast(match:EditorMatch,
  const board=document.createElement("section");
  board.className="ppw-match-broadcast";
  board.dataset.matchFormat=match.format;board.dataset.eventMotif=info.motif;
+ const eventBackdrop=document.createElement("img");
+ eventBackdrop.className="ppw-broadcast-event-art";
+ eventBackdrop.src=eventArtworkSource(info.show,info.promotion,info.premium);
+ eventBackdrop.alt="";eventBackdrop.loading="lazy";eventBackdrop.decoding="async";
+ eventBackdrop.onerror=()=>eventBackdrop.remove();
+ board.append(eventBackdrop);
  const header=span("ppw-broadcast-event",info.show);
  header.title=info.promotion;
  board.append(header,span("ppw-broadcast-promotion",info.promotion.toUpperCase()));

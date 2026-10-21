@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550" width="1000" height="550" role="img" aria-label="CMLL TAG TEAM championship belt art">
+<title>CMLL TAG TEAM championship — original PPW engraved belt illustration</title>
+<defs><linearGradient id="leather" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0d1220"/><stop offset=".5" stop-color="#40302b"/><stop offset="1" stop-color="#090c18"/></linearGradient>
+<linearGradient id="gold" x1=".1" y1="0" x2=".8" y2="1"><stop stop-color="#fff7c9"/><stop offset=".25" stop-color="#f4deb5"/><stop offset=".5" stop-color="#67b895"/><stop offset=".72" stop-color="#78542f"/><stop offset="1" stop-color="#f4deb5"/></linearGradient>
+<radialGradient id="face"><stop stop-color="#f4deb5"/><stop offset=".55" stop-color="#67b895"/><stop offset="1" stop-color="#164d53"/></radialGradient>
+<filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-opacity=".55"/></filter></defs>
+<g filter="url(#shadow)">
+<path d="M22 245 99 193 296 161 380 113 500 85 620 113 704 161 901 193 978 245 978 305 901 355 704 389 620 438 500 467 380 438 296 389 99 355 22 305Z" fill="url(#leather)" stroke="#07090c" stroke-width="13"/>
+<path d="M52 251h92v50H52zM856 251h92v50h-92z" fill="#d1ae73" stroke="#342b25" stroke-width="8"/>
+<g transform="translate(189 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#164d53" stroke="#67b895" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f4deb5" stroke-width="6"/></g><g transform="translate(811 275)"><path d="M0-77L65 -49 73 0 65 49 0 77 -65 49 -73 0 -65 -49Z" fill="url(#gold)" stroke="#e7e9f4" stroke-width="8"/><path d="M0 -52L43 -33 48 0 43 33 0 52 -43 33 -48 0 -43 -33Z" fill="#164d53" stroke="#67b895" stroke-width="6"/><path d="M-29 0H29M0-25V25" stroke="#f4deb5" stroke-width="6"/></g>
+<path d="M500 100L628 151 684 276 628 400 500 448 372 400 316 276 372 151Z" fill="url(#gold)" stroke="#f4e2b7" stroke-width="14"/>
+<path d="M500 100L628 151 684 276 628 400 500 448 372 400 316 276 372 151Z" fill="none" stroke="#164d53" stroke-width="28" opacity=".55" transform="translate(500 275) scale(.88) translate(-500 -275)"/>
+<circle cx="500" cy="273" r="120" fill="url(#face)" stroke="#f4deb5" stroke-width="14"/>
+<circle cx="500" cy="273" r="104" fill="none" stroke="#fff3b2" stroke-width="4" opacity=".8"/>
+<circle cx="623.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="606.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="561.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="396.0" r="4" fill="#fff9d6"/><circle cx="438.5" cy="379.5" r="4" fill="#fff9d6"/><circle cx="393.5" cy="334.5" r="4" fill="#fff9d6"/><circle cx="377.0" cy="273.0" r="4" fill="#fff9d6"/><circle cx="393.5" cy="211.5" r="4" fill="#fff9d6"/><circle cx="438.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="500.0" cy="150.0" r="4" fill="#fff9d6"/><circle cx="561.5" cy="166.5" r="4" fill="#fff9d6"/><circle cx="606.5" cy="211.5" r="4" fill="#fff9d6"/>
+<path d="M500 204l22 45 49 7 -37 34 9 50 -43 -22 -43 22 9 -50 -37 -34 49 -7Z" fill="#f4deb5" opacity="0.25"/>
+<text x="500" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="8" fill="#1c1820" stroke="#f4deb5" stroke-width="1">CMLL</text>
+<text x="500" y="266" text-anchor="middle" textLength="216" lengthAdjust="spacingAndGlyphs" font-family="Impact,'Arial Black',sans-serif" font-size="43" font-weight="1000" fill="#faf5d8" stroke="#191622" stroke-width="7" paint-order="stroke">TAG TEAM</text>
+<text x="500" y="318" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="900" letter-spacing="4" fill="#f8edcf">DUAL CHAMPIONSHIP</text>
+<path d="M380 370h240" stroke="#f4deb5" stroke-width="5"/>
+<path d="M372 195l-29 80 29 81M628 195l29 80 -29 81" fill="none" stroke="#f4deb5" stroke-width="6" opacity=".75"/>
+</g></svg>
