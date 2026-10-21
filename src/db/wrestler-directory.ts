@@ -37,7 +37,7 @@ type PersonRow={
  future_contracts:number;next_future_start:number|null;
  future_exclusive_to:string|null;
  pending_offer:boolean;estimated_value:number|null;
- championship_titles:string[]|null;
+ ct:string[]|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
  if(!f||!["ROSTER","MARKET"].includes(f.view)||
@@ -101,7 +101,7 @@ export async function readWrestlerDirectory(
     p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
-    interest.score AS interest_score,current_titles.championship_titles,
+    interest.score AS interest_score,current_titles.championship_titles AS ct,
     mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
     mine.remaining_dates,mine.expires_week_index,
@@ -205,7 +205,7 @@ export async function readWrestlerDirectory(
     const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
-    championships:normaliseCurrentTitles(p.championship_titles),
+    championships:normaliseCurrentTitles(p.ct),
     ringName:fallback.personaName,gimmickId:fallback.gimmickId,
     primaryStyle:fallback.primaryStyle,
     signatureMove:fallback.signatureMoves[0]?.name??null,
