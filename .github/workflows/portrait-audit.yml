@@ -1,11 +1,6 @@
 name: Wikimedia portrait audit
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'src/ui/wrestler-portrait.ts'
-      - 'scripts/audit-portraits.ts'
-      - '.github/workflows/portrait-audit.yml'
 permissions:
   contents: read
 jobs:
