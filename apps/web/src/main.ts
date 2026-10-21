@@ -143,7 +143,7 @@ function renderNavigation(section:HostSection){
  document.body.classList.toggle("ppw-drawer-active",drawerExpanded);
  const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
  if(menu){menu.setAttribute("aria-expanded",String(drawerExpanded));
-  menu.textContent=drawerExpanded?"×  CLOSE CONTROL ROOM":"☰  OPEN CONTROL ROOM";}
+  menu.textContent=drawerExpanded?"×  CLOSE":"☰  CONTROL ROOM";}
  if(!drawerExpanded)return;
  const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
  backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
@@ -369,7 +369,7 @@ async function loadSession(){
     session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
   const actions=el("div","ppw-shell-actions");
-  const menu=button("☰  OPEN CONTROL ROOM",()=>{
+  const menu=button("☰  CONTROL ROOM",()=>{
    const section=readHostSection(location.hash);
    if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(section);
    drawerExpanded=!drawerExpanded;renderNavigation(section);

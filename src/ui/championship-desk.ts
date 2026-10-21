@@ -85,7 +85,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const identity=element("span","ppw-belt-identity");
    const promo=element("span","ppw-belt-promotion",
     title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES"));
-   identity.append(promo,element("strong","ppw-belt-name",title.name));
+   identity.append(promo);
    const throne=element("span","ppw-belt-current-display");
    const portrait=title.holderType==="PERSON"&&title.holderName?
     createWrestlerPortrait(title.holderName,180):null;

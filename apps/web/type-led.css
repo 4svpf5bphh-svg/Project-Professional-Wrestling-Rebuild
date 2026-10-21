@@ -84,3 +84,17 @@
 
 /* Hosted AEW source uses an opaque field; compositing prevents a sticker. */
 #game .ppw-authentic-promotion-logo[data-promotion-logo="aew"]{mix-blend-mode:screen}
+
+/* Browser-reviewed: retain thumb access without a 300px neon overlay across cards. */
+@media(max-width:799px){
+ .ppw-account-banner .ppw-shell-menu{
+  left:auto;right:calc(11px + env(safe-area-inset-right));top:auto;
+  bottom:calc(10px + env(safe-area-inset-bottom));transform:none;
+  width:auto;min-width:130px;max-width:calc(100vw - 24px);min-height:48px!important;
+  padding:10px 13px!important;border-radius:13px;border-width:1px;
+  letter-spacing:.065em;font-size:12px;text-shadow:none;
+  box-shadow:0 6px 17px #020612a8,0 0 0 1px #ffe9ae55}
+ .ppw-account-banner .ppw-shell-menu:before,
+ .ppw-account-banner .ppw-shell-menu:after{display:none}
+ .ppw-account-banner .ppw-shell-menu:not(:disabled):active{transform:scale(.97)!important}
+}
