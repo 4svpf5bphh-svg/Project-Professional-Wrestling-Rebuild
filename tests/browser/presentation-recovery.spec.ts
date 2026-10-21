@@ -1,4 +1,7 @@
 import {test,expect} from "@playwright/test";
+import {mkdirSync} from "node:fs";
+const images="test-results/presentation-screenshots";
+mkdirSync(images,{recursive:true});
 
 /** Self-contained rendered visual QA; no world writes, no production credentials. */
 const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
@@ -47,6 +50,7 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await testInfo.attach("wrestler-fallback-"+width,{
    body:await page.screenshot({fullPage:true}),contentType:"image/png"});
+  await page.screenshot({path:images+"/wrestler-fallback-"+width+".png",fullPage:true});
   expect(calls).toEqual(["tagTeams"]);
  });
  test("iPhone "+width+"px: actual show posters load without obstructing calendar and actions",async({page},testInfo)=>{
@@ -78,6 +82,7 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await testInfo.attach("event-calendar-"+width,{
    body:await page.screenshot({fullPage:true}),contentType:"image/png"});
+  await page.screenshot({path:images+"/event-calendar-"+width+".png",fullPage:true});
   expect(requests).toEqual(["calendar"]);
  });
 }
@@ -125,8 +130,23 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await expect(page.locator(".ppw-messenger-inbox")).toBeVisible();
  await testInfo.attach("backstage-inbox",{
   body:await page.screenshot({fullPage:true}),contentType:"image/png"});
+ await page.screenshot({path:images+"/backstage-inbox-390.png",fullPage:true});
  await page.getByRole("button",{name:"Leave Backstage"}).click();
  await expect(page).toHaveURL(/#\/roster$/);
  await expect(menu).toBeVisible();
  expect(calls.filter(x=>x==="backstage")).toHaveLength(2);
 });
+
+for(const width of [320,390]){
+ test("iPhone "+width+"px: World home stays readable and retains its existing protected navigation",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await page.route("**/api/session",route=>route.fulfill({json:session}));
+  await page.route("**/api/card",route=>route.fulfill({json:overview}));
+  await page.goto("/#/home");
+  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  await page.screenshot({path:images+"/home-"+width+".png",fullPage:true});
+ });
+}

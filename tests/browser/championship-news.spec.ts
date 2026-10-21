@@ -1,3 +1,4 @@
+import {mkdirSync} from "node:fs";
 import {test,expect} from "@playwright/test";
 const title={id:"title-reign:show:main:new-reign",championshipId:"world",
  titleName:"World Championship",winnerName:"Alice",holderType:"PERSON",
@@ -88,6 +89,8 @@ test("championship directory renders loaded distinct authored belt artwork witho
   images=>images.every(img=>(img as HTMLImageElement).naturalWidth>0)))
   .toBe(true);
  await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();
+ mkdirSync("test-results/presentation-screenshots",{recursive:true});
+ await page.screenshot({path:"test-results/presentation-screenshots/championships-390.png",fullPage:true});
  expect(calls).toEqual(["championships"]);
 });
 
