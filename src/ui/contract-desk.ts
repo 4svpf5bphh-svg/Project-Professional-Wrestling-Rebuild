@@ -105,10 +105,23 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    for(const o of view.offers){
     const row=el("div","ppw-contract-request");
-    const worker=view.roster.find(r=>r.personId===o.person_id);
-    row.append(el("span","",(worker?.name??"Recruitment")+
-     (o.source_contract_id?" · negotiated renewal pending":" · recruitment offer pending")),
-     btn("Withdraw offer",()=>void action("offer:"+o.offer_id,m=>
+    const copy=el("div","ppw-contract-offer-copy");
+    const t=(o.terms??{}) as Partial<OfferTerms>;
+    copy.append(el("strong","ppw-contract-offer-name",o.person_name),
+     el("small","ppw-contract-offer-status",o.source_contract_id?
+      "RENEWAL OFFER · AWAITING DECISION":"NEW SIGNING · AWAITING DECISION"));
+    const terms=[
+     t.family?title(t.family):null,
+     typeof t.termWeeks==="number"?t.termWeeks+" weeks":null,
+     typeof t.dateEntitlement==="number"?(t.family==="EXCLUSIVE"?"Exclusive":t.dateEntitlement+" dates"):null,
+     typeof t.weeklyGuarantee==="number"?money(t.weeklyGuarantee)+"/week":null,
+     typeof t.appearanceFee==="number"&&t.appearanceFee>0?money(t.appearanceFee)+"/appearance":null,
+     typeof t.signingBonus==="number"&&t.signingBonus>0?money(t.signingBonus)+" signing bonus":null
+    ].filter(Boolean).join(" · ");
+    if(terms)copy.append(el("span","ppw-contract-offer-terms",terms));
+    if(port.openWrestler)copy.append(btn("View wrestler dossier ↗",
+     ()=>port.openWrestler?.(o.person_id)));
+    row.append(copy,btn("Withdraw offer",()=>void action("offer:"+o.offer_id,m=>
       port.withdrawOffer({...m,offerId:o.offer_id}),
       "Contract offer withdrawn."),!editable()));
     box.append(row);

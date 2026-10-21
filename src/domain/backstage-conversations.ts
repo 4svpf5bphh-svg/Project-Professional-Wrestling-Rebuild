@@ -72,6 +72,23 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
    ". Maybe a different character could work? I'm open to hearing a pitch.";
  }
 }
+/** The manager speaks naturally; labels remain brief buttons, not dialogue. */
+export function backstageManagerReply(decision:BackstageDecision):string{
+ switch(decision){
+  case "TALK":return "You've got my attention. Tell me what you've got in mind.";
+  case "DECLINE":return "I've heard your case, but I can't agree right now.";
+  case "PROMISE_APPEARANCE":return "I'll put you in a match within the next two weeks.";
+  case "PROMISE_SEGMENT":return "I'll give you promo or angle time within two weeks.";
+  case "PROMISE_FEATURED":return "I'll get you a featured match within four weeks.";
+  case "EXPLORE_RENEWAL":return "Let's discuss a new deal. We still need to agree the terms.";
+  case "MEDIATE":return "I'll speak to both of you. The trust still has to be earned in the ring.";
+  case "CONSIDER_REPACKAGE":return "Let's explore a character that fits you. Nothing changes without your approval.";
+  case "KEEP_CHARACTER":return "We're keeping your current character. It still belongs to you.";
+  case "EXPLORE_TEAM":return "There could be something here. Let's see how it develops.";
+  case "EXPLORE_RIVALRY":return "That rivalry has possibilities. Let's discuss the story.";
+  case "NOT_NOW":return "Not right now. Keep at it and we'll revisit the idea.";
+ }
+}
 export function backstageReply(decision:BackstageDecision,status:string){
  if(status==="FULFILLED")return "You kept your word. That match meant a lot to me.";
  if(status==="BROKEN")return "You made me a booking promise and didn't deliver. I won't forget.";

@@ -4,7 +4,7 @@
 import type {readPortablePersonaWorkspace}
  from "../db/portable-persona-workspace.js";
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
-import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageMessage,backstageReply,
+import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
@@ -352,9 +352,9 @@ export function mountPersonaDesk(root:HTMLElement,
   chat.dataset.personId=view.personId;
   chat.setAttribute("aria-label","Conversation with "+view.personName);
   const chatHead=el("header","ppw-backstage-phone-header");
-  const returnToInbox=button("‹",returnToMessages);
+  const returnToInbox=button("← Chats",returnToMessages);
   returnToInbox.classList.add("ppw-backstage-phone-back");
-  returnToInbox.setAttribute("aria-label","Back to messages");
+  returnToInbox.setAttribute("aria-label","Back to Backstage inbox");
   const monogram=el("span","ppw-backstage-phone-avatar",
    view.personName.trim().split(/\s+/).slice(0,2).map(part=>part[0]??"").join("").toUpperCase());
   monogram.setAttribute("aria-hidden","true");
@@ -410,7 +410,7 @@ export function mountPersonaDesk(root:HTMLElement,
      item.observedFeaturedShows+" featured"));
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
-     BACKSTAGE_LABELS[item.decision]));
+     backstageManagerReply(item.decision)));
     if(item.respondedWeekIndex!==null)
      chat.append(el("small","ppw-backstage-sent-stamp","Sent · Y"+
       (Math.floor(item.respondedWeekIndex/52)+1)+" W"+

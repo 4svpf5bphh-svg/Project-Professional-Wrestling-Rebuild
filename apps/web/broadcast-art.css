@@ -55,3 +55,20 @@
 .ppw-calendar-event[data-event-motif="revolution"]{--show-bg:radial-gradient(circle at 67% 49%,#b1564e,#382459,#1c152b);--show-border:#ee987a}
 .ppw-calendar-event[data-event-motif="forbidden-door"]{--show-bg:linear-gradient(90deg,#1b2541 0 45%,#d7a853 48% 52%,#191b36 55%);--show-border:#ffdb8a}
 .ppw-calendar-event[data-event-motif="worlds-end"]{--show-bg:radial-gradient(circle,#31475b,#101222 70%);--show-border:#afbfca}
+
+/* Private threads own the phone thumb zone; inbox retains global navigation. */
+html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) .ppw-account-banner .ppw-shell-menu{display:none!important}
+html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+#game .ppw-messenger-thread .ppw-backstage-phone-header{gap:8px;min-width:0}
+#game .ppw-messenger-thread .ppw-backstage-phone-back{width:auto!important;min-width:78px!important;
+ height:44px;font-size:12px!important;font-weight:850;padding:9px!important;white-space:nowrap}
+#game .ppw-messenger-thread .ppw-backstage-phone-identity{min-width:0;flex:1}
+#game .ppw-messenger-thread .ppw-backstage-phone-details{min-height:40px;max-width:78px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+#game .ppw-messenger-thread :is(.ppw-persona-bubble,.ppw-gimmick-choice,.ppw-backstage-composer){min-width:0;overflow-wrap:anywhere}
+#game .ppw-messenger-thread .ppw-backstage-composer{margin:13px 7px 10px!important;
+ padding:12px 8px!important;border:0!important;box-shadow:none!important}
+#game .ppw-messenger-thread .ppw-gimmick-choice :is(strong,small,span){
+ max-width:100%;white-space:normal!important;overflow-wrap:anywhere}
+@media(max-width:370px){#game .ppw-messenger-thread .ppw-backstage-phone-avatar{display:none}
+ #game .ppw-messenger-thread .ppw-backstage-phone-header{padding:9px 7px}}

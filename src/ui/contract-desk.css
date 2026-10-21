@@ -78,3 +78,11 @@
 .ppw-contract-decision-week{font-size:11px;color:#94b3c9}
 .ppw-contract-decision .ppw-contract-button{justify-self:start}
 @media(min-width:700px){.ppw-contract-decision-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ppw-contract-offer-copy{display:grid;gap:6px;min-width:0}
+.ppw-contract-offer-name{font-size:clamp(17px,5vw,21px);font-weight:900;color:#fff0ce;overflow-wrap:anywhere}
+.ppw-contract-offer-status{font-size:10px;letter-spacing:.1em;font-weight:900;color:#a4dff5}
+.ppw-contract-offer-terms{color:#c2d9e7;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-contract-offer-copy .ppw-contract-button{width:max-content;max-width:100%;min-height:40px;padding:7px 10px}
+.ppw-contract-request{align-items:start}
+@media(max-width:550px){.ppw-contract-request>.ppw-contract-button{width:100%;text-align:center}}
