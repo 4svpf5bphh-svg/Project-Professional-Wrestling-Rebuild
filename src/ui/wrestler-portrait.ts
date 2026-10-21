@@ -1,4 +1,4 @@
-/** Small, verified Wikimedia Commons portrait catalogue.
+/** Wikimedia Commons portrait candidates. External file existence and licensing\n * must be independently audited; local tests alone cannot verify remote media.
  * Client media only: NO live search, AI, Neon metadata, database reads/writes.
  * Match the base legal name as well as stable ring aliases. Never invent photos.
  * Full attribution and license links: /portrait-credits.html
@@ -83,7 +83,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "rezar":{file:"Rezar, WrestleMania XL.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "roxanne perez":{file:"Roxanne Perez RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "stephanie vaquer":{file:"Stephanie Vaquer RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "shinsuke nakamura":{file:"Shinsuke Nakamura RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "shinsuke nakamura":{file:"Shinsuke Nakamura 2024 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
  "sheamus":{file:"Sheamus RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "solo sikoa":{file:"Solo Sikoa RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "tama tonga":{file:"Tama Tonga RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
@@ -95,7 +95,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "xavier woods":{file:"Xavier Woods RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "kofi kingston":{file:"Kofi Kingston RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "the miz":{file:"The Miz RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "otís":{file:"Otis RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "otis":{file:"Otis RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "chad gable":{file:"Chad Gable RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "ludwig kaiser":{file:"Ludwig Kaiser RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "ilja dragunov":{file:"Ilja Dragunov RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
@@ -126,6 +126,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
 };
 const knownAliases:Readonly<Record<string,string>>={
+ "otís":"otis",
  "hangman page":"hangman adam page",
  "adam page":"hangman adam page",
  "hangman adam page":"hangman adam page",
@@ -141,6 +142,7 @@ const knownAliases:Readonly<Record<string,string>>={
  "the rainmaker":"kazuchika okada",
  "the man":"becky lynch"
 };
+export const portraitCatalogue:Readonly<Record<string,PhotoCredit>>=catalogue;
 export const normalizePortraitName=(name:string)=>name.trim().toLowerCase().replace(/[‘’]/g,"'").replace(/\s+/g," ");
 export function portraitCredit(name:string):PhotoCredit|null{
  const key=normalizePortraitName(name);
