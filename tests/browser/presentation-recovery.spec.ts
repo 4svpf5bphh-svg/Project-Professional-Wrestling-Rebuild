@@ -233,3 +233,28 @@ test("all shipped championship and broadcast SVGs parse as real standalone image
  expect(faults).toEqual([]);
  expect(urls.length).toBeGreaterThan(120);
 });
+
+test("player-created shows carry their real names on generic premium and weekly artwork",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ const weekly={seriesId:"player-tv",name:"Tuesday Thunder",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:76,active:true};
+ const major={seriesId:"player-ppv",name:"Blood Moon Bash",role:"SPECIAL",
+  eventType:"MAJOR",cadenceWeeks:52,anchorWeek:4,importance:92,active:true};
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  promotionId:"aew",promotionName:"AEW",year:1,week:5,worldRevision:4,canEdit:false,
+  series:[weekly,major],bookings:[],worldWeeks:[],
+  weeks:[{year:1,week:5,offset:0,shows:[weekly,major]}]
+ }}));
+ await page.goto("/#/calendar");
+ const cards=page.locator(".ppw-calendar-event");
+ await expect(cards).toHaveCount(2);
+ await expect(cards.nth(0).locator(".ppw-dynamic-event-heading")).toHaveText("Tuesday Thunder");
+ await expect(cards.nth(1).locator(".ppw-dynamic-event-heading")).toHaveText("Blood Moon Bash");
+ const backgrounds=await cards.locator(".ppw-calendar-event-art").evaluateAll(
+  imgs=>imgs.map(img=>(img as HTMLImageElement).getAttribute("src")));
+ expect(backgrounds).toEqual(["/events/aew-weekly.svg","/events/aew-premium.svg"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+ await page.screenshot({path:images+"/named-custom-events-390.png",fullPage:true});
+});
