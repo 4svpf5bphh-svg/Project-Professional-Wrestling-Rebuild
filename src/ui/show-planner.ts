@@ -2,6 +2,7 @@ import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspac
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
 import {eventArtworkSource} from "./event-artwork.js";
+import {eventDesign} from "./broadcast-identity.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -267,7 +268,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     showPoster.src=eventArtworkSource(show.showName,data.promotionName,show.bookingClass==="PREMIUM");
     showPoster.alt="";showPoster.loading="lazy";showPoster.decoding="async";
     showPoster.onerror=()=>showPoster.remove();
-    card.append(showPoster);
+    const posterShell=node("div","","ppw-planner-event-shell");
+    posterShell.append(showPoster);
+    if(eventDesign(show.showName,data.promotionName,show.bookingClass==="PREMIUM").motif===
+      (show.bookingClass==="PREMIUM"?"signature":"weekly"))
+      posterShell.append(node("strong",show.showName,"ppw-dynamic-event-heading"));
+    card.append(posterShell);
     card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));

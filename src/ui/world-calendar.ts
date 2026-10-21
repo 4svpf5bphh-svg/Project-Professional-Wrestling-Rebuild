@@ -198,7 +198,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   poster.src=eventArtworkSource(name,owner??data?.promotionName??"",major);
   poster.alt="";poster.loading="lazy";poster.decoding="async";
   poster.onerror=()=>poster.remove();
-  card.append(poster,emblem,copy);
+  const artwork=node("span","","ppw-calendar-artwork-shell");
+  artwork.append(poster);
+  if(graphic.motif==="signature"||graphic.motif==="weekly")
+   artwork.append(node("strong",name,"ppw-dynamic-event-heading"));
+  card.append(artwork,emblem,copy);
   // Keep the promoter identity legible when third-party marks fail to load.
   const identity=node("span",promotionBrand(owner??data?.promotionName??"").mark,
    "ppw-calendar-owner-mark");
