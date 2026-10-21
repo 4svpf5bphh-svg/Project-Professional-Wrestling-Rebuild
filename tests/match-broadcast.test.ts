@@ -7,7 +7,7 @@ const context={show:"WrestleMania",promotion:"WWE",premium:true,mainEvent:true};
 const titles=[{championshipId:"world",name:"World Championship",division:"SINGLES" as const,holderName:"Cody Rhodes"}];
 test("broadcast singles uses only explicitly booked talent and booked championship",()=>{
  const match=make("SINGLES");
- match.teams=[[{personId:"a",contractId:"c"},{personId:"b",contractId:"d"}]];
+ match.teams=[[{personId:"a",contractId:"c"}],[{personId:"b",contractId:"d"}]];
  match.championshipId="world";
  const p=projectMatchGraphic(match,x=>x.personId==="a"?"Cody Rhodes":"Roman Reigns",titles,context);
  assert.deepEqual(p.participants,[["Cody Rhodes"],["Roman Reigns"]]);

@@ -37,6 +37,7 @@ export function createMatchBroadcast(match:EditorMatch,
  const opener=document.createElement("summary");
  opener.textContent="View match graphic ↗";opener.setAttribute("aria-label",
   "Preview broadcast graphic for "+info.format);holder.append(opener);
+ const mountGraphic=()=>{
  const board=document.createElement("section");
  board.className="ppw-match-broadcast";
  board.dataset.matchFormat=match.format;board.dataset.eventMotif=info.motif;
@@ -82,10 +83,12 @@ export function createMatchBroadcast(match:EditorMatch,
  }
  board.append(line,span("ppw-broadcast-footer",
   info.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
- // Only attach the broadcast contents when requested. This avoids extra image
- // requests and prevents duplicate hidden show names in the booking interface.
+ // Build images only if the player opens a match's broadcast treatment.
+ // Mere booking and reordering must never trigger image requests.
+ holder.append(board);
+ };
  holder.addEventListener("toggle",()=>{
-  if(holder.open&&!board.isConnected)holder.append(board);
+  if(holder.open&&!holder.querySelector(".ppw-match-broadcast"))mountGraphic();
  });
  return holder;
 }
