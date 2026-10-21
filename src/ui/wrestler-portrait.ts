@@ -5,6 +5,9 @@
  */
 export interface PhotoCredit{file:string;author:string;license:"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 4.0"|"CC0";}
 const catalogue:Readonly<Record<string,PhotoCredit>>={
+ "bianca belair":{file:"Bianca Belair RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "sami zayn":{file:"Sami Zayn, April 2024.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "john cena":{file:"John Cena (42760621725).jpg",author:"Gage Skidmore",license:"CC BY-SA 2.0"},
  "roman reigns":{file:"Roman Reigns RR25 (1) (headshot).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "cody rhodes":{file:"Cody Rhodes RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "seth rollins":{file:"Seth Rollins RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
