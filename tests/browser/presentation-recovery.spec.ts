@@ -258,3 +258,25 @@ test("player-created shows carry their real names on generic premium and weekly 
   .toBeLessThanOrEqual(1);
  await page.screenshot({path:images+"/named-custom-events-390.png",fullPage:true});
 });
+
+test("real AEW logo with an intrinsic black background is visually composited into the event artwork",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ const mockLogo='<svg xmlns="http://www.w3.org/2000/svg" width="200" height="92" viewBox="0 0 200 92"><rect width="200" height="92" fill="#000"/><text x="100" y="64" text-anchor="middle" fill="#fff" font-size="60" font-family="Arial Black,Arial" font-weight="900">AEW</text></svg>';
+ await page.route("**/commons.wikimedia.org/**",route=>route.fulfill({
+  status:200,contentType:"image/svg+xml",body:mockLogo}));
+ const show={seriesId:"dynamite",name:"AEW Dynamite",role:"FLAGSHIP",
+  eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  promotionId:"aew",promotionName:"AEW",year:1,week:5,worldRevision:4,
+  canEdit:false,series:[show],bookings:[],weeks:[{year:1,week:5,offset:0,shows:[show]}],
+  worldWeeks:[]
+ }}));
+ await page.goto("/#/calendar");
+ const badge=page.locator(".ppw-calendar-owner-mark[data-brand='aew']");
+ await expect(badge).toHaveAttribute("data-logo-ready","true");
+ await expect.poll(async()=>badge.locator("img").evaluate(
+  img=>getComputedStyle(img).mixBlendMode)).toBe("screen");
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ await page.screenshot({path:images+"/real-aew-logo-compositing-390.png",fullPage:true});
+});

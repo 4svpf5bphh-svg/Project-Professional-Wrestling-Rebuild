@@ -88,3 +88,17 @@ html[data-ppw-screen="backstage"] #game .ppw-backstage-phone-back{
  color:#cce3ff!important;min-width:65px;font-size:13px!important;font-weight:800}
 @media(max-width:350px){html[data-ppw-screen="backstage"] #game .ppw-persona-header{
  gap:5px}html[data-ppw-screen="backstage"] #game .ppw-persona-header h1{font-size:27px!important}}
+
+/* Some licensed wordmarks contain a black rectangle inside the source SVG.
+   Screen compositing on the known AEW asset reveals its actual white/gold
+   lettering without painting a black sticker on the purple event panel. */
+#game .ppw-calendar-owner-mark[data-brand="aew"][data-logo-ready="true"] .ppw-calendar-promoter-logo,
+#game .ppw-broadcast-brand-mark[data-logo-ready="true"] .ppw-broadcast-company-logo[data-promotion-logo="aew"]{
+ mix-blend-mode:screen!important;
+}
+#game .ppw-backstage-contact .ppw-messenger-awaiting{
+ flex:none;justify-self:end;margin-right:3px;min-width:0;
+ font-size:9px;max-width:45px;white-space:nowrap}
+@media(max-width:350px){
+ #game .ppw-backstage-contact .ppw-messenger-awaiting{font-size:8px;margin-right:0;letter-spacing:0}
+}
