@@ -103,10 +103,10 @@ export async function readWrestlerDirectory(
     p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS interest_score,
-    (SELECT a.cleared_week_index FROM ppw_medical_absences a
-     WHERE a.world_id=p.world_id AND a.person_id=p.person_id
-      AND a.status='ACTIVE' AND a.injured_week_index<$3
-      AND a.cleared_week_index>$3) AS med,
+    ${f.view==="ROSTER"?"(SELECT a.cleared_week_index FROM ppw_medical_absences a "+
+     "WHERE a.world_id=p.world_id AND a.person_id=p.person_id "+
+     "AND a.status='ACTIVE' AND a.injured_week_index<$3 "+
+     "AND a.cleared_week_index>$3) AS med,":""}
     ${f.view==="ROSTER"?"current_titles.championship_titles AS ct,":""}
     mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
@@ -211,7 +211,7 @@ export async function readWrestlerDirectory(
     const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
-     medicalWeeksRemaining:p.med===null?null:
+     medicalWeeksRemaining:p.med==null?null:
       p.med-now,
     ...(p.ct?.length?{championships:normaliseCurrentTitles(p.ct)}:{}),
     ringName:fallback.personaName,gimmickId:fallback.gimmickId,
