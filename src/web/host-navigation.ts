@@ -5,7 +5,6 @@ export const HOST_SECTIONS=[
  {id:"card",label:"The Card",glyph:"▤"},
  {id:"roster",label:"Talent",glyph:"T",primary:true},
  {id:"backstage",label:"Backstage",glyph:"☷"},
- {id:"more",label:"More",glyph:"☰"},
  {id:"market",label:"Talent Market",glyph:"◇"},
  {id:"contracts",label:"Contracts",glyph:"▤"},
  {id:"business",label:"Business",glyph:"B",primary:true},

@@ -106,11 +106,11 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  });
  await page.goto("/#/roster");
  await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
- await page.getByRole("button",{name:"Open promotion menu"}).click();
+ await page.getByRole("button",{name:"Open Talent menu"}).click();
   await page.getByRole("navigation",{name:"Promotion navigation"})
   .getByRole("button",{name:/Backstage/}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
- const menu=page.getByRole("button",{name:"Open promotion menu"});
+ const menu=page.getByRole("button",{name:"Open Talent menu"});
  await expect(menu).toBeHidden();
  await expect(page.getByRole("button",{name:"Leave Backstage"})).toBeVisible();
  await page.getByRole("button",{name:"Unread",exact:true}).click();
@@ -144,10 +144,10 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
   if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
    await page.getByRole("button",{name:/Skip intro/}).click();
-  const menu=page.getByRole("button",{name:"Open promotion menu"});
+  const menu=page.getByRole("button",{name:"Open World menu"});
   await expect(menu).toBeVisible();
   const bounds=await page.evaluate(()=>{
-   const nav=document.querySelector(".ppw-bottom-more")!.getBoundingClientRect();
+   const nav=document.querySelector(".ppw-bottom-root")!.getBoundingClientRect();
    const head=document.querySelector(".ppw-account-banner")!.getBoundingClientRect();
    return {nav:{top:nav.top,bottom:nav.bottom,width:nav.width},
     head:{top:head.top,bottom:head.bottom}};

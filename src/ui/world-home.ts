@@ -608,7 +608,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    root.append(clear);
   }
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
-   "Use the bottom navigation for daily play, or More for the wider promotion office."));
+   "The five bottom buttons open your World, Talent, Plan, Business and Results departments."));
  }
  void load();
  return {refresh:load};
