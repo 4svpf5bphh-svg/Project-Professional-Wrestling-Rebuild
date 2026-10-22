@@ -85,10 +85,15 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
      if(invalid)decision="REJECTED";
      if(decision==="ACCEPTED"){
       const promotions=await tx.query<{tier:string;media_reach:number|null;backstage_trust:number}>(`
-       SELECT p.tier,p.media_reach,coalesce(t.trust,50) AS backstage_trust
+       SELECT p.tier,p.media_reach,
+        CASE WHEN annual.trust IS NULL THEN coalesce(t.trust,50)
+         ELSE round((coalesce(t.trust,50)+annual.trust)/2,1) END AS backstage_trust
        FROM ppw_promotions p LEFT JOIN ppw_backstage_promotion_trust t
        ON t.world_id=p.world_id AND t.promotion_id=p.promotion_id
        AND t.person_id=$3
+       LEFT JOIN ppw_promotion_talent_trust annual
+        ON annual.world_id=p.world_id AND annual.promotion_id=p.promotion_id
+         AND annual.person_id=$3
        WHERE p.world_id=$1 AND p.promotion_id=$2`,
        [input.worldId,input.promotionId,proposal.person_id]);
       if(promotions.length!==1||promotions[0]!.media_reach===null)

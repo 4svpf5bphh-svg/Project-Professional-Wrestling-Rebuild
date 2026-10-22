@@ -1,4 +1,8 @@
 import type {TransactionPool} from "./transaction.js";
+import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
+import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
+import {settleLivingPromotionSurvival,settleAnnualPromotionScale}
+ from "./living-world-promotions.js";
 import {settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "./medical-availability.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
@@ -216,11 +220,21 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Original long-term World systems: one atomic certified-week mutation.
+      // Careers and vacancies settle after the recorded show finishes, and
+      // before contract expiry and next week's player planning rights.
+      await settleLivingPromotionSurvival(tx,input.worldId,year,week);
+      await settleLivingWrestlerCareers(tx,input.worldId,year,week);
+      await settleLivingMorale(tx,input.worldId,year,week);
       // At the end of each 52-week year, evaluate original company standing
       // from actual completed shows, roster appearances, titles and renewals.
       // This returns immediately on weeks 1–51 and shares the World transaction.
       // Run before contract expiry so "current roster" is the year-end roster.
-      if(week===52)await evaluateYearEndPromotionStandings(tx,input.worldId,year,week);
+      if(week===52){
+       await settleAnnualLivingTalentTrust(tx,input.worldId,year,week);
+       await evaluateYearEndPromotionStandings(tx,input.worldId,year,week);
+       await settleAnnualPromotionScale(tx,input.worldId,year,week);
+      }
       // Apply accepted renewals only at the end of the paid current term.
       await tx.query(`UPDATE ppw_contracts c SET
           start_week_index=c.expires_week_index+1,

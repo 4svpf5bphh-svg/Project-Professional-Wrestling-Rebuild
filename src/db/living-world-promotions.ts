@@ -54,19 +54,25 @@ export async function settleLivingPromotionSurvival(
  const changes=rows.flatMap(p=>{
   if(!p.financial_distress||!(p.tier in ORIGINAL_ROSTER_TARGET))return [];
   const minimum=Math.max(6,Math.ceil(ORIGINAL_ROSTER_TARGET[p.tier]*.35));
-  const counters=originalSurvivalCounters({...p,distress:p.financial_distress,
+  const counters=originalSurvivalCounters({distress:p.financial_distress,
+   healthyWeeks:p.healthy_weeks,stressWeeks:p.stress_weeks,
+   crisisWeeks:p.crisis_weeks,understaffedWeeks:p.understaffed_weeks,
    minimumRoster:minimum,rosterCount:p.roster_count,interval:4});
   const stress=counters.stressWeeks>=8;
   const due=stress&&(p.last_restructure_week_index===null||
    idx-p.last_restructure_week_index>=12);
   const ai=p.management_mode==="AI"&&!p.human_controlled;
   const restructure=ai&&due;
-  const recovered=counters.healthyWeeks>=8&&p.restructuring_count>0;
+  const recovered=counters.healthyWeeks>=8&&p.restructuring_count>0&&
+   Number(p.weekly_fixed_overhead)!==Number(p.baseline_weekly_fixed_overhead);
   // Original has threshold 24 crisis and 12 insufficient staff. Human
   // managers retain their promotions; AI dormancy only after cash exhaustion.
   const dormant=ai&&p.financial_distress==="CRISIS"&&Number(p.cash)<=0&&
    counters.crisisWeeks>=24&&counters.understaffedWeeks>=12&&p.roster_count<6;
-  return [{promotion_id:p.promotion_id,...counters,priorRestructures:p.restructuring_count,
+  return [{promotion_id:p.promotion_id,
+   healthy_weeks:counters.healthyWeeks,stress_weeks:counters.stressWeeks,
+   crisis_weeks:counters.crisisWeeks,understaffed_weeks:counters.understaffedWeeks,
+   priorRestructures:p.restructuring_count,
    baseline:Number(p.baseline_weekly_fixed_overhead),
    cadence:p.baseline_event_cadence_weeks,crisis:p.financial_distress==="CRISIS",
    restructure:restructure&&!dormant,rawRestructure:restructure,
@@ -164,10 +170,10 @@ export async function settleLivingPromotionSurvival(
      'overhead',greatest(1,round(x.baseline*
       CASE WHEN x.crisis THEN .68 ELSE .84 END)::bigint),
      'cadenceWeeks',least(4,x.cadence+1),
-     'restructuringCount',x.prior_restructures+1,'significance',
+     'restructuringCount',x.priorRestructures+1,'significance',
      CASE WHEN x.crisis THEN 'MAJOR' ELSE 'NOTABLE' END)
    FROM jsonb_to_recordset($2::jsonb) x(promotion_id text,
-    baseline bigint,crisis boolean,cadence integer,prior_restructures integer)`,
+    baseline bigint,crisis boolean,cadence integer,priorRestructures integer)`,
    [worldId,JSON.stringify(restructured),year,week]);
  }
  const recovered=changes.filter(x=>x.recovered&&!x.restructure);
