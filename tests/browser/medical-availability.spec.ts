@@ -43,6 +43,8 @@ for(const width of [320,390]){
   await expect(cards.nth(1)).toContainText("UNLIMITED DATES");
   await cards.first().locator("summary").click();
   await expect(cards.first()).toContainText("cannot be booked while injured");
+  await expect(cards.first()).not.toContainText("NaN");
+  await expect(cards.first()).toContainText("Morale");
   expect(loads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({path:screenshots+"/medical-roster-"+width+".png",fullPage:true});
