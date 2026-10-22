@@ -1,7 +1,12 @@
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
+import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
+export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
  load():Promise<BusinessView>;
+ previewRestructure?():Promise<RescueView|null>;
+ restructure?(input:{requestId:string;expectedRevision:number}):
+  Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
  openResults?(showId:string):void;
  openRoster?():void;openContracts?():void;
  back?():void;
@@ -20,12 +25,44 @@ const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  let view:BusinessView|null=null,error="",loading=false,
+  rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
+  rescueReceipt:string|null=null;
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"="FINANCES";
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
   catch(e){error=e instanceof Error?e.message:"Cannot load your finances";}
   finally{loading=false;draw();}
+ }
+ async function reviewRescue(){
+  if(rescueBusy||!port.previewRestructure)return;
+  rescueBusy=true;error="";draw();
+  try{
+   rescue=await port.previewRestructure();rescueReviewed=true;
+   rescueReceipt=rescue?crypto.randomUUID():null;
+  }catch(e){error=e instanceof Error?e.message:"Cannot review restructuring";}
+  finally{rescueBusy=false;draw();}
+ }
+ async function approveRescue(){
+  if(rescueBusy||!rescue||!rescueReceipt||!port.restructure)return;
+  const names=rescue.releases.map(p=>p.name).join(", ");
+  if(!window.confirm("Confirm voluntary restructuring for "+view?.name+
+   "? This changes weekly overhead and event cadence, withdraws pending offers"+
+   (names?", and terminates contracts for "+names:"")+
+   ". Contract settlements are paid immediately. This cannot be undone."))return;
+  rescueBusy=true;error="";draw();
+  try{
+   const outcome=await port.restructure({requestId:rescueReceipt,
+    expectedRevision:rescue.worldRevision});
+   if(outcome.status==="STALE"){
+    rescue=null;rescueReviewed=false;rescueReceipt=null;
+    error="Your World has changed. Review the restructuring plan again.";
+   }else{
+    rescue=null;rescueReviewed=false;rescueReceipt=null;
+    await refresh();
+   }
+  }catch(e){error=e instanceof Error?e.message:"Restructuring was not applied";}
+  finally{rescueBusy=false;draw();}
  }
  function metric(caption:string,value:string,additional=""){
   const card=el("div","ppw-business-metric");
@@ -98,6 +135,50 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      view.recurringMargin===null?"Not configured":money(view.recurringMargin)));
    flow.append(total);
    root.append(flow);
+   if((view.financialDistress==="DISTRESSED"||
+      view.financialDistress==="CRISIS")&&port.previewRestructure){
+    const panel=el("section","ppw-business-panel");
+    panel.append(el("h2","","Financial recovery"),
+     el("p","ppw-business-muted",
+      "Your promotion is under sustained financial pressure. You remain in charge. Restructuring is a decision, not an automatic takeover."));
+    if(!rescueReviewed){
+     panel.append(button(rescueBusy?"Checking the accounts…":
+      "Review restructuring options",()=>void reviewRescue()));
+    }else if(!rescue){
+     panel.append(el("p","ppw-business-muted",
+      "An immediate restructuring is not due. Continue reviewing your commitments and trading position."));
+    }else{
+     panel.append(el("p","ppw-business-muted",
+      "Stress: "+rescue.stressWeeks+" weeks · Minimum viable roster: "+
+      rescue.minimumViableRoster+". These are the precise changes awaiting approval."));
+     for(const [label,before,after] of [
+      ["Weekly overhead",money(rescue.oldOverhead),money(rescue.newOverhead)],
+      ["Normal show cadence",String(rescue.oldCadence)+" weeks",
+       String(rescue.newCadence)+" weeks"]
+     ] as const){
+      const line=el("div","ppw-business-line");
+      line.append(el("span","",label),
+       el("strong","",before+" → "+after));panel.append(line);
+     }
+     if(rescue.releases.length){
+      panel.append(el("h3","","Contracts to terminate"));
+      for(const person of rescue.releases){
+       const line=el("div","ppw-business-line");
+       line.append(el("span","",person.name),
+        el("strong","",money(person.settlement)+" settlement"));
+       panel.append(line);
+      }
+     }else panel.append(el("p","ppw-business-muted",
+      "Your current roster is already at or below its safe minimum. No contracts are being terminated."));
+     const actions=el("div","ppw-business-actions");
+     actions.append(button(rescueBusy?"Applying…":"Approve restructuring",
+      ()=>void approveRescue()),
+      button("Cancel",()=>{rescue=null;rescueReviewed=false;
+       rescueReceipt=null;draw();}));
+     panel.append(actions);
+    }
+    root.append(panel);
+   }
   }
   if(pane==="STANDING"){
    const section=el("section","ppw-business-panel ppw-business-standing");
