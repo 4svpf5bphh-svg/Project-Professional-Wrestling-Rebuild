@@ -2,6 +2,11 @@ name: Verify rebuild
 on:
   push:
   pull_request:
+# A branch's CI can be expensive; obsolete 100+ browser and database suites
+# must not pile up while newer, integrated commits are ready to verify.
+concurrency:
+  group: rebuild-verify-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
