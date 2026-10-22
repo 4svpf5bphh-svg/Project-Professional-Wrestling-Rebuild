@@ -1,5 +1,5 @@
 /** Deterministic medical absence rules. Week indexes are zero-based and
- * clearance is exclusive: an injury sustained in week N for K weeks permits
+ * clearance is inclusive of the next opening week: an injury in week N for K
  * the first return in week N + K, matching original PPW.
  * Pure rules shared by booking and the authoritative World settlement.
  */

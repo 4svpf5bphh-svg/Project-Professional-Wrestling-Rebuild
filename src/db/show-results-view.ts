@@ -91,7 +91,7 @@ export async function readCompletedShowView(
    LEFT JOIN LATERAL (
     SELECT h.previous_persona FROM ppw_portable_persona_history h
     WHERE h.world_id=p.world_id AND h.person_id=p.person_id
-     AND h.started_week_index<=$3 AND h.ended_week_index>=$3
+     AND h.started_week_index<=$3 AND h.ended_week_index>$3
     ORDER BY h.revision DESC LIMIT 1
    ) historical ON TRUE
    WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
