@@ -18,6 +18,7 @@ import {recordCompletedShowInTransaction}
  from "./completed-show-results.js";
 import {recordCompletedMatchReportFactsInTransaction}
  from "./record-match-report-facts.js";
+import {applyVerifiedMedicalLoadInTransaction} from "./medical-availability.js";
 import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
@@ -63,7 +64,7 @@ export async function resolveCanonicalShow(
    tx,completed.receipt,completed.evidence,stories);
   if(recorded==="RECORDED"){
    // One immutable batch in the same World transaction as completed results.
-   await recordCompletedMatchReportFactsInTransaction(tx,projection);
+   const certifiedInjuries=await recordCompletedMatchReportFactsInTransaction(tx,projection);
    await settleCompletedProgrammeHistory(tx,{
     ...input,eventImportance:projection.eventImportance,
     matches:projection.projections.map(p=>({
@@ -86,6 +87,9 @@ export async function resolveCanonicalShow(
       sideB:sides[1]!.participants.map(x=>x.personId)}];
     })
    });
+   // Post-career-load severity floor and wear match original PPW,
+   // without changing the winner, finish or any scripted outcome.
+   await applyVerifiedMedicalLoadInTransaction(tx,input.worldId,certifiedInjuries);
   }
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{

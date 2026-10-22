@@ -4,7 +4,7 @@ import {deriveCompletedMatchReportFacts,recordCompletedMatchReportFactsInTransac
  from "../src/db/record-match-report-facts.js";
 type Input=Parameters<typeof deriveCompletedMatchReportFacts>[0];
 const projection={
- worldId:"world",showId:"show",
+ worldId:"world",showId:"show",year:1,week:1,
  projections:[
   {slotId:"singles",score:{criticalRatingStars:4.25,executionQuality:89.5,actualLengthMinutes:17},
    injuryPreview:{injuries:[{personId:"a",severity:"MINOR",weeksOut:2}]},
@@ -37,7 +37,16 @@ test("one batch write persists all three bouts without per-match SQL",async()=>{
  const tx={
   async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
    calls++;
-   assert.match(sql,/jsonb_to_recordset/);
+   assert.match(sql,/jsonb_to_recordset|WRESTLER_INJURED/);
+   if(sql.includes("ppw_medical_absences")){
+    const events=JSON.parse(String(params[3]));
+    assert.deepEqual(events.map((v:{person_id:string})=>v.person_id),["a","c"]);
+    return events.map((v:{person_id:string;severity:string;weeks_out:number;cleared_week_index:number})=>v) as unknown as T[];
+   }
+   if(sql.includes("ppw_ledger_events")){
+    assert.equal(JSON.parse(String(params[3])).injuries.length,2);
+    return [] as T[];
+   }
    assert.match(sql,/RETURNING match_id/);
    assert.match(sql,/execution_quality/);
    assert.deepEqual(params.slice(0,2),["world","show"]);
@@ -52,7 +61,7 @@ test("one batch write persists all three bouts without per-match SQL",async()=>{
   },
  } as unknown as Parameters<typeof recordCompletedMatchReportFactsInTransaction>[0];
  await recordCompletedMatchReportFactsInTransaction(tx,projection);
- assert.equal(calls,1);
+ assert.equal(calls,3,"One match batch, one injury batch, one injury news receipt");
 });
 test("malformed medical details and invalid critical scores fail before writes",()=>{
  const invalid={...projection,projections:[{

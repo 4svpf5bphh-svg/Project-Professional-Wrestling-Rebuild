@@ -1,4 +1,5 @@
 import type {TransactionPool} from "./transaction.js";
+import {settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "./medical-availability.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
@@ -154,6 +155,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         [input.worldId,year,week],
       );
       if(moved.length!==1) throw new Error("World rollover deadline expired; recovery required");
+       await settleMedicalAvailabilityForNewWeek(tx,input.worldId,
+        weekIndex+1,moved[0]!.year,moved[0]!.week);
+       await settleWeeklyFatigueRecovery(tx,input.worldId);
       // Original PPW charges wages even if limited dates are exhausted.
       // One grouped debit and ledger insert, regardless of roster size.
       await tx.query(`

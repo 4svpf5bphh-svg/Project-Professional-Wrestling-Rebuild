@@ -3,6 +3,7 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
@@ -32,12 +33,22 @@ function entryIcon(entry:ShowResultEntry){
  return "✦";
 }
 /** One async bounded read. Filtering, opening reviews and highlights never refetch. */
-export async function mountShowResults(root:HTMLElement,port:{load():Promise<CompletedShowView>}){
+export async function mountShowResults(root:HTMLElement,port:{
+ load():Promise<CompletedShowView>;
+ commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
+}){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
   renderBroadcast(root,show);
+  if(port.commentary)void port.commentary().then(result=>{
+   if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
+   if(result.status==="ready"&&result.review)
+    insertRingsideEditorial(root,show,result.review);
+   else markRingsideFallback(root,show);
+  }).catch(()=>markRingsideFallback(root,show));
+  else markRingsideFallback(root,show);
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
@@ -82,7 +93,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    button.title=point.title;
    const graph=node("span","ppw-flow-track");
    const fill=node("span","ppw-flow-fill");
-   fill.style.height=Math.max(2,point.crowdResponse)+"%";
+   fill.style.width=Math.min(100,Math.max(0,point.crowdResponse))+"%";
    append(graph,fill);
    append(button,node("span","ppw-flow-score",
     String(Math.round(point.crowdResponse))),
@@ -99,23 +110,11 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   }
   append(crowdFlow,bars);
  }
- const editorial=writeFinalBellEditorial(show);
- const feature=node("section","ppw-final-bell");
- append(feature,node("span","ppw-eyebrow",editorial.eyebrow),
-  node("h2","ppw-final-bell-headline",editorial.headline));
- for(const paragraph of editorial.paragraphs)
-  append(feature,node("p","ppw-final-bell-paragraph",paragraph));
- if(editorial.standoutSlotId){
-  const jump=document.createElement("button");jump.type="button";
-  jump.className="ppw-final-bell-jump";jump.textContent="Read the standout match ↗";
-  jump.onclick=()=>{
-   setFilter("ALL");
-   const selected=storyLinks.get(editorial.standoutSlotId!);
-   if(selected instanceof HTMLDetailsElement)selected.open=true;
-   selected?.scrollIntoView({behavior:"smooth",block:"center"});
-  };
-  append(feature,jump);
- }
+ const feature=node("section","ppw-final-bell ppw-ringside-dispatch");
+ feature.dataset.showId=show.showId;
+ append(feature,node("span","ppw-eyebrow","PPW / RINGSIDE"),
+  node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
+  node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=showReactionWire(show);
  const noise=node("section","ppw-crowd-noise");
  if(reactions.length){
@@ -227,8 +226,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
     append(replay,node("p","ppw-finish-winner","OFFICIAL WINNER: "+finish.winnerLabel));
    append(body,replay);
   }
+  const narrative=node("p","ppw-ringside-slot");
+  narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
+  append(body,narrative);
+  const breakdown=document.createElement("details");
+  breakdown.className="ppw-booker-breakdown";
+  append(breakdown,node("summary","","Booker Breakdown · Performance notes"));
   for(const paragraph of review.paragraphs)
-   append(body,node("p","ppw-result-recap",paragraph));
+   append(breakdown,node("p","ppw-result-recap",paragraph));
+  append(body,breakdown);
   if(review.bulletins.length){
    append(body,node("h3","ppw-result-fallout-title","CONFIRMED FALLOUT"));
    const bullets=document.createElement("ul");bullets.className="ppw-result-fallout";
@@ -236,7 +242,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
     append(bullets,node("li","",bulletin));
    append(body,bullets);
   }
-  append(body,node("p","ppw-result-verdict","RINGSIDE VERDICT  /  "+review.verdict));
+  append(body,node("p","ppw-result-verdict","OFFICIAL RESULT  /  "+label(entry.outcome)+
+   (entry.matchContext?.winnerNames.length?" · "+entry.matchContext.winnerNames.join(" & "):"")));
   if(entry.performerIdentities?.length){
    const profiles=node("div","ppw-result-personas");
    for(const person of entry.performerIdentities){
@@ -256,10 +263,40 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
  root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
-  feature,...(reactions.length?[noise]:[]),
-  ...(featured.length?[highlights]:[]),timeline);
+  feature,timeline);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),
   node("strong","",value),node("span","",caption));
+}
+
+/** The review region begins empty; an existing article is never replaced. */
+function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:RingsideCopy){
+ const region=root.querySelector<HTMLElement>(".ppw-ringside-dispatch");
+ if(!region||region.dataset.showId!==show.showId||
+  !copy.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))return;
+ region.querySelector(".ppw-ringside-await")?.remove();
+ const headline=region.querySelector(".ppw-final-bell-headline");
+ if(headline)headline.textContent=copy.showHeadline;
+ region.append(node("p","ppw-final-bell-paragraph",copy.opening),
+  node("p","ppw-final-bell-paragraph",copy.closing));
+ for(const slot of copy.slots){
+  const report=Array.from(root.querySelectorAll<HTMLElement>(".ppw-ringside-slot"))
+   .find(el=>el.dataset.slotId===slot.slotId);
+  if(report){report.textContent=slot.recap;report.hidden=false;}
+ }
+}
+function markRingsideFallback(root:HTMLElement,show:CompletedShowView){
+ const region=root.querySelector<HTMLElement>(".ppw-ringside-dispatch");
+ if(!region||region.dataset.showId!==show.showId)return;
+ region.querySelector(".ppw-ringside-await")?.remove();
+ const peak=show.entries.reduce((best,e)=>!best||e.crowdResponse>best.crowdResponse?e:best,
+  undefined as ShowResultEntry|undefined);
+ region.append(node("p","ppw-final-bell-paragraph",peak?.headline??
+  "The completed results are in the books."));
+ for(const e of show.entries){
+  const report=Array.from(root.querySelectorAll<HTMLElement>(".ppw-ringside-slot"))
+   .find(x=>x.dataset.slotId===e.slotId);
+  if(report){report.textContent=e.summary;report.hidden=false;}
+ }
 }

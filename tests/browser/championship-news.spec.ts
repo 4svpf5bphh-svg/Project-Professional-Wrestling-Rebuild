@@ -80,14 +80,13 @@ test("championship directory renders loaded distinct authored belt artwork witho
  });
  await page.goto("/#/championships");
  await expect(page.locator(".ppw-belt-card")).toHaveCount(2);
- await expect(page.locator(".ppw-belt-graphic")).toHaveCount(2);
- await expect(page.locator(".ppw-belt-singles .ppw-belt-graphic"))
-  .toHaveAttribute("src",/\/belts\/custom-world\.svg$/);
- await expect(page.locator(".ppw-belt-tag .ppw-belt-graphic"))
-  .toHaveAttribute("src",/\/belts\/custom-tag\.svg$/);
- await expect.poll(async()=>page.locator(".ppw-belt-graphic").evaluateAll(
-  images=>images.every(img=>(img as HTMLImageElement).naturalWidth>0)))
-  .toBe(true);
+ await expect(page.locator(".ppw-belt-graphic")).toHaveCount(0);
+ const identity=page.locator(".ppw-title-typographic-name");
+ await expect(identity).toHaveCount(2);
+ await expect(identity.nth(0)).toHaveText("World Championship");
+ await expect(identity.nth(1)).toHaveText("Tag Team Championship");
+ await expect(page.locator(".ppw-belt-card").first()).toHaveAttribute("data-title-family","world");
+ await expect(page.locator(".ppw-belt-card").last()).toHaveAttribute("data-title-family","tag");
  await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();
  mkdirSync("test-results/presentation-screenshots",{recursive:true});
  await page.screenshot({path:"test-results/presentation-screenshots/championships-390.png",fullPage:true});

@@ -29,7 +29,7 @@ test("iPhone shows verified match injury without fabricating current medical cle
  await expect(page.getByRole("heading",{name:"Recent match injuries"})).toBeVisible();
  await expect(page.getByText("Alice suffered an injury")).toBeVisible();
  await expect(page.getByText(/original report estimated 6 weeks out/)).toBeVisible();
- await expect(page.getByText(/current recovery and clearance have not been verified/)).toBeVisible();
+ await expect(page.getByText(/Open the wrestler dossier for current medical clearance/)).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(calls).toEqual(["overview"]);
@@ -69,4 +69,38 @@ test("iPhone clears mixed injury and title news without touching mandatory actio
  await expect(page.getByText("Alice suffered an injury")).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(methods).toEqual(["overview","dismissAttentionBatch"]);
+});
+
+const clearance={id:"medical-clearance:12:"+"a".repeat(32),
+ personId:"alice",name:"Alice",severity:"MAJOR",year:1,week:8};
+
+test("iPhone lets a booker open and dismiss genuine return-to-ring clearance",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ const intro={...base,promotion:{...base.promotion,attention:{
+  ...base.promotion.attention,injuryNews:[],medicalClearances:[clearance]
+ }}};
+ let dismissed=false;
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"genesis",playerId:"owner",csrfToken:"opaque",
+  overview:intro,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const r=route.request().postDataJSON() as {method:string;attentionId?:string};
+  if(r.method==="dismissAttention"){
+   expect(r.attentionId).toEqual(clearance.id);
+   dismissed=true;return route.fulfill({json:{dismissed:true,firstDismissal:true}});
+  }
+  return route.fulfill({json:{...intro,promotion:{...intro.promotion,
+   attention:{...intro.promotion.attention,medicalClearances:dismissed?[]:[clearance]}}}});
+ });
+ await page.goto("/#/home");
+ await expect(page.getByRole("heading",{name:"Cleared to return"})).toBeVisible();
+ await expect(page.getByText("Alice is available again")).toBeVisible();
+ await expect(page.getByText(/Cleared at Year 1, Week 8/)).toBeVisible();
+ const skipIntro=page.getByRole("button",{name:/Skip intro/i});
+ if(await skipIntro.isVisible())await skipIntro.click();
+ await page.screenshot({path:"test-results/presentation-screenshots/medical-clearance-320.png",fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ await page.getByRole("button",{name:"Dismiss Alice's clearance update"}).click();
+ await expect(page.getByText("Alice is available again")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
 });

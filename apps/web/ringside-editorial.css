@@ -1,0 +1,10 @@
+/* Ringside coverage: show-wide editorial remains separate from official facts. */
+.ppw-ringside-dispatch{border-left:4px solid #63dbc0;padding:17px;
+ background:linear-gradient(135deg,#0c2936,#101b31);border-radius:11px;min-width:0}
+.ppw-ringside-slot{font-size:14px;line-height:1.55;color:#f0f5f2;padding:10px 0;margin:0}
+.ppw-booker-breakdown{margin:12px 0 0;border-top:1px solid #34505c;
+ padding-top:10px;color:#bed1d9}
+.ppw-booker-breakdown>summary{cursor:pointer;font-size:12px;font-weight:850;
+ letter-spacing:.03em}
+.ppw-booker-breakdown .ppw-result-recap{font-size:12px;line-height:1.5}
+.ppw-ringside-await{font-size:12px;line-height:1.5;color:#c5d8e0;margin:10px 0}

@@ -90,6 +90,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     backstage.filter(x=>x.id!==id);
    const injuries=overview?.promotion?.attention?.injuryNews;
    if(injuries)overview!.promotion!.attention.injuryNews=injuries.filter(x=>x.id!==id);
+   const clearance=overview?.promotion?.attention?.medicalClearances;
+   if(clearance)overview!.promotion!.attention.medicalClearances=
+    clearance.filter(x=>x.id!==id);
    const titles=overview?.promotion?.attention?.titleNews;
    if(titles)overview!.promotion!.attention.titleNews=titles.filter(x=>x.id!==id);
    const business=overview?.promotion?.attention?.businessUpdates;
@@ -104,7 +107,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const attention=overview?.promotion?.attention;
   const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[]),
    ...(attention?.businessUpdates??[]),...(attention?.titleNews??[]),
-   ...(attention?.injuryNews??[])]
+   ...(attention?.injuryNews??[]),...(attention?.medicalClearances??[])]
    .slice(0,10).map(item=>item.id);
   if(keys.length<2||keys.length>10)return;
   clearing=true;error="";draw();
@@ -117,6 +120,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     attention.businessUpdates=attention.businessUpdates?.filter(x=>!cleared.has(x.id));
     attention.titleNews=attention.titleNews?.filter(x=>!cleared.has(x.id));
     attention.injuryNews=attention.injuryNews?.filter(x=>!cleared.has(x.id));
+    attention.medicalClearances=attention.medicalClearances?.filter(x=>!cleared.has(x.id));
    }
   }catch(e){error=e instanceof Error?e.message:"Could not clear the updates";}
   finally{clearing=false;draw();}
@@ -497,7 +501,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      el("p","","A "+item.severity.toLowerCase()+" injury was recorded at Year "+
       item.year+", Week "+item.week+". The original report estimated "+
       item.originalWeeksOut+" week"+(item.originalWeeksOut===1?"":"s")+
-      " out; current recovery and clearance have not been verified."));
+      " out. Open the wrestler dossier for current medical clearance."));
     const actions=el("div","ppw-home-wire-actions");
     if(port.openWrestler){
      const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
@@ -517,8 +521,34 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    root.append(wire);
   }
+  const clearanceNotices=attention?.medicalClearances??[];
+  if(clearanceNotices.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE MEDICAL REPORT"),
+    el("h3","","Cleared to return"));
+   for(const item of clearanceNotices){
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status","MEDICALLY CLEARED"),
+     el("strong","",item.name+" is available again"),
+     el("p","","Cleared at Year "+item.year+", Week "+item.week+
+      " following a "+item.severity.toLowerCase()+" injury."));
+    const actions=el("div","ppw-home-wire-actions");
+    const open=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
+    open.type="button";
+    open.onclick=()=>port.openWrestler?port.openWrestler(item.personId):port.roster();
+    actions.append(open);
+    if(port.dismissAttention){
+     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
+     dismiss.setAttribute("aria-label","Dismiss "+item.name+"'s clearance update");
+     dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
   const resolvedCount=results.length+resolved.length+businessUpdates.length+
-   titleNews.length+injuryNews.length;
+   titleNews.length+injuryNews.length+clearanceNotices.length;
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
     clearing?"Clearing updates…":"Clear "+Math.min(resolvedCount,10)+" resolved updates") as HTMLButtonElement;

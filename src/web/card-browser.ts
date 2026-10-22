@@ -321,7 +321,19 @@ export async function mountResultsArchivePage(root:HTMLElement,scope:Scope,onBac
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  backLabel="programmes"){
- await mountShowResults(root,{load:async()=>createCardClient(scope)("results")});
+ await mountShowResults(root,{
+  load:async()=>createCardClient(scope)("results"),
+  commentary:async()=>{
+   const res=await fetch("/api/results-commentary",{
+    method:"POST",credentials:"same-origin",
+    headers:{"content-type":"application/json","x-ppw-csrf":scope.csrfToken},
+    body:JSON.stringify({worldId:scope.worldId,promotionId:scope.promotionId,
+     showId:scope.showId})
+   });
+   if(!res.ok)return {status:"unavailable" as const};
+   return res.json();
+  }
+ });
  if(onBack){
   const back=document.createElement("button");
   back.type="button";back.textContent="← Back to "+backLabel;

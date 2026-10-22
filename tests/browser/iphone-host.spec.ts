@@ -34,8 +34,11 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await page.getByRole("button",{name:"Sign in"}).click();
  const menu=page.getByRole("button",{name:"Open promotion menu"});
  await expect(menu).toBeVisible();
-  const menuBox=await menu.boundingBox(),size=page.viewportSize();
-  expect(menuBox&&size&&menuBox.y+menuBox.height>size.height-115).toBeTruthy();
+  const menuBox=await menu.boundingBox();
+  expect(menuBox).not.toBeNull();
+  expect(menuBox!.y).toBeLessThan(80);
+  expect(menuBox!.height).toBeGreaterThanOrEqual(44);
+  expect(menuBox!.width).toBeLessThanOrEqual(48);
  await expect(nav).toBeHidden();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  const before=methods.length;

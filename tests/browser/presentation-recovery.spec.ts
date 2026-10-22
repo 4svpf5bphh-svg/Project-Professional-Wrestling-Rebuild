@@ -54,7 +54,7 @@ for(const width of [320,390]){
   await page.screenshot({path:images+"/wrestler-fallback-"+width+".png",fullPage:true});
   expect(calls).toEqual(["tagTeams"]);
  });
- test("iPhone "+width+"px: actual show posters load without obstructing calendar and actions",async({page},testInfo)=>{
+ test("iPhone "+width+"px: typography-led broadcasts fit the calendar and actions",async({page},testInfo)=>{
   await page.setViewportSize({width,height:844});
   const weekly={seriesId:"dynamite",name:"AEW Dynamite",role:"FLAGSHIP",eventType:"REGULAR",
    cadenceWeeks:1,anchorWeek:0,importance:70,active:true};
@@ -69,17 +69,14 @@ for(const width of [320,390]){
     weeks:[{year:1,week:5,offset:0,shows:[weekly,ppv]}],worldWeeks:[]}:{}});
   });
   await page.goto("/#/calendar");
-  await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(2);
-  await expect(page.locator(".ppw-calendar-event-art").nth(0))
-   .toHaveAttribute("src",/\/events\/dynamite\.svg$/);
-  await expect(page.locator(".ppw-calendar-event-art").nth(1))
-   .toHaveAttribute("src",/\/events\/all-in\.svg$/);
-  await expect.poll(async()=>page.locator(".ppw-calendar-event-art").evaluateAll(
-   images=>images.every(img=>(img as HTMLImageElement).naturalWidth>=1200))).toBe(true);
-  const sizes=await page.locator(".ppw-calendar-event-art").evaluateAll(nodes=>nodes.map(n=>({
-   width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})));
-  expect(sizes[0]?.height).toBeGreaterThanOrEqual(80);
-  expect(sizes[1]?.height).toBeGreaterThan(sizes[0]!.height);
+  await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
+  await expect(page.locator(".ppw-dynamic-event-heading")).toHaveCount(2);
+  await expect(page.locator(".ppw-dynamic-event-heading").nth(0)).toHaveText("AEW Dynamite");
+  await expect(page.locator(".ppw-dynamic-event-heading").nth(1)).toHaveText("All In");
+  const heights=await page.locator(".ppw-calendar-artwork-shell").evaluateAll(nodes=>
+   nodes.map(n=>n.getBoundingClientRect().height));
+  expect(heights[0]).toBeGreaterThanOrEqual(100);
+  expect(heights[1]).toBeGreaterThan(heights[0]!);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await testInfo.attach("event-calendar-"+width,{
    body:await page.screenshot({fullPage:true}),contentType:"image/png"});
@@ -149,7 +146,22 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
   if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
    await page.getByRole("button",{name:/Skip intro/}).click();
-  await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
+  const menu=page.getByRole("button",{name:"Open promotion menu"});
+  await expect(menu).toBeVisible();
+  const bounds=await page.evaluate(()=>{
+   const nav=document.querySelector(".ppw-shell-menu")!.getBoundingClientRect();
+   const head=document.querySelector(".ppw-account-banner")!.getBoundingClientRect();
+   return {nav:{top:nav.top,bottom:nav.bottom,width:nav.width},
+    head:{top:head.top,bottom:head.bottom}};
+  });
+  expect(bounds.nav.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.nav.width).toBeLessThanOrEqual(48);
+  expect(bounds.nav.top).toBeGreaterThanOrEqual(bounds.head.top);
+  expect(bounds.nav.bottom).toBeLessThanOrEqual(bounds.head.bottom+1);
+  await menu.click();
+  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
+  await page.locator(".ppw-nav-drawer-close").click();
+
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   await page.screenshot({path:images+"/home-"+width+".png",fullPage:true});
@@ -171,7 +183,7 @@ test("iPhone authentic promotion image failure reveals an intentionally integrat
  await expect(owner).toHaveCount(1);
  await expect(owner).toContainText("AEW");
  await expect(owner).not.toHaveAttribute("data-logo-ready","true");
- await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
  const dimensions=await owner.evaluate(n=>({
   badge:n.getBoundingClientRect().width,visible:getComputedStyle(n).display!=="none",
   label:getComputedStyle(n).fontSize
@@ -198,14 +210,14 @@ test("Championship visual acceptance: women, singles, tag, and secondary plates 
    currentReignId:null,holderId:null,holderType:null,holderName:null,defenses:0}))
  }}));
  await page.goto("/#/championships");
- const belts=page.locator(".ppw-belt-graphic");
- await expect(belts).toHaveCount(4);
- await expect.poll(async()=>belts.evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).naturalWidth===1000))).toBe(true);
- const sources=await belts.evaluateAll(imgs=>imgs.map(i=>(i as HTMLImageElement).getAttribute("src")));
- expect(new Set(sources).size).toBe(4);
- expect(sources).toEqual([
-  "/belts/wwe-world.svg","/belts/wwe-women.svg","/belts/wwe-tag.svg","/belts/wwe-secondary.svg"
- ]);
+ const names=page.locator(".ppw-title-typographic-name");
+ await expect(names).toHaveCount(4);
+ await expect(names).toHaveText(["World Heavyweight Championship",
+  "Women's Championship","World Tag Team Championship","Intercontinental Championship"]);
+ const families=await page.locator(".ppw-belt-card").evaluateAll(
+  cards=>cards.map(c=>(c as HTMLElement).dataset.titleFamily));
+ expect(families).toEqual(["world","women","tag","secondary"]);
+ await expect(page.locator(".ppw-belt-graphic")).toHaveCount(0);
  await page.screenshot({path:images+"/four-championship-variants-390.png",fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
@@ -251,9 +263,8 @@ test("player-created shows carry their real names on generic premium and weekly 
  await expect(cards).toHaveCount(2);
  await expect(cards.nth(0).locator(".ppw-dynamic-event-heading")).toHaveText("Tuesday Thunder");
  await expect(cards.nth(1).locator(".ppw-dynamic-event-heading")).toHaveText("Blood Moon Bash");
- const backgrounds=await cards.locator(".ppw-calendar-event-art").evaluateAll(
-  imgs=>imgs.map(img=>(img as HTMLImageElement).getAttribute("src")));
- expect(backgrounds).toEqual(["/events/aew-weekly.svg","/events/aew-premium.svg"]);
+ await expect(cards.locator(".ppw-calendar-event-art")).toHaveCount(0);
+ await expect(cards.locator(".ppw-dynamic-event-heading")).toHaveCount(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
  await page.screenshot({path:images+"/named-custom-events-390.png",fullPage:true});
@@ -277,6 +288,30 @@ test("real AEW logo with an intrinsic black background is visually composited in
  await expect(badge).toHaveAttribute("data-logo-ready","true");
  await expect.poll(async()=>badge.locator("img").evaluate(
   img=>getComputedStyle(img).mixBlendMode)).toBe("screen");
- await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(1);
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
  await page.screenshot({path:images+"/real-aew-logo-compositing-390.png",fullPage:true});
+});
+
+test("WWE logo no longer appears as a black square on a branded event card",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:{...session,
+  overview:{...session.overview,promotion:{...session.overview.promotion,
+   id:"wwe",name:"WWE"}}}}));
+ const blackField='<svg xmlns="http://www.w3.org/2000/svg" width="200" height="92" viewBox="0 0 200 92"><rect width="200" height="92" fill="#000"/><text x="100" y="65" text-anchor="middle" fill="#fff" font-size="60" font-family="Arial Black,Arial" font-weight="900">WWE</text></svg>';
+ await page.route("**/commons.wikimedia.org/**",route=>route.fulfill({
+  status:200,contentType:"image/svg+xml",body:blackField}));
+ const show={seriesId:"raw",name:"WWE Raw",role:"FLAGSHIP",eventType:"REGULAR",
+  cadenceWeeks:1,anchorWeek:0,importance:76,active:true};
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  promotionId:"wwe",promotionName:"WWE",year:1,week:5,worldRevision:4,
+  canEdit:false,series:[show],bookings:[],weeks:[{year:1,week:5,offset:0,shows:[show]}],
+  worldWeeks:[]
+ }}));
+ await page.goto("/#/calendar");
+ const badge=page.locator(".ppw-calendar-owner-mark[data-brand='wwe']");
+ await expect(badge).toHaveAttribute("data-logo-ready","true");
+ await expect.poll(async()=>badge.locator("img").evaluate(
+  img=>getComputedStyle(img).mixBlendMode)).toBe("screen");
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
+ await page.screenshot({path:images+"/real-wwe-logo-compositing-390.png",fullPage:true});
 });

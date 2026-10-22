@@ -16,6 +16,8 @@ export interface PlayerWorldOverview {
    injuryNews?:{id:string;personId:string;name:string;
     severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";
     originalWeeksOut:number;year:number;week:number}[];
+   medicalClearances?:{id:string;personId:string;name:string;
+    severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";year:number;week:number}[];
    titleNews?:{id:string;championshipId:string;titleName:string;
     winnerName:string;holderType:"PERSON"|"TEAM";personId:string|null;
     year:number;week:number}[];
@@ -52,6 +54,7 @@ export async function readPlayerWorldOverview(
    pending_contract_offers:boolean|null;offer_results:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
+   medical_clearances:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -65,7 +68,7 @@ export async function readPlayerWorldOverview(
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
-    notices.injury_news
+    notices.injury_news,notices.medical_clearances
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -295,9 +298,16 @@ export async function readPlayerWorldOverview(
         FROM ppw_tag_match_career_effects t
         WHERE t.world_id=done.world_id AND t.show_id=done.show_id
          AND t.injury_severity IS NOT NULL
+         UNION
+         SELECT f.match_id,inj.person_id,inj.injury_severity,inj.injury_weeks_out
+         FROM ppw_completed_match_report_facts f
+         CROSS JOIN LATERAL jsonb_to_recordset(f.injuries_json)
+          AS inj(person_id text,injury_severity text,injury_weeks_out integer)
+         WHERE f.world_id=done.world_id AND f.show_id=done.show_id
+          AND inj.injury_severity IS NOT NULL
        ) e ON TRUE
        JOIN ppw_people person ON person.world_id=done.world_id
-        AND person.person_id=e.person_id AND person.status='ACTIVE'
+        AND person.person_id=e.person_id AND person.status<>'RETIRED'
        WHERE done.world_id=w.world_id
         AND done.year BETWEEN greatest(1,w.year-1) AND w.year
         AND (done.year-1)*52+done.week-1 BETWEEN
@@ -317,7 +327,37 @@ export async function readPlayerWorldOverview(
        ORDER BY done.year DESC,done.week DESC,done.show_id DESC,e.match_id DESC
        LIMIT 5
       ) inc
-     ) AS injury_news
+     ) AS injury_news,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'id',notice.id,'personId',notice.person_id,'name',notice.name,
+      'severity',notice.severity,'year',notice.year,'week',notice.week)
+      ORDER BY notice.event_id DESC,notice.person_id),'[]'::jsonb)
+      FROM (
+       SELECT e.event_id,'medical-clearance:'||e.event_id::text||':'||
+        md5(p."personId") AS id,
+        p."personId" AS person_id,p.severity,person.name,e.year,e.week
+       FROM ppw_ledger_events e
+       CROSS JOIN LATERAL jsonb_to_recordset(CASE WHEN e.event_type='WRESTLER_CLEARED_TO_RETURN' AND jsonb_typeof(e.payload->'people')='array' THEN e.payload->'people' ELSE '[]'::jsonb END)
+        AS p("personId" text,severity text,"weeksOut" integer)
+       JOIN ppw_people person ON person.world_id=e.world_id
+        AND person.person_id=p."personId" AND person.status='ACTIVE'
+       WHERE e.world_id=w.world_id AND e.event_type='WRESTLER_CLEARED_TO_RETURN'
+        AND p.severity IN ('MINOR','MODERATE','MAJOR','SEVERE')
+        AND (e.year-1)*52+e.week-1 BETWEEN
+         greatest(0,(w.year-1)*52+w.week-1-7) AND (w.year-1)*52+w.week-1
+        AND EXISTS(SELECT 1 FROM ppw_contracts contract
+         WHERE contract.world_id=e.world_id AND contract.person_id=p."personId"
+          AND contract.promotion_id=owned.promotion_id AND contract.status='SIGNED'
+          AND contract.start_week_index<=(w.year-1)*52+w.week-1
+          AND contract.expires_week_index>=(w.year-1)*52+w.week-1)
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals d
+         WHERE d.world_id=e.world_id AND d.player_id=$2
+          AND d.promotion_id=owned.promotion_id
+          AND d.attention_id='medical-clearance:'||e.event_id::text||':'||
+           md5(p."personId"))
+       ORDER BY e.event_id DESC,p."personId" LIMIT 5
+      ) notice
+     ) AS medical_clearances
    ) notices ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -372,6 +412,17 @@ export async function readPlayerWorldOverview(
        Number.isInteger(item.originalWeeksOut)&&item.originalWeeksOut>=1&&
        item.originalWeeksOut<=52&&Number.isInteger(item.year)&&
        Number.isInteger(item.week)&&item.week>=1&&item.week<=52):[],
+     medicalClearances:Array.isArray(x.medical_clearances)?
+      x.medical_clearances.filter((item):item is {
+       id:string;personId:string;name:string;
+       severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";year:number;week:number
+      }=>item!==null&&typeof item==="object"&&
+       typeof item.id==="string"&&
+       /^medical-clearance:[1-9][0-9]{0,18}:[0-9a-f]{32}$/.test(item.id)&&
+       typeof item.personId==="string"&&typeof item.name==="string"&&
+       ["MINOR","MODERATE","MAJOR","SEVERE"].includes(item.severity)&&
+       Number.isInteger(item.year)&&Number.isInteger(item.week)&&
+       item.week>=1&&item.week<=52):[],
      titleNews:Array.isArray(x.title_news)?
       x.title_news.filter((item):item is {
        id:string;championshipId:string;titleName:string;

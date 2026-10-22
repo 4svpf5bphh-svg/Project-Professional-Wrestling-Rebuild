@@ -5,6 +5,7 @@
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
+import {loadRingsideCommentary} from "../db/ringside-commentary.js";
 import {advancePlaytestWeek} from "../db/manual-playtest-week.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
@@ -74,7 +75,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/results-commentary"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -120,6 +121,24 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     "The World has moved on. Refresh Home to see the new week.":
     "Cannot advance this week yet. Review your shows or retry from Home."});
   }
+ }
+ if(path==="/api/results-commentary"){
+  if(!post)return json(405,{error:"POST required"});
+  if(!csrf(req,user))return json(403,{error:"Invalid session"});
+  if(!allow("ringside:"+user.playerId,10,60*60_000))
+   return json(429,{error:"Ringside quota reached"});
+  const body=await limitedBody(req);
+  if(!body||body.worldId!==cfg.worldId||
+   typeof body.promotionId!=="string"||!body.promotionId||
+   body.promotionId.length>200||typeof body.showId!=="string"||
+   !body.showId||body.showId.length>200)return json(400,{error:"Invalid show scope"});
+  try{
+   const result=await loadRingsideCommentary(pool,{
+    worldId:cfg.worldId,playerId:user.playerId,
+    promotionId:body.promotionId,showId:body.showId},
+    process.env.GROQ_API_KEY);
+   return json(result.status==="pending"?202:200,result);
+  }catch{return json(404,{error:"No completed show available"});}
  }
  if(path==="/api/card"){
   return handleCardHttp(req,{expectedWorldId:cfg.worldId,authenticate:async()=>({

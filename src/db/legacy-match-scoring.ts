@@ -141,12 +141,21 @@ export async function previewArchivedShowMatchScoresInTransaction(
       throw new Error("Original match scoring input too large");
     const allPeople=[...new Set([...appearances,...interferers])].sort();
     if(allPeople.length>200)throw new Error("World-scoped scoring roster exceeds batch limit");
+    // Other promotions' previously locked cards are authoritative. An injury
+    // resolved earlier THIS SAME week cannot void those player-authored bouts.
+    // Past-week injuries still strictly block scoring and all new bookings.
     const persons=await tx.query<PersonRow>(
-      `SELECT person_id,status,booking_division,in_ring_quality,match_craft,
-        presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,
-        default_alignment
-         FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])`,
-      [input.worldId,allPeople],
+      `SELECT p.person_id,
+        CASE WHEN p.status='INJURED' AND EXISTS (
+         SELECT 1 FROM ppw_medical_absences medical
+         WHERE medical.world_id=p.world_id AND medical.person_id=p.person_id
+          AND medical.status='ACTIVE' AND medical.injured_week_index=$3)
+        THEN 'ACTIVE' ELSE p.status END AS status,
+        p.booking_division,p.in_ring_quality,p.match_craft,
+        p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
+        p.popularity,p.recognition,p.momentum,p.default_alignment
+        FROM ppw_people p WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
+      [input.worldId,allPeople,(show.year-1)*52+show.week-1],
     );
     if(persons.filter(p=>appearances.has(p.person_id)).length!==appearances.size)
       throw new Error("Scoring wrestler not found in World");

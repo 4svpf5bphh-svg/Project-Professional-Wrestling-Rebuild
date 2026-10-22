@@ -26,7 +26,7 @@ const btn=(value:string,fn:()=>void,disabled=false)=>{
  x.type="button";x.onclick=fn;x.disabled=disabled;return x;
 };
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
-const value=(n:number|null)=>n===null?"–":Math.round(n).toString();
+const value=(n:number|null|undefined)=>n==null||!Number.isFinite(n)?"–":Math.round(n).toString();
 type TermsDraft={family:OfferTerms["family"];role:OfferTerms["roleExpectation"];
  creative:OfferTerms["creativeControl"];weeks:number;dates:number;
  weekly:number;appearance:number;bonus:number};
@@ -258,7 +258,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   for(const p of view.people){
    const card=document.createElement("details");card.className="ppw-directory-card";
    const title=document.createElement("summary");
-   const label=p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
+   const label=p.medicalWeeksRemaining!=null?
+     "INJURED · "+p.medicalWeeksRemaining+" WEEK"+
+     (p.medicalWeeksRemaining===1?"":"S")+" TO CLEARANCE":
+     p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
     p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
@@ -284,6 +287,11 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    }
    detail.append(metrics);
    if(filter.view==="ROSTER"){
+    if(p.medicalWeeksRemaining!=null)
+     detail.append(el("p","ppw-directory-warning",
+      "Medical absence · "+p.medicalWeeksRemaining+" week"+
+      (p.medicalWeeksRemaining===1?"":"s")+
+      " until cleared. This wrestler cannot be booked while injured."));
     if(p.affiliatedViaParent){
      detail.append(el("p","ppw-directory-muted",
       "Roster appearance through "+(p.contractOwnerName??"parent company")+

@@ -31,6 +31,7 @@ type Person={
  portable_gimmick_id:string|null;default_alignment:string|null;
  alignment:string|null;persona_record:unknown;
  shared_human:boolean;
+ medical_severity:string|null;medical_clearance_week_index:number|null;
 };
 type Contract={promotion_id:string;promotion_name:string;family:string;
  remaining_dates:number|null;start_week_index:number;expires_week_index:number;
@@ -56,6 +57,8 @@ const personSql=String.raw`
   coalesce(aligned.alignment,p.default_alignment) AS alignment,
   current_titles.championship_titles,
   identity.persona AS persona_record,
+   medical.severity AS medical_severity,
+   medical.cleared_week_index AS medical_clearance_week_index,
   EXISTS (
    SELECT 1 FROM ppw_contracts shared
    JOIN ppw_promotion_controls rival ON rival.world_id=shared.world_id
@@ -67,7 +70,10 @@ const personSql=String.raw`
   ) AS shared_human
  FROM ppw_people p
  ${currentWrestlerTitlesJoin}
- LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id
+ LEFT JOIN ppw_medical_absences medical ON medical.world_id=p.world_id
+   AND medical.person_id=p.person_id AND medical.status='ACTIVE'
+   AND medical.injured_week_index<$4 AND medical.cleared_week_index>$4
+  LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id
   AND identity.person_id=p.person_id
  LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
   AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
@@ -132,6 +138,9 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
   return {personId:p.person_id,name:p.name,division:p.booking_division,
    championships:normaliseCurrentTitles(p.championship_titles),
    status:p.status,careerStage:p.career_stage,
+    medicalSeverity:p.medical_clearance_week_index===null?null:p.medical_severity,
+    medicalWeeksRemaining:p.medical_clearance_week_index===null?null:
+     p.medical_clearance_week_index-auth.currentWeekIndex,
    popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
    morale:p.morale,inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
    presentation:p.presentation,stamina:p.stamina,safety:p.safety,

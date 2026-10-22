@@ -399,6 +399,37 @@ test("original match rating/crowd run from only current-week relational context"
       "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND slot_id='opening'",[worldId],
     ));
     assert.equal(payload[0]!.payload.scriptedWinner,personIds[1]);
+    // A wrestler may have been injured in a rival's earlier resolved show,
+    // but this promotion's already locked booking must remain authoritative.
+    const otherPromotion="other-injury-"+id,injuryShow="injury-show-"+id;
+    await withWorldTransaction(db.pool,async tx=>{
+      await addPromotion(tx,worldId,{id:otherPromotion,name:"Rival Show",tier:"LOCAL"});
+      await tx.query(`INSERT INTO ppw_booking_drafts
+       (world_id,draft_id,promotion_id,year,week,status)
+       VALUES($1,$2,$3,1,1,'SUBMITTED')`,[worldId,injuryShow,otherPromotion]);
+      await tx.query(`INSERT INTO ppw_completed_shows
+       (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
+        receipt_json,receipt_digest) VALUES($1,$2,$3,1,1,$4,80,'{}'::jsonb,$5)`,
+       [worldId,otherPromotion,injuryShow,"injury-resolution-"+id,"a".repeat(64)]);
+      await tx.query(`INSERT INTO ppw_medical_absences
+       (world_id,person_id,show_id,match_id,injured_week_index,
+        cleared_week_index,weeks_out,severity,status)
+       VALUES($1,$2,$3,'main',0,2,2,'MAJOR','ACTIVE')`,
+       [worldId,personIds[0],injuryShow]);
+      await tx.query(
+       "UPDATE ppw_people SET status='INJURED' WHERE world_id=$1 AND person_id=$2",
+       [worldId,personIds[0]]);
+    });
+    const preserved=await previewArchivedShowMatchScores(db.pool,input);
+    assert.equal(preserved.projections[0]!.winnerId,personIds[1]);
+    assert.equal(preserved.projections[0]!.plannedFinish,"SUBMISSION");
+    await withWorldTransaction(db.pool,tx=>tx.query(
+     "UPDATE ppw_medical_absences SET status='RECOVERED' WHERE world_id=$1 AND person_id=$2",
+     [worldId,personIds[0]]));
+    await assert.rejects(previewArchivedShowMatchScores(db.pool,input),
+     /Inactive wrestler cannot be scored/,
+     "Injured talent without an active same-week receipt remains unavailable");
+
   }finally{
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_completed_dirty_finishes WHERE world_id=$1",[worldId]);
@@ -407,6 +438,8 @@ test("original match rating/crowd run from only current-week relational context"
       await tx.query("DELETE FROM ppw_promotion_alignment_changes WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotion_wrestler_alignments WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_working_chemistry WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_medical_absences WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);

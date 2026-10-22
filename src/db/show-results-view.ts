@@ -83,11 +83,19 @@ export async function readCompletedShowView(
   const people=ids.length?await tx.query<{person_id:string;name:string;
    portable_gimmick_id:string|null;persona_record:unknown|null}>(`
    SELECT p.person_id,p.name,p.portable_gimmick_id,
-    identity.persona AS persona_record
+    COALESCE(historical.previous_persona,
+     CASE WHEN identity.introduced_week_index<=$3 THEN identity.persona ELSE NULL END)
+    AS persona_record
    FROM ppw_people p LEFT JOIN ppw_portable_personas identity
     ON identity.world_id=p.world_id AND identity.person_id=p.person_id
+   LEFT JOIN LATERAL (
+    SELECT h.previous_persona FROM ppw_portable_persona_history h
+    WHERE h.world_id=p.world_id AND h.person_id=p.person_id
+     AND h.started_week_index<=$3 AND h.ended_week_index>$3
+    ORDER BY h.revision DESC LIMIT 1
+   ) historical ON TRUE
    WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
-   [input.worldId,ids]):[];
+   [input.worldId,ids,(receipt.year-1)*52+receipt.week-1]):[];
   const identities=projectBroadcastIdentities(people.map(p=>({
    personId:p.person_id,name:p.name,portableGimmickId:p.portable_gimmick_id??null,
    personaRecord:p.persona_record??null,

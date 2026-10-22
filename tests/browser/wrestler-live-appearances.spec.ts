@@ -71,7 +71,7 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByText(/Tag champions · The Outlaws/)).toBeVisible();
  await expect(dialog.getByRole("heading",{name:"Recorded match injuries"})).toBeVisible();
  await expect(dialog.getByText(/original estimate 4 weeks out/)).toBeVisible();
- await expect(dialog.getByText(/does not establish current recovery or medical clearance/))
+ await expect(dialog.getByText(/Original scheduled return · Y2 W7/))
   .toBeVisible();
  await expect(dialog.getByText("Tag partners: Kate  /  Opponents: Bob · Duke")).toBeVisible();
  await expect(dialog.getByText("Opponents not verified in older match records.")).toBeVisible();
