@@ -233,6 +233,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     MEDIA_INCOME:"Broadcast income",SPONSOR_INCOME:"Sponsorship",
     FIXED_OVERHEAD:"Fixed overhead",STAFF_SALARY:"Staff salaries",
     CONTRACT_GUARANTEE:"Talent guarantees",
+    RESTRUCTURING_SETTLEMENT:"Contract restructuring settlements",
     CONTRACT_SIGNING_BONUS:"Signing bonuses",
     EXTRA_DATES:"Additional contract dates",APPEARANCE_FEE:"Appearance fees",
     GATE_REVENUE:"Ticket sales",VENUE_COST:"Venue hire",
