@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run web:build",
+  "buildCommand": "npm run web:build && npx tsx scripts/groq-preview-smoke.ts",
   "outputDirectory": "dist/web",
   "git": {
     "deploymentEnabled": {
