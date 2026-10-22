@@ -6,7 +6,7 @@ import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary} from "../db/ringside-commentary.js";
-import {advancePlaytestWeek} from "../db/manual-playtest-week.js";
+import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -75,7 +75,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/results-commentary"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -99,6 +99,20 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   return json(200,{ok:true},{"set-cookie":clearSessionCookie(cfg)});
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
+ if(path==="/api/playtest-booking"){
+  if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
+   return json(403,{error:"Only the designated playtest operator can reopen booking"});
+  if(!post)return json(405,{error:"POST required"});
+  if(!csrf(req,user))return json(403,{error:"Invalid session"});
+  if(!allow("reopen:"+cfg.worldId,4,10*60_000))
+   return json(429,{error:"Booking extension rate limit reached"});
+  const b=await limitedBody(req);
+  if(!b||b.confirm!=="EXTEND_SHARED_BOOKING"||
+   !Number.isSafeInteger(b.year)||!Number.isSafeInteger(b.week))
+   return json(400,{error:"Confirm the exact shared week"});
+  try{return json(200,await extendPlaytestBooking(pool,cfg.worldId,b.year as number,b.week as number));}
+  catch{return json(409,{error:"The deadline must have passed, and the World must still be open. Refresh Home."});}
+ }
  if(path==="/api/playtest-week"){
   if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
    return json(403,{error:"Only the designated preview operator can advance the test World"});

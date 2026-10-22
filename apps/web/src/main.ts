@@ -18,6 +18,7 @@ import "../broadcast-art.css";
 import "../presentation-recovery.css";
 import "../graphic-collections.css";
 import "../type-led.css";
+import "../bottom-navigation.css";
 import "../ringside-editorial.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 
@@ -135,6 +136,33 @@ function drawerIcon(key:HostDrawerRoot){
  path.setAttribute("d",drawerPaths[key]);svg.append(path);return svg;
 }
 /** No always-visible tab bar. All departments live inside this one menu. */
+function renderBottomNavigation(section:HostSection){
+ document.querySelector(".ppw-bottom-navigation")?.remove();
+ if(!session?.overview.promotion||session.overview.membership!=="ACTIVE")return;
+ const nav=el("nav","ppw-bottom-navigation");
+ nav.setAttribute("aria-label","Quick navigation");
+ const destinations=[["home","World","⌂"],["planner","Plan","▦"],
+  ["roster","Talent","♟"],["results","Results","★"]] as const;
+ for(const [id,label,glyph] of destinations){
+  const tab=button("",()=>openSection(id));
+  tab.className="ppw-bottom-tab"+(id===section?" ppw-bottom-tab-active":"");
+  tab.setAttribute("aria-label",label);
+  if(id===section)tab.setAttribute("aria-current","page");
+  tab.append(el("span","ppw-bottom-tab-glyph",glyph),el("span","",label));nav.append(tab);
+ }
+ const more=button("",()=>{
+  const current=readHostSection(location.hash);
+  if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(current);
+  drawerExpanded=!drawerExpanded;renderNavigation(current);
+  if(drawerExpanded)navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
+ });
+ more.className="ppw-bottom-tab ppw-bottom-more"+
+  (!destinations.some(x=>x[0]===section)?" ppw-bottom-tab-active":"");
+ more.setAttribute("aria-label","More sections");more.setAttribute("aria-controls","navigation");
+ more.setAttribute("aria-expanded",String(drawerExpanded));
+ more.append(el("span","ppw-bottom-tab-glyph","☰"),el("span","","More"));
+ nav.append(more);document.body.append(nav);
+}
 function renderNavigation(section:HostSection){
  navigation.replaceChildren();
  document.querySelector("#ppw-drawer-backdrop")?.remove();
@@ -144,6 +172,8 @@ function renderNavigation(section:HostSection){
  const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
  if(menu){menu.setAttribute("aria-expanded",String(drawerExpanded));
   menu.textContent=drawerExpanded?"×  CLOSE":"☰  CONTROL ROOM";}
+ const bottomMore=document.querySelector<HTMLButtonElement>(".ppw-bottom-more");
+ if(bottomMore)bottomMore.setAttribute("aria-expanded",String(drawerExpanded));
  if(!drawerExpanded)return;
  const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
  backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
@@ -220,6 +250,7 @@ function renderSection(){
   csrfToken:session.csrfToken};
  renderNavigation(section);
  document.documentElement.dataset.ppwScreen=section;
+ renderBottomNavigation(section);
  // A fresh mounted viewport prevents slow replies from an abandoned desk
  // replacing the next screen. No extra RPC or global store is involved.
  const view=el("div","ppw-workspace");
@@ -252,6 +283,13 @@ function renderSection(){
     throw new Error(rejected.error??"Cannot advance World");
    }
    return response.json();
+  }:undefined,session?.canManualAdvance?async(year,week)=>{
+   const res=await fetch("/api/playtest-booking",{method:"POST",credentials:"same-origin",
+    headers:{"content-type":"application/json","x-ppw-csrf":session!.csrfToken},
+    body:JSON.stringify({confirm:"EXTEND_SHARED_BOOKING",year,week})});
+   if(!res.ok){const body=await res.json().catch(()=>({error:"Unable to extend booking"})) as {error?:string};
+    throw new Error(body.error??"Unable to extend booking");}
+   return res.json();
   }:undefined);break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
@@ -347,6 +385,7 @@ async function loadSession(){
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
+ document.querySelector('.ppw-bottom-navigation')?.remove();
  delete document.documentElement.dataset.ppwScreen;
  game.replaceChildren(el("p","ppw-access-loading","Opening your promotion…"));
  try{

@@ -44,3 +44,28 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
  return {status:result.status,steps:result.steps,blockers:result.blockers,
   year:expectedYear,week:expectedWeek};
 }
+
+/** A deliberate, operator-only rescue of an expired but still OPEN test week.
+ * The extension applies equally to all promotions and never simulates a card.
+ */
+export async function extendPlaytestBooking(pool:TransactionPool,worldId:string,
+ expectedYear:number,expectedWeek:number):Promise<{status:"OPEN";year:number;week:number}>{
+ if(!worldId||!Number.isSafeInteger(expectedYear)||expectedYear<1||
+  !Number.isSafeInteger(expectedWeek)||expectedWeek<1||expectedWeek>52)
+  throw new Error("Invalid booking extension scope");
+ return withWorldTransaction(pool,async tx=>{
+  const rows=await tx.query<{year:number;week:number;phase:string;expired:boolean}>(`
+   SELECT year,week,phase,next_lock_at<=clock_timestamp() AS expired
+   FROM ppw_worlds WHERE world_id=$1 FOR UPDATE`,[worldId]);
+  const w=rows[0];
+  if(!w||w.year!==expectedYear||w.week!==expectedWeek||
+   w.phase!=="OPEN"||!w.expired)throw new Error("Booking cannot be extended");
+  const saved=await tx.query<{world_id:string}>(`
+   UPDATE ppw_worlds
+   SET next_lock_at=clock_timestamp()+interval '24 hours',revision=revision+1
+   WHERE world_id=$1 AND year=$2 AND week=$3 AND phase='OPEN'
+   RETURNING world_id`,[worldId,expectedYear,expectedWeek]);
+  if(saved.length!==1)throw new Error("Booking extension failed");
+  return {status:"OPEN",year:expectedYear,week:expectedWeek};
+ });
+}

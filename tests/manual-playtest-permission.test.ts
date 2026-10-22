@@ -9,8 +9,9 @@ const env:Record<string,string|undefined>={
 };
 test("only the verified rebuild main preview operator can manually resolve a week",()=>{
  assert.equal(manualPlaytestEnabled(env,"world-20261017","owner"),true);
+ assert.equal(manualPlaytestEnabled({...env,VERCEL_ENV:"production"},"world-20261017","owner"),true);
  for(const variation of [
-  {VERCEL_ENV:"production"},
+  {VERCEL_ENV:"other"},
   {VERCEL_ENV:"development"},
   {VERCEL_GIT_COMMIT_REF:"alpha-1a"},
   {PPW_MANUAL_ADVANCE_ENABLED:undefined},

@@ -9,6 +9,7 @@ export interface WorldHomePort{
  /** Only enabled for the selected private preview operator. Never on a timer. */
  manualAdvance?:(year:number,week:number)=>Promise<{
   status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";blockers:string[]}>;
+ extendBooking?:(year:number,week:number)=>Promise<{status:string}>;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
@@ -211,6 +212,23 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     el("p","ppw-home-small",
      "Only the playtest operator can run this. It affects every promotion, and every human manager must confirm their show first. No automatic World Lock is active."));
    if(manualStatus)controls.append(el("p","ppw-home-small",manualStatus));
+   if(deadlineDue&&world.phase==="OPEN"&&port.extendBooking){
+    controls.append(el("p","ppw-home-small",
+     "The deadline passed before every card was confirmed. This test World is still open."));
+    const extend=el("button","ppw-home-status-refresh",
+     manualBusy?"Working…":"Reopen booking for 24 hours") as HTMLButtonElement;
+    extend.type="button";extend.disabled=manualBusy;
+    extend.onclick=async()=>{
+     if(manualBusy||!window.confirm(
+      "Give every promotion 24 more hours to finish their cards? This will not advance the World."))return;
+     manualBusy=true;manualStatus="Reopening the shared booking window…";draw();
+     try{await port.extendBooking!(world.year,world.week);
+      expiredOnScreen=null;manualStatus="";await load();}
+     catch(e){manualStatus=e instanceof Error?e.message:"Unable to reopen booking";}
+     finally{manualBusy=false;draw();}
+    };
+    controls.append(extend);
+   }
    const action=el("button","ppw-home-status-refresh",manualBusy?
     "Processing World…":world.phase==="OPEN"?"Advance Week "+world.week:
     "Continue show resolution") as HTMLButtonElement;
@@ -558,7 +576,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    root.append(clear);
   }
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
-   "Open the menu to visit talent, booking, backstage, business and the wider industry."));
+   "Use the bottom navigation for daily play, or More for the wider promotion office."));
  }
  void load();
  return {refresh:load};
