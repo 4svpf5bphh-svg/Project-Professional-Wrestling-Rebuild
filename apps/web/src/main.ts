@@ -158,7 +158,7 @@ function renderBottomNavigation(section:HostSection){
  });
  more.className="ppw-bottom-tab ppw-bottom-more"+
   (!destinations.some(x=>x[0]===section)?" ppw-bottom-tab-active":"");
- more.setAttribute("aria-label","More sections");more.setAttribute("aria-controls","navigation");
+ more.setAttribute("aria-label","Open promotion menu");more.setAttribute("aria-controls","navigation");
  more.setAttribute("aria-expanded",String(drawerExpanded));
  more.append(el("span","ppw-bottom-tab-glyph","☰"),el("span","","More"));
  nav.append(more);document.body.append(nav);
@@ -169,9 +169,8 @@ function renderNavigation(section:HostSection){
  navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
  navigation.hidden=!drawerExpanded;
  document.body.classList.toggle("ppw-drawer-active",drawerExpanded);
- const menu=document.querySelector<HTMLButtonElement>(".ppw-shell-menu");
- if(menu){menu.setAttribute("aria-expanded",String(drawerExpanded));
-  menu.textContent=drawerExpanded?"×  CLOSE":"☰  CONTROL ROOM";}
+ const menu=document.querySelector<HTMLButtonElement>(".ppw-bottom-more");
+ if(menu)menu.setAttribute("aria-expanded",String(drawerExpanded));
  const bottomMore=document.querySelector<HTMLButtonElement>(".ppw-bottom-more");
  if(bottomMore)bottomMore.setAttribute("aria-expanded",String(drawerExpanded));
  if(!drawerExpanded)return;
@@ -235,7 +234,7 @@ function renderNavigation(section:HostSection){
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&drawerExpanded){
   drawerExpanded=false;renderNavigation(readHostSection(location.hash));
-  document.querySelector<HTMLButtonElement>(".ppw-shell-menu")?.focus();
+  document.querySelector<HTMLButtonElement>(".ppw-bottom-more")?.focus();
  }
 });
 function renderSection(){
@@ -408,21 +407,9 @@ async function loadSession(){
     session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
   const actions=el("div","ppw-shell-actions");
-  const menu=button("☰  CONTROL ROOM",()=>{
-   const section=readHostSection(location.hash);
-   if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(section);
-   drawerExpanded=!drawerExpanded;renderNavigation(section);
-   if(drawerExpanded)navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
-  });
-  menu.className="ppw-shell-menu";
-   // The sole permanent navigation control must meet the 44px iPhone hit target.
-   menu.style.minHeight="44px";
-  menu.setAttribute("aria-label","Open promotion menu");
-  menu.setAttribute("aria-controls","navigation");
-  menu.setAttribute("aria-expanded","false");
   const signout=button("Sign out",()=>void signOut());
   signout.className="ppw-shell-signout";
-  actions.append(menu,signout);
+  actions.append(signout);
   banner.append(identity,actions);
   account.append(banner);
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}

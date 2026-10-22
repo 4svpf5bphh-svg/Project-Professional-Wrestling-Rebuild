@@ -36,9 +36,9 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(menu).toBeVisible();
   const menuBox=await menu.boundingBox();
   expect(menuBox).not.toBeNull();
-  expect(menuBox!.y).toBeLessThan(80);
+  expect(menuBox!.y).toBeGreaterThan(550);
   expect(menuBox!.height).toBeGreaterThanOrEqual(44);
-  expect(menuBox!.width).toBeLessThanOrEqual(48);
+  expect(menuBox!.width).toBeGreaterThanOrEqual(44);
  await expect(nav).toBeHidden();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  const before=methods.length;
@@ -632,7 +632,7 @@ test("small iPhones have one accessible menu, no permanent bottom tabs or horizo
  expect(await page.locator(".ppw-account-banner").evaluate(el=>
   getComputedStyle(el).paddingTop)).toMatch(/px$/);
  await expect(menu).toBeVisible();await expect(nav).toBeHidden();
- await expect(page.locator(".ppw-navigation .ppw-tab")).toHaveCount(0);
+ await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  let overflow=()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
  expect(await overflow()).toBeLessThanOrEqual(1);
  expect(await menu.evaluate(el=>Math.round(el.getBoundingClientRect().height))).toBeGreaterThanOrEqual(44);

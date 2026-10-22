@@ -17,3 +17,5 @@ html[data-ppw-screen="backstage"] .ppw-bottom-navigation{display:none}
 .ppw-navigation,.ppw-navigation.ppw-navigation-open{bottom:calc(83px + env(safe-area-inset-bottom));z-index:202;
  max-height:calc(100dvh - 195px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 @media(max-width:380px){.ppw-bottom-tab{font-size:10px}.ppw-bottom-tab-glyph{font-size:21px}}
+
+body.ppw-drawer-active .ppw-bottom-navigation{pointer-events:none;opacity:.65}

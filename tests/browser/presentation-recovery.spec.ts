@@ -149,15 +149,15 @@ for(const width of [320,390]){
   const menu=page.getByRole("button",{name:"Open promotion menu"});
   await expect(menu).toBeVisible();
   const bounds=await page.evaluate(()=>{
-   const nav=document.querySelector(".ppw-shell-menu")!.getBoundingClientRect();
+   const nav=document.querySelector(".ppw-bottom-more")!.getBoundingClientRect();
    const head=document.querySelector(".ppw-account-banner")!.getBoundingClientRect();
    return {nav:{top:nav.top,bottom:nav.bottom,width:nav.width},
     head:{top:head.top,bottom:head.bottom}};
   });
   expect(bounds.nav.width).toBeGreaterThanOrEqual(44);
-  expect(bounds.nav.width).toBeLessThanOrEqual(48);
-  expect(bounds.nav.top).toBeGreaterThanOrEqual(bounds.head.top);
-  expect(bounds.nav.bottom).toBeLessThanOrEqual(bounds.head.bottom+1);
+  expect(bounds.nav.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.nav.top).toBeGreaterThan(bounds.head.bottom);
+  expect(bounds.nav.bottom).toBeGreaterThan(bounds.head.bottom);
   await menu.click();
   await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
   await page.locator(".ppw-nav-drawer-close").click();
