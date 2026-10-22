@@ -109,3 +109,26 @@ export function originalAnnualTier(tier:PromotionTier,score:number):PromotionTie
  if(demote[tier]!==undefined&&score<demote[tier]!&&index>0)return ORDER[index-1]!;
  return tier;
 }
+
+/** Original processWrestlerMoraleForWeek, averaging every relevant contract.
+ * Unknown show-appearance proof is not evidence that somebody was benched. */
+export function originalWeeklyMorale(input:{
+ morale:number;momentum:number;fatigue:number;injured:boolean;
+ contracts:readonly {role:"DEVELOPMENTAL"|"REGULAR"|"FEATURED"|"UPPER_CARD"|
+ "MAIN_EVENT"|"SPECIAL_ATTRACTION";hadVerifiedShow:boolean;used:boolean;
+ distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS";inactive:boolean}[]
+}):number{
+ const values=input.contracts.filter(c=>c.hadVerifiedShow&&!input.injured);
+ const missed={DEVELOPMENTAL:54,REGULAR:50,FEATURED:44,UPPER_CARD:38,
+  MAIN_EVENT:32,SPECIAL_ATTRACTION:58};
+ const usages=values.map(c=>c.used?68:missed[c.role]);
+ let evidence=usages.length?usages.reduce((s,v)=>s+v,0)/usages.length:60;
+ evidence+=(input.momentum-50)*.12;
+ evidence-=input.fatigue>=80?16:input.fatigue>=65?10:input.fatigue>=50?5:0;
+ const penalties={HEALTHY:0,WATCH:2,DISTRESSED:6,CRISIS:10};
+ evidence-=input.contracts.reduce((worst,c)=>
+  Math.max(worst,penalties[c.distress],c.inactive?15:0),0);
+ evidence=clamp(evidence,15,90);
+ return Math.round(clamp(input.morale+(evidence-input.morale)*
+  (usages.length?0.18:0.08),5,95)*10)/10;
+}
