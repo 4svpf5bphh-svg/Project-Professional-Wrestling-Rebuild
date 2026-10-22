@@ -146,24 +146,26 @@ test("unfinished show shortcut chooses the required weekly card ahead of a draft
 
 // On an installed Home Screen app there are no Safari toolbar controls.
 // The one-handed menu and its drawer must remain inside the app viewport.
-test("iPhone standalone-sized layout keeps bottom drawer above the thumb menu, without obstructing content",async({page})=>{
+test("iPhone standalone layout anchors navigation in header with reachable drawer",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>route.fulfill({json:session.overview}));
  await page.goto("/#/home");
  const menu=page.getByRole("button",{name:"Open promotion menu"});
  await expect(menu).toBeVisible();
- await expect(menu).toHaveCSS("position","fixed");
+ await expect(menu).toHaveCSS("position","static");
  const buttonBox=await menu.boundingBox();
  expect(buttonBox).not.toBeNull();
  expect(buttonBox!.y+buttonBox!.height).toBeLessThanOrEqual(844);
- expect(buttonBox!.y).toBeGreaterThan(600);
+ expect(buttonBox!.y).toBeLessThan(80);
+ expect(buttonBox!.width).toBeLessThanOrEqual(48);
  await menu.click();
  const drawer=page.getByRole("navigation",{name:"Promotion navigation"});
  await expect(drawer).toBeVisible();
  const drawerBox=await drawer.boundingBox();
  expect(drawerBox).not.toBeNull();
- expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(buttonBox!.y+6);
+ expect(drawerBox!.y).toBeGreaterThanOrEqual(buttonBox!.y+buttonBox!.height);
+ expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(844);
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
  await drawer.getByRole("button",{name:"Business",exact:true}).click();
