@@ -205,10 +205,11 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    wrestlerLabel(view.careerStage)+" · "+
    (view.status==="RETIRED"?"Retired identity":"Current identity")+" · "+
    view.persona.personaName));
-  if(view.biologicalAge!==null){
+  if(typeof view.biologicalAge==="number"&&Number.isFinite(view.biologicalAge)){
    history.append(el("p","ppw-profile-info","Age · "+
     view.biologicalAge.toLocaleString("en-GB",{maximumFractionDigits:1})+
-    (view.careerExperience===null?"":
+    (typeof view.careerExperience!=="number"||
+     !Number.isFinite(view.careerExperience)?"":
      " · Career experience · "+Math.round(view.careerExperience)+"/100")));
   }else history.append(el("p","ppw-profile-muted",
    "Original career age was not recorded for this wrestler."));
