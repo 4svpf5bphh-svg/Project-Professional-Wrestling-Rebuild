@@ -119,6 +119,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     await assert.rejects(listAvailablePromotions(db.pool,worldId,null,51),/page size/);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contract_date_requests WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
