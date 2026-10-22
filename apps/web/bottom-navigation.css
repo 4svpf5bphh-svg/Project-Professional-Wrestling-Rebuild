@@ -2,21 +2,26 @@
 .ppw-bottom-navigation{position:fixed;inset:auto 0 0;z-index:155;
  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;
  padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom))
- max(7px,env(safe-area-inset-left));background:#10132bf7;border-top:1px solid #b48be273;
- box-shadow:0 -8px 28px #060919a8}
+ max(7px,env(safe-area-inset-left));background:linear-gradient(180deg,#171029f5,#0b0b1bf9);border-top:1px solid #f542b588;
+ box-shadow:0 -8px 34px #fa20ac21,0 -7px 24px #060919ba}
 .ppw-bottom-tab{display:flex;align-items:center;justify-content:center;flex-direction:column;
  gap:2px;min-width:0;min-height:53px;padding:3px 2px;border:1px solid transparent;
- border-radius:10px;background:transparent;color:#d6daed;
- font:700 11px/1.2 system-ui,sans-serif;cursor:pointer}
-.ppw-bottom-tab-glyph{font-size:23px;line-height:1.15;font-weight:800;color:#9cb6d4}
-.ppw-bottom-tab-active{background:#364165;color:#fff3ce;border-color:#b78fdb8f}
-.ppw-bottom-tab-active .ppw-bottom-tab-glyph{color:#ffd15e}
+ border-radius:13px;background:transparent;color:#cebcd9;
+ font:800 11px/1.2 system-ui,sans-serif;cursor:pointer}
+.ppw-bottom-tab-glyph{display:grid;place-items:center;height:30px;line-height:1;color:#c5a7dd}
+.ppw-department-icon{width:25px;height:25px;display:block;filter:drop-shadow(0 0 2px #ff3f9a16)}
+.ppw-bottom-tab-active{background:linear-gradient(145deg,#fc289d,#bb279d 78%,#7934b9);color:#fff5ff;
+ border-color:#ff92dc;box-shadow:0 0 19px #ff2ba34c,inset 0 1px 0 #ffe2f282}
+.ppw-bottom-tab-active .ppw-bottom-tab-glyph{color:#fff8ff}
+.ppw-bottom-tab:active{transform:translateY(1px)}
+.ppw-bottom-tab-label{white-space:nowrap;letter-spacing:.01em}
+.ppw-bottom-tab[aria-expanded="true"]{background:linear-gradient(145deg,#fc289d,#a827b7);color:white;border-color:#ffacdf}
 .ppw-bottom-tab:focus-visible{outline:2px solid #65e4d4;outline-offset:-2px}
 body:has(.ppw-bottom-navigation){padding-bottom:calc(91px + env(safe-area-inset-bottom))}
 html[data-ppw-screen="backstage"] .ppw-bottom-navigation{display:none}
 .ppw-navigation,.ppw-navigation.ppw-navigation-open{bottom:calc(83px + env(safe-area-inset-bottom));z-index:202;
  max-height:calc(100dvh - 195px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
-@media(max-width:380px){.ppw-bottom-tab{font-size:10px}.ppw-bottom-tab-glyph{font-size:21px}}
+@media(max-width:380px){.ppw-bottom-tab{font-size:10px}.ppw-department-icon{width:23px;height:23px}}
 
 body.ppw-drawer-active .ppw-bottom-navigation{z-index:210;pointer-events:auto;opacity:1}
 
@@ -24,6 +29,11 @@ body.ppw-drawer-active .ppw-bottom-navigation{z-index:210;pointer-events:auto;op
 .ppw-bottom-root{touch-action:manipulation}
 .ppw-navigation .ppw-nav-drawer-entries{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}
 .ppw-navigation .ppw-nav-drawer-entry{min-height:56px;padding:9px 12px}
-.ppw-navigation .ppw-nav-entry-index{font-weight:900;color:#ffd15e;font-size:12px;align-self:flex-start}
+.ppw-navigation .ppw-nav-entry-index{font-weight:900;color:#ff67c5;font-size:12px;align-self:flex-start}
 .ppw-navigation .ppw-nav-drawer-heading strong{font-size:clamp(20px,6vw,27px)}
 .ppw-navigation .ppw-nav-eyebrow{font-size:9px;line-height:1.4}
+
+/* The first/original PPW aesthetic: hot-pink root buttons over a subdued night dock. */
+.ppw-navigation .ppw-nav-drawer-heading strong{color:#ffb4e6}
+.ppw-navigation .ppw-nav-drawer-entry[aria-current="page"]{border-color:#ff66c1;background:#53234e}
+.ppw-navigation .ppw-nav-drawer-entry:nth-child(3n+1){border-left-color:#fc319f}

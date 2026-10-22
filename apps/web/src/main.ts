@@ -118,13 +118,31 @@ function openBooking(showId:string){
  renderSection();
 }
 
+/** Small, self-contained 24px icons; no emoji fonts, image fetches or runtime dependency. */
+function departmentIcon(name:HostDrawerRoot):SVGSVGElement{
+ const paths:Record<HostDrawerRoot,string[]>={
+  world:["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z","M2 12h20","M12 2a15.3 15.3 0 0 1 0 20","M12 2a15.3 15.3 0 0 0 0 20"],
+  talent:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M22 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],
+  plan:["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z","M8 14h3","M8 18h3","M15 14h2"],
+  business:["M3 21h18","M5 21V5l7-3 7 3v16","M9 9h1","M14 9h1","M9 13h1","M14 13h1","M10 21v-4h4v4"],
+  results:["M8 21h8","M12 17v4","M7 4h10v7a5 5 0 0 1-10 0V4Z","M7 6H4a2 2 0 0 0-2 2c0 3 2 5 5 5","M17 6h3a2 2 0 0 1 2 2c0 3-2 5-5 5"]
+ };
+ const ns="http://www.w3.org/2000/svg";
+ const svg=document.createElementNS(ns,"svg");
+ svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("width","25");svg.setAttribute("height","25");
+ svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");
+ svg.setAttribute("stroke-width","1.85");svg.setAttribute("stroke-linecap","round");
+ svg.setAttribute("stroke-linejoin","round");svg.setAttribute("aria-hidden","true");
+ svg.classList.add("ppw-department-icon");
+ for(const d of paths[name]){const path=document.createElementNS(ns,"path");path.setAttribute("d",d);svg.append(path);}
+ return svg;
+}
 function renderBottomNavigation(section:HostSection){
  document.querySelector(".ppw-bottom-navigation")?.remove();
  if(!session?.overview.promotion||session.overview.membership!=="ACTIVE")return;
  const bar=el("nav","ppw-bottom-navigation");
  bar.setAttribute("aria-label","Promotion departments");
  const selected=drawerExpanded?drawerRoot:drawerRootForSection(section);
- const glyphs={world:"⌂",talent:"♙",plan:"▦",business:"▤",results:"★"} as const;
  for(const root of HOST_DRAWER_ROOTS){
   const tab=button("",()=>{
    if(drawerExpanded&&drawerRoot===root.key)drawerExpanded=false;
@@ -137,7 +155,8 @@ function renderBottomNavigation(section:HostSection){
   tab.setAttribute("aria-label","Open "+root.label+" menu");
   tab.setAttribute("aria-controls","navigation");
   tab.setAttribute("aria-expanded",String(drawerExpanded&&drawerRoot===root.key));
-  tab.append(el("span","ppw-bottom-tab-glyph",glyphs[root.key]),el("span","",root.label));
+  const art=el("span","ppw-bottom-tab-glyph");art.append(departmentIcon(root.key));
+  tab.append(art,el("span","ppw-bottom-tab-label",root.label));
   bar.append(tab);
  }
  document.body.append(bar);

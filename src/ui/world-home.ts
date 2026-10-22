@@ -214,7 +214,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(manualStatus)controls.append(el("p","ppw-home-small",manualStatus));
    if(deadlineDue&&world.phase==="OPEN"&&port.extendBooking){
     controls.append(el("p","ppw-home-small",
-     "The deadline passed before every card was confirmed. This test World is still open."));
+     "The venue is saved, but a show without a confirmed card cannot advance. Reopen the shared booking window, open Plan and finish the card before advancing."));
     const extend=el("button","ppw-home-status-refresh",
      manualBusy?"Working…":"Reopen booking for 24 hours") as HTMLButtonElement;
     extend.type="button";extend.disabled=manualBusy;
@@ -246,7 +246,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
       await load();return;
      }
      manualStatus=result.status==="BLOCKED"?
-      "World resolution is waiting for a booking or conflict decision. No results have been invented.":
+      (result.blockers?.length?result.blockers.slice(0,2).join(" · "):"World resolution needs a card or conflict decision. No results have been invented."):
       "Resolution is in progress. Press Continue when ready.";
     }catch(e){manualStatus=e instanceof Error?e.message:"Could not advance World";}
     finally{manualBusy=false;draw();}
