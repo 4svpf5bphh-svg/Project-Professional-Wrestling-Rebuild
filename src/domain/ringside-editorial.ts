@@ -67,21 +67,21 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   const hadInterference=source.fallout?.interference!==undefined;
   // A model-authored spot is flavour, not authority to create permanent
   // consequences. Confirmed fallout appears separately in the official UI.
-  if(!hadTitleChange&&/\\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\\b/i.test(prose))
+  if(!hadTitleChange&&/\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\b/i.test(prose))
    throw new Error("Invented championship change");
-  if(!hadInjury&&/\\b(?:suffered (?:a |an )?(?:serious |career-ending )?injury|was stretchered out|taken to hospital|injured (?:his|her|their) (?:knee|shoulder|neck|arm|leg)|left (?:the show|the arena) injured)\\b/i.test(prose))
+  if(!hadInjury&&/\b(?:suffered (?:a |an )?(?:serious |career-ending )?injury|was stretchered out|taken to hospital|injured (?:his|her|their) (?:knee|shoulder|neck|arm|leg)|left (?:the show|the arena) injured)\b/i.test(prose))
    throw new Error("Invented medical fallout");
-  if(!hadInterference&&/\\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\\b/i.test(prose))
+  if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
    const finish=source.outcome;
-   if(finish!=="SUBMISSION"&&/\\b(?:won by submission|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\\b/i.test(prose))
+   if(finish!=="SUBMISSION"&&/\b(?:won by submission|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\b/i.test(prose))
     throw new Error("Contradictory submission finish");
-   if(finish==="SUBMISSION"&&/\\b(?:pin(?:ned|fall)? (?:for |at )?the (?:win|victory)|pinned (?:him|her|them) for (?:the )?(?:three|win)|three-count to (?:win|victory))\\b/i.test(prose))
+   if(finish==="SUBMISSION"&&/\b(?:pin(?:ned|fall)? (?:for |at )?the (?:win|victory)|pinned (?:him|her|them) for (?:the )?(?:three|win)|three-count to (?:win|victory))\b/i.test(prose))
     throw new Error("Contradictory pinfall finish");
-   if(["DISQUALIFICATION","INJURY_STOPPAGE"].includes(finish)&&/\\b(?:clean pinfall victory|pinned (?:him|her|them) (?:clean|for three)|clean three-count)\\b/i.test(prose))
+   if(["DISQUALIFICATION","INJURY_STOPPAGE"].includes(finish)&&/\b(?:clean pinfall victory|pinned (?:him|her|them) (?:clean|for three)|clean three-count)\b/i.test(prose))
     throw new Error("Contradictory non-pinfall finish");
-   if(finish==="FLASH_PIN"&&/\\b(?:finished (?:him|her|them) with the [A-Za-z ]{4,50}|knocked (?:him|her|them) out for the pin)\\b/i.test(prose))
+   if(finish==="FLASH_PIN"&&/\b(?:finished (?:him|her|them) with the [A-Za-z ]{4,50}|knocked (?:him|her|them) out for the pin)\b/i.test(prose))
     throw new Error("Flash pin described as an impact finish");
   }
  }
