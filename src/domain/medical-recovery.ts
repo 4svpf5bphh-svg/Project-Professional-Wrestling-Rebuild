@@ -1,6 +1,6 @@
 /** Deterministic medical absence rules. Week indexes are zero-based and
  * clearance is exclusive: an injury sustained in week N for K weeks permits
- * the first return in week N + K + 1.
+ * the first return in week N + K, matching original PPW.
  * Pure rules shared by booking and the authoritative World settlement.
  */
 export type MedicalSeverity="MINOR"|"MODERATE"|"MAJOR"|"SEVERE";
@@ -16,7 +16,7 @@ export function medicalClearanceWeek(injury:MedicalAbsence):number {
   injury.weeksOut<1||injury.weeksOut>52||
   !["MINOR","MODERATE","MAJOR","SEVERE"].includes(injury.severity))
   throw new Error("Invalid medical absence");
- return injury.incidentWeekIndex+injury.weeksOut+1;
+ return injury.incidentWeekIndex+injury.weeksOut;
 }
 export function remainingMedicalWeeks(injury:MedicalAbsence,currentWeekIndex:number):number {
  if(!Number.isSafeInteger(currentWeekIndex)||currentWeekIndex<0)

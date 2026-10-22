@@ -2,6 +2,7 @@
  * Not an AI generated account: all facts come from the actual match simulation.
  */
 import type {SqlRows} from "./world-operations.js";
+import {recordVerifiedMedicalAbsencesInTransaction} from "./medical-availability.js";
 import type {previewArchivedShowMatchScoresInTransaction}
  from "./legacy-match-scoring.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
@@ -96,4 +97,8 @@ export async function recordCompletedMatchReportFactsInTransaction(
  if(rows.length!==facts.length||
    new Set(rows.map(x=>x.match_id)).size!==facts.length)
   throw new Error("Incomplete immutable match report insert");
+ await recordVerifiedMedicalAbsencesInTransaction(tx,{
+  worldId:projection.worldId,showId:projection.showId,
+  year:projection.year,week:projection.week,facts
+ });
 }
