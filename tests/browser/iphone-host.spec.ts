@@ -616,7 +616,7 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/manifest.webmanifest");
 });
 
-test("small iPhones have one accessible menu, no permanent bottom tabs or horizontal overflow",async({page})=>{
+test("small iPhones have five quick tabs and one flat More department index without overflow",async({page})=>{
  await page.setViewportSize({width:320,height:700});
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
@@ -638,20 +638,17 @@ test("small iPhones have one accessible menu, no permanent bottom tabs or horizo
  expect(await menu.evaluate(el=>Math.round(el.getBoundingClientRect().height))).toBeGreaterThanOrEqual(44);
  await menu.click();
  await expect(nav).toBeVisible();
- await expect(nav.locator(".ppw-tab")).toHaveCount(5);
- await nav.getByRole("button",{name:"Business",exact:true}).click();
- await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(nav.locator(".ppw-tab")).toHaveCount(0);
+ await expect(nav.locator(".ppw-nav-department")).toHaveCount(4);
  await expect(nav.getByRole("button",{name:/Staff/})).toBeVisible();
  expect(await overflow()).toBeLessThanOrEqual(1);
- await nav.getByRole("button",{name:"Talent",exact:true}).click();
  await nav.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
  await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
  await menu.click();
- await nav.getByRole("button",{name:"World",exact:true}).click();
- await nav.getByRole("button",{name:/World overview/}).click();
- await expect(page).toHaveURL(/#\/home$/);
+ await nav.getByRole("button",{name:/Promotions/}).click();
+ await expect(page).toHaveURL(/#\/industry$/);
  await expect(nav).toBeHidden();
  expect(await overflow()).toBeLessThanOrEqual(1);
 });
@@ -722,12 +719,11 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await requested;
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  await page.getByRole("button",{name:"Open promotion menu"}).click();
- await nav.getByRole("button",{name:"World",exact:true}).click();
- await nav.getByRole("button",{name:/World overview/}).click();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await nav.getByRole("button",{name:/Promotions/}).click();
+ await expect(page).toHaveURL(/#\/industry$/);
  releaseShow();
  await page.waitForTimeout(250);
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page).toHaveURL(/#\/industry$/);
  await expect(page.locator("#game > .ppw-workspace")).toHaveCount(1);
  await expect(page.locator("#game .ppw-archive-hero")).toHaveCount(0);
  expect(await page.evaluate(()=>

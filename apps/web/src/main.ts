@@ -5,8 +5,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost}
  from "../../../src/web/card-browser.js";
-import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
- type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
+import {HOST_SECTIONS,HOST_DRAWER_ROOTS,readHostSection,hostSectionHash,
+ type HostSection,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
  type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
 import type {CardSessionScope} from "../../../src/web/card-client.js";
@@ -40,7 +40,6 @@ let session:SessionView|null=null;
 // Latest session wins when overlapping requests complete out of order.
 let sessionReadSequence=0;
 let drawerExpanded=false;
-let selectedDrawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
 let pendingBackstagePersonId:string|null=null;
 let backstageReturnSection:HostSection="home";
@@ -118,24 +117,6 @@ function openBooking(showId:string){
  renderSection();
 }
 
-/** Original vector icons, deliberately local to the menu (no artwork downloads). */
-const drawerPaths:Record<HostDrawerRoot,string>={
- world:"M3 20V8l9-5 9 5v12M3 11h18M8 20v-5h8v5",
- talent:"M16 20v-2a4 4 0 0 0-8 0v2M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM3 20v-2a4 4 0 0 1 3-3.87M21 20v-2a4 4 0 0 0-3-3.87",
- plan:"M3 4h18v16H3zM3 9h18M8 4v5M16 4v5M8 14h3M13 14h3",
- business:"M3 21V8l6-4 6 4v13M15 11h6v10M7 11h4M7 15h4M7 19h4",
- results:"M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4ZM7 6H3v3a4 4 0 0 0 4 4M17 6h4v3a4 4 0 0 1-4 4"
-};
-function drawerIcon(key:HostDrawerRoot){
- const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
- svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("fill","none");
- svg.setAttribute("stroke","currentColor");svg.setAttribute("stroke-width","1.75");
- svg.setAttribute("stroke-linejoin","round");svg.setAttribute("stroke-linecap","round");
- svg.setAttribute("aria-hidden","true");
- const path=document.createElementNS(ns,"path");
- path.setAttribute("d",drawerPaths[key]);svg.append(path);return svg;
-}
-/** No always-visible tab bar. All departments live inside this one menu. */
 function renderBottomNavigation(section:HostSection){
  document.querySelector(".ppw-bottom-navigation")?.remove();
  if(!session?.overview.promotion||session.overview.membership!=="ACTIVE")return;
@@ -152,7 +133,6 @@ function renderBottomNavigation(section:HostSection){
  }
  const more=button("",()=>{
   const current=readHostSection(location.hash);
-  if(!drawerExpanded)selectedDrawerRoot=drawerRootForSection(current);
   drawerExpanded=!drawerExpanded;renderNavigation(current);
   if(drawerExpanded)navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
  });
@@ -179,46 +159,36 @@ function renderNavigation(section:HostSection){
  backdrop.setAttribute("aria-label","Close promotion menu");
  backdrop.onclick=()=>{drawerExpanded=false;renderNavigation(section);menu?.focus();};
  document.body.append(backdrop);
- const selected=HOST_DRAWER_ROOTS.find(x=>x.key===selectedDrawerRoot)!;
  const drawer=el("section","ppw-nav-drawer");
- drawer.setAttribute("aria-label",selected.label+" menu");
+ drawer.setAttribute("aria-label","Promotion departments");
  const head=el("div","ppw-nav-drawer-heading");
- head.append(el("span","","THE PROMOTION OFFICE"),el("strong","","Where to?"));
+ head.append(el("span","","THE PROMOTION OFFICE"),el("strong","","Departments"));
  const close=button("×",()=>{drawerExpanded=false;renderNavigation(section);menu?.focus();});
  close.className="ppw-nav-drawer-close";
  close.setAttribute("aria-label","Close promotion menu");
  head.append(close);drawer.append(head);
- drawer.append(el("p","ppw-nav-eyebrow","WORLD OPERATIONS / "+selected.label.toUpperCase()));
- const roots=el("div","ppw-nav-rootbar");
- roots.setAttribute("aria-label","Departments");
+ drawer.append(el("p","ppw-nav-eyebrow","MORE FROM YOUR PROMOTION"));
+ // World, Plan, Talent and Results already have permanent tabs.
+ const quick=new Set(["home","planner","roster","results"]);
  for(const root of HOST_DRAWER_ROOTS){
-  const tab=button("",()=>{
-   selectedDrawerRoot=root.key;renderNavigation(section);
-   const target=[...navigation.querySelectorAll<HTMLButtonElement>(".ppw-tab")]
-    .find(x=>x.getAttribute("aria-label")===root.label);
-   target?.focus();
-  });
-  const active=selectedDrawerRoot===root.key;
-  tab.className="ppw-tab"+(active?" ppw-tab-active":"");
-  tab.setAttribute("aria-label",root.label);
-  tab.setAttribute("aria-pressed",String(active));
-  const pictogram=el("span","ppw-tab-icon");pictogram.append(drawerIcon(root.key));
-  tab.append(pictogram,el("span","ppw-tab-label",root.label));
-  roots.append(tab);
+  const destinations=root.destinations.filter(([id])=>!quick.has(id));
+  if(!destinations.length)continue;
+  const group=el("section","ppw-nav-department");
+  group.setAttribute("aria-label",root.label+" departments");
+  group.append(el("h3","ppw-nav-department-name",root.label));
+  const entries=el("div","ppw-nav-drawer-entries");
+  for(const [id,label,description] of destinations){
+   const entry=button("",()=>openSection(id as HostSection));
+   entry.className="ppw-nav-drawer-entry";
+   const copy=el("span","ppw-nav-entry-copy");
+   copy.append(el("strong","",label),el("small","",description));
+   entry.append(copy,el("span","ppw-nav-entry-arrow","↗"));
+   if(id===section)entry.setAttribute("aria-current","page");
+   entries.append(entry);
+  }
+  group.append(entries);drawer.append(group);
  }
- drawer.append(roots);
- const entries=el("div","ppw-nav-drawer-entries");
- for(const [id,label,description] of selected.destinations){
-  const entry=button("",()=>openSection(id as HostSection));
-  entry.className="ppw-nav-drawer-entry";
-  const number=el("span","ppw-nav-entry-index",String(entries.children.length+1).padStart(2,"0"));
-  const copy=el("span","ppw-nav-entry-copy");
-  copy.append(el("strong","",label),el("small","",description));
-  entry.append(number,copy,el("span","ppw-nav-entry-arrow","↗"));
-  if(id===section)entry.setAttribute("aria-current","page");
-  entries.append(entry);
- }
- drawer.append(entries);navigation.append(drawer);
+ navigation.append(drawer);
  navigation.onkeydown=event=>{
   if(event.key!=="Tab")return;
   const buttons=[...navigation.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];

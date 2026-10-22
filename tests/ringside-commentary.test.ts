@@ -19,7 +19,11 @@ test("Groq is invoked once for the full card and validates structured source IDs
   assert.equal(body.messages.length,2);
   assert.equal(body.response_format.type,"json_schema");
   assert.equal(body.response_format.json_schema.strict,true);
-  assert.equal(body.reasoning_effort,"low");assert.match(body.messages[1].content,/One Winged Angel/);
+  assert.equal(body.reasoning_effort,"low");
+  assert.equal(body.temperature,0.92);
+  assert.ok(body.max_completion_tokens>=900);
+  assert.match(body.messages[0].content,/Marty Vale/);
+  assert.match(body.messages[1].content,/One Winged Angel/);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(review)}}]}),{status:200});
  };
  assert.equal((await generateGroqReview(show,"fixture",fake)).slots[0]?.slotId,"m");

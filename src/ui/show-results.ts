@@ -227,28 +227,22 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   append(summary,meta,heading,trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
+  const narrative=node("div","ppw-ringside-slot");
+  narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
+  append(body,narrative);
+  // The columnist's account precedes the permanently visible verified finish.
+  // Staff will eventually deliver analysis; no simulated Booker Breakdown.
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
-   const verified=document.createElement("details");
-   verified.className="ppw-verified-finish";
-   verified.append(node("summary","","How it ended · official result"));
-   const replay=node("div","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
+   const replay=node("section","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
+   replay.setAttribute("aria-label","Finish replay");
    append(replay,node("span","ppw-finish-eyebrow","◉ FINISH REPLAY"),
     node("strong","ppw-finish-title",finish.title),
     node("p","ppw-finish-description",finish.description));
    if(finish.winnerLabel)
-    append(replay,node("p","ppw-finish-winner","OFFICIAL WINNER: "+finish.winnerLabel));
-   verified.append(replay);append(body,verified);
+    append(replay,node("p","ppw-finish-winner","WINNER: "+finish.winnerLabel));
+   append(body,replay);
   }
-  const narrative=node("p","ppw-ringside-slot");
-  narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
-  append(body,narrative);
-  const breakdown=document.createElement("details");
-  breakdown.className="ppw-booker-breakdown";
-  append(breakdown,node("summary","","Behind the bell · Match analysis"));
-  for(const paragraph of review.paragraphs)
-   append(breakdown,node("p","ppw-result-recap",paragraph));
-  append(body,breakdown);
   if(review.bulletins.length){
    append(body,node("h3","ppw-result-fallout-title","CONFIRMED FALLOUT"));
    const bullets=document.createElement("ul");bullets.className="ppw-result-fallout";

@@ -29,7 +29,7 @@ const review={showHeadline:"Omega gives Dynamite its spark",
   recap:"Joe threw heavy leather, but Omega's V-Trigger opened the door to the One Winged Angel and a clean pin."},
  {slotId:"angle",headline:"A challenge made",recap:"A pointed microphone exchange held the audience's attention."}]};
 for(const width of [320,390]){
- test(`Ringside ${width}px: the editorial, canonical finish, crowd and Booker Breakdown coexist`,async({page})=>{
+ test(`Ringside ${width}px: visible finish, editorial and crowd coexist without Booker Breakdown`,async({page})=>{
   await page.setViewportSize({width,height:844});
   let resultReads=0,groqCalls=0;
   await page.route("**/api/session",r=>r.fulfill({json:session}));
@@ -53,9 +53,9 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
-   await expect(page.locator(".ppw-verified-finish").first()).not.toHaveAttribute("open","");
+  await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
   await expect(page.locator(".ppw-flow-track")).toHaveCount(2);
-  await expect(page.locator(".ppw-booker-breakdown").first()).not.toHaveAttribute("open","");
+  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);
   await expect(page.getByText("Generate AI Review")).toHaveCount(0);
   expect(resultReads).toBe(1);expect(groqCalls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
@@ -72,6 +72,7 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
- await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(2);
+ await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);
+ await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
 });

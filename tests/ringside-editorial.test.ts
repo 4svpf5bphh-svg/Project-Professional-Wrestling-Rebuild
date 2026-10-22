@@ -63,3 +63,12 @@ test("Ringside rejects simulation labels and score numbers",()=>{
  assert.throws(()=>validateRingsideCopy({...valid,slots:[
   {...valid.slots[0],recap:"Omega claimed a protected finish."},valid.slots[1]]},example),/terminology/);
 });
+
+test("Long-form Ringside permits paragraphs but not unbounded content",()=>{
+ const prose="Omega set up the One Winged Angel with a V-Trigger. ".repeat(12);
+ const article={...valid,slots:[{...valid.slots[0],recap:prose+"\n\n"+prose},valid.slots[1]]};
+ assert.ok(validateRingsideCopy(article,example).slots[0]?.recap.includes("\n\n"));
+ const giant={...valid,slots:[{...valid.slots[0],recap:"x".repeat(1801)},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(giant,example));
+ assert.match(RINGSIDE_STYLE_GUIDE,/90–150 words/);
+});

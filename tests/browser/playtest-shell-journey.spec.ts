@@ -168,8 +168,9 @@ test("iPhone standalone layout keeps More in bottom navigation with reachable dr
  expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(844);
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
- await drawer.getByRole("button",{name:"Business",exact:true}).click();
- await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(drawer.locator(".ppw-tab")).toHaveCount(0);
+ await expect(drawer.locator(".ppw-nav-department")).toHaveCount(4);
+ await expect(drawer.getByRole("button",{name:/Staff/})).toBeVisible();
  await page.keyboard.press("Escape");
  await expect(drawer).toBeHidden();
 });
