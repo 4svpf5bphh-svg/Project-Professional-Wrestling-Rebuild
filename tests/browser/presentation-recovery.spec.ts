@@ -291,3 +291,27 @@ test("real AEW logo with an intrinsic black background is visually composited in
  await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
  await page.screenshot({path:images+"/real-aew-logo-compositing-390.png",fullPage:true});
 });
+
+test("WWE logo no longer appears as a black square on a branded event card",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:{...session,
+  overview:{...session.overview,promotion:{...session.overview.promotion,
+   id:"wwe",name:"WWE"}}}}));
+ const blackField='<svg xmlns="http://www.w3.org/2000/svg" width="200" height="92" viewBox="0 0 200 92"><rect width="200" height="92" fill="#000"/><text x="100" y="65" text-anchor="middle" fill="#fff" font-size="60" font-family="Arial Black,Arial" font-weight="900">WWE</text></svg>';
+ await page.route("**/commons.wikimedia.org/**",route=>route.fulfill({
+  status:200,contentType:"image/svg+xml",body:blackField}));
+ const show={seriesId:"raw",name:"WWE Raw",role:"FLAGSHIP",eventType:"REGULAR",
+  cadenceWeeks:1,anchorWeek:0,importance:76,active:true};
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  promotionId:"wwe",promotionName:"WWE",year:1,week:5,worldRevision:4,
+  canEdit:false,series:[show],bookings:[],weeks:[{year:1,week:5,offset:0,shows:[show]}],
+  worldWeeks:[]
+ }}));
+ await page.goto("/#/calendar");
+ const badge=page.locator(".ppw-calendar-owner-mark[data-brand='wwe']");
+ await expect(badge).toHaveAttribute("data-logo-ready","true");
+ await expect.poll(async()=>badge.locator("img").evaluate(
+  img=>getComputedStyle(img).mixBlendMode)).toBe("screen");
+ await expect(page.locator(".ppw-calendar-event-art")).toHaveCount(0);
+ await page.screenshot({path:images+"/real-wwe-logo-compositing-390.png",fullPage:true});
+});
