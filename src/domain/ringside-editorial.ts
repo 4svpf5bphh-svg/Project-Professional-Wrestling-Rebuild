@@ -106,6 +106,18 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
+   // A generated near-fall is fine; declaring that the defeated wrestler
+   // actually pinned/submitted the recorded winner is not.
+   const winners=source.matchContext?.winnerNames??[];
+   const opponents=source.matchContext?.sides.flat()??[];
+   const language=prose.toLowerCase();
+   for(const loser of opponents.filter(name=>!winners.includes(name))){
+    for(const winner of winners){
+     if([" pinned "," submitted "," defeated "].some(verb=>
+      language.includes(loser.toLowerCase()+verb+winner.toLowerCase())))
+      throw new Error("Ringside inverted the official match winner");
+    }
+   }
    const finish=source.outcome;
    if(finish==="CLEAN_PIN"||finish==="FLASH_PIN"){
     const winners=new Set(source.matchContext?.winnerNames??[]);

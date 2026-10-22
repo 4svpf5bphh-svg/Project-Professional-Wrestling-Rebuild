@@ -72,3 +72,9 @@ test("Long-form Ringside permits paragraphs but not unbounded content",()=>{
  assert.throws(()=>validateRingsideCopy(giant,example));
  assert.match(RINGSIDE_STYLE_GUIDE,/90–150 words/);
 });
+
+test("Ringside rejects a loser being reported as the victor",()=>{
+ const inverted={...valid,slots:[{...valid.slots[0],
+  recap:"Opponent pinned Kenny Omega after the V-Trigger to win."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(inverted,example),/winner/);
+});
