@@ -118,7 +118,7 @@ test("verified injuries block next-week booking, recover on original schedule an
    ?.promotion?.attention.medicalClearances,[]);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_medical_absences",
+   for(const table of ["ppw_ledger_events","ppw_player_attention_dismissals","ppw_medical_absences",
     "ppw_completed_match_report_facts","ppw_completed_show_matches","ppw_completed_shows","ppw_booking_drafts","ppw_contracts","ppw_promotion_controls","ppw_memberships","ppw_people","ppw_promotions"]){
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    }
