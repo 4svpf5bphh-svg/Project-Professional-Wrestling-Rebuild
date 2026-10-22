@@ -50,6 +50,7 @@ type ContractRow={person_id:string;contract_id:string;name:string|null;
  identity_exists:boolean;identity_name:string|null;identity_gimmick:string|null;
  identity_style:string|null;identity_signature:string|null;identity_finisher:string|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
+ medical_clearance_week_index:number|null;
  remaining_dates:number|null;exclusive_elsewhere:boolean};
 async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
  if(![id.worldId,id.playerId,id.promotionId,id.showId].every(validId))
@@ -217,7 +218,15 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "identity.persona->'signatureMoves'->0->>'name' AS identity_signature,",
     "identity.persona->'finishingMoves'->0->>'name' AS identity_finisher,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
+    "(SELECT a.cleared_week_index FROM ppw_medical_absences a",
+    "WHERE a.world_id=p.world_id AND a.person_id=p.person_id",
+    "AND a.status='ACTIVE' AND a.injured_week_index<$5",
+    "AND a.cleared_week_index>$5) AS medical_clearance_week_index,",
     "c.expires_week_index,c.remaining_dates,",
+    "(SELECT a.cleared_week_index FROM ppw_medical_absences a",
+    "WHERE a.world_id=p.world_id AND a.person_id=p.person_id",
+    "AND a.status='ACTIVE' AND a.injured_week_index<$5",
+    "AND a.cleared_week_index>$5) AS medical_clearance_week_index,",
     "EXISTS(SELECT 1 FROM ppw_contracts other",
     "WHERE other.world_id=c.world_id AND other.person_id=c.person_id",
     "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
@@ -266,10 +275,13 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     inRingQuality:c.in_ring_quality,matchCraft:c.match_craft,presentation:c.presentation,
     stamina:c.stamina,safety:c.safety,fatigue:c.fatigue,wear:c.wear,
     division:c.booking_division,available:rights.available&&
-     c.person_status==="ACTIVE"&&!c.exclusive_elsewhere,
-    reason:c.person_status!=="ACTIVE"?"INACTIVE":
+     c.person_status==="ACTIVE"&&c.medical_clearance_week_index===null&&!c.exclusive_elsewhere,
+    reason:c.medical_clearance_week_index!==null?"INJURED":
+       c.person_status!=="ACTIVE"?"INACTIVE":
       c.exclusive_elsewhere?"EXCLUSIVE_ELSEWHERE":rights.reason,
-    remainingDates:c.remaining_dates,expiresWeekIndex:c.expires_week_index};
+    medicalWeeksRemaining:c.medical_clearance_week_index===null?null:
+      c.medical_clearance_week_index-week,
+     remainingDates:c.remaining_dates,expiresWeekIndex:c.expires_week_index};
   });
   const last=page.at(-1);
   return {talent,cursor:rows.length>limit&&last?{
@@ -422,6 +434,9 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    const byContract=new Map(rows.map(r=>[r.person_id+"\0"+r.contract_id,r]));
    for(const appearance of appearances){
     const c=byContract.get(appearance.personId+"\0"+appearance.contractId);
+    if(c?.medical_clearance_week_index!==null&&
+       c?.medical_clearance_week_index!==undefined)
+      throw new Error("Injured wrestler is not medically cleared to perform");
     if(!c||c.person_status!=="ACTIVE"||c.exclusive_elsewhere||
      !contractAvailability({family:c.family as "ONE_OFF"|"LIMITED_NON_EXCLUSIVE"|"EXCLUSIVE",
       status:c.status as "SIGNED",remainingDates:c.remaining_dates,
