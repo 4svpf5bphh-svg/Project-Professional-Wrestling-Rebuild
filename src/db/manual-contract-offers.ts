@@ -135,7 +135,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   const bids=await tx.query<PendingRow>(`SELECT o.offer_id,o.person_id,o.promotion_id,o.source_contract_id,
    o.submitted_week_index,o.terms,p.tier,p.media_reach,
    CASE WHEN annual.trust IS NULL THEN coalesce(backstage.trust,50)
-    ELSE round((coalesce(backstage.trust,50)+annual.trust)/2,1)
+    ELSE round(((coalesce(backstage.trust,50)+annual.trust)/2)::numeric,1)::double precision
    END AS backstage_trust,
    EXISTS(SELECT 1 FROM ppw_contracts h WHERE h.world_id=o.world_id
     AND h.person_id=o.person_id AND h.promotion_id=o.promotion_id) AS has_history
