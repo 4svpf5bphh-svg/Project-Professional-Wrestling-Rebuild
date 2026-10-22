@@ -89,3 +89,17 @@ export async function settleMedicalAvailabilityForNewWeek(tx:SqlRows,worldId:str
    AND a.status='ACTIVE' AND a.injured_week_index<$2
    AND a.cleared_week_index>$2`,[worldId,nextWeekIndex]);
 }
+
+/** Original-main recoverWrestlersForNewWeek: recoveryBase (14) +
+ * stamina / 12, rounded to tenths. One bounded set-based write, zero result
+ * rows transferred. Called exactly once inside certified World rollover.
+ */
+export async function settleWeeklyFatigueRecovery(
+ tx:SqlRows,worldId:string):Promise<void>{
+ if(!worldId||worldId.length>200)throw new Error("Invalid fatigue recovery World");
+ await tx.query(`UPDATE ppw_people
+  SET fatigue=round(greatest(0::numeric,
+   fatigue::numeric-(14::numeric+stamina::numeric/12)),1)::double precision
+  WHERE world_id=$1 AND status<>'RETIRED'
+   AND fatigue IS NOT NULL AND stamina IS NOT NULL AND fatigue>0`,[worldId]);
+}

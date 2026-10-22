@@ -6,7 +6,7 @@ import {postgresPool,withSqlClient} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordVerifiedMedicalAbsencesInTransaction,
- settleMedicalAvailabilityForNewWeek} from "../src/db/medical-availability.js";
+ settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "../src/db/medical-availability.js";
 import {readBookableCardTalent} from "../src/db/show-card-editor.js";
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../src/db/player-attention-dismissals.js";
@@ -45,10 +45,16 @@ test("verified injuries block next-week booking, recover on original schedule an
    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
     VALUES($1,$2,$3,2,1,'DRAFT')`,[world,card,promo]);
    await settleMedicalAvailabilityForNewWeek(tx,world,52,2,1);
+   await tx.query("UPDATE ppw_people SET fatigue=50,stamina=60 WHERE world_id=$1 AND person_id=$2",
+    [world,person]);
+   await settleWeeklyFatigueRecovery(tx,world);
   });
   const injured=await readBookableCardTalent(db.pool,{
    worldId:world,playerId:player,promotionId:promo,showId:card});
   assert.equal(injured.talent.length,1);
+  const restAtFirst=await withSqlClient(db.pool,tx=>tx.query<{fatigue:number}>(
+   "SELECT fatigue FROM ppw_people WHERE world_id=$1 AND person_id=$2",[world,person]));
+  assert.equal(restAtFirst[0]?.fatigue,31,"Original 14 + stamina/12 weekly recovery");
   assert.equal(injured.talent[0]?.available,false);
   assert.equal(injured.talent[0]?.reason,"INJURED");
   assert.equal(injured.talent[0]?.medicalWeeksRemaining,1);
@@ -81,6 +87,7 @@ test("verified injuries block next-week booking, recover on original schedule an
   assert.deepEqual(reconciled[0],{n:"1",cleared_week_index:53,status:"ACTIVE"});
   await withWorldTransaction(db.pool,async tx=>{
    await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
+   await settleWeeklyFatigueRecovery(tx,world);
    await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
    await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[world]);
    await tx.query("UPDATE ppw_booking_drafts SET week=2 WHERE world_id=$1 AND draft_id=$2",[world,card]);
@@ -88,6 +95,9 @@ test("verified injuries block next-week booking, recover on original schedule an
   const cleared=await readBookableCardTalent(db.pool,{
    worldId:world,playerId:player,promotionId:promo,showId:card});
   assert.equal(cleared.talent[0]?.available,true);
+  const restAtSecond=await withSqlClient(db.pool,tx=>tx.query<{fatigue:number}>(
+   "SELECT fatigue FROM ppw_people WHERE world_id=$1 AND person_id=$2",[world,person]));
+  assert.equal(restAtSecond[0]?.fatigue,12);
   assert.equal(cleared.talent[0]?.reason,"AVAILABLE");
   assert.equal(cleared.talent[0]?.medicalWeeksRemaining,null);
   const status=await withSqlClient(db.pool,tx=>tx.query<{status:string}>(
