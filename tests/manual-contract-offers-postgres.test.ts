@@ -63,9 +63,16 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
    requestId:"forbidden-"+id,expectedRevision:6},{source:"WORLD_RESOLUTION",worldId:"wrong"}),/authority/);
   // Broken promises or a falling-out belong to this one promotion, not
   // to the wrestler globally. The existing bid resolver must price it in.
-  await withWorldTransaction(db.pool,tx=>tx.query(
-   "INSERT INTO ppw_backstage_promotion_trust(world_id,promotion_id,person_id,trust) VALUES($1,$2,$3,10)",
-   [world,pA,person]));
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(
+    "INSERT INTO ppw_backstage_promotion_trust(world_id,promotion_id,person_id,trust) VALUES($1,$2,$3,10)",
+    [world,pA,person]);
+   // Annual follow-through is independent of short-term locker-room trust;
+   // both must affect real bidding without exposing private rival terms.
+   await tx.query(
+    "INSERT INTO ppw_promotion_talent_trust(world_id,promotion_id,person_id,trust,last_evaluated_year) VALUES($1,$2,$3,30,1)",
+    [world,pA,person]);
+  });
   const result=await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
    requestId:"resolve-"+id,expectedRevision:6},system);
   assert.equal(result.status,"APPLIED");
@@ -79,11 +86,11 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
    morale:80,priorities:{money:60,role:10,prestige:10,schedule:10,loyalty:5,exposure:5}};
   const lowTrustScore=offerUtility(economicProfile,limited,{
    tier:"INDEPENDENT",mediaReach:40,hasPriorRelationship:false,
-   trust:10,seed:"7",offerId:offerA});
+   trust:20,seed:"7",offerId:offerA});
   const neutralScore=offerUtility(economicProfile,limited,{
    tier:"INDEPENDENT",mediaReach:40,hasPriorRelationship:false,
    trust:50,seed:"7",offerId:offerA});
-  assert.ok(lowTrustScore<neutralScore,"Bad backstage trust affects the actual offered terms");
+  assert.ok(lowTrustScore<neutralScore,"Broken promises and annual trust reduce real offers");
   assert.equal(result.result.decisions.find(d=>d.id===offerA)?.score,lowTrustScore);
   assert.equal((await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,
    requestId:"resolve-"+id,expectedRevision:6},system)).status,"REPLAYED");

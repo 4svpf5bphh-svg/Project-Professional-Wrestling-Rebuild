@@ -134,13 +134,19 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   const current=(clock[0]!.year-1)*52+clock[0]!.week-1;
   const bids=await tx.query<PendingRow>(`SELECT o.offer_id,o.person_id,o.promotion_id,o.source_contract_id,
    o.submitted_week_index,o.terms,p.tier,p.media_reach,
-   coalesce((SELECT t.trust FROM ppw_backstage_promotion_trust t
-    WHERE t.world_id=o.world_id AND t.promotion_id=o.promotion_id
-    AND t.person_id=o.person_id),50) AS backstage_trust,
+   CASE WHEN annual.trust IS NULL THEN coalesce(backstage.trust,50)
+    ELSE round((coalesce(backstage.trust,50)+annual.trust)/2,1)
+   END AS backstage_trust,
    EXISTS(SELECT 1 FROM ppw_contracts h WHERE h.world_id=o.world_id
     AND h.person_id=o.person_id AND h.promotion_id=o.promotion_id) AS has_history
    FROM ppw_contract_offers o JOIN ppw_promotions p ON p.world_id=o.world_id
     AND p.promotion_id=o.promotion_id
+   LEFT JOIN ppw_backstage_promotion_trust backstage ON
+    backstage.world_id=o.world_id AND backstage.promotion_id=o.promotion_id
+    AND backstage.person_id=o.person_id
+   LEFT JOIN ppw_promotion_talent_trust annual ON
+    annual.world_id=o.world_id AND annual.promotion_id=o.promotion_id
+    AND annual.person_id=o.person_id
    WHERE o.world_id=$1 AND o.person_id=$2 AND o.status='PENDING'
      AND o.submitted_week_index<=$3 ORDER BY o.offer_id LIMIT 100`,[input.worldId,input.personId,current]);
   if(!bids.length)return {personId:input.personId,accepted:0,rejected:0};
