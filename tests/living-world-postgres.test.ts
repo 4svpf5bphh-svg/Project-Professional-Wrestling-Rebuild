@@ -161,3 +161,54 @@ test("two independently owned promotions survive 26/52 weeks and 3 years of evol
   }).finally(()=>db.close());
  }
 });
+
+
+test("643-person weekly career/morale settlement stays one bounded batch without polling",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,2),world="living-budget-"+randomUUID();
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"643-person career budget",seed:643,
+    rulesetVersion:"test"});
+   await tx.query(`
+    INSERT INTO ppw_people(world_id,person_id,name,status,career_stage,
+     biological_age,career_experience,development_aptitude,wear,
+     recognition,popularity,momentum,fatigue,morale,
+     in_ring_quality,match_craft,presentation,stamina,safety)
+    SELECT $1,'budget-'||n,'Budget person '||n,'ACTIVE',
+     CASE WHEN n<=50 THEN 'VETERAN' ELSE 'PRIME' END,
+     CASE WHEN n<=50 THEN 43.0 ELSE 29.0 END,60,65,12,
+     48,42,50,0,72,62,60,63,68,70
+    FROM generate_series(1,643) n`,[world]);
+  });
+  const meter=new MeasuredQuerySession("643-person-certified-weekly-career-morale");
+  let requestBytes=0;
+  const result=await withWorldTransaction(db.pool,async tx=>{
+   const wrapped={
+    query:async<T extends Record<string,unknown>>(sql:string,args:readonly unknown[])=>{
+     requestBytes+=Buffer.byteLength(JSON.stringify(args),"utf8");
+     return meter.execute(()=>tx.query<T>(sql,args));
+    }
+   };
+   const career=await settleLivingWrestlerCareers(wrapped,world,1,2);
+   const morale=await settleLivingMorale(wrapped,world,1,2);
+   return {career,morale};
+  });
+  assert.equal(result.career.evolved,643);
+  assert.equal(result.career.missingOriginal,0);
+  assert.equal(result.morale.evaluated,643);
+  const metrics=meter.assertBudget({maxQueries:6,maxResultBytes:400_000});
+  assert.ok(requestBytes<=350_000,
+   "World-week batch parameters must not exceed 350 kB of encoded request JSON");
+  console.log("PPW 643-person career/morale application SQL budget: "+
+   JSON.stringify({...metrics,requestParameterBytes:requestBytes}));
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_ledger_events","ppw_promotion_talent_trust",
+    "ppw_promotion_survival","ppw_people"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
