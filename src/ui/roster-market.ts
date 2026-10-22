@@ -26,7 +26,7 @@ const btn=(value:string,fn:()=>void,disabled=false)=>{
  x.type="button";x.onclick=fn;x.disabled=disabled;return x;
 };
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
-const value=(n:number|null)=>n===null?"–":Math.round(n).toString();
+const value=(n:number|null|undefined)=>n==null||!Number.isFinite(n)?"–":Math.round(n).toString();
 type TermsDraft={family:OfferTerms["family"];role:OfferTerms["roleExpectation"];
  creative:OfferTerms["creativeControl"];weeks:number;dates:number;
  weekly:number;appearance:number;bonus:number};
