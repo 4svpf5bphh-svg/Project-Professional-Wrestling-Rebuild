@@ -6,7 +6,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,validateRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -90,13 +90,10 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
  if(saved?.state==="READY"&&saved.model===RINGSIDE_MODEL){
-  const report=saved.report_json;
-  // Only server-validated JSON can be inserted through the writer below.
-  if(report&&typeof report==="object"&&!Array.isArray(report)&&
-   typeof (report as RingsideCopy).showHeadline==="string"&&
-   Array.isArray((report as RingsideCopy).slots))
-    return {status:"ready",review:report as RingsideCopy};
-  return {status:"unavailable"};
+  // A database cache entry remains untrusted; validate its bounded shape
+  // without loading five extra tables on every reviewed show reopen.
+  try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
+  catch{return {status:"unavailable"};}
  }
  if(!key||saved?.state==="READY"||saved?.attempts>=2)
   return {status:"unavailable"};
