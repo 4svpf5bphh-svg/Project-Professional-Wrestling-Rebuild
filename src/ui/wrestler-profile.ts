@@ -88,7 +88,9 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,
    signatureMove:view.persona.signatureMoves[0]?.name,
    finisherMove:view.persona.finishingMoves[0]?.name,
-   status:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
+   status:view.medicalWeeksRemaining!=null?
+     "INJURED · "+view.medicalWeeksRemaining+" WEEKS TO CLEARANCE":
+    view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
   },{context:view.onYourRoster?"ROSTER":"MARKET",
    label:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"NOT ON YOUR ROSTER"}));
   if(portraitCredit(view.name)){
@@ -98,7 +100,13 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   }
 
   const attrs=section("Performance & standing");
-  const grid=el("div","ppw-profile-statgrid");
+  if(view.medicalWeeksRemaining!=null)
+  root.append(el("p","ppw-profile-message",
+   "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+
+   " · "+view.medicalWeeksRemaining+" week"+
+   (view.medicalWeeksRemaining===1?"":"s")+
+   " until medically cleared. Booking is unavailable until recovery."));
+ const grid=el("div","ppw-profile-statgrid");
   for(const [label,number] of [
    ["Popularity",view.popularity],["Recognition",view.recognition],
    ["Momentum",view.momentum],["In-ring",view.inRingQuality],
