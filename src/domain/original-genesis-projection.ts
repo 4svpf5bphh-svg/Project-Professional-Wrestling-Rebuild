@@ -25,6 +25,7 @@ export interface OriginalGenesisSource {
     matchQualityPreference:number;starPreference:number}}>;
  people:Array<{id:string;worldId:string;name:string;status:Status;
   careerStage:PersonEconomics["careerStage"];morale:number;
+  biologicalAge?:number;careerExperience?:number;developmentAptitude?:number;generatedTalent?:boolean;
   recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;
   skills:{inRingQuality:number;matchCraft:number;presentation:number;stamina:number;safety:number};
   priorities:PersonEconomics["priorities"];
@@ -74,6 +75,8 @@ export interface GenesisProjection {
  weeklyOverhead:number;lastWeeklyNet:number;distress:string}>;
  people:Array<{id:string;name:string;status:Status;careerStage:PersonEconomics["careerStage"];
  recognition:number;popularity:number;momentum:number;fatigue:number;wear:number;morale:number;
+ biologicalAge:number|null;careerExperience:number|null;developmentAptitude:number|null;
+ generatedTalent:boolean;
  ring:number;craft:number;presentation:number;stamina:number;safety:number;
  priorities:PersonEconomics["priorities"];division:string|null;
  alignment:string|null;gimmick:string|null}>;
@@ -210,6 +213,10 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
    ||![p.skills.inRingQuality,p.skills.matchCraft,p.skills.presentation,
       p.skills.stamina,p.skills.safety].every(v=>int(v,0,100))
    ||![p.momentum,p.wear].every(stat)
+   ||(p.biologicalAge!==undefined&&(!Number.isFinite(p.biologicalAge)||p.biologicalAge<0||p.biologicalAge>120))
+   ||(p.careerExperience!==undefined&&!stat(p.careerExperience))
+   ||(p.developmentAptitude!==undefined&&!stat(p.developmentAptitude))
+   ||(p.generatedTalent!==undefined&&typeof p.generatedTalent!=="boolean")
    ||(p.bookingDivision!=null&&!["MEN","WOMEN"].includes(p.bookingDivision))
    ||(p.defaultAlignment!=null&&!["FACE","HEEL","TWEENER"].includes(p.defaultAlignment))
    ||(p.portableGimmickId!=null&&(!isText(p.portableGimmickId)||p.portableGimmickId.length>120)))
@@ -223,6 +230,8 @@ export function projectOriginalGenesis(source:OriginalGenesisSource):GenesisProj
   return {id:p.id,name:p.name,status:p.status,careerStage:p.careerStage,
    recognition:p.recognition,popularity:p.popularity,momentum:p.momentum,
    fatigue:p.fatigue,wear:p.wear,morale:p.morale,
+   biologicalAge:p.biologicalAge??null,careerExperience:p.careerExperience??null,
+   developmentAptitude:p.developmentAptitude??null,generatedTalent:p.generatedTalent??false,
    ring:p.skills.inRingQuality,craft:p.skills.matchCraft,
    presentation:p.skills.presentation,stamina:p.skills.stamina,safety:p.skills.safety,
    priorities:{...p.priorities},division:p.bookingDivision??null,

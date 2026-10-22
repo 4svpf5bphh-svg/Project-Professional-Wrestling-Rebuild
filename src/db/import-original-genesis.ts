@@ -117,19 +117,26 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
     INSERT INTO ppw_people(world_id,person_id,name,status,career_stage,
      recognition,popularity,momentum,fatigue,wear,morale,in_ring_quality,
      match_craft,presentation,stamina,safety,contract_priorities,
+     biological_age,career_experience,development_aptitude,generated_talent,debut_week_index,
      booking_division,default_alignment,portable_gimmick_id)
     SELECT $1,x.id,x.name,x.status,x.career_stage,x.recognition,x.popularity,
      x.momentum,x.fatigue,x.wear,x.morale,x.ring,x.craft,x.presentation,
-     x.stamina,x.safety,x.priorities::jsonb,x.division,x.alignment,x.gimmick
+     x.stamina,x.safety,x.priorities::jsonb,x.biological_age,x.career_experience,
+     x.development_aptitude,x.generated_talent,CASE WHEN x.biological_age IS NOT NULL THEN 0 ELSE NULL END,
+     x.division,x.alignment,x.gimmick
     FROM jsonb_to_recordset($2::jsonb) AS x(
      id text,name text,status text,career_stage text,recognition double precision,
      popularity double precision,momentum double precision,fatigue double precision,
      wear double precision,morale double precision,ring smallint,craft smallint,
      presentation smallint,stamina smallint,safety smallint,priorities jsonb,
+     biological_age double precision,career_experience double precision,
+     development_aptitude double precision,generated_talent boolean,
      division text,alignment text,gimmick text)
     RETURNING person_id
    ) SELECT count(*)::integer AS count FROM inserted`,
-   [g.world.id,JSON.stringify(g.people.map(p=>({...p,career_stage:p.careerStage})))]);
+   [g.world.id,JSON.stringify(g.people.map(p=>({...p,career_stage:p.careerStage,
+     biological_age:p.biologicalAge,career_experience:p.careerExperience,
+     development_aptitude:p.developmentAptitude,generated_talent:p.generatedTalent})))]);
   // Persist the original main's *actual* wrestler-owned persona identities
   // including signature and finishing moves. One batch for all 643, never an
   // individual Neon INSERT or a generic rewritten identity.

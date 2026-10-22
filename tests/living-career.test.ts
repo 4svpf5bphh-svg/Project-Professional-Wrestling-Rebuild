@@ -1,0 +1,40 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {originalCareerWeek,originalAnnualTier,originalMoraleEvidence,originalTrustYear}
+ from "../src/domain/living-career.js";
+const prospect={biologicalAge:24.999,careerExperience:40,developmentAptitude:80,
+ careerStage:"PROSPECT" as const,status:"ACTIVE" as const,wear:2,
+ popularity:20,recognition:15,
+ skills:{inRingQuality:52,matchCraft:56,safety:61,stamina:70,presentation:40}};
+test("original match development and age-led stage transition remain deterministic",()=>{
+ const a=originalCareerWeek(prospect,2,4.5),b=originalCareerWeek(prospect,2,4.5);
+ assert.deepEqual(a,b);
+ assert.equal(a.next.careerStage,"PRIME");
+ assert.ok(a.next.skills.inRingQuality>prospect.skills.inRingQuality);
+ assert.ok(a.next.careerExperience>prospect.careerExperience);
+ assert.equal(a.retirementProbability,0);
+ assert.equal(prospect.careerStage,"PROSPECT");
+});
+test("original old/worn performer loses stamina while craft can improve",()=>{
+ const a=originalCareerWeek({...prospect,biologicalAge:48,wear:92,
+ careerStage:"VETERAN" as const,popularity:80,recognition:80},0,0);
+ assert.ok(a.next.skills.stamina<prospect.skills.stamina);
+ assert.equal(a.next.careerStage,"SPECIAL_ATTRACTION");
+ assert.ok(a.retirementProbability>0);
+});
+test("morale respects usage, fatigue, expectations and crisis",()=>{
+ const base={role:"MAIN_EVENT" as const,used:false,hadShow:true,
+ injured:false,momentum:50,fatigue:0,distress:"HEALTHY" as const,
+ inactive:false,currentMorale:70};
+ assert.ok(originalMoraleEvidence(base)<70);
+ assert.ok(originalMoraleEvidence({...base,used:true})>
+  originalMoraleEvidence(base));
+ assert.ok(originalMoraleEvidence({...base,fatigue:85,distress:"CRISIS"})<
+  originalMoraleEvidence(base));
+});
+test("annual trust penalises terminations and tier thresholds only move one rung",()=>{
+ assert.equal(originalTrustYear({current:50,appearances:13,terminations:0,dormant:false}),57.8);
+ assert.ok(originalTrustYear({current:50,appearances:13,terminations:1,dormant:false})<50);
+ assert.equal(originalAnnualTier("LOCAL",95),"INDEPENDENT");
+ assert.equal(originalAnnualTier("GLOBAL",0),"NATIONAL");
+});
