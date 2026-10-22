@@ -146,12 +146,12 @@ test("unfinished show shortcut chooses the required weekly card ahead of a draft
 
 // On an installed Home Screen app there are no Safari toolbar controls.
 // The one-handed menu and its drawer must remain inside the app viewport.
-test("iPhone standalone layout keeps More in bottom navigation with reachable drawer",async({page})=>{
+test("iPhone standalone keeps one five-root drawer reachable from the bottom",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>route.fulfill({json:session.overview}));
  await page.goto("/#/home");
- const menu=page.getByRole("button",{name:"Open promotion menu"});
+ const menu=page.getByRole("button",{name:"Open World menu"});
  await expect(menu).toBeVisible();
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  const buttonBox=await menu.boundingBox();
@@ -169,7 +169,9 @@ test("iPhone standalone layout keeps More in bottom navigation with reachable dr
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
  await expect(drawer.locator(".ppw-tab")).toHaveCount(0);
- await expect(drawer.locator(".ppw-nav-department")).toHaveCount(4);
+ await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(3);
+ await expect(drawer.getByRole("button",{name:/Promotions/})).toBeVisible();
+ await page.getByRole("button",{name:"Open Business menu"}).click();
  await expect(drawer.getByRole("button",{name:/Staff/})).toBeVisible();
  await page.keyboard.press("Escape");
  await expect(drawer).toBeHidden();

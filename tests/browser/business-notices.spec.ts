@@ -52,7 +52,7 @@ test("iPhone shows genuine year-end/finance notices with private dismissal and p
  await page.reload();
  await expect(page.getByText("Your annual company review is in")).toHaveCount(0);
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
- await page.getByRole("button",{name:"Open Business"}).click();
+ await page.getByRole("button",{name:"Open Business",exact:true}).click();
  await expect(page).toHaveURL(/#\/business$/);
  expect(methods.slice(0,3)).toEqual(["overview","dismissAttention","overview"]);
 });
