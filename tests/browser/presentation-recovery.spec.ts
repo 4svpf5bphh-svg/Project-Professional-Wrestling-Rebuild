@@ -107,9 +107,7 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await page.goto("/#/roster");
  await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
  await page.getByRole("button",{name:"Open promotion menu"}).click();
- await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:"Talent",exact:true}).click();
- await page.getByRole("navigation",{name:"Promotion navigation"})
+  await page.getByRole("navigation",{name:"Promotion navigation"})
   .getByRole("button",{name:/Backstage/}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
  const menu=page.getByRole("button",{name:"Open promotion menu"});

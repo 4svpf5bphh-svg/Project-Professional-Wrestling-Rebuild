@@ -52,21 +52,18 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(menu).toBeFocused();
  await expect(page.locator("body")).not.toHaveClass(/ppw-drawer-active/);
  await menu.click();
- await nav.getByRole("button",{name:"Business",exact:true}).click();
- await expect(page.getByRole("region",{name:"Business menu"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Business departments"})).toBeVisible();
  expect(methods.length,"The promotion drawer never reads Neon").toBe(before);
- await nav.getByRole("button",{name:"Talent",exact:true}).click();
  await nav.getByRole("button",{name:/Talent Market/}).click();
  await expect(page).toHaveURL(/#\/market$/);
  await expect(nav).toBeHidden();
  await expect(menu).toHaveAttribute("aria-expanded","false");
  await menu.click();
- await expect(page.getByRole("region",{name:"Talent menu"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Talent departments"})).toBeVisible();
  await nav.getByRole("button",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await menu.click();
- await nav.getByRole("button",{name:"Plan",exact:true}).click();
- await nav.getByRole("button",{name:/Show Planner/}).click();
+ await page.getByRole("navigation",{name:"Quick navigation"})
+  .getByRole("button",{name:"Plan"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goto("/#/home");
