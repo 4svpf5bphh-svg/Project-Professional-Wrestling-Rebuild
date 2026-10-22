@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
+import {readFileSync} from "node:fs";
 import {postgresPool,withSqlClient} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
@@ -52,6 +53,30 @@ test("verified injuries block next-week booking, recover on original schedule an
   const before=await withSqlClient(db.pool,tx=>tx.query<{status:string;cleared_week_index:number}>(
    "SELECT status,cleared_week_index FROM ppw_medical_absences WHERE world_id=$1 AND person_id=$2",[world,person]));
   assert.deepEqual(before[0],{status:"ACTIVE",cleared_week_index:53});
+  // Simulate a pre-upgrade saved World: match facts exist, but medical tracking
+  // did not yet exist. Reconcile exactly once, without changing its clock.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_completed_show_matches
+    (world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,$2,'match',0,85,'CLEAN_PIN','A')`,[world,show]);
+   await tx.query(`INSERT INTO ppw_completed_match_report_facts
+    (world_id,show_id,match_id,rating_stars,execution_quality,
+     chemistry_modifier,actual_minutes,injuries_json)
+    VALUES($1,$2,'match',4.0,80,0,17,$3::jsonb)`,[
+     world,show,JSON.stringify([{person_id:person,injury_severity:"MAJOR",
+      injury_weeks_out:2}])
+    ]);
+   await tx.query("DELETE FROM ppw_medical_absences WHERE world_id=$1",[world]);
+   const migration=readFileSync(
+    "db/migrations/0083_medical_saved_world_reconciliation.sql","utf8");
+   await tx.query(migration,[]);
+   await tx.query(migration,[]);
+  });
+  const reconciled=await withSqlClient(db.pool,tx=>tx.query<{
+   n:string;cleared_week_index:number;status:string
+  }>("SELECT count(*)::text AS n,min(cleared_week_index) AS cleared_week_index,"+
+   " min(status) AS status FROM ppw_medical_absences WHERE world_id=$1",[world]));
+  assert.deepEqual(reconciled[0],{n:"1",cleared_week_index:53,status:"ACTIVE"});
   await withWorldTransaction(db.pool,async tx=>{
    await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
    await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
@@ -71,7 +96,8 @@ test("verified injuries block next-week booking, recover on original schedule an
   assert.equal(news[0]?.n,"1");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_medical_absences","ppw_completed_shows","ppw_booking_drafts","ppw_contracts","ppw_promotion_controls","ppw_memberships","ppw_people","ppw_promotions"]){
+   for(const table of ["ppw_ledger_events","ppw_medical_absences",
+    "ppw_completed_match_report_facts","ppw_completed_show_matches","ppw_completed_shows","ppw_booking_drafts","ppw_contracts","ppw_promotion_controls","ppw_memberships","ppw_people","ppw_promotions"]){
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    }
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
