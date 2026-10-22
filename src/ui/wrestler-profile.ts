@@ -310,6 +310,11 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    careerBody.append(honors);
    const medical=el("section","ppw-profile-career-honors");
    medical.append(el("h3","","Recorded match injuries"));
+   medical.append(el("p","ppw-profile-muted",
+    view.medicalWeeksRemaining!=null?
+     "Current medical status: "+view.medicalWeeksRemaining+" week"+
+     (view.medicalWeeksRemaining===1?"":"s")+" to clearance.":
+     "No current medical absence is recorded."));
    const incidents=career.injuryHistory??[];
    if(!incidents.length)medical.append(el("p","ppw-profile-muted",
     "No verified match injuries on record."));
@@ -320,7 +325,9 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
       " · "+injury.format+" · original estimate "+
       injury.originalWeeksOut+" week"+(injury.originalWeeksOut===1?"":"s")+" out"),
      el("small","ppw-profile-muted",
-      "This incident record does not establish current recovery or medical clearance."));
+      "Original scheduled return · "+timelineWeek(
+        (injury.year-1)*52+injury.week-1+injury.originalWeeksOut)+
+       ". Current eligibility is shown in the medical status above."));
     medical.append(item);
    }
    careerBody.append(medical);

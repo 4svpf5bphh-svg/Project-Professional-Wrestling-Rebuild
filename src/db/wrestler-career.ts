@@ -28,7 +28,7 @@ export interface CareerView{
  /** Current titles only: inactive/broken team membership cannot imply past ownership. */
  currentChampionships:{name:string;promotion:string;holderType:"PERSON"|"TEAM";
   teamName:string|null;startWeekIndex:number;defenses:number}[];
- /** Up to six verified match injury INCIDENTS; medical recovery state is unknown. */
+ /** Six most recent verified injury incidents; current clearance is in the dossier. */
  injuryHistory:InjuryIncident[];
 }
 const id=(s:string)=>typeof s==="string"&&s.length>0&&s.length<=200;
