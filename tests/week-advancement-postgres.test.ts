@@ -181,6 +181,8 @@ test("week cannot advance until each active promotion is resolved and certified;
       await tx.query("DELETE FROM ppw_venues WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotion_talent_trust WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_promotion_survival WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);

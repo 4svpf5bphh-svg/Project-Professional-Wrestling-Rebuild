@@ -25,6 +25,30 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
   SELECT show_id FROM ppw_completed_shows
   WHERE world_id=$1 AND year=$2 AND week=$3
  ), bouts AS (
+  -- Singles matches previously had no normalized career-effect child rows:
+  -- derive ONLY the two verified card participants from an immutable
+  -- completed-match report. This also handles legacy two-person card layouts.
+  SELECT fighter.item->>'personId' AS person_id,
+   f.rating_stars::double precision AS stars
+  FROM done d
+  JOIN ppw_card_slots card ON card.world_id=$1 AND card.draft_id=d.show_id
+   AND card.kind='MATCH'
+  JOIN ppw_completed_show_matches match ON match.world_id=card.world_id
+   AND match.show_id=d.show_id AND match.match_id=card.slot_id
+  JOIN ppw_completed_match_report_facts f ON f.world_id=match.world_id
+   AND f.show_id=match.show_id AND f.match_id=match.match_id
+  CROSS JOIN LATERAL jsonb_array_elements(card.payload->'participants')
+   AS fighter(item)
+  WHERE jsonb_typeof(card.payload->'participants')='array'
+   AND jsonb_array_length(card.payload->'participants')=2
+   AND (card.payload->'sides' IS NULL OR
+    (jsonb_typeof(card.payload->'sides')='array' AND
+     jsonb_array_length(card.payload->'sides')=2 AND
+     (SELECT count(*) FROM jsonb_array_elements(card.payload->'sides') side
+       WHERE jsonb_typeof(side->'participants')='array'
+        AND jsonb_array_length(side->'participants')=1)=2))
+   AND fighter.item->>'personId' IS NOT NULL
+  UNION ALL
   SELECT e.person_id,f.rating_stars::double precision AS stars
   FROM done d JOIN ppw_individual_field_career_effects e
    ON e.world_id=$1 AND e.show_id=d.show_id
