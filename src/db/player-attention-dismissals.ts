@@ -33,7 +33,10 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
   const result=await tx.query<{permitted:boolean;inserted:boolean}>(isClearance?[
     "WITH permitted AS (",
     "SELECT event.event_id FROM ppw_ledger_events event",
-    "JOIN LATERAL jsonb_to_recordset(event.payload->'people')",
+    "JOIN LATERAL jsonb_to_recordset(CASE WHEN",
+    "event.event_type='WRESTLER_CLEARED_TO_RETURN'",
+    "AND jsonb_typeof(event.payload->'people')='array'",
+    "THEN event.payload->'people' ELSE '[]'::jsonb END)",
     "AS person(\"personId\" text,severity text,\"weeksOut\" integer) ON TRUE",
     "JOIN ppw_people wrestler ON wrestler.world_id=event.world_id",
     "AND wrestler.person_id=person.\"personId\" AND wrestler.status='ACTIVE'",
@@ -354,7 +357,10 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "AND contract.expires_week_index>=(w.year-1)*52+w.week-1))",
 
    "OR EXISTS (SELECT 1 FROM ppw_ledger_events event",
-   "JOIN LATERAL jsonb_to_recordset(event.payload->'people')",
+   "JOIN LATERAL jsonb_to_recordset(CASE WHEN",
+    "event.event_type='WRESTLER_CLEARED_TO_RETURN'",
+    "AND jsonb_typeof(event.payload->'people')='array'",
+    "THEN event.payload->'people' ELSE '[]'::jsonb END)",
    "AS person(\"personId\" text,severity text,\"weeksOut\" integer) ON TRUE",
    "JOIN ppw_people wrestler ON wrestler.world_id=event.world_id",
    "AND wrestler.person_id=person.\"personId\" AND wrestler.status='ACTIVE'",

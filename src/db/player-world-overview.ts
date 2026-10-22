@@ -337,7 +337,7 @@ export async function readPlayerWorldOverview(
         md5(p."personId") AS id,
         p."personId" AS person_id,p.severity,person.name,e.year,e.week
        FROM ppw_ledger_events e
-       CROSS JOIN LATERAL jsonb_to_recordset(e.payload->'people')
+       CROSS JOIN LATERAL jsonb_to_recordset(CASE WHEN e.event_type='WRESTLER_CLEARED_TO_RETURN' AND jsonb_typeof(e.payload->'people')='array' THEN e.payload->'people' ELSE '[]'::jsonb END)
         AS p("personId" text,severity text,"weeksOut" integer)
        JOIN ppw_people person ON person.world_id=e.world_id
         AND person.person_id=p."personId" AND person.status='ACTIVE'
