@@ -372,7 +372,7 @@ export async function recruitDistressedAiRosters(
  if(candidates.length>256)throw new Error("Unbounded emergency candidate pool");
  const used=new Set<string>();
  const signings:{id:string;promotion:string;person:string;family:string;
-  end:number;guarantee:number;appearance:number;role:string}[]=[];
+  expiry:number;guarantee:number;appearance:number;role:string}[]=[];
  for(const roster of under){
   const minimum=Math.max(6,Math.ceil(ORIGINAL_ROSTER_TARGET[roster.tier]*.35));
   const floor=Math.max(minimum,Math.ceil(ORIGINAL_ROSTER_TARGET[roster.tier]*.55));
@@ -392,7 +392,7 @@ export async function recruitDistressedAiRosters(
    signings.push({
     id:"survival:"+index+":"+roster.promotion_id+":"+person.person_id,
     promotion:roster.promotion_id,person:person.person_id,
-    family:"LIMITED_NON_EXCLUSIVE",end:index+12,
+    family:"LIMITED_NON_EXCLUSIVE",expiry:index+12,
     guarantee:Math.round(market*.1),
     appearance:Math.round(market*.95),
     role:person.career_stage==="PROSPECT"?"DEVELOPMENTAL":"REGULAR"
@@ -406,9 +406,9 @@ export async function recruitDistressedAiRosters(
   expires_week_index,weekly_guarantee,appearance_fee,signing_bonus,
   role_expectation,creative_control)
  SELECT $1,x.id,x.person,x.promotion,'LIMITED_NON_EXCLUSIVE','SIGNED',5,5,
-  $3,x.end,x.guarantee,x.appearance,0,x.role,'NONE'
+  $3,x.expiry,x.guarantee,x.appearance,0,x.role,'NONE'
  FROM jsonb_to_recordset($2::jsonb) x(id text,person text,
-  promotion text,end integer,guarantee bigint,appearance bigint,role text)
+  promotion text,expiry integer,guarantee bigint,appearance bigint,role text)
  WHERE NOT EXISTS(SELECT 1 FROM ppw_contracts c
   WHERE c.world_id=$1 AND c.person_id=x.person AND c.status='SIGNED'
    AND c.expires_week_index>=$3)
