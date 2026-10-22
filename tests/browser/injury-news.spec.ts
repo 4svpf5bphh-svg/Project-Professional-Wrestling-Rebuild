@@ -29,7 +29,7 @@ test("iPhone shows verified match injury without fabricating current medical cle
  await expect(page.getByRole("heading",{name:"Recent match injuries"})).toBeVisible();
  await expect(page.getByText("Alice suffered an injury")).toBeVisible();
  await expect(page.getByText(/original report estimated 6 weeks out/)).toBeVisible();
- await expect(page.getByText(/current recovery and clearance have not been verified/)).toBeVisible();
+ await expect(page.getByText(/Open the wrestler dossier for current medical clearance/)).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(calls).toEqual(["overview"]);

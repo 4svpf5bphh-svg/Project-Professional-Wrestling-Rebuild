@@ -497,7 +497,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      el("p","","A "+item.severity.toLowerCase()+" injury was recorded at Year "+
       item.year+", Week "+item.week+". The original report estimated "+
       item.originalWeeksOut+" week"+(item.originalWeeksOut===1?"":"s")+
-      " out; current recovery and clearance have not been verified."));
+      " out. Open the wrestler dossier for current medical clearance."));
     const actions=el("div","ppw-home-wire-actions");
     if(port.openWrestler){
      const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;

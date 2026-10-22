@@ -295,9 +295,16 @@ export async function readPlayerWorldOverview(
         FROM ppw_tag_match_career_effects t
         WHERE t.world_id=done.world_id AND t.show_id=done.show_id
          AND t.injury_severity IS NOT NULL
+         UNION
+         SELECT f.match_id,inj.person_id,inj.injury_severity,inj.injury_weeks_out
+         FROM ppw_completed_match_report_facts f
+         CROSS JOIN LATERAL jsonb_to_recordset(f.injuries_json)
+          AS inj(person_id text,injury_severity text,injury_weeks_out integer)
+         WHERE f.world_id=done.world_id AND f.show_id=done.show_id
+          AND inj.injury_severity IS NOT NULL
        ) e ON TRUE
        JOIN ppw_people person ON person.world_id=done.world_id
-        AND person.person_id=e.person_id AND person.status='ACTIVE'
+        AND person.person_id=e.person_id AND person.status<>'RETIRED'
        WHERE done.world_id=w.world_id
         AND done.year BETWEEN greatest(1,w.year-1) AND w.year
         AND (done.year-1)*52+done.week-1 BETWEEN
