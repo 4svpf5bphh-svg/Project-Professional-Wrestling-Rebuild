@@ -366,7 +366,7 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "greatest(0,(w.year-1)*52+w.week-1-7) AND (w.year-1)*52+w.week-1",
    "AND EXISTS (SELECT 1 FROM ppw_contracts contract",
    "WHERE contract.world_id=event.world_id",
-   "AND contract.person_id=person.\"personId\" AND contract.promotion_id=   "), inserted AS (",",
+   "AND contract.person_id=person.\"personId\" AND contract.promotion_id=$2",
    "AND contract.status='SIGNED'",
    "AND contract.start_week_index<=(w.year-1)*52+w.week-1",
    "AND contract.expires_week_index>=(w.year-1)*52+w.week-1))",
