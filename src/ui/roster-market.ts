@@ -258,7 +258,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   for(const p of view.people){
    const card=document.createElement("details");card.className="ppw-directory-card";
    const title=document.createElement("summary");
-   const label=p.medicalWeeksRemaining!==null?
+   const label=p.medicalWeeksRemaining!=null?
      "INJURED · "+p.medicalWeeksRemaining+" WEEK"+
      (p.medicalWeeksRemaining===1?"":"S")+" TO CLEARANCE":
      p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
@@ -287,7 +287,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    }
    detail.append(metrics);
    if(filter.view==="ROSTER"){
-    if(p.medicalWeeksRemaining!==null)
+    if(p.medicalWeeksRemaining!=null)
      detail.append(el("p","ppw-directory-warning",
       "Medical absence · "+p.medicalWeeksRemaining+" week"+
       (p.medicalWeeksRemaining===1?"":"s")+
