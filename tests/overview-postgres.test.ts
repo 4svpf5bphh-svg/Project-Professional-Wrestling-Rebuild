@@ -53,7 +53,8 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
      backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[],
-     contractAlerts:[],titleNews:[],injuryNews:[],medicalClearances:[]});
+     contractAlerts:[],titleNews:[],injuryNews:[],medicalClearances:[],
+     worldStories:[]});
     assert.equal(after?.membership,"ACTIVE");
     assert.ok(after!.world.nextLockEpoch>after!.world.serverEpoch);
     await withWorldTransaction(db.pool,async tx=>{
@@ -74,6 +75,18 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
       " VALUES($1,'date-request','none',$2,'no-dates',5,'PENDING',0)",
       [worldId,first]);
     });
+    // Public Living World signals appear without a second Home query.
+    // Private backstage events must never be published in the global wire.
+    await withWorldTransaction(db.pool,tx=>tx.query(`
+     INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+     VALUES
+      ($1,1,1,'WRESTLER_RETIRED',
+       jsonb_build_object('personId','outsider','name','Dylan',
+        'significance','NOTABLE')),
+      ($1,1,1,'BACKSTAGE_PROMISE_BROKEN',
+       jsonb_build_object('personId','outsider','promotionId',$2::text,
+        'secret','private rival problem'))
+    `,[worldId,second]));
     const contractMeter=new MeasuredQuerySession("named-owner-contract-alerts");
     const contractPool:TransactionPool={async connect(){
      const client=await db.pool.connect();
@@ -91,6 +104,13 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
       kind:"EXPIRING",weeksRemaining:1,waiting:false}
     ]);
     assert.equal(named?.promotion?.attention.expiringTalent,true);
+    assert.deepEqual(named?.promotion?.attention.worldStories,[
+     {eventId:named!.promotion!.attention.worldStories![0]!.eventId,
+      kind:"WRESTLER_RETIRED",year:1,week:1,
+      personId:"outsider",personName:"Dylan",promotionName:null,toTier:null}
+    ]);
+    assert.equal(named!.promotion!.attention.worldStories!.length,1);
+    assert.ok(!JSON.stringify(named).includes("private rival problem"));
     const outsider=await readPlayerWorldOverview(measured,worldId,"outsider-"+id);
     assert.equal(outsider?.promotion,null);
     assert.equal(outsider?.membership,"NONE");
