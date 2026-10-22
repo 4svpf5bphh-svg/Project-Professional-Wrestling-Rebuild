@@ -8,6 +8,8 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordVerifiedMedicalAbsencesInTransaction,
  settleMedicalAvailabilityForNewWeek} from "../src/db/medical-availability.js";
 import {readBookableCardTalent} from "../src/db/show-card-editor.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
+import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../src/db/player-attention-dismissals.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("verified injuries block next-week booking, recover on original schedule and notify exactly once",{
@@ -94,6 +96,26 @@ test("verified injuries block next-week booking, recover on original schedule an
   const news=await withSqlClient(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type='WRESTLER_CLEARED_TO_RETURN'",[world]));
   assert.equal(news[0]?.n,"1");
+  const owner=await readPlayerWorldOverview(db.pool,world,player);
+  const clearances=owner?.promotion?.attention.medicalClearances??[];
+  assert.equal(clearances.length,1,"The controller sees one genuine medical clearance");
+  assert.equal(clearances[0]?.personId,person);
+  assert.match(clearances[0]!.id,/^medical-clearance:[1-9][0-9]*:[0-9a-f]{32}$/);
+  await assert.rejects(dismissResolvedOfferAttention(db.pool,{
+   worldId:world,promotionId:promo,playerId:"intruder",attentionId:clearances[0]!.id
+  }),/unavailable|cannot be dismissed/);
+  await assert.rejects(dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId:promo,playerId:player,
+   attentionIds:[clearances[0]!.id,"medical-clearance:999999999999:"+"a".repeat(32)]
+  }),/unavailable|cannot be dismissed/);
+  assert.equal((await readPlayerWorldOverview(db.pool,world,player))
+   ?.promotion?.attention.medicalClearances?.length,1);
+  const dismissed=await dismissResolvedAttentionBatch(db.pool,{
+   worldId:world,promotionId:promo,playerId:player,
+   attentionIds:[clearances[0]!.id]});
+  assert.deepEqual(dismissed,{dismissed:1,firstDismissals:1});
+  assert.deepEqual((await readPlayerWorldOverview(db.pool,world,player))
+   ?.promotion?.attention.medicalClearances,[]);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_medical_absences",
