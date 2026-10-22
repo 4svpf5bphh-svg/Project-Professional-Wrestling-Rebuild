@@ -10,6 +10,7 @@
     "playtest:export-original": "tsx scripts/playtest-export-original.ts",
     "playtest:genesis": "tsx scripts/playtest-genesis.ts",
     "playtest:reconcile-main": "tsx scripts/playtest-reconcile-main.ts",
+    "playtest:recover-careers": "tsx scripts/playtest-recover-careers.ts",
     "playtest:preflight": "tsx scripts/playtest-preflight.ts",
     "playtest:week": "tsx scripts/playtest-week.ts",
     "web:build": "vite build",
