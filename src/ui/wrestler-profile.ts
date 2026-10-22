@@ -311,7 +311,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    const medical=el("section","ppw-profile-career-honors");
    medical.append(el("h3","","Recorded match injuries"));
    medical.append(el("p","ppw-profile-muted",
-    view.medicalWeeksRemaining!=null?
+    view?.medicalWeeksRemaining!=null?
      "Current medical status: "+view.medicalWeeksRemaining+" week"+
      (view.medicalWeeksRemaining===1?"":"s")+" to clearance.":
      "No current medical absence is recorded."));
