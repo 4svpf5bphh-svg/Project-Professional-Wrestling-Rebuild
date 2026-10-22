@@ -16,7 +16,10 @@ test("Groq is invoked once for the full card and validates structured source IDs
  let calls=0;const fake:typeof fetch=async (_url,init)=>{calls++;
   assert.equal((init?.headers as Record<string,string>).authorization,"Bearer fixture");
   const body=JSON.parse(String(init?.body));
-  assert.equal(body.messages.length,2);assert.match(body.messages[1].content,/One Winged Angel/);
+  assert.equal(body.messages.length,2);
+  assert.equal(body.response_format.type,"json_schema");
+  assert.equal(body.response_format.json_schema.strict,true);
+  assert.equal(body.reasoning_effort,"low");assert.match(body.messages[1].content,/One Winged Angel/);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(review)}}]}),{status:200});
  };
  assert.equal((await generateGroqReview(show,"fixture",fake)).slots[0]?.slotId,"m");

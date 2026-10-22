@@ -34,6 +34,16 @@ test("Ringside admits creative wrestling spots but never changes slot ordering",
  assert.throws(()=>validateRingsideCopy({...valid,slots:[valid.slots[0]]},example));
  assert.throws(()=>validateRingsideCopy({...valid,slots:[{...valid.slots[0],recap:"<script>"},valid.slots[1]]},example));
 });
+test("Invented consequential events and wrong official finishes fail closed",()=>{
+ const forgedTitle={...valid,slots:[{...valid.slots[0],recap:"Omega captured the world title tonight."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(forgedTitle,example),/championship/);
+ const forgedMedical={...valid,slots:[{...valid.slots[0],recap:"Joe was stretchered out."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(forgedMedical,example),/medical/);
+ const forgedInterference={...valid,slots:[{...valid.slots[0],recap:"Outside interference won the match."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(forgedInterference,example),/interference/);
+ const badFinish={...valid,slots:[{...valid.slots[0],recap:"Omega won by submission."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(badFinish,example),/submission/);
+});
 test("Move ownership is protected across the whole show",()=>{
  const wrong={...valid,slots:[valid.slots[0],{...valid.slots[1],recap:"The One Winged Angel ended the promo."}]};
  assert.throws(()=>validateRingsideCopy(wrong,example),/unowned/);
