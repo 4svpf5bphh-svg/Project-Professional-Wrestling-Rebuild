@@ -10,6 +10,7 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
+import {loadRingsideCommentary} from "../src/db/ringside-commentary.js";
 import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
 import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
 import {readShowCardEditor} from "../src/db/show-card-editor.js";
@@ -111,6 +112,39 @@ async function main(){
   assert.equal(settled.seal[0]?.certified_promotions,13);
   // Prove both separate managers can continue playing through THEIR genuine
   // Results, historical archive and week-two planner, without reading a rival.
+  // Editorial generation is separate from World resolution. Rival and AI
+  // shows cannot be routed to Groq, even when a caller guesses their IDs.
+  const aiExample=await withWorldTransaction(db.pool,tx=>tx.query<{
+   show_id:string;promotion_id:string
+  }>(`
+    SELECT c.show_id,c.promotion_id FROM ppw_completed_shows c
+    WHERE c.world_id=$1 AND NOT EXISTS(
+     SELECT 1 FROM ppw_promotion_controls control
+     WHERE control.world_id=c.world_id
+      AND control.promotion_id=c.promotion_id AND control.active)
+    ORDER BY c.show_id LIMIT 1`,[worldId]));
+  assert.equal(aiExample.length,1,"World has at least one autonomous AI show");
+  let contactedModel=false;
+  const rejectNetwork:typeof fetch=async()=>{
+   contactedModel=true;throw new Error("Disallowed model request");
+  };
+  await assert.rejects(loadRingsideCommentary(db.pool,{
+   worldId,playerId:state.drafts[0]!.player_id,
+   promotionId:aiExample[0]!.promotion_id,showId:aiExample[0]!.show_id
+  },"disposable-test-key",rejectNetwork),/unavailable to this controller/);
+  assert.equal(contactedModel,false,"AI company has no model generation path");
+  const humanResult=await loadRingsideCommentary(db.pool,{
+   worldId,playerId:state.drafts[0]!.player_id,
+   promotionId:state.drafts[0]!.promotion_id,showId:state.drafts[0]!.draft_id
+  },undefined,rejectNetwork);
+  assert.deepEqual(humanResult,{status:"unavailable"},
+   "Missing Groq key leaves deterministic official Results untouched");
+  assert.equal(contactedModel,false);
+  const editorialRows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM ppw_ringside_reports WHERE world_id=$1`,
+   [worldId]));
+  assert.equal(editorialRows[0]?.n,"0",
+   "Neither autonomous AI World shows nor unconfigured human shows may spend on Groq");
   const readableResults=[];
   for(const draft of state.drafts){
    const owner={worldId,playerId:draft.player_id,promotionId:draft.promotion_id};
