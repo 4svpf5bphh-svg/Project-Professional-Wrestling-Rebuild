@@ -29,6 +29,7 @@ test("facts include all ordered, verified results, moves and certified rating",(
 test("Ringside admits creative wrestling spots but never changes slot ordering",()=>{
  assert.equal(validateRingsideCopy(valid,example).slots.length,2);
  assert.match(RINGSIDE_STYLE_GUIDE,/FLASH_PIN/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/Coquina Clutch/);
  assert.throws(()=>validateRingsideCopy({...valid,slots:[...valid.slots].reverse()},example));
  assert.throws(()=>validateRingsideCopy({...valid,slots:[{...valid.slots[0],slotId:"forged"},valid.slots[1]]},example));
  assert.throws(()=>validateRingsideCopy({...valid,slots:[valid.slots[0]]},example));
@@ -55,4 +56,10 @@ test("Move ownership is protected across the whole show",()=>{
    {...valid.slots[1],recap:"The "+wrongMove+" ended the interview."}]};
   assert.throws(()=>validateRingsideCopy(misattributed,example),/unowned/);
  }
+});
+
+test("Ringside rejects simulation labels and score numbers",()=>{
+ assert.throws(()=>validateRingsideCopy({...valid,opening:"The crowd score was 71.9."},example),/terminology|numerical score/);
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[
+  {...valid.slots[0],recap:"Omega claimed a protected finish."},valid.slots[1]]},example),/terminology/);
 });

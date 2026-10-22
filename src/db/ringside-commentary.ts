@@ -38,7 +38,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   const response=await transport("https://api.groq.com/openai/v1/chat/completions",{
    method:"POST",signal:controller.signal,
    headers:{"authorization":"Bearer "+key,"content-type":"application/json"},
-   body:JSON.stringify({model:RINGSIDE_MODEL,temperature:0.68,
+   body:JSON.stringify({model:RINGSIDE_MODEL,temperature:0.82,
     max_completion_tokens:Math.min(5800,500+show.entries.length*160),
     reasoning_effort:"low",
     response_format:{type:"json_schema",json_schema:{
