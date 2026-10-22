@@ -38,7 +38,7 @@ type PersonRow={
  future_exclusive_to:string|null;
  pending_offer:boolean;estimated_value:number|null;
  ct?:string[]|null;
- medical_clearance_week_index:number|null;
+ med:number|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
  if(!f||!["ROSTER","MARKET"].includes(f.view)||
@@ -106,7 +106,7 @@ export async function readWrestlerDirectory(
     (SELECT a.cleared_week_index FROM ppw_medical_absences a
      WHERE a.world_id=p.world_id AND a.person_id=p.person_id
       AND a.status='ACTIVE' AND a.injured_week_index<$3
-      AND a.cleared_week_index>$3) AS medical_clearance_week_index,
+      AND a.cleared_week_index>$3) AS med,
     ${f.view==="ROSTER"?"current_titles.championship_titles AS ct,":""}
     mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
@@ -211,8 +211,8 @@ export async function readWrestlerDirectory(
     const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
-     medicalWeeksRemaining:p.medical_clearance_week_index===null?null:
-      p.medical_clearance_week_index-now,
+     medicalWeeksRemaining:p.med===null?null:
+      p.med-now,
     ...(p.ct?.length?{championships:normaliseCurrentTitles(p.ct)}:{}),
     ringName:fallback.personaName,gimmickId:fallback.gimmickId,
     primaryStyle:fallback.primaryStyle,
