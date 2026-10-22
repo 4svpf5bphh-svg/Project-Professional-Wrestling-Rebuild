@@ -13,6 +13,10 @@ type ContractRow={
 const roles=new Set(["DEVELOPMENTAL","REGULAR","FEATURED","UPPER_CARD",
  "MAIN_EVENT","SPECIAL_ATTRACTION"]);
 const states=new Set(["HEALTHY","WATCH","DISTRESSED","CRISIS"]);
+// Foundational pre-restoration contracts used MIDCARD. Treat that original
+// slot as REGULAR rather than silently ignoring booking expectations.
+const recognizedRole=(role:string|null):Role|null=>role==="MIDCARD"?"REGULAR":
+ roles.has(role??"")?role as Role:null;
 type Role="DEVELOPMENTAL"|"REGULAR"|"FEATURED"|"UPPER_CARD"|"MAIN_EVENT"|"SPECIAL_ATTRACTION";
 type Distress="HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS";
 export async function settleLivingMorale(tx:SqlRows,worldId:string,year:number,week:number){
@@ -48,9 +52,10 @@ export async function settleLivingMorale(tx:SqlRows,worldId:string,year:number,w
   const p=contracts[0]!;
   if(!valid(p.morale)||!valid(p.momentum)||!valid(p.fatigue))continue;
   const relevant=contracts.flatMap(r=>{
-   if(r.promotion_id===null||!roles.has(r.role_expectation??"")||
+   const role=recognizedRole(r.role_expectation);
+   if(r.promotion_id===null||role===null||
     !states.has(r.financial_distress??""))return [];
-   return [{role:r.role_expectation as Role,hadVerifiedShow:r.had_show===true,
+   return [{role,hadVerifiedShow:r.had_show===true,
     used:r.used===true,distress:r.financial_distress as Distress,
     inactive:r.lifecycle==="DORMANT"||r.lifecycle==="CLOSED"}];
   });

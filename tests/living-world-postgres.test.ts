@@ -122,6 +122,7 @@ test("two independently owned promotions survive 26/52 weeks and 3 years of evol
    }
   }
   const metrics=measured.assertBudget({maxQueries:12,maxResultBytes:24000});
+  console.log("PPW 24-person certified career/morale SQL measurement: "+JSON.stringify(metrics));
   assert.ok(metrics.queryCount>=4,"One measured World week does actual relational work");
   assert.ok(generated>=1&&retired>=1);
   const status=await withWorldTransaction(db.pool,tx=>tx.query<{
