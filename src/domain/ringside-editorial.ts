@@ -29,6 +29,25 @@ const printable=(v:unknown,max:number)=>typeof v==="string"&&v.length>0&&
  v.length<=max&&!/[<>\x00-\x08]/.test(v);
 const shape=(x:unknown)=>x&&typeof x==="object"&&!Array.isArray(x)?
  x as Record<string,unknown>:null;
+/** A cache hit must be type-safe without expanding the show or reading more rows. */
+export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
+ const v=shape(candidate);
+ if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
+  !printable(v.showHeadline,140)||!printable(v.opening,900)||
+  !printable(v.closing,650)||!Array.isArray(v.slots)||
+  v.slots.length===0||v.slots.length>30)throw new Error("Invalid Ringside cache");
+ const seen=new Set<string>();
+ const slots=v.slots.map((raw:unknown)=>{
+  const s=shape(raw);
+  if(!s||Object.keys(s).some(k=>!["slotId","headline","recap"].includes(k))||
+   !printable(s.slotId,200)||!printable(s.headline,150)||!printable(s.recap,650)||
+   seen.has(s.slotId as string))throw new Error("Invalid cached Ringside slot");
+  seen.add(s.slotId as string);
+  return {slotId:s.slotId as string,headline:s.headline as string,recap:s.recap as string};
+ });
+ return {showHeadline:v.showHeadline as string,opening:v.opening as string,
+  closing:v.closing as string,slots};
+}
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
