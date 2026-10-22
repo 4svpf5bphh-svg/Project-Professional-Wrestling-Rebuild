@@ -71,6 +71,30 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     AND (c.year,c.week)<=($4::integer,$5::integer)
    ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,
     c.show_id DESC LIMIT 25`,window);
+  // Public Industry stories are restricted to verified, completed World
+  // events. No wages, negotiation terms, or private commitments are selected.
+  const stories=await tx.query<{event_id:string|number;year:number;week:number;
+   event_type:string;person_id:string|null;person_name:string|null;
+   promotion_id:string|null;promotion_name:string|null;from_tier:string|null;
+   to_tier:string|null;career_stage:string|null}>(`
+   SELECT e.event_id::text,e.year,e.week,e.event_type,
+    e.payload->>'personId' AS person_id,person.name AS person_name,
+    e.payload->>'promotionId' AS promotion_id,promotion.name AS promotion_name,
+    e.payload->>'fromTier' AS from_tier,e.payload->>'toTier' AS to_tier,
+    e.payload->>'to' AS career_stage
+   FROM ppw_ledger_events e
+   LEFT JOIN ppw_people person ON person.world_id=e.world_id
+    AND person.person_id=e.payload->>'personId'
+   LEFT JOIN ppw_promotions promotion ON promotion.world_id=e.world_id
+    AND promotion.promotion_id=e.payload->>'promotionId'
+   WHERE e.world_id=$1 AND (e.year,e.week)>=($2::integer,$3::integer)
+    AND (e.year,e.week)<=($4::integer,$5::integer)
+    AND e.event_type IN ('WRESTLER_RETIRED','WRESTLER_DEBUTED',
+     'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED','PROMOTION_RESTRUCTURED',
+     'PROMOTION_ENTERED_DORMANCY','PROMOTION_RECOVERED_FROM_DISTRESS')
+    AND (e.event_type<>'CAREER_STAGE_CHANGED' OR
+     e.payload->>'significance'='NOTABLE')
+   ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 12`,window);
   return {worldName:clock.world_name,year:clock.year,week:clock.week,
    phase:clock.phase,nextLockEpoch:Number(clock.next_lock_epoch),
    ownPromotionId:promotionId,ownPromotionName:clock.own_name,
@@ -82,6 +106,12 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     recentAverageCrowd:p.recent_avg_crowd===null?null:Number(p.recent_avg_crowd),
     recentShowCount:p.completed_events,
     isYours:p.promotion_id===promotionId
+   })),
+   headlines:stories.map(s=>({
+    id:String(s.event_id),kind:s.event_type,year:s.year,week:s.week,
+    personId:s.person_id,personName:s.person_name,
+    promotionId:s.promotion_id,promotionName:s.promotion_name,
+    fromTier:s.from_tier,toTier:s.to_tier,careerStage:s.career_stage
    })),
    broadcasts:broadcasts.map(s=>({
     showId:s.show_id,promotionId:s.promotion_id,

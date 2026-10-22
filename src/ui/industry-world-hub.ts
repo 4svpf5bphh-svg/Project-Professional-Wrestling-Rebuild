@@ -35,7 +35,7 @@ const btn=(label:string,fn:()=>void)=>{
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
-  active:"STANDINGS"|"BROADCASTS"="STANDINGS",
+  active:"STANDINGS"|"BROADCASTS"|"HEADLINES"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  const featuredCache=new Map<string,IndustryFeaturedView>();
  const featuredBusy=new Set<string>();
@@ -111,7 +111,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["BROADCASTS","Recent broadcasts"]] as const){
+  for(const [key,label] of [["STANDINGS","Promotions"],["HEADLINES","World stories"],["BROADCASTS","Recent broadcasts"]] as const){
    const b=btn(label,()=>{active=key;render();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
@@ -222,6 +222,33 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    tierSelect.onchange=()=>{tier=tierSelect.value;drawCompanies();};
    sortSelect.onchange=()=>{sort=sortSelect.value as IndustryOrder;drawCompanies();};
    drawCompanies();
+   root.append(section);
+  }else if(active==="HEADLINES"){
+   const section=el("section","ppw-industry-list");
+   section.append(el("h2","","Around the wrestling world"),
+    el("p","ppw-industry-muted",
+     "Big career moves and company shifts from the past 13 weeks. No private backstage or contract details."));
+   const titles:Record<string,(s:IndustryHubView["headlines"][number])=>string>={
+    WRESTLER_RETIRED:s=>(s.personName??"A veteran")+" calls time on their in-ring career",
+    WRESTLER_DEBUTED:s=>(s.personName??"A fresh face")+" enters the wrestling business",
+    CAREER_STAGE_CHANGED:s=>(s.personName??"A wrestler")+" enters a new career chapter",
+    PROMOTION_TIER_CHANGED:s=>(s.promotionName??"A promotion")+" moves "+
+     (s.toTier??"to a new level"),
+    PROMOTION_RESTRUCTURED:s=>(s.promotionName??"A promotion")+" reshapes its operation",
+    PROMOTION_ENTERED_DORMANCY:s=>(s.promotionName??"A promotion")+" suspends operations",
+    PROMOTION_RECOVERED_FROM_DISTRESS:s=>(s.promotionName??"A promotion")+" finds its feet again",
+   };
+   if(!view.headlines.length)section.append(el("p","ppw-industry-muted",
+    "No major public developments have been reported recently."));
+   for(const story of view.headlines){
+    const card=el("article","ppw-industry-broadcast");
+    card.append(el("strong","",titles[story.kind]?.(story)??"Industry update"),
+     el("small","ppw-industry-muted",
+      "Year "+story.year+" · Week "+story.week));
+    if(story.personId&&port.openWrestler)
+     card.append(btn("Open wrestler dossier →",()=>port.openWrestler?.(story.personId!)));
+    section.append(card);
+   }
    root.append(section);
   }else{
    const section=el("section","ppw-industry-list");

@@ -61,7 +61,7 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
   assert.ok(!JSON.stringify(hub).includes("PRIVATE FUTURE PLANS"));
   assert.equal(hub.broadcasts.find(x=>x.showId==="owned")!.isYours,true);
   assert.equal(hub.broadcasts.find(x=>x.showId==="rival")!.isYours,false);
-  assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:18000}).queryCount,3);
+  assert.equal(meter.assertBudget({maxQueries:4,maxResultBytes:22000}).queryCount,4);
   // A public shortlist must be explicitly requested and never include
   // rival private contract pay, negotiations or unsubmitted plans.
   const featuredMeter=new MeasuredQuerySession("industry-featured-on-demand");

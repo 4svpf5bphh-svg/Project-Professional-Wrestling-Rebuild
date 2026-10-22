@@ -52,3 +52,11 @@ ALTER TABLE ppw_people
  ALTER COLUMN safety TYPE double precision USING safety::double precision,
  ALTER COLUMN stamina TYPE double precision USING stamina::double precision,
  ALTER COLUMN presentation TYPE double precision USING presentation::double precision;
+
+-- Thirteen-week public Industry stories, indexed by World and week.
+-- Deliberately excludes promises, negotiation details and cash amounts.
+CREATE INDEX ppw_public_living_stories_recent ON ppw_ledger_events
+(world_id,year DESC,week DESC,event_id DESC)
+WHERE event_type IN ('WRESTLER_RETIRED','WRESTLER_DEBUTED',
+ 'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED','PROMOTION_RESTRUCTURED',
+ 'PROMOTION_ENTERED_DORMANCY','PROMOTION_RECOVERED_FROM_DISTRESS');
