@@ -6,7 +6,8 @@ import {postgresPool,withSqlClient} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {recordVerifiedMedicalAbsencesInTransaction,
- settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "../src/db/medical-availability.js";
+ settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery,
+ applyVerifiedMedicalLoadInTransaction} from "../src/db/medical-availability.js";
 import {readBookableCardTalent} from "../src/db/show-card-editor.js";
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../src/db/player-attention-dismissals.js";
@@ -25,7 +26,7 @@ test("verified injuries block next-week booking, recover on original schedule an
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id,active) VALUES($1,$2,$3,true)",[world,player,promo]);
-   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,'Test Wrestler','MEN')",[world,person]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,stamina,fatigue,wear) VALUES($1,$2,'Test Wrestler','MEN',60,20,10)",[world,person]);
    await tx.query(`INSERT INTO ppw_contracts
     (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
     VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',4,100)`,
@@ -37,10 +38,15 @@ test("verified injuries block next-week booking, recover on original schedule an
     (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
      receipt_json,receipt_digest) VALUES($1,$2,$3,1,52,$4,85,'{}'::jsonb,$5)`,
     [world,promo,show,"resolution-"+id,"a".repeat(64)]);
-   await recordVerifiedMedicalAbsencesInTransaction(tx,{
+   const accepted=await recordVerifiedMedicalAbsencesInTransaction(tx,{
     worldId:world,showId:show,year:1,week:52,
     facts:[{matchId:"match",injuries:[{personId:person,severity:"MAJOR",weeksOut:2}]}]
    });
+   await applyVerifiedMedicalLoadInTransaction(tx,world,accepted);
+   const state=await tx.query<{status:string;fatigue:number;wear:number}>(
+    "SELECT status,fatigue,wear FROM ppw_people WHERE world_id=$1 AND person_id=$2",
+    [world,person]);
+   assert.deepEqual(state[0],{status:"INJURED",fatigue:65,wear:13});
    await tx.query("UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1",[world]);
    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
     VALUES($1,$2,$3,2,1,'DRAFT')`,[world,card,promo]);
