@@ -15,10 +15,10 @@ export async function importOriginalGenesis(pool:TransactionPool,source:Original
   const world=await tx.query<{world_id:string}>(`
    INSERT INTO ppw_worlds(world_id,name,seed,ruleset_version,
     year,week,day,phase,offer_acceptance_threshold,injury_rate_multiplier,
-    show_economics_enabled,major_event_interval_weeks)
-   VALUES($1,$2,$3,$4,1,1,1,'OPEN',$5,$6,true,$7) RETURNING world_id`,
+    show_economics_enabled,major_event_interval_weeks,talent_population_target)
+   VALUES($1,$2,$3,$4,1,1,1,'OPEN',$5,$6,true,$7,$8) RETURNING world_id`,
    [g.world.id,g.world.name,g.world.seed,g.world.rulesetVersion,
-    g.world.acceptance,g.world.injury,g.world.majorEventIntervalWeeks]);
+    g.world.acceptance,g.world.injury,g.world.majorEventIntervalWeeks,g.people.length]);
   if(world.length!==1)throw new Error("Could not initialise fresh original World");
   // One narrow, batched insert per original Genesis entity family.
   // Market identity must exist before promotion homes and venue markets.

@@ -87,7 +87,7 @@ export function originalMoraleEvidence(input:{
   input.inactive?15:0);
  evidence=clamp(evidence,15,90);
  return Math.round(clamp(input.currentMorale+
-  (evidence-input.currentMorale)*(usage?.18:.08),5,95)*10)/10;
+  (evidence-input.currentMorale)*(usage ? 0.18 : 0.08),5,95)*10)/10;
 }
 export function originalTrustYear(input:{
  current:number;appearances:number;terminations:number;dormant:boolean
@@ -95,7 +95,7 @@ export function originalTrustYear(input:{
  const a=input.appearances;
  let evidence=a>=12?76:a>=6?70:a>=3?62:a>=1?54:38;
  evidence=clamp(evidence-input.terminations*45-(input.dormant?25:0),10,90);
- const weight=input.terminations>0||input.dormant?.45:.3;
+ const weight=input.terminations>0||input.dormant ? 0.45 : 0.3;
  return Math.round(clamp(input.current+(evidence-input.current)*weight,0,100)*10)/10;
 }
 const ORDER=["LOCAL","INDEPENDENT","RISING","NATIONAL","GLOBAL"] as const;

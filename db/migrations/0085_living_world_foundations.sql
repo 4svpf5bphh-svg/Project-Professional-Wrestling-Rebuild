@@ -34,3 +34,13 @@ CREATE TABLE ppw_promotion_survival (
  PRIMARY KEY(world_id,promotion_id),
  FOREIGN KEY(world_id,promotion_id) REFERENCES ppw_promotions(world_id,promotion_id)
 );
+
+-- The initial target is the verified original Genesis population, fixed across years.
+ALTER TABLE ppw_worlds ADD COLUMN talent_population_target integer
+ CHECK(talent_population_target IS NULL OR talent_population_target BETWEEN 1 AND 2500);
+-- Existing imported Genesis Worlds can recover this from actual World-owned rows.
+UPDATE ppw_worlds w SET talent_population_target=counts.n
+FROM (SELECT world_id,count(*)::integer AS n FROM ppw_people
+ GROUP BY world_id) counts
+WHERE w.world_id=counts.world_id AND w.show_economics_enabled
+ AND w.talent_population_target IS NULL AND counts.n BETWEEN 1 AND 2500;
