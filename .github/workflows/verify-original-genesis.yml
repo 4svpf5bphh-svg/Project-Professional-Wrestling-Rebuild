@@ -38,6 +38,10 @@ on:
       - "src/db/playtest-preview-readiness.ts"
       - "src/db/reconcile-original-main-genesis.ts"
       - "scripts/playtest-reconcile-main.ts"
+      - "scripts/playtest-recover-careers.ts"
+      - "src/db/recover-original-career-baselines.ts"
+      - "db/migrations/0085_living_world_foundations.sql"
+      - "src/db/living-world-career-settlement.ts"
   workflow_dispatch:
 permissions:
   contents: read
@@ -180,6 +184,37 @@ jobs:
             --world "$WORLD" --source "$SOURCE_FILE" \
             --confirm-world "$WORLD" --confirm-host localhost
           npm run playtest:preflight -- --world "$WORLD"
+      - name: Restore career inputs missing from an old imported World (disposable only)
+        working-directory: rebuild
+        env:
+          PPW_PLAYTEST_DB_URL: postgresql://ppw_test:ppw_test@localhost:5432/ppw_test
+          PPW_CAREER_BASELINE_RECOVERY_AUTHORIZED: "YES"
+          SOURCE_FILE: ${{ runner.temp }}/fresh-original-main-genesis.json
+          PGPASSWORD: ppw_test
+        run: |
+          WORLD="$(node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            console.log(JSON.parse(readFileSync(process.env.SOURCE_FILE,"utf8")).world.id);
+          ')"
+          # Reproduce the exact 643 legacy NULL career values only in CI.
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 \
+            -v world_id="$WORLD" <<'SQL'
+          UPDATE ppw_people SET biological_age=NULL,
+            career_experience=NULL,development_aptitude=NULL
+          WHERE world_id=:'world_id' AND NOT generated_talent;
+          SQL
+          PPW_PLAYTEST_WORLD_ID="$WORLD" npm run playtest:recover-careers -- \
+            --world "$WORLD" --source "$SOURCE_FILE" \
+            --confirm-world "$WORLD" --confirm-host localhost
+          # A second operator run must be idempotent.
+          PPW_PLAYTEST_WORLD_ID="$WORLD" npm run playtest:recover-careers -- \
+            --world "$WORLD" --source "$SOURCE_FILE" \
+            --confirm-world "$WORLD" --confirm-host localhost
+          COUNT="$(psql -h localhost -U ppw_test -d ppw_test -At \
+            -v world_id="$WORLD" -c "SELECT count(*) FROM ppw_people
+             WHERE biological_age IS NOT NULL AND career_experience IS NOT NULL
+               AND development_aptitude IS NOT NULL" )"
+          test "$COUNT" = "643"
       - name: Log in two independent bookers and open authentic private workspaces
         working-directory: rebuild
         env:
