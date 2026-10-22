@@ -23,6 +23,9 @@ export interface PlayerWorldOverview {
     year:number;week:number}[];
    contractAlerts?:{contractId:string;personId:string;name:string;
     kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean}[];
+   worldStories?:{eventId:string;kind:string;year:number;week:number;
+    personId:string|null;personName:string|null;
+    promotionName:string|null;toTier:string|null}[];
    businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
     year:number;week:number;prestigeDelta:number|null;
     before:string|null;after:string|null}[];};
@@ -54,7 +57,7 @@ export async function readPlayerWorldOverview(
    pending_contract_offers:boolean|null;offer_results:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
-   medical_clearances:unknown;
+   medical_clearances:unknown;world_stories:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -68,7 +71,8 @@ export async function readPlayerWorldOverview(
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
-    notices.injury_news,notices.medical_clearances
+    notices.injury_news,notices.medical_clearances,
+    public_news.world_stories
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -359,6 +363,37 @@ export async function readPlayerWorldOverview(
       ) notice
      ) AS medical_clearances
    ) notices ON owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (
+    SELECT coalesce(jsonb_agg(jsonb_build_object(
+     'eventId',headline.event_id,'kind',headline.event_type,
+     'year',headline.year,'week',headline.week,
+     'personId',headline.person_id,'personName',headline.person_name,
+     'promotionName',headline.promotion_name,'toTier',headline.to_tier)
+     ORDER BY headline.year DESC,headline.week DESC,headline.event_id DESC),
+     '[]'::jsonb) AS world_stories
+    FROM (
+     SELECT e.event_id::text,e.year,e.week,e.event_type,
+      e.payload->>'personId' AS person_id,
+      coalesce(person.name,e.payload->>'name') AS person_name,
+      p.name AS promotion_name,e.payload->>'toTier' AS to_tier
+     FROM ppw_ledger_events e
+     LEFT JOIN ppw_people person ON person.world_id=e.world_id
+      AND person.person_id=e.payload->>'personId'
+     LEFT JOIN ppw_promotions p ON p.world_id=e.world_id
+      AND p.promotion_id=e.payload->>'promotionId'
+     WHERE e.world_id=w.world_id
+      AND (e.year-1)*52+e.week-1 BETWEEN
+       greatest(0,(w.year-1)*52+w.week-1-12) AND
+       (w.year-1)*52+w.week-1
+      AND e.event_type IN ('WRESTLER_RETIRED','WRESTLER_DEBUTED',
+       'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED',
+       'PROMOTION_RESTRUCTURED','PROMOTION_ENTERED_DORMANCY',
+       'PROMOTION_RECOVERED_FROM_DISTRESS')
+      AND (e.event_type<>'CAREER_STAGE_CHANGED' OR
+       e.payload->>'significance'='NOTABLE')
+     ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 3
+    ) headline
+   ) public_news ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
@@ -447,6 +482,22 @@ export async function readPlayerWorldOverview(
        (alert.kind==="DATES_EXHAUSTED"||alert.kind==="EXPIRING")&&
        Number.isInteger(alert.weeksRemaining)&&alert.weeksRemaining>=0&&
        typeof alert.waiting==="boolean"):[],
+     worldStories:Array.isArray(x.world_stories)?
+      x.world_stories.filter((item):item is {
+       eventId:string;kind:string;year:number;week:number;
+       personId:string|null;personName:string|null;
+       promotionName:string|null;toTier:string|null
+      }=>item!==null&&typeof item==="object"&&
+       typeof item.eventId==="string"&&item.eventId.length<=20&&
+       ["WRESTLER_RETIRED","WRESTLER_DEBUTED","CAREER_STAGE_CHANGED",
+        "PROMOTION_TIER_CHANGED","PROMOTION_RESTRUCTURED",
+        "PROMOTION_ENTERED_DORMANCY","PROMOTION_RECOVERED_FROM_DISTRESS"].includes(item.kind)&&
+       Number.isInteger(item.year)&&Number.isInteger(item.week)&&
+       item.week>=1&&item.week<=52&&
+       (item.personId===null||typeof item.personId==="string")&&
+       (item.personName===null||typeof item.personName==="string")&&
+       (item.promotionName===null||typeof item.promotionName==="string")&&
+       (item.toTier===null||typeof item.toTier==="string")):[],
      businessUpdates:Array.isArray(x.business_updates)?
       x.business_updates.filter((entry):entry is {
        id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";

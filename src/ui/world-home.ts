@@ -280,6 +280,38 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    tile.append(el("span","",label),el("strong","",note));stats.append(tile);
   }
   root.append(stats);
+  // The three latest PUBLIC, verified industry developments share this
+  // single World overview response. Private backstage/cash stays off-wire.
+  const headlines=(promotion.attention?.worldStories??[]).slice(0,3);
+  if(headlines.length){
+   const worldWire=el("section","ppw-home-wire");
+   worldWire.append(el("span","ppw-home-brand","AROUND THE WORLD"),
+    el("h3","","Industry headlines"));
+   const titles:Record<string,(n:typeof headlines[number])=>string>={
+    WRESTLER_RETIRED:n=>(n.personName??"A veteran")+" hangs up the boots",
+    WRESTLER_DEBUTED:n=>(n.personName??"A new prospect")+" joins the wrestling world",
+    CAREER_STAGE_CHANGED:n=>(n.personName??"A wrestler")+" enters a new chapter",
+    PROMOTION_TIER_CHANGED:n=>(n.promotionName??"A promotion")+
+     " moves to "+(n.toTier??"another level"),
+    PROMOTION_RESTRUCTURED:n=>(n.promotionName??"A promotion")+
+     " makes changes behind the scenes",
+    PROMOTION_ENTERED_DORMANCY:n=>(n.promotionName??"A promotion")+
+     " puts operations on hold",
+    PROMOTION_RECOVERED_FROM_DISTRESS:n=>(n.promotionName??"A promotion")+
+     " steadies the ship"
+   };
+   for(const headline of headlines){
+    const title=titles[headline.kind]?.(headline)??"World update";
+    const description="Y"+headline.year+" W"+headline.week;
+    worldWire.append(control(title,description,
+     headline.personId&&port.openWrestler?
+      ()=>port.openWrestler!(headline.personId!):port.industry,"★"));
+   }
+   worldWire.append(control("Read more industry stories",
+    "See the latest public career and promotion developments.",
+    port.industry,"→"));
+   root.append(worldWire);
+  }
   // Contextual actions, never a persistent tab bar. Only authoritative facts
   // from the existing single overview query appear as attention cues.
   const brief=el("section","ppw-home-brief");
