@@ -32,8 +32,8 @@ function fake(authorized=true,canonical=false,historicPersona=false){
      assert.match(sql,/ended_week_index>\$3/);
      assert.deepEqual(params,["world",["a","b"],0]);
      return [
-      {person_id:"a",name:"Star",portable_gimmick_id:"ORIGINAL",
-       persona_record:{personaName:"Original Star",gimmickId:"ORIGINAL",
+      {person_id:"a",name:"Star",portable_gimmick_id:"AUTHENTIC",
+       persona_record:{personaName:"Original Star",gimmickId:"AUTHENTIC",
         primaryStyle:"TECHNICAL",secondaryStyle:null,signatureMoves:[],
         finishingMoves:[{name:"The Original Finish",category:"GRAPPLE",
          source:"PPW_AUTHORED"}],source:"NEGOTIATED"}},
