@@ -9,10 +9,10 @@ const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
  resolutionId:"res",crowdResponse:77,
  matches:[{matchId:"m",position:0,crowdResponse:85,actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],
  segments:[{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",crowdResponse:64}]};
-function fake(authorized=true,canonical=false){
+function fake(authorized=true,canonical=false,historicPersona=false){
  let calls=0;
  const pool:TransactionPool={async connect(){return {release(){},
-  async query<T extends Record<string,unknown>>(sql:string){
+  async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[]){
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    calls++;
    if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:receipt}]:[]) as unknown as T[];
@@ -27,9 +27,21 @@ function fake(authorized=true,canonical=false){
     }:{participants:[{personId:"a",contractId:"c"}]}},
     {slot_id:"a",kind:"SEGMENT",position:1,payload:{participants:[{personId:"a",contractId:"c"}]}},
    ] as unknown as T[];
-   if(sql.includes("FROM ppw_people"))return [
-    {person_id:"a",name:"Star"},{person_id:"b",name:"Rival"},
-   ] as unknown as T[];
+   if(sql.includes("FROM ppw_people")){
+    if(historicPersona){
+     assert.match(sql,/ended_week_index>\$3/);
+     assert.deepEqual(params,["world",["a","b"],0]);
+     return [
+      {person_id:"a",name:"Star",portable_gimmick_id:"ORIGINAL",
+       persona_record:{personaName:"Original Star",gimmickId:"ORIGINAL",
+        primaryStyle:"TECHNICAL",secondaryStyle:null,signatureMoves:[],
+        finishingMoves:[{name:"The Original Finish",category:"GRAPPLE",
+         source:"PPW_AUTHORED"}],source:"NEGOTIATED"}},
+      {person_id:"b",name:"Rival",portable_gimmick_id:null,persona_record:null}
+     ] as unknown as T[];
+    }
+    return [{person_id:"a",name:"Star"},{person_id:"b",name:"Rival"}] as unknown as T[];
+   }
    if(sql.includes("FROM ppw_completed_show_matches m"))return [{
     match_id:"m",evidence_json:null,championship_name:null,title_changed:null,
     title_winner_name:null,title_prior_holder_name:null,injuries:[],
@@ -106,4 +118,12 @@ test("Crowd Flow reads the exact same certified five-query broadcast without ext
  assert.equal(flow[0]!.standout,true);
  assert.equal(flow[1]!.kind,"SEGMENT");
  assert.equal(calls(),5);
+});
+
+test("historic show preserves as-of-show wrestler moveset and excludes the following persona era",async()=>{
+ const view=await readCompletedShowView(fake(true,true,true).pool,scope);
+ assert.deepEqual(view.entries[0]!.matchContext?.sides,[["Original Star (Star)"],["Rival"]]);
+ assert.equal(view.entries[0]!.performerIdentities?.[0]?.ringName,"Original Star");
+ assert.deepEqual(view.entries[0]!.performerIdentities?.[0]?.finishingMoves,["The Original Finish"]);
+ assert.equal(view.entries[1]!.performerIdentities?.[0]?.ringName,"Original Star");
 });
