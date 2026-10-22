@@ -52,7 +52,7 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
  * punctuation consistently; keep word boundaries so short move names cannot
  * match inside an unrelated word. */
 const moveSurface=(value:string)=>value.normalize("NFKC").toLowerCase()
- .replace(/[^\\p{L}\\p{N}]+/gu," ").trim().replace(/\\s+/g," ");
+ .replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
 
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);

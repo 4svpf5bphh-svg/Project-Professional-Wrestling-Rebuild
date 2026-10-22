@@ -50,7 +50,7 @@ try{
  console.log("PPW_GROQ_SMOKE_PASS",JSON.stringify({
   model:"openai/gpt-oss-120b",httpStatus,
   slots:review.slots.length,finish:"CLEAN_PIN",
-  finisherMentioned:recap.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu," ")
+  finisherMentioned:recap.toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ")
    .includes("one winged angel"),
   review
  }));
