@@ -132,3 +132,35 @@ export function originalWeeklyMorale(input:{
  return Math.round(clamp(input.morale+(evidence-input.morale)*
   (usages.length?0.18:0.08),5,95)*10)/10;
 }
+
+export const ORIGINAL_ROSTER_TARGET={GLOBAL:46,NATIONAL:36,RISING:29,
+ INDEPENDENT:24,LOCAL:16} as const;
+export function originalPromotionScaleScore(input:{
+ localMarkets:readonly {liveStrength:number;awareness:number;loyalty:number}[];
+ mediaReach:number;showPerformance:number;financialDistress:
+ "HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS"
+}):number{
+ const local=input.localMarkets.map(s=>
+  s.liveStrength*.45+s.awareness*.35+s.loyalty*.2).sort((a,b)=>b-a);
+ const core=local.slice(0,5);
+ const strength=core.length?core.reduce((a,b)=>a+b,0)/core.length:0;
+ const breadth=input.localMarkets.length?input.localMarkets.filter(s=>
+  s.awareness>=25&&s.liveStrength>=20).length/input.localMarkets.length*100:0;
+ const finances={HEALTHY:80,WATCH:60,DISTRESSED:38,CRISIS:15};
+ return Math.round(clamp(strength*.32+breadth*.16+input.mediaReach*.2+
+  input.showPerformance*.22+finances[input.financialDistress]*.1,0,100)*10)/10;
+}
+export function originalSurvivalCounters(input:{
+ distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS";
+ healthyWeeks:number;stressWeeks:number;crisisWeeks:number;
+ understaffedWeeks:number;rosterCount:number;minimumRoster:number;
+ interval:number;
+}){
+ const healthy=input.distress==="HEALTHY";
+ return {healthyWeeks:healthy?input.healthyWeeks+input.interval:0,
+  stressWeeks:healthy?0:input.distress==="DISTRESSED"||input.distress==="CRISIS"?
+   input.stressWeeks+input.interval:Math.max(0,input.stressWeeks-input.interval),
+  crisisWeeks:input.distress==="CRISIS"?input.crisisWeeks+input.interval:0,
+  understaffedWeeks:input.rosterCount<input.minimumRoster?
+   input.understaffedWeeks+input.interval:0};
+}
