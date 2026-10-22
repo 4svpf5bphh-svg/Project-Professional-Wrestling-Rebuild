@@ -2,10 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "buildCommand": "npm run web:build",
-  "outputDirectory": "dist/web",
-  "git": {
-    "deploymentEnabled": {
-      "main": false
-    }
-  }
+  "outputDirectory": "dist/web"
 }
