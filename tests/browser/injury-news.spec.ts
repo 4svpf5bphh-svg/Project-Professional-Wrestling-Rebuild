@@ -96,6 +96,8 @@ test("iPhone lets a booker open and dismiss genuine return-to-ring clearance",as
  await expect(page.getByRole("heading",{name:"Cleared to return"})).toBeVisible();
  await expect(page.getByText("Alice is available again")).toBeVisible();
  await expect(page.getByText(/Cleared at Year 1, Week 8/)).toBeVisible();
+ const intro=page.getByRole("button",{name:/Skip intro/i});
+ if(await intro.isVisible())await intro.click();
  await page.screenshot({path:"test-results/presentation-screenshots/medical-clearance-320.png",fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Dismiss Alice's clearance update"}).click();
