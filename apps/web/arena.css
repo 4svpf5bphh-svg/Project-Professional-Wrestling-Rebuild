@@ -574,3 +574,12 @@ body{padding-top:env(safe-area-inset-top)}
  body:has(#game :is(input,textarea,select):focus) .ppw-account-banner .ppw-shell-menu{
   opacity:0;pointer-events:none}
 }
+
+/* Three money tiles are deliberately unequal: debt is short, cash is not.
+   Preserve the entire dollar value on a 320px iPhone instead of line-wrapping
+   its final digit into a second row. */
+@media(max-width:799px){
+ #game .ppw-home-finances{grid-template-columns:minmax(0,1.45fr) minmax(0,.75fr) minmax(0,1.1fr)}
+ #game .ppw-home-stat strong{font-size:clamp(10px,3.05vw,15px);
+  letter-spacing:-.045em;overflow-wrap:normal;white-space:nowrap}
+}

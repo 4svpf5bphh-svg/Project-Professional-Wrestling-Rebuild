@@ -51,3 +51,29 @@ test("ordinary manager never sees a shared World booking extension control",asyn
  await expect(page.getByText(/DEADLINE REACHED/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toHaveCount(0);
 });
+
+test("iPhone cash remains on one line without overflow at 320px",async({page})=>{
+ await page.setViewportSize({width:320,height:700});
+ const t=Date.now()/1000;
+ const overview={world:{revision:9,name:"Genesis",year:1,week:2,
+  phase:"OPEN",nextLockEpoch:t+3600,serverEpoch:t},
+  membership:"ACTIVE",promotion:{id:"crown",name:"Crown Wrestling",
+   tier:"INDEPENDENT",cash:5950966,debt:0,lastWeeklyNet:-49034}};
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"genesis",playerId:"operator",csrfToken:"csrf",
+  overview,availablePromotions:[],canManualAdvance:true}}));
+ await page.route("**/api/card",r=>r.fulfill({json:overview}));
+ await page.goto("/#/home");
+ const tile=page.locator(".ppw-home-stat").first();
+ const value=tile.locator("strong");
+ await expect(value).toContainText("5,950,966");
+ const info=await value.evaluate(element=>{
+  const style=getComputedStyle(element);
+  const rect=element.getBoundingClientRect();
+  return {nowrap:style.whiteSpace==="nowrap",fits:element.scrollWidth<=rect.width+1,
+   bodyOverflow:document.documentElement.scrollWidth>innerWidth+1};
+ });
+ expect(info.nowrap).toBe(true);
+ expect(info.fits).toBe(true);
+ expect(info.bodyOverflow).toBe(false);
+});
