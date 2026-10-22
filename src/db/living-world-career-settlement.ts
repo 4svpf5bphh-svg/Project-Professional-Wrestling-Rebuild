@@ -258,11 +258,13 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
   await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
    SELECT $1,$3,$4,'WRESTLER_DEBUTED',
     jsonb_build_object('personId',x.id,'name',x.name,'age',x.age,
-     'homeMarketId',x.market,'generatedTalent',true,'significance','ROUTINE')
+     'homeMarketId',x.market,'generatedTalent',true,'significance',
+      CASE WHEN x.aptitude>=90 THEN 'NOTABLE' ELSE 'ROUTINE' END)
    FROM jsonb_to_recordset($2::jsonb) x(id text,name text,
-    age double precision,market text)`,
+    age double precision,market text,aptitude double precision)`,
    [worldId,JSON.stringify(generatedPeople.map(p=>({
-    id:p.id,name:p.name,age:p.biologicalAge,market:p.homeMarketId}))),year,week]);
+    id:p.id,name:p.name,age:p.biologicalAge,market:p.homeMarketId,
+    aptitude:p.developmentAptitude}))),year,week]);
  }
  return {evolved:saved.length,missingOriginal,retired:retired.length,generated};
 }

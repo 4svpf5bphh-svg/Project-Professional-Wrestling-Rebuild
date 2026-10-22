@@ -389,8 +389,7 @@ export async function readPlayerWorldOverview(
        'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED',
        'PROMOTION_RESTRUCTURED','PROMOTION_ENTERED_DORMANCY',
        'PROMOTION_RECOVERED_FROM_DISTRESS')
-      AND (e.event_type<>'CAREER_STAGE_CHANGED' OR
-       e.payload->>'significance'='NOTABLE')
+      AND e.payload->>'significance' IN ('NOTABLE','MAJOR')
      ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 3
     ) headline
    ) public_news ON owned.promotion_id IS NOT NULL
