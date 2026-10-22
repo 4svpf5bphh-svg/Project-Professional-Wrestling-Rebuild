@@ -53,6 +53,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
+   await expect(page.locator(".ppw-verified-finish").first()).not.toHaveAttribute("open","");
   await expect(page.locator(".ppw-flow-track")).toHaveCount(2);
   await expect(page.locator(".ppw-booker-breakdown").first()).not.toHaveAttribute("open","");
   await expect(page.getByText("Generate AI Review")).toHaveCount(0);
@@ -70,7 +71,7 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Omega won by a clean pinfall");
+ await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(2);
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
 });

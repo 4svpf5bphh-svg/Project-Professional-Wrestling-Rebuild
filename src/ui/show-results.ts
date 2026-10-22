@@ -9,12 +9,23 @@ import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
+import {shortResultColour} from "../domain/show-result-colour.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
 
 type ResultFilter="ALL"|"MATCH"|"SEGMENT";
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,x=>x.toUpperCase());
+function finishLabel(entry:ShowResultEntry):string{
+ if(entry.type==="SEGMENT")return entry.outcome==="HAPPENS"?"On air":
+  entry.outcome==="REFUSED"?"Declined":"Cut short";
+ const labels:Record<string,string>={
+  CLEAN_PIN:"Pinfall",FLASH_PIN:"Surprise pin",SUBMISSION:"Tap-out",
+  DISQUALIFICATION:"Disqualification",FOREIGN_OBJECT:"Controversial win",
+  PROTECTED_FINISH:"Disputed decision",INJURY_STOPPAGE:"Referee stoppage",
+  OVER_THE_TOP_ROPE:"Final elimination"};
+ return labels[entry.outcome]??"Decision";
+}
 function node(tag:string,className:string,content=""):HTMLElement{
  const el=document.createElement(tag);el.className=className;
  if(content)el.textContent=content;return el;
@@ -212,26 +223,29 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   if(entry.fallout?.injuries.length)
    append(meta,node("span","ppw-result-flag ppw-flag-medical","MEDICAL UPDATE"));
   const trail=node("span","ppw-result-trail",
-   "CARD "+String(entry.position+1)+"  ·  "+label(entry.outcome));
+   "CARD "+String(entry.position+1)+"  ·  "+finishLabel(entry));
   append(summary,meta,heading,trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
+   const verified=document.createElement("details");
+   verified.className="ppw-verified-finish";
+   verified.append(node("summary","","How it ended · official result"));
    const replay=node("div","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
    append(replay,node("span","ppw-finish-eyebrow","◉ FINISH REPLAY"),
     node("strong","ppw-finish-title",finish.title),
     node("p","ppw-finish-description",finish.description));
    if(finish.winnerLabel)
     append(replay,node("p","ppw-finish-winner","OFFICIAL WINNER: "+finish.winnerLabel));
-   append(body,replay);
+   verified.append(replay);append(body,verified);
   }
   const narrative=node("p","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
   const breakdown=document.createElement("details");
   breakdown.className="ppw-booker-breakdown";
-  append(breakdown,node("summary","","Booker Breakdown · Performance notes"));
+  append(breakdown,node("summary","","Behind the bell · Match analysis"));
   for(const paragraph of review.paragraphs)
    append(breakdown,node("p","ppw-result-recap",paragraph));
   append(body,breakdown);
@@ -242,8 +256,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
     append(bullets,node("li","",bulletin));
    append(body,bullets);
   }
-  append(body,node("p","ppw-result-verdict","OFFICIAL RESULT  /  "+label(entry.outcome)+
-   (entry.matchContext?.winnerNames.length?" · "+entry.matchContext.winnerNames.join(" & "):"")));
+  if(entry.type==="MATCH"&&entry.matchContext?.winnerNames.length)
+   append(body,node("p","ppw-result-verdict",
+    "WINNER  ·  "+entry.matchContext.winnerNames.join(" & ")));
   if(entry.performerIdentities?.length){
    const profiles=node("div","ppw-result-personas");
    for(const person of entry.performerIdentities){
@@ -297,6 +312,6 @@ function markRingsideFallback(root:HTMLElement,show:CompletedShowView){
  for(const e of show.entries){
   const report=Array.from(root.querySelectorAll<HTMLElement>(".ppw-ringside-slot"))
    .find(x=>x.dataset.slotId===e.slotId);
-  if(report){report.textContent=e.summary;report.hidden=false;}
+  if(report){report.textContent=shortResultColour(e,show.showId);report.hidden=false;}
  }
 }

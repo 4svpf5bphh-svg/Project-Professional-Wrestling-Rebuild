@@ -8,3 +8,9 @@
  letter-spacing:.03em}
 .ppw-booker-breakdown .ppw-result-recap{font-size:12px;line-height:1.5}
 .ppw-ringside-await{font-size:12px;line-height:1.5;color:#c5d8e0;margin:10px 0}
+
+/* Keep the receipt available without making it compete with the editorial. */
+#game .ppw-verified-finish{margin:9px 0 11px}
+#game .ppw-verified-finish>summary{display:list-item;cursor:pointer;color:#b8d8db;
+ font-size:13px;font-weight:750;padding:8px 2px;letter-spacing:.025em}
+#game .ppw-verified-finish:not([open]) .ppw-finish-replay{display:none}

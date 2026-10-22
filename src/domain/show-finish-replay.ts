@@ -12,17 +12,17 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
  const winner=entry.matchContext?.winnerNames.join(" & ")||null;
  const method=entry.outcome;
  const finishes:Record<string,{title:string;description:string;tone:FinishReplayTone}>={
-  CLEAN_PIN:{title:"CLEAN PINFALL",description:"The referee counts three. The official result is a clean pin.",
+  CLEAN_PIN:{title:"THREE-COUNT",description:"The winner keeps the shoulders down for three, with no outside interference recorded.",
    tone:"CLEAN"},
-  FLASH_PIN:{title:"FLASH PIN",description:"A sudden pinfall seals the recorded decision.",
+  FLASH_PIN:{title:"CAUGHT OUT",description:"A sudden cradle or roll-up leaves no time to kick out.",
    tone:"CLEAN"},
-  SUBMISSION:{title:"SUBMISSION",description:"A submission brings the official decision.",
+  SUBMISSION:{title:"TAP OUT",description:"The hold forces the referee's decision.",
    tone:"CLEAN"},
-  DISQUALIFICATION:{title:"DISQUALIFIED!",description:"The match ends on a referee's disqualification decision, not a clean fall.",
+  DISQUALIFICATION:{title:"REFEREE HAS SEEN ENOUGH",description:"The official calls for the bell and awards the decision by disqualification.",
    tone:"DIRTY"},
-  FOREIGN_OBJECT:{title:"DIRTY VICTORY",description:"The recorded finish involves a foreign object. The official result stands.",
+  FOREIGN_OBJECT:{title:"A WIN WITH AN ASTERISK",description:"Something illicit swung the balance while the referee's view was elsewhere. The decision stands.",
    tone:"DIRTY"},
-  PROTECTED_FINISH:{title:"PROTECTED FINISH",description:"The result is recorded, but the contest does not end in a clean pin or submission.",
+  PROTECTED_FINISH:{title:"A CONTROVERSIAL END",description:"There is plenty to argue about in that finish, even if the winner's hand was raised.",
    tone:"DIRTY"},
   INJURY_STOPPAGE:{title:"REFEREE STOPPAGE",description:"A serious injury forces the match to end early. The official winner is taken from the revised medical result.",
    tone:"MEDICAL"},
@@ -40,7 +40,7 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
  const dirtyDetail=cheater&&method==="DISQUALIFICATION"?
   " "+cheater+" was the recorded disqualified wrestler.":
   cheater&&method==="FOREIGN_OBJECT"?
-  " "+cheater+" was the recorded foreign-object offender.":"";
+  " "+cheater+" was caught bringing the weapon into play.":"";
  const runIn=entry.fallout?.interference?.outcome==="SUCCESS"?
   " A confirmed outside run-in also took place.":"";
  return {title:result.title,description:result.description+dirtyDetail+affected+runIn,

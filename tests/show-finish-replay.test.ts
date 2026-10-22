@@ -44,7 +44,7 @@ test("recorded dirty finish offender is named without inventing any moves",()=>{
  assert.match(replayVerifiedMatchFinish(entry)!.description,/Bob.*disqualified/);
  const foreign=match("FOREIGN_OBJECT");
  foreign.fallout={injuries:[],eliminations:[],finishCheaterName:"Alice"};
- assert.match(replayVerifiedMatchFinish(foreign)!.description,/Alice.*foreign-object/);
+ assert.match(replayVerifiedMatchFinish(foreign)!.description,/Alice.*weapon/);
 });
 test("angles and unknown finishes cannot invent recorded match action",()=>{
  assert.equal(replayVerifiedMatchFinish({...match("CLEAN_PIN"),type:"SEGMENT"}),null);
