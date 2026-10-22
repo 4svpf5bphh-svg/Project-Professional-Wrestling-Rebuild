@@ -1,0 +1,81 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {postgresPool,withSqlClient} from "../src/db/postgres.js";
+import {withWorldTransaction} from "../src/db/transaction.js";
+import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {recordVerifiedMedicalAbsencesInTransaction,
+ settleMedicalAvailabilityForNewWeek} from "../src/db/medical-availability.js";
+import {readBookableCardTalent} from "../src/db/show-card-editor.js";
+
+const url=process.env.PPW_NEON_TEST_URL;
+test("verified injuries block next-week booking, recover on original schedule and notify exactly once",{
+ skip:!url?"Disposable PostgreSQL not configured":false
+},async()=>{
+ const db=postgresPool(url!,3),id=randomUUID();
+ const world="medical-"+id,promo="promo-"+id,person="person-"+id,
+  player="player-"+id,show="injury-show-"+id,card="next-show-"+id;
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Medical World",seed:17,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promo,name:"Promotion",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id,active) VALUES($1,$2,$3,true)",[world,player,promo]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,'Test Wrestler','MEN')",[world,person]);
+   await tx.query(`INSERT INTO ppw_contracts
+    (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+    VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',4,100)`,
+    [world,"deal-"+id,person,promo]);
+   await tx.query(`INSERT INTO ppw_booking_drafts
+    (world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,52,'SUBMITTED')`,
+    [world,show,promo]);
+   await tx.query(`INSERT INTO ppw_completed_shows
+    (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
+     receipt_json,receipt_digest) VALUES($1,$2,$3,1,52,$4,85,'{}'::jsonb,$5)`,
+    [world,promo,show,"resolution-"+id,"a".repeat(64)]);
+   await recordVerifiedMedicalAbsencesInTransaction(tx,{
+    worldId:world,showId:show,year:1,week:52,
+    facts:[{matchId:"match",injuries:[{personId:person,severity:"MAJOR",weeksOut:2}]}]
+   });
+   await tx.query("UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1",[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
+    VALUES($1,$2,$3,2,1,'DRAFT')`,[world,card,promo]);
+   await settleMedicalAvailabilityForNewWeek(tx,world,52,2,1);
+  });
+  const injured=await readBookableCardTalent(db.pool,{
+   worldId:world,playerId:player,promotionId:promo,showId:card});
+  assert.equal(injured.talent.length,1);
+  assert.equal(injured.talent[0]?.available,false);
+  assert.equal(injured.talent[0]?.reason,"INJURED");
+  assert.equal(injured.talent[0]?.medicalWeeksRemaining,1);
+  const before=await withSqlClient(db.pool,tx=>tx.query<{status:string;cleared_week_index:number}>(
+   "SELECT status,cleared_week_index FROM ppw_medical_absences WHERE world_id=$1 AND person_id=$2",[world,person]));
+  assert.deepEqual(before[0],{status:"ACTIVE",cleared_week_index:53});
+  await withWorldTransaction(db.pool,async tx=>{
+   await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
+   await settleMedicalAvailabilityForNewWeek(tx,world,53,2,2);
+   await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_booking_drafts SET week=2 WHERE world_id=$1 AND draft_id=$2",[world,card]);
+  });
+  const cleared=await readBookableCardTalent(db.pool,{
+   worldId:world,playerId:player,promotionId:promo,showId:card});
+  assert.equal(cleared.talent[0]?.available,true);
+  assert.equal(cleared.talent[0]?.reason,"AVAILABLE");
+  assert.equal(cleared.talent[0]?.medicalWeeksRemaining,null);
+  const status=await withSqlClient(db.pool,tx=>tx.query<{status:string}>(
+   "SELECT status FROM ppw_people WHERE world_id=$1 AND person_id=$2",[world,person]));
+  assert.equal(status[0]?.status,"ACTIVE");
+  const news=await withSqlClient(db.pool,tx=>tx.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM ppw_ledger_events WHERE world_id=$1 AND event_type='WRESTLER_CLEARED_TO_RETURN'",[world]));
+  assert.equal(news[0]?.n,"1");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_ledger_events","ppw_medical_absences","ppw_completed_shows","ppw_booking_drafts","ppw_contracts","ppw_promotion_controls","ppw_memberships","ppw_people","ppw_promotions"]){
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   }
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
