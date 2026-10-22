@@ -98,3 +98,31 @@
  .ppw-account-banner .ppw-shell-menu:after{display:none}
  .ppw-account-banner .ppw-shell-menu:not(:disabled):active{transform:scale(.97)!important}
 }
+
+/* iPhone visual acceptance: navigation stays in a compact sticky account header,
+   never floating across show reviews, championship cards or Backstage bubbles. */
+@media(max-width:799px){
+ #account:has(.ppw-account-banner){
+  position:sticky;top:0;z-index:150;
+  background:#111229f0;backdrop-filter:blur(12px);
+ }
+ .ppw-account-banner .ppw-shell-menu{
+  position:static;left:auto;right:auto;top:auto;bottom:auto;
+  flex:0 0 44px;width:44px;min-width:44px;max-width:44px;
+  height:44px;min-height:44px!important;
+  padding:0!important;margin:0;transform:none!important;
+  border:1px solid #c896f8b5;border-radius:10px;
+  background:linear-gradient(145deg,#493d8d,#a93f83);
+  box-shadow:0 1px 8px #0a0b227a;
+  color:transparent;font-size:0;letter-spacing:0;text-shadow:none;
+ }
+ .ppw-account-banner .ppw-shell-menu::before{
+  display:block;content:"☰";font-size:21px;font-weight:800;
+  width:auto;height:auto;background:transparent;color:#fff3e8;
+  transform:none;
+ }
+ .ppw-account-banner .ppw-shell-menu::after{display:none}
+ .ppw-account-banner .ppw-shell-menu:not(:disabled):active{
+  transform:scale(.96)!important;
+ }
+}

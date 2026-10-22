@@ -146,7 +146,22 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
   if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
    await page.getByRole("button",{name:/Skip intro/}).click();
-  await expect(page.getByRole("button",{name:"Open promotion menu"})).toBeVisible();
+  const menu=page.getByRole("button",{name:"Open promotion menu"});
+  await expect(menu).toBeVisible();
+  const bounds=await page.evaluate(()=>{
+   const nav=document.querySelector(".ppw-shell-menu")!.getBoundingClientRect();
+   const head=document.querySelector(".ppw-account-banner")!.getBoundingClientRect();
+   return {nav:{top:nav.top,bottom:nav.bottom,width:nav.width},
+    head:{top:head.top,bottom:head.bottom}};
+  });
+  expect(bounds.nav.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.nav.width).toBeLessThanOrEqual(48);
+  expect(bounds.nav.top).toBeGreaterThanOrEqual(bounds.head.top);
+  expect(bounds.nav.bottom).toBeLessThanOrEqual(bounds.head.bottom+1);
+  await menu.click();
+  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
+  await page.locator(".ppw-nav-drawer-close").click();
+
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   await page.screenshot({path:images+"/home-"+width+".png",fullPage:true});
