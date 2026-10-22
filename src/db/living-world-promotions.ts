@@ -292,3 +292,137 @@ export async function settleAnnualPromotionScale(
  }
  return {evaluated:eligible.length,changed:changed.length};
 }
+
+/** Emergency signings from original main lifecycle.ts: a distressed AI
+ * promotion can rescue its working roster with short, cheap free-agent deals.
+ * This is a certified-week-only batched write: no background negotiation,
+ * polling, human control, or player authority. Never poach contracted talent.
+ */
+import {DeterministicRng,deterministicSeedFromText} from "../simulation/legacy/rng.js";
+type EmergencyCandidate={
+ person_id:string;career_stage:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION";
+ recognition:number;popularity:number;in_ring_quality:number;
+ match_craft:number;presentation:number;contract_priorities:{
+  money:number;role:number;exposure:number;prestige:number;
+  schedule:number;loyalty:number
+ };
+};
+export function originalEmergencyAcceptance(seed:string|number,index:number,
+ promotionId:string,personId:string,priority:EmergencyCandidate["contract_priorities"]){
+ const rng=new DeterministicRng(deterministicSeedFromText(
+  String(seed)+":"+index+":"+promotionId+":"+personId+":survival-signing"));
+ const chance=Math.min(.9,.42+priority.exposure/450+
+  (100-priority.money)/600+priority.role/900);
+ return rng.chance(chance);
+}
+function originalMarketWeeklyValue(p:EmergencyCandidate):number{
+ const avg=(p.in_ring_quality+p.match_craft+p.presentation)/3;
+ const mult=p.career_stage==="SPECIAL_ATTRACTION"?1.35:
+  p.career_stage==="VETERAN"?1.1:p.career_stage==="PROSPECT"?.75:1;
+ return Math.round((500+p.recognition*50+p.popularity*30+avg*25)*mult);
+}
+export async function recruitDistressedAiRosters(
+ tx:SqlRows,worldId:string,year:number,week:number,
+){
+ const index=(year-1)*52+week-1;
+ if(index%4!==0)return {eligible:0,signed:0};
+ const seedRows=await tx.query<{seed:string|number}>(`
+  SELECT seed FROM ppw_worlds WHERE world_id=$1`,[worldId]);
+ if(seedRows.length!==1)throw new Error("Missing emergency roster World");
+ const rosters=await tx.query<{promotion_id:string;tier:PromotionTier;
+  roster_size:number}>(`
+  SELECT p.promotion_id,p.tier,
+   (SELECT count(DISTINCT c.person_id)::integer
+    FROM ppw_contracts c JOIN ppw_people person
+     ON person.world_id=c.world_id AND person.person_id=c.person_id
+    WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+     AND c.status='SIGNED' AND person.status='ACTIVE'
+     AND c.start_week_index<=$2 AND c.expires_week_index>=$2) AS roster_size
+  FROM ppw_promotions p
+  WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND p.management_mode='AI'
+   AND p.financial_distress IN ('DISTRESSED','CRISIS')
+   AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls c
+    WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+     AND c.active)
+  ORDER BY p.promotion_id LIMIT 129`,[worldId,index]);
+ if(rosters.length>128)throw new Error("AI promotion population exceeds World limit");
+ const under=rosters.filter(p=>{
+  const minimum=Math.max(6,Math.ceil(ORIGINAL_ROSTER_TARGET[p.tier]*.35));
+  return p.roster_size<Math.max(minimum,Math.ceil(ORIGINAL_ROSTER_TARGET[p.tier]*.55));
+ });
+ if(!under.length)return {eligible:0,signed:0};
+ const candidates=await tx.query<EmergencyCandidate>(`
+ SELECT person_id,career_stage,recognition,popularity,
+  in_ring_quality,match_craft,presentation,contract_priorities
+ FROM ppw_people p
+ WHERE p.world_id=$1 AND p.status='ACTIVE' AND
+  p.career_stage IS NOT NULL AND p.recognition IS NOT NULL AND
+  p.popularity IS NOT NULL AND p.in_ring_quality IS NOT NULL AND
+  p.match_craft IS NOT NULL AND p.presentation IS NOT NULL AND
+  p.contract_priorities IS NOT NULL
+  AND NOT EXISTS(SELECT 1 FROM ppw_contracts c
+   WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+    AND c.status='SIGNED' AND c.expires_week_index>=$2)
+ ORDER BY ((500+p.recognition*50+p.popularity*30+
+   (p.in_ring_quality+p.match_craft+p.presentation)/3*25)*
+   CASE p.career_stage WHEN 'SPECIAL_ATTRACTION' THEN 1.35
+    WHEN 'VETERAN' THEN 1.1 WHEN 'PROSPECT' THEN .75 ELSE 1 END) ASC,
+  (p.in_ring_quality+p.match_craft+p.presentation) DESC,p.person_id
+ LIMIT 256`,[worldId,index]);
+ if(candidates.length>256)throw new Error("Unbounded emergency candidate pool");
+ const used=new Set<string>();
+ const signings:{id:string;promotion:string;person:string;family:string;
+  end:number;guarantee:number;appearance:number;role:string}[]=[];
+ for(const roster of under){
+  const minimum=Math.max(6,Math.ceil(ORIGINAL_ROSTER_TARGET[roster.tier]*.35));
+  const floor=Math.max(minimum,Math.ceil(ORIGINAL_ROSTER_TARGET[roster.tier]*.55));
+  const needed=Math.min(2,floor-roster.roster_size);
+  for(const person of candidates){
+   if(signings.filter(x=>x.promotion===roster.promotion_id).length>=needed)break;
+   if(used.has(person.person_id))continue;
+   const priority=person.contract_priorities;
+   if(!priority||!["money","role","prestige","schedule","loyalty","exposure"]
+    .every(k=>Number.isFinite(priority[k as keyof typeof priority])&&
+     priority[k as keyof typeof priority]>=0&&priority[k as keyof typeof priority]<=100))
+    continue;
+   if(!originalEmergencyAcceptance(seedRows[0]!.seed,index,
+    roster.promotion_id,person.person_id,priority))continue;
+   const market=originalMarketWeeklyValue(person);
+   used.add(person.person_id);
+   signings.push({
+    id:"survival:"+index+":"+roster.promotion_id+":"+person.person_id,
+    promotion:roster.promotion_id,person:person.person_id,
+    family:"LIMITED_NON_EXCLUSIVE",end:index+12,
+    guarantee:Math.round(market*.1),
+    appearance:Math.round(market*.95),
+    role:person.career_stage==="PROSPECT"?"DEVELOPMENTAL":"REGULAR"
+   });
+  }
+ }
+ if(!signings.length)return {eligible:under.length,signed:0};
+ const inserted=await tx.query<{contract_id:string}>(`
+ INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+  family,status,remaining_dates,date_entitlement,start_week_index,
+  expires_week_index,weekly_guarantee,appearance_fee,signing_bonus,
+  role_expectation,creative_control)
+ SELECT $1,x.id,x.person,x.promotion,'LIMITED_NON_EXCLUSIVE','SIGNED',5,5,
+  $3,x.end,x.guarantee,x.appearance,0,x.role,'NONE'
+ FROM jsonb_to_recordset($2::jsonb) x(id text,person text,
+  promotion text,end integer,guarantee bigint,appearance bigint,role text)
+ WHERE NOT EXISTS(SELECT 1 FROM ppw_contracts c
+  WHERE c.world_id=$1 AND c.person_id=x.person AND c.status='SIGNED'
+   AND c.expires_week_index>=$3)
+ RETURNING contract_id`,[worldId,JSON.stringify(signings),index]);
+ if(inserted.length!==signings.length)
+  throw new Error("Emergency signing conflicted; rolling back certified World week");
+ await tx.query(`
+ INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+ SELECT $1,$3,$4,'EMERGENCY_TALENT_SIGNED',jsonb_build_object(
+  'promotionId',x.promotion,'personId',x.person,'contractId',x.id,
+  'weeklyGuarantee',x.guarantee,'appearanceFee',x.appearance,
+  'dates',5,'significance','ROUTINE')
+ FROM jsonb_to_recordset($2::jsonb) x(id text,promotion text,
+  person text,guarantee bigint,appearance bigint)`,
+ [worldId,JSON.stringify(signings),year,week]);
+ return {eligible:under.length,signed:signings.length};
+}

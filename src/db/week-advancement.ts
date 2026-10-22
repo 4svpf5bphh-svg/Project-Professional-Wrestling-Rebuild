@@ -1,7 +1,8 @@
 import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
-import {settleLivingPromotionSurvival,settleAnnualPromotionScale}
+import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
+ recruitDistressedAiRosters}
  from "./living-world-promotions.js";
 import {settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "./medical-availability.js";
 import {applyWorldCommand} from "./world-commands.js";
@@ -224,6 +225,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // Careers and vacancies settle after the recorded show finishes, and
       // before contract expiry and next week's player planning rights.
       await settleLivingPromotionSurvival(tx,input.worldId,year,week);
+      await recruitDistressedAiRosters(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
       await settleLivingMorale(tx,input.worldId,year,week);
       // At the end of each 52-week year, evaluate original company standing
