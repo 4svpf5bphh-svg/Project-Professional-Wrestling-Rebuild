@@ -48,6 +48,12 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
  return {showHeadline:v.showHeadline as string,opening:v.opening as string,
   closing:v.closing as string,slots};
 }
+/** Treat spaces, hyphens (including non-breaking broadcast hyphens), and
+ * punctuation consistently; keep word boundaries so short move names cannot
+ * match inside an unrelated word. */
+const moveSurface=(value:string)=>value.normalize("NFKC").toLowerCase()
+ .replace(/[^\\p{L}\\p{N}]+/gu," ").trim().replace(/\\s+/g," ");
+
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
@@ -67,14 +73,16 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
  for(const e of show.entries)for(const p of e.performerIdentities??[]){
   for(const move of [...p.signatureMoves,...p.finishingMoves])
    if(move.length>5&&move.length<90){
-    const key=move.toLowerCase();const owners=allMoves.get(key)??new Set();
+    const key=moveSurface(move);if(!key)continue;
+    const owners=allMoves.get(key)??new Set();
     owners.add(p.personId);allMoves.set(key,owners);
    }
  }
  for(const [i,s] of slots.entries()){
   const e=show.entries[i]!,ids=new Set((e.performerIdentities??[]).map(x=>x.personId));
+  const recap=" "+moveSurface(s.headline+" "+s.recap)+" ";
   for(const [move,owners] of allMoves){
-   if(s.recap.toLowerCase().includes(move)&&![...owners].some(id=>ids.has(id)))
+   if(recap.includes(" "+move+" ")&&![...owners].some(id=>ids.has(id)))
     throw new Error("Ringside used an unowned signature move");
   }
  }

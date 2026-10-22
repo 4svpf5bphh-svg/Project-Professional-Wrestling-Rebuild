@@ -47,4 +47,12 @@ test("Invented consequential events and wrong official finishes fail closed",()=
 test("Move ownership is protected across the whole show",()=>{
  const wrong={...valid,slots:[valid.slots[0],{...valid.slots[1],recap:"The One Winged Angel ended the promo."}]};
  assert.throws(()=>validateRingsideCopy(wrong,example),/unowned/);
+ const aired={...valid,slots:[{...valid.slots[0],
+  recap:"Omega sealed the clean win with his One‑Winged Angel."},valid.slots[1]]};
+ assert.deepEqual(validateRingsideCopy(aired,example).slots[0]?.recap,aired.slots[0]?.recap);
+ for(const wrongMove of ["One-Winged Angel","One‑Winged Angel","ONE—WINGED ANGEL"]){
+  const misattributed={...valid,slots:[valid.slots[0],
+   {...valid.slots[1],recap:"The "+wrongMove+" ended the interview."}]};
+  assert.throws(()=>validateRingsideCopy(misattributed,example),/unowned/);
+ }
 });
