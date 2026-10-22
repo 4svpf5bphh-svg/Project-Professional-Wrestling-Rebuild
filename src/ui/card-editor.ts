@@ -1311,7 +1311,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const candidate of sorted){
     const taken=takenIds.has(candidate.personId)&&
      chosen?.personId!==candidate.personId;
-    const label=candidate.available?
+    const label=candidate.reason==="INJURED"?
+     "INJURED · "+(candidate.medicalWeeksRemaining??"?")+" WEEKS":
+     candidate.available?
      (candidate.remainingDates===null?"UNLIMITED DATES":
       candidate.remainingDates+" DATES REMAINING"):
       nice(candidate.reason);
