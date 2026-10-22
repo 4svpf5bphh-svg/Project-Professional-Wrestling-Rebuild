@@ -26,7 +26,7 @@ const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
-  rescueReceipt:string|null=null;
+  rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"="FINANCES";
  async function refresh(){
   loading=true;draw();
