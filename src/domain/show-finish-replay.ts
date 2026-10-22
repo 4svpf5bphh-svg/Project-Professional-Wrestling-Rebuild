@@ -12,21 +12,21 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
  const winner=entry.matchContext?.winnerNames.join(" & ")||null;
  const method=entry.outcome;
  const finishes:Record<string,{title:string;description:string;tone:FinishReplayTone}>={
-  CLEAN_PIN:{title:"THREE-COUNT",description:"The winner keeps the shoulders down for three, with no outside interference recorded.",
+  CLEAN_PIN:{title:"THE THREE-COUNT",description:"The referee counted three. No shortcut or argument was needed to settle it.",
    tone:"CLEAN"},
-  FLASH_PIN:{title:"CAUGHT OUT",description:"A sudden cradle or roll-up leaves no time to kick out.",
+  FLASH_PIN:{title:"CAUGHT NAPPING",description:"One opening, a lightning-fast cradle and three slaps of the canvas. That was all it took.",
    tone:"CLEAN"},
-  SUBMISSION:{title:"TAP OUT",description:"The hold forces the referee's decision.",
+  SUBMISSION:{title:"NOWHERE TO GO",description:"The hold was locked in and the referee had a decision to make: the submission ended it.",
    tone:"CLEAN"},
-  DISQUALIFICATION:{title:"REFEREE HAS SEEN ENOUGH",description:"The official calls for the bell and awards the decision by disqualification.",
+  DISQUALIFICATION:{title:"THE BELL RINGS EARLY",description:"The referee spotted a foul, called for the bell and awarded the win by disqualification.",
    tone:"DIRTY"},
-  FOREIGN_OBJECT:{title:"A WIN WITH AN ASTERISK",description:"Something illicit swung the balance while the referee's view was elsewhere. The decision stands.",
+  FOREIGN_OBJECT:{title:"AN UGLY SHORTCUT",description:"A concealed weapon entered the picture when the referee was looking elsewhere. The decision still counts.",
    tone:"DIRTY"},
-  PROTECTED_FINISH:{title:"A CONTROVERSIAL END",description:"There is plenty to argue about in that finish, even if the winner's hand was raised.",
+  PROTECTED_FINISH:{title:"PLENTY TO ARGUE ABOUT",description:"The decision stands, though the manner of victory left plenty of room for an argument.",
    tone:"DIRTY"},
-  INJURY_STOPPAGE:{title:"REFEREE STOPPAGE",description:"A serious injury forces the match to end early. The official winner is taken from the revised medical result.",
+  INJURY_STOPPAGE:{title:"REFEREE WAVES IT OFF",description:"The referee stopped the match when continuing became unsafe. There was no fall.",
    tone:"MEDICAL"},
-  OVER_THE_TOP_ROPE:{title:"FINAL ELIMINATION",description:"The last over-the-top-rope elimination decides the recorded winner.",
+  OVER_THE_TOP_ROPE:{title:"THE LAST ONE STANDING",description:"The final elimination came over the top rope, leaving one winner in the ring.",
    tone:"ELIMINATION"},
  };
  const match=finishes[method];
@@ -40,9 +40,9 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
  const dirtyDetail=cheater&&method==="DISQUALIFICATION"?
   " "+cheater+" was the recorded disqualified wrestler.":
   cheater&&method==="FOREIGN_OBJECT"?
-  " "+cheater+" was caught bringing the weapon into play.":"";
+  " "+cheater+" brought the weapon into play.":"";
  const runIn=entry.fallout?.interference?.outcome==="SUCCESS"?
-  " A confirmed outside run-in also took place.":"";
+  " There was also a ringside run-in.":"";
  return {title:result.title,description:result.description+dirtyDetail+affected+runIn,
   tone:result.tone,winnerLabel:winner};
 }

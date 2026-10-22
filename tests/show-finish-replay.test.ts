@@ -34,9 +34,9 @@ test("planned spots are never misreported as interference that actually succeede
  const entry=match("PROTECTED_FINISH");
  entry.fallout={injuries:[],eliminations:[],
   interference:{personName:"Manager",outcome:"ABORTED"}};
- assert.doesNotMatch(replayVerifiedMatchFinish(entry)!.description,/confirmed outside run-in/);
+ assert.doesNotMatch(replayVerifiedMatchFinish(entry)!.description,/r[s]?ingside run-in/);
  entry.fallout.interference!.outcome="SUCCESS";
- assert.match(replayVerifiedMatchFinish(entry)!.description,/confirmed outside run-in/);
+ assert.match(replayVerifiedMatchFinish(entry)!.description,/r[s]?ingside run-in/);
 });
 test("recorded dirty finish offender is named without inventing any moves",()=>{
  const entry=match("DISQUALIFICATION");
@@ -50,4 +50,12 @@ test("angles and unknown finishes cannot invent recorded match action",()=>{
  assert.equal(replayVerifiedMatchFinish({...match("CLEAN_PIN"),type:"SEGMENT"}),null);
  assert.match(replayVerifiedMatchFinish(match("UNSUPPORTED"))!.description,
   /official finish/);
+});
+
+test("a dirty finish never claims that the referee caught an unnoticed weapon",()=>{
+ const entry=match("FOREIGN_OBJECT");
+ entry.fallout={injuries:[],eliminations:[],finishCheaterName:"Alice"};
+ const replay=replayVerifiedMatchFinish(entry)!;
+ assert.match(replay.description,/concealed weapon/);
+ assert.doesNotMatch(replay.description,/caught bringing|foreign object|simulation/i);
 });

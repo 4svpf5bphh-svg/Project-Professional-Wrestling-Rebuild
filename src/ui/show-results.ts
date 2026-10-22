@@ -123,7 +123,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  const feature=node("section","ppw-final-bell ppw-ringside-dispatch");
  feature.dataset.showId=show.showId;
- append(feature,node("span","ppw-eyebrow","PPW / RINGSIDE"),
+ append(feature,node("span","ppw-eyebrow","MARTY VALE / RINGSIDE"),
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=showReactionWire(show);
