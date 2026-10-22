@@ -24,7 +24,9 @@ const week=(year:number,number:number)=>(year-1)*52+number-1;
 type Person={
  championship_titles:string[]|null;
  person_id:string;name:string;status:string;booking_division:string|null;
- career_stage:string|null;popularity:number|null;recognition:number|null;
+ career_stage:string|null;biological_age:number|null;
+ career_experience:number|null;generated_talent:boolean;debut_week_index:number|null;
+ popularity:number|null;recognition:number|null;
  momentum:number|null;morale:number|null;in_ring_quality:number|null;
  match_craft:number|null;presentation:number|null;stamina:number|null;
  safety:number|null;fatigue:number|null;wear:number|null;
@@ -51,6 +53,7 @@ const authorised=async(tx:SqlRows,s:ProfileScope)=>{
 };
 const personSql=String.raw`
  SELECT p.person_id,p.name,p.status,p.booking_division,p.career_stage,
+  p.biological_age,p.career_experience,p.generated_talent,p.debut_week_index,
   p.popularity,p.recognition,p.momentum,p.morale,p.in_ring_quality,
   p.match_craft,p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
   p.portable_gimmick_id,p.default_alignment,
@@ -138,6 +141,8 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
   return {personId:p.person_id,name:p.name,division:p.booking_division,
    championships:normaliseCurrentTitles(p.championship_titles),
    status:p.status,careerStage:p.career_stage,
+   biologicalAge:p.biological_age,careerExperience:p.career_experience,
+   generatedTalent:p.generated_talent,debutWeekIndex:p.debut_week_index,
     medicalSeverity:p.medical_clearance_week_index===null?null:p.medical_severity,
     medicalWeeksRemaining:p.medical_clearance_week_index===null?null:
      p.medical_clearance_week_index-auth.currentWeekIndex,

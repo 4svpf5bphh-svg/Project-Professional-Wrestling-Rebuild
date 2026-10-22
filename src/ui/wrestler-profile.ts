@@ -88,7 +88,8 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,
    signatureMove:view.persona.signatureMoves[0]?.name,
    finisherMove:view.persona.finishingMoves[0]?.name,
-   status:view.medicalWeeksRemaining!=null?
+   status:view.status==="RETIRED"?"RETIRED":
+    view.medicalWeeksRemaining!=null?
      "INJURED · "+view.medicalWeeksRemaining+" WEEKS TO CLEARANCE":
     view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
   },{context:view.onYourRoster?"ROSTER":"MARKET",
@@ -201,7 +202,21 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   root.append(connections);
   const history=section("Career & character timeline");
   history.append(el("p","ppw-profile-info","Career stage · "+
-   wrestlerLabel(view.careerStage)+" · Active identity · "+view.persona.personaName));
+   wrestlerLabel(view.careerStage)+" · "+
+   (view.status==="RETIRED"?"Retired identity":"Current identity")+" · "+
+   view.persona.personaName));
+  if(view.biologicalAge!==null){
+   history.append(el("p","ppw-profile-info","Age · "+
+    view.biologicalAge.toLocaleString("en-GB",{maximumFractionDigits:1})+
+    (view.careerExperience===null?"":
+     " · Career experience · "+Math.round(view.careerExperience)+"/100")));
+  }else history.append(el("p","ppw-profile-muted",
+   "Original career age was not recorded for this wrestler."));
+  if(view.generatedTalent&&view.debutWeekIndex!==null)
+   history.append(el("p","ppw-profile-info",
+    "Next generation · Entered the industry in Y"+
+    (Math.floor(view.debutWeekIndex/52)+1)+" W"+
+    (view.debutWeekIndex%52+1)));
   for(const era of view.history){
    history.append(el("p","ppw-profile-history",
     "Y"+(Math.floor(era.from/52)+1)+" W"+(era.from%52+1)+
