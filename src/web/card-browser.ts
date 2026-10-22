@@ -224,6 +224,8 @@ function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
   load:()=>call("business"),
+  previewRestructure:()=>call("previewRestructure"),
+  restructure:input=>call("restructurePromotion",input),
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
     ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),

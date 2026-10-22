@@ -2,6 +2,7 @@ import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
+ previewRestructureAsActor,restructurePromotionAsActor,
  staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
@@ -51,6 +52,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="industryFeatured")return industryFeaturedAsActor(context,
   worldId,promotionId,id("targetPromotionId"));
  if(method==="business")return businessAsActor(context,worldId,promotionId);
+ if(method==="previewRestructure")return previewRestructureAsActor(context,worldId,promotionId);
  if(method==="wrestlerDirectory"){
   const f=p.filter;
   if(!f||typeof f!=="object"||Array.isArray(f))
@@ -153,6 +155,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    ...(p.draftId===undefined?{}:{draftId:p.draftId as string}),
    ...(p.showSeriesId===undefined?{}:{showSeriesId:p.showSeriesId as string})});
  }
+ if(method==="restructurePromotion")
+  return restructurePromotionAsActor(context,{worldId,promotionId,requestId,expectedRevision});
  if(method==="hireTalentManager")return hireTalentManagerAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,staffId:id("staffId")});
  if(method==="releaseTalentManager")return releaseTalentManagerAsActor(context,{

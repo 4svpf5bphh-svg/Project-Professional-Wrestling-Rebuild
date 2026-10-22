@@ -37,6 +37,8 @@ import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {readBusinessWorkspace} from "../db/business-workspace.js";
+import {previewHumanPromotionRestructure,applyHumanPromotionRestructure}
+ from "../db/human-promotion-restructuring.js";
 import {readWrestlerDirectory,type DirectoryFilter} from "../db/wrestler-directory.js";
 import {readWrestlerProfile,editWrestlerRepertoire,type RepertoireEdit}
  from "../db/wrestler-profile.js";
@@ -58,6 +60,21 @@ export async function businessAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readBusinessWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+/** Explicitly authorised human rescue, sharing revision/replay safeguards. */
+export async function previewRestructureAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return previewHumanPromotionRestructure(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+export async function restructurePromotionAsActor(context:WorldApiContext,
+ input:{worldId:string;promotionId:string;requestId:string;expectedRevision:number}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return applyHumanPromotionRestructure(context.pool,{
+  ...input,playerId:context.actor.playerId});
 }
 /** Acknowledging completed contract news never touches the World revision. */
 export async function dismissAttentionAsActor(context:WorldApiContext,
