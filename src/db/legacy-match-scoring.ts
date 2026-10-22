@@ -155,7 +155,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
         p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
         p.popularity,p.recognition,p.momentum,p.default_alignment
         FROM ppw_people p WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])`,
-      [input.worldId,allPeople,(input.year-1)*52+input.week-1],
+      [input.worldId,allPeople,(show.year-1)*52+show.week-1],
     );
     if(persons.filter(p=>appearances.has(p.person_id)).length!==appearances.size)
       throw new Error("Scoring wrestler not found in World");
