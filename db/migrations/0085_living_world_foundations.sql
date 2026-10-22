@@ -44,3 +44,11 @@ FROM (SELECT world_id,count(*)::integer AS n FROM ppw_people
  GROUP BY world_id) counts
 WHERE w.world_id=counts.world_id AND w.show_economics_enabled
  AND w.talent_population_target IS NULL AND counts.n BETWEEN 1 AND 2500;
+
+-- Match development stores hundredths, not truncated smallint skill increases.
+ALTER TABLE ppw_people
+ ALTER COLUMN in_ring_quality TYPE double precision USING in_ring_quality::double precision,
+ ALTER COLUMN match_craft TYPE double precision USING match_craft::double precision,
+ ALTER COLUMN safety TYPE double precision USING safety::double precision,
+ ALTER COLUMN stamina TYPE double precision USING stamina::double precision,
+ ALTER COLUMN presentation TYPE double precision USING presentation::double precision;
