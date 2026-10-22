@@ -70,7 +70,7 @@ export async function recordCompletedMatchReportFactsInTransaction(
  tx:SqlRows,projection:Projection,
 ):Promise<AcceptedMedicalInjury[]>{
  const facts=deriveCompletedMatchReportFacts(projection);
- if(!facts.length)return;
+ if(!facts.length)return [];
  const sql=[
   "INSERT INTO ppw_completed_match_report_facts(",
   "world_id,show_id,match_id,rating_stars,execution_quality,actual_minutes,",
