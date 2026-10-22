@@ -2,7 +2,8 @@
  * Not an AI generated account: all facts come from the actual match simulation.
  */
 import type {SqlRows} from "./world-operations.js";
-import {recordVerifiedMedicalAbsencesInTransaction} ,type AcceptedMedicalInjury} from "./medical-availability.js";
+import {recordVerifiedMedicalAbsencesInTransaction,type AcceptedMedicalInjury}
+ from "./medical-availability.js";
 import type {previewArchivedShowMatchScoresInTransaction}
  from "./legacy-match-scoring.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
