@@ -37,3 +37,25 @@ test("no authenticated control: no fallback through cache or Groq",async()=>{
  await assert.rejects(loadRingsideCommentary(x.pool,scope,"fixture"),/unavailable to this controller/);
  assert.equal(x.calls(),1);
 });
+
+test("malformed cached articles fall back without a second SQL read",async()=>{
+ const bad=[
+  {...review,showHeadline:""},
+  {...review,closing:""},
+  {...review,slots:[review.slots[0],review.slots[0]]},
+  {...review,slots:[{slotId:"one",headline:"OK",recap:"OK",debug:"unexpected"}]},
+  {...review,slots:Array.from({length:31},(_,i)=>({slotId:"id"+i,headline:"h",recap:"r"}))},
+  {...review,slots:[]}
+ ];
+ for(const report of bad){
+  let reads=0;
+  const pool:TransactionPool={async connect(){return {release(){},
+   async query<T extends Record<string,unknown>>(){
+    reads++;return [{state:"READY",model:"openai/gpt-oss-120b",
+     report_json:report,attempts:1}] as unknown as T[];
+   }};}};
+  assert.deepEqual(await loadRingsideCommentary(pool,scope,undefined),
+   {status:"unavailable"});
+  assert.equal(reads,1);
+ }
+});
