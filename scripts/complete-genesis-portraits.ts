@@ -4,7 +4,7 @@ import {portraitCredit} from "../src/ui/wrestler-portrait.js";
 type Credit={file:string;author:string;license:string};
 type Person={name:string;division:string;promotions:string[];aliases:string[];status:string;photo:Credit|null};
 type Candidate=Credit&{source:string;description:string;strong:boolean};
-type Assessed=Person&{resolution:"existing"|"added"|"unresolved";reason:string;candidates:Candidate[]};
+type Assessed=Person&{resolution:"existing"|"existing-alias"|"added"|"added-category"|"unresolved";reason:string;candidates:Candidate[]};
 const people=(JSON.parse(await readFile("data/genesis-portrait-worklist.json","utf8")) as {people:Person[]}).people;
 if(people.length!==643||new Set(people.map(p=>p.name)).size!==643)throw Error("Unexpected Genesis roster");
 const assessed=new Map<string,Assessed>();
@@ -41,7 +41,7 @@ for(const a of assessed.values())if(a.resolution==="added"&&a.photo)used.add(a.p
 async function discover(p:Person):Promise<Assessed>{
  const existing=portraitCredit(p.name);
  if(existing)return {...p,photo:existing,resolution:"existing",reason:"Catalogue source retained; independent Commons audit required",candidates:[]};
- const variants=[...new Set([p.name,...p.aliases,p.name.normalize("NFKD").replace(/[\u0300-\u036f]/g,"")])].slice(0,5);
+ const variants=[...new Set([p.name,...p.aliases,p.name.normalize("NFKD").replace(/[\u0300-\u036f]/g,"")])].slice(0,process.env.PPW_RETRY_COMMONS_429==="1"?2:5);
  const hits=new Map<string,any>();let error="";
  for(const name of variants){
   const q=new URLSearchParams({action:"query",format:"json",formatversion:"2",generator:"search",
@@ -51,20 +51,25 @@ async function discover(p:Person):Promise<Assessed>{
    for(const page of r.query?.pages??[])if(page.title&&!page.missing)hits.set(page.title,page);
   }catch(e){error=String(e);}
   if(hits.size>=18)break;
-  await delay(150);
+  await delay(process.env.PPW_RETRY_COMMONS_429==="1"?500:150);
  }
  const candidates:Candidate[]=[];
  for(const page of hits.values()){
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info?.url||!info.mime?.startsWith("image/")||!meta)continue;
   const file=String(page.title).replace(/^File:/,"").replace(/_/g," ");
-  if(!/\.(jpg|jpeg|png|webp)$/i.test(file)||/cosplay|drawing|illustrat|artwork|poster|logo|figure|fan art/i.test(file))continue;
+  if(!/\.(jpg|jpeg|png|webp)$/i.test(file)||/cosplay|drawing|illustrat|artwork|poster|logo|figure|fan art|\bvs\.?\b|versus|\bteam\b|\band\b|\bwith\b/i.test(file))continue;
   const author=clean(meta.Artist?.value??""),license=clean(meta.LicenseShortName?.value??"");
   const description=clean(meta.ImageDescription?.value??"");
   if(!permitted.has(license)||author.length<3||author.length>180||/^(anonymous|unknown|not provided)$/i.test(author))continue;
   const titleMatch=variants.some(v=>contains(file.replace(/\.[^.]+$/,""),v));
   if(!titleMatch)continue;
-  const independentMatch=variants.some(v=>norm(v).length>=7&&norm(v).includes(" ")&&
+  // A shared name is not identity proof (previous passes found a musician and
+  // basketball player). Only wrestling-specific, singly identified evidence
+  // may be promoted automatically. Everything else stays a review candidate.
+  const credible=/\b(wrestler|professional wrestling|pro wrestling|wrestling|wwe|aew|njpw|stardom|tna|smackdown|raw|dynamite|nxt|ring of honor)\b/i.test(description)&&
+   !/\b(basketball|musician|saxophone|singer|football|cosplay)\b/i.test(description);
+  const independentMatch=credible&&variants.some(v=>norm(v).length>=7&&norm(v).includes(" ")&&
    contains(file.replace(/\.[^.]+$/,""),v)&&contains(description,v));
   candidates.push({file,author,license,source:source(file),
    description:description.slice(0,320),strong:independentMatch});
@@ -94,15 +99,20 @@ async function worker(){
   }
  }
 }
-await Promise.all(Array.from({length:4},()=>worker()));
+await Promise.all(Array.from({length:process.env.PPW_RETRY_COMMONS_429==="1"?2:4},()=>worker()));
 const ordered=people.map(p=>assessed.get(p.name)!);
 await writeFile("data/portrait-discovery-checkpoint.json",JSON.stringify({people:ordered},null,2)+"\n");
-const added=ordered.filter(p=>p.resolution==="added"),existing=ordered.filter(p=>p.resolution==="existing"),missing=ordered.filter(p=>p.resolution==="unresolved");
-const summary={total:643,existing:existing.length,newPhotos:added.length,unresolved:missing.length,
- coveragePercent:Math.round((existing.length+added.length)*10000/643)/100,checkedAt:new Date().toISOString(),
- caveat:"Automated identity corroboration requires independent visual spot-checks; Commons metadata audit is separate."};
+const added=ordered.filter(p=>p.resolution==="added"&&p.photo&&!portraitCredit(p.name));
+const previouslyCovered=people.filter(p=>portraitCredit(p.name)).length;
+const missing=ordered.filter(p=>!p.photo);
+const totalCovered=ordered.length-missing.length;
+const summary={total:643,previouslyCovered,additionsThisPass:added.length,
+ genuineGenesisPhotos:totalCovered,unresolved:missing.length,
+ coveragePercent:Math.round(totalCovered*10000/643)/100,checkedAt:new Date().toISOString(),
+ rateLimitedSearches:missing.filter(p=>p.reason.includes("HTTP 429")).length,
+ caveat:"Name + wrestling-specific metadata corroboration; visual review and the independent Commons source audit remain compulsory. Never treat HTTP 429 as a photograph absence."};
 await writeFile("data/portrait-assessment.json",JSON.stringify({summary,people:ordered},null,2)+"\n");
-const toAppend=added.filter(p=>p.photo&&!portraitCredit(p.name));
+const toAppend=added;
 if(toAppend.length){
  let catalogue=await readFile("src/ui/wrestler-portrait.ts","utf8");
  const anchor="\n};\nconst knownAliases:";
@@ -123,6 +133,17 @@ if(toAppend.length){
  if(!credits.includes("</ul>"))throw Error("Missing attribution list");
  credits=credits.replace("</ul>",lines+"\n</ul>");
  await writeFile("apps/web/public/portrait-credits.html",credits);
+ // Keep the exact Genesis inventory in sync with newly credited identities.
+ const work=JSON.parse(await readFile("data/genesis-portrait-worklist.json","utf8"));
+ const byName=new Map(ordered.map(p=>[p.name,p]));
+ for(const p of work.people){
+  const current=byName.get(p.name);
+  if(current?.photo){p.photo=current.photo;p.status="catalogued";}
+ }
+ work.counts.existing=work.people.filter((p:Person)=>p.photo).length;
+ work.counts.missing=643-work.counts.existing;
+ work.counts.catalogue+=toAppend.length;
+ await writeFile("data/genesis-portrait-worklist.json",JSON.stringify(work,null,2)+"\n");
 }
 console.log(JSON.stringify(summary));
 console.log("Fallback identities: "+missing.map(p=>p.name).join(" | "));

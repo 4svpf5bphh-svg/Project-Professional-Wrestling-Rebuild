@@ -1,6 +1,11 @@
 name: Genesis portrait research - unreleased
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/genesis-portrait-completion-20261023
+    paths:
+      - scripts/complete-genesis-portraits.ts
 permissions:
   contents: write
 concurrency:
@@ -17,7 +22,9 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Identify and assess all 643 Genesis identities
+      - name: Retry only rate-limited Genesis identities
+        env:
+          PPW_RETRY_COMMONS_429: "1"
         run: npx tsx scripts/complete-genesis-portraits.ts
       - name: Keep full assessment report even if research fails
         if: always()
@@ -29,11 +36,18 @@ jobs:
             data/portrait-discovery-checkpoint.json
           retention-days: 90
           if-no-files-found: warn
+      - name: Verify TypeScript and complete roster/credits invariant
+        run: |
+          npm run typecheck
+          npm test
+          npm run web:build
+      - name: Independently verify Commons files and commercial reuse credits
+        run: npx tsx scripts/audit-portraits.ts
       - name: Commit results on the isolated branch only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/portrait-assessment.json data/portrait-discovery-checkpoint.json src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html
+          git add data/genesis-portrait-worklist.json data/portrait-assessment.json data/portrait-discovery-checkpoint.json src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html
           if ! git diff --cached --quiet; then
             git commit -m "feat(portraits): full Genesis assessment with corroborated Commons sources"
             git push origin HEAD:feature/genesis-portrait-completion-20261023
