@@ -157,7 +157,11 @@ export async function renewWorldStaff(pool:TransactionPool,
     return {accepted:false,reason:member.name+" declined the proposed renewal."};
    if(Number(m.cash)<input.weeklySalary*4)
     throw new Error("Four weeks of the renewed salary must be available");
-   const expiry=contract.expires_week_index+input.termWeeks;
+   // Mutually agreed renewal replaces the remaining contract immediately:
+   // the offered salary applies now for exactly 52 or 104 weekly payments,
+   // rather than silently stacking another term onto the old expiry.
+   // start_week_index remains the actual start of the staff career.
+   const expiry=current+input.termWeeks-1;
    await tx.query([
     "UPDATE ppw_staff_employments SET weekly_salary=$4,term_weeks=$5,expires_week_index=$6,",
     "morale=least(100,greatest(0,morale+CASE WHEN $4::bigint>=$7::bigint THEN 5 ELSE -3 END))",

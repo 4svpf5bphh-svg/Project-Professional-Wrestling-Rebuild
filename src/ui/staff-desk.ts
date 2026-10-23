@@ -149,7 +149,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const team=el("section","ppw-staff-panel ppw-staff-team");
   team.append(el("span","ppw-staff-kicker","YOUR BACKSTAGE CREW"),
    el("h2","","Departments"),el("p","ppw-staff-muted",
-    "One exclusive World employee per role. Vacancies have basic cover, so small promotions can still put on shows."));
+    "One exclusive World employee per role. Vacancies have basic cover. Renewals replace the existing salary and remaining term immediately."));
   const teamRows=el("div","ppw-staff-team-list");
   for(const role of STAFF_ROLES){
    const member=view.employees.find(e=>e.role===role);
