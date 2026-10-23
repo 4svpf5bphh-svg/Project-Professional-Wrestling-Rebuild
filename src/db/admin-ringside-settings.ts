@@ -39,9 +39,11 @@ export async function changeAdminRingsideSettings(pool:TransactionPool,
     detail=excluded.detail,creativity=excluded.creativity,reasoning=excluded.reasoning,
     additional_guidance=excluded.additional_guidance,version=excluded.version,
     updated_by=excluded.updated_by,updated_at=now()
+   WHERE ppw_admin_ringside_settings.version=$10
    RETURNING model,voice,detail,creativity,reasoning,additional_guidance,version`,
    [worldId,settings.model,settings.voice,settings.detail,settings.creativity,
-    settings.reasoning,settings.additionalGuidance,expectedVersion+1,playerId]);
+    settings.reasoning,settings.additionalGuidance,expectedVersion+1,playerId,expectedVersion]);
+  if(rows.length!==1)throw new Error("Ringside settings changed. Reload Admin to review.");
   await tx.query(`INSERT INTO ppw_admin_action_audit
    (world_id,event_id,player_id,action,context_json)
    VALUES($1,$2,$3,'RINGSIDE_SETTINGS_UPDATED',$4::jsonb)`,

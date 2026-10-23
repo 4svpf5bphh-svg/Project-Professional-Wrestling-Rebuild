@@ -49,6 +49,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
  root.append(world,studio);
  let busy=false;
+ let lastNotice="";let lastError=false;
  async function load(){
   const data=await request("/api/admin","GET",ctx.csrfToken) as AdminData;
   const p=data.plan,ready=p.ready;
@@ -60,6 +61,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   if(p.blockers.length)status.append(el("p","ppw-admin-warning",`Needs attention: ${p.blockers.join(", ").replaceAll("_"," ")}`));
   const actions=el("div","ppw-admin-actions");
   const info=el("p","ppw-admin-message","");
+  if(lastNotice)message(info,lastNotice,lastError);
   const advance=el("button","ppw-admin-primary",ready.phase==="OPEN"?"Advance World week":"Continue resolution") as HTMLButtonElement;
   advance.type="button";
   advance.onclick=async()=>{
@@ -76,8 +78,10 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      result.status==="BLOCKED"?`Blocked at ${last}: ${result.blockers.join(", ").replaceAll("_"," ")}`:
      `Completed ${last}. The next stage is ready to continue.`,
      result.status==="BLOCKED");
+    lastNotice=info.textContent??"";lastError=result.status==="BLOCKED";
     await load();
-   }catch(e){message(info,e instanceof Error?e.message:"Resolution failed",true);}
+   }catch(e){message(info,e instanceof Error?e.message:"Resolution failed",true);
+    lastNotice=info.textContent??"";lastError=true;}
    finally{busy=false;advance.disabled=false;}
   };
   const reopen=el("button","ppw-admin-secondary","Reopen booking for 24 hours") as HTMLButtonElement;
@@ -88,8 +92,10 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    try{
     await request("/api/playtest-booking","POST",ctx.csrfToken,{
      confirm:"EXTEND_SHARED_BOOKING",year:p.year,week:p.week
-    });message(info,"Booking reopened for 24 hours. Existing drafts remain intact.");await load();
-   }catch(e){message(info,e instanceof Error?e.message:"Booking could not be reopened",true);}
+    });message(info,"Booking reopened for 24 hours. Existing drafts remain intact.");
+    lastNotice=info.textContent??"";lastError=false;await load();
+   }catch(e){message(info,e instanceof Error?e.message:"Booking could not be reopened",true);
+    lastNotice=info.textContent??"";lastError=true;}
    finally{busy=false;reopen.disabled=false;}
   };
   reopen.hidden=ready.phase!=="OPEN";

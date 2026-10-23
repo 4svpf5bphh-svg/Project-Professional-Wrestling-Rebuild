@@ -206,7 +206,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     "A manager still needs to confirm their show. Both promotions must be ready before advancing.":
     /already progressed/i.test(message)?
     "The World has moved on. Refresh Home to see the new week.":
-    "Cannot advance this week yet. Review your shows or retry from Home."});
+    (message?"Resolution halted: "+message.slice(0,220):"Unable to continue the World. Review Admin diagnostics.")});
   }
  }
  if(path==="/api/results-commentary"){

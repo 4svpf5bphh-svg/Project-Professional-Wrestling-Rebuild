@@ -74,13 +74,18 @@ export async function resolveWorldWeekShows(
  const remainingShows=shows.filter(s=>!done.has(s.draft_id));
  let recorded=0,retried=0;
  for(const show of remainingShows.slice(0,4)){
-  const result=await resolveCanonicalShow(pool,{
-   worldId:input.worldId,promotionId:show.promotion_id,
-   showId:show.draft_id,year:input.year,week:input.week,
-   resolutionId:input.resolutionId,
-  });
-  if(result==="RECORDED")recorded++;
-  else retried++;
+  try{
+   const result=await resolveCanonicalShow(pool,{
+    worldId:input.worldId,promotionId:show.promotion_id,
+    showId:show.draft_id,year:input.year,week:input.week,
+    resolutionId:input.resolutionId,
+   });
+   if(result==="RECORDED")recorded++;
+   else retried++;
+  }catch(e){
+   const why=e instanceof Error?e.message:"Unknown results failure";
+   throw new Error("Show "+show.promotion_id+" could not settle: "+why);
+  }
  }
  // Check the required set still matches and every result is durable.
  await withWorldTransaction(pool,async tx=>{
