@@ -13,7 +13,7 @@ export type RingsideMemory={
 };
 export const EMPTY_RINGSIDE_MEMORY:RingsideMemory={priorMatches:[],programmes:[]};
 type Scope={worldId:string;promotionId:string;showId:string;playerId:string};
-type HistoricRow={year:number;week:number;actual_finish:string;
+type HistoricRow={promotion_id:string;year:number;week:number;actual_finish:string;
  actual_winner_side:string;payload:unknown};
 type ProgrammeRow={started_week_index:number;participants:string[];
  beats:string|number;last_kind:string|null};
@@ -33,9 +33,9 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
   // The same authenticated human controller must own the promotion.
   // One bounded set of recent historical cards (not the entire World).
   const rows=await db.query<HistoricRow>(`
-   SELECT old.year,old.week,match.actual_finish,match.actual_winner_side,
+   SELECT old.promotion_id,old.year,old.week,match.actual_finish,match.actual_winner_side,
     card.payload FROM (
-     SELECT c.world_id,c.show_id,c.year,c.week FROM ppw_completed_shows c
+     SELECT c.world_id,c.promotion_id,c.show_id,c.year,c.week FROM ppw_completed_shows c
      JOIN ppw_promotion_controls pc ON pc.world_id=c.world_id
       AND pc.promotion_id=c.promotion_id AND pc.player_id=$3 AND pc.active
      JOIN ppw_memberships membership ON membership.world_id=pc.world_id
@@ -54,6 +54,10 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
    winners:string[];people:string[]}[]=[];
   const people=new Set<string>(ids);
   for(const row of rows){
+   // Defence in depth: reject future or other-promotion receipts even if a
+   // future SQL refactor accidentally widens the bounded owner-scoped query.
+   const then=(row.year-1)*52+row.week-1;
+   if(row.promotion_id!==scope.promotionId||!Number.isInteger(then)||then<0||then>=weekIndex)continue;
    try{
     const match=readCanonicalMatchLayout(row.payload);
     const cast=match.participants.map(x=>x.personId);

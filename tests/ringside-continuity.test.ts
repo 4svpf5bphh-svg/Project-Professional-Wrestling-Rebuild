@@ -28,11 +28,11 @@ test("Ringside history is a few certified earlier, owner-scoped facts",async()=>
     assert.match(sql,/\)<\$5/);
     assert.deepEqual(params,["w","player-promo","controller","new",2]);
     return [
-     {year:1,week:1,actual_finish:"FLASH_PIN",actual_winner_side:"B",
+     {promotion_id:"player-promo",year:1,week:1,actual_finish:"FLASH_PIN",actual_winner_side:"B",
       payload:{participants:[
        {personId:"omega",contractId:"c1"},
        {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}},
-     {year:1,week:2,actual_finish:"CLEAN_PIN",actual_winner_side:"A",
+     {promotion_id:"player-promo",year:1,week:2,actual_finish:"CLEAN_PIN",actual_winner_side:"A",
       payload:{participants:[{personId:"other",contractId:"c3"},
        {personId:"unrelated",contractId:"c4"}],scriptedWinner:"other"}}
     ] as unknown as readonly T[];
@@ -75,4 +75,35 @@ test("history rejects cross-show scope before any database operation",async()=>{
  const pool:TransactionPool={async connect(){throw Error("unexpected access");}};
  await assert.rejects(readRingsideMemory(pool,{...scope,showId:"forged"},show),
   /history scope/);
+});
+
+test("Ringside discards future and another promotion's receipts even if an unexpected query supplied them",async()=>{
+ let seen=0;
+ const pool:TransactionPool={async connect(){return{
+  release(){},
+  async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]):Promise<readonly T[]>{
+   seen++;
+   if(sql.includes("ppw_completed_show_matches")){
+    assert.match(sql,/c.promotion_id=\$2/);
+    assert.match(sql,/SELECT old.promotion_id/);
+    return [
+     {promotion_id:"rival-promo",year:1,week:1,actual_finish:"CLEAN_PIN",
+      actual_winner_side:"B",payload:{participants:[{personId:"omega",contractId:"c1"},
+       {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}},
+     {promotion_id:"player-promo",year:1,week:4,actual_finish:"CLEAN_PIN",
+      actual_winner_side:"B",payload:{participants:[{personId:"omega",contractId:"c1"},
+       {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}}
+    ] as unknown as readonly T[];
+   }
+   if(sql.includes("ppw_programmes p")){
+    assert.match(sql,/p.started_week_index<\$4/);
+    assert.match(sql,/activity.week_index<\$4/);
+    return [] as readonly T[];
+   }
+   throw Error("Unexpected leakage-prone query: "+sql);
+  }
+ };}};
+ const history=await readRingsideMemory(pool,scope,show);
+ assert.equal(seen,2);
+ assert.deepEqual(history,{priorMatches:[],programmes:[]});
 });
