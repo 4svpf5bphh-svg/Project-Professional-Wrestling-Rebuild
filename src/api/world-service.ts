@@ -29,7 +29,7 @@ import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../db
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
-import {hireWorldTalentManager,releaseWorldTalentManager,type StaffEmploymentInput}
+import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
@@ -199,6 +199,24 @@ export async function releaseTalentManagerAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.employmentId,"employment");
  return releaseWorldTalentManager(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function hireStaffAsActor(context:WorldApiContext,
+ input:Omit<StaffEmploymentInput,"playerId">&{staffId:string;weeklySalary:number;termWeeks:52|104}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.staffId,"staff member");
+ return hireWorldStaff(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function releaseStaffAsActor(context:WorldApiContext,
+ input:Omit<StaffEmploymentInput,"playerId">&{employmentId:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.employmentId,"staff employment");
+ return releaseWorldStaff(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function renewStaffAsActor(context:WorldApiContext,
+ input:Omit<StaffEmploymentInput,"playerId">&{employmentId:string;weeklySalary:number;termWeeks:52|104}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.employmentId,"staff employment");
+ return renewWorldStaff(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function setStaffContinuityAsActor(context:WorldApiContext,input:StaffContinuityInput){
   validate(context.actor.playerId,"actor");

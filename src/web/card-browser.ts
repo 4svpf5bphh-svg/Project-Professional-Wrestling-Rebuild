@@ -210,8 +210,11 @@ function staffPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):StaffPort{
  return {load:()=>call("staff"),
   save:input=>call("setStaffContinuity",input),
-  hire:input=>call("hireTalentManager",input),
-  release:input=>call("releaseTalentManager",input),
+  hire:input=>call("hireStaff",input),
+  release:input=>call("releaseStaff",input),
+  renew:input=>call("renewStaff",input),
+  openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
+  openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)
  };

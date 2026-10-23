@@ -3,7 +3,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,industryWorldAsActor,industryFeaturedAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -157,7 +157,18 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="restructurePromotion")
   return restructurePromotionAsActor(context,{worldId,promotionId,requestId,expectedRevision});
- if(method==="hireTalentManager")return hireTalentManagerAsActor(context,{
+ if(method==="hireStaff"||method==="renewStaff"){
+   const salary=p.weeklySalary,term=p.termWeeks;
+   if(typeof salary!=="number"||!Number.isSafeInteger(salary)||
+    (term!==52&&term!==104))throw new Error("Invalid staff contract terms");
+   if(method==="hireStaff")return hireStaffAsActor(context,{worldId,promotionId,
+    requestId,expectedRevision,staffId:id("staffId"),weeklySalary:salary,termWeeks:term});
+   return renewStaffAsActor(context,{worldId,promotionId,requestId,
+    expectedRevision,employmentId:id("employmentId"),weeklySalary:salary,termWeeks:term});
+  }
+  if(method==="releaseStaff")return releaseStaffAsActor(context,{
+   worldId,promotionId,requestId,expectedRevision,employmentId:id("employmentId")});
+  if(method==="hireTalentManager")return hireTalentManagerAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,staffId:id("staffId")});
  if(method==="releaseTalentManager")return releaseTalentManagerAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,employmentId:id("employmentId")});

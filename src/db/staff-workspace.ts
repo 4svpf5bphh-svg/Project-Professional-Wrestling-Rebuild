@@ -1,27 +1,50 @@
-/** Staff permissions belong to the active human controller. A single
- * private current-week snapshot, never World-wide roster or ledger hydration.
- * Configured permissions are not an instruction to change authored results.
+/** Private Staff Office: two bounded reads, preserving original permissions.
+ * Available World staff identities are seeded from the original World seed.
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
-import {worldTalentManagers} from "../domain/world-staff.js";
+import {worldStaff,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
  const {worldId,promotionId,playerId}=input;
- if(![worldId,promotionId,playerId].every(s=>typeof s==="string"&&
-  s.length>0&&s.length<=200))throw new Error("Invalid Staff desk request");
+ if(![worldId,promotionId,playerId].every(s=>typeof s==="string"&&s.length>0&&s.length<=200))
+  throw new Error("Invalid Staff desk request");
  return withSqlClient(pool,async tx=>{
   const owners=await tx.query<{
-   year:number;week:number;revision:string|number;
-   can_edit:boolean;allow_unfinished_fallback:boolean|null;
-   allow_logistics_fallback:boolean|null;
+   year:number;week:number;revision:string|number;can_edit:boolean;
+   allow_unfinished_fallback:boolean|null;allow_logistics_fallback:boolean|null;
    permitted_days:number[]|null;permitted_venue_ids:string[]|null;
    frozen_logistics:boolean|null;auto_renew_same_terms:boolean|null;
-   world_seed:string;employed_staff_id:string|null;employment_id:string|null;
+   world_seed:string;promotion_cash:string;employments:unknown;
+   contracts_due:unknown;repeated_programmes:number;
+   employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
+    p.cash::text AS promotion_cash,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object(
+     'staffId',e.staff_id,'employmentId',e.employment_id,
+     'role',e.role,'weeklySalary',e.weekly_salary,
+     'startWeekIndex',e.start_week_index,'expiresWeekIndex',e.expires_week_index,
+     'termWeeks',e.term_weeks))
+     FROM ppw_staff_employments e WHERE e.world_id=w.world_id
+      AND e.promotion_id=$3 AND e.status='ACTIVE'),'[]'::jsonb) AS employments,
+    COALESCE((SELECT jsonb_agg(to_jsonb(due)) FROM
+     (SELECT c.contract_id AS "contractId",person.name AS "personName",
+      c.expires_week_index-((w.year-1)*52+w.week-1) AS "weeksRemaining"
+      FROM ppw_contracts c JOIN ppw_people person
+       ON person.world_id=c.world_id AND person.person_id=c.person_id
+      WHERE c.world_id=w.world_id AND c.promotion_id=$3
+       AND c.status='SIGNED'
+       AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
+        AND (w.year-1)*52+w.week+11
+      ORDER BY c.expires_week_index,c.contract_id LIMIT 5
+     ) due),'[]'::jsonb) AS contracts_due,
+    (SELECT count(*)::integer FROM ppw_programmes programme
+     WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
+     AND programme.status='ACTIVE' AND programme.repetition>=3) AS repeated_programmes,
     employed.staff_id AS employed_staff_id,
     employed.employment_id,employed.weekly_salary::text AS manager_salary,
     ARRAY(SELECT e.staff_id FROM ppw_staff_employments e
@@ -43,19 +66,45 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     AND l.promotion_id=$3 AND l.controller_player_id=$2
    LEFT JOIN LATERAL (SELECT e.staff_id,e.employment_id,e.weekly_salary
     FROM ppw_staff_employments e WHERE e.world_id=w.world_id
-     AND e.promotion_id=$3 AND e.status='ACTIVE' LIMIT 1) employed ON TRUE
+     AND e.promotion_id=$3 AND e.role='TALENT_MANAGER'
+     AND e.status='ACTIVE' LIMIT 1) employed ON TRUE
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(owners.length!==1)throw new Error("Staff desk access denied");
-  const current=owners[0]!;
+  const current=owners[0]!,catalog=worldStaff(current.world_seed);
   const managers=worldTalentManagers(current.world_seed);
   const busy=new Set(current.occupied_staff_ids);
   const employed=managers.find(p=>p.staffId===current.employed_staff_id);
   if(current.employed_staff_id&&!employed)throw new Error("Unknown employed World manager");
+  type Row={staffId:string;employmentId:string;role:StaffRole;
+   weeklySalary:number;startWeekIndex:number;expiresWeekIndex:number;termWeeks:52|104};
+  const rows=current.employments as Row[];
+  const weekIndex=(current.year-1)*52+current.week-1;
+  const employees=rows.map(e=>{
+   const member=catalog.find(s=>s.staffId===e.staffId);
+   if(!member||member.role!==e.role)throw new Error("Unknown employed World staff member");
+   const salary=Number(e.weeklySalary);
+   return {...member,...e,weeklySalary:salary,
+    weeksRemaining:Math.max(0,e.expiresWeekIndex-weekIndex+1),
+    buyoutCost:staffBuyout(salary,e.expiresWeekIndex,weekIndex)};
+  });
+  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"}[]=[];
+  const renewals=current.contracts_due as {contractId:string;personName:string;weeksRemaining:number}[];
+  if(renewals.length)notices.push({department:"Talent office",target:"contracts",
+   message:renewals.length+" wrestler contract"+(renewals.length===1?"":"s")+
+    " nearing expiry, including "+renewals[0]!.personName+"."});
+  if(current.repeated_programmes>0)notices.push({department:"Creative desk",target:"programmes",
+   message:current.repeated_programmes+" active programme"+
+    (current.repeated_programmes===1?" has":"s have")+
+    " repeated recent beats. Review the direction."});
+  for(const e of employees.filter(e=>e.weeksRemaining<=12))
+   notices.push({department:e.role.replaceAll("_"," "),target:"staff",
+    message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+
+     (e.weeksRemaining===1?"":"s")+"."});
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`
    SELECT venue_id,name,capacity,weekly_hire_cost::text
-    FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE'
-    ORDER BY name,venue_id LIMIT 129`,[worldId]);
+   FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE'
+   ORDER BY name,venue_id LIMIT 129`,[worldId]);
   if(venues.length>128)throw new Error("Venue catalogue exceeds staff configuration limit");
   return {year:current.year,week:current.week,
    worldRevision:Number(current.revision),canEdit:current.can_edit,
@@ -64,6 +113,10 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    talentManager:employed?{...employed,employmentId:current.employment_id!,
     weeklySalary:Number(current.manager_salary)}:null,
    availableManagers:employed?[]:managers.filter(m=>!busy.has(m.staffId)),
+   employees,market:catalog.filter(m=>!busy.has(m.staffId)),
+   promotionCash:Number(current.promotion_cash),
+   weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
+   notices:notices.slice(0,8),
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
    permittedVenueIds:current.permitted_venue_ids??[],
