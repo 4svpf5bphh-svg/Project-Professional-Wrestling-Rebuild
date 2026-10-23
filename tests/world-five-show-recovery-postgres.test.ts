@@ -50,18 +50,22 @@ test("five real shows resolve in two bounded batches and overdue World publishes
    await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '2 days' WHERE world_id=$1",[worldId]);
   });
   assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:0})).status,"APPLIED");
-  const first=await driveWorldResolution(db.pool,{worldId,resolutionId,
-   maxStages:6,manualRecovery:true});
-  assert.equal(first.status,"LIMIT_REACHED");
-  const partial=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
-   "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]));
-  assert.equal(partial[0]?.n,"4");
-  const two=await driveWorldResolution(db.pool,{worldId,resolutionId,
-   maxStages:1,manualRecovery:true});
-  assert.equal(two.steps[0]?.action,"RESOLVE_DETAILED_SHOWS");
-  const finished=await driveWorldResolution(db.pool,{worldId,resolutionId,
-   maxStages:6,manualRecovery:true});
-  assert.equal(finished.status,"PUBLISHED");
+  let published=false,detailedPasses=0;
+  for(let i=0;i<16;i++){
+   const step=await driveWorldResolution(db.pool,{worldId,resolutionId,
+    maxStages:1,manualRecovery:true});
+   if(step.steps[0]?.action==="RESOLVE_DETAILED_SHOWS"){
+    detailedPasses++;
+    const count=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
+     "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]));
+    assert.equal(count[0]?.n,String(detailedPasses===1?4:5));
+   }
+   if(step.status==="PUBLISHED"){published=true;break;}
+   assert.equal(step.status,"LIMIT_REACHED",
+    "No stage may be silently blocked: "+JSON.stringify(step.blockers));
+  }
+  assert.equal(published,true,"The full World must publish after deliberate retries");
+  assert.equal(detailedPasses,2,"Five submitted shows need two bounded detailed batches");
   const records=await withWorldTransaction(db.pool,tx=>tx.query<{
    year:number;week:number;phase:string;hours:number;receipts:string
   }>(`SELECT w.year,w.week,w.phase,
