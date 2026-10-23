@@ -83,11 +83,14 @@ const curated:Readonly<Record<string,string>>={
   "Komander": "Komander Luchador (cropped).jpg",
   "Místico": "Mistico posing BW crop.jpg",
   "Kushida": "KUSHIDA at BCW East meets West 2.jpg",
-  "Xelhua": "Xelhua conectando con la audiencia en la Arena Puebla.jpg"
+  "Xelhua": "Xelhua conectando con la audiencia en la Arena Puebla.jpg",
+  "Ethan Page": "Ethan Page (cropped).jpg",
+  "Ricky Sosa": "Ricky Sosa (cropped).jpg",
+  "Hikari Minami": "Hikari Minami.JPG"
 };
 type Credit={file:string;author:string;license:string};
 type Person={name:string;aliases:string[];status:string;photo:Credit|null};
-type Candidate=Credit&{strong:boolean;description:string;source:string};
+type Candidate=Credit&{strong?:boolean;singleSubject?:boolean;wrestlingContext?:boolean;description:string;source:string};
 type Decision=Person&{resolution:string;reason:string;candidates?:Candidate[]};
 const accepted=new Set(["CC BY 2.0","CC BY 4.0","CC BY-SA 2.0","CC BY-SA 3.0","CC BY-SA 4.0","CC0"]);
 const licenseUrls:Record<string,string>={"CC BY 2.0":"https://creativecommons.org/licenses/by/2.0/",
@@ -101,6 +104,9 @@ const names=new Set(Object.keys(curated));
 const data=JSON.parse(await readFile("data/portrait-assessment.json","utf8")) as {summary:Record<string,unknown>;people:Decision[]};
 const work=JSON.parse(await readFile("data/genesis-portrait-worklist.json","utf8")) as {counts:Record<string,any>;people:Person[]};
 const cp=JSON.parse(await readFile("data/portrait-discovery-checkpoint.json","utf8")) as {people:Decision[]};
+let bulk:{people:Record<string,{candidates:Candidate[]}>}|null=null;
+try{bulk=JSON.parse(await readFile("data/genesis-bulk-candidates.json","utf8"));}
+catch{/* Original curated pass before bulk evidence was collected. */}
 const byName=new Map(data.people.map(p=>[p.name,p]));
 const rows=new Map(work.people.map(p=>[p.name,p]));
 const taken=new Set(work.people.flatMap(p=>p.photo?[p.photo.file.toLowerCase()]:[]));
@@ -113,7 +119,8 @@ for(const [name,file] of Object.entries(curated)){
  const p=byName.get(name),person=rows.get(name);
  if(!p||!person){throw Error("Curated name absent from Genesis: "+name);}
  if(p.photo||portraitCredit(name)){unresolved.push({name,reason:"Already covered"});continue;}
- const candidate=p.candidates?.find(x=>x.file===file);
+ const candidate=p.candidates?.find(x=>x.file===file)??
+  bulk?.people[name]?.candidates?.find(x=>x.file===file);
  const wikilinkDescription=candidate?.description.includes("w:"+name)&&
   /professional wrestler/i.test(candidate.description)&&candidate.file.startsWith(name);
  const namedWrestlingSubject=candidate&&
@@ -121,7 +128,8 @@ for(const [name,file] of Object.entries(curated)){
   (" "+candidate.description.toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ")+" ")
    .includes(" "+name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
     .replace(/[^\p{L}\p{N}]+/gu," ").trim()+" ");
- if(!candidate||(!candidate.strong&&!wikilinkDescription&&!namedWrestlingSubject)){
+ if(!candidate||(!candidate.strong&&!wikilinkDescription&&!namedWrestlingSubject&&
+  !(candidate.singleSubject&&candidate.wrestlingContext))){
   unresolved.push({name,reason:"No independent identity corroboration for selected file"});continue;
  }
  if(!accepted.has(candidate.license)||candidate.author.trim().length<3||
