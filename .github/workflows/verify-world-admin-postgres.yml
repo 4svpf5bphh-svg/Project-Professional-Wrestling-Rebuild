@@ -1,8 +1,9 @@
-name: Verify World & Admin PostgreSQL
+name: Verify World, Admin & Ringside PostgreSQL
 on:
   push:
     branches:
       - feature/admin-world-reliability-20261023
+      - feature/ringside-portrait-reliability-20261023
   workflow_dispatch:
 concurrency:
   group: world-admin-pg-${{ github.ref }}
