@@ -14,3 +14,12 @@
  .ppw-result-story{padding:13px;gap:12px}
  .ppw-ringside-slot{font-size:14px;line-height:1.62}
 }
+
+.ppw-ringside-ai-status{display:inline-flex;align-items:center;margin:7px 0 8px;
+ border:1px solid #8c79c0;border-radius:20px;padding:5px 9px;
+ font:800 10px/1.2 system-ui;letter-spacing:.08em;color:#ccb9fc;
+ background:#17162b;}
+.ppw-ringside-dispatch[data-ai-status="ready"] .ppw-ringside-ai-status{
+ color:#bafde8;border-color:#53ad96;background:#13372e}
+.ppw-ringside-dispatch[data-ai-status="fallback"] .ppw-ringside-ai-status{
+ color:#ffd0bd;border-color:#9d6471;background:#39212d}

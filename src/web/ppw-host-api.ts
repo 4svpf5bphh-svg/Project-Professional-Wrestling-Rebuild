@@ -5,11 +5,11 @@
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
-import {loadRingsideCommentary,generateGroqReview} from "../db/ringside-commentary.js";
+import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {withSqlClient} from "../db/postgres.js";
 import {planNextWorldResolutionAction} from "../db/world-resolution-pipeline.js";
-import {readAdminRingsideSettings,changeAdminRingsideSettings}
+import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsideReport}
  from "../db/admin-ringside-settings.js";
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
@@ -115,12 +115,16 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      planNextWorldResolutionAction(pool,cfg.worldId),
      readAdminRingsideSettings(pool,cfg.worldId),
      withSqlClient(pool,tx=>tx.query<{show_id:string;show_name:string|null;year:number;week:number}>(`
-       SELECT c.show_id,d.show_name,c.year,c.week
+       SELECT c.show_id,d.show_name,c.year,c.week,
+        r.state AS editorial_state,r.attempts AS editorial_attempts
        FROM ppw_completed_shows c
        JOIN ppw_promotion_controls p ON p.world_id=c.world_id
         AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
        LEFT JOIN ppw_booking_drafts d ON d.world_id=c.world_id
         AND d.draft_id=c.show_id
+       LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
+        AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
+        AND r.prompt_version='ringside-v4'
        WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
        [cfg.worldId,user.playerId]))
     ]);
@@ -136,6 +140,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(path==="/api/admin"){
    if(!allow("admin-settings:"+cfg.worldId,12,60*60_000))
     return json(429,{error:"Admin settings rate limit reached"});
+   if(body.action==="RETRY_FAILED_RINGSIDE"){
+    if(typeof body.showId!=="string"||body.showId.length>200)
+     return json(400,{error:"Select a completed show"});
+    try{return json(200,await rearmFailedRingsideReport(pool,cfg.worldId,
+      user.playerId,body.showId));}
+    catch(e){return json(409,{error:e instanceof Error?e.message:
+      "Failed review retry was not permitted"});}
+   }
    if(body.action!=="SAVE_RINGSIDE"||
       !Number.isSafeInteger(body.expectedVersion)||
       typeof body.settings!=="object")
@@ -169,7 +181,11 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    return json(200,{review,preview:true});
   }catch(e){
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");
-   return json(422,{error:"Ringside preview failed validation or provider response. No show was changed."});
+   const safe=e instanceof RingsideGenerationError?e.message:
+    "Groq's report failed a factual safety check. No published review was changed.";
+   return json(e instanceof RingsideGenerationError&&
+    e.code==="PROVIDER_LIMIT"?429:422,{error:safe,
+    code:e instanceof RingsideGenerationError?e.code:"FACT_VALIDATION"});
   }
  }
  if(path==="/api/playtest-booking"){

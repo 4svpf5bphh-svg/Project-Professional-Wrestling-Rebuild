@@ -7,7 +7,8 @@ type ActionPlan={
   cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number};
 };
 type AdminData={plan:ActionPlan;settings:RingsideSettings;
- groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number}[]};
+ groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
+ editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type Context={csrfToken:string};
@@ -127,7 +128,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const aiStatus=el("p","ppw-admin-message","");
   if(!data.groqConfigured)message(aiStatus,"Groq API key is not configured; previews will be unavailable.",true);
   const latest=selectControl(data.shows.map(x=>[x.show_id,
-   `Y${x.year} W${x.week} · ${x.show_name??"Weekly show"}`] as [string,string]),
+   `Y${x.year} W${x.week} · ${x.show_name??"Weekly show"} · ${x.editorial_state==="READY"?"AI published":x.editorial_state==="FAILED"?"AI failed":"No AI article"}`] as [string,string]),
    data.shows[0]?.show_id??"");
   if(!data.shows.length){latest.disabled=true;latest.append(option("No completed player show yet",""));}
   const selectedSettings=()=>({
@@ -168,9 +169,28 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    }catch(e){message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);}
    finally{busy=false;previewBtn.disabled=false;}
   };
+  const recover=el("button","ppw-admin-secondary","Retry failed AI report") as HTMLButtonElement;
+  recover.type="button";
+  const toggleRetry=()=>{
+   const entry=data.shows.find(x=>x.show_id===latest.value);
+   recover.hidden=entry?.editorial_state!=="FAILED"||entry.editorial_attempts!==2;
+  };
+  latest.addEventListener("change",toggleRetry);
+  toggleRetry();
+  recover.onclick=async()=>{
+   if(busy||!window.confirm("Re-arm this failed AI article? No published reports or match results will change."))return;
+   busy=true;recover.disabled=true;
+   try{
+    await request("/api/admin","POST",ctx.csrfToken,{
+     action:"RETRY_FAILED_RINGSIDE",showId:latest.value});
+    message(aiStatus,"Retry authorised. Reopen this completed show in Results to generate a fresh AI article.");
+    recover.hidden=true;
+   }catch(e){message(aiStatus,e instanceof Error?e.message:"Could not re-arm the article",true);}
+   finally{busy=false;recover.disabled=false;}
+  };
   studio.append(form,el("p","ppw-admin-small",
    "A saved review keeps its original text. New settings cannot change winners, title changes, injuries or scripted angles."),
-   inputField("Try against a completed show",latest),previewBtn,aiStatus,preview);
+   inputField("Try against a completed show",latest),previewBtn,recover,aiStatus,preview);
  }
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");

@@ -123,7 +123,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  const feature=node("section","ppw-final-bell ppw-ringside-dispatch");
  feature.dataset.showId=show.showId;
- append(feature,node("span","ppw-eyebrow","MARTY VALE / RINGSIDE"),
+ append(feature,node("span","ppw-eyebrow","PPW / RINGSIDE"),
+  node("span","ppw-ringside-ai-status","AI dispatch · checking"),
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=showReactionWire(show);
@@ -285,6 +286,9 @@ function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:Ri
  if(!region||region.dataset.showId!==show.showId||
   !copy.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))return;
  region.querySelector(".ppw-ringside-await")?.remove();
+ region.dataset.aiStatus="ready";
+ const status=region.querySelector(".ppw-ringside-ai-status");
+ if(status)status.textContent="GROQ ARTICLE · VERIFIED RECORD";
  const headline=region.querySelector(".ppw-final-bell-headline");
  if(headline)headline.textContent=copy.showHeadline;
  region.append(node("p","ppw-final-bell-paragraph",copy.opening),
@@ -299,6 +303,9 @@ function markRingsideFallback(root:HTMLElement,show:CompletedShowView){
  const region=root.querySelector<HTMLElement>(".ppw-ringside-dispatch");
  if(!region||region.dataset.showId!==show.showId)return;
  region.querySelector(".ppw-ringside-await")?.remove();
+ region.dataset.aiStatus="fallback";
+ const status=region.querySelector(".ppw-ringside-ai-status");
+ if(status)status.textContent="RECORDED RESULT · AI ARTICLE UNAVAILABLE";
  const peak=show.entries.reduce((best,e)=>!best||e.crowdResponse>best.crowdResponse?e:best,
   undefined as ShowResultEntry|undefined);
  region.append(node("p","ppw-final-bell-paragraph",peak?.headline??
