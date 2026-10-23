@@ -3,7 +3,13 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - fix/verified-portrait-catalogue-20261023
+    paths:
+      - src/ui/wrestler-portrait.ts
+      - apps/web/public/portrait-credits.html
+      - scripts/audit-portraits.ts
+      - .github/workflows/portrait-audit.yml
 permissions:
   contents: read
 jobs:
