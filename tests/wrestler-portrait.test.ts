@@ -146,3 +146,13 @@ test("38 real Genesis wrestler identities resolve unique Commons portraits with 
   ["Aminata","Queen Aminata"]
  ])assert.deepEqual(portraitCredit(alias),portraitCredit(canonical));
 });
+
+test("verified existing Genesis ring-name changes reuse the exact photographer source",()=>{
+ for(const [genesis,current] of [
+  ["Nattie","Natalya"],["Paige","Saraya"],["Andrade El Ídolo","Andrade"]
+ ]){
+  assert.deepEqual(portraitCredit(genesis),portraitCredit(current),genesis);
+  assert.equal(portraitSource(genesis),portraitSource(current),genesis);
+ }
+ assert.notDeepEqual(portraitCredit("Paige"),portraitCredit("Kenzie Paige"));
+});

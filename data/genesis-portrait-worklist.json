@@ -8,18 +8,16 @@
   },
   "counts": {
     "total": 643,
-    "existing": 156,
-    "missing": 487,
+    "existing": 159,
+    "missing": 484,
     "catalogue": 186,
     "unmatchedCatalogue": [
       "tonga loa",
       "carlito",
       "britt baker",
       "powerhouse hobbs",
-      "natalya",
       "kofi kingston",
       "zoey stark",
-      "andrade",
       "xavier woods",
       "sheamus",
       "zelina vega",
@@ -27,7 +25,6 @@
       "pac",
       "john cena",
       "jun akiyama",
-      "saraya",
       "braun strowman",
       "bray wyatt",
       "brock lesnar",
@@ -1345,9 +1342,15 @@
       "promotions": [
         "AEW"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "andrade"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Andrade El Idolo AEW (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Angelo Parker",
@@ -1795,7 +1798,9 @@
       "promotions": [
         "AEW"
       ],
-      "aliases": [],
+      "aliases": [
+        "hangman adam page"
+      ],
       "status": "catalogued",
       "photo": {
         "file": "Hangman Adam Page Oct 2019 (cropped).jpg",
@@ -4831,9 +4836,15 @@
       "promotions": [
         "NXT"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "natalya"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Natalya March 2015.jpg",
+        "author": "Miguel Discart",
+        "license": "CC BY-SA 2.0"
+      }
     },
     {
       "name": "Nia Jax",
@@ -4879,9 +4890,15 @@
       "promotions": [
         "WWE"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "saraya"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Saraya Bevis, September 2022 (headshot).jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Raquel Rodriguez",

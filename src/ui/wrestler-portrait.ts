@@ -222,6 +222,9 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
 };
 const knownAliases:Readonly<Record<string,string>>={
+ "nattie":"natalya",
+ "paige":"saraya",
+ "andrade el ídolo":"andrade",
  "otís":"otis",
  "tanga loa":"tonga loa",
  "shotzi":"shotzi blackheart",
