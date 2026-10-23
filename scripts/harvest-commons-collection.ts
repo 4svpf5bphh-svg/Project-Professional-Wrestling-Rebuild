@@ -71,7 +71,7 @@ for(let start=0;start<allTitles.length;start+=20){
     if(!title.startsWith(n+" "))return false;
     if(n.includes(" "))return true;
     // Single-name wrestlers must not borrow a different person's surname.
-    return /^(in |19\\d{2}|20\\d{2}|wrestler\\b)/.test(title.slice(n.length+1));
+    return /^(in |19\d{2}|20\d{2}|wrestler\b)/.test(title.slice(n.length+1));
    });
    if(!match||!search.some(n=>{
     const d=" "+norm(desc)+" ";
