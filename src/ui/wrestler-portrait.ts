@@ -18,8 +18,8 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "hikaru shida":{file:"20220717shida1.jpg",author:"Yuzunet",license:"CC BY-SA 4.0"},
  "kris statlander":{file:"Kris Statlander - Independent Wrestling Champion (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
  "zack sabre jr.":{file:"Zack Sabre Jr, June 2022.jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
- "jeff hardy":{file:"Jeff Hardy.jpg",author:"Maximilian Eggeling (EGGE)",license:"CC BY-SA 3.0"},
- "matt hardy":{file:"Matt Hardy.jpg",author:"Maximilian Eggeling (EGGE)",license:"CC BY-SA 3.0"},
+ "jeff hardy":{file:"Jeff Hardy.jpg",author:"EGGE",license:"CC BY-SA 3.0"},
+ "matt hardy":{file:"Matt Hardy.jpg",author:"EGGE",license:"CC BY-SA 3.0"},
  "aj lee":{file:"AJ Lee.jpg",author:"David Seto",license:"CC BY-SA 2.0"},
  "jordynne grace":{file:"Jordynne Grace at Smash Canusa 2018.jpg",author:"Tabercil",license:"CC BY-SA 3.0"},
  "bandido":{file:"Bandido ROH.jpg",author:"KMcWrestling Photography",license:"CC BY-SA 4.0"},
@@ -65,9 +65,9 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "austin theory":{file:"Austin Theory WM39.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "b-fab":{file:"B-Fab, WrestleMania XL 2024 (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "bayley":{file:"Bayley RR25 (1).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "bobby lashley":{file:"Bobby Lashley March 2023 (headshot).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "bobby lashley":{file:"Bobby Lashley March 2023 (headshot).jpg",author:"diegofernandophotography",license:"CC BY 2.0"},
  "braun strowman":{file:"Braun Strowman March 2023 (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "bray wyatt":{file:"Bray Wyatt, 2022 (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "bray wyatt":{file:"Bray Wyatt, 2022 (cropped).jpg",author:"diegofernandophotography",license:"CC BY 2.0"},
  "brock lesnar":{file:"Brock Lesnar At SummerSlam 2023.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "bubba ray dudley":{file:"Bubba Ray Dudley, WrestleMania XL (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "candice lerae":{file:"Candice LeRae RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
@@ -110,30 +110,30 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "roxanne perez":{file:"Roxanne Perez RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "stephanie vaquer":{file:"Stephanie Vaquer RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "shinsuke nakamura":{file:"Shinsuke Nakamura 2024 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
- "sheamus":{file:"Sheamus RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "solo sikoa":{file:"Solo Sikoa RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "tama tonga":{file:"Tama Tonga RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "tonga loa":{file:"Tonga Loa RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "tiffany stratton":{file:"Tiffany Stratton RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "trick williams":{file:"Trick Williams RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "zelina vega":{file:"Zelina Vega RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "zoey stark":{file:"Zoey Stark RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "xavier woods":{file:"Xavier Woods RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "kofi kingston":{file:"Kofi Kingston RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "the miz":{file:"The Miz RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "otis":{file:"Otis RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "chad gable":{file:"Chad Gable RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "ludwig kaiser":{file:"Ludwig Kaiser RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "ilja dragunov":{file:"Ilja Dragunov RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "bron breakker":{file:"Bron Breakker RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "bronson reed":{file:"Bronson Reed RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "grayson waller":{file:"Grayson Waller RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "andrade":{file:"Andrade RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "carlito":{file:"Carlito RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
  "santos escobar":{file:"Santos Escobar RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "dragon lee":{file:"Dragon Lee RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "elektra lopez":{file:"Elektra Lopez RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
- "ashante thee adonis":{file:"Ashante Thee Adonis RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+
+
+
  "roman reigns":{file:"Roman Reigns RR25 (1) (headshot).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "cody rhodes":{file:"Cody Rhodes RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "seth rollins":{file:"Seth Rollins RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
