@@ -3,6 +3,8 @@
  * Only a trusted World-locked resolver can call this. No player API.
  */
 import type {SqlRows} from "./world-operations.js";
+import {worldStaff} from "../domain/world-staff.js";
+import {staffedProductionCost} from "../domain/staff-production.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {originalCompetitionFactor,originalShowSettlement,
  type Competitor,type LocalAudience,
@@ -22,7 +24,7 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   media_reach:number|null;audience_potential:number|null;
   wrestling_interest:number|null;spending_index:number|null;
   awareness:number|null;live_strength:number|null;loyalty:number|null;
-  resource_charged:boolean;show_completed:boolean;
+  resource_charged:boolean;show_completed:boolean;production_staff_id:string|null;
  }>(`
  SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,
   d.booking_expected_demand,d.booking_ticket_yield::text,
@@ -32,6 +34,12 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   v.status AS venue_status,
   m.audience_potential,m.wrestling_interest,m.spending_index,
   local.awareness,local.live_strength,local.loyalty,
+  (SELECT employee.staff_id FROM ppw_staff_employments employee
+    WHERE employee.world_id=d.world_id AND employee.promotion_id=d.promotion_id
+     AND employee.role='PRODUCTION' AND employee.status='ACTIVE'
+     AND employee.start_week_index <= (d.year-1)*52+d.week-1
+     AND employee.expires_week_index >= (d.year-1)*52+d.week-1
+    LIMIT 1) AS production_staff_id,
   (r.show_id IS NOT NULL) AS resource_charged,
   (cs.show_id IS NOT NULL) AS show_completed
  FROM ppw_booking_drafts d
@@ -114,12 +122,21 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
    AND event_type='CONTRACT_APPEARANCE_FEES'
    AND payload->>'showId'=$4 AND payload->>'promotionId'=$5`,
   [input.worldId,input.year,input.week,input.showId,input.promotionId]);
- const quote=originalShowSettlement({seed:x.seed,showId:input.showId,
+ const original=originalShowSettlement({seed:x.seed,showId:input.showId,
   expectedDemand,competitionFactor:factor,capacity:x.capacity,
   ticketYield:Number(x.booking_ticket_yield),
   venueCost:Number(x.weekly_hire_cost),tier:x.tier,eventType:x.event_type,
   participants:everyone.size,away:x.market_id!==x.home_market_id,
   appearanceFees:Number(appearance[0]?.amount??0)});
+ const employee=x.production_staff_id===null?null:
+  worldStaff(x.seed).find(s=>s.staffId===x.production_staff_id)??null;
+ if(x.production_staff_id&&!employee)
+  throw new Error("Unknown assigned World production employee");
+ const efficiency=staffedProductionCost(original.productionCost,employee);
+ const quote={...original,productionCost:efficiency.cost,
+  totalCost:original.totalCost-efficiency.saving,
+  netResult:original.netResult+efficiency.saving,
+  incrementalCash:original.incrementalCash+efficiency.saving};
  const inserted=await tx.query<{show_id:string}>(`
  INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,
   attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,

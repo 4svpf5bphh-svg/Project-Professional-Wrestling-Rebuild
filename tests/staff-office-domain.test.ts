@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {worldStaff,worldTalentManagers,evaluateStaffOffer,staffBuyout,STAFF_ROLES}
  from "../src/domain/world-staff.js";
 import {deriveRoadAgentReport} from "../src/domain/road-agent-report.js";
+import {staffedProductionCost} from "../src/domain/staff-production.js";
 test("Original Talent Managers survive world expansion without replacement",()=>{
  const old=worldTalentManagers(58),staff=worldStaff(58);
  assert.equal(staff.length,64);
@@ -47,4 +48,16 @@ test("Road Agent reports use only certified match details and keep recorded slot
  assert.throws(()=>deriveRoadAgentReport(receipt,facts.slice(1),agent),
   /complete verified/);
  assert.equal(deriveRoadAgentReport(receipt,facts,null).reporter,"PPW House Road Agent");
+});
+
+test("Production department gives a capped, traceable venue-broadcast efficiency",()=>{
+ const staff=worldStaff(72).filter(s=>s.role==="PRODUCTION");
+ assert.equal(staffedProductionCost(10000,null).cost,10000);
+ for(const employee of staff){
+  const result=staffedProductionCost(10000,employee);
+  assert.ok(result.saving>=0&&result.saving<=600);
+  assert.equal(result.cost+result.saving,10000);
+ }
+ assert.throws(()=>staffedProductionCost(10000,worldStaff(72)[0]!),
+  /Only production/);
 });
