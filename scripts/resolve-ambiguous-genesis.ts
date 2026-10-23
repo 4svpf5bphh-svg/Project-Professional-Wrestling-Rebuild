@@ -77,7 +77,13 @@ const curated:Readonly<Record<string,string>>={
   "Miu Watanabe": "TJPW's wrestler Miu Watanabe 1.jpg",
   "Shoko Nakajima": "TJPW's wrestler Shoko Nakajima 2 (cropped).jpg",
   "Billie Starkz": "Billie Starkz AEW.jpg",
-  "Lady Frost": "Lady Frost, November 2019 (cropped).jpg"
+  "Lady Frost": "Lady Frost, November 2019 (cropped).jpg",
+  "Danhausen": "Danhausen, November 2019 (headshot).jpg",
+  "Hechicero": "Hechicero at ROH Death Before Dishonor - August 29 2025.jpg",
+  "Komander": "Komander Luchador (cropped).jpg",
+  "Místico": "Mistico posing BW crop.jpg",
+  "Kushida": "KUSHIDA at BCW East meets West 2.jpg",
+  "Xelhua": "Xelhua conectando con la audiencia en la Arena Puebla.jpg"
 };
 type Credit={file:string;author:string;license:string};
 type Person={name:string;aliases:string[];status:string;photo:Credit|null};
@@ -110,7 +116,12 @@ for(const [name,file] of Object.entries(curated)){
  const candidate=p.candidates?.find(x=>x.file===file);
  const wikilinkDescription=candidate?.description.includes("w:"+name)&&
   /professional wrestler/i.test(candidate.description)&&candidate.file.startsWith(name);
- if(!candidate||(!candidate.strong&&!wikilinkDescription)){
+ const namedWrestlingSubject=candidate&&
+  /\b(wrestler|wrestling|luchador|lucha libre|post-match|ring of honor|arena puebla|bcw)\b/i.test(candidate.description)&&
+  (" "+candidate.description.toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ")+" ")
+   .includes(" "+name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^\p{L}\p{N}]+/gu," ").trim()+" ");
+ if(!candidate||(!candidate.strong&&!wikilinkDescription&&!namedWrestlingSubject)){
   unresolved.push({name,reason:"No independent identity corroboration for selected file"});continue;
  }
  if(!accepted.has(candidate.license)||candidate.author.trim().length<3||
