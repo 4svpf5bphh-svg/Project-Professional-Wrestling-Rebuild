@@ -128,7 +128,6 @@ export async function settleWeeklyFatigueRecovery(
    AND p.fatigue IS NOT NULL AND p.stamina IS NOT NULL AND p.fatigue>0`,
   [worldId,weekIndex,JSON.stringify(trainers.map(t=>({
     staff_id:t.staffId,bonus:t.bonus})))]);
- }
 }
 
 /** Original-main injury consequences, applied after canonical match load.
