@@ -36,6 +36,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Audit all Commons image licenses and creators
+        id: commons_audit
+        continue-on-error: true
         run: npx tsx scripts/audit-portraits.ts
       - name: Typecheck combined rollout
         run: npm run typecheck
@@ -50,3 +52,8 @@ jobs:
             git commit -m "feat(portraits): add metadata-verified creator-category Genesis photographs"
             git push origin HEAD:audit/genesis-portrait-reliability-20261023
           fi
+      - name: Report partial external verification without discarding correctly sourced candidates
+        if: steps.commons_audit.outcome == 'failure'
+        run: |
+          echo "Commons rate limits or metadata mismatches require a fresh audit before approval."
+          exit 1
