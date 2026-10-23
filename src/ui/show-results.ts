@@ -272,8 +272,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  }
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
+ const report=show.staffReport;
+ const office=report?node("section","ppw-staff-show-report"):null;
+ if(office&&report){
+  append(office,node("span","ppw-eyebrow","PPW / STAFF OFFICE"),
+   node("h2","",report.reporter.toUpperCase()+" — ROAD AGENT'S REPORT"),
+   node("h3","",report.headline),
+   node("p","",report.praise),
+   node("p","",report.concern),
+   node("p","",report.recommendation));
+ }
  root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
-  feature,timeline);
+  feature,...(office?[office]:[]),timeline);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

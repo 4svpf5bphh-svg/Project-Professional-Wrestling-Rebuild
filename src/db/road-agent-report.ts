@@ -8,13 +8,21 @@ import type {RecordedMatchReportFact} from "./record-match-report-facts.js";
  */
 export async function recordRoadAgentReport(tx:SqlRows,seed:string|number,
  receipt:CompletedShowReceipt,facts:readonly RecordedMatchReportFact[]){
- const members=await tx.query<{staff_id:string}>(`
-  SELECT staff_id FROM ppw_staff_employments
-  WHERE world_id=$1 AND promotion_id=$2 AND role='ROAD_AGENT'
-   AND status='ACTIVE' AND start_week_index<=$3 AND expires_week_index>=$3
-  LIMIT 1`,[receipt.worldId,receipt.promotionId,
-  (receipt.year-1)*52+receipt.week-1]);
- const agent=members.length?
+ const members=await tx.query<{staff_id:string|null}>(`
+  SELECT employee.staff_id
+  FROM ppw_promotion_controls owner
+  LEFT JOIN LATERAL (
+   SELECT staff_id FROM ppw_staff_employments e
+   WHERE e.world_id=owner.world_id AND e.promotion_id=owner.promotion_id
+    AND e.role='ROAD_AGENT' AND e.status='ACTIVE'
+    AND e.start_week_index<=$3 AND e.expires_week_index>=$3
+   LIMIT 1
+  ) employee ON TRUE
+  WHERE owner.world_id=$1 AND owner.promotion_id=$2 AND owner.active LIMIT 1`,
+  [receipt.worldId,receipt.promotionId,(receipt.year-1)*52+receipt.week-1]);
+ // AI-run promotions need neither staff prose nor another persisted result.
+ if(!members.length)return;
+ const agent=members[0]!.staff_id?
   worldStaff(seed).find(s=>s.staffId===members[0]!.staff_id)??null:null;
  if(agent&&agent.role!=="ROAD_AGENT")throw new Error("Invalid employed Road Agent");
  const report=deriveRoadAgentReport(receipt,facts,agent);

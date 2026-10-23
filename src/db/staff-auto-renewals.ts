@@ -26,7 +26,7 @@ export async function prepareDelegatedSameTermsRenewals(tx:SqlRows,
   JOIN ppw_staff_continuity_settings s ON s.world_id=c.world_id
    AND s.promotion_id=c.promotion_id AND s.auto_renew_same_terms=true
   JOIN ppw_staff_employments manager ON manager.world_id=c.world_id
-   AND manager.promotion_id=c.promotion_id AND manager.status='ACTIVE'
+   AND manager.promotion_id=c.promotion_id AND manager.role='TALENT_MANAGER' AND manager.status='ACTIVE'
   JOIN ppw_promotion_controls owner ON owner.world_id=c.world_id
    AND owner.promotion_id=c.promotion_id AND owner.player_id=s.owner_player_id
    AND owner.active

@@ -5,7 +5,8 @@ import {randomUUID} from "node:crypto";
 import {applyWorldCommand} from "./world-commands.js";
 import {worldStaff,evaluateStaffOffer,staffBuyout,type StaffRole}
  from "../domain/world-staff.js";
-import type {TransactionPool} from "./transaction.js";\nimport type {SqlRows} from "./world-operations.js";
+import type {TransactionPool} from "./transaction.js";
+import type {SqlRows} from "./world-operations.js";
 export interface StaffEmploymentInput{
  worldId:string;promotionId:string;playerId:string;
  requestId:string;expectedRevision:number;

@@ -41,7 +41,7 @@ export async function setStaffContinuity(pool:TransactionPool,input:SetStaffCont
       if(input.autoRenewSameTerms===true){
         const employed=await tx.query<{employment_id:string}>([
           "SELECT employment_id FROM ppw_staff_employments",
-          "WHERE world_id=$1 AND promotion_id=$2 AND status='ACTIVE' LIMIT 1"
+          "WHERE world_id=$1 AND promotion_id=$2 AND role='TALENT_MANAGER' AND status='ACTIVE' LIMIT 1"
         ].join(" "),[input.worldId,input.promotionId]);
         if(employed.length!==1)throw new Error("Hire a Talent Manager before enabling delegated renewals");
       }
