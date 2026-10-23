@@ -4,9 +4,9 @@ const world={revision:6,name:"Genesis",year:1,week:1,phase:"OPEN",
  nextLockEpoch:Date.now()/1000+999999,serverEpoch:Date.now()/1000};
 const promotion={id:"promotion-009",name:"Crown Wrestling",tier:"LOCAL",cash:6e6,
  debt:0,lastWeeklyNet:0};
-const admin=(world:typeof world)=>({plan:{
- year:world.year,week:world.week,action:"WAIT_FOR_WORLD_LOCK",blockers:[],
- ready:{phase:world.phase,active:1,submitted:0,regularSubmitted:0,
+const admin=(state:typeof world)=>({plan:{
+ year:state.year,week:state.week,action:"WAIT_FOR_WORLD_LOCK",blockers:[],
+ ready:{phase:state.phase,active:1,submitted:0,regularSubmitted:0,
  cleared:null,certified:null,legacyResolved:0,detailedResolved:0}},
  settings:{model:"openai/gpt-oss-120b",voice:"MARTY",detail:"BALANCED",
  creativity:0.92,reasoning:"low",additionalGuidance:"",version:0},
