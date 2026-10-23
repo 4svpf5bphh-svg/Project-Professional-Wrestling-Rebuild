@@ -100,3 +100,24 @@ test("schema and editorial instruction agree on immutable card keys",async()=>{
  };
  assert.equal((await generateGroqReview(show,"fixture",fake)).slots.length,1);
 });
+
+// History is injected as capped data, never an instruction to invent continuity.
+test("verified history is optional, private, and does not change recorded card facts",async()=>{
+ const memory={priorMatches:[{when:"Y1 W1",wrestlers:["Kenny Omega","Opponent"],
+  winners:["Opponent"],finish:"FLASH_PIN"}],
+  programmes:[{wrestlers:["Kenny Omega","Opponent"],began:"week index 0",
+   beats:1,latest:"MATCH"}]};
+ const transport:typeof fetch=async(_url,init)=>{
+  const req=JSON.parse(String(init?.body));
+  assert.match(req.messages[1].content,/HISTORY/);
+  assert.match(req.messages[1].content,/Opponent/);
+  assert.match(req.messages[0].content,/ONE decisive finish/);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"A return to form",opening:"Old scores were noted.",
+   closing:"The crowd got its money's worth.",
+   slots:{card_0:{headline:"Omega gets the win",recap:"Omega connected with the One Winged Angel and took the clean pin."}}
+  })}}]}));
+ };
+ const result=await generateGroqReview(show,"fixture",transport,undefined,memory);
+ assert.equal(result.slots[0]?.slotId,"m");
+});

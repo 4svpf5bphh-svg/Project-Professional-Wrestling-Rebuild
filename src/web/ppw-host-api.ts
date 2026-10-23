@@ -6,6 +6,7 @@ import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
+import {readRingsideMemory} from "../db/ringside-continuity.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {withSqlClient} from "../db/postgres.js";
 import {planNextWorldResolutionAction} from "../db/world-resolution-pipeline.js";
@@ -177,7 +178,10 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    const show=await readCompletedShowView(pool,{worldId:cfg.worldId,
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
     showId:body.showId});
-   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective);
+   const memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
+    playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
+    showId:body.showId},show);
+   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective,memory);
    return json(200,{review,preview:true});
   }catch(e){
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");

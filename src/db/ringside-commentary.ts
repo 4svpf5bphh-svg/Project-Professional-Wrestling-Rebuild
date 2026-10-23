@@ -8,6 +8,7 @@ import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings
  from "../domain/ringside-settings.js";
 import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
+import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
 import {ringsideFacts,ringsideBrief,recoverRingsideCopy,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
@@ -83,11 +84,14 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
  "Do not invent durable outcomes, new participants or unsupported signature moves.";
 export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
- settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS):Promise<RingsideCopy>{
+ settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
+ memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY):Promise<RingsideCopy>{
  const facts=JSON.stringify(ringsideBrief(show));
  if(facts.length>26000||show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  const keys=show.entries.map((entry,i)=>"card_"+i+" = "+entry.slotId);
+ // Never let contextual history displace authoritative current-show facts.
+ const historical=JSON.stringify(memory).slice(0,2300);
  const schema=ringsideResponseSchema(show);
  let correction="";
  for(let attempt=0;attempt<2;attempt++){
@@ -109,6 +113,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Required schema slot keys map to these immutable recorded entries:\n"+keys.join("\n")+
        "\nDo not invent or swap performers, winners, title changes, injuries or finishes.\n"+
        "Each required card entry must contain a vivid headline and recap.\n"+
+       "Past context is optional verified history; never invent a connection.\n"+
+       "HISTORY (only cite relevant previous matches and programmes): "+historical+"\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
     })
@@ -227,7 +233,8 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   RETURNING claim_token`,[...params,digest,settings.model,token,lease]));
  if(claimed[0]?.claim_token!==token)return {status:"pending"};
  try{
-  const review=await generateGroqReview(show,key,transport,settings);
+  const memory=await readRingsideMemory(pool,scope,show);
+  const review=await generateGroqReview(show,key,transport,settings,memory);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,
     updated_at=now() WHERE world_id=$1 AND promotion_id=$2
