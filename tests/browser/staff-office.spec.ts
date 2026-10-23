@@ -51,7 +51,8 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByText("No previous completed staff employment recorded in this World.")).toBeVisible();
  await page.getByRole("button",{name:"Offer contract"}).click();
  await expect(page.getByText("Staff contract signed. Weekly payroll now includes this employee.")).toBeVisible();
- await expect(page.getByText("WEEKLY PAYROLL")).toBeVisible();
+ await expect(page.locator(".ppw-staff-overview-metric")
+  .filter({hasText:"WEEKLY PAYROLL"}).getByText("$950",{exact:true})).toBeVisible();
  await expect(page.getByText("Buyout $49,400")).toHaveCount(0);
  await page.getByRole("button",{name:"Release"}).click();
  await expect(page.getByText(/Buyout \$49,400/)).toBeVisible();
