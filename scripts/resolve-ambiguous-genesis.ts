@@ -83,7 +83,9 @@ const curated:Readonly<Record<string,string>>={
   "Komander": "Komander Luchador (cropped).jpg",
   "Místico": "Mistico posing BW crop.jpg",
   "Kushida": "KUSHIDA at BCW East meets West 2.jpg",
-  "Xelhua": "Xelhua conectando con la audiencia en la Arena Puebla.jpg"
+  "Xelhua": "Xelhua conectando con la audiencia en la Arena Puebla.jpg",
+  "Ethan Page": "Ethan Page (cropped).jpg",
+  "Ricky Sosa": "Ricky Sosa (cropped).jpg"
 };
 type Credit={file:string;author:string;license:string};
 type Person={name:string;aliases:string[];status:string;photo:Credit|null};
