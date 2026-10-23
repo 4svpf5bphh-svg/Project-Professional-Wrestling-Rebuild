@@ -51,8 +51,8 @@ test("second 25-photo batch resolves unique credited WWE wrestler identities",()
 });
 
 test("missing Wikimedia images return a real, consistent initials placeholder",()=>{
- const withheld=["tonga loa","bronson reed","carlito","elektra lopez","ashante thee adonis"];
- assert.equal(withheld.length,5);
+ const withheld=["bronson reed","elektra lopez","ashante thee adonis"];
+ assert.equal(withheld.length,3);
  for(const name of withheld){assert.equal(portraitCredit(name),null,name);assert.equal(portraitSource(name),null,name);}
  assert.ok(portraitSource("santos escobar"));
 });
@@ -107,4 +107,22 @@ test("18 newly verified prominent missing wrestlers have unique credited photogr
  assert.equal(portraitCredit("Trick Williams")?.license,"CC BY 4.0");
  for(const [alias,canonical] of [["Otis Dozovic","Otis"],["Andrade El Idolo","Andrade"],["Marcel Barthel","Ludwig Kaiser"]])
   assert.equal(portraitSource(alias),portraitSource(canonical));
+});
+
+test("nine new licensed portrait sources have matching ring identity and aliases",()=>{
+ const names=["tonga loa","carlito","britt baker","mariah may","daniel garcia","kyle o'reilly","powerhouse hobbs","natalya","cedric alexander"];
+ assert.equal(names.length,9);
+ const seen=new Set<string>();
+ for(const name of names){
+  const credit=portraitCredit(name);
+  assert.ok(credit?.author,name);
+  assert.ok(credit?.license,name);
+  assert.ok(credit?.file,name);
+  assert.equal(seen.has(credit.file),false,name);
+  seen.add(credit.file);
+  assert.ok(portraitSource(name));
+ }
+ for(const [alias,real] of [["Tanga Loa","Tonga Loa"],["Blake Monroe","Mariah May"],
+  ["Will Hobbs","Powerhouse Hobbs"],["Nattie Neidhart","Natalya"]])
+  assert.deepEqual(portraitCredit(alias),portraitCredit(real));
 });

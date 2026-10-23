@@ -6,6 +6,17 @@
 export interface PhotoCredit{file:string;author:string;license:"CC BY 4.0"|"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 3.0"|"CC BY-SA 4.0"|"CC0";}
 const catalogue:Readonly<Record<string,PhotoCredit>>={
  // Portraits vetted against each Commons source page; remote metadata gated in CI.
+ // Nine additional real, specifically identified/licensed Commons performers.
+ "tonga loa":{file:"Tanga Roa IWGP Tag Team Champion.jpg",author:"ゾーヒョー",license:"CC BY-SA 4.0"},
+ "carlito":{file:"Carlito in Burlington, Vermont in February 09.jpg",author:"shstrng",license:"CC BY 2.0"},
+ "britt baker":{file:"Britt Baker (cropped).jpg",author:"John Manard",license:"CC BY-SA 2.0"},
+ "mariah may":{file:"Mariah May in August 2024 05.jpg",author:"McPhail",license:"CC0"},
+ "daniel garcia":{file:"Daniel Garcia Dec 2019 (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
+ "kyle o'reilly":{file:"Kyle O'Reilly.jpg",author:"Steve Wright Jr.",license:"CC BY 2.0"},
+ "powerhouse hobbs":{file:"Will \"Powerhouse\" Hobbs, 2022 (headshot).jpg",author:"West Smith",license:"CC BY 2.0"},
+ "natalya":{file:"Natalya March 2015.jpg",author:"Miguel Discart",license:"CC BY-SA 2.0"},
+ "cedric alexander":{file:"Cedric Alexander 2026.png",author:"TNA Wrestling",license:"CC BY 4.0"},
+
  "tiffany stratton":{file:"Tiffany Stratton August 2024 (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "trick williams":{file:"Trick Williams FOS 2026 version 3 (cropped).png",author:"Front Office Sports",license:"CC BY 4.0"},
  "the miz":{file:"The Miz (29036397881).jpg",author:"Greg2600",license:"CC BY-SA 2.0"},
@@ -173,6 +184,12 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
 };
 const knownAliases:Readonly<Record<string,string>>={
  "otís":"otis",
+ "tanga loa":"tonga loa",
+ "tanga roa":"tonga loa",
+ "carly colón":"carlito",
+ "blake monroe":"mariah may",
+ "will hobbs":"powerhouse hobbs",
+ "nattie neidhart":"natalya",
  "otis dozovic":"otis",
  "andrade el idolo":"andrade",
  "marcel barthel":"ludwig kaiser",
