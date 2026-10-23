@@ -153,6 +153,11 @@ for(const [name,file] of Object.entries(curated)){
  additions.push({name,credit,source:candidate.source,description:candidate.description});
  taken.add(file.toLowerCase());presentFiles.add(file.toLowerCase());
 }
+const restoredAliases:Readonly<Record<string,string>>={
+ "zelina":"zelina vega",
+ "britt baker d.m.d.":"britt baker",
+ "killer kross":"karrion kross"
+};
 const entries=additions.map(({name,credit})=>" "+JSON.stringify(normalizePortraitName(name))+":{file:"+
  JSON.stringify(credit.file)+",author:"+JSON.stringify(credit.author)+",license:"+JSON.stringify(credit.license)+"},");
 const anchor="\n};\nconst knownAliases:",pos=catalogue.indexOf(anchor);
@@ -161,6 +166,11 @@ if(entries.length){
  catalogue=catalogue.slice(0,pos)+(/,\s*$/.test(catalogue.slice(0,pos))?"":",")+
   "\n // Manually identity-selected and evidence corroborated Commons photographs\n"+
   entries.join("\n")+catalogue.slice(pos);
+ const aliasAnchor="const knownAliases:Readonly<Record<string,string>>={\n";
+ if(!catalogue.includes(aliasAnchor))throw Error("Missing known ring names");
+ catalogue=catalogue.replace(aliasAnchor,aliasAnchor+
+  Object.entries(restoredAliases).map(([alias,identity])=>
+   " "+JSON.stringify(alias)+":"+JSON.stringify(identity)+",").join("\n")+"\n");
  await writeFile("src/ui/wrestler-portrait.ts",catalogue);
  const html=additions.map(({name,credit,source})=>"<li>"+esc(name)+" — "+esc(credit.author)+
   ', <a href="'+esc(source)+'">source photo</a>, <a href="'+licenseUrls[credit.license]+'">'+
@@ -172,10 +182,25 @@ if(entries.length){
   const c=found.get(p.name);
   if(c){p.photo=c.credit;p.status="catalogued";}
  }
+ const reclaimed:string[]=[];
+ for(const [alias,identity] of Object.entries(restoredAliases)){
+  const p=work.people.find(x=>normalizePortraitName(x.name)===alias);
+  const credit=portraitCredit(identity);
+  if(!p||!credit)throw Error("Verified legacy ring-name photo cannot be reconciled: "+alias);
+  if(!p.photo){p.photo=credit;p.status="catalogued";reclaimed.push(p.name);}
+ }
+ work.counts.unmatchedCatalogue=(work.counts.unmatchedCatalogue as string[])
+  .filter(key=>!Object.values(restoredAliases).includes(key));
  for(const group of [data.people,cp.people]){
   for(const p of group){
    const c=found.get(p.name);
-   if(c){p.photo=c.credit;p.resolution="added-curated";p.reason="Selected individual authenticated Commons subject from independent title and description"; }
+   if(c){p.photo=c.credit;p.resolution="added-curated";p.reason="Selected individual authenticated Commons subject from independent title and description";}
+   else if(reclaimed.includes(p.name)){
+    const original=restoredAliases[normalizePortraitName(p.name)]!;
+    p.photo=portraitCredit(original);
+    p.resolution="existing-alias";
+    p.reason="Verified historical ring name reuses the original wrestler's licensed photo";
+   }
   }
  }
  work.counts.existing=work.people.filter(p=>p.photo).length;
@@ -184,12 +209,12 @@ if(entries.length){
  await writeFile("data/genesis-portrait-worklist.json",JSON.stringify(work,null,2)+"\n");
 }
 const covered=work.people.filter(p=>p.photo).length;
-data.summary={...data.summary,curatedPhotoAdditions:additions.length,genuineGenesisPhotos:covered,
+data.summary={...data.summary,curatedPhotoAdditions:additions.length,recoveredAliases:3,genuineGenesisPhotos:covered,
  creditedSources:work.counts.catalogue,unresolved:643-covered,
  coveragePercent:Math.round(covered/643*10000)/100,
  note:"Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing."};
 await writeFile("data/portrait-assessment.json",JSON.stringify(data,null,2)+"\n");
 await writeFile("data/portrait-discovery-checkpoint.json",JSON.stringify(cp,null,2)+"\n");
-await writeFile("data/curated-portrait-review.json",JSON.stringify({reviewedNames:names.size,
+await writeFile("data/curated-portrait-review.json",JSON.stringify({reviewedNames:names.size,recoveredAliases:["Zelina","Britt Baker D.M.D.","Killer Kross"],
  additions,unresolved,checkedAt:new Date().toISOString()},null,2)+"\n");
 console.log(JSON.stringify({reviewed:names.size,accepted:additions.length,rejected:unresolved.length,coverage:covered,missing:643-covered}));
