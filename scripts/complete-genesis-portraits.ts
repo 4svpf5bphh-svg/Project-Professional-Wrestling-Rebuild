@@ -21,6 +21,9 @@ async function request(url:string):Promise<any>{
   try{const r=await fetch(url,{headers:{"User-Agent":ua},signal:AbortSignal.timeout(25000)});
    if(r.ok)return r.json();
    reason="HTTP "+r.status;
+   // Stop a throttled run promptly and record this name as unresolved.
+   // Repeated requests while Commons has issued 429 only waste capacity.
+   if(r.status===429)break;
    if(![429,500,502,503,504].includes(r.status))break;
   }catch(e){reason=String(e);}
   await delay((attempt+1)*(attempt+1)*900);
@@ -50,7 +53,7 @@ async function discover(p:Person):Promise<Assessed>{
   try{const r=await request("https://commons.wikimedia.org/w/api.php?"+q);
    for(const page of r.query?.pages??[])if(page.title&&!page.missing)hits.set(page.title,page);
   }catch(e){error=String(e);}
-  if(hits.size>=18)break;
+  if(error.includes("HTTP 429")||hits.size>=18)break;
   await delay(process.env.PPW_RETRY_COMMONS_429==="1"?500:150);
  }
  const candidates:Candidate[]=[];
