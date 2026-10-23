@@ -1,6 +1,9 @@
 name: Wikimedia portrait audit
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - audit/portrait-source-verification-20261023
 permissions:
   contents: read
 jobs:
