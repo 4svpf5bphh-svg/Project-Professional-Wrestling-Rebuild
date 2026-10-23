@@ -37,7 +37,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      ) history),'[]'::jsonb) AS employment_history,
     COALESCE((SELECT jsonb_agg(jsonb_build_object(
      'staffId',e.staff_id,'employmentId',e.employment_id,
-     'role',e.role,'weeklySalary',e.weekly_salary,
+     'role',e.role,'weeklySalary',e.weekly_salary,'morale',e.morale,
      'startWeekIndex',e.start_week_index,'expiresWeekIndex',e.expires_week_index,
      'termWeeks',e.term_weeks))
      FROM ppw_staff_employments e WHERE e.world_id=w.world_id
@@ -133,6 +133,9 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     " medically unavailable, including "+(current.medical_example??"one member of the roster")+
     ". Review availability before booking the next card."
   });
+  for(const e of employees.filter(e=>e.morale<35))
+   notices.push({department:e.name+" · Staff relations",target:"staff",
+    message:e.name+" is frustrated with conditions. Fair renewals and stable finances can help."});
   for(const e of employees.filter(e=>e.weeksRemaining<=12))
    notices.push({department:e.role.replaceAll("_"," "),target:"staff",
     message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+

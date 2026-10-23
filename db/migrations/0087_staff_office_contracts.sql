@@ -24,3 +24,7 @@ ALTER TABLE ppw_staff_employments
 CREATE INDEX ppw_staff_expiring_week
  ON ppw_staff_employments(world_id,expires_week_index)
  WHERE status='ACTIVE';
+
+-- Store morale per employment; free candidates retain their World identity.
+ALTER TABLE ppw_staff_employments
+ ADD COLUMN morale integer NOT NULL DEFAULT 74 CHECK(morale BETWEEN 0 AND 100);

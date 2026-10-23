@@ -154,7 +154,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    if(member)detail.append(el("span","",
     "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
     "  ·  RELIABILITY "+member.reliability+
-    "  ·  "+member.weeksRemaining+" weeks left"));
+    "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
    item.append(detail);
    if(member){
     const actions=el("div","ppw-staff-actions");

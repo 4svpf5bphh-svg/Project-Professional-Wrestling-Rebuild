@@ -230,6 +230,18 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Staff morale responds once to the current week's audited finances.
+      // Staff cannot independently alter player creative decisions or resign.
+      await tx.query(`
+       UPDATE ppw_staff_employments e
+       SET morale=greatest(0,least(100,e.morale+
+        CASE WHEN p.last_weekly_net<0 THEN -2
+             WHEN p.last_weekly_net>0 THEN 1 ELSE 0 END))
+       FROM ppw_promotions p
+       WHERE e.world_id=$1 AND p.world_id=e.world_id
+        AND p.promotion_id=e.promotion_id AND e.status='ACTIVE'
+        AND e.start_week_index<=$2 AND e.expires_week_index>=$2
+      `,[input.worldId,weekIndex]);
       // Contract expiry also withdraws any former Talent Manager's consent:
       // hiring a replacement must require a fresh player authorisation.
       await tx.query(`
