@@ -101,7 +101,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
   const employed=managers.find(p=>p.staffId===current.employed_staff_id);
   if(current.employed_staff_id&&!employed)throw new Error("Unknown employed World manager");
   type Row={staffId:string;employmentId:string;role:StaffRole;
-   weeklySalary:number;startWeekIndex:number;expiresWeekIndex:number;termWeeks:52|104};
+   weeklySalary:number;morale:number;startWeekIndex:number;expiresWeekIndex:number;termWeeks:52|104};
   const rows=current.employments as Row[];
   const weekIndex=(current.year-1)*52+current.week-1;
   const employees=rows.map(e=>{

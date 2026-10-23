@@ -49,13 +49,14 @@ export function worldStaff(seed:string|number|bigint):WorldStaffMember[]{
   personality:personalities[(i+offset)%5]!,
   specialism:specialists.TALENT_MANAGER[i%4]!}));
  const others=STAFF_ROLES.slice(1).flatMap((role,j)=>
-  Array.from({length:8},(_,i)=>{
+  Array.from({length:16},(_,i)=>{
    const craft=38+((i*11+j*17+offset*3)%57);
    const people=34+((i*17+j*7+offset)%63);
    const reliability=40+((i*13+j*11+offset)%56);
    const insight=Math.round((craft*2+people+reliability)/4);
+   const serial=j*16+i;
    return {staffId:"staff-"+role.toLowerCase().replaceAll("_","-")+"-"+String(i+1).padStart(3,"0"),
-    name:first[(i*3+j*5+offset)%16]!+" "+last[(i*5+j*7+offset)%16]!,
+    name:first[(serial+offset)%16]!+" "+last[(Math.floor(serial/16)+serial+offset)%16]!,
     role,insight,craft,people,reliability,
     weeklySalary:Math.round((180+craft*9+(j===0?140:0))/10)*10,
     personality:personalities[(i+j+offset)%5]!,

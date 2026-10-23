@@ -8,13 +8,14 @@ import {trainerFatigueBonus} from "../src/domain/staff-training.js";
 import {staffShowPresentationBonus} from "../src/domain/staff-show-presentation.js";
 test("Original Talent Managers survive world expansion without replacement",()=>{
  const old=worldTalentManagers(58),staff=worldStaff(58);
- assert.equal(staff.length,64);
+ assert.equal(staff.length,120);
  assert.deepEqual(STAFF_ROLES.map(role=>staff.filter(s=>s.role===role).length),
-  [8,8,8,8,8,8,8,8]);
+  [8,16,16,16,16,16,16,16]);
  for(const m of old)assert.deepEqual(
   (({staffId,name,insight,weeklySalary})=>({staffId,name,insight,weeklySalary}))(
    staff.find(s=>s.staffId===m.staffId)!),m);
- assert.equal(new Set(staff.map(s=>s.staffId)).size,64);
+ assert.equal(new Set(staff.map(s=>s.staffId)).size,120);
+ assert.equal(new Set(staff.map(s=>s.name)).size,120);
  assert.deepEqual(staff,worldStaff("58"));
 });
 test("Offers and staff buyouts are bounded and deterministic",()=>{
