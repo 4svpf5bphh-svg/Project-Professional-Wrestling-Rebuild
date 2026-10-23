@@ -48,12 +48,15 @@ export async function settleCanonicalTagTitleContests(
  }
  let transfers=0;
  for(const {booking,bout} of matches){
+  // A booked tag bout is valid without pre-forming both teams. The losing
+  // challengers need not establish a portable tag identity just to compete.
   const ids=booking.sides.map(s=>{
-   const teamIds=byPeople.get(sorted(s.personIds))??[];
-   if(teamIds.length!==1)throw new Error("Tag title participants must form one active World team");
-   return teamIds[0]!;
+   const found=byPeople.get(sorted(s.personIds))??[];
+   if(found.length>1)throw new Error("Ambiguous active World tag team");
+   return found[0]??null;
   });
-  if(ids[0]===ids[1])throw new Error("A tag team cannot challenge itself");
+  if(ids[0]!==null&&ids[0]===ids[1])
+   throw new Error("A tag team cannot challenge itself");
   const state=await tx.query<{division:string;reign_id:string|null;
     team_id:string|null;status:string|null;holder_type:string|null}>(`
    SELECT c.division,r.reign_id,r.team_id,r.status,r.holder_type
@@ -74,9 +77,36 @@ export async function settleCanonicalTagTitleContests(
    (!hasChampion&&(current.status!==null||current.holder_type!==null||
     current.team_id!==null)))
    throw new Error("A tag title bout needs its champions or a vacant belt");
-  const winner=ids[bout.actualWinnerSide==="A"?0:1]!;
+  const winningSide=bout.actualWinnerSide==="A"?0:1;
+  let winner=ids[winningSide];
   const transfer=(!hasChampion||winner!==current.team_id)&&
     ["CLEAN_PIN","FLASH_PIN","SUBMISSION"].includes(bout.actualFinish);
+  if(transfer&&!winner){
+   // The confirmed clean/flash/submission title winner becomes a portable
+   // team *only* on first winning this title. Never create teams for losers,
+   // DQs or protected outcomes. Serialised in the same World transaction.
+   const people=booking.sides[winningSide]!.personIds;
+   const profiles=await tx.query<{person_id:string;name:string}>(`
+    SELECT person_id,name FROM ppw_people WHERE world_id=$1
+      AND person_id=ANY($2::text[]) ORDER BY person_id`,
+    [receipt.worldId,people]);
+   if(profiles.length!==2||profiles.some(p=>!p.name))
+    throw new Error("Tag champions require two verified World wrestlers");
+   const teamId=(receipt.showId+":"+booking.slotId+":title-pair").slice(0,195);
+   const teamName=profiles.map(p=>p.name).join(" & ").slice(0,70);
+   await tx.query(`
+    INSERT INTO ppw_tag_teams(world_id,team_id,name,status,
+      naming_promotion_id,formed_week_index)
+    VALUES($1,$2,$3,'ACTIVE',$4,$5)`,
+    [receipt.worldId,teamId,teamName,receipt.promotionId,
+     (receipt.year-1)*52+receipt.week-1]);
+   await tx.query(`
+    INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
+    SELECT $1,$2,x FROM unnest($3::text[]) x`,
+    [receipt.worldId,teamId,people]);
+   winner=teamId;
+  }
+  if(!winner)throw new Error("A tag-title holder must be an active World team");
   if(transfer){
    if(hasChampion){
     const updated=await tx.query<{reign_id:string}>(`
