@@ -64,7 +64,7 @@ export function removeVerbatimRecapEchoes(recap:string):string{
   const sentences=p.split(/(?<=[.!?])\s+/);
   return sentences.filter(sentence=>{
    const key=moveSurface(sentence);
-   if(key.length<35)return true;
+   if(key.length<24)return true;
    if(seen.has(key))return false;
    seen.add(key);return true;
   }).join(" ");
