@@ -9,7 +9,7 @@ import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings
 import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -17,7 +17,7 @@ export type RingsideResponse={status:"ready";review:RingsideCopy}|
  {status:"pending"|"unavailable"};
 type Scope={worldId:string;promotionId:string;showId:string;playerId:string};
 type CacheRow={state:"PENDING"|"READY"|"FAILED";report_json:unknown;
- receipt_digest:string;model:string;attempts:number};
+ receipt_digest:string;model:string;attempts:number;claim_until:string|null};
 const scoped=(s:Scope)=>[s.worldId,s.promotionId,s.showId,RINGSIDE_PROMPT_VERSION] as const;
 export function immutableResultDigest(show:CompletedShowView):string{
  const summary={
@@ -33,7 +33,8 @@ export function immutableResultDigest(show:CompletedShowView):string{
 export class RingsideGenerationError extends Error{
  constructor(public readonly code:"PROVIDER_LIMIT"|"PROVIDER_AUTH"|"PROVIDER_ERROR"|
   "OUTPUT_INCOMPLETE"|"FACT_VALIDATION"|"INVALID_OUTPUT"|"TIMEOUT",
-  message:string){super(message);this.name="RingsideGenerationError";}
+  message:string,public readonly retryAfterSeconds?:number){
+  super(message);this.name="RingsideGenerationError";}
 }
 /**
  * Each booked card position has one REQUIRED schema property. The model never
@@ -83,7 +84,7 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
 export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS):Promise<RingsideCopy>{
- const facts=JSON.stringify(ringsideFacts(show));
+ const facts=JSON.stringify(ringsideBrief(show));
  if(facts.length>26000||show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  const keys=show.entries.map((entry,i)=>"card_"+i+" = "+entry.slotId);
@@ -97,8 +98,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     method:"POST",signal:controller.signal,
     headers:{"authorization":"Bearer "+key,"content-type":"application/json"},
     body:JSON.stringify({model:settings.model,temperature:settings.creativity,
-     max_completion_tokens:Math.min(12000,1000+show.entries.length*(
-      settings.detail==="LONG"?410:settings.detail==="SHORT"?190:280)),
+     max_completion_tokens:Math.min(5800,760+show.entries.length*(
+      settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
      response_format:{type:"json_schema",json_schema:{
       name:"ppw_ringside_review",strict:true,schema
@@ -115,10 +116,14 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    if(!response.ok){
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
+    const retry=Number(response.headers.get("retry-after"));
+    const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
     throw new RingsideGenerationError(code,response.status===429?
-     "Groq has reached its current request limit. Try previewing again later.":
+     "Groq's short-term limit was reached. Retry in about "+delay+
+      " seconds; this does not mean the daily allowance is exhausted.":
      code==="PROVIDER_AUTH"?"Groq authentication was rejected. Check the server API configuration.":
-     "Groq rejected the request (HTTP "+response.status+"). Try a different model or reasoning setting.");
+     "Groq rejected the request (HTTP "+response.status+"). Try a different model or reasoning setting.",
+     response.status===429?delay:undefined);
    }
    const data=await response.text();
    if(data.length>65000)throw new RingsideGenerationError("INVALID_OUTPUT",
@@ -137,8 +142,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    try{return validateRingsideCopy(candidate,show);}
    catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
+    console.warn("Ringside validator:",reason,"attempt",attempt+1);
+    const rescued=recoverRingsideCopy(candidate,show);
+    if(rescued){
+     if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",
+      rescued.replaced,"unsafe entries using verified results");
+     return rescued.review;
+    }
     if(attempt===1)throw new RingsideGenerationError("FACT_VALIDATION",
-     "Groq's article conflicted with the official results after correction. Try a different style or lower creativity.");
+     "Ringside's article failed factual validation: "+reason+
+      ". All recorded results remain unchanged.");
     correction=validationHint(reason);
    }
   }catch(e){
@@ -167,7 +180,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  // editorial. Reopening an already reviewed show requires no five-query slot
  // expansion, roster fetch, model call, or polling.
  const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
-  SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts
+  SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until
   FROM ppw_completed_shows c
   JOIN ppw_promotion_controls p ON p.world_id=c.world_id
    AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
@@ -188,6 +201,9 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  }
  if(!key||saved?.attempts>=2)
   return {status:"unavailable"};
+ if(saved?.state==="PENDING"&&saved.claim_until&&
+    new Date(saved.claim_until).getTime()>Date.now())
+  return {status:"pending"};
  const settings=await readAdminRingsideSettings(pool,scope.worldId);
  const show=await readCompletedShowView(pool,scope);
  const digest=immutableResultDigest(show),params=scoped(scope);
@@ -218,7 +234,19 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     AND show_id=$3 AND prompt_version=$4 AND claim_token=$5
     AND state='PENDING' RETURNING state`,[...params,token,JSON.stringify(review)]));
   return write.length?{status:"ready",review}:{status:"pending"};
- }catch{
+ }catch(error){
+  if(error instanceof RingsideGenerationError&&error.code==="PROVIDER_LIMIT"){
+   // Shared database cooldown for all app instances; a 429 is not a
+   // permanent editorial failure, nor should it exhaust the two attempts.
+   await withSqlClient(pool,async db=>db.query(`
+    UPDATE ppw_ringside_reports
+    SET attempts=GREATEST(1,attempts-1),
+     claim_until=now()+($6::int * interval '1 second'),updated_at=now()
+    WHERE world_id=$1 AND promotion_id=$2 AND show_id=$3
+     AND prompt_version=$4 AND claim_token=$5 AND state='PENDING'`,
+    [...params,token,error.retryAfterSeconds??60]));
+   return {status:"pending"};
+  }
   await withSqlClient(pool,async db=>db.query(`
    UPDATE ppw_ringside_reports SET state='FAILED',updated_at=now()
    WHERE world_id=$1 AND promotion_id=$2 AND show_id=$3

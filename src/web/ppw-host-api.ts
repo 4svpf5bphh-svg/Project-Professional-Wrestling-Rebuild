@@ -185,7 +185,9 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     "Groq's report failed a factual safety check. No published review was changed.";
    return json(e instanceof RingsideGenerationError&&
     e.code==="PROVIDER_LIMIT"?429:422,{error:safe,
-    code:e instanceof RingsideGenerationError?e.code:"FACT_VALIDATION"});
+    code:e instanceof RingsideGenerationError?e.code:"FACT_VALIDATION",
+    ...(e instanceof RingsideGenerationError&&e.retryAfterSeconds?
+      {retryAfterSeconds:e.retryAfterSeconds}:{})});
   }
  }
  if(path==="/api/playtest-booking"){

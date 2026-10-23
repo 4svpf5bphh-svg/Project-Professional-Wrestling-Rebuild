@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ringsideFacts,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const example:CompletedShowView={showId:"show-1",showName:"Omega Night",year:1,week:1,
  crowdResponse:83,matchCount:1,angleCount:1,entries:[
@@ -77,4 +77,21 @@ test("Ringside rejects a loser being reported as the victor",()=>{
  const inverted={...valid,slots:[{...valid.slots[0],
   recap:"Opponent pinned Kenny Omega after the V-Trigger to win."},valid.slots[1]]};
  assert.throws(()=>validateRingsideCopy(inverted,example),/winner/);
+});
+
+test("a six-slot article retains five AI recaps and replaces one false submission",()=>{
+ const many:CompletedShowView={...example,entries:Array.from({length:6},(_,i)=>({
+  ...example.entries[0]!,slotId:"m"+i,position:i
+ }))};
+ const candidate={...valid,slots:many.entries.map((s,i)=>({
+  slotId:s.slotId,headline:"Omega survives the bout",
+  recap:i===3?"Omega won by submission.":"A V-Trigger and the One Winged Angel scored a clean pin."
+ }))};
+ const result=recoverRingsideCopy(candidate,many);
+ assert.equal(result?.replaced,1);
+ assert.equal(result?.review.slots[2]?.recap,candidate.slots[2]?.recap);
+ assert.ok(!result?.review.slots[3]?.recap.includes("submission"));
+ assert.ok(JSON.stringify(ringsideBrief(many)).length<JSON.stringify(ringsideFacts(many)).length);
+ const allBad={...candidate,slots:candidate.slots.map(s=>({...s,recap:"Omega won by submission."}))};
+ assert.equal(recoverRingsideCopy(allBad,many),null);
 });

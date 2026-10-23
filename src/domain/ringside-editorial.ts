@@ -145,6 +145,88 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
  return {showHeadline:v.showHeadline as string,opening:v.opening as string,
   closing:v.closing as string,slots};
 }
+/** Try to retain five useful AI reports instead of discarding a six-slot show
+ * for one inconsistent match description. Each preserved model slot undergoes
+ * the *same* final validation; only immutable, verified facts form fallbacks.
+ */
+export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
+ {review:RingsideCopy;replaced:number}|null{
+ const raw=shape(input);
+ if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
+  show.entries.length<4)return null;
+ const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
+ const base:RingsideCopy={
+  showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
+  opening:"The crowd gathered for a full night of wrestling.",
+  closing:"The final bell gave the audience plenty to discuss.",
+  slots:show.entries.map(entry=>{
+   if(entry.type==="SEGMENT")return {slotId:entry.slotId,
+    headline:"A moment outside the ring",
+    recap:"The segment played out before the audience, leaving its participants to reckon with the reaction."};
+   const names=entry.matchContext?.winnerNames??[];
+   const winner=names.length?names.join(" & "):"The winning side";
+   const finish:Record<string,string>={
+    CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
+    SUBMISSION:"earned a submission victory",
+    DISQUALIFICATION:"took the decision by disqualification",
+    FOREIGN_OBJECT:"emerged victorious after a controversial ending",
+    PROTECTED_FINISH:"prevailed after a contentious ending",
+    INJURY_STOPPAGE:"prevailed when the match was stopped"};
+   return {slotId:entry.slotId,headline:"The decision in the ring",
+    recap:winner+" "+(finish[entry.outcome]??"won the match")+
+     ". The result settled the contest in front of the crowd."};
+  })
+ };
+ try{validateRingsideCopy(base,show);}catch{return null;}
+ const next:RingsideCopy={...base,slots:[...base.slots]};
+ if(typeof raw.showHeadline==="string"&&typeof raw.opening==="string"&&
+  typeof raw.closing==="string"){
+  const intro={...next,showHeadline:raw.showHeadline,
+   opening:raw.opening,closing:raw.closing};
+  try{validateRingsideCopy(intro,show);
+   next.showHeadline=intro.showHeadline;next.opening=intro.opening;
+   next.closing=intro.closing;
+  }catch{/* Do not allow unsafe global prose. */}
+ }
+ let replaced=0;
+ for(let i=0;i<show.entries.length;i++){
+  const slot=shape(raw.slots[i]);
+  if(!slot||slot.slotId!==show.entries[i]!.slotId){replaced++;continue;}
+  const withSlot=[...next.slots];
+  withSlot[i]={slotId:slot.slotId as string,headline:slot.headline as string,
+   recap:slot.recap as string};
+  try{validateRingsideCopy({...next,slots:withSlot},show);next.slots=withSlot;}
+  catch{replaced++;}
+ }
+ if(replaced>maxFallback)return null;
+ try{return {review:validateRingsideCopy(next,show),replaced};}
+ catch{return null;}
+}
+
+/** Send relevant certified facts once, without redundant IDs and analytics. */
+export function ringsideBrief(show:CompletedShowView){
+ return {show:show.showName??"Weekly show",year:show.year,week:show.week,
+  crowd:show.crowdResponse,
+  slots:show.entries.map((e,i)=>({
+   key:"card_"+i,type:e.type,finish:e.outcome,crowd:e.crowdResponse,
+   summary:e.summary,
+   ...(e.matchContext?{match:{format:e.matchContext.format,
+    sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
+    titleContested:e.matchContext.championshipContested}}:{}),
+   ...(e.segmentContext?{angle:e.segmentContext}:{}),
+   ...(e.segmentKind?{kind:e.segmentKind}:{}),
+   ...(e.fallout?{fallout:{
+    stars:e.fallout.ratingStars,minutes:e.fallout.actualMinutes,
+    title:e.fallout.title,injuries:e.fallout.injuries,
+    interference:e.fallout.interference,cheater:e.fallout.finishCheaterName,
+    eliminations:e.fallout.eliminations}}:{}),
+   wrestlers:(e.performerIdentities??[]).map(p=>({
+    name:p.ringName,character:p.character,style:p.style,
+    signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)
+   }))
+  }))};
+}
+
 export const RINGSIDE_STYLE_GUIDE=`You are PPW Ringside's fictional veteran wrestling
 columnist Marty Vale: a sharp-eyed, entertaining critic who understands the
 craft, spectacle, history and occasional glorious absurdity of pro wrestling.
