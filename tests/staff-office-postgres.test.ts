@@ -37,7 +37,7 @@ test("One unique shared staff employee; 52/104-week contracts; buyout is exact, 
    requestId:"hire-agent",expectedRevision:0});
   assert.equal(first.status,"APPLIED");
   if(first.status!=="APPLIED"||!first.result.accepted)throw Error("Hire unexpectedly rejected");
-  const employment=first.result.employmentId;
+  const employment=first.result.employmentId!;
   const replay=await hireWorldStaff(db.pool,{...offer,
    requestId:"hire-agent",expectedRevision:0});
   assert.equal(replay.status,"REPLAYED");
