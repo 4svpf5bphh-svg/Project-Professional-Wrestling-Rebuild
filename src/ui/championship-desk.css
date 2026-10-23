@@ -102,8 +102,15 @@
 .ppw-belt-crowned .ppw-belt-identity{background:linear-gradient(105deg,#d9b46a24,transparent 70%);border-radius:9px}
 .ppw-belt-current-display{display:flex;gap:11px;align-items:center;min-width:0;
  padding:8px 0;border-top:1px solid #e8bf6e44}
-.ppw-belt-champion-portrait{display:block;flex:none;width:59px;height:77px;object-fit:cover;
- object-position:center 22%;border:2px solid #f5da8d;border-radius:7px 12px 7px 7px}
+.ppw-belt-champion-well{box-sizing:border-box;display:grid;place-items:center;position:relative;
+ flex:none;width:59px;height:77px;overflow:hidden;isolation:isolate;
+ background:linear-gradient(150deg,#342647,#112849 66%,#241636);
+ border:2px solid #f5da8d;border-radius:7px 12px 7px 7px}
+.ppw-belt-champion-initials{color:#ffe4aa;font:950 18px/1 system-ui,sans-serif;
+ letter-spacing:.055em;text-shadow:0 2px 9px #060816}
+.ppw-belt-champion-portrait{position:absolute;inset:0;width:100%;height:100%;
+ display:block;object-fit:cover;object-position:center 22%;border:0;
+ border-radius:inherit}
 .ppw-belt-champion-copy{display:grid;gap:4px;min-width:0}
 .ppw-belt-reign-title{font-size:9px;font-weight:900;letter-spacing:.1em;color:#e8c379}
 .ppw-belt-current-display .ppw-belt-current{font-size:clamp(13px,4.1vw,19px);
