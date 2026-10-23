@@ -121,3 +121,19 @@ test("verified history is optional, private, and does not change recorded card f
  const result=await generateGroqReview(show,"fixture",transport,undefined,memory);
  assert.equal(result.slots[0]?.slotId,"m");
 });
+
+test("verbatim recap echoes are removed without another paid Groq generation",async()=>{
+ let calls=0;
+ const fetcher:typeof fetch=async()=>{
+  calls++;
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Omega prevails",opening:"The audience was ready.",
+   closing:"The crowd went home talking.",
+   slots:{card_0:{headline:"Omega with the win",recap:
+    "Omega caught him in a storm of offence. The One Winged Angel ended the night.\n\nThe One Winged Angel ended the night. Nobody could argue with the result."}}
+  })}}]}));
+ };
+ const result=await generateGroqReview(show,"fixture",fetcher);
+ assert.equal(calls,1);
+ assert.equal(result.slots[0]?.recap.match(/One Winged Angel ended/g)?.length,1);
+});

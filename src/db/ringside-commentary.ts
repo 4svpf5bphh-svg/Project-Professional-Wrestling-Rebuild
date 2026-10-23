@@ -10,7 +10,7 @@ import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -91,7 +91,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  const keys=show.entries.map((entry,i)=>"card_"+i+" = "+entry.slotId);
  // Never let contextual history displace authoritative current-show facts.
- const historical=JSON.stringify(memory).slice(0,2300);
+ const bounded={priorMatches:memory.priorMatches.slice(0,5),
+  programmes:memory.programmes.slice(0,4)};
+ // Never truncate the middle of JSON; progressively remove older context.
+ while(JSON.stringify(bounded).length>2000){
+  if(bounded.priorMatches.length>=bounded.programmes.length&&bounded.priorMatches.length)
+   bounded.priorMatches.pop();
+  else if(bounded.programmes.length)bounded.programmes.pop();
+  else break;
+ }
+ const historical=JSON.stringify(bounded);
  const schema=ringsideResponseSchema(show);
  let correction="";
  for(let attempt=0;attempt<2;attempt++){
@@ -144,7 +153,11 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    if(typeof answer?.message?.content!=="string")
     throw new RingsideGenerationError("INVALID_OUTPUT",
      "Groq did not return a readable match review.");
-   const candidate=decodeEditorialResponse(JSON.parse(answer.message.content),show);
+   const candidate=decodeEditorialResponse(JSON.parse(answer.message.content),show) as
+    {showHeadline:string;opening:string;closing:string;
+     slots:{slotId:string;headline:string;recap:string}[]};
+   for(const slot of candidate.slots)
+    if(typeof slot.recap==="string")slot.recap=removeVerbatimRecapEchoes(slot.recap);
    try{return validateRingsideCopy(candidate,show);}
    catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
@@ -233,7 +246,10 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   RETURNING claim_token`,[...params,digest,settings.model,token,lease]));
  if(claimed[0]?.claim_token!==token)return {status:"pending"};
  try{
-  const memory=await readRingsideMemory(pool,scope,show);
+  // History is optional context; failure must not block the certified report.
+  let memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY;
+  try{memory=await readRingsideMemory(pool,scope,show);}
+  catch{console.warn("Ringside history unavailable; generating from card facts");}
   const review=await generateGroqReview(show,key,transport,settings,memory);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,

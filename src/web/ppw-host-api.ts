@@ -178,9 +178,11 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    const show=await readCompletedShowView(pool,{worldId:cfg.worldId,
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
     showId:body.showId});
-   const memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
+   let memory;
+   try{memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
-    showId:body.showId},show);
+    showId:body.showId},show);}
+   catch{console.warn("Ringside history unavailable; previewing card facts");}
    const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective,memory);
    return json(200,{review,preview:true});
   }catch(e){

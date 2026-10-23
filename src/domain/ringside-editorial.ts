@@ -54,6 +54,23 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
 const moveSurface=(value:string)=>value.normalize("NFKC").toLowerCase()
  .replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
 
+/** Remove only identical repeated sentences locally, no second Groq call.
+ * No judgement of paraphrases or simulated finish reconstruction.
+ */
+export function removeVerbatimRecapEchoes(recap:string):string{
+ const paragraphs=recap.split(/\n\s*\n/);
+ const seen=new Set<string>();
+ return paragraphs.map(p=>{
+  const sentences=p.split(/(?<=[.!?])\s+/);
+  return sentences.filter(sentence=>{
+   const key=moveSurface(sentence);
+   if(key.length<35)return true;
+   if(seen.has(key))return false;
+   seen.add(key);return true;
+  }).join(" ");
+ }).filter(p=>p.trim()).join("\n\n");
+}
+
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||

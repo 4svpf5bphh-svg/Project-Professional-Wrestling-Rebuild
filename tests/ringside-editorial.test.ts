@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const example:CompletedShowView={showId:"show-1",showName:"Omega Night",year:1,week:1,
  crowdResponse:83,matchCount:1,angleCount:1,entries:[
@@ -94,4 +94,12 @@ test("a six-slot article retains five AI recaps and replaces one false submissio
  assert.ok(JSON.stringify(ringsideBrief(many)).length<JSON.stringify(ringsideFacts(many)).length);
  const allBad={...candidate,slots:candidate.slots.map(s=>({...s,recap:"Omega won by submission."}))};
  assert.equal(recoverRingsideCopy(allBad,many),null);
+});
+
+test("repeat sentences are discarded while distinct editorial observations survive",()=>{
+ const prose="A big boot flattened the challenger. The crowd rose to its feet.\n\n"+
+  "A big boot flattened the challenger. The referee looked impressed.";
+ const clean=removeVerbatimRecapEchoes(prose);
+ assert.equal(clean.match(/A big boot flattened/g)?.length,1);
+ assert.match(clean,/referee looked impressed/);
 });
