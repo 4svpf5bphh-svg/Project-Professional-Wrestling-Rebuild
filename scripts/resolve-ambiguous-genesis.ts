@@ -108,7 +108,11 @@ for(const [name,file] of Object.entries(curated)){
  if(!p||!person){throw Error("Curated name absent from Genesis: "+name);}
  if(p.photo||portraitCredit(name)){unresolved.push({name,reason:"Already covered"});continue;}
  const candidate=p.candidates?.find(x=>x.file===file);
- if(!candidate||candidate.strong!==true){unresolved.push({name,reason:"No independent identity corroboration for selected file"});continue;}
+ const wikilinkDescription=candidate?.description.includes("w:"+name)&&
+  /professional wrestler/i.test(candidate.description)&&candidate.file.startsWith(name);
+ if(!candidate||(!candidate.strong&&!wikilinkDescription)){
+  unresolved.push({name,reason:"No independent identity corroboration for selected file"});continue;
+ }
  if(!accepted.has(candidate.license)||candidate.author.trim().length<3||
   !/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(candidate.source)||
   !candidate.description||candidate.description.length<8){
