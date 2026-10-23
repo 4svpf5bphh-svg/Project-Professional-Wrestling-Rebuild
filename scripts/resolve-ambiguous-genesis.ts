@@ -177,7 +177,9 @@ if(entries.length){
  const aliasAnchor="const knownAliases:Readonly<Record<string,string>>={\n";
  if(!catalogue.includes(aliasAnchor))throw Error("Missing known ring names");
  catalogue=catalogue.replace(aliasAnchor,aliasAnchor+
-  Object.entries(restoredAliases).map(([alias,identity])=>
+  Object.entries(restoredAliases).filter(([alias])=>
+   !new RegExp('^\\s*'+JSON.stringify(alias)+':','m')
+    .test(catalogue.split("const knownAliases:")[1]!)).map(([alias,identity])=>
    " "+JSON.stringify(alias)+":"+JSON.stringify(identity)+",").join("\n")+"\n");
  await writeFile("src/ui/wrestler-portrait.ts",catalogue);
  const html=additions.map(({name,credit,source})=>"<li>"+esc(name)+" — "+esc(credit.author)+
