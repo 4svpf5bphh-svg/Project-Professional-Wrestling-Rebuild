@@ -18,13 +18,18 @@ test("Groq requires one fixed, immutable slot per booked match and validates fac
   const body=JSON.parse(String(init?.body));
   assert.equal(body.messages.length,2);
   assert.equal(body.response_format.type,"json_schema");
-  assert.equal(body.response_format.json_schema.strict,true);\n  assert.deepEqual(body.response_format.json_schema.schema.properties.slots.required,["card_0"]);\n  assert.equal(body.response_format.json_schema.schema.properties.slots.additionalProperties,false);
+  assert.equal(body.response_format.json_schema.strict,true);
+  assert.deepEqual(body.response_format.json_schema.schema.properties.slots.required,["card_0"]);
+  assert.equal(body.response_format.json_schema.schema.properties.slots.additionalProperties,false);
   assert.equal(body.reasoning_effort,"low");
   assert.equal(body.temperature,0.92);
   assert.ok(body.max_completion_tokens>=900);
   assert.match(body.messages[0].content,/Marty Vale/);
   assert.match(body.messages[1].content,/One Winged Angel/);
-  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({\n   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,\n   slots:{card_0:{headline:review.slots[0].headline,recap:review.slots[0].recap}}\n  })}}]}),{status:200});
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
+   slots:{card_0:{headline:review.slots[0].headline,recap:review.slots[0].recap}}
+  })}}]}),{status:200});
  };
  assert.equal((await generateGroqReview(show,"fixture",fake)).slots[0]?.slotId,"m");
  assert.equal(calls,1);
