@@ -280,7 +280,8 @@ Never print game language: 'protected finish', 'foreign object',
 'crowd score', 'recorded finish', 'simulation'. No numeric
 scores in the prose, fabricated debut history, or empty hype.
 Be worth reading, not wordy. All slots in original order.
-Return only strict JSON with fields showHeadline, opening, closing,
-and slots, each slot containing slotId, headline, recap.
+Return only the strict JSON requested by the provider schema. The slots
+object has REQUIRED card_0, card_1 etc properties, each with headline and
+recap only. Do not emit slotId fields: the server restores immutable IDs.
 Recap may contain a double newline to divide its two paragraphs.
 `;

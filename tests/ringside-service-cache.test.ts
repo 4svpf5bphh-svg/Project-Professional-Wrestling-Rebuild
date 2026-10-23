@@ -5,7 +5,7 @@ import type {TransactionPool} from "../src/db/transaction.js";
 const scope={worldId:"test-world",playerId:"human",promotionId:"control",showId:"show"};
 const review={showHeadline:"A fine evening",opening:"The crowd came alive.",
  closing:"An exciting closer.",slots:[{slotId:"one",headline:"The Main Event",recap:"A clean win."}]};
-const fixture=(mode:"ready"|"no-key"|"denied")=>{
+const fixture=(mode:"ready"|"no-key"|"denied"|"cooldown")=>{
  let calls=0;
  const pool:TransactionPool={async connect(){return {
   release(){},async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
@@ -15,6 +15,9 @@ const fixture=(mode:"ready"|"no-key"|"denied")=>{
    assert.deepEqual(params,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,"ringside-v4"]);
    const result=mode==="denied"?[]:mode==="ready"?
     [{state:"READY",model:"openai/gpt-oss-120b",report_json:review,attempts:1}]:
+    mode==="cooldown"?
+    [{state:"PENDING",model:"openai/gpt-oss-120b",report_json:null,attempts:1,
+      claim_until:new Date(Date.now()+45000).toISOString()}]:
     [{state:null,model:null,report_json:null,attempts:null}];
    return result as unknown as readonly T[];
   }};}};
@@ -58,4 +61,10 @@ test("malformed cached articles fall back without a second SQL read",async()=>{
    {status:"unavailable"});
   assert.equal(reads,1);
  }
+});
+
+test("short-term Groq cooldown avoids repeat card expansion and provider requests",async()=>{
+ const x=fixture("cooldown");
+ assert.deepEqual(await loadRingsideCommentary(x.pool,scope,"fixture"),{status:"pending"});
+ assert.equal(x.calls(),1,"shared cooldown needs only one indexed read");
 });

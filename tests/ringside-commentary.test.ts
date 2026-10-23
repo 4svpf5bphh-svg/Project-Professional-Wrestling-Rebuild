@@ -86,3 +86,17 @@ test("429 conveys provider retry-after and uses compact facts",async()=>{
  }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT"&&
   e.retryAfterSeconds===75&&e.message.includes("75 seconds"));
 });
+
+test("schema and editorial instruction agree on immutable card keys",async()=>{
+ const fake:typeof fetch=async(_url,init)=>{
+  const body=JSON.parse(String(init?.body));
+  assert.match(body.messages[0].content,/card_0, card_1/);
+  assert.match(body.messages[0].content,/Do not emit slotId fields/);
+  assert.deepEqual(body.response_format.json_schema.schema.properties.slots.required,["card_0"]);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
+   slots:{card_0:{headline:review.slots[0]?.headline,recap:review.slots[0]?.recap}}
+  })}}]}));
+ };
+ assert.equal((await generateGroqReview(show,"fixture",fake)).slots.length,1);
+});
