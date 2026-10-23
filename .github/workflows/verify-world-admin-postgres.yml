@@ -1,0 +1,52 @@
+name: Verify World & Admin PostgreSQL
+on:
+  push:
+    branches:
+      - feature/admin-world-reliability-20261023
+  workflow_dispatch:
+concurrency:
+  group: world-admin-pg-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  world-admin:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ppw_test
+          POSTGRES_PASSWORD: ppw_test
+          POSTGRES_DB: ppw_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ppw_test -d ppw_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build iPhone PWA
+        run: npm run web:build
+      - name: All unit tests
+        run: npm test
+      - name: Apply all numbered schema migrations to disposable PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          set -euo pipefail
+          for migration in db/migrations/[0-9][0-9][0-9][0-9]_*.sql; do
+            echo "Applying $migration"
+            psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f "$migration" > /dev/null
+          done
+      - name: Real PostgreSQL end-to-end and recovery tests
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: npm run test:postgres
