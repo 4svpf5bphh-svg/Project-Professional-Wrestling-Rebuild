@@ -232,6 +232,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const labels:Record<string,string>={
     MEDIA_INCOME:"Broadcast income",SPONSOR_INCOME:"Sponsorship",
     FIXED_OVERHEAD:"Fixed overhead",STAFF_SALARY:"Staff salaries",
+    STAFF_BUYOUT:"Staff contract buyouts",
     CONTRACT_GUARANTEE:"Talent guarantees",
     RESTRUCTURING_SETTLEMENT:"Contract restructuring settlements",
     CONTRACT_SIGNING_BONUS:"Signing bonuses",
