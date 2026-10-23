@@ -53,12 +53,12 @@ test("five real shows resolve in two bounded batches and overdue World publishes
   const first=await driveWorldResolution(db.pool,{worldId,resolutionId,
    maxStages:6,manualRecovery:true});
   assert.equal(first.status,"LIMIT_REACHED");
-  const two=await driveWorldResolution(db.pool,{worldId,resolutionId,
-   maxStages:1,manualRecovery:true});
-  assert.equal(two.steps[0]?.action,"RESOLVE_DETAILED_SHOWS");
   const partial=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]));
   assert.equal(partial[0]?.n,"4");
+  const two=await driveWorldResolution(db.pool,{worldId,resolutionId,
+   maxStages:1,manualRecovery:true});
+  assert.equal(two.steps[0]?.action,"RESOLVE_DETAILED_SHOWS");
   const finished=await driveWorldResolution(db.pool,{worldId,resolutionId,
    maxStages:6,manualRecovery:true});
   assert.equal(finished.status,"PUBLISHED");
