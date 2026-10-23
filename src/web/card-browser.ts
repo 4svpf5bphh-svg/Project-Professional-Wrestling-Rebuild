@@ -213,7 +213,8 @@ function staffPort(root:HTMLElement,scope:Scope,
   hire:input=>call("hireStaff",input),
   release:input=>call("releaseStaff",input),
   renew:input=>call("renewStaff",input),
-  openContracts:()=>{window.location.hash=hostSectionHash("contracts");},\n  openRoster:()=>{window.location.hash=hostSectionHash("roster");},
+  openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
+  openRoster:()=>{window.location.hash=hostSectionHash("roster");},
   openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)

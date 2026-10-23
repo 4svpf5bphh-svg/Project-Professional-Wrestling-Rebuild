@@ -20,7 +20,8 @@ export async function settleWeeklyPromotionHealth(
       WHEN 'CONTRACT_GUARANTEE_PAID' THEN -COALESCE((payload->>'amount')::bigint,0)
       WHEN 'CONTRACT_TERMINATED_DURING_RESTRUCTURING'
        THEN -COALESCE((payload->>'settlement')::bigint,0)
-      WHEN 'STAFF_BUYOUT' THEN -COALESCE((payload->>'amount')::bigint,0)\n      WHEN 'PROMOTION_RECURRING_FINANCES' THEN COALESCE((payload->>'net')::bigint,0)
+      WHEN 'STAFF_BUYOUT' THEN -COALESCE((payload->>'amount')::bigint,0)
+      WHEN 'PROMOTION_RECURRING_FINANCES' THEN COALESCE((payload->>'net')::bigint,0)
       WHEN 'SHOW_EVENT_ECONOMICS' THEN COALESCE((payload->>'incrementalCash')::bigint,0)
       ELSE 0::bigint END)::bigint AS weekly_net
    FROM ppw_ledger_events

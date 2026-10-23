@@ -200,7 +200,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await tx.query(`
         WITH staff AS (
          SELECT promotion_id,sum(weekly_salary)::bigint AS amount
-         FROM ppw_staff_employments WHERE world_id=$1 AND status='ACTIVE'\n          AND start_week_index<=$4 AND expires_week_index>=$4
+         FROM ppw_staff_employments WHERE world_id=$1 AND status='ACTIVE'
+          AND start_week_index<=$4 AND expires_week_index>=$4
          GROUP BY promotion_id
         ), costs AS (
          SELECT p0.promotion_id,COALESCE(s.amount,0::bigint) AS staff_cost
