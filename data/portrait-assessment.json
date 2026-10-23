@@ -2,11 +2,11 @@
   "summary": {
     "total": 643,
     "existing": 156,
-    "newPhotos": 36,
-    "unresolved": 451,
-    "coveragePercent": 29.86,
+    "newPhotos": 31,
+    "unresolved": 456,
+    "coveragePercent": 29.08,
     "checkedAt": "2026-10-23T17:58:03.900Z",
-    "caveat": "Automated identity corroboration requires independent visual spot-checks; Commons metadata audit is separate."
+    "caveat": "Identity review removed five unsafe photos; 210 search attempts were rate-limited and remain unresolved."
   },
   "people": [
     {
@@ -4560,7 +4560,7 @@
       "status": "missing",
       "photo": {
         "file": "Mascara Dorada 2025 Arena Pubela.jpg",
-        "author": "[User:Satanic.boho|Satanic.boho]]",
+        "author": "Satanic.boho",
         "license": "CC BY-SA 4.0"
       },
       "resolution": "added",
@@ -4660,13 +4660,9 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": {
-        "file": "Aaron Wolf musician.jpeg",
-        "author": "Danifel",
-        "license": "CC BY-SA 4.0"
-      },
-      "resolution": "added",
-      "reason": "Identity corroborated by file title and image description, with licensed Commons author",
+      "photo": null,
+      "resolution": "unresolved",
+      "reason": "Identity protection: Same-name musician, not the wrestler",
       "candidates": [
         {
           "file": "Aaron Wolf musician.jpeg",
@@ -5880,13 +5876,9 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": {
-        "file": "Cha Cha Charlie vs AJ Francis - BASH AT THE BREW 39 in Hialeah, FL.jpg",
-        "author": "TheEricChild",
-        "license": "CC0"
-      },
-      "resolution": "added",
-      "reason": "Identity corroborated by file title and image description, with licensed Commons author",
+      "photo": null,
+      "resolution": "unresolved",
+      "reason": "Identity protection: Two-wrestler action photo, not a safe portrait",
       "candidates": [
         {
           "file": "Cha Cha Charlie vs AJ Francis - BASH AT THE BREW 39 in Hialeah, FL.jpg",
@@ -7181,13 +7173,9 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": {
-        "file": "King of Trios Team AAA Drago Fenix Aero Star.jpg",
-        "author": "John Jewell",
-        "license": "CC BY 2.0"
-      },
-      "resolution": "added",
-      "reason": "Identity corroborated by file title and image description, with licensed Commons author",
+      "photo": null,
+      "resolution": "unresolved",
+      "reason": "Identity protection: Multi-person group photograph",
       "candidates": [
         {
           "file": "King of Trios Team AAA Drago Fenix Aero Star.jpg",
@@ -8214,13 +8202,9 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": {
-        "file": "20091209 Zack Gibson.jpg",
-        "author": "flickr user the_robio",
-        "license": "CC BY 2.0"
-      },
-      "resolution": "added",
-      "reason": "Identity corroborated by file title and image description, with licensed Commons author",
+      "photo": null,
+      "resolution": "unresolved",
+      "reason": "Identity protection: Same-name basketball player",
       "candidates": [
         {
           "file": "20091209 Zack Gibson.jpg",
@@ -9344,13 +9328,9 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": {
-        "file": "Diving Body Press-yuya uemura.jpg",
-        "author": "ハイエナジー",
-        "license": "CC BY-SA 4.0"
-      },
-      "resolution": "added",
-      "reason": "Identity corroborated by file title and image description, with licensed Commons author",
+      "photo": null,
+      "resolution": "unresolved",
+      "reason": "Identity protection: In-ring move photo does not isolate the subject",
       "candidates": [
         {
           "file": "Diving Body Press-yuya uemura.jpg",

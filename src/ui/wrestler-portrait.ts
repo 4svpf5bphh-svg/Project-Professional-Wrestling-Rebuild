@@ -22,7 +22,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "esfinge":{file:"Esfinge in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "megan bayne":{file:"Megan Bayne in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "mina shirakawa":{file:"Mina Shirakawa in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
- "queen aminata":{file:"Aminata in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "queen aminata":{file:"Queen Aminata in April 2025 (cropped).jpg",author:"BEAR FROM SPACE",license:"CC BY 2.0"},
  "dani luna":{file:"Dani Luna in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "thekla":{file:"Thekla in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "xia brookside":{file:"Xia Brookside in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
@@ -219,7 +219,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "hiroshi tanahashi":{file:"Hiroshi Tanahashi 2016.png",author:"Courtney Rose",license:"CC BY-SA 2.0"},
  "aj styles":{file:"AJ Styles RR24 (1).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "kazuchika okada":{file:"Kazuchika Okada - 03-07-2024 EDIT-12.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
- "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
+ "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
  // Commons corroborated Genesis additions
  "big cass":{file:"Big Cass May 2018.jpg",author:"TDOldSpice",license:"CC BY-SA 4.0"},
  "brad baylor":{file:"Paparazzo Photography Brad Baylor.jpg",author:"Paparazzo Presents",license:"CC0"},
@@ -229,21 +229,21 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "ace austin":{file:"Ace Austin Alpha 1.jpg",author:"Tabercil",license:"CC BY-SA 3.0"},
  "adam copeland":{file:"Adam Copeland by Gage Skidmore.jpg",author:"Gage Skidmore",license:"CC BY-SA 3.0"},
  "bryan keith":{file:"Big Bill and Bryan Keith (cropped 2).jpg",author:"KMcWrestling",license:"CC BY-SA 4.0"},
- "máscara dorada":{file:"Mascara Dorada 2025 Arena Pubela.jpg",author:"[User:Satanic.boho|Satanic.boho]]",license:"CC BY-SA 4.0"},
- "aaron wolf":{file:"Aaron Wolf musician.jpeg",author:"Danifel",license:"CC BY-SA 4.0"},
+ "máscara dorada":{file:"Mascara Dorada 2025 Arena Pubela.jpg",author:"Satanic.boho",license:"CC BY-SA 4.0"},
+
  "taka michinoku":{file:"Taka Michinoku.jpg",author:"Original uploaded by 2for6 (Transfered by Maurilbert )",license:"CC BY-SA 3.0"},
- "aj francis":{file:"Cha Cha Charlie vs AJ Francis - BASH AT THE BREW 39 in Hialeah, FL.jpg",author:"TheEricChild",license:"CC0"},
+
  "saxon huxley":{file:"Saxon Huxley Day 2 UK Tournament.jpg",author:"Shaun Potts.",license:"CC BY-SA 4.0"},
  "shuhei taniguchi":{file:"Shuhei Taniguchi.JPG",author:"2for6",license:"CC BY-SA 3.0"},
  "shuji kondo":{file:"Shuji Kondo.jpg",author:"Harry Li",license:"CC BY 2.0"},
- "aero star":{file:"King of Trios Team AAA Drago Fenix Aero Star.jpg",author:"John Jewell",license:"CC BY 2.0"},
+
  "mark coffey":{file:"Mark Coffey April 2019.jpg",author:"John Manard",license:"CC BY-SA 2.0"},
  "jack cartwheel":{file:"Jack Cartwheel in June 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
- "zack gibson":{file:"20091209 Zack Gibson.jpg",author:"flickr user the_robio",license:"CC BY 2.0"},
+
  "michael oku":{file:"Michael Oku wXw 16 Carat Gold 2024.jpg",author:"Pinkd56",license:"CC0"},
  "togi makabe":{file:"Togi Makabe.jpg",author:"2for6",license:"CC BY-SA 3.0"},
  "tomoaki honma":{file:"Tomoaki Honma.jpg",author:"2for6",license:"CC BY-SA 3.0"},
- "yuya uemura":{file:"Diving Body Press-yuya uemura.jpg",author:"ハイエナジー",license:"CC BY-SA 4.0"},
+
  "yoshiki inamura":{file:"Yoshiki inamura October 2025.jpg",author:"ごーるどじむ",license:"CC BY-SA 4.0"},
  "silas mason":{file:"Silas Mason.jpg",author:"grenwail",license:"CC BY 2.0"},
  "bárbaro cavernario":{file:"Bárbaro Cavernario I.jpg",author:"DeBolsillo",license:"CC BY-SA 4.0"},
@@ -259,6 +259,9 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "janai kai":{file:"Janai Kai Kitsune Wrestling March 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
 };
 const knownAliases:Readonly<Record<string,string>>={
+ "nattie":"natalya",
+ "paige":"saraya",
+ "andrade el ídolo":"andrade",
  "otís":"otis",
  "tanga loa":"tonga loa",
  "shotzi":"shotzi blackheart",
