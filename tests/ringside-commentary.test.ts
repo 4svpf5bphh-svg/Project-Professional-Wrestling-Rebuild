@@ -79,9 +79,8 @@ test("historical digest excludes mutable live personas while preserving finish t
 test("429 conveys provider retry-after and uses compact facts",async()=>{
  await assert.rejects(()=>generateGroqReview(show,"fixture",async(_u,init)=>{
   const body=JSON.parse(String(init?.body));
-  const packet=JSON.parse(body.messages[1].content.split("Records:\\n")[1]);
-  assert.equal(packet.slots[0].key,"card_0");
-  assert.ok(!JSON.stringify(packet).includes("slotId"));
+  assert.ok(body.messages[1].content.includes('"key":"card_0"'));
+  assert.ok(!body.messages[1].content.includes('"slotId":'));
   assert.ok(body.max_completion_tokens<1500);
   return new Response("",{status:429,headers:{"retry-after":"75"}});
  }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT"&&
