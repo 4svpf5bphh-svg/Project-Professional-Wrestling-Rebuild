@@ -9,6 +9,7 @@ export const HOST_SECTIONS=[
  {id:"contracts",label:"Contracts",glyph:"▤"},
  {id:"business",label:"Business",glyph:"B",primary:true},
  {id:"staff",label:"Staff",glyph:"◉"},
+ {id:"admin",label:"Admin",glyph:"⚙"},
  {id:"industry",label:"Industry",glyph:"◎"},
  {id:"calendar",label:"Calendar",glyph:"▦"},
  {id:"results",label:"Results",glyph:"R",primary:true},
@@ -60,7 +61,8 @@ export const HOST_DRAWER_ROOTS=[
   ["programmes","Programmes","Manage rivalries and stories"]]},
  {key:"business",label:"Business",glyph:"B",landing:"business",destinations:[
   ["business","Business overview","Finances and operations"],
-  ["staff","Staff","Delegated decisions and renewals"]]},
+  ["staff","Staff","Delegated decisions and renewals"],
+  ["admin","Admin","Private World control and Ringside AI Studio"]]},
  {key:"results",label:"Results",glyph:"R",landing:"results",destinations:[
   ["results","My Results","Completed shows and broadcasts"]]}
 ] as const;
@@ -68,7 +70,7 @@ export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
 export function drawerRootForSection(section:HostSection):HostDrawerRoot{
  if(["roster","market","contracts","backstage","teams","stables","connections"].includes(section))return "talent";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";
- if(["business","staff"].includes(section))return "business";
+ if(["business","staff","admin"].includes(section))return "business";
  if(section==="results")return "results";
  return "world";
 }

@@ -1,0 +1,26 @@
+.ppw-admin-centre{max-width:780px;margin:auto;padding:24px 15px 115px;color:#f9edff}
+.ppw-admin-centre h1{font-size:clamp(36px,9vw,54px);letter-spacing:-.04em;color:#fff0fd;margin:6px 0}
+.ppw-admin-panel{margin:18px 0;padding:20px 16px;border:1px solid #76427e;border-radius:18px;background:linear-gradient(150deg,#221832,#11162c);box-shadow:0 16px 36px #0004}
+.ppw-admin-panel h2{font-size:22px;color:#ff86d4;margin:0 0 9px}
+.ppw-admin-sub,.ppw-admin-small{color:#bdb0cf;line-height:1.5;font-size:13px}
+.ppw-admin-world-data{border-left:3px solid #f747ad;padding:10px 13px;background:#321b37;border-radius:8px}
+.ppw-admin-world-data strong{font-size:16px;letter-spacing:.04em}
+.ppw-admin-world-data p{margin:8px 0;font-size:13px;color:#e2cee9}
+.ppw-admin-warning,.ppw-admin-error{color:#ffb5c9!important}
+.ppw-admin-actions{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.ppw-admin-primary,.ppw-admin-secondary{padding:12px 15px;border-radius:12px;min-height:44px;font-weight:850;cursor:pointer}
+.ppw-admin-primary{background:linear-gradient(120deg,#fb2da4,#9b3cd2);border:1px solid #ff79d0;color:#fff}
+.ppw-admin-secondary{background:#241b36;border:1px solid #9560aa;color:#fff}
+.ppw-admin-primary:disabled,.ppw-admin-secondary:disabled{opacity:.45;cursor:not-allowed}
+.ppw-admin-message{margin:12px 0;color:#baf5e8;font-size:13px;line-height:1.5}
+.ppw-admin-form{display:grid;grid-template-columns:1fr;gap:13px;padding-top:8px;margin-bottom:16px}
+.ppw-admin-field{display:grid;gap:7px;font-size:12px;font-weight:850;color:#efcbee}
+.ppw-admin-input,.ppw-admin-field select,.ppw-admin-field textarea{width:100%;min-height:44px;color:#fff;background:#151429;border:1px solid #654e83;border-radius:10px;padding:10px;font:inherit}
+.ppw-admin-field textarea{resize:vertical;line-height:1.5}
+.ppw-admin-temperature{display:flex;align-items:center;gap:12px}
+.ppw-admin-temperature input{flex:1;accent-color:#ff39ae}
+.ppw-admin-preview{border:1px solid #6a5588;background:#161126;border-radius:15px;padding:15px;margin:16px 0}
+.ppw-admin-preview h3{color:#ff88d4;font-size:23px}
+.ppw-admin-preview h4{font-size:15px;color:#fdd8ed;margin:18px 0 4px}
+.ppw-admin-preview p{white-space:pre-line;line-height:1.55;font-size:14px;color:#ecdfef}
+@media(min-width:650px){.ppw-admin-form{grid-template-columns:1fr 1fr}.ppw-admin-form .ppw-admin-field:last-of-type{grid-column:1 / -1}}

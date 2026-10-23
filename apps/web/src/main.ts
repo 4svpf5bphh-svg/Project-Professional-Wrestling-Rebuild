@@ -21,6 +21,8 @@ import "../type-led.css";
 import "../bottom-navigation.css";
 import "../ringside-editorial.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
+import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
+import "../admin-centre.css";
 
 type SessionView={
  worldId:string;playerId:string;csrfToken:string;
@@ -192,6 +194,7 @@ function renderNavigation(section:HostSection){
  head.append(closeButton);drawer.append(head);
  const entries=el("div","ppw-nav-drawer-entries");
  for(const [index,[id,label,description]] of root.destinations.entries()){
+  if(id==="admin"&&!session?.canManualAdvance)continue;
   const entry=button("",()=>openSection(id as HostSection));
   entry.className="ppw-nav-drawer-entry";
   entry.append(el("span","ppw-nav-entry-index",String(index+1).padStart(2,"0")));
@@ -225,6 +228,7 @@ function renderSection(){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
+ if(section==="admin"&&!session.canManualAdvance){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
  pendingBackstagePersonId=null;
@@ -255,25 +259,7 @@ function renderSection(){
    const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
    if(line)line.textContent="Y"+updated.world.year+" W"+updated.world.week+
     " · "+updated.world.name;
-  },session?.canManualAdvance?async(year,week)=>{
-   const response=await fetch("/api/playtest-week",{
-    method:"POST",credentials:"same-origin",
-    headers:{"content-type":"application/json","x-ppw-csrf":session!.csrfToken},
-    body:JSON.stringify({confirm:"ADVANCE_SHARED_WORLD",year,week})
-   });
-   if(!response.ok){
-    const rejected=await response.json().catch(()=>({error:"Could not advance the World"})) as {error?:string};
-    throw new Error(rejected.error??"Cannot advance World");
-   }
-   return response.json();
-  }:undefined,session?.canManualAdvance?async(year,week)=>{
-   const res=await fetch("/api/playtest-booking",{method:"POST",credentials:"same-origin",
-    headers:{"content-type":"application/json","x-ppw-csrf":session!.csrfToken},
-    body:JSON.stringify({confirm:"EXTEND_SHARED_BOOKING",year,week})});
-   if(!res.ok){const body=await res.json().catch(()=>({error:"Unable to extend booking"})) as {error?:string};
-    throw new Error(body.error??"Unable to extend booking");}
-   return res.json();
-  }:undefined);break;
+  },undefined,undefined);break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
   case "card":{
@@ -300,6 +286,7 @@ function renderSection(){
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
+  case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken});break;
   case "industry":mountIndustryPage(view,scope);break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;
