@@ -82,3 +82,10 @@ test("Good live staff modestly improve show presentation without changing match 
  assert.equal(staffShowPresentationBonus([read("REFEREE")],0),0);
  assert.throws(()=>staffShowPresentationBonus([],101));
 });
+
+test("Staff market size and payroll recovery caps stay compatible",()=>{
+ const coaches=worldStaff(76).filter(s=>s.role==="TRAINER");
+ assert.equal(coaches.length,16);
+ assert.equal(new Set(coaches.map(s=>s.staffId)).size,16);
+ assert.ok(coaches.every(c=>trainerFatigueBonus(c.craft)<=2.5));
+});

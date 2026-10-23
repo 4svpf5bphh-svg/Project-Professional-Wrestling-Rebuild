@@ -9,5 +9,8 @@ CREATE TABLE ppw_staff_show_reports(
  analysis_json jsonb NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(world_id,show_id),
+ FOREIGN KEY(world_id,show_id) REFERENCES ppw_completed_shows(world_id,show_id)
+  ON DELETE CASCADE,
  FOREIGN KEY(world_id,promotion_id) REFERENCES ppw_promotions(world_id,promotion_id)
+  ON DELETE CASCADE
 );

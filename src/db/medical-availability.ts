@@ -101,11 +101,11 @@ export async function settleWeeklyFatigueRecovery(
  tx:SqlRows,worldId:string,weekIndex=-1,
  trainers:readonly {staffId:string;bonus:number}[]=[]):Promise<void>{
  if(!worldId||worldId.length>200||!Number.isSafeInteger(weekIndex)||
-  weekIndex< -1||trainers.length>8||
+  weekIndex< -1||trainers.length>16||
   trainers.some(t=>!t.staffId||t.staffId.length>200||
    !Number.isFinite(t.bonus)||t.bonus<.5||t.bonus>2.5))
   throw new Error("Invalid fatigue recovery World");
- // One set-based UPDATE: cache the eight possible World trainers in the
+ // One set-based UPDATE: cache the sixteen possible World trainers in the
  // execution params, then join only active staff and exclusive contracts.
  // The original recovery formula is unchanged for everyone without a coach.
  await tx.query(`
