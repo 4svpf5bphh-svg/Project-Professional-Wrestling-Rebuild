@@ -51,8 +51,8 @@ test("second 25-photo batch resolves unique credited WWE wrestler identities",()
 });
 
 test("missing Wikimedia images return a real, consistent initials placeholder",()=>{
- const withheld=["sheamus","solo sikoa","tama tonga","tonga loa","tiffany stratton","trick williams","zelina vega","zoey stark","xavier woods","kofi kingston","the miz","otis","chad gable","ludwig kaiser","ilja dragunov","bron breakker","bronson reed","grayson waller","andrade","carlito","dragon lee","elektra lopez","ashante thee adonis"];
- assert.equal(withheld.length,23);
+ const withheld=["tonga loa","bronson reed","carlito","elektra lopez","ashante thee adonis"];
+ assert.equal(withheld.length,5);
  for(const name of withheld){assert.equal(portraitCredit(name),null,name);assert.equal(portraitSource(name),null,name);}
  assert.ok(portraitSource("santos escobar"));
 });
@@ -90,4 +90,21 @@ test("renamed wrestlers and ring-name variants keep the same photo attribution",
   assert.deepEqual(portraitCredit(alias),portraitCredit(person),alias);
   assert.equal(portraitSource(alias),portraitSource(person));
  }
+});
+
+test("18 newly verified prominent missing wrestlers have unique credited photographs",()=>{
+ const names=["tiffany stratton","trick williams","the miz","kofi kingston","ilja dragunov","bron breakker","zoey stark","solo sikoa","andrade","xavier woods","sheamus","zelina vega","grayson waller","tama tonga","dragon lee","ludwig kaiser","chad gable","otis"];
+ assert.equal(names.length,18);
+ const files=new Set<string>();
+ for(const name of names){
+  const credit=portraitCredit(name);
+  assert.ok(credit?.file,name);
+  assert.ok(credit.author.length>1,name);
+  assert.ok(!files.has(credit.file),name);
+  files.add(credit.file);
+  assert.match(portraitSource(name)!,/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//);
+ }
+ assert.equal(portraitCredit("Trick Williams")?.license,"CC BY 4.0");
+ for(const [alias,canonical] of [["Otis Dozovic","Otis"],["Andrade El Idolo","Andrade"],["Marcel Barthel","Ludwig Kaiser"]])
+  assert.equal(portraitSource(alias),portraitSource(canonical));
 });

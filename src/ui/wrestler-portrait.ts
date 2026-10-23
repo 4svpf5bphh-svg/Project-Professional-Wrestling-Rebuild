@@ -3,8 +3,28 @@
  * Match the base legal name as well as stable ring aliases. Never invent photos.
  * Full attribution and license links: /portrait-credits.html
  */
-export interface PhotoCredit{file:string;author:string;license:"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 3.0"|"CC BY-SA 4.0"|"CC0";}
+export interface PhotoCredit{file:string;author:string;license:"CC BY 4.0"|"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 3.0"|"CC BY-SA 4.0"|"CC0";}
 const catalogue:Readonly<Record<string,PhotoCredit>>={
+ // Portraits vetted against each Commons source page; remote metadata gated in CI.
+ "tiffany stratton":{file:"Tiffany Stratton August 2024 (cropped).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "trick williams":{file:"Trick Williams FOS 2026 version 3 (cropped).png",author:"Front Office Sports",license:"CC BY 4.0"},
+ "the miz":{file:"The Miz (29036397881).jpg",author:"Greg2600",license:"CC BY-SA 2.0"},
+ "kofi kingston":{file:"Kofi Kingston (43601442611).jpg",author:"Gage Skidmore",license:"CC BY-SA 2.0"},
+ "ilja dragunov":{file:"Ilja Dragunov 2019.jpg",author:"Photos N Effect",license:"CC BY-SA 2.0"},
+ "bron breakker":{file:"Bron Breakker 2026 (cropped).jpg",author:"HHH Pedrigree",license:"CC BY-SA 4.0"},
+ "zoey stark":{file:"Zoey Stark.jpg",author:"KMcWrestling Photography",license:"CC BY-SA 4.0"},
+ "solo sikoa":{file:"Solo Sikoa, October 2024 (1).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
+ "andrade":{file:"Andrade El Idolo AEW (cropped).jpg",author:"KMcWrestling Photography",license:"CC BY-SA 4.0"},
+ "xavier woods":{file:"Xavier Woods March 2023 (cropped).jpg",author:"diegofernandophotography",license:"CC BY 2.0"},
+ "sheamus":{file:"Sheamus March 2018.jpg",author:"Mmsnapplez",license:"CC BY-SA 4.0"},
+ "zelina vega":{file:"Zelina Vega 2018-04-07 20-50-02 ILCE-6500 DSC06809 (cropped).jpg",author:"Miguel Discart",license:"CC BY-SA 2.0"},
+ "grayson waller":{file:"Grayson Waller - 2023 (cropped).jpg",author:"Mechanical Elephant",license:"CC0"},
+ "tama tonga":{file:"Tama Tonga IWGP Tag Team Champion.jpg",author:"ゾーヒョー",license:"CC BY-SA 4.0"},
+ "dragon lee":{file:"Dragon Lee, April 2019 (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
+ "ludwig kaiser":{file:"Marcel Barthel June 2018.jpg",author:"Miguel Discart (Shared Account)",license:"CC BY-SA 2.0"},
+ "chad gable":{file:"Chad Gable NXT Takeover Dallas 2016.jpg",author:"Miguel Discart",license:"CC BY-SA 2.0"},
+ "otis":{file:"Otis Dozovic 2018.jpg",author:"Miguel Discart (Shared Account)",license:"CC BY-SA 2.0"},
+
  // New audited candidates: precise Commons files and verified creator/licence pages.
  "orange cassidy":{file:"Orange Cassidy (53197325636).jpg",author:"Tim Blackmon for Galaxy Con",license:"CC BY 2.0"},
  "toni storm":{file:"Toni Storm, September 2023.jpg",author:"zuko1312",license:"CC BY 2.0"},
@@ -153,6 +173,9 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
 };
 const knownAliases:Readonly<Record<string,string>>={
  "otís":"otis",
+ "otis dozovic":"otis",
+ "andrade el idolo":"andrade",
+ "marcel barthel":"ludwig kaiser",
  "hangman page":"hangman adam page",
  "“hangman” adam page":"hangman adam page",
  "\"hangman\" adam page":"hangman adam page",
