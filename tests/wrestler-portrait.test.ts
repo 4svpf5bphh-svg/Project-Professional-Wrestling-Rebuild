@@ -58,3 +58,33 @@ test("third batch of 25 wrestler portraits has distinct attributed files",()=>{
 });
 
 test("verified Nakamura file is independent of batch photographer assumption",()=>{assert.equal(portraitCredit("Shinsuke Nakamura")?.file,"Shinsuke Nakamura 2024 (cropped).jpg");assert.equal(portraitCredit("Shinsuke Nakamura")?.author,"Carter Sterling");});
+
+test("25 new portrait candidates are unique and resolve to accountable photo sources",()=>{
+ const names=["orange cassidy","toni storm","swerve strickland","mjf",
+  "willow nightingale","chris jericho","rey fenix","adam cole",
+  "claudio castagnoli","hikaru shida","kris statlander","zack sabre jr.",
+  "jeff hardy","matt hardy","aj lee","jordynne grace","bandido",
+  "matt cardona","nic nemeth","christian cage","athena","pac",
+  "darby allin","cash wheeler","dax harwood"];
+ assert.equal(names.length,25);
+ const files=new Set<string>();
+ for(const name of names){
+  const info=portraitCredit(name);
+  assert.ok(info?.file, name+" needs original file");
+  assert.ok(info.author?.trim(),name+" needs real creator attribution");
+  assert.match(info.license,/^(CC0|CC BY 2.0|CC BY-SA (2.0|3.0|4.0))$/);
+  assert.equal(files.has(info.file),false,name+" must not reuse another portrait");
+  files.add(info.file);
+  assert.match(portraitSource(name)!,/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//);
+ }
+});
+test("renamed wrestlers and ring-name variants keep the same photo attribution",()=>{
+ for(const [alias,person] of [
+  ['"Hangman" Adam Page',"Hangman Adam Page"],["Dolph Ziggler","Nic Nemeth"],
+  ["Cesaro","Claudio Castagnoli"],["Rey Fénix","Rey Fenix"],
+  ["Zack Sabre Jr","Zack Sabre Jr."],["Christian","Christian Cage"]
+ ]){
+  assert.deepEqual(portraitCredit(alias),portraitCredit(person),alias);
+  assert.equal(portraitSource(alias),portraitSource(person));
+ }
+});
