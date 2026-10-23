@@ -3,15 +3,15 @@
     "total": 643,
     "previouslyCovered": 204,
     "additionsThisPass": 0,
-    "genuineGenesisPhotos": 288,
-    "unresolved": 355,
-    "coveragePercent": 44.79,
+    "genuineGenesisPhotos": 344,
+    "unresolved": 299,
+    "coveragePercent": 53.5,
     "checkedAt": "2026-10-23T18:35:00.165Z",
     "rateLimitedSearches": 193,
-    "caveat": "Wikimedia source, creator and commercially reusable licences independently confirmed for all 309 credited files; subject identity evidence was reviewed but human visual inspection has not been completed for every image. The 193 rate-limited people are not claimed to lack legal images.",
+    "caveat": "All credited files require independent Commons licence audit; identities lacking corroboration keep their initials.",
     "curatedPhotoAdditions": 3,
     "recoveredAliases": 3,
-    "creditedSources": 312,
+    "creditedSources": 368,
     "note": "Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing.",
     "previouslyCreditedSources": 186,
     "newCreditedSources": 123,
@@ -29,7 +29,8 @@
       "mismatch": 0,
       "error": 0,
       "verifiedAt": "2026-10-23T18:44:09.638Z"
-    }
+    },
+    "recoveredBulkAdditions": 56
   },
   "people": [
     {
@@ -2054,10 +2055,14 @@
         "WWE"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Rusev US Champ.png",
+        "author": "Vjmlhds",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -2130,10 +2135,14 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Shawn Spears headshot promo.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -2657,10 +2666,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Angélico at Smash Nov 2015 (cropped).jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -2668,10 +2681,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Anthony Bowens March 2020.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -2679,10 +2696,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Anthony Henry August 2018.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -2703,10 +2724,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "AR Fox, May 2018 02 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3084,10 +3109,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Carlie Bravo.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3112,10 +3141,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Chris Sabin January 2010.jpg",
+        "author": "Simon from United Kingdom",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3172,10 +3205,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Cole Karter.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3183,10 +3220,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Colt Cabana.jpg",
+        "author": "Cameraman Greg",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3194,10 +3235,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Colten Gunn, June 2022.png",
+        "author": "ECarterSterling",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3205,10 +3250,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Dalton Castle in-ring.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3676,10 +3725,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "James Drake April 2019.jpg",
+        "author": "John Manard",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3687,10 +3740,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Jay Lethal July 2010 (cropped).jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3715,10 +3772,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "JD Drake (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -3726,10 +3787,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Jeff Jarrett All In 2023.jpg",
+        "author": "McPhail",
+        "license": "CC0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4395,10 +4460,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Lee Johnson wrestler (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4438,10 +4507,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Luchasaurus in January 2022 (cropped).jpg",
+        "author": "LockedIN Magazine",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4451,10 +4524,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Mansoor Al-Shehail, January 2024 (cropped).jpg",
+        "author": "peter3x24",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4464,10 +4541,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Mark Briscoe prays.jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4475,10 +4556,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Mark Davis April 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -4940,10 +5025,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Alex Zayne on GCW 2023.jpg",
+        "author": "Steve Mesa",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -5415,10 +5504,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Great-O-Khan 2025.jpg",
+        "author": "Прикли",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -5454,10 +5547,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Hirooki Goto.jpg",
+        "author": "MARk SURUMe",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -5465,10 +5562,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Hiroyoshi Tenzan.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -5873,10 +5974,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Ryusuke Taguchi.jpg",
+        "author": "MARk SURUMe",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -5899,10 +6004,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Satoshi Kojima.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -6320,10 +6429,14 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Eddie Edwards (wrestler) in July 2008 cropped.jpg",
+        "author": "NiciVampireHeart",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -6359,10 +6472,14 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Frankie Kazarian.jpg",
+        "author": "flippunkrocker",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -6810,10 +6927,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Atsushi Kotoge.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -6821,10 +6942,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "BUSHI.jpg",
+        "author": "Harry Li",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -6854,10 +6979,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Kaito Kiyomiya in 2017 (cropped).jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -7158,10 +7287,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Flip Gordon.jpg",
+        "author": "ZekeDane",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -7597,10 +7730,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Austin Aries 2013 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -7641,10 +7778,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Joe Coffey April 2019.jpg",
+        "author": "John Manard",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -8141,10 +8282,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Bryan idol holding the NWA Television Title.jpg",
+        "author": "Bonnvb",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -8668,10 +8813,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Shane Taylor in November 2014 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -8679,10 +8828,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Mike Knox at WrestleMania Axxess 2009.jpg",
+        "author": "Sam & Emer from Ballina, Ireland",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -8760,10 +8913,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Mark Andrews at Smash Nov 2015.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -9222,10 +9379,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Tommaso Ciampa 1.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -9233,10 +9394,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Michael Nakazawa.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -9649,10 +9814,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "YOSHI-HASHI 2023.jpg",
+        "author": "ゾーヒョー",
+        "license": "CC0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -9688,10 +9857,14 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Yuji Nagata.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -10149,10 +10322,14 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Steve Maclin 2026.png",
+        "author": "Total Nonstop Action Wrestling",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -10162,10 +10339,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Nigel McGuinness in April 2009 (cropped).jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -10625,10 +10806,14 @@
         "WWE"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Brie Bella October 2016.jpg",
+        "author": "Gage - Gage Skidmore",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -11331,10 +11516,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Deonna Purrazzo, May 2018 04 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -11381,10 +11570,14 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Nyla Rose (2020-02-12) (cropped).jpg",
+        "author": "Ralph Arvesen",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -11394,10 +11587,14 @@
         "ROH"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Red Velvet, 2024 2 07.jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -11504,10 +11701,14 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Penelope Ford, 5 August 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -12103,10 +12304,14 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Alisha Edwards taunts the crowd.jpg",
+        "author": "Unkillablethings",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -12159,10 +12364,14 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Kiera Hogan, September 2021 (cropped headshot).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -13719,10 +13928,14 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Sareee.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -14092,10 +14305,14 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Gisele Shaw in 2018.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -14114,10 +14331,14 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Chihiro Hashimoto.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {
@@ -14170,10 +14391,14 @@
         "CMLL"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "status": "catalogued",
+      "photo": {
+        "file": "Tessa Blanchard at Fort Mill Strawberry Festival (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-recovered",
+      "reason": "Original solo Commons source title and wrestler-specific description verified with creator and licence",
       "candidates": []
     },
     {

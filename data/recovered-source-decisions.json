@@ -1,0 +1,287 @@
+{
+  "checked": 56,
+  "requests": 3,
+  "added": {
+    "Rusev": {
+      "file": "Rusev US Champ.png",
+      "author": "Vjmlhds",
+      "license": "CC BY-SA 3.0"
+    },
+    "Shawn Spears": {
+      "file": "Shawn Spears headshot promo.jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "Angélico": {
+      "file": "Angélico at Smash Nov 2015 (cropped).jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "Anthony Bowens": {
+      "file": "Anthony Bowens March 2020.jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Anthony Henry": {
+      "file": "Anthony Henry August 2018.jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "AR Fox": {
+      "file": "AR Fox, May 2018 02 (cropped).jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Carlie Bravo": {
+      "file": "Carlie Bravo.jpg",
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0"
+    },
+    "Chris Sabin": {
+      "file": "Chris Sabin January 2010.jpg",
+      "author": "Simon from United Kingdom",
+      "license": "CC BY 2.0"
+    },
+    "Cole Karter": {
+      "file": "Cole Karter.jpg",
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0"
+    },
+    "Colt Cabana": {
+      "file": "Colt Cabana.jpg",
+      "author": "Cameraman Greg",
+      "license": "CC BY 2.0"
+    },
+    "Colten Gunn": {
+      "file": "Colten Gunn, June 2022.png",
+      "author": "ECarterSterling",
+      "license": "CC BY-SA 2.0"
+    },
+    "Dalton Castle": {
+      "file": "Dalton Castle in-ring.jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "James Drake": {
+      "file": "James Drake April 2019.jpg",
+      "author": "John Manard",
+      "license": "CC BY-SA 2.0"
+    },
+    "Jay Lethal": {
+      "file": "Jay Lethal July 2010 (cropped).jpg",
+      "author": "daysofthundr46",
+      "license": "CC BY-SA 2.0"
+    },
+    "JD Drake": {
+      "file": "JD Drake (cropped).jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Jeff Jarrett": {
+      "file": "Jeff Jarrett All In 2023.jpg",
+      "author": "McPhail",
+      "license": "CC0"
+    },
+    "Lee Johnson": {
+      "file": "Lee Johnson wrestler (cropped).jpg",
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0"
+    },
+    "Luchasaurus": {
+      "file": "Luchasaurus in January 2022 (cropped).jpg",
+      "author": "LockedIN Magazine",
+      "license": "CC BY 2.0"
+    },
+    "Mansoor": {
+      "file": "Mansoor Al-Shehail, January 2024 (cropped).jpg",
+      "author": "peter3x24",
+      "license": "CC BY-SA 2.0"
+    },
+    "Mark Briscoe": {
+      "file": "Mark Briscoe prays.jpg",
+      "author": "daysofthundr46",
+      "license": "CC BY-SA 2.0"
+    },
+    "Mark Davis": {
+      "file": "Mark Davis April 2019 (cropped).jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Alex Zayne": {
+      "file": "Alex Zayne on GCW 2023.jpg",
+      "author": "Steve Mesa",
+      "license": "CC BY 4.0"
+    },
+    "Great-O-Khan": {
+      "file": "Great-O-Khan 2025.jpg",
+      "author": "Прикли",
+      "license": "CC BY 4.0"
+    },
+    "Hirooki Goto": {
+      "file": "Hirooki Goto.jpg",
+      "author": "MARk SURUMe",
+      "license": "CC BY-SA 2.0"
+    },
+    "Hiroyoshi Tenzan": {
+      "file": "Hiroyoshi Tenzan.jpg",
+      "author": "2for6",
+      "license": "CC BY-SA 3.0"
+    },
+    "Ryusuke Taguchi": {
+      "file": "Ryusuke Taguchi.jpg",
+      "author": "MARk SURUMe",
+      "license": "CC BY-SA 2.0"
+    },
+    "Satoshi Kojima": {
+      "file": "Satoshi Kojima.jpg",
+      "author": "2for6",
+      "license": "CC BY-SA 3.0"
+    },
+    "Eddie Edwards": {
+      "file": "Eddie Edwards (wrestler) in July 2008 cropped.jpg",
+      "author": "NiciVampireHeart",
+      "license": "CC BY-SA 2.0"
+    },
+    "Frankie Kazarian": {
+      "file": "Frankie Kazarian.jpg",
+      "author": "flippunkrocker",
+      "license": "CC BY 2.0"
+    },
+    "Atsushi Kotoge": {
+      "file": "Atsushi Kotoge.jpg",
+      "author": "shstrng",
+      "license": "CC BY 2.0"
+    },
+    "BUSHI": {
+      "file": "BUSHI.jpg",
+      "author": "Harry Li",
+      "license": "CC BY 2.0"
+    },
+    "Kaito Kiyomiya": {
+      "file": "Kaito Kiyomiya in 2017 (cropped).jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "Flip Gordon": {
+      "file": "Flip Gordon.jpg",
+      "author": "ZekeDane",
+      "license": "CC BY-SA 4.0"
+    },
+    "Austin Aries": {
+      "file": "Austin Aries 2013 (cropped).jpg",
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0"
+    },
+    "Joe Coffey": {
+      "file": "Joe Coffey April 2019.jpg",
+      "author": "John Manard",
+      "license": "CC BY-SA 2.0"
+    },
+    "Bryan Idol": {
+      "file": "Bryan idol holding the NWA Television Title.jpg",
+      "author": "Bonnvb",
+      "license": "CC BY 4.0"
+    },
+    "Shane Taylor": {
+      "file": "Shane Taylor in November 2014 (cropped).jpg",
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0"
+    },
+    "Mike Knox": {
+      "file": "Mike Knox at WrestleMania Axxess 2009.jpg",
+      "author": "Sam & Emer from Ballina, Ireland",
+      "license": "CC BY-SA 2.0"
+    },
+    "Mark Andrews": {
+      "file": "Mark Andrews at Smash Nov 2015.jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "Tommaso Ciampa": {
+      "file": "Tommaso Ciampa 1.jpg",
+      "author": "shstrng",
+      "license": "CC BY 2.0"
+    },
+    "Michael Nakazawa": {
+      "file": "Michael Nakazawa.JPG",
+      "author": "2for6",
+      "license": "CC BY-SA 3.0"
+    },
+    "YOSHI-HASHI": {
+      "file": "YOSHI-HASHI 2023.jpg",
+      "author": "ゾーヒョー",
+      "license": "CC0"
+    },
+    "Yuji Nagata": {
+      "file": "Yuji Nagata.jpg",
+      "author": "2for6",
+      "license": "CC BY-SA 3.0"
+    },
+    "Steve Maclin": {
+      "file": "Steve Maclin 2026.png",
+      "author": "Total Nonstop Action Wrestling",
+      "license": "CC BY 4.0"
+    },
+    "Nigel McGuinness": {
+      "file": "Nigel McGuinness in April 2009 (cropped).jpg",
+      "author": "shstrng",
+      "license": "CC BY 2.0"
+    },
+    "Brie Bella": {
+      "file": "Brie Bella October 2016.jpg",
+      "author": "Gage - Gage Skidmore",
+      "license": "CC BY-SA 2.0"
+    },
+    "Deonna Purrazzo": {
+      "file": "Deonna Purrazzo, May 2018 04 (cropped).jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Nyla Rose": {
+      "file": "Nyla Rose (2020-02-12) (cropped).jpg",
+      "author": "Ralph Arvesen",
+      "license": "CC BY-SA 2.0"
+    },
+    "Red Velvet": {
+      "file": "Red Velvet, 2024 2 07.jpg",
+      "author": "All Elite Wrestling",
+      "license": "CC BY-SA 4.0"
+    },
+    "Penelope Ford": {
+      "file": "Penelope Ford, 5 August 2018 (cropped).jpg",
+      "author": "grenwail",
+      "license": "CC BY 2.0"
+    },
+    "Alisha Edwards": {
+      "file": "Alisha Edwards taunts the crowd.jpg",
+      "author": "Unkillablethings",
+      "license": "CC BY-SA 4.0"
+    },
+    "Kiera Hogan": {
+      "file": "Kiera Hogan, September 2021 (cropped headshot).jpg",
+      "author": "Brandon Oliver",
+      "license": "CC BY 2.0"
+    },
+    "Sareee": {
+      "file": "Sareee.jpg",
+      "author": "2for6",
+      "license": "CC BY-SA 3.0"
+    },
+    "Gisele Shaw": {
+      "file": "Gisele Shaw in 2018.jpg",
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0"
+    },
+    "Chihiro Hashimoto": {
+      "file": "Chihiro Hashimoto.jpg",
+      "author": "2for6",
+      "license": "CC BY-SA 4.0"
+    },
+    "Tessa Blanchard": {
+      "file": "Tessa Blanchard at Fort Mill Strawberry Festival (cropped).jpg",
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0"
+    }
+  },
+  "rejected": []
+}
