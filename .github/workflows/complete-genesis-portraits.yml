@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Identify and assess all 643 Genesis identities
         run: npx tsx scripts/complete-genesis-portraits.ts
       - name: Keep full assessment report even if research fails

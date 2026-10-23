@@ -50,10 +50,11 @@ test("second 25-photo batch resolves unique credited WWE wrestler identities",()
  for(const name of names){const credit=portraitCredit(name);assert.ok(credit?.file,name);assert.equal(credit.author,["bobby lashley","bray wyatt"].includes(name)?"diegofernandophotography":"Diego Serrano");assert.equal(credit.license,"CC BY 2.0");assert.ok(!files.has(credit.file),name);files.add(credit.file);assert.ok(portraitSource(name));}
 });
 
-test("missing Wikimedia images return a real, consistent initials placeholder",()=>{
- const withheld=["bronson reed","elektra lopez","ashante thee adonis"];
- assert.equal(withheld.length,3);
- for(const name of withheld){assert.equal(portraitCredit(name),null,name);assert.equal(portraitSource(name),null,name);}
+test("unresolved identities cannot borrow an unrelated photograph",()=>{
+ for(const name of ["Completely Fictional Wrestler","Not A Real Person","Unlisted Ring Identity"]){
+  assert.equal(portraitCredit(name),null,name);
+  assert.equal(portraitSource(name),null,name);
+ }
  assert.ok(portraitSource("santos escobar"));
 });
 test("original Commons creator identity is credited accurately",()=>{
