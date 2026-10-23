@@ -15,6 +15,7 @@ test("Admin can retry exhausted failed Ringside once without rewriting completed
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:world,name:"AI Recovery",seed:9,rulesetVersion:"test"});
    await addPromotion(tx,world,{id:promo,name:"The League",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[player]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,player]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id,active) VALUES($1,$2,$3,true)",[world,player,promo]);
    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status) VALUES($1,$2,$3,1,1,'SUBMITTED')",[world,show,promo]);
@@ -50,6 +51,7 @@ test("Admin can retry exhausted failed Ringside once without rewriting completed
     "ppw_completed_shows","ppw_booking_drafts","ppw_promotion_controls",
     "ppw_memberships","ppw_promotions","ppw_worlds"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
   }).finally(()=>db.close());
  }
 });
