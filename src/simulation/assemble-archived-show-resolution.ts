@@ -42,7 +42,7 @@ export function assembleArchivedShowResolution(
   total+=0.65;weighted+=0.65*s.crowdResponse;
  }
  if(total<=0)throw new Error("Cannot complete an empty show");
- const complex=projection.projections.filter(p=>p.multi!==null||p.tag!==null).length;
+ const complex=projection.projections.filter(p=>p.multi!=null||p.tag!=null).length;
  const boost=staffShowPresentationBonus(projection.showStaff??[],complex);
  const receipt=validateCompletedShowReceipt({
   worldId:projection.worldId,promotionId:projection.promotionId,

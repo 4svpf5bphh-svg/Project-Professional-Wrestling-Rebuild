@@ -599,5 +599,5 @@ export async function previewArchivedShowMatchScoresInTransaction(
      worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
       projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview,
-      showStaff:worldStaff(show.seed).filter(s=>show.show_staff_ids.includes(s.staffId))};
+      showStaff:worldStaff(show.seed).filter(s=>(show.show_staff_ids??[]).includes(s.staffId))};
 }
