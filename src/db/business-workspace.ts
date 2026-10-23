@@ -48,7 +48,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      COALESCE((SELECT sum(e.weekly_salary)
       FROM ppw_staff_employments e WHERE e.world_id=p.world_id
        AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
-       AND e.start_week_index <= (w.year-1)*52+w.week-1),0)::text AS staff_payroll
+       AND e.start_week_index <= (w.year-1)*52+w.week-1\n       AND e.expires_week_index >= (w.year-1)*52+w.week-1),0)::text AS staff_payroll
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
    JOIN ppw_memberships m ON m.world_id=w.world_id

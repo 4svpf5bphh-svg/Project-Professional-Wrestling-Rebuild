@@ -40,7 +40,7 @@ export interface ShowResultEntry{
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
- matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport:RoadAgentReport|null;
+ matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
 }
 const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());

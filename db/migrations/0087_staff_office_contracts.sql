@@ -18,6 +18,7 @@ ALTER TABLE ppw_staff_employments ALTER COLUMN expires_week_index SET NOT NULL;
 ALTER TABLE ppw_staff_employments
  ADD CONSTRAINT ppw_staff_contract_week_range
  CHECK(expires_week_index>=start_week_index);
+-- A backward-compatible migration for staff already employed at upgrade time.
 -- Existing partial indices still enforce one staff member per World and one
 -- employee per role/promotion. Keep finance scans bounded to active staff.
 CREATE INDEX ppw_staff_expiring_week
