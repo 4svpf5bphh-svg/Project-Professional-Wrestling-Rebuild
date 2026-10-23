@@ -106,7 +106,11 @@ for(const p of inventory.people){
 if(entryLines.length){
  const marker="\n};\nconst knownAliases:";
  if(!catalogue.includes(marker))throw Error("Catalogue anchor missing");
- catalogue=catalogue.replace(marker,"\n // Metadata corroborated from Commons photographer category.\n"+entryLines.join("\n")+marker);
+ const pos=catalogue.indexOf(marker);
+ const before=catalogue.slice(0,pos);
+ const joiner=/,\s*$/.test(before)?"":",";
+ catalogue=before+joiner+"\n // Metadata corroborated from Commons photographer category.\n"+
+  entryLines.join("\n")+catalogue.slice(pos);
  await writeFile("src/ui/wrestler-portrait.ts",catalogue);
  credits=credits.replace("</ul>",lines.join("\n")+"\n</ul>");
  await writeFile("apps/web/public/portrait-credits.html",credits);
