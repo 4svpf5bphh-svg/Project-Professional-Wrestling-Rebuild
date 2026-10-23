@@ -1,0 +1,51 @@
+name: Verify recovered Commons photo shortlist (no deployment)
+on:
+  push:
+    branches:
+      - feature/genesis-portrait-completion-20261023
+    paths:
+      - scripts/verify-recovered-commons.ts
+      - .github/workflows/verify-recovered-commons.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: verified-recovered-commons-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/feature/genesis-portrait-completion-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Validate selected identities and commercial licences in grouped Commons requests
+        run: npx tsx scripts/verify-recovered-commons.ts
+      - name: Preserve exact candidate decisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-recovered-commons-candidates
+          path: data/recovered-source-decisions.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Verify TypeScript, Genesis identities and credits, unit tests and build
+        run: |
+          npm run typecheck
+          npm test
+          npm run web:build
+      - name: Independently recheck every catalogue file against Commons
+        run: npx tsx scripts/audit-portraits.ts
+      - name: Preserve only independently verified assets on isolated branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html data/genesis-portrait-worklist.json data/portrait-assessment.json data/portrait-discovery-checkpoint.json data/recovered-source-decisions.json
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(portraits): licensed genuine wrestler sources from cached Commons evidence"
+            git push origin HEAD:feature/genesis-portrait-completion-20261023
+          fi
