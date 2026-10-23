@@ -9,6 +9,7 @@ import {evaluateAuthoredSegmentCrowd,type SegmentCrowdContext}
  from "./legacy/segment-crowd.js";
 import {validateCompletedShowReceipt,type CompletedShowReceipt}
  from "../domain/completed-show-receipt.js";
+import {staffShowPresentationBonus} from "../domain/staff-show-presentation.js";
 import type {CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScores>>;
@@ -41,10 +42,12 @@ export function assembleArchivedShowResolution(
   total+=0.65;weighted+=0.65*s.crowdResponse;
  }
  if(total<=0)throw new Error("Cannot complete an empty show");
+ const complex=projection.projections.filter(p=>p.multi!==null||p.tag!==null).length;
+ const boost=staffShowPresentationBonus(projection.showStaff??[],complex);
  const receipt=validateCompletedShowReceipt({
   worldId:projection.worldId,promotionId:projection.promotionId,
   showId:projection.showId,year:projection.year,week:projection.week,
-  resolutionId,crowdResponse:Math.round(weighted/total*10)/10,
+  resolutionId,crowdResponse:Math.min(100,Math.round((weighted/total+boost)*10)/10),
   matches:matches.map(m=>m.receipt),
   segments:scoredSegments.map(s=>({slotId:s.slotId,position:s.position,
    kind:kinds.get(s.slotId)!,outcome:s.outcome,crowdResponse:s.crowdResponse})),

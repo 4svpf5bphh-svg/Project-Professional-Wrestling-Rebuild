@@ -5,6 +5,7 @@ import {worldStaff,worldTalentManagers,evaluateStaffOffer,staffBuyout,STAFF_ROLE
 import {deriveRoadAgentReport} from "../src/domain/road-agent-report.js";
 import {staffedProductionCost} from "../src/domain/staff-production.js";
 import {trainerFatigueBonus} from "../src/domain/staff-training.js";
+import {staffShowPresentationBonus} from "../src/domain/staff-show-presentation.js";
 test("Original Talent Managers survive world expansion without replacement",()=>{
  const old=worldTalentManagers(58),staff=worldStaff(58);
  assert.equal(staff.length,64);
@@ -69,4 +70,14 @@ test("Trainers grant only bounded physical recovery; original uncoached recovery
  assert.ok(worldStaff(72).filter(s=>s.role==="TRAINER")
   .every(s=>trainerFatigueBonus(s.craft)>=.5&&trainerFatigueBonus(s.craft)<=2.5));
  assert.throws(()=>trainerFatigueBonus(-5));
+});
+
+test("Good live staff modestly improve show presentation without changing match outcomes",()=>{
+ const catalog=worldStaff(35),read=(role:string)=>catalog.find(p=>p.role===role)!;
+ assert.equal(staffShowPresentationBonus([],3),0);
+ assert.ok(staffShowPresentationBonus([read("ROAD_AGENT")],0)>=0);
+ assert.ok(staffShowPresentationBonus([read("COMMENTATOR"),read("REFEREE")],2)>=0);
+ assert.ok(staffShowPresentationBonus([read("COMMENTATOR"),read("REFEREE"),read("ROAD_AGENT")],2)<=2.5);
+ assert.equal(staffShowPresentationBonus([read("REFEREE")],0),0);
+ assert.throws(()=>staffShowPresentationBonus([],101));
 });

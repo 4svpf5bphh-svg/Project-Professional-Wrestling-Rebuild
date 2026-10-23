@@ -1,4 +1,5 @@
 import type {TransactionPool} from "./transaction.js";
+import {worldStaff} from "../domain/world-staff.js";
 import type {SqlRows} from "./world-operations.js";
 import {withWorldTransaction} from "./transaction.js";
 import {readCardParticipants,appearancesFromSlots} from "../domain/card-participants.js";
@@ -70,10 +71,18 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const shows=await tx.query<{year:number;week:number;seed:string|number;
       event_importance:number|null;injury_rate_multiplier:string|number|null;
       media_reach:number|null;alignment_history_loaded:boolean;programme_history_loaded:boolean;
-      dirty_finish_history_loaded:boolean;linked_programme_matches:boolean}>(
+      dirty_finish_history_loaded:boolean;linked_programme_matches:boolean;show_staff_ids:string[]}>(
       `SELECT d.year,d.week,w.seed,d.event_importance,w.injury_rate_multiplier,
           w.alignment_history_loaded,w.programme_history_loaded,
           w.dirty_finish_history_loaded,p.media_reach,
+          ARRAY(SELECT employee.staff_id FROM ppw_staff_employments employee
+           WHERE employee.world_id=d.world_id
+            AND employee.promotion_id=d.promotion_id
+            AND employee.status='ACTIVE'
+            AND employee.role IN('ROAD_AGENT','COMMENTATOR','REFEREE')
+            AND employee.start_week_index <= (d.year-1)*52+d.week-1
+            AND employee.expires_week_index >= (d.year-1)*52+d.week-1)
+           AS show_staff_ids,
           EXISTS(SELECT 1 FROM ppw_programme_match_activities a
             WHERE a.world_id=d.world_id AND a.draft_id=d.draft_id
               AND a.promotion_id=d.promotion_id AND a.kind='MATCH')
@@ -589,5 +598,6 @@ export async function previewArchivedShowMatchScoresInTransaction(
     return {titleBookings,tagTitleBookings,eventImportance:show.event_importance,
      worldId:input.worldId,promotionId:input.promotionId,showId:input.showId,
       year:show.year,week:show.week,stage:"PRE_INJURY_PRE_INTERFERENCE_PRE_SHOW_FLOW" as const,
-      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview};
+      projections,showPacingPreview,showAlignmentPreview,showProgrammePreview,showFinishPreview,showMatchContextPreview,
+      showStaff:worldStaff(show.seed).filter(s=>show.show_staff_ids.includes(s.staffId))};
 }
