@@ -18,6 +18,11 @@ test("malformed section deep links resolve to the safe default",()=>{
   assert.equal(readHostSection(bad),"home");
 });
 
+test("Admin is a private route protected by the host",()=>{
+ assert.equal(readHostSection("#/admin"),"admin");
+ assert.equal(readHostSection("#/admin?token=secret"),"home");
+});
+
 test("original five-root drawer maps gameplay desks without extra routes",async()=>{
  const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
  assert.deepEqual(HOST_DRAWER_ROOTS.map(x=>x.label),
