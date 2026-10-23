@@ -38,7 +38,7 @@ jobs:
           npm run typecheck
           npm test
           npm run web:build
-      - name: Independently verify every Commons licence and author
+      - name: Independently verify every Commons licence and author with rate-limit backoff
         run: npx tsx scripts/audit-portraits.ts
       - name: Commit only passing changes to unreleased branch
         run: |
