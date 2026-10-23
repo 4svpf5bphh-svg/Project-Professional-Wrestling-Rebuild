@@ -234,7 +234,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "kzy":{file:"Kzy in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "zayda steel":{file:"Zayda Steel in March 2025 (cropped).jpg",author:"✨ JOYFUL VI0LENCE ✨",license:"CC BY 4.0"},
  "lena kross":{file:"Lena Kross in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
- "rina":{file:"Rina Yamashita in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+
  "nina samuels":{file:"Nina Samuels in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "rhio":{file:"Rhio in April 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "janai kai":{file:"Janai Kai Kitsune Wrestling March 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},

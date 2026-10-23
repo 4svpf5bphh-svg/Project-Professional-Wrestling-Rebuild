@@ -1,10 +1,10 @@
 {
   "checkedFiles": 160,
   "catalogueFilesInCategory": 163,
-  "additions": 17,
+  "additions": 16,
   "ambiguous": 1,
-  "nowCovered": 176,
-  "missing": 467,
+  "nowCovered": 175,
+  "missing": 468,
   "note": "Category photo identities corroborated by source metadata; manual visual review remains important.",
   "candidates": {
     "Alex Hammerstone": [
@@ -277,5 +277,11 @@
         "reason": "Unique performer name corroborated in image title and independent Commons description"
       }
     ]
-  }
+  },
+  "rejected": [
+    {
+      "name": "Rina",
+      "reason": "Another wrestler, Rina Yamashita, is depicted; same first name is not identity evidence"
+    }
+  ]
 }

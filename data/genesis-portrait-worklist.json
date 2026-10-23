@@ -8,8 +8,8 @@
   },
   "counts": {
     "total": 643,
-    "existing": 176,
-    "missing": 467,
+    "existing": 175,
+    "missing": 468,
     "catalogue": 203,
     "unmatchedCatalogue": [
       "tonga loa",
@@ -6083,12 +6083,8 @@
         "STARDOM"
       ],
       "aliases": [],
-      "status": "catalogued",
-      "photo": {
-        "file": "Rina Yamashita in April 2025.jpg",
-        "author": "J O Y F U L 🐻 V I O L E N C E",
-        "license": "CC BY 2.0"
-      }
+      "status": "missing",
+      "photo": null
     },
     {
       "name": "Bea Priestley",

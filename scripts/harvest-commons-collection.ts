@@ -26,14 +26,23 @@ async function api(args:Record<string,string>){
  throw Error("Commons fetch exhausted retries");
 }
 const allTitles:string[]=[];
-let next="";
-do{
- const result=await api({action:"query",list:"categorymembers",
-  cmtitle:"Category:Photographs by Joyful Violence",cmtype:"file",cmlimit:"500",
-  ...(next?{cmcontinue:next}:{})});
- allTitles.push(...(result.query?.categorymembers??[]).map((x:{title:string})=>x.title));
- next=result.continue?.cmcontinue??"";
-}while(next);
+const uniqueTitles=new Set<string>();
+for(const category of ["Photographs by Joyful Violence",
+ "Photographs by KMcWrestling Photography (2026)",
+ "Photographs by KMcWrestling Photography (2025)",
+ "Photographs by Diego Serrano"]){
+ let next="";
+ do{
+  const result=await api({action:"query",list:"categorymembers",
+   cmtitle:"Category:"+category,cmtype:"file",cmlimit:"500",
+   ...(next?{cmcontinue:next}:{})});
+  for(const title of (result.query?.categorymembers??[]).map((x:{title:string})=>x.title)){
+   if(uniqueTitles.has(title))continue;
+   uniqueTitles.add(title);allTitles.push(title);
+  }
+  next=result.continue?.cmcontinue??"";
+ }while(next);
+}
 const aliases:Record<string,string[]>={"alex hammerstone":["alexander hammerstone"],
  "the dkc":["the d k c"],"effy":["effy"],"kzy":["kzy"]};
 const singles=(p:Person)=>[p.name,...p.aliases,...(aliases[norm(p.name)]??[])].map(norm).filter(Boolean);
@@ -57,7 +66,13 @@ for(let start=0;start<allTitles.length;start+=20){
   for(const p of inventory.people){
    if(p.photo||portraitCredit(p.name))continue;
    const search=singles(p).filter(n=>n.length>=3);
-   const match=search.find(n=>title===n||title.startsWith(n+" "));
+   const match=search.find(n=>{
+    if(title===n)return true;
+    if(!title.startsWith(n+" "))return false;
+    if(n.includes(" "))return true;
+    // Single-name wrestlers must not borrow a different person's surname.
+    return /^(in |19\\d{2}|20\\d{2}|wrestler\\b)/.test(title.slice(n.length+1));
+   });
    if(!match||!search.some(n=>{
     const d=" "+norm(desc)+" ";
     return d.includes(" "+n+" ");
