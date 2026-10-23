@@ -15,7 +15,7 @@ export interface StaffPort{
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  renew(input:{requestId:string;expectedRevision:number;employmentId:string;
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
- openContracts?():void;openProgrammes?():void;back?():void;
+ openContracts?():void;openProgrammes?():void;openRoster?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -213,11 +213,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   for(const candidate of available){
    const card=el("article","ppw-staff-candidate ppw-staff-market-card");
    const identity=el("div","");
+   const former=view.employmentHistory.find(e=>e.staffId===candidate.staffId);
    identity.append(el("strong","",candidate.name),
     el("small","",candidate.personality+" · "+candidate.specialism),
     el("small","","CRAFT "+candidate.craft+" · PEOPLE "+candidate.people+
      " · RELIABILITY "+candidate.reliability),
     el("small","","ASKING "+money(candidate.weeklySalary)+"/week"));
+   if(former)identity.append(el("small","",
+    "PREVIOUSLY: "+former.promotionName+" · staff career record"));
    const amount=salaryInput(candidate.staffId,candidate.weeklySalary);
    const controls=el("div","ppw-staff-market-actions");
    controls.append(amount,button("Offer contract",

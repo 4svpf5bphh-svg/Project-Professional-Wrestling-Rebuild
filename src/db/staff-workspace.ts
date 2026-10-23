@@ -18,12 +18,23 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    permitted_days:number[]|null;permitted_venue_ids:string[]|null;
    frozen_logistics:boolean|null;auto_renew_same_terms:boolean|null;
    world_seed:string;promotion_cash:string;employments:unknown;
-   contracts_due:unknown;repeated_programmes:number;
+   contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
+    COALESCE(medical.risks,0) AS medical_risks,
+    medical.wrestler AS medical_example,
+    COALESCE((SELECT jsonb_agg(to_jsonb(history)) FROM
+     (SELECT e.staff_id AS "staffId",e.role,
+       old.name AS "promotionName",e.start_week_index AS "startedWeekIndex",
+       e.ended_week_index AS "endedWeekIndex"
+      FROM ppw_staff_employments e JOIN ppw_promotions old
+       ON old.world_id=e.world_id AND old.promotion_id=e.promotion_id
+      WHERE e.world_id=w.world_id AND e.status='ENDED'
+      ORDER BY e.ended_week_index DESC,e.employment_id LIMIT 16
+     ) history),'[]'::jsonb) AS employment_history,
     COALESCE((SELECT jsonb_agg(jsonb_build_object(
      'staffId',e.staff_id,'employmentId',e.employment_id,
      'role',e.role,'weeklySalary',e.weekly_salary,
@@ -64,6 +75,20 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    LEFT JOIN ppw_week_logistics_authorizations l
     ON l.world_id=w.world_id AND l.year=w.year AND l.week=w.week
     AND l.promotion_id=$3 AND l.controller_player_id=$2
+   LEFT JOIN LATERAL (
+    SELECT count(DISTINCT injury.person_id)::integer AS risks,
+       min(person.name) AS wrestler
+    FROM ppw_medical_absences injury
+    JOIN ppw_contracts contract ON contract.world_id=injury.world_id
+     AND contract.person_id=injury.person_id AND contract.promotion_id=$3
+     AND contract.status='SIGNED' AND contract.start_week_index<=(w.year-1)*52+w.week-1
+     AND contract.expires_week_index>=(w.year-1)*52+w.week-1
+    JOIN ppw_people person ON person.world_id=injury.world_id
+     AND person.person_id=injury.person_id
+    WHERE injury.world_id=w.world_id AND injury.status='ACTIVE'
+      AND injury.injured_week_index<(w.year-1)*52+w.week-1
+      AND injury.cleared_week_index>(w.year-1)*52+w.week-1
+   ) medical ON TRUE
    LEFT JOIN LATERAL (SELECT e.staff_id,e.employment_id,e.weekly_salary
     FROM ppw_staff_employments e WHERE e.world_id=w.world_id
      AND e.promotion_id=$3 AND e.role='TALENT_MANAGER'
@@ -87,15 +112,27 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     weeksRemaining:Math.max(0,e.expiresWeekIndex-weekIndex+1),
     buyoutCost:staffBuyout(salary,e.expiresWeekIndex,weekIndex)};
   });
-  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"}[]=[];
+  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"}[]=[];
+  const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
+  const voice=(role:StaffRole,fallback:string)=>{
+   const member=officeRole(role);
+   return member?member.name+" · "+fallback:fallback;
+  };
   const renewals=current.contracts_due as {contractId:string;personName:string;weeksRemaining:number}[];
-  if(renewals.length)notices.push({department:"Talent office",target:"contracts",
+  if(renewals.length)notices.push({department:voice("TALENT_MANAGER","Talent office"),target:"contracts",
    message:renewals.length+" wrestler contract"+(renewals.length===1?"":"s")+
     " nearing expiry, including "+renewals[0]!.personName+"."});
-  if(current.repeated_programmes>0)notices.push({department:"Creative desk",target:"programmes",
+  if(current.repeated_programmes>0)notices.push({department:voice("CREATIVE","Creative desk"),target:"programmes",
    message:current.repeated_programmes+" active programme"+
     (current.repeated_programmes===1?" has":"s have")+
     " repeated recent beats. Review the direction."});
+  if(current.medical_risks>0)notices.push({
+   department:voice("MEDICAL","Medical desk"),target:"roster",
+   message:current.medical_risks+" contracted wrestler"+
+    (current.medical_risks===1?" is":"s are")+
+    " medically unavailable, including "+(current.medical_example??"one member of the roster")+
+    ". Review availability before booking the next card."
+  });
   for(const e of employees.filter(e=>e.weeksRemaining<=12))
    notices.push({department:e.role.replaceAll("_"," "),target:"staff",
     message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+
@@ -116,7 +153,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    employees,market:catalog.filter(m=>!busy.has(m.staffId)),
    promotionCash:Number(current.promotion_cash),
    weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
-   notices:notices.slice(0,8),
+   notices:notices.slice(0,8),\n   employmentHistory:current.employment_history as {staffId:string;role:StaffRole;promotionName:string;startedWeekIndex:number;endedWeekIndex:number}[],
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
    permittedVenueIds:current.permitted_venue_ids??[],

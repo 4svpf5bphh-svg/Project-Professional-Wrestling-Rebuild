@@ -225,6 +225,16 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Contract expiry also withdraws any former Talent Manager's consent:
+      // hiring a replacement must require a fresh player authorisation.
+      await tx.query(`
+       UPDATE ppw_staff_continuity_settings s SET auto_renew_same_terms=false
+       WHERE s.world_id=$1 AND s.auto_renew_same_terms
+        AND EXISTS(SELECT 1 FROM ppw_staff_employments e
+         WHERE e.world_id=s.world_id AND e.promotion_id=s.promotion_id
+         AND e.role='TALENT_MANAGER' AND e.status='ACTIVE'
+         AND e.expires_week_index<=$2)
+      `,[input.worldId,weekIndex]);
       // Expiry follows the final eligible week's payroll, within the same
       // atomic World rollover. No daily cron or repeated salary debit.
       await tx.query(`
