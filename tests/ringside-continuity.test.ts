@@ -44,8 +44,10 @@ test("Ringside history is a few certified earlier, owner-scoped facts",async()=>
    }
    if(sql.includes("ppw_programmes p")){
     assert.match(sql,/p.started_week_index<\$4/);
+    assert.match(sql,/JOIN ppw_memberships member/);
+    assert.match(sql,/pc.player_id=\$5/);
     assert.match(sql,/ended_week_index IS NULL OR/);
-    assert.deepEqual(params,["w","player-promo",["omega"],2]);
+    assert.deepEqual(params,["w","player-promo",["omega"],2,"controller"]);
     return [{started_week_index:0,participants:["Kenny Omega","Rival"],
      beats:"1",last_kind:"MATCH"}] as unknown as readonly T[];
    }

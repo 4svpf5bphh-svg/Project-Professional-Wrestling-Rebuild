@@ -100,6 +100,11 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
    JOIN ppw_people people ON people.world_id=participant.world_id
     AND people.person_id=participant.person_id
    WHERE p.world_id=$1 AND p.promotion_id=$2
+     AND EXISTS (SELECT 1 FROM ppw_promotion_controls pc
+      JOIN ppw_memberships member ON member.world_id=pc.world_id
+       AND member.player_id=pc.player_id AND member.status='ACTIVE'
+      WHERE pc.world_id=p.world_id AND pc.promotion_id=p.promotion_id
+       AND pc.player_id=$5 AND pc.active)
      AND p.started_week_index<$4
      AND (p.ended_week_index IS NULL OR p.ended_week_index>=$4)
      AND EXISTS (SELECT 1 FROM ppw_programme_participants involved
@@ -108,7 +113,7 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
        AND involved.person_id=ANY($3::text[]))
    GROUP BY p.world_id,p.promotion_id,p.programme_id,p.started_week_index
    ORDER BY p.started_week_index DESC LIMIT 5`,
-   [scope.worldId,scope.promotionId,ids,weekIndex]);
+   [scope.worldId,scope.promotionId,ids,weekIndex,scope.playerId]);
   return {priorMatches,programmes:programmes.slice(0,4).map(p=>({
    wrestlers:p.participants.slice(0,8),
    began:"week index "+p.started_week_index,
