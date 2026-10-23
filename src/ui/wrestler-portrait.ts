@@ -351,8 +351,13 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "místico":{file:"Mistico posing BW crop.jpg",author:"derivative work: SamWinslow ( talk ) File:Mistico posing BW.jpg : fAnyst",license:"CC BY 2.0"},
  "kushida":{file:"KUSHIDA at BCW East meets West 2.jpg",author:"Tabercil",license:"CC BY-SA 3.0"},
  "xelhua":{file:"Xelhua conectando con la audiencia en la Arena Puebla.jpg",author:"Satanic.boho",license:"CC BY-SA 4.0"},
+ // Manually identity-selected and evidence corroborated Commons photographs
+ "ethan page":{file:"Ethan Page (cropped).jpg",author:"Brandon Oliver",license:"CC BY 2.0"},
+ "ricky sosa":{file:"Ricky Sosa (cropped).jpg",author:"Miguel Discart & Kiri Karma",license:"CC BY-SA 2.0"},
+ "hikari minami":{file:"Hikari Minami.JPG",author:"2for6",license:"CC BY-SA 3.0"},
 };
 const knownAliases:Readonly<Record<string,string>>={
+
  "zelina":"zelina vega",
  "britt baker d.m.d.":"britt baker",
  "killer kross":"karrion kross",

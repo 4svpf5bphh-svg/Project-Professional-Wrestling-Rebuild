@@ -8,9 +8,9 @@
   },
   "counts": {
     "total": 643,
-    "existing": 285,
-    "missing": 358,
-    "catalogue": 309,
+    "existing": 288,
+    "missing": 355,
+    "catalogue": 312,
     "unmatchedCatalogue": [
       "tonga loa",
       "carlito",
@@ -490,8 +490,12 @@
         "WWE"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Ethan Page (cropped).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Finn Bálor",
@@ -3312,8 +3316,12 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Ricky Sosa (cropped).jpg",
+        "author": "Miguel Discart & Kiri Karma",
+        "license": "CC BY-SA 2.0"
+      }
     },
     {
       "name": "Ryan Nemeth",
@@ -7054,8 +7062,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Hikari Minami.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "MIRAI",

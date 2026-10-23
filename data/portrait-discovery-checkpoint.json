@@ -1022,9 +1022,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Ethan Page (cropped).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ethan Page posing at an Alpha-1 Wrestling Event.jpg",
@@ -6702,9 +6706,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Ricky Sosa (cropped).jpg",
+        "author": "Miguel Discart & Kiri Karma",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ricky Sosa.jpg",
@@ -14164,9 +14172,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Hikari Minami.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": []
     },
     {

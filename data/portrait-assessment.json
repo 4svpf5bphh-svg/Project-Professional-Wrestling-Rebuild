@@ -3,15 +3,15 @@
     "total": 643,
     "previouslyCovered": 204,
     "additionsThisPass": 0,
-    "genuineGenesisPhotos": 285,
-    "unresolved": 358,
-    "coveragePercent": 44.32,
+    "genuineGenesisPhotos": 288,
+    "unresolved": 355,
+    "coveragePercent": 44.79,
     "checkedAt": "2026-10-23T18:35:00.165Z",
     "rateLimitedSearches": 193,
     "caveat": "Wikimedia source, creator and commercially reusable licences independently confirmed for all 309 credited files; subject identity evidence was reviewed but human visual inspection has not been completed for every image. The 193 rate-limited people are not claimed to lack legal images.",
-    "curatedPhotoAdditions": 78,
+    "curatedPhotoAdditions": 3,
     "recoveredAliases": 3,
-    "creditedSources": 309,
+    "creditedSources": 312,
     "note": "Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing.",
     "previouslyCreditedSources": 186,
     "newCreditedSources": 123,
@@ -1054,9 +1054,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Ethan Page (cropped).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ethan Page posing at an Alpha-1 Wrestling Event.jpg",
@@ -6734,9 +6738,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Ricky Sosa (cropped).jpg",
+        "author": "Miguel Discart & Kiri Karma",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ricky Sosa.jpg",
@@ -14196,9 +14204,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Hikari Minami.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": []
     },
     {
