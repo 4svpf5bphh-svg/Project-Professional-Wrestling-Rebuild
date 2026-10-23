@@ -29,7 +29,7 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
    WHERE c.world_id=$1 AND c.active AND p.lifecycle='ACTIVE'
    ORDER BY c.promotion_id LIMIT 129`,[worldId,expectedYear,expectedWeek]);
-  if(owners.length<1||owners.length>128||owners.some(x=>!x.ready))
+  if(w.phase==='OPEN'&&(owners.length<1||owners.length>128||owners.some(x=>!x.ready)))
    throw new Error("Every active human promotion must confirm its regular show before a manual World Lock.");
   // Preflight only: the authoritative command atomically applies cutoff and locks.
   return {phase:w.phase,revision:Number(w.revision)};
@@ -40,7 +40,7 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    requestId:resolutionId+":lock",expectedRevision:gate.revision,manualPreview:true});
   if(lock.status==="STALE")throw new Error("Another manager changed the World. Refresh and review.");
  }
- const result=await driveWorldResolution(pool,{worldId,resolutionId,maxStages:6});
+ const result=await driveWorldResolution(pool,{worldId,resolutionId,maxStages:6,manualRecovery:true});
  return {status:result.status,steps:result.steps,blockers:result.blockers,
   year:expectedYear,week:expectedWeek};
 }

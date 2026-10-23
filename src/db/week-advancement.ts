@@ -24,6 +24,8 @@ import {publishBackstageRivalryPitches,settleBackstageRivalryFollowThrough}
 
 export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
+  /** Explicit trusted Admin recovery only, never an ordinary clock rollover. */
+  manualRecovery?:boolean;
 }
 
 /** Trusted scheduler/recovery entry point, NOT a player API.
@@ -152,12 +154,14 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         `UPDATE ppw_worlds
            SET year=CASE WHEN week=52 THEN year+1 ELSE year END,
                week=CASE WHEN week=52 THEN 1 ELSE week+1 END,
-               day=1,phase='OPEN',next_lock_at=next_lock_at+interval '1 day'
+               day=1,phase='OPEN',next_lock_at=CASE WHEN $4::boolean
+                THEN GREATEST(next_lock_at+interval '1 day',clock_timestamp()+interval '24 hours')
+                ELSE next_lock_at+interval '1 day' END
          WHERE world_id=$1 AND phase='RESOLVING'
            AND year=$2 AND week=$3
-           AND next_lock_at+interval '1 day'>clock_timestamp()
+           AND ($4::boolean OR next_lock_at+interval '1 day'>clock_timestamp())
          RETURNING year,week`,
-        [input.worldId,year,week],
+        [input.worldId,year,week,input.manualRecovery===true],
       );
       if(moved.length!==1) throw new Error("World rollover deadline expired; recovery required");
        await settleMedicalAvailabilityForNewWeek(tx,input.worldId,

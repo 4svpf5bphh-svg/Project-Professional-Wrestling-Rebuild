@@ -286,8 +286,11 @@ export async function runWorldShowResolutionPhase(
  const result=await resolveWorldWeekShows(pool,input);
  const after=await inspectWorldResolutionReadiness(pool,input.worldId);
  if(after.year!==input.year||after.week!==input.week||
-  after.detailedResolved!==after.submitted||after.blockers.length)
-  throw new Error("World show resolution did not complete cleanly");
+  after.detailedResolved<before.detailedResolved||after.blockers.length)
+  throw new Error("World show resolution changed or lost verified evidence");
+ if(after.detailedResolved<after.submitted&&
+    after.detailedResolved===before.detailedResolved)
+  throw new Error("World show resolution made no progress");
  return {result,readiness:after};
 }
 
@@ -298,7 +301,7 @@ export async function runWorldShowResolutionPhase(
  */
 export async function publishResolvedWorldWeek(
  pool:TransactionPool,input:{worldId:string;year:number;week:number;
- requestId:string;expectedRevision:number},
+ requestId:string;expectedRevision:number;manualRecovery?:boolean},
 ){
  const ready=await inspectWorldResolutionReadiness(pool,input.worldId);
  if(ready.year!==input.year||ready.week!==input.week)
@@ -311,7 +314,7 @@ export async function publishResolvedWorldWeek(
   throw new Error("World publication blocked: incomplete results or certification");
  return advanceResolvedWorldWeek(pool,{
   worldId:input.worldId,requestId:input.requestId,
-  expectedRevision:input.expectedRevision,
+  expectedRevision:input.expectedRevision,manualRecovery:input.manualRecovery===true,
  });
 }
 
@@ -322,7 +325,7 @@ export async function publishResolvedWorldWeek(
  */
 export async function executeNextWorldResolutionStage(
  pool:TransactionPool,input:{worldId:string;requestId:string;
- expectedRevision:number;resolutionId:string},
+ expectedRevision:number;resolutionId:string;manualRecovery?:boolean},
 ){
  const plan=await planNextWorldResolutionAction(pool,input.worldId);
  const {worldId,requestId,expectedRevision,resolutionId}=input;
@@ -394,7 +397,8 @@ export async function executeNextWorldResolutionStage(
  }
  if(plan.action==="PUBLISH_WEEK"){
   const result=await publishResolvedWorldWeek(pool,{
-   worldId,year:plan.year,week:plan.week,requestId,expectedRevision});
+   worldId,year:plan.year,week:plan.week,requestId,expectedRevision,
+   manualRecovery:input.manualRecovery===true});
   return commandStage(plan.action,result);
  }
  return {action:plan.action,status:"BLOCKED" as const,
@@ -408,7 +412,8 @@ export async function executeNextWorldResolutionStage(
  * No timer, HTTP route or background process is installed by this module.
  */
 export async function driveWorldResolution(
- pool:TransactionPool,input:{worldId:string;resolutionId:string;maxStages?:number},
+ pool:TransactionPool,input:{worldId:string;resolutionId:string;maxStages?:number;
+  manualRecovery?:boolean},
 ){
  const maxStages=input.maxStages??8;
  if(!input.worldId||!input.resolutionId||!Number.isSafeInteger(maxStages)||
@@ -442,6 +447,7 @@ export async function driveWorldResolution(
   const result=await executeNextWorldResolutionStage(pool,{
    worldId:input.worldId,resolutionId:input.resolutionId,
    requestId,expectedRevision:revision,
+   manualRecovery:input.manualRecovery===true,
   });
   steps.push({action:result.action,status:result.status});
   if(result.status==="BLOCKED")

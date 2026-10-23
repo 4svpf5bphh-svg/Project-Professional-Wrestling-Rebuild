@@ -11,6 +11,7 @@ export interface WorldWeekShowInput {
 }
 export interface WorldWeekShowSummary {
  year:number;week:number;required:number;recorded:number;retried:number;
+ remaining:number;
 }
 export async function resolveWorldWeekShows(
  pool:TransactionPool,input:WorldWeekShowInput,
@@ -60,8 +61,19 @@ export async function resolveWorldWeekShows(
  }
  if(regular.size!==active.length)
   throw new Error("World week incomplete: a regular show is required for every promotion");
+ // Four shows per request bounds execution within Vercel's runtime budget.
+ // Persisted previous receipts are immutable and need no re-scoring.
+ const completed=await withWorldTransaction(pool,tx=>tx.query<{
+  show_id:string;resolution_id:string
+ }>("SELECT show_id,resolution_id FROM ppw_completed_shows WHERE world_id=$1 AND year=$2 AND week=$3",[
+  input.worldId,input.year,input.week]));
+ const done=new Map(completed.map(x=>[x.show_id,x.resolution_id]));
+ if(completed.some(x=>x.resolution_id!==input.resolutionId||
+   !shows.some(s=>s.draft_id===x.show_id)))
+  throw new Error("World has conflicting completed-show evidence");
+ const remainingShows=shows.filter(s=>!done.has(s.draft_id));
  let recorded=0,retried=0;
- for(const show of shows){
+ for(const show of remainingShows.slice(0,4)){
   const result=await resolveCanonicalShow(pool,{
    worldId:input.worldId,promotionId:show.promotion_id,
    showId:show.draft_id,year:input.year,week:input.week,
@@ -88,9 +100,10 @@ export async function resolveWorldWeekShows(
   if(rows.length!==shows.length||rows.some((r,i)=>
    r.promotion_id!==shows[i]!.promotion_id||
    r.draft_id!==shows[i]!.draft_id||
-   r.resolution_id!==input.resolutionId))
-   throw new Error("World week has unresolved or changed submitted shows");
+   (r.resolution_id!==null&&r.resolution_id!==input.resolutionId)))
+   throw new Error("World week has changed or conflicting submitted shows");
  });
  return {year:input.year,week:input.week,
-  required:shows.length,recorded,retried};
+  required:shows.length,recorded,retried,
+  remaining:remainingShows.length-recorded-retried};
 }
