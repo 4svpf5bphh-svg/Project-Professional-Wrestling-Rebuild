@@ -217,6 +217,24 @@ test("overdue next deadline blocks reopening; prior data is retained",
     assert.equal(state[0]!.phase,"RESOLVING");
     assert.equal(Number(state[0]!.revision),0);
     assert.equal(state[0]!.week,1);
+    // Recovery is restricted to explicit Admin action, never normal rollover.
+    const manual=await advanceResolvedWorldWeek(db.pool,{
+      worldId,requestId:"operator-resume",expectedRevision:0,manualRecovery:true
+    });
+    assert.equal(manual.status,"APPLIED");
+    const recovered=await withWorldTransaction(db.pool,tx=>tx.query<{
+      year:number;week:number;phase:string;secs:number
+    }>(`SELECT year,week,phase,
+      EXTRACT(EPOCH FROM next_lock_at-clock_timestamp())::integer AS secs
+      FROM ppw_worlds WHERE world_id=$1`,[worldId]));
+    assert.equal(recovered[0]?.year,1);
+    assert.equal(recovered[0]?.week,2);
+    assert.equal(recovered[0]?.phase,"OPEN");
+    assert.ok((recovered[0]?.secs??0)>86000);
+    assert.ok((recovered[0]?.secs??0)<=86400);
+    assert.equal((await advanceResolvedWorldWeek(db.pool,{
+      worldId,requestId:"operator-resume",expectedRevision:0,manualRecovery:true
+    })).status,"REPLAYED");
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
