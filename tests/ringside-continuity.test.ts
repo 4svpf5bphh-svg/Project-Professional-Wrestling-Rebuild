@@ -88,9 +88,11 @@ test("Ringside discards future and another promotion's receipts even if an unexp
     assert.match(sql,/SELECT old.promotion_id/);
     return [
      {promotion_id:"rival-promo",year:1,week:1,actual_finish:"CLEAN_PIN",
-      actual_winner_side:"A",payload:{participants:[{personId:"omega"}],scriptedWinner:"omega"}},
+      actual_winner_side:"B",payload:{participants:[{personId:"omega",contractId:"c1"},
+       {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}},
      {promotion_id:"player-promo",year:1,week:4,actual_finish:"CLEAN_PIN",
-      actual_winner_side:"A",payload:{participants:[{personId:"omega"}],scriptedWinner:"omega"}}
+      actual_winner_side:"B",payload:{participants:[{personId:"omega",contractId:"c1"},
+       {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}}
     ] as unknown as readonly T[];
    }
    if(sql.includes("ppw_programmes p")){
