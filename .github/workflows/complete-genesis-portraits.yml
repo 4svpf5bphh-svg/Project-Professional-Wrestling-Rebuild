@@ -1,0 +1,47 @@
+name: Genesis portrait research - unreleased
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/genesis-portrait-completion-20261023
+    paths:
+      - data/genesis-portrait-worklist.json
+      - scripts/complete-genesis-portraits.ts
+      - .github/workflows/complete-genesis-portraits.yml
+permissions:
+  contents: write
+concurrency:
+  group: genesis-portrait-research-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  discover:
+    if: github.ref == 'refs/heads/feature/genesis-portrait-completion-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Identify and assess all 643 Genesis identities
+        run: npx tsx scripts/complete-genesis-portraits.ts
+      - name: Keep full assessment report even if research fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesis-portrait-assessment
+          path: |
+            data/portrait-assessment.json
+            data/portrait-discovery-checkpoint.json
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Commit results on the isolated branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/portrait-assessment.json data/portrait-discovery-checkpoint.json src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(portraits): full Genesis assessment with corroborated Commons sources"
+            git push origin HEAD:feature/genesis-portrait-completion-20261023
+          fi

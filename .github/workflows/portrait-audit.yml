@@ -7,6 +7,7 @@ on:
       - fix/verified-portrait-catalogue-20261023
       - feature/portrait-mobile-rollout-20261023
       - feature/ringside-budget-fidelity-20261023
+      - feature/genesis-portrait-completion-20261023
     paths:
       - src/ui/wrestler-portrait.ts
       - apps/web/public/portrait-credits.html
