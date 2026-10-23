@@ -1,0 +1,40 @@
+name: Complete missing Genesis Wikimedia searches (unreleased)
+on:
+  push:
+    branches:
+      - feature/genesis-portrait-completion-20261023
+    paths:
+      - scripts/research-individual-genesis.ts
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  recover:
+    if: github.ref == 'refs/heads/feature/genesis-portrait-completion-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Search every previously throttled wrestler individually with paced Commons requests
+        run: npx tsx scripts/research-individual-genesis.ts
+      - name: Preserve full resumable identity research
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesis-individual-evidence
+          path: data/genesis-individual-candidates.json
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Save searched identities and candidates without adding unaudited photographs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/genesis-individual-candidates.json
+          if ! git diff --cached --quiet; then
+            git commit -m "research(portraits): complete individual Commons evidence audit for missed Genesis names"
+            git push origin HEAD:feature/genesis-portrait-completion-20261023
+          fi
