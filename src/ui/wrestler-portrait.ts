@@ -3,8 +3,34 @@
  * Match the base legal name as well as stable ring aliases. Never invent photos.
  * Full attribution and license links: /portrait-credits.html
  */
-export interface PhotoCredit{file:string;author:string;license:"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 4.0"|"CC0";}
+export interface PhotoCredit{file:string;author:string;license:"CC BY 2.0"|"CC BY-SA 2.0"|"CC BY-SA 3.0"|"CC BY-SA 4.0"|"CC0";}
 const catalogue:Readonly<Record<string,PhotoCredit>>={
+ // New audited candidates: precise Commons files and verified creator/licence pages.
+ "orange cassidy":{file:"Orange Cassidy (53197325636).jpg",author:"Tim Blackmon for Galaxy Con",license:"CC BY 2.0"},
+ "toni storm":{file:"Toni Storm, September 2023.jpg",author:"zuko1312",license:"CC BY 2.0"},
+ "swerve strickland":{file:"Swerve Strickland as AEW World Champion, August 2024.jpg",author:"McPhail",license:"CC0"},
+ "mjf":{file:"MJF in August 2024 as AEW American Champion.jpg",author:"McPhail",license:"CC0"},
+ "willow nightingale":{file:"Willow Nightingale 2018 (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
+ "chris jericho":{file:"Chris Jericho as FTW Champion (cropped).jpg",author:"McPhail",license:"CC0"},
+ "rey fenix":{file:"Rey Fenix.jpg",author:"grenwail",license:"CC BY 2.0"},
+ "adam cole":{file:"Adam Cole, June 2022 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
+ "claudio castagnoli":{file:"Claudio Castagnoli, June 2022 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
+ "hikaru shida":{file:"20220717shida1.jpg",author:"Yuzunet",license:"CC BY-SA 4.0"},
+ "kris statlander":{file:"Kris Statlander - Independent Wrestling Champion (cropped).jpg",author:"grenwail",license:"CC BY 2.0"},
+ "zack sabre jr.":{file:"Zack Sabre Jr, June 2022.jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
+ "jeff hardy":{file:"Jeff Hardy.jpg",author:"Maximilian Eggeling (EGGE)",license:"CC BY-SA 3.0"},
+ "matt hardy":{file:"Matt Hardy.jpg",author:"Maximilian Eggeling (EGGE)",license:"CC BY-SA 3.0"},
+ "aj lee":{file:"AJ Lee.jpg",author:"David Seto",license:"CC BY-SA 2.0"},
+ "jordynne grace":{file:"Jordynne Grace at Smash Canusa 2018.jpg",author:"Tabercil",license:"CC BY-SA 3.0"},
+ "bandido":{file:"Bandido ROH.jpg",author:"KMcWrestling Photography",license:"CC BY-SA 4.0"},
+ "matt cardona":{file:"Matt Cardona at World Series Wrestling.jpg",author:"BigDaddyFam64",license:"CC BY-SA 4.0"},
+ "nic nemeth":{file:"Nic Nemeth 2023.jpg",author:"Super Festivals",license:"CC BY 2.0"},
+ "christian cage":{file:"ChristianCage1.JPG",author:"KnightNephrite",license:"CC BY-SA 3.0"},
+ "athena":{file:"Athena - August 29 2025.jpg",author:"KMcWrestling Photography",license:"CC BY-SA 4.0"},
+ "pac":{file:"Pac as AEW World Trios Champion.jpg",author:"McPhail",license:"CC0"},
+ "darby allin":{file:"Darby Allin, June 2022 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
+ "cash wheeler":{file:"Cash Wheeler, June 2022 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
+ "dax harwood":{file:"Dax Harwood, June 2022 (cropped).jpg",author:"Carter Sterling",license:"CC BY-SA 2.0"},
  "bianca belair":{file:"Bianca Belair RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "sami zayn":{file:"Sami Zayn, April 2024.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "john cena":{file:"John Cena RR25.jpg",author:"Diego Serrano",license:"CC BY 2.0"},
@@ -128,6 +154,14 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
 const knownAliases:Readonly<Record<string,string>>={
  "otís":"otis",
  "hangman page":"hangman adam page",
+ "“hangman” adam page":"hangman adam page",
+ "\"hangman\" adam page":"hangman adam page",
+ "zack sabre jr":"zack sabre jr.",
+ "cesaro":"claudio castagnoli",
+ "dolph ziggler":"nic nemeth",
+ "rey fénix":"rey fenix",
+ "christian":"christian cage",
+
  "adam page":"hangman adam page",
  "hangman adam page":"hangman adam page",
  "sasha banks":"mercedes moné",
