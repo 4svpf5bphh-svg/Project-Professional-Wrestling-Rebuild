@@ -34,7 +34,7 @@ test("only the designated operator can trigger the shared World week, after an e
  await page.getByRole("button",{name:"Advance World week"}).click();
  expect(requests).toHaveLength(0);
  page.once("dialog",dialog=>dialog.accept());
- await page.getByRole("button",{name:"Advance Week 1"}).click();
+ await page.getByRole("button",{name:"Advance World week"}).click();
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
  expect(requests).toEqual([{confirm:"ADVANCE_SHARED_WORLD",year:1,week:1}]);
 });

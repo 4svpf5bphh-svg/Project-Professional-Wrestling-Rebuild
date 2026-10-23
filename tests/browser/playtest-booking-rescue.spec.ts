@@ -44,7 +44,7 @@ test("expired booking offers the authorised Crown operator a shared recovery act
  await page.goto("/#/home");
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(extensions).toBe(1);
- expect(readCount).toBeGreaterThanOrEqual(2);
+ expect(readCount).toBeGreaterThanOrEqual(1); // Admin GET is separate from World overview
 });
 test("ordinary manager never sees a shared World booking extension control",async({page})=>{
  const now=Date.now()/1000;
