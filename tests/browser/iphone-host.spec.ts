@@ -1774,3 +1774,47 @@ test("dragging booking tickets on iPhone changes only local order until Save",as
  await expect(page.locator(".ppw-summary").getByText("Unsaved changes")).toBeVisible();
  expect(calls).toEqual(["planner","load"]);
 });
+
+
+test("both narrow iPhone widths keep genuine-photo failures and unknown talent inside consistent initials wells",async({page})=>{
+ const wrestlers=[
+  {personId:"roman",name:"Roman Reigns",division:"MEN",alignment:"FACE",
+   championships:["PPW World Championship"],availability:"YOUR_ROSTER",
+   remainingDates:null,popularity:94,recognition:96,momentum:81,
+   matchCraft:87,presentation:94,morale:86,weeklyGuarantee:1000,appearanceFee:0},
+  {personId:"unknown",name:"Completely Fictional Wrestler",division:"WOMEN",alignment:"HEEL",
+   availability:"YOUR_ROSTER",remainingDates:null,popularity:30,recognition:20,
+   momentum:40,matchCraft:35,presentation:42,morale:70,weeklyGuarantee:1000,appearanceFee:0}
+ ];
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  return route.fulfill({json:method==="wrestlerDirectory"?{
+   view:"ROSTER",year:1,week:5,worldRevision:4,canEdit:true,
+   currentWeekIndex:4,people:wrestlers,total:2,hasMore:false
+  }:method==="overview"?overview:{}});
+ });
+ // Force real photo delivery to fail. This must never leave a broken image,
+ // collapse the card or remove wrestler identity information.
+ await page.route("**/wiki/Special:FilePath/**",route=>route.abort("failed"));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:780});
+  await page.goto("/#/roster");
+  const cards=page.locator(".ppw-wrestler-card");
+  await expect(cards).toHaveCount(2);
+  const roman=cards.filter({hasText:"Roman Reigns"});
+  const unknown=cards.filter({hasText:"Completely Fictional Wrestler"});
+  await expect(roman.locator(".ppw-wrestler-media-mark")).toHaveText("RR");
+  await expect(unknown.locator(".ppw-wrestler-media-mark")).toHaveText("CF");
+  await expect(unknown).toHaveAttribute("data-portrait","unavailable");
+  await roman.scrollIntoViewIfNeeded();
+  await expect(roman).toHaveAttribute("data-portrait","unavailable",{timeout:12000});
+  await expect(roman.locator(".ppw-real-wrestler-photo")).toHaveCount(0);
+  await expect(roman).toHaveAttribute("data-champion","true");
+  await expect(roman.locator(".ppw-wrestler-alignment")).toHaveText("FACE");
+  await expect(unknown.locator(".ppw-wrestler-alignment")).toHaveText("HEEL");
+  const widthExcess=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(widthExcess).toBeLessThanOrEqual(1);
+  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
+ }
+});

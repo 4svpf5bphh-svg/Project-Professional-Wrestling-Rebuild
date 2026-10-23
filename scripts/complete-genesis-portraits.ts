@@ -8,7 +8,7 @@ type Assessed=Person&{resolution:"existing"|"added"|"unresolved";reason:string;c
 const people=(JSON.parse(await readFile("data/genesis-portrait-worklist.json","utf8")) as {people:Person[]}).people;
 if(people.length!==643||new Set(people.map(p=>p.name)).size!==643)throw Error("Unexpected Genesis roster");
 const assessed=new Map<string,Assessed>();
-try{for(const p of (JSON.parse(await readFile("data/portrait-discovery-checkpoint.json","utf8")) as {people:Assessed[]}).people)assessed.set(p.name,p);}
+try{for(const p of (JSON.parse(await readFile("data/portrait-discovery-checkpoint.json","utf8")) as {people:Assessed[]}).people)if(!(process.env.PPW_RETRY_COMMONS_429==="1"&&p.reason.includes("HTTP 429")))assessed.set(p.name,p);}
 catch{/* Fresh assessment. */}
 const clean=(s:string)=>s.replace(/<[^>]+>/g," ").replace(/&amp;/gi,"&").replace(/&nbsp;/gi," ").replace(/&quot;/gi,'"').replace(/&#39;/g,"'").replace(/\s+/g," ").trim();
 const norm=(s:string)=>s.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[“”‘’"'()_,.()[\]{}–—\-]+/g," ").replace(/\s+/g," ").trim();
@@ -102,20 +102,22 @@ const summary={total:643,existing:existing.length,newPhotos:added.length,unresol
  coveragePercent:Math.round((existing.length+added.length)*10000/643)/100,checkedAt:new Date().toISOString(),
  caveat:"Automated identity corroboration requires independent visual spot-checks; Commons metadata audit is separate."};
 await writeFile("data/portrait-assessment.json",JSON.stringify({summary,people:ordered},null,2)+"\n");
-if(added.length){
+const toAppend=added.filter(p=>p.photo&&!portraitCredit(p.name));
+if(toAppend.length){
  let catalogue=await readFile("src/ui/wrestler-portrait.ts","utf8");
  const anchor="\n};\nconst knownAliases:";
  if(!catalogue.includes(anchor))throw Error("Portrait catalogue boundary changed");
- const entries=added.map(p=>{
+ const entries=toAppend.map(p=>{
   const key=p.name.trim().toLowerCase().replace(/[‘’]/g,"'").replace(/\s+/g," ");
   const c=p.photo!;
   return " "+JSON.stringify(key)+":{file:"+JSON.stringify(c.file)+",author:"+JSON.stringify(c.author)+",license:"+JSON.stringify(c.license)+"},";
  }).join("\n");
- catalogue=catalogue.replace(anchor,"\n // Commons corroborated Genesis additions\n"+entries+anchor);
+ const at=catalogue.indexOf(anchor),head=catalogue.slice(0,at);
+ catalogue=head+(/,\s*$/.test(head)?"":",")+"\n // Commons corroborated Genesis additions\n"+entries+catalogue.slice(at);
  await writeFile("src/ui/wrestler-portrait.ts",catalogue);
  let credits=await readFile("apps/web/public/portrait-credits.html","utf8");
  const escape=(s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
- const lines=added.map(p=>"<li>"+escape(p.name)+" — "+escape(p.photo!.author)+
+ const lines=toAppend.map(p=>"<li>"+escape(p.name)+" — "+escape(p.photo!.author)+
   ', <a href="'+escape(source(p.photo!.file))+'">source photo</a>, <a href="'+licenceUrl[p.photo!.license]+
   '">'+escape(p.photo!.license)+"</a>. Display-time crop only; source unmodified.</li>").join("\n");
  if(!credits.includes("</ul>"))throw Error("Missing attribution list");

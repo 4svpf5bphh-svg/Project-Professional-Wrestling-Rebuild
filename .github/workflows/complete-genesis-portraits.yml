@@ -1,13 +1,6 @@
 name: Genesis portrait research - unreleased
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/genesis-portrait-completion-20261023
-    paths:
-      - data/genesis-portrait-worklist.json
-      - scripts/complete-genesis-portraits.ts
-      - .github/workflows/complete-genesis-portraits.yml
 permissions:
   contents: write
 concurrency:

@@ -8,17 +8,16 @@
   },
   "counts": {
     "total": 643,
-    "existing": 155,
-    "missing": 488,
-    "catalogue": 185,
+    "existing": 204,
+    "missing": 439,
+    "catalogue": 231,
     "unmatchedCatalogue": [
       "tonga loa",
       "carlito",
       "britt baker",
-      "natalya",
+      "powerhouse hobbs",
       "kofi kingston",
       "zoey stark",
-      "andrade",
       "xavier woods",
       "sheamus",
       "zelina vega",
@@ -26,7 +25,6 @@
       "pac",
       "john cena",
       "jun akiyama",
-      "saraya",
       "braun strowman",
       "bray wyatt",
       "brock lesnar",
@@ -39,7 +37,6 @@
       "rezar",
       "santos escobar",
       "bryan danielson",
-      "hangman adam page",
       "hiroshi tanahashi",
       "aj styles"
     ]
@@ -140,8 +137,12 @@
         "WWE"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Big Cass May 2018.jpg",
+        "author": "TDOldSpice",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Blake Howard",
@@ -158,8 +159,12 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Paparazzo Photography Brad Baylor.jpg",
+        "author": "Paparazzo Presents",
+        "license": "CC0"
+      }
     },
     {
       "name": "Bravo Americano",
@@ -260,8 +265,12 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Charlie Dempsey (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "CM Punk",
@@ -872,8 +881,12 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Noam Dar 041419 cropped.jpg",
+        "author": "PistonsFan2223",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Oba Femi",
@@ -1047,8 +1060,12 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Romeo Moreno.jpg",
+        "author": "HHH Pedrigree",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Royce Keys",
@@ -1270,8 +1287,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Ace Austin Alpha 1.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Action Andretti",
@@ -1300,8 +1321,12 @@
         "AEW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Adam Copeland by Gage Skidmore.jpg",
+        "author": "Gage Skidmore",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Adam Priest",
@@ -1320,8 +1345,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Alec Price in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Alex Reynolds",
@@ -1345,9 +1374,15 @@
       "promotions": [
         "AEW"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "andrade"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Andrade El Idolo AEW (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Angelo Parker",
@@ -1528,8 +1563,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Big Bill and Bryan Keith (cropped 2).jpg",
+        "author": "KMcWrestling",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Buddy Matthews",
@@ -1795,9 +1834,15 @@
       "promotions": [
         "AEW"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "hangman adam page"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Hangman Adam Page Oct 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Hechicero",
@@ -2282,8 +2327,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Mascara Dorada 2025 Arena Pubela.jpg",
+        "author": "Satanic.boho",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Místico",
@@ -2380,8 +2429,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "The D.K.C. in January 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Don Fale",
@@ -2598,8 +2651,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Matt Vandagriff.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Mikey Nicholls",
@@ -2670,8 +2727,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Royce Isaacs 20241214.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ryohei Oiwa",
@@ -2804,8 +2865,12 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Taka Michinoku.jpg",
+        "author": "Original uploaded by 2for6 (Transfered by Maurilbert )",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Tatsuya Matsumoto",
@@ -3212,24 +3277,36 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Saxon Huxley Day 2 UK Tournament.jpg",
+        "author": "Shaun Potts.",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Shuhei Taniguchi",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Shuhei Taniguchi.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Shuji Kondo",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Shuji Kondo.jpg",
+        "author": "Harry Li",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Super Crazy",
@@ -3378,8 +3455,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Alexander Hammerstone in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Andrew Everett",
@@ -3442,8 +3523,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Mark Coffey April 2019.jpg",
+        "author": "John Manard",
+        "license": "CC BY-SA 2.0"
+      }
     },
     {
       "name": "Matt Riddle",
@@ -3530,8 +3615,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Jack Cartwheel in June 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Joey Janela",
@@ -3564,8 +3653,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Kerry Morton in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Orange Cassidy",
@@ -3834,8 +3927,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Michael Oku wXw 16 Carat Gold 2024.jpg",
+        "author": "Pinkd56",
+        "license": "CC0"
+      }
     },
     {
       "name": "Sha Samuels",
@@ -4064,8 +4161,12 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Togi Makabe.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Tomoaki Honma",
@@ -4074,8 +4175,12 @@
         "NJPW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Tomoaki Honma.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Tomohiro Ishii",
@@ -4210,16 +4315,24 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Yoshiki inamura October 2025.jpg",
+        "author": "ごーるどじむ",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Silas Mason",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Silas Mason.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Kento Miyahara",
@@ -4254,24 +4367,36 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Man Like DeReiss in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Charles Mason",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Charles Mason in April 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      }
     },
     {
       "name": "EFFY",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Effy in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Madoka Kikuta",
@@ -4364,16 +4489,24 @@
         "CMLL"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Bárbaro Cavernario I.jpg",
+        "author": "DeBolsillo",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "KZY",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Kzy in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ryoya Tanaka",
@@ -4388,16 +4521,24 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Masaaki Mochizuki 2012.jpg",
+        "author": "simononly",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Elijah Blum",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Elijah Blum 20260406.jpg",
+        "author": "MilanoCollection",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Averno",
@@ -4794,8 +4935,12 @@
         "NXT"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Lola Vice 2026.jpg",
+        "author": "Kyn11",
+        "license": "CC0"
+      }
     },
     {
       "name": "Lyra Valkyria",
@@ -4827,9 +4972,15 @@
       "promotions": [
         "NXT"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "natalya"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Natalya March 2015.jpg",
+        "author": "Miguel Discart",
+        "license": "CC BY-SA 2.0"
+      }
     },
     {
       "name": "Nia Jax",
@@ -4875,9 +5026,15 @@
       "promotions": [
         "WWE"
       ],
-      "aliases": [],
-      "status": "missing",
-      "photo": null
+      "aliases": [
+        "saraya"
+      ],
+      "status": "catalogued",
+      "photo": {
+        "file": "Saraya Bevis, September 2022 (headshot).jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Raquel Rodriguez",
@@ -5202,8 +5359,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Emi Sakura.JPG",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      }
     },
     {
       "name": "Kamille",
@@ -5245,7 +5406,7 @@
       "status": "catalogued",
       "photo": {
         "file": "Queen Aminata in April 2025 (cropped).jpg",
-        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "author": "BEAR FROM SPACE",
         "license": "CC BY 2.0"
       }
     },
@@ -5382,8 +5543,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Zayda Steel in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      }
     },
     {
       "name": "Britt Baker D.M.D.",
@@ -5422,16 +5587,24 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Lena Kross in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ruby Soho",
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Ruby Soho, March 2022-2.jpg",
+        "author": "Super Festivals",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Alisha Edwards",
@@ -5604,8 +5777,12 @@
         "TNA"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Mara Sadè 2026.jpg",
+        "author": "Total Nonstop Action Wrestling",
+        "license": "CC BY 4.0"
+      }
     },
     {
       "name": "Jada Stone",
@@ -5762,8 +5939,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "India Sioux.jpg",
+        "author": "DeBolsillo",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "La Catalina",
@@ -6226,8 +6407,12 @@
         "STARDOM"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Saori Anou.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Yuna Mizumori",
@@ -6368,16 +6553,24 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Nina Samuels in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Rhio",
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Rhio in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Kenzie Paige",
@@ -6392,8 +6585,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Takumi Iroha 2016.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Miu Watanabe",
@@ -6440,8 +6637,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Janai Kai Kitsune Wrestling March 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Tiffany Nieves",

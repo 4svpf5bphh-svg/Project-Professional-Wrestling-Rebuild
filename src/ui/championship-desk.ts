@@ -2,6 +2,7 @@
  * Opening a belt loads only its first 15 reigns, not the World's history.
  */
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {wrestlerInitials} from "./wrestler-card.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {beltCategory} from "./championship-artwork.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
@@ -87,12 +88,19 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
     title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES"));
    identity.append(promo);
    const throne=element("span","ppw-belt-current-display");
-   const portrait=title.holderType==="PERSON"&&title.holderName?
-    createWrestlerPortrait(title.holderName,180):null;
-   if(portrait){
-    portrait.classList.add("ppw-belt-champion-portrait");
-    portrait.onerror=()=>portrait.remove();
-    throne.append(portrait);
+   if(title.holderType==="PERSON"&&title.holderName){
+    // Preserve the same premium monogram when a genuine Commons image
+    // is absent or the remote file cannot load.
+    const well=element("span","ppw-belt-champion-well");
+    well.setAttribute("aria-hidden","true");
+    well.append(element("span","ppw-belt-champion-initials",wrestlerInitials(title.holderName)));
+    const portrait=createWrestlerPortrait(title.holderName,180);
+    if(portrait){
+     portrait.classList.add("ppw-belt-champion-portrait");
+     portrait.onerror=()=>portrait.remove();
+     well.append(portrait);
+    }
+    throne.append(well);
    }
    const reign=element("span","ppw-belt-champion-copy");
    reign.append(element("small","ppw-belt-reign-title",title.holderId?"REIGNING CHAMPION":"TITLE VACANT"),

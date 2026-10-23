@@ -3,10 +3,18 @@
     "total": 643,
     "existing": 156,
     "newPhotos": 31,
-    "unresolved": 456,
-    "coveragePercent": 29.08,
+    "unresolved": 439,
+    "coveragePercent": 31.73,
     "checkedAt": "2026-10-23T17:58:03.900Z",
-    "caveat": "Identity review removed five unsafe photos; 210 search attempts were rate-limited and remain unresolved."
+    "caveat": "Six incorrect/ambiguous images were rejected. Rate-limited names remain unresolved; image identity and licences must be established before use.",
+    "previouslyCoveredGenesis": 156,
+    "originalCatalogueSources": 186,
+    "newIndependentPhotos": 31,
+    "newCreatorCategoryPhotos": 14,
+    "aliasRecoveredPhotos": 3,
+    "creditedSources": 231,
+    "genuineGenesisPhotos": 204,
+    "rateLimitedSearches": 204
   },
   "people": [
     {
@@ -2349,9 +2357,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Alec Price in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Alec Price in March 2025.jpg",
@@ -2459,9 +2471,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Andrade El Idolo AEW (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Documented historical ring-name alias links an existing genuine photograph",
       "candidates": []
     },
     {
@@ -4801,9 +4817,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "No verifiable, commercially reusable Commons photograph",
+      "photo": {
+        "file": "The D.K.C. in January 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -5415,9 +5435,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Matt Vandagriff.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Matt Vandagriff.jpg",
@@ -5559,9 +5583,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Royce Isaacs 20241214.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -7235,9 +7263,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Alexander Hammerstone in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -7699,9 +7731,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Kerry Morton in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -9588,9 +9624,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Man Like DeReiss in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Man Like DeReiss in April 2024.jpg",
@@ -9632,9 +9672,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "No verifiable, commercially reusable Commons photograph",
+      "photo": {
+        "file": "Charles Mason in April 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -9643,9 +9687,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Effy in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -9796,9 +9844,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Kzy in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Kzy.jpg",
@@ -10538,9 +10590,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "No verifiable, commercially reusable Commons photograph",
+      "photo": {
+        "file": "Natalya March 2015.jpg",
+        "author": "Miguel Discart",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Documented historical ring-name alias links an existing genuine photograph",
       "candidates": []
     },
     {
@@ -10615,9 +10671,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Saraya Bevis, September 2022 (headshot).jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Documented historical ring-name alias links an existing genuine photograph",
       "candidates": [
         {
           "file": "Elaine Paige Annie Skates.jpg",
@@ -11263,8 +11323,8 @@
       ],
       "status": "catalogued",
       "photo": {
-        "file": "Aminata in April 2025.jpg",
-        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "file": "Queen Aminata in April 2025 (cropped).jpg",
+        "author": "BEAR FROM SPACE",
         "license": "CC BY 2.0"
       },
       "resolution": "existing",
@@ -11484,9 +11544,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Zayda Steel in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Zayda Steel in March 2025.jpg",
@@ -11569,9 +11633,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Lena Kross in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Lena Kross in April 2025.jpg",
@@ -13260,9 +13328,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Nina Samuels in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": []
     },
     {
@@ -13271,9 +13343,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Rhio in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-category",
+      "reason": "Source image title and Commons description corroborate the wrestler; author and commercial licence supplied",
       "candidates": [
         {
           "file": "Rhio in April 2024.jpg",

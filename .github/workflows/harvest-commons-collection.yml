@@ -1,0 +1,53 @@
+name: Commons licensed-portrait collection harvest (unreleased)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: commons-collection-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  harvest:
+    if: github.ref == 'refs/heads/audit/genesis-portrait-reliability-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Bulk Commons metadata review and exact identity matching
+        run: npx tsx scripts/harvest-commons-collection.ts
+      - name: Preserve creator-category matching report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: commons-creator-collection-report
+          path: |
+            data/commons-collection-report.json
+            portrait-audit.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Audit all Commons image licenses and creators
+        id: commons_audit
+        continue-on-error: true
+        run: npx tsx scripts/audit-portraits.ts
+      - name: Typecheck combined rollout
+        run: npm run typecheck
+      - name: Verify existing and newly credited portraits
+        run: npm test
+      - name: Persist only verified photos on separate development branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/genesis-portrait-worklist.json data/commons-collection-report.json src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(portraits): add metadata-verified creator-category Genesis photographs"
+            git push origin HEAD:audit/genesis-portrait-reliability-20261023
+          fi
+      - name: Report partial external verification without discarding correctly sourced candidates
+        if: steps.commons_audit.outcome == 'failure'
+        run: |
+          echo "Commons rate limits or metadata mismatches require a fresh audit before approval."
+          exit 1
