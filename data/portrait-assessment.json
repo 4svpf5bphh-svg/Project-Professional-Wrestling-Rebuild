@@ -3,12 +3,16 @@
     "total": 643,
     "previouslyCovered": 204,
     "additionsThisPass": 0,
-    "genuineGenesisPhotos": 204,
-    "unresolved": 439,
-    "coveragePercent": 31.73,
+    "genuineGenesisPhotos": 285,
+    "unresolved": 358,
+    "coveragePercent": 44.32,
     "checkedAt": "2026-10-23T18:35:00.165Z",
     "rateLimitedSearches": 194,
-    "caveat": "Name + wrestling-specific metadata corroboration; visual review and the independent Commons source audit remain compulsory. Never treat HTTP 429 as a photograph absence."
+    "caveat": "Name + wrestling-specific metadata corroboration; visual review and the independent Commons source audit remain compulsory. Never treat HTTP 429 as a photograph absence.",
+    "curatedPhotoAdditions": 78,
+    "recoveredAliases": 3,
+    "creditedSources": 309,
+    "note": "Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing."
   },
   "people": [
     {
@@ -19,9 +23,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Aaron Rourke posing 12162019.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Aaron Rourke vs Slade 26122019.jpg",
@@ -129,9 +137,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Akira Tozawa YLC.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Akira Tozawa YLC.jpg",
@@ -333,9 +345,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Baron Corbin WrestleMania 32 Axxess.jpg",
+        "author": "Miguel Discart from Bruxelles, Belgique",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Baron Corbin WrestleMania 32 Axxess.jpg",
@@ -764,9 +780,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Danhausen, November 2019 (headshot).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Danhausen in 2019.jpg",
@@ -1262,9 +1282,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Je'Von Evans (cropped).jpg",
+        "author": "HHH Pedrigree",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Je'Von Evans.jpg",
@@ -1356,9 +1380,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Johnny Gargano YLC 2008 7.jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Johnny Gargano YLC 2008 7.jpg",
@@ -1434,9 +1462,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Josh Briggs, July 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Josh Briggs, July 2019.jpg",
@@ -2207,9 +2239,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tony D’Angelo (cropped).jpg",
+        "author": "WrestlingGeek5196",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Tony D’Angelo.jpg",
@@ -2481,9 +2517,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Alex Reynolds September 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Alex Reynolds September 2018.jpg",
@@ -2517,9 +2557,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Alex Shelley February 2016.png",
+        "author": "Courtney Rose",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Alex Shelley January 2009.jpg",
@@ -2650,9 +2694,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Ariya Daivari in 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ariya Daivari 2016.jpg",
@@ -2694,9 +2742,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Austin Gunn, June 2022.jpg",
+        "author": "ECarterSterling",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Austin Gunn - AEW Dynamite, December 1, 2021.jpg",
@@ -2763,9 +2815,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Billy Gunn 2012.png",
+        "author": "Tabercil from Canadian",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Billy Gunn (7901231326).jpg",
@@ -2840,9 +2896,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Brandon Cutler (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Brandon Cutler.jpg",
@@ -2870,9 +2930,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Brian Cage 2017 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Brian Cage.jpg",
@@ -3226,9 +3290,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Dezmond Xavier 2019.jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Dezmond Xavier stunner.jpg",
@@ -3329,9 +3397,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Dustin Rhodes, October 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Dustin Rhodes 1 - AEW Dark- Elevation, December 1, 2021.jpg",
@@ -3383,9 +3455,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Evil Uno (cropped).jpg",
+        "author": "Troy Teague",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Evil Uno (cropped).jpg",
@@ -3452,9 +3528,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Hechicero at ROH Death Before Dishonor - August 29 2025.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Hechicero.jpg",
@@ -3723,9 +3803,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Josh Alexander SCW 2012.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Josh Alexander SCW 2012.jpg",
@@ -3767,9 +3851,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Josh Woods 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "2022, 03, Josh Woods (H).jpg",
@@ -3842,9 +3930,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Jack Perry as AEW TNT Champion (cropped2).jpg",
+        "author": "McPhail",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Sanada v \"Jungle Boy\" Jack Perry, AEW Forbidden Door 2023, 2023-06-25 01.jpg",
@@ -3910,9 +4002,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Katsuyori Shibata November 2016.png",
+        "author": "TDOldSpice",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Katsuyori Shibata November 2016.png",
@@ -4034,9 +4130,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Kevin Knight at AEW Dynamite - August 27 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Kevin Knight at AEW Dynamite - August 27 2025.jpg",
@@ -4078,9 +4178,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Kip Sabian in September 2024 (cropped).jpg",
+        "author": "zuko1312",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Kip Sabian in September 2024.png",
@@ -4132,9 +4236,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Komander Luchador (cropped).jpg",
+        "author": "EstrellaSuecia",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Ewa Komander Alanya2010 1.jpg",
@@ -4384,9 +4492,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Mason Madden (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Mason Madden.jpg",
@@ -4427,9 +4539,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Matt Sydal - Evan Bourne.jpg",
+        "author": "Greg",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Matt Sydal - Evan Bourne.jpg",
@@ -4471,9 +4587,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Max Caster Nov 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Max Caster July 2020.jpg",
@@ -4509,9 +4629,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Mike Bennett, February 2010 02.jpg",
+        "author": "MikeKalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Mike Bennett and Bob Evans.jpg",
@@ -4598,9 +4722,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Myron Reed 2025.png",
+        "author": "TNA Wrestling",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Myron Reed 2019.jpg",
@@ -4722,9 +4850,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Mistico posing BW crop.jpg",
+        "author": "derivative work: SamWinslow ( talk ) File:Mistico posing BW.jpg : fAnyst",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Mistico posing BW crop.jpg",
@@ -4873,9 +5005,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Dick Togo Chikara.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Dick Togo.JPG",
@@ -5106,9 +5242,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "El Phantasmo at ASW.jpg",
+        "author": "Divaslayer",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "El Phantasmo at ASW.jpg",
@@ -5392,9 +5532,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "KUSHIDA at BCW East meets West 2.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "KUSHIDA and Chie.jpg",
@@ -5499,9 +5643,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Master Wato.jpg",
+        "author": "ShTa2002",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Master Wato.jpg",
@@ -5868,9 +6016,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Taiji Ishimori 22 Sep 2015.jpg",
+        "author": "いてる (Iteru)",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Taiji Ishimori at ROH 2013.jpg",
@@ -6040,9 +6192,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Bear Bronson 2023.jpg",
+        "author": "Gri3720",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Bear Bronson 2023.jpg",
@@ -6237,9 +6393,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "John Skyler.jpg",
+        "author": "Mike Kalasnik from Fort Mill, USA",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "John Skyler.jpg",
@@ -6280,9 +6440,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Leon Slater (SovPro) (cropped).jpg",
+        "author": "Sceptre",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Leon Slater BodyZoi Wrestling.png",
@@ -6394,9 +6558,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Mustafa Ali Wm34 crop.jpg",
+        "author": "Shared Account",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Mustafa Ali Wm34.jpg",
@@ -6459,9 +6627,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Rich Swann 2019-07-05 (cropped).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Rich Swann CZW.jpg",
@@ -6747,9 +6919,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Masato Tanaka.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Masato Tanaka and Havok.jpg",
@@ -7026,9 +7202,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "La Parka, Campeonato XX del Vive Latino.jpg",
+        "author": "Festival Ambulante",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "La parka.jpg",
@@ -7070,9 +7250,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Laredo Kid 2.jpg",
+        "author": "https://www.flickr.com/photos/rcwforever",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Laredo Kid 2.jpg",
@@ -7130,9 +7314,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Mr Iguana at San Diego Comic Con 2026.jpg",
+        "author": "Kevin Paul",
+        "license": "CC BY 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Mr Iguana joven en el circuito independiente.jpg",
@@ -7249,9 +7437,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Psycho Clown 2024 08 (cropped).jpg",
+        "author": "MilanoCollection",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Psycho Clown 2024 08.jpg",
@@ -7436,9 +7628,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "photo": {
+        "file": "Karrion Kross, WrestleMania XL (2).jpg",
+        "author": "Diego Serrano",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Verified historical ring name reuses the original wrestler's licensed photo",
       "candidates": []
     },
     {
@@ -7471,9 +7667,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Matt Riddle as EVOLVE Champion, June 2018 02.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Matt Riddle in BEYOND WRESTLING.jpg",
@@ -7531,9 +7731,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tom Lawlor june 2019.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Filthy Tom Lawlor.jpg",
@@ -7593,9 +7797,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Colin Delaney, February 2010 02.jpg",
+        "author": "MikeKalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Colin Delaney in 2012.jpg",
@@ -7706,9 +7914,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Joey Janela Oct 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Joey Janela entrance 2018.jpg",
@@ -7968,9 +8180,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Sammy Guevara (2021-07-14) (cropped).jpg",
+        "author": "Ralph Arvesen",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Sammy Guevara in Rumble in Pakistan 2019.jpg",
@@ -8060,9 +8276,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Shelton Benjamin ROH Cropped (cropped).jpg",
+        "author": "Anton",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Shelton Benjamin in Kitchener, Ontario, Canada.jpg",
@@ -8114,9 +8334,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Wheeler Yuta (2021-07-14) (cropped).jpg",
+        "author": "Ralph Arvesen",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Wheeler Yuta April 2019.jpg",
@@ -8206,9 +8430,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Toa Liona at All In 2024 (cropped).jpg",
+        "author": "McPhail",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Toa Liona at All In 2024 (cropped).jpg",
@@ -8236,9 +8464,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tony Nese.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Tony Nese April 2018.jpg",
@@ -8539,9 +8771,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Sha Samuels at Night 1 of CHIKARA's King of Trios (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Sha Samuels and Terry Frazier leaving New Alhambra Arena after losing at Night 1 of King of Trios 2008.jpg",
@@ -8586,9 +8822,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Keith Lee, May 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Pro Wrestler Keith Lee August 2017.jpg",
@@ -8706,9 +8946,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Axel Tischer, June 2022 17 (cropped).jpg",
+        "author": "Miguel Discart (Photos Vrac)",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Axel Tischer, June 2022 02.jpg",
@@ -8766,9 +9010,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Mark Haskins with Smash belt.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Beer Money vs Magnus & Mark Haskins.jpg",
@@ -8834,9 +9082,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Satnam Singh FULL GEAR 2023 11 18 005 (cropped).jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Satnam Singh Bhamara.jpg",
@@ -8886,9 +9138,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Wrestler TOMMY END cr.jpg",
+        "author": "ZekeDane",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Wrestler TOMMY END.jpg",
@@ -9269,9 +9525,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tomohiro Ishii in 2025.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Tomohiro Ishii NJPW.jpg",
@@ -9489,9 +9749,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tetsuya Naito november 2018.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Tetsuya Naitō.jpg",
@@ -10118,9 +10382,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Xelhua conectando con la audiencia en la Arena Puebla.jpg",
+        "author": "Satanic.boho",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Xelhua.jpg",
@@ -10652,9 +10920,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Maxxine dupri main event 12 january 2026 (cropped).jpg",
+        "author": "RadoslavSV",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Maxxine dupri main event 12 january 2026.jpg",
@@ -10733,9 +11005,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Nikkita Lyons Powerful Look (cropped).jpg",
+        "author": "Gerrard Facto Graphics",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Nikkita Lyons Powerful Look.jpg",
@@ -10840,9 +11116,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Sol Ruca as women's IC Champion (cropped).jpg",
+        "author": "RadoslavSV",
+        "license": "CC0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Sol ruca raw 01 june 2026.jpg",
@@ -10974,9 +11254,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Identity not independently established or photograph duplicated",
+      "photo": {
+        "file": "Zelina Vega 2018-04-07 20-50-02 ILCE-6500 DSC06809 (cropped).jpg",
+        "author": "Miguel Discart",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Verified historical ring name reuses the original wrestler's licensed photo",
       "candidates": [
         {
           "file": "NXT Champ Andrade \"Cien\" Almas & Zelina Vega TakeOver NOLA.jpg",
@@ -11222,9 +11506,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Taya Valkyrie, April 2016 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Taya Valkyrie 2018.jpg",
@@ -11367,9 +11655,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Madison Rayne October 2010.jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Madison Rayne October 2010.jpg",
@@ -11684,9 +11976,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "No verifiable, commercially reusable Commons photograph",
+      "photo": {
+        "file": "Britt Baker (cropped).jpg",
+        "author": "John Manard",
+        "license": "CC BY-SA 2.0"
+      },
+      "resolution": "existing-alias",
+      "reason": "Verified historical ring name reuses the original wrestler's licensed photo",
       "candidates": []
     },
     {
@@ -11953,9 +12249,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Tasha Steelz, April 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Tasha Steelz, April 2018.jpg",
@@ -12479,9 +12779,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Lady Shani Ecatepec.jpg",
+        "author": "EstrellaSuecia",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Lady Shani Ecatepec.jpg",
@@ -12869,9 +13173,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Bea Priestley, October 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Bea Priestley, October 2019.jpg",
@@ -13037,9 +13345,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Maki Itoh at Ryogoku Kokugikan, 2026-08-23.jpg",
+        "author": "ゆぼくん（@yubokun）",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "20170726 Maki Itoh at Akasaka Sacas.jpg",
@@ -13494,9 +13806,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "TJPW's wrestler Miu Watanabe 1.jpg",
+        "author": "Spencer Najera",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "TJPW's wrestler Miu Watanabe and Uta Takami 2.jpg",
@@ -13637,9 +13953,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "TJPW's wrestler Shoko Nakajima 2 (cropped).jpg",
+        "author": "Spencer Najera",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "TJPW's wrestler Shoko Nakajima 2.jpg",
@@ -13916,9 +14236,13 @@
       ],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Billie Starkz AEW.jpg",
+        "author": "Mouse3911",
+        "license": "CC BY-SA 4.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Billie Starkz AEW.jpg",
@@ -14047,9 +14371,13 @@
       "promotions": [],
       "aliases": [],
       "status": "missing",
-      "photo": null,
-      "resolution": "unresolved",
-      "reason": "Ambiguous: several plausible photographs",
+      "photo": {
+        "file": "Lady Frost, November 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "resolution": "added-curated",
+      "reason": "Selected individual authenticated Commons subject from independent title and description",
       "candidates": [
         {
           "file": "Lady Frost, November 2019.jpg",

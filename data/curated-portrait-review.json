@@ -1,0 +1,792 @@
+{
+  "reviewedNames": 78,
+  "recoveredAliases": [
+    "Zelina",
+    "Britt Baker D.M.D.",
+    "Killer Kross"
+  ],
+  "additions": [
+    {
+      "name": "Aaron Rourke",
+      "credit": {
+        "file": "Aaron Rourke posing 12162019.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Aaron_Rourke_posing_12162019.jpg",
+      "description": "Aaron Rourke posing"
+    },
+    {
+      "name": "Akira Tozawa",
+      "credit": {
+        "file": "Akira Tozawa YLC.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Akira_Tozawa_YLC.jpg",
+      "description": "Professional wrestler Akira Tozawa at a Chikara show"
+    },
+    {
+      "name": "Baron Corbin",
+      "credit": {
+        "file": "Baron Corbin WrestleMania 32 Axxess.jpg",
+        "author": "Miguel Discart from Bruxelles, Belgique",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Baron_Corbin_WrestleMania_32_Axxess.jpg",
+      "description": "Baron Corbin at WrestleMania Axxess in 2016"
+    },
+    {
+      "name": "Je'Von Evans",
+      "credit": {
+        "file": "Je'Von Evans (cropped).jpg",
+        "author": "HHH Pedrigree",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Je'Von_Evans_(cropped).jpg",
+      "description": "Pro wrestler Je'Von Evans"
+    },
+    {
+      "name": "Johnny Gargano",
+      "credit": {
+        "file": "Johnny Gargano YLC 2008 7.jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Johnny_Gargano_YLC_2008_7.jpg",
+      "description": "Professional wrestler Johnny Gargano at a Chikara event"
+    },
+    {
+      "name": "Josh Briggs",
+      "credit": {
+        "file": "Josh Briggs, July 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Josh_Briggs%2C_July_2019_(cropped).jpg",
+      "description": "American professional wrestler Josh Briggs in July 2019"
+    },
+    {
+      "name": "Tony D'Angelo",
+      "credit": {
+        "file": "Tony D’Angelo (cropped).jpg",
+        "author": "WrestlingGeek5196",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tony_D%E2%80%99Angelo_(cropped).jpg",
+      "description": "Tony D'Angelo at a WWE live event in 2024"
+    },
+    {
+      "name": "Alex Reynolds",
+      "credit": {
+        "file": "Alex Reynolds September 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Alex_Reynolds_September_2018_(cropped).jpg",
+      "description": "American professional wrestler Alex Reynolds in September 2018"
+    },
+    {
+      "name": "Alex Shelley",
+      "credit": {
+        "file": "Alex Shelley February 2016.png",
+        "author": "Courtney Rose",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Alex_Shelley_February_2016.png",
+      "description": "Professional wrestler, Alex Shelley on February 27, 2016."
+    },
+    {
+      "name": "Ariya Daivari",
+      "credit": {
+        "file": "Ariya Daivari in 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Ariya_Daivari_in_2025_(cropped).jpg",
+      "description": "American professional wrestler Ariya Daivari at Ring of Honor Wrestling - Death Before Dishonor - August 29 2025"
+    },
+    {
+      "name": "Austin Gunn",
+      "credit": {
+        "file": "Austin Gunn, June 2022.jpg",
+        "author": "ECarterSterling",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Austin_Gunn%2C_June_2022.jpg",
+      "description": "A cropped photograph of American professional wrestler Austin Gunn, taken on 26 June 2022."
+    },
+    {
+      "name": "Billy Gunn",
+      "credit": {
+        "file": "Billy Gunn 2012.png",
+        "author": "Tabercil from Canadian",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Billy_Gunn_2012.png",
+      "description": "Professional wrestler Billy Gunn ."
+    },
+    {
+      "name": "Brandon Cutler",
+      "credit": {
+        "file": "Brandon Cutler (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Brandon_Cutler_(cropped).jpg",
+      "description": "American professional wrestler Brandon Cutler"
+    },
+    {
+      "name": "Brian Cage",
+      "credit": {
+        "file": "Brian Cage 2017 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Brian_Cage_2017_(cropped).jpg",
+      "description": "Le catcheur Brian Cage en 2017."
+    },
+    {
+      "name": "Dezmond Xavier",
+      "credit": {
+        "file": "Dezmond Xavier 2019.jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Dezmond_Xavier_2019.jpg",
+      "description": "Professional wrestler Dezmond Xavier (also known as Wes Lee) in 2019 at the Bash at the Brewery event"
+    },
+    {
+      "name": "Dustin Rhodes",
+      "credit": {
+        "file": "Dustin Rhodes, October 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Dustin_Rhodes%2C_October_2019_(cropped).jpg",
+      "description": "American professional wrestler Dustin Rhodes in October 2019"
+    },
+    {
+      "name": "Evil Uno",
+      "credit": {
+        "file": "Evil Uno (cropped).jpg",
+        "author": "Troy Teague",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Evil_Uno_(cropped).jpg",
+      "description": "Evil Uno"
+    },
+    {
+      "name": "Josh Alexander",
+      "credit": {
+        "file": "Josh Alexander SCW 2012.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Josh_Alexander_SCW_2012.jpg",
+      "description": "Josh Alexander making his ring entrance at a Squared Circle Wrestling show in Vaughan, ON"
+    },
+    {
+      "name": "Josh Woods",
+      "credit": {
+        "file": "Josh Woods 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Josh_Woods_2025_(cropped).jpg",
+      "description": "American professional wrestler Josh Woods"
+    },
+    {
+      "name": "Jack Perry",
+      "credit": {
+        "file": "Jack Perry as AEW TNT Champion (cropped2).jpg",
+        "author": "McPhail",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Jack_Perry_as_AEW_TNT_Champion_(cropped2).jpg",
+      "description": "Professional wrestler Jack Perry as AEW TNT Champion at the All Elite Wrestling pay-per-view \"All In\" on 25 August 2024 in London, England."
+    },
+    {
+      "name": "Katsuyori Shibata",
+      "credit": {
+        "file": "Katsuyori Shibata November 2016.png",
+        "author": "TDOldSpice",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Katsuyori_Shibata_November_2016.png",
+      "description": "Japanese professional wrestler Katsuyori Shibata in York Hall, Bethnal Green on November 10, 2016."
+    },
+    {
+      "name": "Kevin Knight",
+      "credit": {
+        "file": "Kevin Knight at AEW Dynamite - August 27 2025 (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Kevin_Knight_at_AEW_Dynamite_-_August_27_2025_(cropped).jpg",
+      "description": "American professional wrestler Kevin Knight during AEW Dynamite - August 27 2025"
+    },
+    {
+      "name": "Kip Sabian",
+      "credit": {
+        "file": "Kip Sabian in September 2024 (cropped).jpg",
+        "author": "zuko1312",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Kip_Sabian_in_September_2024_(cropped).jpg",
+      "description": "Professional wrestler Kip Sabian in September 2024."
+    },
+    {
+      "name": "Mason Madden",
+      "credit": {
+        "file": "Mason Madden (cropped).jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mason_Madden_(cropped).jpg",
+      "description": "American professional wrestler Mason Madden at Ring of Honor Wrestling - Death Before Dishonor - August 29 2025"
+    },
+    {
+      "name": "Matt Sydal",
+      "credit": {
+        "file": "Matt Sydal - Evan Bourne.jpg",
+        "author": "Greg",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Matt_Sydal_-_Evan_Bourne.jpg",
+      "description": "professional wrestler Matt Sydal"
+    },
+    {
+      "name": "Max Caster",
+      "credit": {
+        "file": "Max Caster Nov 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Max_Caster_Nov_2019_(cropped).jpg",
+      "description": "American professional wrestler Max Caster in November 2019"
+    },
+    {
+      "name": "Mike Bennett",
+      "credit": {
+        "file": "Mike Bennett, February 2010 02.jpg",
+        "author": "MikeKalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mike_Bennett%2C_February_2010_02.jpg",
+      "description": "American professional wrestler Mike Bennett in February 5 2010"
+    },
+    {
+      "name": "Myron Reed",
+      "credit": {
+        "file": "Myron Reed 2025.png",
+        "author": "TNA Wrestling",
+        "license": "CC BY 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Myron_Reed_2025.png",
+      "description": "Myron Reed in 2025"
+    },
+    {
+      "name": "Dick Togo",
+      "credit": {
+        "file": "Dick Togo Chikara.jpg",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Dick_Togo_Chikara.jpg",
+      "description": "Professional wrestler Dick Togo at Chikara King of Trios 2011."
+    },
+    {
+      "name": "El Phantasmo",
+      "credit": {
+        "file": "El Phantasmo at ASW.jpg",
+        "author": "Divaslayer",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:El_Phantasmo_at_ASW.jpg",
+      "description": "El Phantasmo"
+    },
+    {
+      "name": "Master Wato",
+      "credit": {
+        "file": "Master Wato.jpg",
+        "author": "ShTa2002",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Master_Wato.jpg",
+      "description": "Master Wato in April 2023 in Kumamoto."
+    },
+    {
+      "name": "Taiji Ishimori",
+      "credit": {
+        "file": "Taiji Ishimori 22 Sep 2015.jpg",
+        "author": "いてる (Iteru)",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Taiji_Ishimori_22_Sep_2015.jpg",
+      "description": "Japanese professional wrestler Taiji Ishimori"
+    },
+    {
+      "name": "Bear Bronson",
+      "credit": {
+        "file": "Bear Bronson 2023.jpg",
+        "author": "Gri3720",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Bear_Bronson_2023.jpg",
+      "description": "Bear Bronson during an ROH Taping in Pittsburgh in November 2023"
+    },
+    {
+      "name": "John Skyler",
+      "credit": {
+        "file": "John Skyler.jpg",
+        "author": "Mike Kalasnik from Fort Mill, USA",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:John_Skyler.jpg",
+      "description": "John Skyler at a PWX show in Winston Salem, North Carolina on January 19, 2014."
+    },
+    {
+      "name": "Leon Slater",
+      "credit": {
+        "file": "Leon Slater (SovPro) (cropped).jpg",
+        "author": "Sceptre",
+        "license": "CC BY 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Leon_Slater_(SovPro)_(cropped).jpg",
+      "description": "British professional wrestler w:Leon Slater at Sovereign Pro Wrestling's \"It's Dark and Hell is Hot\" event."
+    },
+    {
+      "name": "Mustafa Ali",
+      "credit": {
+        "file": "Mustafa Ali Wm34 crop.jpg",
+        "author": "Shared Account",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mustafa_Ali_Wm34_crop.jpg",
+      "description": "Mustafa Ali in April 2018 at WrestleMania 34."
+    },
+    {
+      "name": "Rich Swann",
+      "credit": {
+        "file": "Rich Swann 2019-07-05 (cropped).jpg",
+        "author": "Brandon Oliver",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Rich_Swann_2019-07-05_(cropped).jpg",
+      "description": "Rich Swann at RCW & IMPACT Wrestling present Bash at the Brewery (July 5, 2019)"
+    },
+    {
+      "name": "Masato Tanaka",
+      "credit": {
+        "file": "Masato Tanaka.jpg",
+        "author": "2for6",
+        "license": "CC BY-SA 3.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Masato_Tanaka.jpg",
+      "description": "Japanese professional wrestler, Masato Tanaka. Oct 2 2011 ZERO1 Yasukuni Shrine."
+    },
+    {
+      "name": "La Parka",
+      "credit": {
+        "file": "La Parka, Campeonato XX del Vive Latino.jpg",
+        "author": "Festival Ambulante",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:La_Parka%2C_Campeonato_XX_del_Vive_Latino.jpg",
+      "description": "La Parka (Jesús Alfonso Huerta Escoboza) en 2019."
+    },
+    {
+      "name": "Laredo Kid",
+      "credit": {
+        "file": "Laredo Kid 2.jpg",
+        "author": "https://www.flickr.com/photos/rcwforever",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Laredo_Kid_2.jpg",
+      "description": "Professional wrestler Laredo Kid in july 2018"
+    },
+    {
+      "name": "Mr. Iguana",
+      "credit": {
+        "file": "Mr Iguana at San Diego Comic Con 2026.jpg",
+        "author": "Kevin Paul",
+        "license": "CC BY 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mr_Iguana_at_San_Diego_Comic_Con_2026.jpg",
+      "description": "Mr. Iguana at San Diego Comic Con 2026"
+    },
+    {
+      "name": "Psycho Clown",
+      "credit": {
+        "file": "Psycho Clown 2024 08 (cropped).jpg",
+        "author": "MilanoCollection",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Psycho_Clown_2024_08_(cropped).jpg",
+      "description": "Psycho Clown at Hong Kong in 2024 August"
+    },
+    {
+      "name": "Matt Riddle",
+      "credit": {
+        "file": "Matt Riddle as EVOLVE Champion, June 2018 02.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Matt_Riddle_as_EVOLVE_Champion%2C_June_2018_02.jpg",
+      "description": "American mixed martial artist and professional wrestler Matt Riddle as EVOLVE Champion in June 2018"
+    },
+    {
+      "name": "Tom Lawlor",
+      "credit": {
+        "file": "Tom Lawlor june 2019.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tom_Lawlor_june_2019.jpg",
+      "description": "Le catcheur Tom Lawlor en juin 2019."
+    },
+    {
+      "name": "Colin Delaney",
+      "credit": {
+        "file": "Colin Delaney, February 2010 02.jpg",
+        "author": "MikeKalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Colin_Delaney%2C_February_2010_02.jpg",
+      "description": "American professional wrestler Colin Delaney in February 2010"
+    },
+    {
+      "name": "Joey Janela",
+      "credit": {
+        "file": "Joey Janela Oct 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Joey_Janela_Oct_2019_(cropped).jpg",
+      "description": "American professional wrestler Joey Janela appearing on AEW Dynamite in October 2019"
+    },
+    {
+      "name": "Sammy Guevara",
+      "credit": {
+        "file": "Sammy Guevara (2021-07-14) (cropped).jpg",
+        "author": "Ralph Arvesen",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Sammy_Guevara_(2021-07-14)_(cropped).jpg",
+      "description": "American professional wrestler Sammy Guevara in July 2021 during an All Elite Wrestling event."
+    },
+    {
+      "name": "Shelton Benjamin",
+      "credit": {
+        "file": "Shelton Benjamin ROH Cropped (cropped).jpg",
+        "author": "Anton",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Shelton_Benjamin_ROH_Cropped_(cropped).jpg",
+      "description": "Shelton Benjamin in 2013"
+    },
+    {
+      "name": "Wheeler Yuta",
+      "credit": {
+        "file": "Wheeler Yuta (2021-07-14) (cropped).jpg",
+        "author": "Ralph Arvesen",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Wheeler_Yuta_(2021-07-14)_(cropped).jpg",
+      "description": "American professional wrestler Wheeler Yuta in July 2021 during an All Elite Wrestling event."
+    },
+    {
+      "name": "Toa Liona",
+      "credit": {
+        "file": "Toa Liona at All In 2024 (cropped).jpg",
+        "author": "McPhail",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Toa_Liona_at_All_In_2024_(cropped).jpg",
+      "description": "Professional wrestler Toa Liona at the All Elite Wrestling pay-per-view \"All In\" on 25 August 2024."
+    },
+    {
+      "name": "Tony Nese",
+      "credit": {
+        "file": "Tony Nese.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tony_Nese.jpg",
+      "description": "American professional wrestler Tony Nese at Ring of Honor Wrestling - Death Before Dishonor - August 29 2025"
+    },
+    {
+      "name": "Sha Samuels",
+      "credit": {
+        "file": "Sha Samuels at Night 1 of CHIKARA's King of Trios (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Sha_Samuels_at_Night_1_of_CHIKARA's_King_of_Trios_(cropped).jpg",
+      "description": "Sha Samuels at Night 1 of CHIKARA's King of Trios"
+    },
+    {
+      "name": "Keith Lee",
+      "credit": {
+        "file": "Keith Lee, May 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Keith_Lee%2C_May_2018_(cropped).jpg",
+      "description": "American professional wrestler Keith Lee in May 2018"
+    },
+    {
+      "name": "Axel Tischer",
+      "credit": {
+        "file": "Axel Tischer, June 2022 17 (cropped).jpg",
+        "author": "Miguel Discart (Photos Vrac)",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Axel_Tischer%2C_June_2022_17_(cropped).jpg",
+      "description": "German professional wrestler Axel Tischer in June 2022"
+    },
+    {
+      "name": "Mark Haskins",
+      "credit": {
+        "file": "Mark Haskins with Smash belt.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mark_Haskins_with_Smash_belt.jpg",
+      "description": "Mark Haskins posing with the Smash Wrestling championship belt at a show in Pickering, ON"
+    },
+    {
+      "name": "Satnam Singh",
+      "credit": {
+        "file": "Satnam Singh FULL GEAR 2023 11 18 005 (cropped).jpg",
+        "author": "All Elite Wrestling",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Satnam_Singh_FULL_GEAR_2023_11_18_005_(cropped).jpg",
+      "description": "Indian professional wrestler Satnam Singh in 2023"
+    },
+    {
+      "name": "Tommy End",
+      "credit": {
+        "file": "Wrestler TOMMY END cr.jpg",
+        "author": "ZekeDane",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Wrestler_TOMMY_END_cr.jpg",
+      "description": "Tommy End after an August 2016 BEYOND WRESTLING match with Donovan Dijak in Providence RI"
+    },
+    {
+      "name": "Tomohiro Ishii",
+      "credit": {
+        "file": "Tomohiro Ishii in 2025.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tomohiro_Ishii_in_2025.jpg",
+      "description": "Japanese professional wrestler Tomohiro Ishii at Ring of Honor Wrestling - Death Before Dishonor - August 29 2025"
+    },
+    {
+      "name": "Tetsuya Naito",
+      "credit": {
+        "file": "Tetsuya Naito november 2018.jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tetsuya_Naito_november_2018.jpg",
+      "description": "Le catcheur Tetsuya Naito entrant sur le ring en novembre 2018."
+    },
+    {
+      "name": "Maxxine Dupri",
+      "credit": {
+        "file": "Maxxine dupri main event 12 january 2026 (cropped).jpg",
+        "author": "RadoslavSV",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Maxxine_dupri_main_event_12_january_2026_(cropped).jpg",
+      "description": "Picture of WWE wrestler Maxxine Dupri took by me on WWE Main Event taping (12 January 2026) in PSD Bank Dome (Düsseldorf, Germany)"
+    },
+    {
+      "name": "Nikkita Lyons",
+      "credit": {
+        "file": "Nikkita Lyons Powerful Look (cropped).jpg",
+        "author": "Gerrard Facto Graphics",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Nikkita_Lyons_Powerful_Look_(cropped).jpg",
+      "description": "Nikkita Lyons By Gerrard Facto Graphics. This is a low quality file and you can buy the 4K one on my website. This photo-quality is freely licensed and you can use it without my permission. But if you want support my work, you can also buy the highest quality. Actuall file, also check: License: See below"
+    },
+    {
+      "name": "Sol Ruca",
+      "credit": {
+        "file": "Sol Ruca as women's IC Champion (cropped).jpg",
+        "author": "RadoslavSV",
+        "license": "CC0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Sol_Ruca_as_women's_IC_Champion_(cropped).jpg",
+      "description": "Picture of WWE wrestler Sol Ruca took by me on WWE Raw (01 June 2026) in Inalpi Arena (Turin, Italy)"
+    },
+    {
+      "name": "Taya Valkyrie",
+      "credit": {
+        "file": "Taya Valkyrie, April 2016 (cropped).jpg",
+        "author": "Mike Kalasnik",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Taya_Valkyrie%2C_April_2016_(cropped).jpg",
+      "description": "Canadian professional wrestler Taya Valkyrie in April 2016"
+    },
+    {
+      "name": "Madison Rayne",
+      "credit": {
+        "file": "Madison Rayne October 2010.jpg",
+        "author": "daysofthundr46",
+        "license": "CC BY-SA 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Madison_Rayne_October_2010.jpg",
+      "description": "Professional wrestler Madison Rayne at a TNA live event"
+    },
+    {
+      "name": "Tasha Steelz",
+      "credit": {
+        "file": "Tasha Steelz, April 2018 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Tasha_Steelz%2C_April_2018_(cropped).jpg",
+      "description": "American professional wrestler Tasha Steelz in April 2019 during a match with Karen Q"
+    },
+    {
+      "name": "Lady Shani",
+      "credit": {
+        "file": "Lady Shani Ecatepec.jpg",
+        "author": "EstrellaSuecia",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Lady_Shani_Ecatepec.jpg",
+      "description": "lady shani ecatepec centro civico nueva aragon"
+    },
+    {
+      "name": "Bea Priestley",
+      "credit": {
+        "file": "Bea Priestley, October 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Bea_Priestley%2C_October_2019_(cropped).jpg",
+      "description": "English professional wrestler Bea Priestley in October 2019"
+    },
+    {
+      "name": "Maki Itoh",
+      "credit": {
+        "file": "Maki Itoh at Ryogoku Kokugikan, 2026-08-23.jpg",
+        "author": "ゆぼくん（@yubokun）",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Maki_Itoh_at_Ryogoku_Kokugikan%2C_2026-08-23.jpg",
+      "description": "Professional wrestler Maki Itoh at Ryogoku Kokugikan, Tokyo, Japan, on 23 August 2026. Photograph by ゆぼくん (@yubokun) , also known on Wikimedia as YuboIRG . Originally published on X . The photographer released this photograph under CC BY-SA 4.0 in this public reply to the original post ."
+    },
+    {
+      "name": "Miu Watanabe",
+      "credit": {
+        "file": "TJPW's wrestler Miu Watanabe 1.jpg",
+        "author": "Spencer Najera",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:TJPW's_wrestler_Miu_Watanabe_1.jpg",
+      "description": "TJPW's wrestler's Miu Watanabe posing for the camera"
+    },
+    {
+      "name": "Shoko Nakajima",
+      "credit": {
+        "file": "TJPW's wrestler Shoko Nakajima 2 (cropped).jpg",
+        "author": "Spencer Najera",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:TJPW's_wrestler_Shoko_Nakajima_2_(cropped).jpg",
+      "description": "Shoko Nakajima, idol and wrestler, posing for audience"
+    },
+    {
+      "name": "Billie Starkz",
+      "credit": {
+        "file": "Billie Starkz AEW.jpg",
+        "author": "Mouse3911",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Billie_Starkz_AEW.jpg",
+      "description": "Photo of Billie Starkz at AEW House Show Corbin KY May 12, 2023"
+    },
+    {
+      "name": "Lady Frost",
+      "credit": {
+        "file": "Lady Frost, November 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Lady_Frost%2C_November_2019_(cropped).jpg",
+      "description": "American professional wrestler Lady Frost in November 2019"
+    },
+    {
+      "name": "Danhausen",
+      "credit": {
+        "file": "Danhausen, November 2019 (headshot).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Danhausen%2C_November_2019_(headshot).jpg",
+      "description": "American professional wrestler Danhausen in November 2019"
+    },
+    {
+      "name": "Hechicero",
+      "credit": {
+        "file": "Hechicero at ROH Death Before Dishonor - August 29 2025.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Hechicero_at_ROH_Death_Before_Dishonor_-_August_29_2025.jpg",
+      "description": "Mexican luchador Hechicero at ROH Death Before Dishonor - August 29 2025"
+    },
+    {
+      "name": "Komander",
+      "credit": {
+        "file": "Komander Luchador (cropped).jpg",
+        "author": "EstrellaSuecia",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Komander_Luchador_(cropped).jpg",
+      "description": "The wrestler Komander in Monterrey, Mexico in 2018."
+    },
+    {
+      "name": "Místico",
+      "credit": {
+        "file": "Mistico posing BW crop.jpg",
+        "author": "derivative work: SamWinslow ( talk ) File:Mistico posing BW.jpg : fAnyst",
+        "license": "CC BY 2.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Mistico_posing_BW_crop.jpg",
+      "description": "luchador w:Mistico , lucha libre"
+    },
+    {
+      "name": "Kushida",
+      "credit": {
+        "file": "KUSHIDA at BCW East meets West 2.jpg",
+        "author": "Tabercil",
+        "license": "CC BY-SA 3.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:KUSHIDA_at_BCW_East_meets_West_2.jpg",
+      "description": "KUSHIDA posing post-match at Border City Wrestling's East Meets West show at St. Clair College in Windsor."
+    },
+    {
+      "name": "Xelhua",
+      "credit": {
+        "file": "Xelhua conectando con la audiencia en la Arena Puebla.jpg",
+        "author": "Satanic.boho",
+        "license": "CC BY-SA 4.0"
+      },
+      "source": "https://commons.wikimedia.org/wiki/File:Xelhua_conectando_con_la_audiencia_en_la_Arena_Puebla.jpg",
+      "description": "Xelhua conectando con la audiencia en la Arena Puebla"
+    }
+  ],
+  "unresolved": [],
+  "checkedAt": "2026-10-23T18:42:59.436Z"
+}
