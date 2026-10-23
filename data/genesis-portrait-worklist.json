@@ -8,13 +8,14 @@
   },
   "counts": {
     "total": 643,
-    "existing": 155,
-    "missing": 488,
-    "catalogue": 185,
+    "existing": 156,
+    "missing": 487,
+    "catalogue": 186,
     "unmatchedCatalogue": [
       "tonga loa",
       "carlito",
       "britt baker",
+      "powerhouse hobbs",
       "natalya",
       "kofi kingston",
       "zoey stark",
@@ -39,7 +40,6 @@
       "rezar",
       "santos escobar",
       "bryan danielson",
-      "hangman adam page",
       "hiroshi tanahashi",
       "aj styles"
     ]
@@ -1796,8 +1796,12 @@
         "AEW"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Hangman Adam Page Oct 2019 (cropped).jpg",
+        "author": "grenwail",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Hechicero",
@@ -5245,7 +5249,7 @@
       "status": "catalogued",
       "photo": {
         "file": "Queen Aminata in April 2025 (cropped).jpg",
-        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "author": "BEAR FROM SPACE",
         "license": "CC BY 2.0"
       }
     },

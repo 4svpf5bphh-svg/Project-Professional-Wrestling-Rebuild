@@ -22,7 +22,7 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "esfinge":{file:"Esfinge in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "megan bayne":{file:"Megan Bayne in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "mina shirakawa":{file:"Mina Shirakawa in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
- "queen aminata":{file:"Aminata in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "queen aminata":{file:"Queen Aminata in April 2025 (cropped).jpg",author:"BEAR FROM SPACE",license:"CC BY 2.0"},
  "dani luna":{file:"Dani Luna in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "thekla":{file:"Thekla in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
  "xia brookside":{file:"Xia Brookside in April 2024 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
