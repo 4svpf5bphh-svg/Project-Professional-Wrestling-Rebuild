@@ -7,12 +7,29 @@
     "unresolved": 358,
     "coveragePercent": 44.32,
     "checkedAt": "2026-10-23T18:35:00.165Z",
-    "rateLimitedSearches": 194,
-    "caveat": "Name + wrestling-specific metadata corroboration; visual review and the independent Commons source audit remain compulsory. Never treat HTTP 429 as a photograph absence.",
+    "rateLimitedSearches": 193,
+    "caveat": "Wikimedia source, creator and commercially reusable licences independently confirmed for all 309 credited files; subject identity evidence was reviewed but human visual inspection has not been completed for every image. The 193 rate-limited people are not claimed to lack legal images.",
     "curatedPhotoAdditions": 78,
     "recoveredAliases": 3,
     "creditedSources": 309,
-    "note": "Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing."
+    "note": "Evidence-selected individual Commons photographs; independently audit all Commons metadata and licence links before publishing.",
+    "previouslyCreditedSources": 186,
+    "newCreditedSources": 123,
+    "unresolvedReasons": {
+      "Commons throttled": 193,
+      "No verified reusable Commons image": 102,
+      "Identity not corroborated": 53,
+      "Ambiguous": 5,
+      "Rejected mismatched identity": 5
+    },
+    "commonsMetadataAudit": {
+      "runId": 40005542748,
+      "verified": 309,
+      "missing": 0,
+      "mismatch": 0,
+      "error": 0,
+      "verifiedAt": "2026-10-23T18:44:09.638Z"
+    }
   },
   "people": [
     {
