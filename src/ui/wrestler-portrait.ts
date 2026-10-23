@@ -219,7 +219,25 @@ const catalogue:Readonly<Record<string,PhotoCredit>>={
  "hiroshi tanahashi":{file:"Hiroshi Tanahashi 2016.png",author:"Courtney Rose",license:"CC BY-SA 2.0"},
  "aj styles":{file:"AJ Styles RR24 (1).jpg",author:"Diego Serrano",license:"CC BY 2.0"},
  "kazuchika okada":{file:"Kazuchika Okada - 03-07-2024 EDIT-12.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
- "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"}
+ "mercedes moné":{file:"Mercedes Moné DYNAMITE 2024 07 17 038.jpg",author:"All Elite Wrestling",license:"CC BY-SA 4.0"},
+ // Metadata corroborated from Commons photographer category.
+ "alec price":{file:"Alec Price in March 2025 (cropped).jpg",author:"✨ JOYFUL VI0LENCE ✨",license:"CC BY-SA 4.0"},
+ "the dkc":{file:"The D.K.C. in January 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "matt vandagriff":{file:"Matt Vandagriff.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "royce isaacs":{file:"Royce Isaacs 20241214.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "alex hammerstone":{file:"Alexander Hammerstone in February 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "jack cartwheel":{file:"Jack Cartwheel in June 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "kerry morton":{file:"Kerry Morton in February 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "man like dereiss":{file:"Man Like DeReiss in April 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "charles mason":{file:"Charles Mason in April 2025 (cropped).jpg",author:"✨ JOYFUL VI0LENCE ✨",license:"CC BY 4.0"},
+ "effy":{file:"Effy in March 2025.jpg",author:"✨ JOYFUL VI0LENCE ✨",license:"CC BY-SA 4.0"},
+ "kzy":{file:"Kzy in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "zayda steel":{file:"Zayda Steel in March 2025 (cropped).jpg",author:"✨ JOYFUL VI0LENCE ✨",license:"CC BY 4.0"},
+ "lena kross":{file:"Lena Kross in April 2025 (cropped).jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "rina":{file:"Rina Yamashita in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "nina samuels":{file:"Nina Samuels in April 2025.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "rhio":{file:"Rhio in April 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
+ "janai kai":{file:"Janai Kai Kitsune Wrestling March 2024.jpg",author:"J O Y F U L 🐻 V I O L E N C E",license:"CC BY 2.0"},
 };
 const knownAliases:Readonly<Record<string,string>>={
  "nattie":"natalya",

@@ -8,9 +8,9 @@
   },
   "counts": {
     "total": 643,
-    "existing": 159,
-    "missing": 484,
-    "catalogue": 186,
+    "existing": 176,
+    "missing": 467,
+    "catalogue": 203,
     "unmatchedCatalogue": [
       "tonga loa",
       "carlito",
@@ -1317,8 +1317,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Alec Price in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Alex Reynolds",
@@ -2389,8 +2393,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "The D.K.C. in January 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Don Fale",
@@ -2607,8 +2615,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Matt Vandagriff.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Mikey Nicholls",
@@ -2679,8 +2691,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Royce Isaacs 20241214.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ryohei Oiwa",
@@ -3387,8 +3403,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Alexander Hammerstone in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Andrew Everett",
@@ -3539,8 +3559,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Jack Cartwheel in June 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Joey Janela",
@@ -3573,8 +3597,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Kerry Morton in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Orange Cassidy",
@@ -4263,24 +4291,36 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Man Like DeReiss in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Charles Mason",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Charles Mason in April 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      }
     },
     {
       "name": "EFFY",
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Effy in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0"
+      }
     },
     {
       "name": "Madoka Kikuta",
@@ -4381,8 +4421,12 @@
       "division": "MEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Kzy in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ryoya Tanaka",
@@ -5403,8 +5447,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Zayda Steel in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0"
+      }
     },
     {
       "name": "Britt Baker D.M.D.",
@@ -5443,8 +5491,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Lena Kross in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Ruby Soho",
@@ -6031,8 +6083,12 @@
         "STARDOM"
       ],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Rina Yamashita in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Bea Priestley",
@@ -6389,16 +6445,24 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Nina Samuels in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Rhio",
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Rhio in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Kenzie Paige",
@@ -6461,8 +6525,12 @@
       "division": "WOMEN",
       "promotions": [],
       "aliases": [],
-      "status": "missing",
-      "photo": null
+      "status": "catalogued",
+      "photo": {
+        "file": "Janai Kai Kitsune Wrestling March 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0"
+      }
     },
     {
       "name": "Tiffany Nieves",

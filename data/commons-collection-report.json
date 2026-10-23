@@ -1,0 +1,281 @@
+{
+  "checkedFiles": 160,
+  "catalogueFilesInCategory": 163,
+  "additions": 17,
+  "ambiguous": 1,
+  "nowCovered": 176,
+  "missing": 467,
+  "note": "Category photo identities corroborated by source metadata; manual visual review remains important.",
+  "candidates": {
+    "Alex Hammerstone": [
+      {
+        "person": "Alex Hammerstone",
+        "file": "Alexander Hammerstone in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Alexander_Hammerstone_in_February_2024.jpg",
+        "description": "Alexander Hammerstone in February 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Alec Price": [
+      {
+        "person": "Alec Price",
+        "file": "Alec Price in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Alec_Price_in_March_2025.jpg",
+        "description": "American professional wrestler Alec Price",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Alec Price",
+        "file": "Alec Price in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Alec_Price_in_March_2025_(cropped).jpg",
+        "description": "American professional wrestler Alec Price",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Charles Mason": [
+      {
+        "person": "Charles Mason",
+        "file": "Charles Mason in April 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Charles_Mason_in_April_2025.jpg",
+        "description": "American professional wrestler Charles Mason in 2025",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Charles Mason",
+        "file": "Charles Mason in April 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Charles_Mason_in_April_2025_(cropped).jpg",
+        "description": "American professional wrestler Charles Mason in 2025",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "EFFY": [
+      {
+        "person": "EFFY",
+        "file": "Effy in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY-SA 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Effy_in_March_2025.jpg",
+        "description": "American professional wrestler Effy",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Kerry Morton": [
+      {
+        "person": "Kerry Morton",
+        "file": "Kerry Morton in February 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Kerry_Morton_in_February_2024.jpg",
+        "description": "Kerry Morton in February 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Janai Kai": [
+      {
+        "person": "Janai Kai",
+        "file": "Janai Kai Kitsune Wrestling March 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Janai_Kai_Kitsune_Wrestling_March_2024.jpg",
+        "description": "Janai Kai Kitsune Wrestling March 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Jack Cartwheel": [
+      {
+        "person": "Jack Cartwheel",
+        "file": "Jack Cartwheel in June 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Jack_Cartwheel_in_June_2024.jpg",
+        "description": "American professional wrestler Jack Cartwheel in June 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Man Like DeReiss": [
+      {
+        "person": "Man Like DeReiss",
+        "file": "Man Like DeReiss in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Man_Like_DeReiss_in_April_2024.jpg",
+        "description": "British wrestler Man Like DeReiss in April 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "KZY": [
+      {
+        "person": "KZY",
+        "file": "Kzy in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Kzy_in_April_2025.jpg",
+        "description": "Japanese professional wrestler Kzy",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "KZY",
+        "file": "Kzy in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Kzy_in_April_2025_(cropped).jpg",
+        "description": "Japanese professional wrestler Kzy",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Lena Kross": [
+      {
+        "person": "Lena Kross",
+        "file": "Lena Kross in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Lena_Kross_in_April_2025.jpg",
+        "description": "Australian professional wrestler Lena Kross",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Lena Kross",
+        "file": "Lena Kross in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Lena_Kross_in_April_2025_(cropped).jpg",
+        "description": "Australian professional wrestler Lena Kross",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Matt Vandagriff": [
+      {
+        "person": "Matt Vandagriff",
+        "file": "Matt Vandagriff.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Matt_Vandagriff.jpg",
+        "description": "American professional wrestler Matt Vandagriff",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Matt Vandagriff",
+        "file": "Matt Vandagriff in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Matt_Vandagriff_in_April_2025.jpg",
+        "description": "American professional wrestler Matt Vandagriff",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Rhio": [
+      {
+        "person": "Rhio",
+        "file": "Rhio in April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Rhio_in_April_2024.jpg",
+        "description": "British professional wrestler Rhio in April 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Royce Isaacs": [
+      {
+        "person": "Royce Isaacs",
+        "file": "Royce Isaacs 20241214.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Royce_Isaacs_20241214.jpg",
+        "description": "Royce Isaacs in December 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Nina Samuels": [
+      {
+        "person": "Nina Samuels",
+        "file": "Nina Samuels in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Nina_Samuels_in_April_2025.jpg",
+        "description": "English professional wrestler Nina Samuels",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Rina": [
+      {
+        "person": "Rina",
+        "file": "Rina Yamashita in April 2025.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Rina_Yamashita_in_April_2025.jpg",
+        "description": "Japanese professional wrestler Rina Yamashita",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Rina",
+        "file": "Rina Yamashita in April 2025 (cropped).jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Rina_Yamashita_in_April_2025_(cropped).jpg",
+        "description": "Japanese professional wrestler Rina Yamashita",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Starlight Kid": [
+      {
+        "person": "Starlight Kid",
+        "file": "Starlight Kid - Stephanie Vaquer - Momo Watanabe - April 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Starlight_Kid_-_Stephanie_Vaquer_-_Momo_Watanabe_-_April_2024.jpg",
+        "description": "Starlight Kid, Stephanie Vaquer and Momo Watanabe in April 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Starlight Kid",
+        "file": "Starlight Kid - Stephanie Vaquer - Momo Watanabe.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Starlight_Kid_-_Stephanie_Vaquer_-_Momo_Watanabe.jpg",
+        "description": "Starlight Kid, Stephanie Vaquer and Momo Watanabe at Stardom American Dream 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "The DKC": [
+      {
+        "person": "The DKC",
+        "file": "The D.K.C. in January 2024.jpg",
+        "author": "J O Y F U L 🐻 V I O L E N C E",
+        "license": "CC BY 2.0",
+        "source": "https://commons.wikimedia.org/wiki/File:The_D.K.C._in_January_2024.jpg",
+        "description": "The D.K.C. in January 2024",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ],
+    "Zayda Steel": [
+      {
+        "person": "Zayda Steel",
+        "file": "Zayda Steel in March 2025.jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Zayda_Steel_in_March_2025.jpg",
+        "description": "American professional wrestler Zayda Steel",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      },
+      {
+        "person": "Zayda Steel",
+        "file": "Zayda Steel in March 2025 (cropped).jpg",
+        "author": "✨ JOYFUL VI0LENCE ✨",
+        "license": "CC BY 4.0",
+        "source": "https://commons.wikimedia.org/wiki/File:Zayda_Steel_in_March_2025_(cropped).jpg",
+        "description": "American professional wrestler Zayda Steel",
+        "reason": "Unique performer name corroborated in image title and independent Commons description"
+      }
+    ]
+  }
+}
