@@ -12,7 +12,12 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
    availability:"YOUR_ROSTER",family:"EXCLUSIVE",remainingDates:null,
    startsInWeeks:0,weeksRemaining:15,weeklyGuarantee:1000,appearanceFee:0,
    popularity:70,recognition:72,momentum:80,inRingQuality:89,matchCraft:83,
-   presentation:88,morale:75,pendingOffer:false,roleExpectation:"MAIN_EVENT"}]};
+   presentation:88,morale:75,pendingOffer:false,roleExpectation:"MAIN_EVENT"},
+  {personId:"cody",name:"Cody Rhodes",ringName:"Cody Rhodes",division:"MEN",
+   availability:"YOUR_ROSTER",family:"EXCLUSIVE",remainingDates:null,
+   startsInWeeks:0,weeksRemaining:15,weeklyGuarantee:1000,appearanceFee:0,
+   popularity:91,recognition:94,momentum:80,inRingQuality:86,matchCraft:83,
+   presentation:92,morale:75,pendingOffer:false,roleExpectation:"MAIN_EVENT"}]};
  const dossier={personId:"alice",name:"Alice",division:"WOMEN",status:"ACTIVE",
   careerStage:"REGULAR",popularity:70,recognition:72,momentum:80,morale:75,
   inRingQuality:89,matchCraft:83,presentation:88,stamina:70,safety:85,
@@ -54,6 +59,27 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
    req.method==="wrestlerProfile"?dossier:req.method==="wrestlerCareer"?career:{}});
  });
  await page.goto("/#/roster");
+ const cards=page.locator(".ppw-directory-card .ppw-wrestler-card");
+ await expect(cards).toHaveCount(2);
+ for(const width of [390,320]){
+  await page.setViewportSize({width,height:844});
+  await expect(cards.first().locator(".ppw-wrestler-media-mark")).toHaveText("A");
+  await expect(cards.first()).toHaveAttribute("data-portrait","unavailable");
+  await expect(cards.last().locator(".ppw-wrestler-media")).toBeVisible();
+  const layout=await cards.evaluateAll(nodes=>nodes.map(node=>{
+   const card=node.getBoundingClientRect();
+   const media=node.querySelector(".ppw-wrestler-media")!.getBoundingClientRect();
+   return {cardLeft:card.left,mediaLeft:media.left,mediaWidth:media.width,mediaTop:media.top,
+    width:card.width};
+  }));
+  for(const rect of layout){
+   expect(rect.mediaLeft).toBeGreaterThanOrEqual(rect.cardLeft);
+   expect(rect.mediaWidth).toBeGreaterThanOrEqual(50);
+   expect(rect.mediaTop).toBeGreaterThan(0);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ }
+ await page.setViewportSize({width:390,height:844});
  const card=page.locator(".ppw-directory-card").first();
  await card.locator("summary").click();
  await card.getByRole("button",{name:"Wrestler profile →"}).click();

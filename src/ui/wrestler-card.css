@@ -1,220 +1,122 @@
-/* Shared wrestler identity: same hierarchy in every surface, no remote assets. */
-.ppw-wrestler-card{--wrestler-ice:#90dfff;display:grid;
- grid-template-columns:64px minmax(0,1fr);gap:11px;position:relative;isolation:isolate;
- align-items:start;width:100%;text-align:left;padding:11px;border:1px solid rgba(141,193,224,.23);
- border-radius:17px;background:linear-gradient(115deg,rgba(33,57,81,.96),rgba(15,27,43,.94));
- color:#f0f7ff;font-family:inherit;overflow:hidden}
-.ppw-wrestler-card:before{content:"";position:absolute;inset:0 0 auto;height:3px;
- background:linear-gradient(90deg,#00b9ec,#9e7eff,#ff67b3);opacity:.65;z-index:-1}
+/* Shared roster, market, booking-picker and dossier presentation.
+   One art well for both genuine photographs and missing-photo initials. */
+.ppw-wrestler-card{
+ box-sizing:border-box;display:grid;grid-template-columns:64px minmax(0,1fr);
+ gap:10px;align-items:start;min-width:0;width:100%;padding:11px;
+ position:relative;isolation:isolate;overflow:hidden;text-align:left;
+ border:1px solid #59638a;border-radius:15px;color:#f0f7ff;font:inherit;
+ background:linear-gradient(130deg,#253654,#1b2540 63%,#241d37)
+}
+.ppw-wrestler-card::before{
+ content:"";position:absolute;inset:0 0 auto;height:3px;z-index:-1;
+ background:linear-gradient(90deg,#30c7e7,#bd79ff,#f75caa);opacity:.75
+}
 .ppw-wrestler-card:where(button){cursor:pointer;min-height:96px}
-.ppw-wrestler-card:where(button):focus-visible{outline:2px solid #8ce4ff;outline-offset:2px}
-.ppw-wrestler-card:where(button):not(:disabled):active{transform:scale(.992)}
-.ppw-wrestler-card:where(button):disabled{cursor:not-allowed;opacity:.55}
-.ppw-wrestler-portrait{display:flex;align-items:center;justify-content:center;width:64px;height:78px;
- border-radius:12px;border:1px solid hsla(var(--wrestler-hue),90%,80%,.4);
- background:radial-gradient(circle at 65% 22%,hsla(var(--wrestler-hue),75%,58%,.7),transparent 68%),
- linear-gradient(145deg,#224566,#0c152a 78%);font-size:23px;font-weight:900;
- letter-spacing:-.07em;color:#fff;box-shadow:inset 0 -12px 22px #050a1a80}
-.ppw-wrestler-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
-.ppw-wrestler-division{font-size:10px;letter-spacing:.13em;font-weight:850;color:#84d9fa}
-.ppw-wrestler-name{font-size:17px;font-weight:850;line-height:1.2;
- letter-spacing:-.025em;overflow-wrap:anywhere}
-.ppw-wrestler-real-name,.ppw-wrestler-identity{font-size:11px;color:#bacce0}
-.ppw-wrestler-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
-.ppw-wrestler-stat{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
- gap:2px;min-width:0;background:#07142380;padding:5px 6px;border-radius:7px}
+.ppw-wrestler-card:where(button):focus-visible{outline:3px solid #a8eeff;outline-offset:2px}
+.ppw-wrestler-card:where(button):disabled{cursor:not-allowed;opacity:.58}
+.ppw-wrestler-card.ppw-wrestler-unavailable{filter:saturate(.65)}
+.ppw-wrestler-card[data-alignment="FACE"]{border-left:4px solid #42d6ad}
+.ppw-wrestler-card[data-alignment="HEEL"]{border-left:4px solid #ff688a}
+.ppw-wrestler-card[data-alignment="TWEENER"]{border-left:4px solid #c8a0ff}
+.ppw-wrestler-media{
+ box-sizing:border-box;display:grid;grid-column:1;grid-row:1;place-items:center;
+ width:64px;height:86px;position:relative;overflow:hidden;isolation:isolate;
+ border:1px solid #9670b2;border-radius:10px;
+ background:radial-gradient(circle at 65% 18%,#c668ae75,transparent 65%),
+ linear-gradient(145deg,#412f52,#10192f 82%);
+}
+.ppw-wrestler-media-mark{
+ z-index:0;display:grid;place-items:center;width:100%;height:100%;
+ font:900 19px/1 system-ui,sans-serif;letter-spacing:.04em;
+ color:#f7d9fa;text-shadow:0 2px 6px #0a061c
+}
+.ppw-wrestler-media .ppw-real-wrestler-photo{
+ position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;
+ box-sizing:border-box;border:0;object-fit:cover;object-position:50% 22%;
+ border-radius:inherit;background:#16182c
+}
+.ppw-wrestler-copy{
+ grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:5px;
+ min-width:0;overflow-wrap:anywhere
+}
+.ppw-wrestler-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
+.ppw-wrestler-division,.ppw-wrestler-alignment,.ppw-wrestler-promotion,.ppw-wrestler-champion{
+ display:inline-flex;align-items:center;min-height:19px;box-sizing:border-box;
+ padding:3px 6px;border-radius:6px;line-height:1.2;font-size:9px;
+ font-weight:850;letter-spacing:.04em
+}
+.ppw-wrestler-division{color:#aeeeff;background:#12516e9c}
+.ppw-wrestler-division[data-division="MEN"]{color:#9feaff;background:#183b59;border:1px solid #2fa8d8}
+.ppw-wrestler-division[data-division="WOMEN"]{color:#ffd5f0;background:#5f2857;border:1px solid #ef70bf}
+.ppw-wrestler-division[data-division="UNKNOWN"]{color:#e9d6b4;background:#574325;border:1px solid #b99352}
+.ppw-wrestler-alignment{color:#ffe3bc;background:#75462169}
+.ppw-wrestler-card[data-alignment="FACE"] .ppw-wrestler-alignment{color:#b7fff1;background:#147c6d69}
+.ppw-wrestler-card[data-alignment="HEEL"] .ppw-wrestler-alignment{color:#ffd2df;background:#85264c80}
+.ppw-wrestler-card[data-alignment="TWEENER"] .ppw-wrestler-alignment{color:#ead4ff;background:#68419d80}
+.ppw-wrestler-promotion{color:#d7caf8;background:#5f4b9770}
+.ppw-wrestler-name{font-size:19px;font-weight:850;line-height:1.2;letter-spacing:-.025em;overflow-wrap:anywhere}
+.ppw-wrestler-real-name,.ppw-wrestler-identity{font-size:11px;color:#bacce0;line-height:1.4}
+.ppw-wrestler-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0;margin-top:4px}
+.ppw-wrestler-stat{
+ display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+ gap:2px;min-width:0;padding:5px 6px;border-radius:7px;background:#07142380
+}
 .ppw-wrestler-stat-name{font-size:9px;color:#a5b8c9;font-weight:800}
 .ppw-wrestler-stat-value{font-size:11px;color:#fff;font-weight:850;font-variant-numeric:tabular-nums}
 .ppw-wrestler-track{width:100%;height:3px;border-radius:8px;background:#35415c;overflow:hidden}
 .ppw-wrestler-fill{display:block;height:100%;background:linear-gradient(90deg,#30c5ef,#b38dff)}
-.ppw-wrestler-finisher{font-size:10px;color:#e4c4fa;margin-top:3px}
-.ppw-wrestler-status{grid-column:1/-1;color:#96ead0;letter-spacing:.04em;
- font-size:10px;font-weight:850;text-transform:uppercase}
-.ppw-wrestler-status-blocked{color:#ffc4b4}
-.ppw-wrestler-compact{grid-template-columns:52px minmax(0,1fr);gap:9px;padding:10px}
-.ppw-wrestler-compact .ppw-wrestler-portrait{width:52px;height:67px}
-.ppw-wrestler-compact .ppw-wrestler-stats{margin-top:3px}
-.ppw-wrestler-unavailable{filter:saturate(.55)}
-@media(min-width:610px){.ppw-wrestler-card{grid-template-columns:76px minmax(0,1fr) auto;
- align-items:center}.ppw-wrestler-portrait{width:76px;height:90px}
- .ppw-wrestler-status{grid-column:auto;max-width:135px;text-align:right}
- .ppw-wrestler-stats{grid-template-columns:repeat(6,minmax(0,1fr))}}
-@media(prefers-reduced-motion:no-preference){.ppw-wrestler-card:where(button){transition:transform .14s,border-color .14s}
- .ppw-wrestler-card:where(button):hover{border-color:#78d8ff}}
-
-/* Character art is a deterministic local silhouette, not a fabricated wrestler photograph.
- * Refined ratings, roster context and character alignment load no external assets. */
-.ppw-wrestler-portrait{position:relative;isolation:isolate;overflow:hidden;
- background:radial-gradient(circle at 72% 16%,hsla(var(--wrestler-hue),90%,71%,.78),transparent 46%),
-  linear-gradient(158deg,hsla(var(--wrestler-hue),53%,33%,.95),#101a34 80%)}
-.ppw-wrestler-portrait:before{content:"";position:absolute;inset:8px -25px auto;
- height:2px;background:#ffffff8c;transform:rotate(-25deg)}
-.ppw-wrestler-portrait-figure{position:absolute;inset:0;opacity:.65;z-index:-1}
-.ppw-wrestler-portrait-figure:before{content:"";position:absolute;top:17%;left:33%;width:34%;height:27%;
- border-radius:52% 48% 44% 48%;background:linear-gradient(130deg,#ecf6ff66,#0b143e);
- box-shadow:0 1px 1px #131b3880}
-.ppw-wrestler-portrait-figure:after{content:"";position:absolute;left:9%;bottom:-14%;width:82%;height:65%;
- background:linear-gradient(120deg,#95bdedbb,#0a143ad9 77%);
- clip-path:polygon(31% 0,69% 0,94% 21%,100% 100%,0 100%,6% 21%);
- border-radius:29% 29% 0 0}
-.ppw-wrestler-initials{position:absolute;left:0;right:0;bottom:0;
- text-align:center;font-size:16px;font-weight:950;letter-spacing:.06em;line-height:1.2;
- padding:9px 2px 5px;color:#f8fcff;text-shadow:0 2px 7px #010816,0 0 10px #010816;
- background:linear-gradient(0deg,#040d20da,transparent)}
-.ppw-wrestler-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.ppw-wrestler-division,.ppw-wrestler-alignment,.ppw-wrestler-promotion{
- display:inline-flex;align-items:center;padding:3px 5px;min-height:18px;
- font-size:9px;line-height:1.2;letter-spacing:.08em;font-weight:850;border-radius:5px;
- color:#aeeeff;background:#0c496069}
-.ppw-wrestler-alignment{color:#ffe3bc;background:#7546215b}
-.ppw-wrestler-card[data-alignment="FACE"] .ppw-wrestler-alignment{
- color:#b7fff1;background:#147c6d54}
-.ppw-wrestler-promotion{color:#d7caf8;background:#5f4b9759}
-.ppw-wrestler-stat[data-ability="outstanding"] .ppw-wrestler-fill{
- background:linear-gradient(90deg,#17dcab,#9dffd9)}
-.ppw-wrestler-stat[data-ability="strong"] .ppw-wrestler-fill{
- background:linear-gradient(90deg,#46c7ef,#9da4ff)}
-.ppw-wrestler-stat[data-ability="developing"] .ppw-wrestler-fill{
- background:linear-gradient(90deg,#eaa577,#ffc48d)}
+.ppw-wrestler-stat[data-ability="outstanding"] .ppw-wrestler-fill{background:linear-gradient(90deg,#17dcab,#9dffd9)}
+.ppw-wrestler-stat[data-ability="strong"] .ppw-wrestler-fill{background:linear-gradient(90deg,#46c7ef,#9da4ff)}
+.ppw-wrestler-stat[data-ability="developing"] .ppw-wrestler-fill{background:linear-gradient(90deg,#eaa577,#ffc48d)}
 .ppw-wrestler-stat[data-ability="unknown"] .ppw-wrestler-fill{width:0!important}
-.ppw-wrestler-card:not(.ppw-wrestler-unavailable) .ppw-wrestler-status{
- background:linear-gradient(90deg,#173c4099,transparent);padding:6px 9px;
- border-left:2px solid #56c7bd;border-radius:5px}
-.ppw-wrestler-card.ppw-wrestler-unavailable .ppw-wrestler-status{
- color:#ffd7d2;border-left:2px solid #ffaba5;padding:6px 9px;background:#63333245}
-.ppw-wrestler-card:where(button):focus-visible{outline:3px solid #a8eeff;outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.ppw-wrestler-card{transition:none!important;animation:none!important}}
-
-/* The original names and abilities deserve the space; no made-up portraits or
-   initials masquerading as photography. */
-.ppw-wrestler-card,.ppw-wrestler-compact{
- display:grid;grid-template-columns:minmax(0,1fr);padding:13px 15px;gap:8px;
- border-radius:15px;
- background:linear-gradient(132deg,#243856,#1a2241 65%,#211f39);
- border:1px solid #56648dc0;
+.ppw-wrestler-finisher,.ppw-wrestler-status{
+ display:block;min-width:0;padding:7px 9px;border-radius:8px;
+ line-height:1.35;font-size:10px;font-weight:800;overflow-wrap:anywhere;
+ color:#c5fff1;background:linear-gradient(110deg,#1b4b53,#19334e);
+ border:1px solid #62afbc
 }
-.ppw-wrestler-card[data-alignment="FACE"]{border-left:4px solid #42d6ad}
-.ppw-wrestler-card[data-alignment="HEEL"]{border-left:4px solid #ff688a}
-.ppw-wrestler-card[data-alignment="TWEENER"]{border-left:4px solid #c8a0ff}
-.ppw-wrestler-portrait{display:none!important}
-.ppw-wrestler-card .ppw-wrestler-status{grid-column:1/-1;max-width:none;text-align:left}
-.ppw-wrestler-name{font-size:19px;line-height:1.2}
-.ppw-wrestler-badges{gap:6px}
-.ppw-wrestler-alignment{font-size:10px;letter-spacing:.02em}
-.ppw-wrestler-card[data-alignment="HEEL"] .ppw-wrestler-alignment{background:#85264c66;color:#ffd2df}
-.ppw-wrestler-card[data-alignment="TWEENER"] .ppw-wrestler-alignment{background:#68419d80;color:#ead4ff}
-@media(min-width:610px){.ppw-wrestler-card{grid-template-columns:minmax(0,1fr) auto}}
-
-.ppw-wrestler-division[data-division="MEN"]{color:#85eaff;background:#123b55;
- border:1px solid #2fa8d8;padding:5px 8px;border-radius:6px}
-.ppw-wrestler-division[data-division="WOMEN"]{color:#ffd8f1;background:#602657;
- border:1px solid #ef70bf;padding:5px 8px;border-radius:6px}
-.ppw-wrestler-division[data-division="UNKNOWN"]{color:#edd6ac;background:#574325;
- border:1px solid #b99352;padding:5px 8px;border-radius:6px}
-.ppw-wrestler-status,.ppw-wrestler-finisher{
- border-radius:8px!important;padding:8px 11px!important;
- background:linear-gradient(110deg,#1b4b53,#19334e)!important;
- border:1px solid #62afbc!important;color:#c5fff1!important}
+.ppw-wrestler-status{grid-column:1/-1;grid-row:2;text-transform:uppercase;letter-spacing:.02em}
 .ppw-wrestler-card .ppw-wrestler-status-blocked{
- background:linear-gradient(110deg,#67294c,#402a4c)!important;
- color:#ffe0e9!important;border-color:#d579a8!important}
-
-/* Genuine, credited photographs only for verified catalogue entries. */
-.ppw-wrestler-card[data-has-photo="true"],.ppw-wrestler-compact[data-has-photo="true"]{
- display:grid;grid-template-columns:72px minmax(0,1fr);align-items:start;gap:10px}
-.ppw-wrestler-card .ppw-real-wrestler-photo{width:72px;height:96px;object-fit:cover;
- object-position:50% 21%;display:block;border:2px solid #d4b66f;
- border-radius:7px 17px 7px 7px;background:#111729;filter:contrast(1.05)}
-.ppw-wrestler-compact[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr)}
-.ppw-wrestler-compact .ppw-real-wrestler-photo{width:56px;height:75px}
-.ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-copy{min-width:0}
-.ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-status{grid-column:1/-1}
-@media(min-width:610px){.ppw-wrestler-card[data-has-photo="true"]{grid-template-columns:84px minmax(0,1fr) auto}
- .ppw-wrestler-card[data-has-photo="true"] .ppw-real-wrestler-photo{width:84px;height:109px}
- .ppw-wrestler-card[data-has-photo="true"] .ppw-wrestler-status{grid-column:auto}
- .ppw-wrestler-compact[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr) auto}
- .ppw-wrestler-compact .ppw-real-wrestler-photo{width:56px;height:75px}}
-@media(max-width:360px){.ppw-wrestler-card[data-has-photo="true"]{grid-template-columns:56px minmax(0,1fr);gap:8px}
- .ppw-wrestler-card .ppw-real-wrestler-photo{width:56px;height:75px}}
-
-/* Only *actual* current title holders qualify; no stars or legend-like tiers. */
+ color:#ffe0e9;background:linear-gradient(110deg,#67294c,#402a4c);border-color:#d579a8
+}
 .ppw-wrestler-card[data-champion="true"]{
- border-color:#e1bf6d;box-shadow:inset 0 1px #fff0b34a,0 4px 19px #0c0d20a0;
- background:linear-gradient(127deg,#463c32,#29334e 53%,#161d36)}
-.ppw-wrestler-card[data-champion="true"]::before{background:linear-gradient(90deg,#ffe9ab,#ce974c,#f5dd9d)}
-.ppw-wrestler-champion{display:inline-flex;align-items:center;font-size:9px;
- font-weight:1000;letter-spacing:.06em;color:#31230b;background:linear-gradient(110deg,#fff0bc,#dca348);
- padding:5px 8px;border:1px solid #fff3c5;border-radius:5px 10px 5px 5px}
-.ppw-wrestler-championship-titles{font-size:11px;font-weight:850;color:#fbe2a5;
- line-height:1.32;overflow-wrap:anywhere}
-.ppw-wrestler-card[data-champion="true"] .ppw-real-wrestler-photo{border-color:#ffdf85;
- box-shadow:0 0 0 2px #ffe9b340,0 6px 15px #070911b0}
-
-/* Phase 4: one stable portrait column even when Commons is unavailable.
-   Never collapse the identity hierarchy or substitute another person. */
-.ppw-wrestler-card,.ppw-wrestler-compact{grid-template-columns:64px minmax(0,1fr);align-items:start}
-.ppw-wrestler-compact{grid-template-columns:52px minmax(0,1fr)}
-.ppw-wrestler-card[data-portrait="unavailable"]::after{content:"PORTRAIT\\A UNAVAILABLE";white-space:pre;position:absolute;top:18px;left:13px;width:60px;height:74px;display:grid;place-content:center;text-align:center;font-size:8px;line-height:1.5;letter-spacing:.06em;color:#c5d7e8;border:1px solid #536985;border-radius:9px;background:linear-gradient(145deg,#29435e,#111c30);pointer-events:none}
-.ppw-wrestler-compact[data-portrait="unavailable"]::after{width:48px;height:63px;top:14px;left:11px;font-size:7px}
-.ppw-wrestler-card[data-champion="true"]{border-color:#bfa66c;background:linear-gradient(125deg,#303746,#202b43 65%,#192039);box-shadow:inset 0 1px #e7c78a22}
-.ppw-wrestler-card[data-champion="true"]::before{background:linear-gradient(90deg,#c5a66b,#6c8d9f);opacity:.8}
-.ppw-wrestler-champion{color:#f6e6c2;background:#5a4b34;border:1px solid #a78d5b}
-@media(min-width:610px){.ppw-wrestler-card[data-portrait="unavailable"]{grid-template-columns:84px minmax(0,1fr) auto}.ppw-wrestler-compact[data-portrait="unavailable"]{grid-template-columns:56px minmax(0,1fr) auto}}
-@media(max-width:360px){.ppw-wrestler-card[data-portrait="unavailable"]{grid-template-columns:56px minmax(0,1fr)}}
-
-/* Title status derives from live championship data, not an editorial star tier. */
-.ppw-wrestler-card[data-champion="true"] .ppw-wrestler-name{color:#fff5d8}
-.ppw-wrestler-card[data-champion="true"] .ppw-wrestler-championship-titles{border-left:2px solid #cba96b;padding-left:8px}
-.ppw-wrestler-card[data-title-count="2"] .ppw-wrestler-champion,.ppw-wrestler-card[data-title-count="3"] .ppw-wrestler-champion{background:#6b5331;border-color:#d4b26c}
-
-/* Portrait work remains paused, but every identity card must share the same
-   first-column art well. Never position missing portraits against the entire
-   card (the previous ::after approach broke at different text heights). */
-.ppw-wrestler-card,.ppw-wrestler-compact{
- display:grid;grid-template-columns:64px minmax(0,1fr);
- align-items:start;gap:10px;min-width:0;
+ border-color:#cba86a;box-shadow:inset 0 1px #e7c78a30,0 4px 19px #0c0d2066;
+ background:linear-gradient(125deg,#343746,#202b43 65%,#192039)
 }
-.ppw-wrestler-card .ppw-wrestler-media{
- display:grid;grid-column:1;grid-row:1;place-items:center;
- width:64px;height:86px;position:relative;overflow:hidden;
- border-radius:10px;border:1px solid #936dac;
- background:radial-gradient(circle at 62% 18%,#cd6baf52,transparent 64%),
-  linear-gradient(145deg,#3b294f,#151a32 83%);
- isolation:isolate;
-}
-.ppw-wrestler-card .ppw-wrestler-media-mark{
- z-index:0;display:grid;place-items:center;
- font:900 19px/1 system-ui,sans-serif;letter-spacing:.04em;
- color:#f7d9fa;text-shadow:0 2px 5px #0a061ca8;
- width:100%;height:100%;
-}
-.ppw-wrestler-card .ppw-real-wrestler-photo{
- position:absolute;inset:0;z-index:1;display:block;
- width:100%!important;height:100%!important;
- object-fit:cover;object-position:50% 22%;
- border:0!important;border-radius:0!important;
+.ppw-wrestler-card[data-champion="true"]::before{
+ background:linear-gradient(90deg,#ffe9ab,#ce974c,#f5dd9d);opacity:.9
 }
 .ppw-wrestler-card[data-champion="true"] .ppw-wrestler-media{
- border-color:#eed19b;box-shadow:0 0 0 1px #d5aa5599,0 5px 13px #0008;
+ border-color:#eed19b;box-shadow:0 0 0 1px #d5aa5599,0 5px 13px #0008
 }
-.ppw-wrestler-card[data-portrait="unavailable"]::after{content:none!important;display:none!important}
-.ppw-wrestler-card .ppw-wrestler-copy{
- display:flex;grid-column:2;grid-row:1;min-width:0;
- flex-direction:column;gap:5px;
+.ppw-wrestler-card[data-champion="true"] .ppw-wrestler-name{color:#fff5d8}
+.ppw-wrestler-champion{
+ color:#f6e6c2;background:#5a4b34;border:1px solid #a78d5b;
 }
-.ppw-wrestler-card .ppw-wrestler-status{
- grid-column:1/-1;grid-row:auto;max-width:none;text-align:left;
+.ppw-wrestler-championship-titles{
+ font-size:11px;font-weight:850;color:#fbe2a5;line-height:1.32;
+ overflow-wrap:anywhere;border-left:2px solid #cba96b;padding-left:8px
 }
-.ppw-wrestler-card.ppw-wrestler-compact{grid-template-columns:52px minmax(0,1fr)}
-.ppw-wrestler-card.ppw-wrestler-compact .ppw-wrestler-media{width:52px;height:72px}
-.ppw-wrestler-card.ppw-wrestler-compact .ppw-wrestler-media-mark{font-size:15px}
+.ppw-wrestler-card.ppw-wrestler-compact{grid-template-columns:52px minmax(0,1fr);padding:10px;gap:9px}
+.ppw-wrestler-compact .ppw-wrestler-media{width:52px;height:72px}
+.ppw-wrestler-compact .ppw-wrestler-media-mark{font-size:15px}
+.ppw-wrestler-compact .ppw-wrestler-name{font-size:16px}
 @media(min-width:610px){
  .ppw-wrestler-card:not(.ppw-wrestler-compact){grid-template-columns:84px minmax(0,1fr) auto}
  .ppw-wrestler-card:not(.ppw-wrestler-compact) .ppw-wrestler-media{width:84px;height:110px}
  .ppw-wrestler-card:not(.ppw-wrestler-compact) .ppw-wrestler-status{
-  grid-column:3;grid-row:1;align-self:start;max-width:140px;text-align:right}
+  grid-column:3;grid-row:1;align-self:start;max-width:145px;text-align:right
+ }
+ .ppw-wrestler-card .ppw-wrestler-stats{grid-template-columns:repeat(6,minmax(0,1fr))}
 }
 @media(max-width:360px){
- .ppw-wrestler-card:not(.ppw-wrestler-compact){grid-template-columns:56px minmax(0,1fr);gap:8px}
+ .ppw-wrestler-card:not(.ppw-wrestler-compact){grid-template-columns:56px minmax(0,1fr);gap:8px;padding:9px}
  .ppw-wrestler-card:not(.ppw-wrestler-compact) .ppw-wrestler-media{width:56px;height:76px}
+ .ppw-wrestler-card .ppw-wrestler-stats{gap:3px}
+ .ppw-wrestler-card .ppw-wrestler-stat{padding:4px}
+}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-wrestler-card:where(button){transition:transform .14s,border-color .14s}
+ .ppw-wrestler-card:where(button):not(:disabled):active{transform:scale(.992)}
+ .ppw-wrestler-card:where(button):hover{border-color:#78d8ff}
 }
