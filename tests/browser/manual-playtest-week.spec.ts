@@ -53,6 +53,6 @@ test("other managers never see the control or trigger server-authoritative World
  await page.goto("/#/home");
  await expect(page.getByRole("heading",{name:"Control Room"})).toHaveCount(0);
  await page.goto("/#/admin");
- await expect(page).toHaveURL(/#\\/home$/);
+ await expect(page).toHaveURL(/home$/);
  expect(called).toBe(0);
 });
