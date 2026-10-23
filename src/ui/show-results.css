@@ -191,3 +191,10 @@
 .ppw-flow-kind{font-size:9px;letter-spacing:.03em;color:#b6d0d8}
 .ppw-crowd-flow-point:focus-visible{outline:3px solid #a2f5de;outline-offset:2px}
 @media(max-width:520px){.ppw-crowd-flow-point{flex-basis:53px;min-width:53px}}
+
+.ppw-staff-show-report{margin:18px 0 22px;padding:20px 17px;
+ border-radius:17px;border:1px solid #3c8096;
+ background:linear-gradient(145deg,#183c55,#142332);color:#edf8ff}
+.ppw-staff-show-report h2{font-size:16px;letter-spacing:.045em;margin:9px 0}
+.ppw-staff-show-report h3{font-size:18px;line-height:1.25;color:#80dcec}
+.ppw-staff-show-report p{line-height:1.5;font-size:14px;color:#d5e7f1;margin:10px 0}

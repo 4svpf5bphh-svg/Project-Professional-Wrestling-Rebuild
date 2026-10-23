@@ -25,6 +25,8 @@ import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js"
 import {settleCanonicalTagCareerConsequences} from "./tag-career-settlement.js";
 import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
+import {deriveCompletedMatchReportFacts} from "./record-match-report-facts.js";
+import {recordRoadAgentReport} from "./road-agent-report.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -65,6 +67,8 @@ export async function resolveCanonicalShow(
   if(recorded==="RECORDED"){
    // One immutable batch in the same World transaction as completed results.
    const certifiedInjuries=await recordCompletedMatchReportFactsInTransaction(tx,projection);
+   await recordRoadAgentReport(tx,world[0]!.seed,completed.receipt,
+    deriveCompletedMatchReportFacts(projection));
    await settleCompletedProgrammeHistory(tx,{
     ...input,eventImportance:projection.eventImportance,
     matches:projection.projections.map(p=>({
