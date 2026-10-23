@@ -127,9 +127,20 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    for(const info of view.notices){
     const card=el("article","ppw-staff-note");
     card.append(el("strong","",info.department),el("p","",info.message));
+    const employee=view.employees.find(e=>info.department.startsWith(e.name));
+    const tone=employee?.personality==="FRANK"?"I'll be direct. ":
+     employee?.personality==="ECCENTRIC"?"My clipboard has a theory. ":
+     employee?.personality==="PATIENT"?"I think it's worth considering. ":
+     employee?.personality==="LOYAL"?"For the good of our roster, ":
+     employee?.personality==="AMBITIOUS"?"Here's where we can get ahead. ":"";
+    const chat=el("details","ppw-staff-conversation");
+    chat.append(el("summary","","Talk to "+(employee?.name??"the department")));
+    chat.append(el("p","",tone+info.message));
+    card.append(chat);
     if(info.target!=="staff")
      card.append(button("Open "+info.target+" ↗",
-      ()=>info.target==="contracts"?port.openContracts?.():port.openProgrammes?.()));
+      ()=>info.target==="contracts"?port.openContracts?.():
+       info.target==="roster"?port.openRoster?.():port.openProgrammes?.()));
     notes.append(card);
    }
    overview.append(notes);
@@ -176,7 +187,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
       button("Cancel",()=>{confirming="";render();}));
     }else actions.append(button("Release",()=>{confirming=member.employmentId;render();},
      saving||!view.canEdit));
-    item.append(actions);
+    item.append(actions,staffDossier(member));
    }else item.append(button("Recruit",()=>{
     department=role;render();root.querySelector("#ppw-staff-market")?.scrollIntoView({block:"start"});
    }));
@@ -226,7 +237,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    controls.append(amount,button("Offer contract",
     ()=>void act("HIRE",candidate.staffId,Number(amount.value)),
     saving||!view.canEdit||view.employees.some(e=>e.role===department)));
-   card.append(identity,controls);candidates.append(card);
+   card.append(identity,staffDossier(candidate),controls);candidates.append(card);
   }
   market.append(candidates);root.append(market);
   const continuity=el("section","ppw-staff-panel");
@@ -258,6 +269,43 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   continuity.append(button(saving?"Saving…":"Save staff instructions",()=>void save(),
    !view.canEdit||saving||loading));
   root.append(continuity);
+ }
+ function staffDossier(member:StaffView["market"][number]){
+  const details=el("details","ppw-staff-dossier");
+  details.append(el("summary","","View "+member.name+"'s dossier"));
+  const profile=el("div","ppw-staff-dossier-body");
+  const temperament:Record<typeof member.personality,string>={
+   FRANK:"A forthright voice. Doesn't dress up uncomfortable advice.",
+   PATIENT:"Calm under pressure and happier building steadily.",
+   AMBITIOUS:"Focused on big opportunities and professional progress.",
+   LOYAL:"Places trust, stable teams and relationships first.",
+   ECCENTRIC:"Brings unusual ideas and an unconventional approach."
+  };
+  profile.append(el("p","",temperament[member.personality]),
+   el("p","",roles(member.role)+" specialist · "+member.specialism));
+  const attributes=el("div","ppw-staff-attribute-list");
+  for(const [name,score] of [["Craft",member.craft],
+    ["People",member.people],["Reliability",member.reliability]] as const){
+   const row=el("div","ppw-staff-attribute");
+   const meter=el("meter","") as HTMLMeterElement;
+   meter.min=0;meter.max=100;meter.value=score;
+   meter.setAttribute("aria-label",name+" "+score+"/100");
+   row.append(el("span","",name+" · "+score),meter);
+   attributes.append(row);
+  }
+  profile.append(attributes);
+  const history=view?.employmentHistory.filter(e=>e.staffId===member.staffId)??[];
+  if(history.length){
+   const career=el("div","ppw-staff-career");
+   career.append(el("strong","","World employment history"));
+   for(const job of history.slice(0,5)){
+    career.append(el("p","",job.promotionName+" · "+roles(job.role)+
+     " · Week "+(job.startedWeekIndex+1)+"–"+(job.endedWeekIndex+1)));
+   }
+   profile.append(career);
+  }else profile.append(el("p","ppw-staff-muted",
+   "No previous completed staff employment recorded in this World."));
+  details.append(profile);return details;
  }
  function salaryInput(id:string,asking:number){
   const input=el("input","ppw-staff-salary") as HTMLInputElement;

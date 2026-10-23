@@ -14,7 +14,7 @@ const inventory=JSON.parse(readFileSync(
 };
 const assessment=JSON.parse(readFileSync(
  new URL("../data/portrait-assessment.json",import.meta.url),"utf8")) as {
- summary:{genuineGenesisPhotos:number;unresolved:number;coveragePercent:number};
+ summary:{totalGenesis:number;matchedGenesis:number;remainingWithPremiumFallback:number;creditedSources:number;coveragePercent:number;caveat:string};
  people:Assessed[];
 };
 test("every one of the 643 canonical Genesis identities is assessed with honest source/fallback status",()=>{
@@ -47,8 +47,11 @@ test("every one of the 643 canonical Genesis identities is assessed with honest 
  assert.equal(photographed,inventory.counts.existing);
  assert.equal(unresolved,inventory.counts.missing);
  assert.equal(photographed+unresolved,643);
- assert.equal(assessment.summary.genuineGenesisPhotos,photographed);
- assert.equal(assessment.summary.unresolved,unresolved);
+ assert.equal(assessment.summary.totalGenesis,643);
+ assert.equal(assessment.summary.matchedGenesis,photographed);
+ assert.equal(assessment.summary.remainingWithPremiumFallback,unresolved);
+ assert.equal(assessment.summary.creditedSources,inventory.counts.catalogue);
+ assert.match(assessment.summary.caveat,/not every portrait underwent independent human visual inspection/i);
  assert.equal(assessment.summary.coveragePercent,Math.round(photographed*10000/643)/100);
 });
 test("source catalogue preserves honest unmatched credits without inventing Genesis coverage",()=>{

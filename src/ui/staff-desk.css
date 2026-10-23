@@ -80,3 +80,22 @@
 .ppw-staff-market-actions button{flex:1}
 @media(min-width:680px){.ppw-staff-actions{width:auto}
  .ppw-staff-market-card{justify-content:space-between}}
+
+.ppw-staff-dossier{display:block;width:100%;margin:9px 0;color:#d6e8f1;
+ border:1px solid #345d76;background:#132b3b;border-radius:11px;overflow:hidden}
+.ppw-staff-dossier summary,.ppw-staff-conversation summary{list-style:none;cursor:pointer;
+ padding:11px 12px;font-size:13px;font-weight:800;color:#9aeaff}
+.ppw-staff-dossier summary::after,.ppw-staff-conversation summary::after{content:"  ▾"}
+.ppw-staff-dossier summary:focus-visible,.ppw-staff-conversation summary:focus-visible{
+ outline:2px solid #9aeaff;outline-offset:-2px}
+.ppw-staff-dossier-body{padding:0 12px 12px}
+.ppw-staff-dossier-body p{font-size:13px;line-height:1.5;margin:8px 0}
+.ppw-staff-attribute-list{display:grid;gap:7px}
+.ppw-staff-attribute{display:grid;grid-template-columns:125px minmax(0,1fr);
+ align-items:center;gap:10px;font-size:12px}
+.ppw-staff-attribute meter{width:100%;height:14px}
+.ppw-staff-career{margin-top:14px;border-top:1px solid #406078;padding-top:10px}
+.ppw-staff-career strong{font-size:12px;color:#a8eafb}
+.ppw-staff-conversation{margin:9px 0;border-radius:10px;
+ border:1px solid #47728c;background:#102d44}
+.ppw-staff-conversation p{padding:0 12px 10px;margin:0;color:#eaf7fc}
