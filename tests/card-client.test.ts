@@ -242,3 +242,22 @@ test("unclassified save rejection shows an opaque support reference, never serve
   return true;
  });
 });
+
+test("Staff hire, renewal and buyout reach authenticated RPC with no spoofable actor",async()=>{
+ const sent:Record<string,unknown>[]=[];
+ const client=createCardClient({...scope,showId:""},async(_url,init)=>{
+  const body=JSON.parse(String(init?.body)) as Record<string,unknown>;
+  sent.push(body);
+  assert.equal(body.playerId,undefined);
+  assert.equal((init?.headers as Record<string,string>)["x-ppw-csrf"],scope.csrfToken);
+  return new Response(JSON.stringify({status:"APPLIED"}),{status:200});
+ });
+ await client("hireStaff",{requestId:"h",expectedRevision:5,
+  staffId:"staff-road-agent-001",weeklySalary:1000,termWeeks:52});
+ await client("renewStaff",{requestId:"n",expectedRevision:6,
+  employmentId:"contract",weeklySalary:1100,termWeeks:104});
+ await client("releaseStaff",{requestId:"r",expectedRevision:7,employmentId:"contract"});
+ assert.deepEqual(sent.map(p=>p.method),["hireStaff","renewStaff","releaseStaff"]);
+ assert.ok(sent.every(p=>p.promotionId===scope.promotionId&&p.worldId===scope.worldId));
+ assert.equal(sent[0]!.termWeeks,52);assert.equal(sent[1]!.termWeeks,104);
+});
