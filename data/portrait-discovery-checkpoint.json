@@ -847,7 +847,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -894,7 +894,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -907,7 +907,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -920,7 +920,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -933,7 +933,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -946,8 +946,57 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
-      "candidates": []
+      "reason": "Identity not independently established or photograph duplicated",
+      "candidates": [
+        {
+          "file": "Socialdemokrat.Sven-Erik Bucht 1c301 5927.jpg",
+          "author": "Janwikifoto",
+          "license": "CC BY-SA 3.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Socialdemokrat.Sven-Erik_Bucht_1c301_5927.jpg",
+          "description": "Sven-Erik Bucht",
+          "strong": false
+        },
+        {
+          "file": "Sven-Erik Bucht.jpg",
+          "author": "Mestos",
+          "license": "CC BY-SA 3.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Sven-Erik_Bucht.jpg",
+          "description": "Sven-Erik Bucht",
+          "strong": false
+        },
+        {
+          "file": "Sven-Erik Bucht (32224747561).jpg",
+          "author": "Socialdemokraterna",
+          "license": "CC BY-SA 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Sven-Erik_Bucht_(32224747561).jpg",
+          "description": "Sven-Erik Bucht, landsbygdsminister Foto: Björn Nordqvist",
+          "strong": false
+        },
+        {
+          "file": "Sven-Erik Bucht (32305263476).jpg",
+          "author": "Socialdemokraterna",
+          "license": "CC BY-SA 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Sven-Erik_Bucht_(32305263476).jpg",
+          "description": "Sven-Erik Bucht, landsbygdsminister Foto: Björn Nordqvist",
+          "strong": false
+        },
+        {
+          "file": "Sven-Erik Bucht (32194357952).jpg",
+          "author": "Socialdemokraterna",
+          "license": "CC BY-SA 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Sven-Erik_Bucht_(32194357952).jpg",
+          "description": "Sven-Erik Bucht, landsbygdsminister Foto: Björn Nordqvist",
+          "strong": false
+        },
+        {
+          "file": "Jan-Erik Wikström.jpg",
+          "author": "Myrman, Allan",
+          "license": "CC BY 4.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Jan-Erik_Wikstr%C3%B6m.jpg",
+          "description": "Uppvaktning hos utbildningsminister Jan-Erik Wikström ang. länsmuseireformen 1977-12-07. Från vänster Nils Sjöström, Åke Pettersson, Rune Engström, Kurt Nilsson, Ivan Svanström.",
+          "strong": false
+        }
+      ]
     },
     {
       "name": "Ethan Page",
@@ -959,8 +1008,57 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
-      "candidates": []
+      "reason": "Ambiguous: several plausible photographs",
+      "candidates": [
+        {
+          "file": "Ethan Page posing at an Alpha-1 Wrestling Event.jpg",
+          "author": "MackHenderson71",
+          "license": "CC BY-SA 4.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page_posing_at_an_Alpha-1_Wrestling_Event.jpg",
+          "description": "Ethan Page at an Alpha-1 Wrestling Event in May",
+          "strong": true
+        },
+        {
+          "file": "Ethan Page.jpg",
+          "author": "Brandon Oliver",
+          "license": "CC BY 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page.jpg",
+          "description": "Pro wrestler Ethan Page",
+          "strong": true
+        },
+        {
+          "file": "Ethan Page (cropped).jpg",
+          "author": "Brandon Oliver",
+          "license": "CC BY 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page_(cropped).jpg",
+          "description": "Pro wrestler Ethan Page",
+          "strong": true
+        },
+        {
+          "file": "Ethan Page, 2019.jpg",
+          "author": "Tabercil",
+          "license": "CC BY-SA 3.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page%2C_2019.jpg",
+          "description": "Impact World Tag Team champions The North - Ethan Page (left) and Josh Alexander - posing with the championship belts pre-show at an Alpha-1 Wrestling event in Hamilton, ON",
+          "strong": true
+        },
+        {
+          "file": "Ethan Page 2012.jpg",
+          "author": "Tabercil",
+          "license": "CC BY-SA 2.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page_2012.jpg",
+          "description": "Ethan Page en 2012.",
+          "strong": false
+        },
+        {
+          "file": "Ethan Page at Alpha1 2016.jpg",
+          "author": "Tabercil",
+          "license": "CC BY-SA 3.0",
+          "source": "https://commons.wikimedia.org/wiki/File:Ethan_Page_at_Alpha1_2016.jpg",
+          "description": "Ethan Page making his ring entrance at an Alpha-1 show in Hamilton, ON",
+          "strong": false
+        }
+      ]
     },
     {
       "name": "Finn Bálor",
@@ -1023,7 +1121,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -1383,7 +1481,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
@@ -1413,7 +1511,7 @@
       "status": "missing",
       "photo": null,
       "resolution": "unresolved",
-      "reason": "Commons search problem: Error: HTTP 429",
+      "reason": "No verifiable, commercially reusable Commons photograph",
       "candidates": []
     },
     {
