@@ -99,7 +99,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
   catch{return {status:"unavailable"};}
  }
- if(!key||saved?.state==="READY"||saved?.attempts>=2)
+ if(!key||saved?.attempts>=2)
   return {status:"unavailable"};
  const settings=await readAdminRingsideSettings(pool,scope.worldId);
  const show=await readCompletedShowView(pool,scope);
