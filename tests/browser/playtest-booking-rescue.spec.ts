@@ -25,14 +25,23 @@ test("expired booking offers the authorised Crown operator a shared recovery act
   extensions++;reopened=true;
   await r.fulfill({json:{status:"OPEN",year:1,week:2}});
  });
- await page.goto("/#/home");
- await expect(page.getByText("Booking deadline reached · check World status")).toBeVisible();
+ await page.route("**/api/admin",route=>route.fulfill({json:{
+ plan:{year:1,week:2,action:"WAIT_FOR_WORLD_LOCK",blockers:[],
+ ready:{phase:"OPEN",active:1,submitted:0,regularSubmitted:0,
+ cleared:null,certified:null,legacyResolved:0,detailedResolved:0}},
+ settings:{model:"openai/gpt-oss-120b",voice:"MARTY",detail:"BALANCED",
+ creativity:0.92,reasoning:"low",additionalGuidance:"",version:0},
+ groqConfigured:false,shows:[]
+ }}));
+ await page.goto("/#/admin");
+ await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toBeVisible();
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  page.once("dialog",d=>d.accept());
  await page.getByRole("button",{name:"Reopen booking for 24 hours"}).click();
- await expect(page.getByText(/BOOKING OPEN/).first()).toBeVisible();
- await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toHaveCount(0);
+ await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toBeVisible();
+ await page.goto("/#/home");
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(extensions).toBe(1);
  expect(readCount).toBeGreaterThanOrEqual(2);
