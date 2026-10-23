@@ -579,7 +579,9 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  });
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Finish your booking card/}).click();
- await expect(page).toHaveURL(/#\/planner\/card$/);
+ // Planner can redirect immediately to the selected private card after loading.
+ // Both the initial shortcut and the final exact-card route are intentional.
+ await expect(page).toHaveURL(/#\/(?:planner\/card|card)$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load"]);
  await page.locator("details.ppw-management-menu summary").click();
