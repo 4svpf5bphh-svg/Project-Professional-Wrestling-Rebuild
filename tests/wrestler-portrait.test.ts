@@ -126,3 +126,22 @@ test("nine new licensed portrait sources have matching ring identity and aliases
   ["Will Hobbs","Powerhouse Hobbs"],["Nattie Neidhart","Natalya"]])
   assert.deepEqual(portraitCredit(alias),portraitCredit(real));
 });
+
+test("38 real Genesis wrestler identities resolve unique Commons portraits with creator credits",()=>{
+ const newest=["Mike Bailey","Adam Priest","Blake Christian","Lee Moriarty","Lio Rush","Rocky Romero","Shane Haste","Chris Bey","Alan Angels","Gringo Loco","Luke Jacobs","Mance Warner","Esfinge","Megan Bayne","Mina Shirakawa","Queen Aminata","Dani Luna","Thekla","Xia Brookside","Masha Slamovich","Indi Hartwell","Jody Threat","Syuri","AZM","Mei Seira","Natsuko Tora","Momo Watanabe","Konami","Suzu Suzuki","Rina Yamashita","Saya Iida","Momo Kohgo","Maika","HANAKO","Lana Austin","Trish Adora","Mayu Iwatani","Shotzi Blackheart"];
+ assert.equal(newest.length,38);
+ const files=new Set<string>();
+ for(const name of newest){
+  const credit=portraitCredit(name);
+  assert.ok(credit?.file,name);
+  assert.ok(credit.author.length>2,name);
+  assert.match(credit.license,/^CC BY(?:-SA)? (?:2\.0|4\.0)$/);
+  assert.equal(files.has(credit.file),false,name);
+  files.add(credit.file);
+  assert.ok(portraitSource(name));
+ }
+ for(const [alias,canonical] of [
+  ["Shotzi","Shotzi Blackheart"],["Speedball Mike Bailey","Mike Bailey"],
+  ["Aminata","Queen Aminata"]
+ ])assert.deepEqual(portraitCredit(alias),portraitCredit(canonical));
+});
