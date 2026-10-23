@@ -119,3 +119,37 @@ test("reigning champion art follows authoritative title transfers on refresh wit
  await expect(page.locator(".ppw-belt-current")).toHaveText("Roman Reigns");
  expect(methods).toEqual(["championships","championships"]);
 });
+
+
+test("champion photos and unavailable photographs use identical named portrait wells at 320px and 390px",async({page})=>{
+ const calls:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/commons.wikimedia.org/**",route=>route.fulfill({status:404,body:""}));
+ await page.route("**/upload.wikimedia.org/**",route=>route.fulfill({status:404,body:""}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);calls.push(method);
+  return route.fulfill({json:method==="championships"?{
+   worldName:"Genesis",year:1,week:5,viewerPromotionId:"local",titles:[
+    {promotionId:"local",championshipId:"world",promotionName:"AEW",
+     name:"World Championship",division:"SINGLES",status:"ACTIVE",prestige:93,
+     currentReignId:"r1",holderId:"joe",holderType:"PERSON",holderName:"Samoa Joe",defenses:2},
+    {promotionId:"local",championshipId:"women",promotionName:"AEW",
+     name:"Women's Championship",division:"SINGLES",status:"ACTIVE",prestige:82,
+     currentReignId:"r2",holderId:"unknown",holderType:"PERSON",
+     holderName:"Unpictured Wrestler",defenses:0}
+   ]
+  }:world});
+ });
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:780});
+  await page.goto("/#/championships");
+  const wells=page.locator(".ppw-belt-champion-well");
+  await expect(wells).toHaveCount(2);
+  await expect(wells.locator(".ppw-belt-champion-initials")).toHaveText(["SJ","UW"]);
+  await expect(page.locator(".ppw-belt-champion-portrait")).toHaveCount(0,{timeout:15000});
+  await expect(page.locator(".ppw-belt-current")).toHaveText(["Samoa Joe","Unpictured Wrestler"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
+ }
+ expect(calls).toEqual(["championships","championships"]);
+});
