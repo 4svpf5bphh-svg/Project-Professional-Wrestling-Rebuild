@@ -5,7 +5,13 @@
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
-import {loadRingsideCommentary} from "../db/ringside-commentary.js";
+import {loadRingsideCommentary,generateGroqReview} from "../db/ringside-commentary.js";
+import {readCompletedShowView} from "../db/show-results-view.js";
+import {withSqlClient} from "../db/postgres.js";
+import {planNextWorldResolutionAction} from "../db/world-resolution-pipeline.js";
+import {readAdminRingsideSettings,changeAdminRingsideSettings}
+ from "../db/admin-ringside-settings.js";
+import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
@@ -75,7 +81,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -99,6 +105,73 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   return json(200,{ok:true},{"set-cookie":clearSessionCookie(cfg)});
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
+ if(path==="/api/admin"||path==="/api/admin-preview"){
+  if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
+   return json(403,{error:"Admin access requires the designated World operator"});
+  if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
+  if(path==="/api/admin"&&get){
+   try{
+    const [plan,settings,shows]=await Promise.all([
+     planNextWorldResolutionAction(pool,cfg.worldId),
+     readAdminRingsideSettings(pool,cfg.worldId),
+     withSqlClient(pool,tx=>tx.query<{show_id:string;show_name:string|null;year:number;week:number}>(`
+       SELECT c.show_id,d.show_name,c.year,c.week
+       FROM ppw_completed_shows c
+       JOIN ppw_promotion_controls p ON p.world_id=c.world_id
+        AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
+       LEFT JOIN ppw_booking_drafts d ON d.world_id=c.world_id
+        AND d.draft_id=c.show_id
+       WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
+       [cfg.worldId,user.playerId]))
+    ]);
+    return json(200,{plan,settings,shows,groqConfigured:!!process.env.GROQ_API_KEY});
+   }catch(e){
+    console.error("Admin read failed",e instanceof Error?e.message:"unknown");
+    return json(503,{error:"Admin status unavailable. No World state was changed."});
+   }
+  }
+  if(!post)return json(405,{error:"Admin requires GET or POST"});
+  const body=await limitedBody(req);
+  if(!body)return json(400,{error:"Invalid admin request"});
+  if(path==="/api/admin"){
+   if(!allow("admin-settings:"+cfg.worldId,12,60*60_000))
+    return json(429,{error:"Admin settings rate limit reached"});
+   if(body.action!=="SAVE_RINGSIDE"||
+      !Number.isSafeInteger(body.expectedVersion)||
+      typeof body.settings!=="object")
+    return json(400,{error:"Invalid settings update"});
+   try{
+    const saved=await changeAdminRingsideSettings(pool,cfg.worldId,user.playerId,
+     body.settings,body.expectedVersion as number);
+    return json(200,{settings:saved});
+   }catch(e){return json(409,{error:e instanceof Error?e.message:"Settings rejected"});}
+  }
+  if(!allow("admin-preview:"+cfg.worldId,3,60*60_000))
+   return json(429,{error:"AI preview limit: three reviews per hour"});
+  if(!process.env.GROQ_API_KEY)return json(503,{error:"Groq is not configured"});
+  if(typeof body.showId!=="string"||body.showId.length>200||!body.showId)
+   return json(400,{error:"Choose a completed show"});
+  try{
+   const promotion=await withSqlClient(pool,tx=>tx.query<{promotion_id:string}>(`
+     SELECT c.promotion_id FROM ppw_completed_shows c
+     JOIN ppw_promotion_controls p ON p.world_id=c.world_id
+      AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
+     WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
+     [cfg.worldId,user.playerId,body.showId]));
+   if(promotion.length!==1)return json(404,{error:"Completed show not available"});
+   const effective=body.settings?{
+    ...validateRingsideSettings(body.settings),version:0
+   }:await readAdminRingsideSettings(pool,cfg.worldId);
+   const show=await readCompletedShowView(pool,{worldId:cfg.worldId,
+    playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
+    showId:body.showId});
+   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective);
+   return json(200,{review,preview:true});
+  }catch(e){
+   console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");
+   return json(422,{error:"Ringside preview failed validation or provider response. No show was changed."});
+  }
+ }
  if(path==="/api/playtest-booking"){
   if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
    return json(403,{error:"Only the designated playtest operator can reopen booking"});
