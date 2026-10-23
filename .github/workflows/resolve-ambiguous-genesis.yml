@@ -1,0 +1,51 @@
+name: Curate ambiguous Genesis Commons photographs (unreleased)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/genesis-portrait-completion-20261023
+    paths:
+      - scripts/resolve-ambiguous-genesis.ts
+      - .github/workflows/resolve-ambiguous-genesis.yml
+permissions:
+  contents: write
+concurrency:
+  group: curated-genesis-photos-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  curate:
+    if: github.ref == 'refs/heads/feature/genesis-portrait-completion-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Reconcile all curated choices against original Commons candidate metadata
+        run: npx tsx scripts/resolve-ambiguous-genesis.ts
+      - name: Preserve accepted and unresolved source decisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: curated-genesis-source-review
+          path: data/curated-portrait-review.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Validate roster, credits, Ringside, TypeScript and build
+        run: |
+          npm run typecheck
+          npm test
+          npm run web:build
+      - name: Independently verify every Commons licence and author
+        run: npx tsx scripts/audit-portraits.ts
+      - name: Commit only passing changes to unreleased branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/genesis-portrait-worklist.json data/portrait-assessment.json data/portrait-discovery-checkpoint.json data/curated-portrait-review.json src/ui/wrestler-portrait.ts apps/web/public/portrait-credits.html
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(portraits): curate individually corroborated Commons photographs"
+            git push origin HEAD:feature/genesis-portrait-completion-20261023
+          fi
