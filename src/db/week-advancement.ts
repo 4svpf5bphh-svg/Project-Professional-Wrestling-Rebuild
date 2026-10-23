@@ -196,7 +196,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await tx.query(`
         WITH staff AS (
          SELECT promotion_id,sum(weekly_salary)::bigint AS amount
-         FROM ppw_staff_employments WHERE world_id=$1 AND status='ACTIVE'
+         FROM ppw_staff_employments WHERE world_id=$1 AND status='ACTIVE'\n          AND start_week_index<=$4 AND expires_week_index>=$4
          GROUP BY promotion_id
         ), costs AS (
          SELECT p0.promotion_id,COALESCE(s.amount,0::bigint) AS staff_cost
@@ -220,11 +220,17 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
            'mediaIncome',weekly_media_income,'sponsorIncome',weekly_sponsor_income,
            'fixedOverhead',weekly_fixed_overhead,'staffCost',staff_cost,
            'net',weekly_media_income+weekly_sponsor_income-weekly_fixed_overhead-staff_cost)
-         FROM credited`,[input.worldId,year,week]);
+         FROM credited`,[input.worldId,year,week,weekIndex]);
       // Complete original week P&L after ALL monetary movements have been
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Expiry follows the final eligible week's payroll, within the same
+      // atomic World rollover. No daily cron or repeated salary debit.
+      await tx.query(`
+       UPDATE ppw_staff_employments SET status='ENDED',ended_week_index=$2+1
+       WHERE world_id=$1 AND status='ACTIVE' AND expires_week_index<=$2
+      `,[input.worldId,weekIndex]);
       // Original long-term World systems: one atomic certified-week mutation.
       // Careers and vacancies settle after the recorded show finishes, and
       // before contract expiry and next week's player planning rights.
