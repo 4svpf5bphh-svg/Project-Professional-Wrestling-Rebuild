@@ -2,14 +2,18 @@
 import {readFile,writeFile} from "node:fs/promises";
 type Person={name:string;aliases:string[];photo:unknown;reason:string};
 const previous=JSON.parse(await readFile("data/portrait-assessment.json","utf8")) as {people:Person[]};
-const pending=previous.people.filter(p=>!p.photo&&p.reason.includes("HTTP 429"));
+let prior:{people:Record<string,{candidates:any[];error:string|null}>}|null=null;
+try{prior=JSON.parse(await readFile("data/genesis-individual-candidates.json","utf8"));}
+catch{/* Fresh file or interrupted run. */}
+const pending=previous.people.filter(p=>!p.photo&&p.reason.includes("HTTP 429")&&
+ (!prior?.people[p.name]||prior.people[p.name]!.error?.includes("429")));
 const pause=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 const clean=(s:string)=>s.replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&nbsp;/g," ").replace(/\s+/g," ").trim();
 const norm=(s:string)=>s.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
  .replace(/[^\p{L}\p{N}]+/gu," ").trim();
 const contains=(s:string,n:string)=>(" "+norm(s)+" ").includes(" "+norm(n)+" ");
 const allowed=new Set(["CC BY 2.0","CC BY 4.0","CC BY-SA 2.0","CC BY-SA 3.0","CC BY-SA 4.0","CC0"]);
-const byName:Record<string,any>={};
+const byName:Record<string,any>={...(prior?.people??{})};
 let processed=0;
 let calls=0,rateLimited=false;
 async function search(q:string){
@@ -26,7 +30,7 @@ async function search(q:string){
    const after=Number(response.headers.get("retry-after"));
    await pause(Number.isFinite(after)&&after>0?Math.min(after*1000,60000):10000*(attempt+1));
   }else if([502,503,504].includes(response.status))await pause(2000*(attempt+1));
-  else throw Error("Commons HTTP "+response.status);
+  else{if(response.status===403)rateLimited=true;throw Error("Commons HTTP "+response.status);}
  }
  rateLimited=true;throw Error("Commons HTTP 429");
 }
