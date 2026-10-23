@@ -1,4 +1,8 @@
+/** Staff Office — mobile-first private promotion dashboard.
+ * No extra bottom navigation. Only the controlling player can sign staff.
+ */
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
+import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
@@ -6,194 +10,259 @@ export interface StaffPort{
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
   autoRenewSameTerms:boolean;
   permittedDays:number[];permittedVenueIds:string[]}):Promise<unknown>;
- hire(input:{requestId:string;expectedRevision:number;staffId:string}):Promise<unknown>;
+ hire(input:{requestId:string;expectedRevision:number;staffId:string;
+  weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
- back?():void;
+ renew(input:{requestId:string;expectedRevision:number;employmentId:string;
+  weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
+ openContracts?():void;openProgrammes?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
 };
-const button=(content:string,click:()=>void,disabled=false)=>{
- const b=el("button","ppw-staff-button",content) as HTMLButtonElement;
- b.type="button";b.disabled=disabled;b.onclick=click;return b;
+const button=(text:string,action:()=>void,disabled=false)=>{
+ const b=el("button","ppw-staff-button",text) as HTMLButtonElement;
+ b.type="button";b.onclick=action;b.disabled=disabled;return b;
 };
+const money=(amount:number)=>"$"+amount.toLocaleString("en-GB");
+const roles=(role:StaffRole)=>role.replaceAll("_"," ").toLowerCase()
+ .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-/** Every permission opt-in is explicit, revocable before World Lock and
- * guarded by the same verified actor and revision as booking decisions. */
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let view:StaffView|null=null,loading=false,saving=false,error="",notice="";
- let releaseConfirm=false;
- let unfinished=false,logistics=false,autoRenew=false,days=new Set<number>(),
-  venues=new Set<string>(),requestId="";
- const changed=()=>{requestId="";};
- const hydrate=(next:StaffView)=>{
-  view=next;unfinished=next.allowUnfinishedFallback;
-  autoRenew=next.autoRenewSameTerms;
-  logistics=next.allowLogisticsFallback;days=new Set(next.permittedDays);
-  venues=new Set(next.permittedVenueIds);
+ let fallback=false,logistics=false,autoRenew=false;
+ let days=new Set<number>(),venues=new Set<string>(),requestId="";
+ let department:StaffRole="ROAD_AGENT",termWeeks:52|104=52;
+ let confirming="",renewing="";
+ const offers=new Map<string,number>();
+ const hydrate=(v:StaffView)=>{
+  view=v;fallback=v.allowUnfinishedFallback;logistics=v.allowLogisticsFallback;
+  autoRenew=v.autoRenewSameTerms;days=new Set(v.permittedDays);
+  venues=new Set(v.permittedVenueIds);
  };
  async function refresh(){
   loading=true;render();
-  try{hydrate(await port.load());error="";}
-  catch(e){error=e instanceof Error?e.message:"Staff settings could not load";}
-  finally{loading=false;render();}
+  try{hydrate(await port.load());error="";}catch(e){
+   error=e instanceof Error?e.message:"Staff Office could not load";
+  }finally{loading=false;render();}
  }
- async function employment(action:"HIRE"|"RELEASE",identity:string){
+ async function act(action:"HIRE"|"RELEASE"|"RENEW",identity:string,
+  salary=0){
   if(!view?.canEdit||saving)return;
   const requestId=crypto.randomUUID(),expectedRevision=view.worldRevision;
   saving=true;error="";notice="";render();
   try{
    const result=action==="HIRE"?
-    await port.hire({requestId,expectedRevision,staffId:identity}):
+    await port.hire({requestId,expectedRevision,staffId:identity,
+     weeklySalary:salary,termWeeks}):
+    action==="RENEW"?await port.renew({requestId,expectedRevision,
+     employmentId:identity,weeklySalary:salary,termWeeks}):
     await port.release({requestId,expectedRevision,employmentId:identity});
-   if(result&&typeof result==="object"&&"status" in result&&
-    (result as {status:unknown}).status==="STALE")
-    throw new Error("Staff assignments have changed. Review the latest details before continuing.");
-   hydrate(await port.load());releaseConfirm=false;changed();
-   notice=action==="HIRE"?"Talent Manager hired. Their wages are paid with your weekly accounts.":
-    "Talent Manager released. Their wages and renewal duties end now.";
-  }catch(e){error=e instanceof Error?e.message:"The employment decision failed";}
+   const response=result as {status?:string;result?:{accepted?:boolean;reason?:string}};
+   if(response?.status==="STALE")throw new Error("Staff contracts changed. Reload before deciding.");
+   hydrate(await port.load());confirming="";renewing="";
+   notice=response?.result?.accepted===false?
+    response.result.reason??"This offer was declined.":
+    action==="HIRE"?"Staff contract signed. Weekly payroll now includes this employee.":
+    action==="RENEW"?"Staff contract renewed on the agreed terms.":
+    "Employee released. The buyout was charged once and the position is free.";
+  }catch(e){error=e instanceof Error?e.message:"The employment decision was not saved";}
   finally{saving=false;render();}
  }
  async function save(){
   if(!view?.canEdit||saving)return;
   if(logistics&&(!days.size||!venues.size)){
-   error="Choose at least one day and one venue for logistics delegation.";
-   render();return;
+   error="Choose at least one day and one venue for logistics delegation.";render();return;
   }
   const id=requestId||(requestId=crypto.randomUUID());
   saving=true;error="";notice="";render();
   try{
-   const result=await port.save({
-    requestId:id,expectedRevision:view.worldRevision,
-    allowUnfinishedFallback:unfinished,allowLogisticsFallback:logistics,
-    autoRenewSameTerms:autoRenew,
-    permittedDays:logistics?[...days].sort():[],
-    permittedVenueIds:logistics?[...venues].sort():[]
-   });
-   if(result&&typeof result==="object"&&"status" in result&&
-     (result as {status:unknown}).status==="STALE")
-    throw new Error("Office instructions have changed. Reopen Staff before saving.");
+   const result=await port.save({requestId:id,expectedRevision:view.worldRevision,
+    allowUnfinishedFallback:fallback,allowLogisticsFallback:logistics,
+    autoRenewSameTerms:autoRenew,permittedDays:logistics?[...days].sort():[],
+    permittedVenueIds:logistics?[...venues].sort():[]});
+   if((result as {status?:string})?.status==="STALE")
+    throw new Error("World settings changed. Reload your instructions.");
    hydrate(await port.load());requestId="";
-   notice="Staff instructions updated for upcoming shows.";
-  }catch(e){error=e instanceof Error?e.message:"Staff permissions were not saved";}
+   notice="Staff instructions saved.";
+  }catch(e){error=e instanceof Error?e.message:"Staff permissions could not be saved";}
   finally{saving=false;render();}
  }
- function toggle(text:string,description:string,value:boolean,
-  onChange:(next:boolean)=>void,disabled=false){
+ function toggle(text:string,desc:string,checked:boolean,
+  changed:(checked:boolean)=>void,disabled=false){
   const row=el("label","ppw-staff-toggle");
   const input=document.createElement("input");input.type="checkbox";
-  input.checked=value;input.disabled=disabled;input.onchange=()=>{
-   onChange(input.checked);changed();render();
-  };
-  row.append(input,el("strong","",text),el("span","",description));
-  return row;
+  input.checked=checked;input.disabled=disabled;
+  input.onchange=()=>{changed(input.checked);requestId="";render();};
+  row.append(input,el("strong","",text),el("span","",desc));return row;
  }
  function render(){
   root.classList.add("ppw-editor","ppw-staff");root.replaceChildren();
-  const head=el("header","ppw-staff-head");
-  if(port.back)head.append(button("← Back",()=>port.back?.()));
-  head.append(el("span","ppw-staff-kicker","THE OFFICE / STAFF"),
-   el("h1","","Staff"),
-   el("p","ppw-staff-muted",
-    view?"Year "+view.year+" · Week "+view.week:
-     "Put trusted people in charge of renewals, scheduling and show-day cover."));
-  root.append(head);
+  const header=el("header","ppw-staff-head");
+  if(port.back)header.append(button("← Back",()=>port.back?.()));
+  header.append(el("span","ppw-staff-kicker","THE OFFICE / BACKSTAGE"),
+   el("h1","","Staff Office"),el("p","ppw-staff-muted",
+    view?"Year "+view.year+" · Week "+view.week+" · Eight departments":
+    "Build a team that shapes the wrestling World."));
+  root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(notice)root.append(el("p","ppw-alert ppw-success",notice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}
   if(!view.canEdit)root.append(el("p","ppw-staff-lock",
-   "The weekly deadline has passed. Staff instructions can be reviewed but not changed until next week."));
-  const fallback=el("section","ppw-staff-panel");
-  fallback.append(el("h2","","Emergency show cover"),
-   toggle("Cover an unfinished show",
-    "If your card is incomplete at the deadline, staff can arrange cover without changing your chosen winners.",
-    unfinished,v=>{unfinished=v;},!view.canEdit||saving));
-  root.append(fallback);
-  const manager=el("section","ppw-staff-panel ppw-staff-manager");
-  manager.append(el("span","ppw-staff-kicker","THE TALENT OFFICE"),el("h2","","Talent Manager"));
-  if(view.talentManager){
-   const member=view.talentManager;
-   const employed=el("article","ppw-staff-employed");
-   const identity=el("div","ppw-staff-manager-identity");
-   identity.append(el("span","ppw-staff-manager-avatar",
-    member.name.split(" ").slice(0,2).map(x=>x[0]).join("")),
-    el("strong","",member.name));
-   employed.append(identity);
-   const figures=el("div","ppw-staff-manager-metrics");
-   figures.append(el("span","","INSIGHT  /  "+member.insight+"/100"),
-    el("span","","SALARY  /  $"+member.weeklySalary.toLocaleString("en-GB")+"/week"));
-   employed.append(figures);
-   if(releaseConfirm){
-    employed.append(el("p","ppw-staff-muted",
-     "Release this manager? Their salary and delegated renewal authority end. Submitted wrestler offers are unaffected."),
-     button("Confirm release",()=>void employment("RELEASE",member.employmentId),saving||!view.canEdit),
-     button("Keep manager",()=>{releaseConfirm=false;render();},saving));
-   }else employed.append(button("Release manager",()=>{
-    releaseConfirm=true;render();},saving||!view.canEdit));
-   manager.append(employed);
-  }else{
-   manager.append(el("p","ppw-staff-muted",
-    "Your talent office needs a manager. Choose an available candidate and hold enough cash to cover four weeks' wages."));
-   const candidates=el("div","ppw-staff-candidates");
-   for(const member of view.availableManagers){
-    const candidate=el("article","ppw-staff-candidate");
-    const copy=el("div","");
-    copy.append(el("strong","",member.name),
-     el("small","","INSIGHT "+member.insight+"/100 · $"+
-      member.weeklySalary.toLocaleString("en-GB")+"/week"));
-    candidate.append(copy,button("Hire",()=>void employment("HIRE",member.staffId),
-     saving||!view.canEdit));
-    candidates.append(candidate);
+   "The booking deadline has passed. Staff contracts can be reviewed but not changed until the next week."));
+  const overview=el("section","ppw-staff-office-overview");
+  const cards=el("div","ppw-staff-overview-grid");
+  for(const [value,label] of [
+   [view.employees.length+"/8","DEPARTMENTS"],
+   [money(view.weeklyPayroll),"WEEKLY PAYROLL"],
+   [money(view.promotionCash),"CASH AVAILABLE"]
+  ] as const){
+   const card=el("div","ppw-staff-overview-metric");
+   card.append(el("strong","",value),el("small","",label));cards.append(card);
+  }
+  overview.append(cards);
+  if(view.notices.length){
+   const notes=el("div","ppw-staff-advice");
+   notes.append(el("h2","","From your team"));
+   for(const info of view.notices){
+    const card=el("article","ppw-staff-note");
+    card.append(el("strong","",info.department),el("p","",info.message));
+    if(info.target!=="staff")
+     card.append(button("Open "+info.target+" ↗",
+      ()=>info.target==="contracts"?port.openContracts?.():port.openProgrammes?.()));
+    notes.append(card);
    }
-   if(!view.availableManagers.length)candidates.append(el("p","ppw-staff-muted",
-    "Every Talent Manager is employed by another promotion."));
-   manager.append(candidates);
+   overview.append(notes);
   }
-  manager.append(toggle("Delegate same-terms renewals",
-    "When enabled, your employed manager offers unchanged terms in the final three weeks. Wrestlers may refuse.",
-    autoRenew,v=>{autoRenew=v;},!view.talentManager||!view.canEdit||saving));
-  manager.append(el("p","ppw-staff-muted",
-   "An experienced manager can offer better advice, but every wrestler decides whether to accept. Follow offers in Contracts."));
-  root.append(manager);
-  const support=el("section","ppw-staff-panel");
-  support.append(el("h2","","Logistics authority"),
-   toggle("Permit scheduling assistance",
-    "Let staff find an approved date or venue when plans fall through. They cannot change your match card.",
-    logistics,v=>{logistics=v;},!view.canEdit||saving));
-  const choices=el("div","ppw-staff-choices");
-  choices.append(el("h3","","Permitted show days"));
-  const dayList=el("div","ppw-staff-picks");
-  weekdays.forEach((day,i)=>{
-   const index=i+1;
-   dayList.append(toggle(day,"",days.has(index),checked=>{
-    if(checked)days.add(index);else days.delete(index);
-   },!view!.canEdit||saving||!logistics));
-  });
-  choices.append(dayList,el("h3","","Permitted venues"));
-  const venueList=el("div","ppw-staff-picks");
-  for(const venue of view.venues){
-   venueList.append(toggle(venue.name,
-    venue.capacity===null?"Available arena":
-     venue.capacity.toLocaleString("en-GB")+" capacity"+
-      (venue.weeklyHireCost===null?"":" · $"+
-       venue.weeklyHireCost.toLocaleString("en-GB")+" hire"),
-    venues.has(venue.venueId),checked=>{
-     if(checked)venues.add(venue.venueId);else venues.delete(venue.venueId);
-    },!view.canEdit||saving||!logistics));
+  root.append(overview);
+  const team=el("section","ppw-staff-panel ppw-staff-team");
+  team.append(el("span","ppw-staff-kicker","YOUR BACKSTAGE CREW"),
+   el("h2","","Departments"),el("p","ppw-staff-muted",
+    "One exclusive World employee per role. Vacancies have basic cover, so small promotions can still put on shows."));
+  const teamRows=el("div","ppw-staff-team-list");
+  for(const role of STAFF_ROLES){
+   const member=view.employees.find(e=>e.role===role);
+   const item=el("article","ppw-staff-role-row");
+   item.append(el("span","ppw-staff-manager-avatar",member?
+    member.name.split(" ").slice(0,2).map(w=>w[0]).join(""):"＋"));
+   const detail=el("div","ppw-staff-role-info");
+   detail.append(el("small","",roles(role).toUpperCase()),
+    el("strong","",member?.name??"Position vacant"),
+    el("span","",member?
+     member.personality+" · "+member.specialism+" · "+money(member.weeklySalary)+"/wk":
+     "Basic cover · no weekly staff wage"));
+   if(member)detail.append(el("span","",
+    "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
+    "  ·  RELIABILITY "+member.reliability+
+    "  ·  "+member.weeksRemaining+" weeks left"));
+   item.append(detail);
+   if(member){
+    const actions=el("div","ppw-staff-actions");
+    if(member.weeksRemaining<=13){
+     if(renewing===member.employmentId){
+      const entry=salaryInput(member.employmentId,member.weeklySalary);
+      actions.append(entry,button("Offer renewal",
+       ()=>void act("RENEW",member.employmentId,Number(entry.value)),
+       saving||!view.canEdit));
+     }else actions.append(button("Renew",()=>{
+      renewing=member.employmentId;offers.set(member.employmentId,member.weeklySalary);render();
+     },saving||!view.canEdit));
+    }
+    if(confirming===member.employmentId){
+     actions.append(el("span","ppw-staff-buyout",
+      "Buyout "+money(member.buyoutCost)+" · exact remaining wages"),
+      button("Confirm buyout",()=>void act("RELEASE",member.employmentId),
+       saving||!view.canEdit||view.promotionCash<member.buyoutCost),
+      button("Cancel",()=>{confirming="";render();}));
+    }else actions.append(button("Release",()=>{confirming=member.employmentId;render();},
+     saving||!view.canEdit));
+    item.append(actions);
+   }else item.append(button("Recruit",()=>{
+    department=role;render();root.querySelector("#ppw-staff-market")?.scrollIntoView({block:"start"});
+   }));
+   teamRows.append(item);
   }
-  if(!view.venues.length)venueList.append(el("p","ppw-staff-muted",
-   "No suitable venues are currently available."));
-  choices.append(venueList);support.append(choices);root.append(support);
-  const footer=el("section","ppw-staff-panel");
-  footer.append(el("h2","","What staff cannot do"),
+  team.append(teamRows);root.append(team);
+  const market=el("section","ppw-staff-panel ppw-staff-market");
+  market.id="ppw-staff-market";
+  market.append(el("span","ppw-staff-kicker","SHARED WORLD TALENT"),
+   el("h2","","Staff Market"),
    el("p","ppw-staff-muted",
-    "Your team can handle administration, but you still choose the winners, storylines, signings and appearances."));
-  if(view.lockedLogisticsDelegated)footer.append(el("p","ppw-staff-muted",
-   "Your scheduling instructions were already confirmed for this week."));
-  footer.append(button(saving?"Saving…":"Save instructions",()=>void save(),
+    "Unique people, not generic upgrades. Offer a weekly wage and a one- or two-year agreement."));
+  const departments=el("div","ppw-staff-departments");
+  for(const role of STAFF_ROLES){
+   const tab=button(roles(role),()=>{department=role;render();});
+   tab.setAttribute("aria-pressed",String(department===role));
+   departments.append(tab);
+  }
+  market.append(departments);
+  const duration=el("select","ppw-staff-term") as HTMLSelectElement;
+  for(const [weeks,label] of [[52,"1 year"],[104,"2 years"]] as const){
+   const option=document.createElement("option");
+   option.value=String(weeks);option.textContent=label;duration.append(option);
+  }
+  duration.value=String(termWeeks);
+  duration.onchange=()=>{termWeeks=Number(duration.value) as 52|104;};
+  duration.setAttribute("aria-label","Contract length");
+  const options=el("div","ppw-staff-term-options");
+  options.append(el("strong","","Contract length"),duration);market.append(options);
+  const candidates=el("div","ppw-staff-candidates");
+  const available=view.market.filter(m=>m.role===department);
+  if(!available.length)candidates.append(el("p","ppw-staff-muted",
+   "No free candidates in this department. A rival may have hired them."));
+  for(const candidate of available){
+   const card=el("article","ppw-staff-candidate ppw-staff-market-card");
+   const identity=el("div","");
+   identity.append(el("strong","",candidate.name),
+    el("small","",candidate.personality+" · "+candidate.specialism),
+    el("small","","CRAFT "+candidate.craft+" · PEOPLE "+candidate.people+
+     " · RELIABILITY "+candidate.reliability),
+    el("small","","ASKING "+money(candidate.weeklySalary)+"/week"));
+   const amount=salaryInput(candidate.staffId,candidate.weeklySalary);
+   const controls=el("div","ppw-staff-market-actions");
+   controls.append(amount,button("Offer contract",
+    ()=>void act("HIRE",candidate.staffId,Number(amount.value)),
+    saving||!view.canEdit||view.employees.some(e=>e.role===department)));
+   card.append(identity,controls);candidates.append(card);
+  }
+  market.append(candidates);root.append(market);
+  const continuity=el("section","ppw-staff-panel");
+  continuity.append(el("h2","","Show cover and delegation"),
+   toggle("Emergency cover for an unfinished show",
+    "Staff can arrange a fallback if you miss World Lock; existing scripted finishes remain untouched.",
+    fallback,v=>{fallback=v;},!view.canEdit||saving),
+   toggle("Delegate same-terms wrestler renewals",
+    "Your employed Talent Manager submits unchanged terms close to expiry. Wrestlers can refuse.",
+    autoRenew,v=>{autoRenew=v;},!view.talentManager||!view.canEdit||saving),
+   toggle("Permit scheduling assistance",
+    "Staff may choose only dates and venues that you explicitly approve.",
+    logistics,v=>{logistics=v;},!view.canEdit||saving));
+  if(logistics){
+   const weekdaysBlock=el("div","ppw-staff-picks");
+   for(const [i,day] of weekdays.entries())weekdaysBlock.append(toggle(day,"",days.has(i+1),
+    value=>{if(value)days.add(i+1);else days.delete(i+1);},!view.canEdit||saving));
+   continuity.append(el("h3","","Approved show days"),weekdaysBlock);
+   const venuesBlock=el("div","ppw-staff-picks");
+   for(const venue of view.venues)venuesBlock.append(toggle(venue.name,
+    venue.capacity===null?"Available hall":venue.capacity.toLocaleString("en-GB")+" seats",
+    venues.has(venue.venueId),
+    value=>{if(value)venues.add(venue.venueId);else venues.delete(venue.venueId);},
+    !view.canEdit||saving));
+   continuity.append(el("h3","","Approved venues"),venuesBlock);
+  }
+  if(view.lockedLogisticsDelegated)continuity.append(el("p","ppw-staff-muted",
+   "This week's scheduling instructions are already frozen."));
+  continuity.append(button(saving?"Saving…":"Save staff instructions",()=>void save(),
    !view.canEdit||saving||loading));
-  root.append(footer);
+  root.append(continuity);
+ }
+ function salaryInput(id:string,asking:number){
+  const input=el("input","ppw-staff-salary") as HTMLInputElement;
+  input.type="number";input.min="1";input.max="1000000";
+  input.value=String(offers.get(id)??asking);
+  input.setAttribute("aria-label","Weekly salary offer");
+  input.oninput=()=>offers.set(id,Number(input.value));
+  return input;
  }
  void refresh();
  return {refresh};

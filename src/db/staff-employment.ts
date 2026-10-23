@@ -5,7 +5,7 @@ import {randomUUID} from "node:crypto";
 import {applyWorldCommand} from "./world-commands.js";
 import {worldStaff,evaluateStaffOffer,staffBuyout,type StaffRole}
  from "../domain/world-staff.js";
-import type {TransactionPool} from "./transaction.js";
+import type {TransactionPool} from "./transaction.js";\nimport type {SqlRows} from "./world-operations.js";
 export interface StaffEmploymentInput{
  worldId:string;promotionId:string;playerId:string;
  requestId:string;expectedRevision:number;
@@ -13,7 +13,7 @@ export interface StaffEmploymentInput{
 const valid=(s:string)=>typeof s==="string"&&s.length>0&&s.length<=200;
 type ContractTerm=52|104;
 const money=(n:number)=>Number.isSafeInteger(n)&&n>0&&n<=1_000_000;
-async function employer(tx:{query:<T extends Record<string,unknown>>(sql:string,params:readonly unknown[])=>Promise<T[]>},
+async function employer(tx:SqlRows,
  input:StaffEmploymentInput){
  const owner=await tx.query<{seed:string;cash:string;year:number;week:number}>([
   "SELECT w.seed::text AS seed,p.cash::text AS cash,w.year,w.week",

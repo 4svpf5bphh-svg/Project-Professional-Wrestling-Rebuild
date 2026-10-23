@@ -44,3 +44,39 @@
 .ppw-staff-candidate small{font-size:11px;color:#a6cddf}
 .ppw-staff-candidate .ppw-staff-button{min-width:70px}
 @media(min-width:650px){.ppw-staff-candidates{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ppw-staff-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:15px}
+.ppw-staff-overview-metric{background:linear-gradient(120deg,#17456c,#172b42);
+ border:1px solid #4c728a;border-radius:13px;padding:11px 8px;min-width:0}
+.ppw-staff-overview-metric strong{display:block;font-size:clamp(13px,3.2vw,22px);overflow:hidden;text-overflow:ellipsis}
+.ppw-staff-overview-metric small{display:block;color:#9be4ff;letter-spacing:.08em;
+ font-size:9px;font-weight:800;margin-top:6px}
+.ppw-staff-advice{display:grid;gap:7px;margin-bottom:15px}
+.ppw-staff-advice h2{font-size:17px}
+.ppw-staff-note{background:#102b40;border:1px solid #3a728f;
+ padding:11px;border-radius:13px}
+.ppw-staff-note strong{color:#96e4fd;font-size:12px}
+.ppw-staff-note p{font-size:13px;margin:8px 0;line-height:1.5}
+.ppw-staff-note button{font-size:12px;min-height:37px}
+.ppw-staff-team-list{display:grid;gap:8px}
+.ppw-staff-role-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+ padding:10px;border-radius:13px;border:1px solid #37586b;background:#0c2236}
+.ppw-staff-role-info{display:grid;flex:1;min-width:160px;gap:5px}
+.ppw-staff-role-info small{color:#88dcf7;letter-spacing:.1em;font-size:10px;font-weight:800}
+.ppw-staff-role-info strong{font-size:15px}
+.ppw-staff-role-info span{color:#afcde0;font-size:12px}
+.ppw-staff-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;width:100%}
+.ppw-staff-actions button{font-size:12px;min-height:36px}
+.ppw-staff-buyout{width:100%;color:#f8ca91;font-size:12px;font-weight:800}
+.ppw-staff-departments{display:flex;gap:7px;overflow:auto;padding:8px 0 14px}
+.ppw-staff-departments button{min-height:38px;white-space:nowrap;font-size:12px}
+.ppw-staff-departments button[aria-pressed=true]{background:#338db6;border-color:#a2e4fa}
+.ppw-staff-term-options{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:13px}
+.ppw-staff-term,.ppw-staff-salary{background:#0e2034;color:white;
+ border:1px solid #56869d;border-radius:9px;padding:8px;min-height:41px}
+.ppw-staff-salary{width:108px;min-width:0}
+.ppw-staff-market-card{flex-direction:column;align-items:stretch}
+.ppw-staff-market-actions{display:flex;gap:8px;align-items:center;width:100%}
+.ppw-staff-market-actions button{flex:1}
+@media(min-width:680px){.ppw-staff-actions{width:auto}
+ .ppw-staff-market-card{justify-content:space-between}}
