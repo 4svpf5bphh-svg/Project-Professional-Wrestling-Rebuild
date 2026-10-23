@@ -23,8 +23,10 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
  show:CompletedShowView):Promise<RingsideMemory>{
  if(!Object.values(scope).every(valid)||show.showId!==scope.showId)
   throw new Error("Invalid Ringside history scope");
+ // Card actor IDs come from the certified receipt, even for wrestlers
+ // without a portable persona or a verified broadcast photograph.
  const ids=[...new Set(show.entries.flatMap(e=>
-  (e.performerIdentities??[]).map(x=>x.personId)))].slice(0,120);
+  [...e.actorIds,...e.targetIds]))].slice(0,120);
  if(!ids.length)return EMPTY_RINGSIDE_MEMORY;
  const weekIndex=(show.year-1)*52+show.week-1;
  return withSqlClient(pool,async db=>{

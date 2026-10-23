@@ -65,7 +65,7 @@ test("Ringside never queries history for a show with no identified talent",async
  let queries=0;
  const pool:TransactionPool={async connect(){queries++;throw Error("should not read");}};
  const data=await readRingsideMemory(pool,scope,{...show,entries:[{
-  ...show.entries[0]!,performerIdentities:[]}]});
+  ...show.entries[0]!,actorIds:[],targetIds:[],performerIdentities:[]}]});
  assert.equal(queries,0);
  assert.deepEqual(data,{priorMatches:[],programmes:[]});
 });
