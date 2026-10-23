@@ -98,13 +98,37 @@ export async function settleMedicalAvailabilityForNewWeek(tx:SqlRows,worldId:str
  * rows transferred. Called exactly once inside certified World rollover.
  */
 export async function settleWeeklyFatigueRecovery(
- tx:SqlRows,worldId:string):Promise<void>{
- if(!worldId||worldId.length>200)throw new Error("Invalid fatigue recovery World");
- await tx.query(`UPDATE ppw_people
-  SET fatigue=round(greatest(0::numeric,
-   fatigue::numeric-(14::numeric+stamina::numeric/12)),1)::double precision
-  WHERE world_id=$1 AND status<>'RETIRED'
-   AND fatigue IS NOT NULL AND stamina IS NOT NULL AND fatigue>0`,[worldId]);
+ tx:SqlRows,worldId:string,weekIndex=-1,
+ trainers:readonly {staffId:string;bonus:number}[]=[]):Promise<void>{
+ if(!worldId||worldId.length>200||!Number.isSafeInteger(weekIndex)||
+  weekIndex< -1||trainers.length>8||
+  trainers.some(t=>!t.staffId||t.staffId.length>200||
+   !Number.isFinite(t.bonus)||t.bonus<.5||t.bonus>2.5))
+  throw new Error("Invalid fatigue recovery World");
+ // One set-based UPDATE: cache the eight possible World trainers in the
+ // execution params, then join only active staff and exclusive contracts.
+ // The original recovery formula is unchanged for everyone without a coach.
+ await tx.query(`
+  WITH coached AS MATERIALIZED (
+   SELECT c.person_id,max(x.bonus) AS extra
+   FROM jsonb_to_recordset($3::jsonb) x(staff_id text,bonus numeric)
+   JOIN ppw_staff_employments s ON s.world_id=$1
+    AND s.staff_id=x.staff_id AND s.role='TRAINER' AND s.status='ACTIVE'
+    AND s.start_week_index<=$2 AND s.expires_week_index>=$2
+   JOIN ppw_contracts c ON c.world_id=s.world_id
+    AND c.promotion_id=s.promotion_id AND c.family='EXCLUSIVE'
+    AND c.status='SIGNED' AND c.start_week_index<=$2
+    AND c.expires_week_index>=$2
+   GROUP BY c.person_id
+  )
+  UPDATE ppw_people p SET fatigue=round(greatest(0::numeric,
+   p.fatigue::numeric-(14::numeric+p.stamina::numeric/12+
+    COALESCE((SELECT extra FROM coached t WHERE t.person_id=p.person_id),0::numeric))),1)::double precision
+  WHERE p.world_id=$1 AND p.status<>'RETIRED'
+   AND p.fatigue IS NOT NULL AND p.stamina IS NOT NULL AND p.fatigue>0`,
+  [worldId,weekIndex,JSON.stringify(trainers.map(t=>({
+    staff_id:t.staffId,bonus:t.bonus})))]);
+ }
 }
 
 /** Original-main injury consequences, applied after canonical match load.

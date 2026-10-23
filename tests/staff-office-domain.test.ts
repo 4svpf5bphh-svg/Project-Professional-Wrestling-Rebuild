@@ -4,6 +4,7 @@ import {worldStaff,worldTalentManagers,evaluateStaffOffer,staffBuyout,STAFF_ROLE
  from "../src/domain/world-staff.js";
 import {deriveRoadAgentReport} from "../src/domain/road-agent-report.js";
 import {staffedProductionCost} from "../src/domain/staff-production.js";
+import {trainerFatigueBonus} from "../src/domain/staff-training.js";
 test("Original Talent Managers survive world expansion without replacement",()=>{
  const old=worldTalentManagers(58),staff=worldStaff(58);
  assert.equal(staff.length,64);
@@ -60,4 +61,12 @@ test("Production department gives a capped, traceable venue-broadcast efficiency
  }
  assert.throws(()=>staffedProductionCost(10000,worldStaff(72)[0]!),
   /Only production/);
+});
+
+test("Trainers grant only bounded physical recovery; original uncoached recovery is untouched",()=>{
+ assert.equal(trainerFatigueBonus(40),1);
+ assert.equal(trainerFatigueBonus(80),2);
+ assert.ok(worldStaff(72).filter(s=>s.role==="TRAINER")
+  .every(s=>trainerFatigueBonus(s.craft)>=.5&&trainerFatigueBonus(s.craft)<=2.5));
+ assert.throws(()=>trainerFatigueBonus(-5));
 });

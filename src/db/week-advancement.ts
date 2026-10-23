@@ -6,6 +6,8 @@ import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
  from "./living-world-promotions.js";
 import {settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "./medical-availability.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {worldStaff} from "../domain/world-staff.js";
+import {trainerFatigueBonus} from "../domain/staff-training.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js";
@@ -38,8 +40,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
     worldId:input.worldId,playerId:"system",requestId:input.requestId,
     expectedRevision:input.expectedRevision,commandType:"ADVANCE_RESOLVED_WORLD_WEEK",
     execute:async tx=>{
-      const states=await tx.query<{year:number;week:number;phase:string}>(
-        "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[input.worldId],
+      const states=await tx.query<{year:number;week:number;phase:string;seed:string|number}>(
+        "SELECT year,week,phase,seed FROM ppw_worlds WHERE world_id=$1",[input.worldId],
       );
       if(states.length!==1 || states[0]!.phase!=="RESOLVING") throw new Error("World is not resolving");
       const {year,week}=states[0]!;
@@ -166,7 +168,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       if(moved.length!==1) throw new Error("World rollover deadline expired; recovery required");
        await settleMedicalAvailabilityForNewWeek(tx,input.worldId,
         weekIndex+1,moved[0]!.year,moved[0]!.week);
-       await settleWeeklyFatigueRecovery(tx,input.worldId);
+       await settleWeeklyFatigueRecovery(tx,input.worldId,weekIndex,
+        worldStaff(states[0]!.seed).filter(s=>s.role==="TRAINER")
+         .map(s=>({staffId:s.staffId,bonus:trainerFatigueBonus(s.craft)})));
       // Original PPW charges wages even if limited dates are exhausted.
       // One grouped debit and ledger insert, regardless of roster size.
       await tx.query(`
