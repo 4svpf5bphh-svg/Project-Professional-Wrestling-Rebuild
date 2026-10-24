@@ -87,7 +87,7 @@ export async function readContractDesk(
    WHERE e.world_id=$1 AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
     AND e.payload->>'promotionId'=$2
     AND (e.year-1)*52+e.week-1 BETWEEN greatest(0,$3-25) AND $3
-   ORDER BY e.event_id DESC LIMIT 20`,) d),
+   ORDER BY e.event_id DESC LIMIT 20) d),
       '[]'::jsonb) AS date_decisions`,
     [worldId,promotionId,currentWeekIndex]);
   const renewals=deskHistory?.renewals??[];
