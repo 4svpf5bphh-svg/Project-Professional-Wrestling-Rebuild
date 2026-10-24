@@ -30,7 +30,7 @@ test("320px Gorilla clipboard protects an exact match, saves conditional choices
   if(req.method==="saveGorillaShow"){
    expect(req.playerId).toBeUndefined();
    expect(req.worldId).toBe("genesis");expect(req.promotionId).toBe("local");
-   expect(req.showId).toBe("show-1");expect(req.expectedRevision).toBe(revision);
+   expect(req.targetShowId).toBe("show-1");expect(req.expectedRevision).toBe(revision);
    const match=(req.matches as Record<string,unknown>[])[0]!;
    expect(match.matchId).toBe("bout-1");
    protectedMatch=match.protectScript===true;

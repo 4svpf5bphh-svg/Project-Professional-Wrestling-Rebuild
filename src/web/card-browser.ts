@@ -218,7 +218,7 @@ function staffPort(root:HTMLElement,scope:Scope,
   renew:input=>call("renewStaff",input),
   openGorilla:()=>mountGorillaDesk(root,{
    load:()=>call("gorillaWorkspace"),
-   save:input=>call("saveGorillaShow",input),
+   save:input=>call("saveGorillaShow",{...input,targetShowId:input.showId}),
    back:()=>mountStaffDesk(root,staffPort(root,scope,call))
   }),
   openContracts:()=>{window.location.hash=hostSectionHash("contracts");},

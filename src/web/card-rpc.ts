@@ -178,7 +178,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    p.matches.some(x=>!x||typeof x!=="object"||Array.isArray(x)))
    throw new Error("Invalid Gorilla match decisions");
   return saveGorillaShowAsActor(context,{worldId,promotionId,requestId,
-   expectedRevision,showId:id("showId"),
+   expectedRevision,showId:id("targetShowId"),
    matches:p.matches as unknown as import("../domain/gorilla-position.js").GorillaMatchInstruction[]});
  }
  if(method==="setGorillaPolicy"){
