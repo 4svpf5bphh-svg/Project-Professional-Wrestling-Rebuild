@@ -51,6 +51,12 @@ for(const width of [320,390]){
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"TONIGHT'S HEADLINES"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeVisible();
+  await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
+  await expect(page.locator(".ppw-results-analysis")).toHaveCount(1);
+  await expect(page.locator(".ppw-results-analysis")).not.toHaveAttribute("open");
+
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
