@@ -283,6 +283,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    node("p","",report.praise),
    node("p","",report.concern),
    node("p","",report.recommendation));
+  const strong=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
+  if(strong)office.append(node("p","ppw-muted","Standout bout: "+strong.headline));
  }
  const gorilla=show.gorillaLog;
  const position=gorilla?node("section","ppw-staff-show-report ppw-gorilla-log"):null;

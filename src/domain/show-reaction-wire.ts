@@ -5,7 +5,8 @@
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 
-export type ReactionVoice="THE CROWD"|"PRESS BOX"|"THE BACK ROW"|"TRADE TALK";
+export type ReactionVoice="THE FRONT ROW"|"THE SKEPTICAL SMARK"|"THE TAPE TRADER"|
+ "THE DIEHARD"|"THE HEEL DEFENDER"|"THE CONCERNED FAN"|"THE RIVALRY ADDICT"|"THE BACK ROW";
 export type ReactionMood="BUZZ"|"DEBATE"|"CONCERN"|"COLD";
 export interface ResultReaction {
  slotId:string;voice:ReactionVoice;mood:ReactionMood;
@@ -31,156 +32,106 @@ function contender(entry:ShowResultEntry):string{
 function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
  const key=showId+":"+entry.slotId;
  const base={slotId:entry.slotId,position:entry.position};
- const f=entry.fallout;
- const winner=officialWinner(entry);
+ const f=entry.fallout, winner=officialWinner(entry),bout=contender(entry);
  if(entry.type==="MATCH"){
   if(f?.title?.changed){
-   const t=f.title;
-   return {...base,voice:"TRADE TALK",mood:"BUZZ",source:"TITLE",priority:130,
+   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"TITLE",priority:130,
     text:pick([
-     t.winnerName+" takes the "+t.name+". A change at the top, and the rest of the division has to respond.",
-     "New champion, new pecking order. "+t.winnerName+" is now the name on the "+t.name+".",
-     t.name+" has changed hands. The official record says "+t.winnerName+" — everything else is tomorrow's booking.",
+     f.title.winnerName+" is the new "+f.title.name+" champion. My voice is gone, and I'm sending them the bill for it.",
+     f.title.winnerName+" with the "+f.title.name+"? The division suddenly looks a whole lot more interesting.",
+     "That belt really has changed hands. "+f.title.winnerName+" takes the "+f.title.name+" — and everybody else has homework.",
     ],key,1)};
   }
   const injury=f?.injuries[0];
-  if(injury){
-   const weeks=injury.weeksOut;
-   const detail=weeks===null?"The recovery period has not been confirmed.":
-    "The recorded absence is "+weeks+" PPW "+(weeks===1?"week":"weeks")+".";
-   return {...base,voice:"PRESS BOX",mood:"CONCERN",source:"MEDICAL",priority:116,
-    text:injury.personName+" picked up a "+injury.severity.toLowerCase()+
-     " injury"+(injury.stoppage?" and the referee stopped the contest":"")+
-     ". "+detail};
-  }
+  if(injury)return {...base,voice:"THE CONCERNED FAN",mood:"CONCERN",source:"MEDICAL",priority:116,
+   text:injury.personName+" was hurt"+
+    (injury.stoppage?" badly enough for the referee to stop it":" during that match")+
+    ". Forget the arguments about the result — hoping they're all right."};
   const rating=f?.ratingStars;
-  if(rating!==undefined&&rating>=3.75&&entry.crowdResponse<50){
-   return {...base,voice:"PRESS BOX",mood:"DEBATE",source:"CRITIC_CROWD",priority:101,
+  if(rating!==undefined&&rating>=3.75&&entry.crowdResponse<50)
+   return {...base,voice:"THE TAPE TRADER",mood:"DEBATE",source:"CRITIC_CROWD",priority:101,
     text:pick([
-     rating.toFixed(2)+" stars in the ring, but only "+entry.crowdResponse.toFixed(1)+
-      " from the crowd. Someone has to explain that gap.",
-     "The critical score says quality. The audience score says otherwise. "+
-      contender(entry)+" divided the room.",
+     bout+" had the technique, but the room never went with it. Great wrestling doesn't guarantee great theatre.",
+     "I liked the work in "+bout+". The quiet crowd? That's the bit the critics can't hand-wave away.",
     ],key,2)};
-  }
-  if(rating!==undefined&&rating<2.5&&entry.crowdResponse>=78){
-   return {...base,voice:"THE BACK ROW",mood:"DEBATE",source:"CRITIC_CROWD",priority:99,
+  if(rating!==undefined&&rating<2.5&&entry.crowdResponse>=78)
+   return {...base,voice:"THE DIEHARD",mood:"DEBATE",source:"CRITIC_CROWD",priority:99,
     text:pick([
-     "The critics might not call "+contender(entry)+" a classic, but that crowd had a ball.",
-     "A modest "+rating.toFixed(2)+"-star rating and a huge crowd response? "+
-      "Sometimes the crowd just wants a good time.",
+     "The critics can keep their notebooks. "+bout+" had that building losing its mind.",
+     bout+" wasn't a technical masterpiece and I don't care. Sometimes wrestling is just ridiculous fun.",
     ],key,3)};
-  }
   if(entry.outcome==="OVER_THE_TOP_ROPE"&&f?.eliminations.length){
-   const last=f.eliminations[f.eliminations.length-1]!;
-   return {...base,voice:"THE BACK ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
-    text:"The battle royal went down to the last recorded elimination: "+
-     last+" went out, and "+(winner??"the officially recorded winner")+
-     " finished on top. That is the order in the books."};
+   const last=f.eliminations.at(-1)!;
+   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
+    text:last+" went out, "+(winner??"the winner")+" finished on top. I need to see that final stretch again."};
   }
-  if(entry.outcome==="SUBMISSION"&&entry.crowdResponse>=65){
-   return {...base,voice:"THE CROWD",mood:"BUZZ",source:"FINISH",priority:80,
-    text:(winner??"The recorded winner")+" got it done by submission. "+
-     "A clean decision, and the crowd gave it "+entry.crowdResponse.toFixed(1)+
-     " out of 100."};
-  }
-  if(entry.outcome==="FLASH_PIN"&&entry.crowdResponse>=65){
-   return {...base,voice:"THE BACK ROW",mood:"BUZZ",source:"FINISH",priority:80,
-    text:"A flash pin settled "+contender(entry)+". "+
-     (winner??"The official winner")+" takes the decision —"+
-     " that's a result that will have the other side demanding a closer look."};
-  }
-  if(entry.outcome==="DISQUALIFICATION"||entry.outcome==="FOREIGN_OBJECT"){
-   const cheater=f?.finishCheaterName;
-   const detail=entry.outcome==="DISQUALIFICATION"?
-    "the referee disqualified the offending side":
-    "a foreign object decided the contest";
-   return {...base,voice:"THE BACK ROW",mood:"DEBATE",source:"FINISH",priority:94,
-    text:(cheater?cheater+" is going to hear about that one. ":"Not exactly a clean finish. ")+
-     "The official result records "+detail+
-     (winner?", with "+winner+" victorious.":".")};
-  }
-  if(f?.interference?.outcome==="SUCCESS"){
-   return {...base,voice:"TRADE TALK",mood:"DEBATE",source:"FINISH",priority:91,
-    text:"The run-in was recorded as successful in "+contender(entry)+
-     ". That is a protected finish, not a clean sporting decision."};
-  }
-  if(f?.programmeSignal==="PROGRAMME_REPETITION"&&f.linkedProgrammes){
-   return {...base,voice:"PRESS BOX",mood:"DEBATE",source:"RIVALRY",priority:87,
-    text:"The "+(f.linkedProgrammes===1?"rivalry was":"rivalries were")+
-     " part of the booking, but repetition dragged on the crowd response. "+
-     "The next chapter needs to earn its place."};
-  }
-  if(f?.programmeSignal==="HOT_PROGRAMME"&&f.linkedProgrammes&&entry.crowdResponse>=65){
-   return {...base,voice:"TRADE TALK",mood:"BUZZ",source:"RIVALRY",priority:83,
-    text:"A hot programme gave "+contender(entry)+
-     " some welcome heat. That's a storyline doing its job."};
-  }
-  if(rating!==undefined&&rating>=4.25){
-   return {...base,voice:"PRESS BOX",mood:"BUZZ",source:"MATCH",priority:82,
+  if(entry.outcome==="DISQUALIFICATION"||entry.outcome==="FOREIGN_OBJECT")
+   return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
+    text:(f?.finishCheaterName?f.finishCheaterName+" knew exactly what they were doing. ":"Call it dirty if you want. ")+
+     (winner?winner+" got the win. ":"")+
+     "I'm not saying it was fair. I'm saying the argument is half the fun."};
+  if(f?.interference?.outcome==="SUCCESS")
+   return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"FINISH",priority:91,
+    text:"A run-in changed the complexion of "+bout+". Next week someone had better have something to say about that."};
+  if(f?.programmeSignal==="PROGRAMME_REPETITION"&&f.linkedProgrammes)
+   return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"RIVALRY",priority:87,
+    text:"Even a good feud needs a new chapter. "+bout+" is getting awfully familiar. Repetition isn't heat."};
+  if(f?.programmeSignal==="HOT_PROGRAMME"&&f.linkedProgrammes&&entry.crowdResponse>=65)
+   return {...base,voice:"THE RIVALRY ADDICT",mood:"BUZZ",source:"RIVALRY",priority:83,
+    text:"That's the kind of heat that makes a rivalry feel alive. "+bout+" has me invested in what comes next."};
+  if(rating!==undefined&&rating>=4.25)
+   return {...base,voice:"THE TAPE TRADER",mood:"BUZZ",source:"MATCH",priority:82,
     text:pick([
-     "A "+rating.toFixed(2)+"-star contest. "+contender(entry)+
-      " has put down a marker for the match-of-the-year conversation.",
-     "That is "+rating.toFixed(2)+" stars for "+contender(entry)+
-      ". No imaginary play-by-play needed — the work scored for itself.",
+     bout+" was the kind of wrestling worth clearing an evening for. I already want the rematch.",
+     "The little things in "+bout+" were terrific. Wrestling rewards people who actually watch it.",
     ],key,4)};
-  }
-  if(entry.crowdResponse>=82){
-   return {...base,voice:"THE CROWD",mood:"BUZZ",source:"MATCH",priority:73,
+  if(entry.outcome==="SUBMISSION"&&entry.crowdResponse>=65)
+   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"FINISH",priority:80,
+    text:(winner??"The winner")+" forced the submission, and the place came unglued. Sometimes a tap-out says everything."};
+  if(entry.outcome==="FLASH_PIN"&&entry.crowdResponse>=65)
+   return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"FINISH",priority:80,
+    text:"A flash pin in "+bout+"? Blink and you've missed it. The losing side is going to hate that one."};
+  if(entry.crowdResponse>=82)
+   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"MATCH",priority:73,
     text:pick([
-     "The building was loud for "+contender(entry)+". That is the reaction you book for.",
-     contender(entry)+" got the crowd going. Whatever the critical rating, the audience was there.",
+     "The noise during "+bout+" was unreal. I could barely hear myself complain, which is saying something.",
+     bout+" had the whole building on its feet. That's why we buy tickets.",
     ],key,5)};
-  }
-  if(entry.crowdResponse<42){
+  if(entry.crowdResponse<42)
    return {...base,voice:"THE BACK ROW",mood:"COLD",source:"MATCH",priority:63,
     text:pick([
-     "The crowd was a tough sell during "+contender(entry)+
-      ". It never got the reaction the booker wanted.",
-     "You could hear the quiet. "+contender(entry)+" struggled to connect.",
+     "We wanted to care about "+bout+". It never quite hooked the room.",
+     "Bit of a long night for "+bout+". Even the hecklers were running low on material.",
     ],key,6)};
-  }
-  return null;
+  return {...base,voice:"THE BACK ROW",mood:"DEBATE",source:"MATCH",priority:20,
+   text:"Still thinking about "+bout+". There's always one match that divides the car ride home."};
  }
- if(entry.outcome==="REFUSED"||entry.outcome==="INTERRUPTED"){
-  return {...base,voice:"PRESS BOX",mood:"DEBATE",source:"ANGLE",priority:85,
+ if(entry.outcome==="REFUSED"||entry.outcome==="INTERRUPTED")
+  return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"ANGLE",priority:85,
    text:entry.outcome==="REFUSED"?
-    "The planned "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+
-     " was refused. Whatever was advertised, that moment was not performed.":
-    "The "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+
-     " was interrupted before its planned outcome. The original booking is not the completed story."};
- }
+    "That "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+" was refused. That's quite an awkward silence to leave hanging.":
+    "The "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+" was interrupted. Someone definitely owes us a follow-up."};
  if(entry.outcome!=="HAPPENS")return null;
- if(entry.intent==="TURN_OCCURRED"){
-  return {...base,voice:"THE CROWD",mood:"BUZZ",source:"ANGLE",priority:108,
-   text:"A turn actually took place tonight. "+entry.headline+
-    " — and the promotion now owns the follow-through."};
- }
- if(entry.intent==="DEBUT_OCCURRED"){
-  return {...base,voice:"THE BACK ROW",mood:"BUZZ",source:"ANGLE",priority:104,
-   text:"Now THAT is an entrance. The scheduled debut happened, and "+
-    "the response scored "+entry.crowdResponse.toFixed(1)+"/100."};
- }
- if(entry.crowdResponse>=84){
-  return {...base,voice:"THE CROWD",mood:"BUZZ",source:"ANGLE",priority:76,
-   text:pick([
-    "That "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+
-     " really landed. The crowd score says it all.",
-    "A proper crowd-pleaser of a segment. The audience didn't stay quiet.",
-   ],key,7)};
- }
- if(entry.crowdResponse<40){
-  return {...base,voice:"THE BACK ROW",mood:"COLD",source:"ANGLE",priority:58,
-   text:"The "+(entry.segmentKind??"angle").toLowerCase().replaceAll("_"," ")+
-    " was performed, but the crowd was not having it."};
- }
- return null;
+ if(entry.intent==="TURN_OCCURRED")
+  return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:108,
+   text:"That turn! "+entry.headline+". I saw the warning signs and still got caught out."};
+ if(entry.intent==="DEBUT_OCCURRED")
+  return {...base,voice:"THE DIEHARD",mood:"BUZZ",source:"ANGLE",priority:104,
+   text:"A debut worth getting out of your seat for. "+entry.headline+". Now give them something worth doing."};
+ if(entry.crowdResponse>=84)
+  return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:76,
+   text:"That "+(entry.segmentKind??"segment").toLowerCase().replaceAll("_"," ")+" really landed. The reactions were half the show."};
+ if(entry.crowdResponse<40)
+  return {...base,voice:"THE SKEPTICAL SMARK",mood:"COLD",source:"ANGLE",priority:58,
+   text:"Not every idea needs another week of airtime. That "+(entry.segmentKind??"segment").toLowerCase().replaceAll("_"," ")+" struggled."};
+ return {...base,voice:"THE BACK ROW",mood:"DEBATE",source:"ANGLE",priority:18,
+  text:entry.headline+". Half our row loved it, half hated it. That's wrestling for you."};
 }
 /** Most important distinct *recorded* slots; no synthetic accounts, no polling.
  * Caller can click the source slot in the already-loaded broadcast.
  */
 export function showReactionWire(
- show:CompletedShowView,limit=4,
+ show:CompletedShowView,limit=5,
 ):ResultReaction[]{
  if(!Number.isSafeInteger(limit)||limit<0||limit>8)
   throw new Error("Invalid Ringside reaction limit");

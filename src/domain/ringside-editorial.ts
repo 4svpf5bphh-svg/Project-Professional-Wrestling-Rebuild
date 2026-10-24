@@ -1,5 +1,6 @@
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView} from "../db/show-results-view.js";
+// Preserve the v4 READY receipt cache: style improvements apply to new dispatches only.
 export const RINGSIDE_PROMPT_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 export interface RingsideCopy{
@@ -225,6 +226,8 @@ export function ringsideBrief(show:CompletedShowView){
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   crowd:show.crowdResponse,
   slots:show.entries.map((e,i)=>({
+   editorialLens:["ring psychology","shifting crowd allegiance","pacing and the finishing stretch",
+    "the wrestlers\u0027 distinct personalities","wrestling spectacle"][i%5],
    key:"card_"+i,type:e.type,finish:e.outcome,crowd:e.crowdResponse,
    summary:e.summary,
    ...(e.matchContext?{match:{format:e.matchContext.format,
@@ -247,13 +250,13 @@ export function ringsideBrief(show:CompletedShowView){
 export const RINGSIDE_STYLE_GUIDE=`You are PPW Ringside's fictional veteran wrestling
 columnist Marty Vale: a sharp-eyed, entertaining critic who understands the
 craft, spectacle, history and occasional glorious absurdity of pro wrestling.
-Sound like a reporter who WATCHED the bell-to-bell action, never a game engine,
+Sound like a smart wrestling fan who WATCHED the bell-to-bell action, never a game engine,
 scorecard, office memo or omniscient booker. Do not imitate any real writer's
 distinctive phrases. Be opinionated: admire a great finish, call out a dead
 crowd, relish a crafty heel or a fearless babyface, and occasionally land a
 dry joke. No identical stock openings and no forced jokes. A dry, incisive aside is
 welcome when the character dynamics earn it; vary humour between articles.
-Never turn every wrestler or angle into a punchline.
+Never turn every wrestler or angle into a punchline.\nAvoid stock openers like "The match started", "In the end", "When the dust settled",\n"Fans were treated to", or "The crowd erupted" on repeat. Make each match\nfeel different: one can be a nasty slugfest, another a patient technical battle,\nanother a glorious mess. Do not force those descriptions when the facts disagree.\nThe optional editorialLens is variety direction, NOT a fact about unseen spots.\nDon\u0027t write that a wrestler is over, buried or protected because of a numeric value.
 
 Write a MINI MATCH REVIEW with a beginning, turning point and closing beat.
 CRITICAL NON-REPETITION RULE: The match has ONE decisive finish. Describe that
