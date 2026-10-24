@@ -126,3 +126,66 @@
   transform:scale(.96)!important;
  }
 }
+
+/* Booking-only broadcast scale: visible compact graphic first; opt-in enlargement.
+   Keeps match identity and photos without any API or World state change. */
+#game .ppw-card > .ppw-broadcast-preview{position:relative;margin:0 8px 10px;min-width:0}
+#game .ppw-card > .ppw-broadcast-preview > .ppw-match-broadcast{
+ min-height:0;gap:3px;padding:9px 8px 7px;border-radius:7px 12px 7px 7px;
+ box-shadow:0 7px 15px #0006}
+#game .ppw-card .ppw-broadcast-event{font-size:clamp(15px,4vw,19px);
+ line-height:1.05;letter-spacing:-.02em;padding-inline:38px}
+#game .ppw-card .ppw-broadcast-promotion{font-size:9px;line-height:1.05;letter-spacing:.09em}
+#game .ppw-card .ppw-broadcast-brand-mark{display:grid;place-items:center;
+ align-self:center;justify-self:center;margin:0 auto;min-width:0;max-width:110px;
+ padding:1px 5px;font-size:13px;line-height:1.05}
+#game .ppw-card .ppw-broadcast-brand-mark .ppw-broadcast-company-logo{
+ display:block;width:auto;max-width:100px;height:30px;max-height:30px;
+ object-fit:contain;object-position:center;margin:0 auto}
+#game .ppw-card .ppw-broadcast-main,
+#game .ppw-card .ppw-broadcast-championship{font-size:9px;line-height:1.15;
+ letter-spacing:.045em;padding:3px 7px}
+#game .ppw-card .ppw-broadcast-format{font-size:9px;line-height:1.1;letter-spacing:.05em}
+#game .ppw-card .ppw-broadcast-lineup{gap:5px;margin:1px 0 0}
+#game .ppw-card .ppw-broadcast-side{gap:3px}
+#game .ppw-card .ppw-broadcast-portrait{width:clamp(34px,11vw,43px);
+ height:clamp(44px,13vw,54px);border-width:1px;box-shadow:0 2px 6px #0009}
+#game .ppw-card .ppw-broadcast-side-name{font-size:clamp(11px,3vw,14px);
+ line-height:1.1;overflow-wrap:break-word}
+#game .ppw-card .ppw-broadcast-versus{font-size:21px;line-height:1}
+#game .ppw-card .ppw-broadcast-lineup.ppw-broadcast-multi .ppw-broadcast-side{
+ padding:4px 3px;gap:3px}
+#game .ppw-card .ppw-broadcast-battle-label{font-size:clamp(20px,6vw,30px)}
+#game .ppw-card .ppw-broadcast-battle-royal{gap:3px}
+#game .ppw-card .ppw-broadcast-battle-entrants{line-height:1.25;font-size:10px}
+#game .ppw-card .ppw-angle-broadcast-spotlight{min-height:0;gap:5px;
+ padding:2px 24px 0;flex-wrap:nowrap}
+#game .ppw-card .ppw-angle-broadcast-person{gap:3px;flex:1 1 0;
+ max-width:110px;min-width:0}
+#game .ppw-card .ppw-angle-broadcast-placeholder{font-size:16px}
+#game .ppw-card .ppw-broadcast-footer{display:none}
+#game .ppw-card .ppw-broadcast-size-toggle{position:absolute;z-index:4;
+ right:5px;top:4px;display:grid;place-items:center;min-width:44px;
+ min-height:44px;padding:0;background:#11182fc9;border:1px solid #e2c88093;
+ border-radius:9px;color:#ffe9bd;font-size:20px;line-height:1;touch-action:manipulation}
+#game .ppw-card .ppw-broadcast-size-toggle:focus-visible{
+ outline:3px solid #8de5fc;outline-offset:2px}
+#game .ppw-card > .ppw-broadcast-preview.ppw-broadcast-expanded > .ppw-match-broadcast{
+ min-height:185px;gap:9px;padding:16px 13px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-event{
+ font-size:clamp(22px,6vw,34px);padding-inline:38px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-brand-mark .ppw-broadcast-company-logo{
+ max-width:110px;max-height:55px;height:55px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-promotion{font-size:10px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-side-name{font-size:clamp(13px,3.5vw,21px)}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-portrait{
+ width:clamp(52px,15vw,83px);height:clamp(74px,20vw,110px);border-width:2px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-versus{font-size:clamp(27px,10vw,55px)}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-lineup{gap:9px;margin:2px 0 7px}
+#game .ppw-card .ppw-broadcast-expanded .ppw-angle-broadcast-spotlight{
+ min-height:105px;gap:12px;padding:9px 0;flex-wrap:wrap}
+#game .ppw-card .ppw-broadcast-expanded .ppw-broadcast-footer{display:block}
+@media(max-width:360px){
+ #game .ppw-card > .ppw-broadcast-preview{margin-inline:4px}
+ #game .ppw-card .ppw-broadcast-event{padding-inline:36px}
+}

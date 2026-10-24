@@ -60,6 +60,27 @@ test("26 certified weeks: two human bookers retain ownership, authored winners a
     FROM jsonb_to_recordset($2::jsonb) x(id text,promo text,role text)`,
     [world,JSON.stringify(people)]);
   });
+  // One owner's Week 7 card is saved six weeks ahead, retaining an authored finish.
+  // The actual certified World publications must never delete or rewrite it.
+  const futureShow="human-a-show-7",futureMatch="human-a-match-7";
+  const futureCast=ids("human-a").slice(0,2).map(personId=>({
+   personId,contractId:"deal-"+personId
+  }));
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`
+    INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
+     year,week,status,show_day,venue_id)
+    VALUES($1,$2,'human-a',1,7,'DRAFT',1,'arena-a')`,
+    [world,futureShow]);
+   await tx.query(`
+    INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,
+     position,kind,payload)
+    VALUES($1,$2,$3,0,'MATCH',$4::jsonb)`,
+    [world,futureShow,futureMatch,JSON.stringify({
+     matchType:"SINGLES",participants:futureCast,
+     scriptedWinner:"human-a-lead",plannedFinish:"PIN_FALL"
+    })]);
+  });
   const before=await withWorldTransaction(db.pool,tx=>tx.query<{
    person_id:string;in_ring_quality:number;morale:number
   }>(`SELECT person_id,in_ring_quality,morale FROM ppw_people
@@ -78,21 +99,37 @@ test("26 certified weeks: two human bookers retain ownership, authored winners a
      winner:ids(promo)[j]!
     }));
     for(const show of shows){
-     await tx.query(`
-      INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
-       year,week,status,show_day,venue_id)
-      VALUES($1,$2,$3,1,$4,'SUBMITTED',$5,$6)`,
-      [world,show.id,show.promo,week,show.day,show.venue]);
-     const participants=show.participants.map(id=>({
-      personId:id,contractId:"deal-"+id}));
-     await tx.query(`
-      INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,
-       position,kind,payload)
-      VALUES($1,$2,$3,0,'MATCH',$4::jsonb)`,
-      [world,show.id,show.match,JSON.stringify({
-       matchType:"SINGLES",participants,
-       scriptedWinner:show.winner,plannedFinish:"PIN_FALL"
-      })]);
+     const fromAdvancePlanner=week===7&&show.promo==="human-a";
+     if(fromAdvancePlanner){
+      const preserved=await tx.query<{draft_id:string}>(`
+       UPDATE ppw_booking_drafts SET status='SUBMITTED'
+        WHERE world_id=$1 AND draft_id=$2 AND status='DRAFT'
+        RETURNING draft_id`,[world,futureShow]);
+      assert.equal(preserved.length,1,
+       "Week 7 must use the pre-authored draft after six certified publications");
+      const booked=await tx.query<{payload:{scriptedWinner:string}}>(`
+       SELECT payload FROM ppw_card_slots
+        WHERE world_id=$1 AND draft_id=$2 AND slot_id=$3`,
+       [world,futureShow,futureMatch]);
+      assert.equal(booked[0]?.payload.scriptedWinner,show.winner,
+       "Pre-booked winner survives weekly progression unchanged");
+     }else{
+      await tx.query(`
+       INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
+        year,week,status,show_day,venue_id)
+       VALUES($1,$2,$3,1,$4,'SUBMITTED',$5,$6)`,
+       [world,show.id,show.promo,week,show.day,show.venue]);
+      const participants=show.participants.map(id=>({
+       personId:id,contractId:"deal-"+id}));
+      await tx.query(`
+       INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,
+        position,kind,payload)
+       VALUES($1,$2,$3,0,'MATCH',$4::jsonb)`,
+       [world,show.id,show.match,JSON.stringify({
+        matchType:"SINGLES",participants,
+        scriptedWinner:show.winner,plannedFinish:"PIN_FALL"
+       })]);
+     }
      await tx.query(`
       INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,
        resolved_week_index,command_request_id,performers_count,dates_charged,
@@ -136,6 +173,17 @@ test("26 certified weeks: two human bookers retain ownership, authored winners a
     assert.equal(result.status,"APPLIED","Verified week "+week+" must publish once");
     if(i===0)assert.equal((await advanceResolvedWorldWeek(db.pool,input)).status,
      "REPLAYED","An existing receipt cannot publish the same week twice");
+   }
+   if(i===0||i===5){
+    const preserved=await withWorldTransaction(db.pool,tx=>tx.query<{
+     status:string;scripted_winner:string}>(`
+      SELECT d.status,s.payload->>'scriptedWinner' AS scripted_winner
+       FROM ppw_booking_drafts d JOIN ppw_card_slots s
+       ON s.world_id=d.world_id AND s.draft_id=d.draft_id
+       WHERE d.world_id=$1 AND d.draft_id=$2`,
+      [world,futureShow]));
+    assert.deepEqual(preserved,[{status:"DRAFT",scripted_winner:"human-a-lead"}],
+     "Week 7 retains its authored winner and card across certified World publications");
    }
   }
   const state=await withWorldTransaction(db.pool,async tx=>{

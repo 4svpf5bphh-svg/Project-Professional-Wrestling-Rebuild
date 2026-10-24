@@ -9,6 +9,7 @@ import type {previewArchivedShowMatchScoresInTransaction}
 type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
 export interface RecordedMatchReportFact{
  matchId:string;ratingStars:number;executionQuality:number;actualMinutes:number;
+ plannedMinutes?:number;
  chemistryModifier:number;finishCheaterPersonId:string|null;
  linkedProgrammes:number|null;programmeSignal:string|null;
  injuries:{personId:string;severity:string;weeksOut:number}[];
@@ -61,7 +62,8 @@ export function deriveCompletedMatchReportFacts(
    executionQuality:score.executionQuality,
    chemistryModifier:p.chemistryModifier,
    finishCheaterPersonId:recordedCheater,
-   actualMinutes:score.actualLengthMinutes,injuries:verified,
+   actualMinutes:score.actualLengthMinutes,plannedMinutes:p.plannedMinutes,
+   injuries:verified,
    linkedProgrammes:storyline?.linkedActiveProgrammeCount??null,
    programmeSignal:storyline?.reason??null};
  });

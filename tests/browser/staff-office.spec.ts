@@ -64,7 +64,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page).toHaveURL(/#\/roster$/);
 });
 
-test("320px iPhone Staff Market uses two accessible rows of four departments",async({page})=>{
+test("320px iPhone Staff Market uses four readable rows of two departments",async({page})=>{
  await page.setViewportSize({width:320,height:720});
  const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
@@ -85,9 +85,54 @@ test("320px iPhone Staff Market uses two accessible rows of four departments",as
  const boxes=await tabs.evaluateAll(els=>els.map(el=>{
   const box=el.getBoundingClientRect();return {top:Math.round(box.top),height:box.height,width:box.width};
  }));
- expect(new Set(boxes.map(b=>b.top)).size).toBe(2);
- expect(boxes.every(b=>b.height>=44&&b.width>=50)).toBe(true);
+ expect(new Set(boxes.map(b=>b.top)).size).toBe(4);
+ expect(boxes.every(b=>b.height>=44&&b.width>=110)).toBe(true);
+ const readability=await tabs.evaluateAll(els=>els.map(el=>{
+  const style=getComputedStyle(el);
+  return {text:el.textContent,break:style.wordBreak,wrap:style.overflowWrap,
+   width:el.clientWidth,scroll:el.scrollWidth};
+ }));
+ expect(readability.filter(m=>m.break!=="normal"||m.wrap!=="normal"||
+  m.scroll>m.width+1),"Department labels should never split or overflow")
+  .toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  await tabs.nth(7).click();
  await expect(tabs.nth(7)).toHaveAttribute("aria-pressed","true");
+});
+
+test("Gorilla policy is saved with actor-scoped World revision on a 320px iPhone, without going live",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ let revision=4,policy="STICK_TO_CARD";
+ const overview={world:{revision,name:"Genesis",year:1,week:5,phase:"OPEN",
+  nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+  membership:"ACTIVE",promotion:{id:"local",name:"Local Wrestling",
+   tier:"LOCAL",cash:200000,debt:0}};
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"genesis",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const body=route.request().postDataJSON();
+  if(body.method==="setGorillaPolicy"){
+   expect(body.policy).toBe("FOLLOW_THE_CROWD");
+   expect(body.expectedRevision).toBe(4);
+   expect(body.worldId).toBe("genesis");
+   expect(body.promotionId).toBe("local");
+   policy=body.policy;revision++;
+   return route.fulfill({json:{status:"APPLIED",revision,result:{policy}}});
+  }
+  return route.fulfill({json:{year:1,week:5,worldRevision:revision,canEdit:true,
+   gorillaPolicy:policy,allowUnfinishedFallback:false,autoRenewSameTerms:false,
+   allowLogisticsFallback:false,permittedDays:[],permittedVenueIds:[],
+   lockedLogisticsDelegated:false,talentManager:null,availableManagers:[],
+   weeklyPayroll:0,promotionCash:200000,venues:[],employees:[],market:[],
+   employmentHistory:[],notices:[]}}); 
+ });
+ await page.goto("/#/staff");
+ await expect(page.getByRole("heading",{name:"Showtime instructions"})).toBeVisible();
+ const follow=page.getByRole("button",{name:"Follow the crowd"});
+ await follow.click();
+ await expect(follow).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"Save Gorilla instructions"}).click();
+ await expect(page.getByText(/Gorilla instructions saved before World Lock/)).toBeVisible();
+ await expect(follow).toHaveAttribute("aria-pressed","true");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });

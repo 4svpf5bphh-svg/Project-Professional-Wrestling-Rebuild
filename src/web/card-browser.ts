@@ -19,9 +19,11 @@ import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
 import {mountBusinessDesk,type BusinessPort} from "../ui/business-desk.js";
 import {mountStaffDesk,type StaffPort} from "../ui/staff-desk.js";
+import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
 import "../ui/industry-world-hub.css";
 import "../ui/staff-desk.css";
+import "../ui/gorilla-desk.css";
 import "../ui/business-desk.css";
 import type {DirectoryFilter,DirectoryView} from "../db/wrestler-directory.js";
 import "../ui/roster-market.css";
@@ -210,9 +212,15 @@ function staffPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):StaffPort{
  return {load:()=>call("staff"),
   save:input=>call("setStaffContinuity",input),
+  saveGorilla:input=>call("setGorillaPolicy",input),
   hire:input=>call("hireStaff",input),
   release:input=>call("releaseStaff",input),
   renew:input=>call("renewStaff",input),
+  openGorilla:()=>mountGorillaDesk(root,{
+   load:()=>call("gorillaWorkspace"),
+   save:input=>call("saveGorillaShow",{...input,targetShowId:input.showId}),
+   back:()=>mountStaffDesk(root,staffPort(root,scope,call))
+  }),
   openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
   openRoster:()=>{window.location.hash=hostSectionHash("roster");},
   openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},

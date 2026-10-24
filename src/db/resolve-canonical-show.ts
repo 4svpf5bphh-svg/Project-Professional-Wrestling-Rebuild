@@ -27,6 +27,7 @@ import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 import {deriveCompletedMatchReportFacts} from "./record-match-report-facts.js";
 import {recordRoadAgentReport} from "./road-agent-report.js";
+import {calculateGorillaShow,recordGorillaShow} from "./gorilla-position.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
  year:number;week:number;resolutionId:string;
@@ -56,6 +57,9 @@ export async function resolveCanonicalShow(
    throw new Error("Canonical show week differs from World resolution");
   const segments=await readCanonicalSegmentContextsInTransaction(tx,input);
   const completed=assembleArchivedShowResolution(projection,segments,input.resolutionId);
+  const facts=deriveCompletedMatchReportFacts(projection);
+  const gorilla=await calculateGorillaShow(tx,world[0]!.seed,completed.receipt,facts);
+  const receipt=gorilla?{...completed.receipt,crowdResponse:gorilla.crowdAfter}:completed.receipt;
   const stories=segments.map(({segment,performers})=>{
    const names=new Map(performers.map(p=>[p.personId,p.name??p.personId]));
    const story=describeAuthoredSegment(segment,names);
@@ -63,22 +67,22 @@ export async function resolveCanonicalShow(
    return {...story,intent};
   });
   const recorded=await recordCompletedShowInTransaction(
-   tx,completed.receipt,completed.evidence,stories);
+   tx,receipt,completed.evidence,stories);
   if(recorded==="RECORDED"){
    // One immutable batch in the same World transaction as completed results.
    const certifiedInjuries=await recordCompletedMatchReportFactsInTransaction(tx,projection);
-   await recordRoadAgentReport(tx,world[0]!.seed,completed.receipt,
-    deriveCompletedMatchReportFacts(projection));
+   await recordRoadAgentReport(tx,world[0]!.seed,receipt,facts);
+   if(gorilla)await recordGorillaShow(tx,receipt,gorilla);
    await settleCompletedProgrammeHistory(tx,{
     ...input,eventImportance:projection.eventImportance,
     matches:projection.projections.map(p=>({
      slotId:p.slotId,executionQuality:p.score.executionQuality})),
-   },completed.receipt);
+   },receipt);
    await settleCanonicalAuthoredTurns(tx,input,segments);
    if(projection.titleBookings.length)
-    await settleCanonicalSinglesTitleContests(tx,completed.receipt,projection.titleBookings);
+    await settleCanonicalSinglesTitleContests(tx,receipt,projection.titleBookings);
    if(projection.tagTitleBookings.length)
-    await settleCanonicalTagTitleContests(tx,completed.receipt,projection.tagTitleBookings);
+    await settleCanonicalTagTitleContests(tx,receipt,projection.tagTitleBookings);
    await settleCanonicalTagCareerConsequences(tx,projection);
    await settleMultiIndividualCareerConsequences(tx,projection);
    await settleWorkingPartnerships(tx,{

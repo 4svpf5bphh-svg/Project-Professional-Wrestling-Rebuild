@@ -29,6 +29,9 @@ import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../db
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
+import {setGorillaPolicy,type GorillaPolicyInput} from "../db/gorilla-position.js";
+import {readGorillaWorkspace,saveGorillaShowInstructions,
+ type SaveGorillaShowInput} from "../db/gorilla-workspace.js";
 import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
@@ -187,6 +190,24 @@ export async function staffWorkspaceAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readStaffWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+export async function gorillaWorkspaceAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readGorillaWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function saveGorillaShowAsActor(context:WorldApiContext,
+ input:Omit<SaveGorillaShowInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.showId,"show");
+ return saveGorillaShowInstructions(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function setGorillaPolicyAsActor(context:WorldApiContext,
+ input:Omit<GorillaPolicyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return setGorillaPolicy(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function hireTalentManagerAsActor(context:WorldApiContext,
  input:Omit<StaffEmploymentInput,"playerId">&{staffId:string}){

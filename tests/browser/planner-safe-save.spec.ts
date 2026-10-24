@@ -156,6 +156,23 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  await expect(page.locator(".ppw-card-show-location").getByText("Town Hall")).toBeVisible();
  await expect(page.locator(".ppw-match-broadcast")).toHaveCount(2);
  await expect(page.locator(".ppw-broadcast-preview summary")).toHaveCount(0);
+ // Presentation controls must not issue a save or obscure the card.
+ const artwork=page.locator(".ppw-card > .ppw-broadcast-preview").first();
+ const compact=await artwork.locator(".ppw-match-broadcast").evaluate(node=>
+  node.getBoundingClientRect().height);
+ expect(compact).toBeLessThan(185);
+ const centring=await artwork.evaluate(node=>{
+  const box=node.querySelector(".ppw-match-broadcast")!.getBoundingClientRect();
+  const logo=node.querySelector(".ppw-broadcast-brand-mark")!.getBoundingClientRect();
+  return Math.abs(box.left+box.width/2-logo.left-logo.width/2);
+ });
+ expect(centring).toBeLessThan(2);
+ await artwork.getByRole("button",{name:"Expand match graphic"}).click();
+ const large=await artwork.locator(".ppw-match-broadcast").evaluate(node=>
+  node.getBoundingClientRect().height);
+ expect(large).toBeGreaterThan(compact+25);
+ await artwork.getByRole("button",{name:"Compact match graphic"}).click();
+ await expect(artwork).not.toHaveClass(/ppw-broadcast-expanded/);
  await page.locator(".ppw-card-grip").first().press("ArrowDown");
  await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
  await page.getByRole("button",{name:"Save changes"}).click();

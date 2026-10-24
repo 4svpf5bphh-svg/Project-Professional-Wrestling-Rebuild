@@ -29,6 +29,23 @@ export function projectMatchGraphic(match:EditorMatch,
 const span=(cls:string,value:string)=>{
  const el=document.createElement("span");el.className=cls;el.textContent=value;return el;
 };
+/** Presentation-only control: the booking data and authored result never change. */
+function allowExpandedGraphic(holder:HTMLElement,kind:"match"|"angle"){
+ const toggle=document.createElement("button");
+ toggle.type="button";
+ toggle.className="ppw-broadcast-size-toggle";
+ const set=(expanded:boolean)=>{
+  holder.classList.toggle("ppw-broadcast-expanded",expanded);
+  toggle.textContent=expanded?"↙":"↗";
+  toggle.title=expanded?"Compact graphic":"Expand graphic";
+  toggle.setAttribute("aria-label",(expanded?"Compact ":"Expand ")+kind+" graphic");
+  toggle.setAttribute("aria-pressed",String(expanded));
+ };
+ set(false);
+ toggle.onclick=event=>{event.stopPropagation();
+  set(!holder.classList.contains("ppw-broadcast-expanded"));};
+ holder.append(toggle);return holder;
+}
 export function createMatchBroadcast(match:EditorMatch,
  nameFor:(person:PersonPick)=>string,titles:readonly Title[],
  context:{show:string;promotion:string;mainEvent:boolean;premium:boolean}):HTMLElement{
@@ -90,7 +107,7 @@ export function createMatchBroadcast(match:EditorMatch,
   info.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
  holder.append(board);
  }
- return holder;
+ return allowExpandedGraphic(holder,"match");
 }
 /** The same broadcast art system for angles, without placeholder asset packs. */
 export function createAngleBroadcast(segment:EditorSegment,
@@ -127,5 +144,5 @@ export function createAngleBroadcast(segment:EditorSegment,
  if(!booked.length)headline.append(span("ppw-angle-broadcast-placeholder","CAST TO BE ANNOUNCED"));
  board.append(headline,span("ppw-broadcast-footer",
   context.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
- frame.append(board);return frame;
+ frame.append(board);return allowExpandedGraphic(frame,"angle");
 }

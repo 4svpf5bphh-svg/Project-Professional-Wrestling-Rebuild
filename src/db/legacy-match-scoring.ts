@@ -255,7 +255,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
         const winningIndex=layout.sides.findIndex(x=>
          x.sideId===layout.scriptedWinnerSide);
         return {multi:{layout,result},tag:null,
-         slotId:slot.slot_id,position:slot.position,
+         slotId:slot.slot_id,position:slot.position,plannedMinutes:length,
          winnerId:ids[winningIndex]!,
          personIds:[ids[0]!,ids[1]!] as [string,string],
          plannedFinish:finish as "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
@@ -334,6 +334,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
             presentation:profile.presentation}:null,
         });
         return {multi:null,tag:{layout,result},slotId:slot.slot_id,position:slot.position,
+          plannedMinutes:length,
           winnerId:result.injury.plannedWinnerId,
           personIds:[layout.sides[0]!.participants[0]!.personId,
             layout.sides[1]!.participants[0]!.personId] as [string,string],
@@ -396,7 +397,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
           injury:injuryPreview!,final:interferencePreview,
           mediaReach:mediaReach!,isMainEvent:index===matches.length-1,
         }):null;
-      return {multi:null,tag:null,slotId:slot.slot_id,position:slot.position,winnerId:match.winnerId,
+      return {multi:null,tag:null,slotId:slot.slot_id,position:slot.position,
+        plannedMinutes:match.plannedLengthMinutes,winnerId:match.winnerId,
         personIds:match.personIds,finishCheaterId:match.finishCheaterId,
         plannedFinish:match.plannedFinish,readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};

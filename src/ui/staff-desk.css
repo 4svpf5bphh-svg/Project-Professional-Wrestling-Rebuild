@@ -68,17 +68,18 @@
 .ppw-staff-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;width:100%}
 .ppw-staff-actions button{font-size:12px;min-height:36px}
 .ppw-staff-buyout{width:100%;color:#f8ca91;font-size:12px;font-weight:800}
-.ppw-staff-departments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- gap:8px;margin:10px 0 17px;min-width:0}
-.ppw-staff-departments button{min-width:0;min-height:52px;padding:8px 4px;
- white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:clamp(10px,2.6vw,13px);
+.ppw-staff-departments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;margin:10px 0 17px;min-width:0}
+.ppw-staff-departments button{min-width:0;min-height:52px;padding:10px 9px;
+ white-space:normal;overflow-wrap:normal;word-break:normal;hyphens:none;
+ line-height:1.25;font-size:13px;font-weight:750;text-wrap:balance;
  border-radius:10px;border:1px solid #527e9d;
  background:linear-gradient(145deg,#203f62,#162b4a)}
 .ppw-staff-departments button[aria-pressed=true]{background:linear-gradient(145deg,#347cac,#5755a6);
  border-color:#b7edfb;box-shadow:inset 0 0 0 1px #b7edfb,0 0 17px #46bbef33}
 .ppw-staff-departments button:focus-visible{outline:3px solid #ffe18f;outline-offset:2px}
-@media(min-width:740px){.ppw-staff-departments{grid-template-columns:repeat(8,minmax(0,1fr))}
- .ppw-staff-departments button{min-height:51px;padding:9px 5px}}
+@media(min-width:700px){.ppw-staff-departments{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .ppw-staff-departments button{min-height:52px;padding:10px 8px}}
 .ppw-staff-term-options{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:13px}
 .ppw-staff-term,.ppw-staff-salary{background:#0e2034;color:white;
  border:1px solid #56869d;border-radius:9px;padding:8px;min-height:41px}
@@ -113,3 +114,32 @@
 .ppw-staff-conversation{margin:9px 0;border-radius:10px;
  border:1px solid #47728c;background:#102d44}
 .ppw-staff-conversation p{padding:0 12px 10px;margin:0;color:#eaf7fc}
+
+/* The global mobile PWA has a broad overflow-wrap rule on controls;
+   department names must use whole-word wrapping, without iPhone hyphenation. */
+#game .ppw-staff-market .ppw-staff-departments > button{
+ overflow-wrap:normal!important;word-break:normal!important;
+ hyphens:none!important;white-space:normal!important;
+ text-wrap:balance;min-width:0;max-width:100%;
+}
+
+/* Even the unbreakable twelve-character 'Commentator' fits at 320px. */
+@media(max-width:390px){
+ #game .ppw-staff-market .ppw-staff-departments > button{
+  padding-inline:4px;letter-spacing:-.012em;
+ }
+}
+
+/* A readable two-column standing-policy selector, without an extra nav root. */
+.ppw-gorilla-policy{background:radial-gradient(circle at 100% 0,#2680aa33,transparent 60%),#122940}
+.ppw-gorilla-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:14px 0;min-width:0}
+.ppw-gorilla-choices .ppw-staff-button{min-width:0;padding:11px 7px;
+ font-size:13px;line-height:1.25;white-space:normal;overflow-wrap:normal;
+ word-break:normal;hyphens:none;text-wrap:balance}
+.ppw-gorilla-choices [aria-pressed=true]{border-color:#bef6ff;
+ background:linear-gradient(125deg,#28819e,#4b539e);
+ box-shadow:inset 0 0 0 1px #bef6ff}
+.ppw-gorilla-choices .ppw-staff-button:focus-visible{
+ outline:3px solid #ffe18f;outline-offset:2px}
+@media(min-width:700px){.ppw-gorilla-choices{grid-template-columns:repeat(4,minmax(0,1fr))}}
