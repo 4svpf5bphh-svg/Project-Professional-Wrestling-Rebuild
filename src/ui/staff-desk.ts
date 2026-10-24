@@ -17,7 +17,7 @@ export interface StaffPort{
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  renew(input:{requestId:string;expectedRevision:number;employmentId:string;
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
- openContracts?():void;openProgrammes?():void;openRoster?():void;back?():void;
+ openContracts?():void;openProgrammes?():void;openRoster?():void;openGorilla?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -182,6 +182,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    }
    gorilla.append(choices,button("Save Gorilla instructions",
     ()=>void saveGorilla(),!view.canEdit||saving));
+   if(port.openGorilla)gorilla.append(button("Prepare individual match contingencies →",
+    ()=>port.openGorilla?.(),saving));
    if(!view.employees.some(e=>e.role==="ROAD_AGENT"))
     gorilla.append(el("p","ppw-staff-muted",
      "Basic house cover protects the script. Hire a Road Agent to delegate competent on-air adaptations."));
