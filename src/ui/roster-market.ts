@@ -11,6 +11,7 @@ export interface RosterMarketPort{
  offer(input:{personId:string;requestId:string;expectedRevision:number;
   terms:OfferTerms}):Promise<unknown>;
  openContracts():void;openTagTeams():void;openStables():void;
+ openChampionships():void;
  openWrestler(personId:string,origin:DirectoryView):void;
  openBusiness?():void;
  openStaff?():void;
@@ -170,6 +171,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    singles.setAttribute("aria-current","page");
    singles.setAttribute("aria-label","Singles roster");
    sections.append(singles,
+    btn("My Champions",port.openChampionships),
     btn("Tag Teams",port.openTagTeams),
     btn("Stables",port.openStables));
    const trios=btn("Trios · not formed yet",()=>{},true);

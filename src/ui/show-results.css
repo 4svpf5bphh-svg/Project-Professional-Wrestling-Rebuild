@@ -198,3 +198,17 @@
 .ppw-staff-show-report h2{font-size:16px;letter-spacing:.045em;margin:9px 0}
 .ppw-staff-show-report h3{font-size:18px;line-height:1.25;color:#80dcec}
 .ppw-staff-show-report p{line-height:1.5;font-size:14px;color:#d5e7f1;margin:10px 0}
+
+/* The news story leads, never the diagnostic scorecard. */
+.ppw-result-lead{font-size:clamp(17px,4.6vw,24px);font-weight:900;
+ color:#fff2cf;line-height:1.22;max-width:38ch;margin:10px 0 0}
+.ppw-results-analysis{border:1px solid #3b5672;background:#101d33;
+ border-radius:15px;padding:12px;margin:17px 0}
+.ppw-results-analysis>summary{cursor:pointer;min-height:44px;display:flex;
+ align-items:center;font-size:13px;font-weight:850;letter-spacing:.05em}
+.ppw-results-analysis-stats{display:flex;gap:14px;flex-wrap:wrap;
+ align-items:center;margin:10px 0}
+.ppw-results-analysis .ppw-crowd-flow{margin:12px 0}
+.ppw-crowd-noise-card{min-height:76px}
+@media(max-width:390px){.ppw-result-lead{font-size:18px}
+ .ppw-results-analysis-stats{display:grid;gap:8px}}

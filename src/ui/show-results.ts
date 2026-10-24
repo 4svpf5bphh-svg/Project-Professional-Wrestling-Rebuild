@@ -75,13 +75,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const scoreWrap=node("div","ppw-result-score-wrap");
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
   node("span","ppw-result-score-label","CROWD / 100"));
- append(header,append(node("div","ppw-result-hero-main"),titleWrap,scoreWrap));
+ append(header,append(node("div","ppw-result-hero-main"),titleWrap));
+ const firstMoment=showBroadcastHighlights(show.entries)[0];
+ if(firstMoment)header.append(node("p","ppw-result-lead",firstMoment.headline));
  const pulseRow=node("div","ppw-result-pulse");
  append(pulseRow,
   metric(String(show.matchCount),"MATCHES"),
   metric(String(show.angleCount),"ANGLES"),
   metric(String(pulse.hotMoments),"HOT MOMENTS"));
- append(header,pulseRow);
+ // Verified operational numbers live in optional manager analysis, not the headline.
  const flowScores=showCrowdFlow(show);
  const crowdFlow=node("section","ppw-crowd-flow");
  if(flowScores.length>=2){
@@ -130,10 +132,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const reactions=showReactionWire(show);
  const noise=node("section","ppw-crowd-noise");
  if(reactions.length){
-  append(noise,node("span","ppw-eyebrow","PPW / CROWD NOISE"),
+  append(noise,node("span","ppw-eyebrow","PPW / FICTIONAL FAN REACTIONS"),
    node("h2","ppw-crowd-noise-title","THE NOISE AFTER THE BELL"),
    node("p","ppw-crowd-noise-disclaimer",
-    "Generated ringside reactions based on recorded results — editorial flavour, not actual fan posts."));
+    "Fictional in-World fan chatter inspired by the completed show. Not real posts or accounts."));
   const wall=node("div","ppw-crowd-noise-wall");
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
@@ -306,8 +308,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    "Verified broadcast recovery: +"+gorilla.crowdAdjustment.toFixed(1)+
    " to the show's crowd response. Match winners and ratings did not change."));
  }
- root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
-  feature,...(position?[position]:[]),...(office?[office]:[]),timeline);
+ const analysis=document.createElement("details");
+ analysis.className="ppw-results-analysis";
+ analysis.append(node("summary","","MANAGER ANALYSIS · Audience & production"));
+ const stats=node("div","ppw-results-analysis-stats");
+ stats.append(scoreWrap,pulseRow);analysis.append(stats);
+ if(flowScores.length>=2)analysis.append(crowdFlow);
+ root.replaceChildren(header,...(featured.length?[highlights]:[]),
+  feature,timeline,...(reactions.length?[noise]:[]),
+  ...(office?[office]:[]),...(position?[position]:[]),analysis);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

@@ -513,6 +513,7 @@ export function mountPersonaDesk(root:HTMLElement,
      item.append(el("strong","",p.label),el("small","",p.familyLabel),
       el("span","",p.description));
      if(chosen===p.id)item.classList.add("ppw-persona-selected");
+     item.setAttribute("aria-pressed",String(chosen===p.id));
      item.title=p.description;options.append(item);
     }
     if(!matches.length)options.append(el("p","ppw-muted","No matching gimmicks."));
@@ -521,11 +522,15 @@ export function mountPersonaDesk(root:HTMLElement,
    // on every keystroke dismisses the keyboard in iPhone standalone PWAs.
    filter.oninput=()=>{search=filter.value;refreshOptions();};
    chat.append(filter);
+   const pitch=el("div","ppw-gimmick-pitch-controls");
+   pitch.append(el("span","ppw-gimmick-pick-name",
+    chosen?"Pitch: "+(availableArchetypes.find(x=>x.id===chosen)?.label??"Selected"):
+     "Choose a character below"));
+   const send=button(loading?"Asking wrestler…":"Suggest gimmick →",()=>{
+    void request();},loading||!chosen);
+   send.classList.add("ppw-gimmick-submit");pitch.append(send);
+   chat.append(pitch);
    refreshOptions();chat.append(options);
-   if(chosen)chat.append(el("p","ppw-muted",
-    "Selected · "+availableArchetypes.find(x=>x.id===chosen)?.label));
-   chat.append(button(loading?"Asking wrestler…":"Suggest gimmick",()=>{
-    void request();},loading||!chosen));
   }
   root.append(chat);
   requestAnimationFrame(()=>{
