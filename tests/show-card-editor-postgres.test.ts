@@ -224,6 +224,38 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     matches:[{slotId:"main",payload:raw}],segments:[],runningOrder:["main"]});
    assert.equal(remove.status,"APPLIED");
    assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,[]);
+
+   // World is Week 3 with NO Week 3 show. Saved Week 4/5 shows remain
+   // individually editable and cannot leak into a rival controller's desk.
+   await withWorldTransaction(db.pool,async tx=>{
+    await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[world]);
+    await tx.query(`INSERT INTO ppw_booking_drafts
+      (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class)
+      VALUES($1,'future-4',$2,1,4,'DRAFT',5,'hall','home','REGULAR'),
+      ($1,'future-5',$2,1,5,'DRAFT',5,'hall','home','REGULAR'),
+      ($1,'future-10',$2,1,10,'DRAFT',5,'hall','home','REGULAR')`,
+      [world,promotion]);
+   });
+   for(const [future,revision] of [["future-4",7],["future-5",8]] as const){
+    const editable=await showCardEditorAsActor(context,world,promotion,future);
+    assert.equal(editable.canEdit,true);
+    assert.equal(editable.week,future==="future-4"?4:5);
+    const savedFuture=await saveCardEditorAsActor(context,{...identity,
+     showId:future,requestId:"save-"+future,expectedRevision:revision,
+     matches:[{slotId:"headline",payload:raw}],runningOrder:["headline"]});
+    assert.equal(savedFuture.status,"APPLIED");
+    const reloaded=await showCardEditorAsActor(context,world,promotion,future);
+    assert.equal(reloaded.slots.length,1);
+    assert.equal((reloaded.slots[0]!.payload as typeof raw).scriptedWinnerSide,
+     raw.scriptedWinnerSide);
+    await assert.rejects(showCardEditorAsActor(foreign,world,promotion,future),/not accessible/);
+   }
+   const tooDistant=await showCardEditorAsActor(context,world,promotion,"future-10");
+   assert.equal(tooDistant.canEdit,false);
+   await assert.rejects(saveCardEditorAsActor(context,{...identity,
+    showId:"future-10",requestId:"too-distant",expectedRevision:9,
+    matches:[{slotId:"headline",payload:raw}],runningOrder:["headline"]}),
+    /advance booking window/);
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
     for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
