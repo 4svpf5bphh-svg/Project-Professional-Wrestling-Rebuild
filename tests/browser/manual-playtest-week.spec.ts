@@ -79,3 +79,33 @@ test("one press automatically finishes multiple certified batches",async({page})
  await expect(page.getByText(/next playable week is ready/)).toBeVisible();
  expect(batches).toBe(2);
 });
+
+test("Home offers the same one-tap solo week advance without entering Admin",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let batches=0;
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"world-20261017",playerId:"owner",csrfToken:"csrf",
+  overview:{world,membership:"ACTIVE",promotion},availablePromotions:[],
+  canManualAdvance:true
+ }}));
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  world,membership:"ACTIVE",promotion
+ }}));
+ await page.route("**/api/playtest-week",route=>{
+  expect(route.request().postDataJSON()).toMatchObject({
+   confirm:"ADVANCE_SHARED_WORLD",year:1,week:1
+  });
+  batches++;
+  return route.fulfill({json:batches===1?{
+   status:"LIMIT_REACHED",steps:[{action:"ASSESS_CONTINUITY",status:"EXECUTED"}],blockers:[]
+  }:{status:"PUBLISHED",steps:[{action:"PUBLISH_WEEK",status:"EXECUTED"}],blockers:[]}});
+ });
+ await page.goto("/#/home");
+ const action=page.getByRole("button",{name:"Advance Week 1"});
+ await expect(action).toBeVisible();
+ page.once("dialog",dialog=>dialog.accept());
+ await action.click();
+ await expect.poll(()=>batches).toBe(2);
+ await expect(page.getByText(/One tap advances the shared World/)).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
