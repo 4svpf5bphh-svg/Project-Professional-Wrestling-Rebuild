@@ -29,6 +29,7 @@ import {dismissResolvedOfferAttention,dismissResolvedAttentionBatch} from "../db
 import { listAvailablePromotions } from "../db/available-promotions.js";
 import {setStaffContinuity} from "../db/staff-continuity.js";
 import {readStaffWorkspace} from "../db/staff-workspace.js";
+import {setGorillaPolicy,type GorillaPolicyInput} from "../db/gorilla-position.js";
 import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
@@ -187,6 +188,12 @@ export async function staffWorkspaceAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readStaffWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+export async function setGorillaPolicyAsActor(context:WorldApiContext,
+ input:Omit<GorillaPolicyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return setGorillaPolicy(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function hireTalentManagerAsActor(context:WorldApiContext,
  input:Omit<StaffEmploymentInput,"playerId">&{staffId:string}){

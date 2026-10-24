@@ -210,6 +210,7 @@ function staffPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):StaffPort{
  return {load:()=>call("staff"),
   save:input=>call("setStaffContinuity",input),
+  saveGorilla:input=>call("setGorillaPolicy",input),
   hire:input=>call("hireStaff",input),
   release:input=>call("releaseStaff",input),
   renew:input=>call("renewStaff",input),

@@ -3,7 +3,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
+ staffWorkspaceAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -172,6 +172,12 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   worldId,promotionId,requestId,expectedRevision,staffId:id("staffId")});
  if(method==="releaseTalentManager")return releaseTalentManagerAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,employmentId:id("employmentId")});
+ if(method==="setGorillaPolicy"){
+  if(!["STICK_TO_CARD","USE_JUDGEMENT","FOLLOW_THE_CROWD","PROTECT_KEY_PLANS"].includes(String(p.policy)))
+   throw new Error("Invalid Gorilla policy");
+  return setGorillaPolicyAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,policy:p.policy as import("../domain/gorilla-position.js").GorillaPolicy});
+ }
  if(method==="setStaffContinuity"){
   const fallback=p.allowUnfinishedFallback,logistics=p.allowLogisticsFallback;
   const renew=p.autoRenewSameTerms;

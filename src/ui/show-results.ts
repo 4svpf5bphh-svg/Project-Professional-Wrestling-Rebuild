@@ -282,8 +282,32 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    node("p","",report.concern),
    node("p","",report.recommendation));
  }
+ const gorilla=show.gorillaLog;
+ const position=gorilla?node("section","ppw-staff-show-report ppw-gorilla-log"):null;
+ if(position&&gorilla){
+  append(position,node("span","ppw-eyebrow","PPW / GORILLA POSITION"),
+   node("h2","","AT THE CURTAIN"),
+   node("p","",gorilla.staffName+" · "+
+    gorilla.policy.replaceAll("_"," ").toLowerCase()),
+   node("p","","Scripted winners, finishes and medical evidence were protected."));
+  if(!gorilla.incidents.length)position.append(node("p","",
+   "No exceptional production incident required a change of plan."));
+  for(const incident of gorilla.incidents.slice(0,12)){
+   const line=node("article","ppw-gorilla-incident");
+   line.append(node("strong","",incident.kind.replaceAll("_"," ")+
+    " · Card "+(incident.position+1)),
+    node("p","",incident.evidence),
+    node("p","",incident.choice.replaceAll("_"," ")+": "+incident.reason));
+   position.append(line);
+  }
+  if(gorilla.incidents.length>12)position.append(node("p","ppw-muted",
+   "Additional production incidents remain in the official show log."));
+  if(gorilla.crowdAdjustment>0)position.append(node("p","",
+   "Verified broadcast recovery: +"+gorilla.crowdAdjustment.toFixed(1)+
+   " to the show's crowd response. Match winners and ratings did not change."));
+ }
  root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
-  feature,...(office?[office]:[]),timeline);
+  feature,...(position?[position]:[]),...(office?[office]:[]),timeline);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

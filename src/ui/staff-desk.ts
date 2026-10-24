@@ -3,9 +3,11 @@
  */
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
+import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
+ saveGorilla?(input:{requestId:string;expectedRevision:number;policy:GorillaPolicy}):Promise<unknown>;
  save(input:{requestId:string;expectedRevision:number;
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
   autoRenewSameTerms:boolean;
@@ -31,12 +33,14 @@ const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","S
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let view:StaffView|null=null,loading=false,saving=false,error="",notice="";
  let fallback=false,logistics=false,autoRenew=false;
+ let gorillaPolicy:GorillaPolicy="STICK_TO_CARD";
  let days=new Set<number>(),venues=new Set<string>(),requestId="";
  let department:StaffRole="ROAD_AGENT",termWeeks:52|104=52;
  let confirming="",renewing="";
  const offers=new Map<string,number>();
  const hydrate=(v:StaffView)=>{
   view=v;fallback=v.allowUnfinishedFallback;logistics=v.allowLogisticsFallback;
+  gorillaPolicy=v.gorillaPolicy??"STICK_TO_CARD";
   autoRenew=v.autoRenewSameTerms;days=new Set(v.permittedDays);
   venues=new Set(v.permittedVenueIds);
  };
@@ -86,6 +90,18 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    hydrate(await port.load());requestId="";
    notice="Staff instructions saved.";
   }catch(e){error=e instanceof Error?e.message:"Staff permissions could not be saved";}
+  finally{saving=false;render();}
+ }
+ async function saveGorilla(){
+  if(!view?.canEdit||saving||!port.saveGorilla)return;
+  const requestId=crypto.randomUUID(),expectedRevision=view.worldRevision;
+  saving=true;error="";notice="";render();
+  try{
+   const result=await port.saveGorilla({requestId,expectedRevision,policy:gorillaPolicy});
+   if((result as {status?:string})?.status==="STALE")
+    throw new Error("Gorilla instructions changed. Reload before deciding.");
+   hydrate(await port.load());notice="Gorilla instructions saved before World Lock.";
+  }catch(e){error=e instanceof Error?e.message:"Unable to save Gorilla instructions";}
   finally{saving=false;render();}
  }
  function toggle(text:string,desc:string,checked:boolean,
@@ -146,6 +162,31 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    overview.append(notes);
   }
   root.append(overview);
+  if(port.saveGorilla){
+   const gorilla=el("section","ppw-staff-panel ppw-gorilla-policy");
+   gorilla.append(el("span","ppw-staff-kicker","GORILLA POSITION"),
+    el("h2","","Showtime instructions"),
+    el("p","ppw-staff-muted",
+     "Choose your standing instruction before the one World Lock. Your Road Agent can respond to verified crowd, medical or timing incidents; scripted winners and finishes never change."));
+   const choices=el("div","ppw-gorilla-choices");
+   choices.setAttribute("role","group");
+   choices.setAttribute("aria-label","Gorilla standing policy");
+   const names:Record<GorillaPolicy,string>={
+    STICK_TO_CARD:"Stick to the card",USE_JUDGEMENT:"Use judgement",
+    FOLLOW_THE_CROWD:"Follow the crowd",PROTECT_KEY_PLANS:"Protect key plans"};
+   for(const policy of GORILLA_POLICIES){
+    const control=button(names[policy],()=>{gorillaPolicy=policy;render();},
+     !view.canEdit||saving);
+    control.setAttribute("aria-pressed",String(gorillaPolicy===policy));
+    choices.append(control);
+   }
+   gorilla.append(choices,button("Save Gorilla instructions",
+    ()=>void saveGorilla(),!view.canEdit||saving));
+   if(!view.employees.some(e=>e.role==="ROAD_AGENT"))
+    gorilla.append(el("p","ppw-staff-muted",
+     "Basic house cover protects the script. Hire a Road Agent to delegate competent on-air adaptations."));
+   root.append(gorilla);
+  }
   const team=el("section","ppw-staff-panel ppw-staff-team");
   team.append(el("span","ppw-staff-kicker","YOUR BACKSTAGE CREW"),
    el("h2","","Departments"),el("p","ppw-staff-muted",

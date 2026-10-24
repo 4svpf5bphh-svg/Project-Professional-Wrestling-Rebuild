@@ -4,6 +4,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {worldStaff,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+import type {GorillaPolicy} from "../domain/gorilla-position.js";
 
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
@@ -17,6 +18,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    allow_unfinished_fallback:boolean|null;allow_logistics_fallback:boolean|null;
    permitted_days:number[]|null;permitted_venue_ids:string[]|null;
    frozen_logistics:boolean|null;auto_renew_same_terms:boolean|null;
+   gorilla_policy:GorillaPolicy|null;
    world_seed:string;promotion_cash:string;employments:unknown;
    contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
    employed_staff_id:string|null;employment_id:string|null;
@@ -63,6 +65,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      ARRAY(SELECT legacy.staff_id FROM ppw_staff_legacy_identities legacy
       WHERE legacy.world_id=w.world_id) AS legacy_staff_ids,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit,
+    (SELECT gp.policy FROM ppw_gorilla_policies gp WHERE gp.world_id=w.world_id
+     AND gp.promotion_id=$3 AND gp.owner_player_id=$2) AS gorilla_policy,
     s.allow_unfinished_fallback,s.allow_logistics_fallback,
     s.permitted_days,s.permitted_venue_ids,s.auto_renew_same_terms,
     l.allow_logistics_fallback AS frozen_logistics
@@ -149,6 +153,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    ORDER BY name,venue_id LIMIT 129`,[worldId]);
   if(venues.length>128)throw new Error("Venue catalogue exceeds staff configuration limit");
   return {year:current.year,week:current.week,
+   gorillaPolicy:current.gorilla_policy??"STICK_TO_CARD",
    worldRevision:Number(current.revision),canEdit:current.can_edit,
    allowUnfinishedFallback:current.allow_unfinished_fallback===true,
    autoRenewSameTerms:current.auto_renew_same_terms===true,

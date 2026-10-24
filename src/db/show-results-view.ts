@@ -3,6 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import type {RoadAgentReport} from "../domain/road-agent-report.js";
+import type {GorillaShowLog} from "../domain/gorilla-position.js";
 import {withSqlClient} from "./postgres.js";
 import {validateCompletedShowReceipt,type CompletedShowReceipt}
  from "../domain/completed-show-receipt.js";
@@ -41,6 +42,7 @@ export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
+ gorillaLog?:GorillaShowLog|null;
 }
 const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
@@ -52,11 +54,15 @@ export async function readCompletedShowView(
   throw new Error("Invalid results scope");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{receipt_json:unknown;show_name:string|null;
-    booking_class:"REGULAR"|"PREMIUM";staff_report:RoadAgentReport|null}>(`
+    booking_class:"REGULAR"|"PREMIUM";staff_report:RoadAgentReport|null;
+    gorilla_log:GorillaShowLog|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,
-    report.analysis_json AS staff_report FROM ppw_completed_shows c
+    report.analysis_json AS staff_report,
+    gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
    LEFT JOIN ppw_staff_show_reports report
     ON report.world_id=c.world_id AND report.show_id=c.show_id
+   LEFT JOIN ppw_gorilla_show_logs gorilla
+    ON gorilla.world_id=c.world_id AND gorilla.show_id=c.show_id
    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
    JOIN ppw_promotion_controls p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
@@ -260,6 +266,7 @@ export async function readCompletedShowView(
    showName:rows[0]!.show_name??(rows[0]!.booking_class==="PREMIUM"?
     "Premium event":"Weekly show"),bookingClass:rows[0]!.booking_class,
    crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,
-   angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report};
+   angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
+   gorillaLog:rows[0]!.gorilla_log};
  });
 }
