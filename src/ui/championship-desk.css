@@ -123,3 +123,16 @@
  letter-spacing:.7px;font-weight:900}
 #game .ppw-belt-tag .ppw-title-engraving-label{fill:#effbff}
 .ppw-belt-card .ppw-title-engraving{max-height:74px}
+
+/* Promotion-scoped champion directory uses the same title records and reigns. */
+.ppw-title-scope-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;
+ margin:10px 0 13px}
+.ppw-title-scope-tabs button{min-width:0;min-height:44px;padding:8px 10px;
+ border:1px solid #536e90;border-radius:11px;background:#172941;
+ color:#c4d8f2;font-size:13px;font-weight:850}
+.ppw-title-scope-tabs button[aria-pressed=true]{border-color:#dabb76;
+ background:linear-gradient(115deg,#664725,#53315f);color:#fff5cb}
+.ppw-belt-card[hidden],.ppw-title-scope-empty[hidden]{display:none!important}
+.ppw-title-scope-empty{margin:12px 0;color:#d9dee9;line-height:1.6}
+@media(max-width:390px){.ppw-title-scope-tabs{gap:5px}
+ .ppw-title-scope-tabs button{font-size:12px;padding:9px 5px}}

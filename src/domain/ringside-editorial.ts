@@ -105,9 +105,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
- if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|recorded finish|official record|simulation result)\b/i.test(fullStory))
+ if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
- if(/\b\d{2,3}\.\d+\b/.test(String(v.opening)+" "+String(v.closing)))
+ if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
  for(const [i,slot] of slots.entries()){
   const source=show.entries[i]!;

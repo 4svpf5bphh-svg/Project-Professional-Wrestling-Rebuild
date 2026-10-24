@@ -57,21 +57,29 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
   mine.onclick=()=>{scope="MINE";heading.textContent="My Champions";update();};
   world.onclick=()=>{scope="WORLD";heading.textContent="World Championships";update();};
   scopeTabs.append(mine,world);
-  const activeTitles=directory.titles.filter(t=>t.status==="ACTIVE");
-  for(const [name,value] of [
-   ["WORLD TITLES",directory.titles.length],
-   ["ACTIVE BELTS",activeTitles.length],
-   ["REIGNING CHAMPIONS",activeTitles.filter(t=>t.holderId!==null).length],
-  ] as const){
-   const box=element("article","ppw-title-overview-fact");
-   box.append(element("small","",name),element("strong","",String(value)));
-   facts.append(box);
-  }
+  // The headline totals always match the selected promotion scope.
+  const updateFacts=()=>{
+   const own=scope==="MINE"?directory.titles.filter(t=>
+    t.promotionId===directory.viewerPromotionId):directory.titles;
+   const live=own.filter(t=>t.status==="ACTIVE");
+   facts.replaceChildren();
+   for(const [name,value] of [
+    [scope==="MINE"?"MY TITLES":"WORLD TITLES",own.length],
+    ["ACTIVE BELTS",live.length],
+    ["REIGNING CHAMPIONS",live.filter(t=>t.holderId!==null).length],
+   ] as const){
+    const box=element("article","ppw-title-overview-fact");
+    box.append(element("small","",name),element("strong","",String(value)));
+    facts.append(box);
+   }
+  };
+  updateFacts();
   const tabs=element("div","ppw-title-filters");
   tabs.append(search,status,division);
   const summary=element("p","ppw-title-summary");
   const list=element("section","ppw-title-list");
-  root.replaceChildren(header,scopeTabs,facts,tabs,summary,list);
+  const noTitles=element("p","ppw-title-scope-empty","No championships in this view yet.");
+  root.replaceChildren(header,scopeTabs,facts,tabs,summary,list,noTitles);
   const buckets=new Map<string,{card:HTMLElement;title:ChampionshipCard}>();
   function titleCard(title:ChampionshipCard){
    const details=document.createElement("details");
@@ -194,6 +202,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    }
    mine.setAttribute("aria-pressed",String(scope==="MINE"));
    world.setAttribute("aria-pressed",String(scope==="WORLD"));
+   updateFacts();noTitles.hidden=shown!==0;
    summary.textContent=shown+" of "+(scope==="MINE"?directory.titles.filter(t=>t.promotionId===directory.viewerPromotionId).length:directory.titles.length)+" championships"+
     " · "+directory.titles.filter(t=>t.status==="ACTIVE").length+" active";
   };

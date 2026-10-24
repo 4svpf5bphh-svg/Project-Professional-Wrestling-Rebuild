@@ -59,6 +59,13 @@ test("Move ownership is protected across the whole show",()=>{
 });
 
 test("Ringside rejects simulation labels and score numbers",()=>{
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{
+  ...valid.slots[0],recap:"Omega got an 84/100 reaction score."
+ },valid.slots[1]]},example),/terminology|score/);
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{
+  ...valid.slots[0],recap:"The crowd loved it with a 92% crowd reaction."
+ },valid.slots[1]]},example),/numerical score/);
+
  assert.throws(()=>validateRingsideCopy({...valid,opening:"The crowd score was 71.9."},example),/terminology|numerical score/);
  assert.throws(()=>validateRingsideCopy({...valid,slots:[
   {...valid.slots[0],recap:"Omega claimed a protected finish."},valid.slots[1]]},example),/terminology/);
