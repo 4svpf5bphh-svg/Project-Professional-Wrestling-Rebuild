@@ -122,3 +122,10 @@
  hyphens:none!important;white-space:normal!important;
  text-wrap:balance;min-width:0;max-width:100%;
 }
+
+/* Even the unbreakable twelve-character 'Commentator' fits at 320px. */
+@media(max-width:390px){
+ #game .ppw-staff-market .ppw-staff-departments > button{
+  padding-inline:4px;letter-spacing:-.012em;
+ }
+}
