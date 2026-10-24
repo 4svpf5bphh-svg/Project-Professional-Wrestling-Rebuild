@@ -210,17 +210,17 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    controls.append(el("span","ppw-home-brand","PRIVATE PLAYTEST CONTROL"),
     el("h3","","Advance the shared week"),
     el("p","ppw-home-small",
-     "Only the playtest operator can run this. It affects every promotion, and every human manager must confirm their show first. No automatic World Lock is active."));
+     "One tap advances the shared World. If you're the only human player and have no show this week, your promotion takes an off-week. Future cards stay saved."));
    if(manualStatus)controls.append(el("p","ppw-home-small",manualStatus));
    if(deadlineDue&&world.phase==="OPEN"&&port.extendBooking){
     controls.append(el("p","ppw-home-small",
-     "The venue is saved, but a show without a confirmed card cannot advance. Reopen the shared booking window, open Plan and finish the card before advancing."));
+     "Keep this week's booking window open without advancing or losing saved cards."));
     const extend=el("button","ppw-home-status-refresh",
-     manualBusy?"Working…":"Reopen booking for 24 hours") as HTMLButtonElement;
+     manualBusy?"Working…":"Keep booking open for 5 years") as HTMLButtonElement;
     extend.type="button";extend.disabled=manualBusy;
     extend.onclick=async()=>{
      if(manualBusy||!window.confirm(
-      "Give every promotion 24 more hours to finish their cards? This will not advance the World."))return;
+      "Keep the shared booking window open for five years? Existing cards remain intact and the World won't advance."))return;
      manualBusy=true;manualStatus="Reopening the shared booking window…";draw();
      try{await port.extendBooking!(world.year,world.week);
       expiredOnScreen=null;manualStatus="";await load();}
@@ -236,8 +236,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    action.onclick=async()=>{
     if(manualBusy)return;
     if(world.phase==="OPEN"&&!window.confirm(
-     "Advance the ENTIRE shared PPW World after all human shows are confirmed? Week "+world.week+
-     " will be locked and simulated; this cannot be undone."))return;
+     "Advance from Week "+world.week+"? If you are the only human player with no current show, your promotion takes an off-week. The AI World continues and future cards remain intact."))return;
     manualBusy=true;manualStatus="Processing this week's shows…";draw();
     try{
      const result=await port.manualAdvance!(world.year,world.week);
@@ -247,7 +246,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      }
      manualStatus=result.status==="BLOCKED"?
       (result.blockers?.length?result.blockers.slice(0,2).join(" · "):"World resolution needs a card or conflict decision. No results have been invented."):
-      "Resolution is in progress. Press Continue when ready.";
+      "Some stages are still resolving. Press Advance Week to resume safely.";
     }catch(e){manualStatus=e instanceof Error?e.message:"Could not advance World";}
     finally{manualBusy=false;draw();}
    };

@@ -41,8 +41,13 @@ export async function resolveWorldWeekShows(
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World changed during show discovery");
   return tx.query<{promotion_id:string}>(
-   "SELECT promotion_id FROM ppw_promotions WHERE world_id=$1 AND lifecycle='ACTIVE' ORDER BY promotion_id",
-   [input.worldId]);
+   `SELECT p.promotion_id FROM ppw_promotions p
+    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
+  WHERE off_week.world_id=p.world_id
+   AND off_week.promotion_id=p.promotion_id
+   AND off_week.year=$2 AND off_week.week=$3)
+    ORDER BY p.promotion_id`,
+   [input.worldId,input.year,input.week]);
  });
  if(active.length===0||active.length>128)
   throw new Error("Invalid active promotion population");

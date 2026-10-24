@@ -230,8 +230,9 @@ test("overdue next deadline blocks reopening; prior data is retained",
     assert.equal(recovered[0]?.year,1);
     assert.equal(recovered[0]?.week,2);
     assert.equal(recovered[0]?.phase,"OPEN");
-    assert.ok((recovered[0]?.secs??0)>86000);
-    assert.ok((recovered[0]?.secs??0)<=86400);
+    // The explicit manual rollover uses the long solo playtest window.
+    assert.ok((recovered[0]?.secs??0)>4*365*24*3600);
+    assert.ok((recovered[0]?.secs??0)<6*365*24*3600);
     assert.equal((await advanceResolvedWorldWeek(db.pool,{
       worldId,requestId:"operator-resume",expectedRevision:0,manualRecovery:true
     })).status,"REPLAYED");

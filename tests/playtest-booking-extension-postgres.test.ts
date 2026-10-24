@@ -30,10 +30,10 @@ test("expired OPEN booking can be rescued once without touching saved show or Wo
   assert.equal(snapshot[0]?.year,1);
   assert.equal(snapshot[0]?.week,2);
   assert.equal(snapshot[0]?.phase,"OPEN");
-  assert.ok((snapshot[0]?.seconds??0)>23*3600);
-  assert.ok((snapshot[0]?.seconds??0)<=24*3600);
-  await assert.rejects(extendPlaytestBooking(db.pool,worldId,1,2),/cannot be extended/,
-   "No immediate repeated extension during the open window");
+  assert.ok((snapshot[0]?.seconds??0)>4*365*24*3600);
+  assert.ok((snapshot[0]?.seconds??0)<6*365*24*3600);
+  const repeated=await extendPlaytestBooking(db.pool,worldId,1,2);
+  assert.equal(repeated.status,"OPEN","Safe repeated extension does not advance or alter cards");
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("UPDATE ppw_worlds SET phase='LOCKED',next_lock_at=clock_timestamp()-interval '1 minute' WHERE world_id=$1",[worldId]);
   });

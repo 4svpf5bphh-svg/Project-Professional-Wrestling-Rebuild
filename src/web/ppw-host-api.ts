@@ -208,14 +208,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    !Number.isSafeInteger(b.year)||!Number.isSafeInteger(b.week))
    return json(400,{error:"Confirm the exact shared week"});
   try{return json(200,await extendPlaytestBooking(pool,cfg.worldId,b.year as number,b.week as number));}
-  catch{return json(409,{error:"The deadline must have passed, and the World must still be open. Refresh Home."});}
+  catch{return json(409,{error:"The World must still be open for this week. Refresh Home."});}
  }
  if(path==="/api/playtest-week"){
   if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
    return json(403,{error:"Only the designated preview operator can advance the test World"});
   if(!post)return json(405,{error:"Only explicit manual action may advance the World"});
   if(!csrf(req,user))return json(403,{error:"Invalid session"});
-  if(!allow("manual:"+cfg.worldId,8,10*60_000))
+  if(!allow("manual:"+cfg.worldId,40,10*60_000))
    return json(429,{error:"Wait before continuing World resolution"});
   const b=await limitedBody(req);
   if(!b||b.confirm!=="ADVANCE_SHARED_WORLD"||
@@ -227,7 +227,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   }catch(e){
    const message=e instanceof Error?e.message:"";
    return json(409,{error:/must confirm its regular show/i.test(message)?
-    "A manager still needs to confirm their show. Both promotions must be ready before advancing.":
+    "A human manager has an unfinished current-week show. Review the card before advancing.":
     /already progressed/i.test(message)?
     "The World has moved on. Refresh Home to see the new week.":
     (message?"Resolution halted: "+message.slice(0,220):"Unable to continue the World. Review Admin diagnostics.")});

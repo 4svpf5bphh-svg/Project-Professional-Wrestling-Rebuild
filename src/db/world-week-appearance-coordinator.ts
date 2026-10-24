@@ -33,7 +33,10 @@ export async function consumeWorldWeekAppearances(
     LEFT JOIN ppw_show_resolutions r ON r.world_id=d.world_id
      AND r.show_id=d.draft_id AND r.promotion_id=p.promotion_id
      AND r.resolved_week_index=$4
-    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
+    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
+  WHERE off_week.world_id=p.world_id
+   AND off_week.promotion_id=p.promotion_id
+   AND off_week.year=$2 AND off_week.week=$3)
     ORDER BY p.promotion_id,d.booking_class DESC`,[input.worldId,input.year,input.week,weekIndex]);
   if(rows.length<1||rows.length>256||rows.some(r=>!r.draft_id))
    throw new Error("Every active promotion needs a submitted weekly show");

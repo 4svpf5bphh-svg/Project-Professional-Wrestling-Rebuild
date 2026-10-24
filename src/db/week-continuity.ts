@@ -50,7 +50,10 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
            ORDER BY (status='SUBMITTED') DESC,revision DESC,draft_id ASC
            LIMIT 1
        ) d ON true
-      WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
+      WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
+  WHERE off_week.world_id=p.world_id
+   AND off_week.promotion_id=p.promotion_id
+   AND off_week.year=$2 AND off_week.week=$3)
       ORDER BY p.promotion_id LIMIT 129`,
     [worldId,year,week],
   );

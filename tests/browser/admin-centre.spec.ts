@@ -40,8 +40,8 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  await page.getByRole("navigation",{name:"Promotion navigation"})
   .getByRole("button",{name:/Admin/}).click();
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
- await expect(page.getByText(/Full broadcasts 8\/13/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Continue resolution"})).toBeVisible();
+ await expect(page.getByText(/Completed shows: 8\/13/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Advance Week"})).toBeVisible();
  await page.getByLabel("AI model").selectOption("openai/gpt-oss-20b");
  await page.getByLabel("Columnist style").selectOption("SATIRE");
  await page.getByLabel("Review length").selectOption("LONG");

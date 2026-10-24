@@ -35,12 +35,12 @@ test("expired booking offers the authorised Crown operator a shared recovery act
  }}));
  await page.goto("/#/admin");
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Keep booking open for 5 years"})).toBeVisible();
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  page.once("dialog",d=>d.accept());
- await page.getByRole("button",{name:"Reopen booking for 24 hours"}).click();
+ await page.getByRole("button",{name:"Keep booking open for 5 years"}).click();
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Keep booking open for 5 years"})).toBeVisible();
  await page.goto("/#/home");
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  expect(extensions).toBe(1);
@@ -58,7 +58,7 @@ test("ordinary manager never sees a shared World booking extension control",asyn
  await page.route("**/api/card",r=>r.fulfill({json:overview}));
  await page.goto("/#/home");
  await expect(page.getByText(/DEADLINE REACHED/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Reopen booking for 24 hours"})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Keep booking open for 5 years"})).toHaveCount(0);
 });
 
 test("iPhone cash remains on one line without overflow at 320px",async({page})=>{
