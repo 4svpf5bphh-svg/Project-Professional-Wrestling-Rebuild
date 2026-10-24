@@ -258,3 +258,14 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
 .ppw-home-promotion-mark[data-logo-ready="true"]>.ppw-authentic-promotion-logo[data-promotion-logo="titan-combat"]{
  max-width:min(78vw,250px);height:112px;width:auto;object-fit:contain;
  filter:drop-shadow(0 8px 11px #000b)}
+
+/* Show-card broadcast graphics remain visible while edit sheets open separately. */
+.ppw-card>.ppw-broadcast-preview{margin:0 10px 12px;border:0}
+.ppw-card>.ppw-broadcast-preview>.ppw-match-broadcast{min-height:185px}
+.ppw-angle-broadcast-spotlight{display:flex;justify-content:center;align-items:center;
+ gap:12px;flex-wrap:wrap;min-height:105px;padding:9px 0}
+.ppw-angle-broadcast-person{display:grid;justify-items:center;gap:7px;min-width:0;
+ flex:1 1 70px;max-width:150px;text-align:center}
+.ppw-angle-broadcast-placeholder{text-align:center;font-size:clamp(20px,5vw,29px);
+ font-weight:950;letter-spacing:.07em;color:#ffe6b7}
+.ppw-angle-broadcast .ppw-broadcast-side-name{font-size:clamp(12px,3vw,18px)}

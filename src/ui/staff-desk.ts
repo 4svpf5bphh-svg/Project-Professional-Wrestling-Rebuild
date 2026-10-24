@@ -201,6 +201,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("p","ppw-staff-muted",
     "Unique people, not generic upgrades. Offer a weekly wage and a one- or two-year agreement."));
   const departments=el("div","ppw-staff-departments");
+   departments.setAttribute("role","group");
+   departments.setAttribute("aria-label","Staff departments");
   for(const role of STAFF_ROLES){
    const tab=button(roles(role),()=>{department=role;render();});
    tab.setAttribute("aria-pressed",String(department===role));

@@ -2,6 +2,7 @@
  * No fetch, no state mutation, no scripted-result override.
  */
 import type {EditorMatch,PersonPick} from "./card-editor-model.js";
+import type {EditorSegment} from "./card-segment-model.js";
 import {FORMATS} from "./card-editor-model.js";
 import {eventDesign} from "./broadcast-identity.js";
 import {createPromotionLogo} from "./promotion-logo.js";
@@ -32,12 +33,10 @@ export function createMatchBroadcast(match:EditorMatch,
  nameFor:(person:PersonPick)=>string,titles:readonly Title[],
  context:{show:string;promotion:string;mainEvent:boolean;premium:boolean}):HTMLElement{
  const info=projectMatchGraphic(match,nameFor,titles,context);
- const holder=document.createElement("details");holder.className="ppw-broadcast-preview";
+ const holder=document.createElement("section");holder.className="ppw-broadcast-preview";
  holder.dataset.format=match.format;holder.dataset.eventMotif=info.motif;
- const opener=document.createElement("summary");
- opener.textContent="View match graphic ↗";opener.setAttribute("aria-label",
-  "Preview broadcast graphic for "+info.format);holder.append(opener);
- const mountGraphic=()=>{
+ // Artwork is immediately part of the card ticket, not a hidden preview.
+ {
  const board=document.createElement("section");
  board.className="ppw-match-broadcast";
  board.dataset.matchFormat=match.format;board.dataset.eventMotif=info.motif;
@@ -79,7 +78,7 @@ export function createMatchBroadcast(match:EditorMatch,
    const visible=side.slice(0,match.format==="SINGLES"?1:2);
    for(const personName of visible){
     const photo=createWrestlerPortrait(personName,160);
-    if(photo){photo.classList.add("ppw-broadcast-portrait");
+    if(photo){photo.loading="lazy";photo.classList.add("ppw-broadcast-portrait");
      photo.onerror=()=>photo.remove();panel.append(photo);}
    }
    panel.append(span("ppw-broadcast-side-name",side.join(" & ")||"TBC"));
@@ -89,12 +88,44 @@ export function createMatchBroadcast(match:EditorMatch,
  }
  board.append(line,span("ppw-broadcast-footer",
   info.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
- // Build images only if the player opens a match's broadcast treatment.
- // Mere booking and reordering must never trigger image requests.
  holder.append(board);
- };
- holder.addEventListener("toggle",()=>{
-  if(holder.open&&!holder.querySelector(".ppw-match-broadcast"))mountGraphic();
- });
+ }
  return holder;
+}
+/** The same broadcast art system for angles, without placeholder asset packs. */
+export function createAngleBroadcast(segment:EditorSegment,
+ nameFor:(person:PersonPick)=>string,
+ context:{show:string;promotion:string;premium:boolean}):HTMLElement{
+ const design=eventDesign(context.show,context.promotion,context.premium);
+ const frame=document.createElement("section");frame.className="ppw-broadcast-preview";
+ const board=document.createElement("section");
+ board.className="ppw-match-broadcast ppw-angle-broadcast";
+ board.dataset.eventMotif=design.motif;
+ board.append(span("ppw-broadcast-event",context.show),
+  span("ppw-broadcast-promotion",context.promotion.toUpperCase()));
+ const brand=span("ppw-broadcast-brand-mark",design.brand.toUpperCase());
+ const logo=createPromotionLogo(design.brand,110);
+ if(logo&&design.brand!=="njpw"&&design.brand!=="cmll"){
+  logo.classList.add("ppw-broadcast-company-logo");
+  logo.onload=()=>{brand.dataset.logoReady="true";};
+  logo.onerror=()=>{logo.remove();delete brand.dataset.logoReady;};
+  brand.append(logo);
+ }
+ board.append(brand,span("ppw-broadcast-format","LIVE SEGMENT · "+segment.kind.replaceAll("_"," ")));
+ const headline=document.createElement("div");
+ headline.className="ppw-angle-broadcast-spotlight";
+ const booked=[...segment.actors,...segment.targets].filter((x):x is PersonPick=>x!==null);
+ for(const person of booked.slice(0,3)){
+  const name=nameFor(person);
+  const performer=document.createElement("div");
+  performer.className="ppw-angle-broadcast-person";
+  const photo=createWrestlerPortrait(name,160);
+  if(photo){photo.loading="lazy";photo.classList.add("ppw-broadcast-portrait");
+   photo.onerror=()=>photo.remove();performer.append(photo);}
+  performer.append(span("ppw-broadcast-side-name",name));headline.append(performer);
+ }
+ if(!booked.length)headline.append(span("ppw-angle-broadcast-placeholder","CAST TO BE ANNOUNCED"));
+ board.append(headline,span("ppw-broadcast-footer",
+  context.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
+ frame.append(board);return frame;
 }

@@ -18,6 +18,27 @@ test("Original Talent Managers survive world expansion without replacement",()=>
  assert.equal(new Set(staff.map(s=>s.name)).size,120);
  assert.deepEqual(staff,worldStaff("58"));
 });
+test("Diverse staff have stable identities and keep original employee names",()=>{
+ for(const seed of [0,58,72,123456789]){
+  const staff=worldStaff(seed);
+  const market=staff.filter(s=>s.role!=="TALENT_MANAGER");
+  assert.equal(new Set(market.map(s=>s.name.split(" ")[0])).size,112);
+  assert.equal(new Set(staff.map(s=>s.name)).size,120);
+  const retained=worldStaff(seed,["staff-road-agent-001","staff-trainer-016"]);
+  for(const [id,serial] of [["staff-road-agent-001",0],["staff-trainer-016",111]] as const){
+   const old=retained.find(s=>s.staffId===id)!;
+   const offset=Number(BigInt(seed)%16n);
+   const given=["Alex","Billie","Cameron","Devon","Ellis","Frankie","Gray","Harper",
+    "Indigo","Jules","Kit","Lane","Marlow","Nico","Oakley","Parker"];
+   const surnames=["Maddox","Hawthorne","Knox","Sterling","Quinn","Calloway","Brooks",
+    "Voss","Winters","Pike","Hale","Monroe","Reed","Sterling-Jones","Fox","Stone"];
+   assert.equal(old.name,given[(serial+offset)%16]+" "+
+    surnames[(Math.floor(serial/16)+serial+offset)%16]);
+   assert.deepEqual({...old,name:null},{...staff.find(s=>s.staffId===id)!,name:null});
+  }
+  assert.deepEqual(worldStaff(seed),staff);
+ }
+});
 test("Offers and staff buyouts are bounded and deterministic",()=>{
  const member=worldStaff(72).find(s=>s.role==="ROAD_AGENT")!;
  assert.equal(evaluateStaffOffer(member,member.weeklySalary,52).accepted,true);

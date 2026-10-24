@@ -5,6 +5,9 @@ import {postgresPool} from "../src/db/postgres.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {recordWeekContinuity} from "../src/db/week-continuity.js";
+import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,
  markPreparedShowReadyAsActor} from "../src/api/world-service.js";
@@ -224,9 +227,67 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     matches:[{slotId:"main",payload:raw}],segments:[],runningOrder:["main"]});
    assert.equal(remove.status,"APPLIED");
    assert.deepEqual((await showCardEditorAsActor(context,world,promotion,show)).programmeLinks,[]);
+
+   // World is Week 3 with NO Week 3 show. Saved Week 4/5 shows remain
+   // individually editable and cannot leak into a rival controller's desk.
+   await withWorldTransaction(db.pool,async tx=>{
+    await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[world]);
+    await tx.query(`INSERT INTO ppw_booking_drafts
+      (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class)
+      VALUES($1,'future-4',$2,1,4,'DRAFT',5,'hall','home','REGULAR'),
+      ($1,'future-5',$2,1,5,'DRAFT',5,'hall','home','REGULAR'),
+      ($1,'future-10',$2,1,10,'DRAFT',5,'hall','home','REGULAR')`,
+      [world,promotion]);
+   });
+   for(const [future,revision] of [["future-4",7],["future-5",8]] as const){
+    const editable=await showCardEditorAsActor(context,world,promotion,future);
+    assert.equal(editable.canEdit,true);
+    assert.equal(editable.week,future==="future-4"?4:5);
+    const savedFuture=await saveCardEditorAsActor(context,{...identity,
+     showId:future,requestId:"save-"+future,expectedRevision:revision,
+     matches:[{slotId:"headline",payload:raw}],runningOrder:["headline"]});
+    assert.equal(savedFuture.status,"APPLIED");
+    const reloaded=await showCardEditorAsActor(context,world,promotion,future);
+    assert.equal(reloaded.slots.length,1);
+    assert.equal((reloaded.slots[0]!.payload as typeof raw).scriptedWinnerSide,
+     raw.scriptedWinnerSide);
+    await assert.rejects(showCardEditorAsActor(foreign,world,promotion,future),/not accessible/);
+   }
+   const tooDistant=await showCardEditorAsActor(context,world,promotion,"future-10");
+   assert.equal(tooDistant.canEdit,false);
+   await assert.rejects(saveCardEditorAsActor(context,{...identity,
+    showId:"future-10",requestId:"too-distant",expectedRevision:9,
+    matches:[{slotId:"headline",payload:raw}],runningOrder:["headline"]}),
+    /advance booking window/);
+   // Six weeks after Week 3 (Week 9) is still editable.
+   await withWorldTransaction(db.pool,tx=>tx.query(
+    "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class)"+
+    " VALUES($1,'future-9',$2,1,9,'DRAFT',5,'hall','home','REGULAR')",
+    [world,promotion]));
+   assert.equal((await showCardEditorAsActor(context,world,promotion,"future-9")).canEdit,true);
+   // Advance ONLY this disposable test World. A player-saved Week 4 show
+   // must be picked up at World Lock with no extra confirmation.
+   await withWorldTransaction(db.pool,tx=>tx.query(
+    "UPDATE ppw_worlds SET week=4,next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
+    [world]));
+   assert.equal((await lockWorldWeek(db.pool,{
+    worldId:world,requestId:"future-lock",expectedRevision:9})).status,"APPLIED");
+   assert.equal((await recordWeekContinuity(db.pool,{
+    worldId:world,requestId:"future-continuity",expectedRevision:10})).status,"APPLIED");
+   const finalized=await finalizePreparedWorldShows(db.pool,{
+    worldId:world,requestId:"future-finalize",expectedRevision:11});
+   assert.equal(finalized.status,"APPLIED");
+   if(finalized.status!=="APPLIED")throw new Error("Expected prepared show finalization");
+   assert.deepEqual(finalized.result.submittedShowIds,["future-4"]);
+   const savedStatus=await withWorldTransaction(db.pool,tx=>tx.query<{draft_id:string;status:string}>(
+    "SELECT draft_id,status FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=ANY($2::text[]) ORDER BY draft_id",
+    [world,["future-4","future-5","future-9"]]));
+   assert.deepEqual(savedStatus.map(r=>r.status),["SUBMITTED","DRAFT","DRAFT"]);
   }finally{
    await withWorldTransaction(db.pool,async tx=>{
-    for(const table of ["ppw_command_receipts","ppw_programme_match_activities",
+    for(const table of ["ppw_ledger_events","ppw_week_prepared_finalizations",
+      "ppw_week_continuity_assessments","ppw_week_logistics_authorizations",
+      "ppw_command_receipts","ppw_programme_match_activities",
      "ppw_programme_side_refs","ppw_programmes","ppw_card_slots",
      "ppw_booking_drafts","ppw_portable_personas","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",

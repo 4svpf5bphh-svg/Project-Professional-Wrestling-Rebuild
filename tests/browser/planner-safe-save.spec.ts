@@ -98,3 +98,70 @@ test("stale two-manager show planning never reports success or loses venue/day s
  expect(attempts.map(x=>x.revision)).toEqual([4,5]);
  expect(attempts[0]?.id).not.toBe(attempts[1]?.id);
 });
+
+test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-venue card",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const advancedSession={...session,overview:{...overview,world:{...overview.world,week:3}}};
+ const alice={personId:"a",contractId:"deal-a"},bob={personId:"b",contractId:"deal-b"};
+ const match={matchType:"SINGLES",family:"INDIVIDUAL",participants:[alice,bob],
+  sides:[{sideId:"A",participants:[alice]},{sideId:"B",participants:[bob]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:18};
+ let slots=[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+  {slotId:"promo",kind:"SEGMENT",position:1,payload:{
+   kind:"PROMO",actorIds:["a"],participants:[alice],outcome:"HAPPENS",durationMinutes:5}}];
+ const futureShow={draftId:"next-week",year:1,week:4,status:"DRAFT",eventType:"REGULAR",
+  bookingClass:"REGULAR",showSeriesId:null,showName:"Next Week Live",day:5,
+  marketId:"home",venueId:"home-hall",marketName:"Home market",
+  venueName:"Town Hall",ticketStrategy:"STANDARD",ready:false,slots:2};
+ let revision=4,saveCount=0;
+ const plans=()=>({worldName:"Playtest",promotionName:"Independent",year:1,week:3,
+  worldRevision:revision,canEdit:true,homeMarketId:"home",
+  venues:[arena],venuePressure:[],
+  weeks:[{year:1,week:3,offset:0,required:false,major:false,canEdit:true,
+   scheduled:[],shows:[]},
+   {year:1,week:4,offset:1,required:true,major:false,canEdit:true,
+    scheduled:[],shows:[futureShow]}]});
+ await page.route("**/api/session",route=>route.fulfill({json:advancedSession}));
+ await page.route("**/api/card",route=>{
+  const request=route.request().postDataJSON();
+  if(request.method==="planner")return route.fulfill({json:plans()});
+  if(request.method==="load"){
+   expect(request.showId).toBe("next-week");
+   return route.fulfill({json:{
+    showId:"next-week",year:1,week:4,worldRevision:revision,canEdit:true,ready:false,
+    day:5,venueId:"home-hall",showName:"Next Week Live",promotionName:"Independent",
+    venueName:"Town Hall",marketName:"Home market",bookingClass:"REGULAR",
+    ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+    selectedPeople:[{personId:"a",name:"Alexis",division:"WOMEN"},
+     {personId:"b",name:"Blake",division:"MEN"}],slots
+   }});
+  }
+  if(request.method==="save"){
+   expect(request.showId).toBe("next-week");
+   expect(request.expectedRevision).toBe(revision);
+   expect(request.matches).toHaveLength(1);
+   expect(request.segments).toHaveLength(1);
+   expect(request.runningOrder).toEqual(["promo","bout"]);
+   slots=[slots[1]!,slots[0]!].map((s,i)=>({...s,position:i}));
+   revision++;saveCount++;
+   return route.fulfill({json:{status:"APPLIED",revision,result:{showId:"next-week"}}});
+  }
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await expect(page).toHaveURL(/#\/card$/);
+ await expect(page.locator(".ppw-card-show-copy").getByText("Next Week Live")).toBeVisible();
+ await expect(page.locator(".ppw-card-show-location").getByText("Town Hall")).toBeVisible();
+ await expect(page.locator(".ppw-match-broadcast")).toHaveCount(2);
+ await expect(page.locator(".ppw-broadcast-preview summary")).toHaveCount(0);
+ await page.locator(".ppw-card-grip").first().press("ArrowDown");
+ await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
+ await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saveCount).toBe(1);
+ await page.reload();
+ await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
+ await expect(page.locator(".ppw-match-broadcast")).toHaveCount(2);
+});

@@ -35,8 +35,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     const scheduled=week?.scheduled.some(s=>s.seriesId===target.seriesId);
     if(week?.canEdit&&(draft?.status==="DRAFT"||!draft&&scheduled)){
      edit(week,draft,target.seriesId);
-    }else if(!week)error="This event is outside the six-week planning window.";
-    else if(draft?.status==="SUBMITTED")error="This card is already submitted.";
+    }else if(!week)error="This event is outside the advance booking window.";
+    else if(draft?.status==="SUBMITTED")error="This show has already been submitted.";
     else error="This event is no longer available for planning.";
    }
    if(cardRoutePending){
@@ -105,7 +105,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   const header=node("header","","ppw-planner-header");
   if(onBack)header.append(button("← Back",onBack));
   if(port.openCalendar)header.append(button("Show Calendar",()=>port.openCalendar?.()));
-  header.append(node("h1","Show Planner"),node("p","Plan the next six weeks. Find the right venue and build your card."));
+  header.append(node("h1","Show Planner"),node("p","Book the current week or any of the next six weeks. Confirm a venue and build your card whenever suits you."));
   root.append(header);
   if(error)root.append(node("p",error,"ppw-planner-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}
@@ -277,8 +277,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      (competing===1?"promotion is":"promotions are")+
      " planning to use this venue on the same day. The venue remains contested "+
      "until bookings close.","ppw-planner-week-contention"));
-    if(week.offset===0)card.append(button("Edit card",()=>port.openCard(show.draftId)));
-    else card.append(node("p","Scheduled ahead · booking opens when the week arrives."));
+    if(week.canEdit&&show.status==="DRAFT"&&show.venueId)
+     card.append(button("Edit card",()=>port.openCard(show.draftId),busy));
+    else if(show.status==="SUBMITTED")
+     card.append(node("p","Submitted · read-only."));
+    else if(!show.venueId)card.append(node("p","Confirm a venue to start booking the card."));
+    else if(!week.canEdit)card.append(node("p","Booking is closed during World Lock."));
     if(week.canEdit&&show.status==="DRAFT")
      card.append(button("Change venue / date",()=>edit(week,show),busy));
    }

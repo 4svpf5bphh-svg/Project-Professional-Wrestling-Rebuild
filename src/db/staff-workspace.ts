@@ -20,7 +20,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    world_seed:string;promotion_cash:string;employments:unknown;
    contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
    employed_staff_id:string|null;employment_id:string|null;
-   manager_salary:string|null;occupied_staff_ids:string[];
+   manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
@@ -60,6 +60,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     employed.employment_id,employed.weekly_salary::text AS manager_salary,
     ARRAY(SELECT e.staff_id FROM ppw_staff_employments e
      WHERE e.world_id=w.world_id AND e.status='ACTIVE') AS occupied_staff_ids,
+     ARRAY(SELECT legacy.staff_id FROM ppw_staff_legacy_identities legacy
+      WHERE legacy.world_id=w.world_id) AS legacy_staff_ids,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit,
     s.allow_unfinished_fallback,s.allow_logistics_fallback,
     s.permitted_days,s.permitted_venue_ids,s.auto_renew_same_terms,
@@ -95,7 +97,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      AND e.status='ACTIVE' LIMIT 1) employed ON TRUE
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(owners.length!==1)throw new Error("Staff desk access denied");
-  const current=owners[0]!,catalog=worldStaff(current.world_seed);
+  const current=owners[0]!,catalog=worldStaff(current.world_seed,current.legacy_staff_ids);
   const managers=worldTalentManagers(current.world_seed);
   const busy=new Set(current.occupied_staff_ids);
   const employed=managers.find(p=>p.staffId===current.employed_staff_id);

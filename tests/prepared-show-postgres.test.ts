@@ -11,7 +11,7 @@ import {recordWeekContinuity} from "../src/db/week-continuity.js";
 import {finalizePreparedWorldShows} from "../src/db/finalize-prepared-shows.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
-test("confirmed prepared drafts auto-submit at World Lock; changed or unconfirmed drafts remain untouched",
+test("valid saved and confirmed cards submit at World Lock; changed and empty drafts remain untouched",
   {skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,4),id=randomUUID(),worldId="prepared-"+id;
   const promoters=Array.from({length:5},(_,i)=>"promo-"+i+"-"+id);
@@ -54,7 +54,7 @@ test("confirmed prepared drafts auto-submit at World Lock; changed or unconfirme
     await assert.rejects(markPreparedShowReady(db.pool,{
       worldId,playerId:players[0]!,promotionId:promoters[1]!,
       showId:drafts[1]!,requestId:"spoof",expectedRevision:0,confirmReadyToRun:true,
-    }),/not a current editable draft owned/);
+    }),/not an editable draft/);
     const first=await ready(0,"mark-0",0);
     assert.equal(first.status,"APPLIED");
     assert.equal(first.result.preparedForLock,true);
@@ -79,7 +79,7 @@ test("confirmed prepared drafts auto-submit at World Lock; changed or unconfirme
     const input={worldId,requestId:"finalize",expectedRevision:4};
     const result=await finalizePreparedWorldShows(db.pool,input);
     assert.equal(result.status,"APPLIED");
-    assert.deepEqual(result.result.submittedShowIds,[drafts[0]]);
+    assert.deepEqual(result.result.submittedShowIds,[drafts[0],drafts[2]]);
     assert.deepEqual(result.result.review,[{showId:drafts[1],reason:"DRAFT_CHANGED"}]);
     assert.equal((await finalizePreparedWorldShows(db.pool,input)).status,"REPLAYED");
     await assert.rejects(finalizePreparedWorldShows(db.pool,{
@@ -89,7 +89,7 @@ test("confirmed prepared drafts auto-submit at World Lock; changed or unconfirme
       "SELECT draft_id,status FROM ppw_booking_drafts WHERE world_id=$1 ORDER BY draft_id",[worldId],
     ));
     assert.deepEqual(statuses.map(s=>s.status),[
-      "SUBMITTED","DRAFT","DRAFT","SUBMITTED","DRAFT",
+      "SUBMITTED","DRAFT","SUBMITTED","SUBMITTED","DRAFT",
     ]);
     const unchanged=await withWorldTransaction(db.pool,tx=>tx.query<{payload:{scriptedOutcome:string}}>(
       "SELECT payload FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2",[worldId,drafts[0]!],
@@ -100,7 +100,7 @@ test("confirmed prepared drafts auto-submit at World Lock; changed or unconfirme
       "SELECT submitted_count,review_count FROM ppw_week_prepared_finalizations WHERE world_id=$1",
       [worldId],
     ));
-    assert.deepEqual(finalizations,[{submitted_count:1,review_count:1}]);
+    assert.deepEqual(finalizations,[{submitted_count:2,review_count:1}]);
     const results=await withWorldTransaction(db.pool,tx=>tx.query<{count:string}>(
       "SELECT count(*)::text AS count FROM ppw_show_resolutions WHERE world_id=$1",[worldId],
     ));

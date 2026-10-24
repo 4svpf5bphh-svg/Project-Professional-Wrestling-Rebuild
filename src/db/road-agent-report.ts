@@ -8,8 +8,9 @@ import type {RecordedMatchReportFact} from "./record-match-report-facts.js";
  */
 export async function recordRoadAgentReport(tx:SqlRows,seed:string|number,
  receipt:CompletedShowReceipt,facts:readonly RecordedMatchReportFact[]){
- const members=await tx.query<{staff_id:string|null}>(`
-  SELECT employee.staff_id
+ const members=await tx.query<{staff_id:string|null;legacy:boolean}>(`
+  SELECT employee.staff_id,EXISTS(SELECT 1 FROM ppw_staff_legacy_identities legacy
+   WHERE legacy.world_id=owner.world_id AND legacy.staff_id=employee.staff_id) AS legacy
   FROM ppw_promotion_controls owner
   LEFT JOIN LATERAL (
    SELECT staff_id FROM ppw_staff_employments e
@@ -23,7 +24,7 @@ export async function recordRoadAgentReport(tx:SqlRows,seed:string|number,
  // AI-run promotions need neither staff prose nor another persisted result.
  if(!members.length)return;
  const agent=members[0]!.staff_id?
-  worldStaff(seed).find(s=>s.staffId===members[0]!.staff_id)??null:null;
+  worldStaff(seed,members[0]!.legacy?[members[0]!.staff_id!]:[]).find(s=>s.staffId===members[0]!.staff_id)??null:null;
  if(agent&&agent.role!=="ROAD_AGENT")throw new Error("Invalid employed Road Agent");
  const report=deriveRoadAgentReport(receipt,facts,agent);
  const inserted=await tx.query<{show_id:string}>(`

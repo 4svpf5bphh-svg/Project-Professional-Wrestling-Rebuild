@@ -63,3 +63,31 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await page.getByRole("button",{name:"Open roster ↗"}).click();
  await expect(page).toHaveURL(/#\/roster$/);
 });
+
+test("320px iPhone Staff Market uses two accessible rows of four departments",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
+  nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+  membership:"ACTIVE",promotion:{id:"local",name:"Local Wrestling",tier:"LOCAL",
+  cash:200000,debt:0,lastWeeklyNet:null,financialDistress:"HEALTHY"}};
+ const session={worldId:"genesis",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]};
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  year:1,week:5,worldRevision:4,canEdit:true,
+  allowUnfinishedFallback:false,allowLogisticsFallback:false,autoRenewSameTerms:false,
+  permittedDays:[],permittedVenueIds:[],lockedLogisticsDelegated:false,
+  talentManager:null,availableManagers:[],weeklyPayroll:0,promotionCash:200000,
+  employees:[],market:[],employmentHistory:[],venues:[],notices:[]
+ }}));
+ await page.goto("/#/staff");
+ const tabs=page.locator(".ppw-staff-departments button");
+ await expect(tabs).toHaveCount(8);
+ const boxes=await tabs.evaluateAll(els=>els.map(el=>{
+  const box=el.getBoundingClientRect();return {top:Math.round(box.top),height:box.height,width:box.width};
+ }));
+ expect(new Set(boxes.map(b=>b.top)).size).toBe(2);
+ expect(boxes.every(b=>b.height>=44&&b.width>=50)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ await tabs.nth(7).click();
+ await expect(tabs.nth(7)).toHaveAttribute("aria-pressed","true");
+});

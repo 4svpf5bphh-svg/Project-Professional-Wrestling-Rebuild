@@ -94,9 +94,9 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  WHERE d.world_id=$1 AND d.promotion_id=$2
  AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
  ORDER BY d.year,d.week,d.draft_id LIMIT 73`,
- [s.worldId,s.promotionId,start,start+5]);
+ [s.worldId,s.promotionId,start,start+6]);
  if(drafts.length>72)throw new Error("Planner show count exceeds safe limit");
- const end=dateAt(start+5);
+ const end=dateAt(start+6);
  const venues=await tx.query<{
   venue_id:string;market_id:string;market_name:string;name:string;
   capacity:number;weekly_hire_cost:string|number;
@@ -150,7 +150,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  WHERE v.world_id=$1 AND v.status='ACTIVE'
  AND v.capacity IS NOT NULL AND v.weekly_hire_cost IS NOT NULL
  ORDER BY m.name,v.name,v.venue_id LIMIT 101`,
- [s.worldId,s.promotionId,start,start+5,owned.year,end.year]);
+ [s.worldId,s.promotionId,start,start+6,owned.year,end.year]);
  if(venues.length>100)throw new Error("Planner venue choices exceed safe limit");
  // The anonymous venue grid is folded into the existing venue read, emitted
  // only on the first venue row to avoid duplicating data across each building.
@@ -194,7 +194,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     {name:v.rival_name,tier:v.rival_tier??"UNKNOWN",
      liveStrength:v.rival_live_strength,basedHere:v.rival_based_here===true},
    home:v.market_id===owned.home_market_id})),
-  weeks:Array.from({length:6},(_,offset)=>{
+  weeks:Array.from({length:7},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
    return {...when,offset,required:true,
     major:scheduled.some(x=>x.eventType==="MAJOR"&&seriesDue(x,index)),canEdit:owned.booking_open,
@@ -235,8 +235,8 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const auth=await owner(tx,input);
    if(!auth.booking_open)throw new Error("Show planning is closed at World Lock");
    const current=weekIndex(auth.year,auth.week),target=weekIndex(input.year,input.week);
-   if(target<current||target>current+5)
-    throw new Error("Show must be planned in the current six-week window");
+   if(target<current||target>current+6)
+    throw new Error("Show must be planned in the current week or next six weeks");
    const configured=await tx.query<{series_id:string;name:string;role:ShowSeries["role"];
     event_type:PlannedEventType;cadence_weeks:number;anchor_week:number;importance:number;active:boolean}>([
     "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",

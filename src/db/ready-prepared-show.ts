@@ -24,16 +24,17 @@ export async function markPreparedShowReady(pool:TransactionPool,input:MarkPrepa
         venue_id:string|null;show_economics_enabled:boolean}>(
         `SELECT d.draft_id,d.year,d.week,d.show_day,d.venue_id,w.show_economics_enabled
           FROM ppw_booking_drafts d
-          JOIN ppw_worlds w ON w.world_id=d.world_id AND w.year=d.year AND w.week=d.week
+          JOIN ppw_worlds w ON w.world_id=d.world_id
           JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
           JOIN ppw_promotion_controls c ON c.world_id=d.world_id AND c.promotion_id=d.promotion_id
           JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
          WHERE d.world_id=$1 AND d.draft_id=$2 AND d.promotion_id=$3
            AND d.status='DRAFT' AND p.lifecycle='ACTIVE'
+           AND (d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1 AND (w.year-1)*52+w.week+5
            AND c.player_id=$4 AND c.active AND m.status='ACTIVE'`,
         [input.worldId,input.showId,input.promotionId,input.playerId],
       );
-      if(control.length!==1)throw new Error("Show is not a current editable draft owned by this player");
+      if(control.length!==1)throw new Error("Show is not an editable draft in the advance booking window");
       const draft=control[0]!;
       const slots=await tx.query<{slot_id:string;position:number;kind:string;payload:unknown}>(
         `SELECT slot_id,position,kind,payload FROM ppw_card_slots
