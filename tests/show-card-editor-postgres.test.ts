@@ -276,6 +276,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     worldId:world,requestId:"future-continuity",expectedRevision:10})).status,"APPLIED");
    const finalized=await finalizePreparedWorldShows(db.pool,{
     worldId:world,requestId:"future-finalize",expectedRevision:11});
+   assert.equal(finalized.status,"APPLIED");
+   if(finalized.status!=="APPLIED")throw new Error("Expected prepared show finalization");
    assert.deepEqual(finalized.result.submittedShowIds,["future-4"]);
    const savedStatus=await withWorldTransaction(db.pool,tx=>tx.query<{draft_id:string;status:string}>(
     "SELECT draft_id,status FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=ANY($2::text[]) ORDER BY draft_id",
