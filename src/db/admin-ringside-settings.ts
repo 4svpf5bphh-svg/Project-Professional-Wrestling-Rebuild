@@ -1,5 +1,6 @@
 import {randomUUID} from "node:crypto";
 import type {TransactionPool} from "./transaction.js";
+import {RINGSIDE_PROMPT_VERSION} from "../domain/ringside-editorial.js";
 import {withWorldTransaction} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {DEFAULT_RINGSIDE_SETTINGS,validateRingsideSettings,
@@ -72,8 +73,9 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
     AND m.status='ACTIVE'
    LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
     AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
-    AND r.prompt_version='ringside-v4'
-   WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,[worldId,playerId,showId]);
+    AND r.prompt_version=$4
+   WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
+   [worldId,playerId,showId,RINGSIDE_PROMPT_VERSION]);
   if(rows.length!==1)throw new Error("This is not one of your completed shows.");
   if(rows[0]?.state==="READY")
    throw new Error("This show already has a published AI report. It will not be rewritten.");
@@ -87,8 +89,9 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
   if(recent.length)throw new Error("This show already received an Admin retry in the last 24 hours.");
   const deleted=await tx.query<{show_id:string}>(`
    DELETE FROM ppw_ringside_reports
-   WHERE world_id=$1 AND show_id=$2 AND prompt_version='ringside-v4'
-    AND state='FAILED' AND attempts=2 RETURNING show_id`,[worldId,showId]);
+   WHERE world_id=$1 AND show_id=$2 AND prompt_version=$3
+    AND state='FAILED' AND attempts=2 RETURNING show_id`,
+   [worldId,showId,RINGSIDE_PROMPT_VERSION]);
   if(deleted.length!==1)throw new Error("The AI report changed. Refresh Admin.");
   await tx.query(`INSERT INTO ppw_admin_action_audit
    (world_id,event_id,player_id,action,context_json)

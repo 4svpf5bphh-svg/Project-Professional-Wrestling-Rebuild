@@ -1,7 +1,8 @@
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView} from "../db/show-results-view.js";
-// Preserve the v4 READY receipt cache: style improvements apply to new dispatches only.
-export const RINGSIDE_PROMPT_VERSION="ringside-v4";
+// Updated editorial is versioned independently. Published v4 remains immutable.
+export const RINGSIDE_PROMPT_VERSION="ringside-v5";
+export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
