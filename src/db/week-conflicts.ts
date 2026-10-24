@@ -199,6 +199,21 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     contractEvidence=[...rows].sort((a,b)=>
       [a.promotion_id,a.person_id,a.contract_id].join("\u0000")
       .localeCompare([b.promotion_id,b.person_id,b.contract_id].join("\u0000"),"en"));
+    // A certified match can itself cause an injury. After the show has
+    // completed, only matching same-show/week verified medical evidence
+    // can exempt its newly injured participant from retrospective checks.
+    // A pre-existing/unrelated injury must still block World certification.
+    const injured=[...new Set(rows.filter(r=>r.person_status==="INJURED")
+     .map(r=>r.person_id))];
+    const medical=injured.length?await tx.query<{person_id:string;show_id:string}>(`
+      SELECT a.person_id,a.show_id FROM ppw_medical_absences a
+      JOIN ppw_completed_shows c ON c.world_id=a.world_id
+       AND c.show_id=a.show_id
+      WHERE a.world_id=$1 AND a.injured_week_index=$2
+       AND a.status='ACTIVE' AND a.person_id=ANY($3::text[])
+      ORDER BY a.person_id LIMIT 101`,[worldId,weekIndex,injured]):[];
+    if(medical.length>100)throw new Error("Too many verified current-week injuries");
+    const injuredByOwnShow=new Set(medical.map(x=>JSON.stringify([x.show_id,x.person_id])));
     const capacity=new Map<string,number>();
     // Associating by IDs avoids relying on unspecified SQL result order.
     const byContract=new Map(rows.map(r=>[r.promotion_id+"\u0000"+r.person_id+"\u0000"+r.contract_id,r]));
@@ -206,7 +221,10 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     for(const a of requested){
       const r=byContract.get(a.promotionId+"\u0000"+a.personId+"\u0000"+a.contractId);
       if(!r) throw new Error("Missing wrestler eligibility row");
-      if(r.person_status!=="ACTIVE")
+      const causedByThisCompletedShow=a.alreadyResolved&&
+       r.person_status==="INJURED"&&
+       injuredByOwnShow.has(JSON.stringify([a.showId,a.personId]));
+      if(r.person_status!=="ACTIVE"&&!causedByThisCompletedShow)
         blockers.push({code:"WRESTLER_UNAVAILABLE",promotionIds:[a.promotionId],
           showIds:[a.showId],resourceId:a.personId,day:a.day});
       // The durable show resolution receipt proves a charged appearance.
