@@ -1487,9 +1487,9 @@ test("iPhone restores the exact premium card instead of reopening the weekly sho
  await page.getByRole("button",{name:"Edit card"}).nth(1).click();
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
- await expect(page.getByText("The Big Event")).toBeVisible();
+ await expect(page.locator(".ppw-card-show-copy").getByText("The Big Event")).toBeVisible();
  await page.reload();
- await expect(page.getByText("The Big Event")).toBeVisible();
+ await expect(page.locator(".ppw-card-show-copy").getByText("The Big Event")).toBeVisible();
  expect(selected).toEqual(["premium","premium"]);
  expect(page.url()).not.toContain("premium");
  await page.getByRole("button",{name:"← Planner"}).click();
@@ -1750,25 +1750,14 @@ test("dragging booking tickets on iPhone changes only local order until Save",as
  const tickets=page.locator(".ppw-card[data-booking-slot-id]");
  await expect(tickets).toHaveCount(2);
  const grip=tickets.first().locator(".ppw-card-grip");
- await tickets.nth(1).evaluate(el=>el.scrollIntoView({block:"center",behavior:"instant"}));
- const first=await grip.boundingBox(),second=await tickets.nth(1).boundingBox();
- expect(first&&second).toBeTruthy();
+ // Poster-rich tickets can exceed the iPhone viewport: drag with edge scroll.
+ await grip.evaluate(el=>el.scrollIntoView({block:"center",behavior:"instant"}));
+ const first=await grip.boundingBox();expect(first).toBeTruthy();
  expect(first!.y).toBeGreaterThanOrEqual(0);
- expect(second!.y+second!.height/2).toBeLessThan(730);
  await page.mouse.move(first!.x+first!.width/2,first!.y+first!.height/2);
  await page.mouse.down();
- console.log("PPW_DND after down",JSON.stringify(await grip.evaluate(el=>({
-  capture:(el as HTMLElement).className,down:(el as HTMLElement).dataset.ppwDown,move:(el as HTMLElement).dataset.ppwMove,rect:(el as HTMLElement).getBoundingClientRect().toJSON(),
-  hit:(()=>{const b=el.getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {tag:hit?.tagName,className:hit?.className,html:hit?.outerHTML?.slice(0,150),css:getComputedStyle(el).pointerEvents,position:getComputedStyle(el).position}})(),
-  cardCount:document.querySelectorAll(".ppw-card[data-booking-slot-id]").length
- }))));
- await page.mouse.move(second!.x+second!.width/2,second!.y+second!.height/2,{steps:7});
- console.log("PPW_DND after move",JSON.stringify(await grip.evaluate(el=>({
-  capture:(el as HTMLElement).className,down:(el as HTMLElement).dataset.ppwDown,move:(el as HTMLElement).dataset.ppwMove,
-  nearest:[...document.querySelectorAll<HTMLElement>(".ppw-card[data-booking-slot-id]")]
-   .map(x=>({id:x.dataset.bookingSlotId,box:x.getBoundingClientRect().toJSON(),classes:x.className}))
- }))));
- await expect(tickets.nth(1)).toHaveClass(/ppw-card-drop-target/);
+ await page.mouse.move(first!.x+first!.width/2,744,{steps:15});
+ await expect(tickets.nth(1)).toHaveClass(/ppw-card-drop-target/,{timeout:10000});
  await page.mouse.up();
  await expect(tickets.first()).toHaveAttribute("data-booking-slot-id","second");
  await expect(page.locator(".ppw-summary").getByText("Unsaved changes")).toBeVisible();

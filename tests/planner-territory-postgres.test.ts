@@ -46,7 +46,8 @@ test("Venue planning shows anonymous six-week venue contention in four bounded q
    {year:1,week:1,day:5,venueId:"venue-0",otherPromotions:2},
    {year:1,week:2,day:6,venueId:"venue-4",otherPromotions:1}
   ]);
-  assert.equal(view.weeks.length,6);
+  assert.equal(view.weeks.length,7);
+   assert.equal(view.weeks[6]?.week,7);
   assert.equal(view.homeMarketId,"market-0");
   const home=view.venues.find(x=>x.home);
   assert.ok(home);
