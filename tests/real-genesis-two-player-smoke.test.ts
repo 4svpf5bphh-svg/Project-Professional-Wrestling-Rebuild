@@ -98,7 +98,7 @@ test("authentic original-main Genesis: two humans independently claim fictional 
   assert.equal(data.year,1);
   assert.equal(data.week,1);
   assert.ok(data.venues.length>0,"Actual venues must load in the first-week planner");
-  assert.equal(data.weeks.length,6);
+  assert.equal(data.weeks.length,7, "current week plus six advance-booking weeks");
 
  }
  assert.notEqual(managers[0]!.promotionId,managers[1]!.promotionId);
