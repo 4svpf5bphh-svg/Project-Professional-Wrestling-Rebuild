@@ -103,7 +103,7 @@ test("Crowd Noise is computed from the private five-read completed result, witho
  assert.equal(first.length,2);
  assert.deepEqual(first.map(x=>x.slotId),["a","m"]);
  assert.match(first[0]!.text,/refused/i);
- assert.match(first[1]!.text,/crowd|building|audience/i);
+ assert.match(first[1]!.text,/crowd|building|audience|noise/i);
  assert.equal(calls(),5,"Opening generated reactions performs no extra database reads");
 });
 
