@@ -157,7 +157,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
            SET year=CASE WHEN week=52 THEN year+1 ELSE year END,
                week=CASE WHEN week=52 THEN 1 ELSE week+1 END,
                day=1,phase='OPEN',next_lock_at=CASE WHEN $4::boolean
-                THEN GREATEST(next_lock_at+interval '1 day',clock_timestamp()+interval '24 hours')
+                THEN GREATEST(next_lock_at+interval '1 day',clock_timestamp()+interval '5 years')
                 ELSE next_lock_at+interval '1 day' END
          WHERE world_id=$1 AND phase='RESOLVING'
            AND year=$2 AND week=$3

@@ -19,19 +19,44 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
   if(!w||rows.length!==1||w.year!==expectedYear||w.week!==expectedWeek||
     !["OPEN","LOCKED","RESOLVING"].includes(w.phase))
    throw new Error("The World has already progressed. Refresh Home before continuing.");
-  const owners=await tx.query<{promotion_id:string;ready:boolean}>(`
-   SELECT c.promotion_id,
+  const owners=await tx.query<{promotion_id:string;player_id:string;ready:boolean;any_current:boolean}>(`
+   SELECT c.promotion_id,c.player_id,
     EXISTS(SELECT 1 FROM ppw_booking_drafts d
      WHERE d.world_id=c.world_id AND d.promotion_id=c.promotion_id
       AND d.year=$2 AND d.week=$3 AND d.booking_class='REGULAR'
-      AND d.lock_ready_fingerprint IS NOT NULL) AS ready
+      AND (d.status='SUBMITTED' OR d.lock_ready_fingerprint IS NOT NULL)) AS ready,
+    EXISTS(SELECT 1 FROM ppw_booking_drafts d
+     WHERE d.world_id=c.world_id AND d.promotion_id=c.promotion_id
+      AND d.year=$2 AND d.week=$3 AND d.status IN ('DRAFT','SUBMITTED')) AS any_current
    FROM ppw_promotion_controls c
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
-   WHERE c.world_id=$1 AND c.active AND p.lifecycle='ACTIVE'
+   JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
+   WHERE c.world_id=$1 AND c.active AND p.lifecycle='ACTIVE' AND m.status='ACTIVE'
    ORDER BY c.promotion_id LIMIT 129`,[worldId,expectedYear,expectedWeek]);
-  if(w.phase==='OPEN'&&(owners.length<1||owners.length>128||owners.some(x=>!x.ready)))
-   throw new Error("Every active human promotion must confirm its regular show before a manual World Lock.");
-  // Preflight only: the authoritative command atomically applies cutoff and locks.
+  if(w.phase==="OPEN"){
+   if(owners.length<1||owners.length>128)
+    throw new Error("The World needs an active human controller to advance");
+   for(const owner of owners){
+    if(owner.ready)continue;
+    if(owners.length!==1||owner.any_current)
+     throw new Error("A manager has an unfinished current-week show. Review the card and venue before advancing.");
+    // Private solo-playtest off-week. The single player's future shows,
+    // contractual talent and the AI's normal shows remain fully intact.
+    const marked=await tx.query<{promotion_id:string}>(`
+     INSERT INTO ppw_playtest_dark_weeks
+      (world_id,year,week,promotion_id,operator_player_id)
+     VALUES($1,$2,$3,$4,$5)
+     ON CONFLICT(world_id,year,week,promotion_id) DO NOTHING
+     RETURNING promotion_id`,
+     [worldId,expectedYear,expectedWeek,owner.promotion_id,owner.player_id]);
+    if(marked.length)await tx.query(`
+     INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+     VALUES($1,$2,$3,'SOLO_PLAYTEST_DARK_WEEK',
+      jsonb_build_object('promotionId',$4::text,'noShowBooked',true))`,
+     [worldId,expectedYear,expectedWeek,owner.promotion_id]);
+   }
+  }
+  // The existing single authoritative World Lock owns the transition.
   return {phase:w.phase,revision:Number(w.revision)};
  });
  const resolutionId="manual-preview:"+worldId+":"+expectedYear+":"+expectedWeek;
@@ -59,10 +84,10 @@ export async function extendPlaytestBooking(pool:TransactionPool,worldId:string,
    FROM ppw_worlds WHERE world_id=$1 FOR UPDATE`,[worldId]);
   const w=rows[0];
   if(!w||w.year!==expectedYear||w.week!==expectedWeek||
-   w.phase!=="OPEN"||!w.expired)throw new Error("Booking cannot be extended");
+   w.phase!=="OPEN")throw new Error("Booking cannot be extended");
   const saved=await tx.query<{world_id:string}>(`
    UPDATE ppw_worlds
-   SET next_lock_at=clock_timestamp()+interval '24 hours',revision=revision+1
+   SET next_lock_at=GREATEST(next_lock_at,clock_timestamp()+interval '5 years'),revision=revision+1
    WHERE world_id=$1 AND year=$2 AND week=$3 AND phase='OPEN'
    RETURNING world_id`,[worldId,expectedYear,expectedWeek]);
   if(saved.length!==1)throw new Error("Booking extension failed");
