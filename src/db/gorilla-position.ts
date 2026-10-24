@@ -9,6 +9,7 @@ import {GORILLA_POLICIES,planGorillaPosition,
  type GorillaPolicy,type GorillaShowLog,type GorillaAgent} from "../domain/gorilla-position.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import type {RecordedMatchReportFact} from "./record-match-report-facts.js";
+import type {GorillaMatchInstruction} from "../domain/gorilla-position.js";
 export interface GorillaPolicyInput{
  worldId:string;promotionId:string;playerId:string;requestId:string;
  expectedRevision:number;policy:GorillaPolicy;
@@ -51,9 +52,9 @@ export async function calculateGorillaShow(
 ):Promise<GorillaShowLog|null>{
  // The active controller, not any anonymous visitor, owns this log. AI
  // promotions have no policy and produce no costly extra narrative.
- const rows=await tx.query<{policy:GorillaPolicy|null;
+ const rows=await tx.query<{policy:GorillaPolicy|null;player_id:string;
   staff_id:string|null;legacy:boolean}>(`
-   SELECT instruction.policy,employee.staff_id,
+   SELECT c.player_id,instruction.policy,employee.staff_id,
     employee.staff_id IS NOT NULL AND EXISTS(
      SELECT 1 FROM ppw_staff_legacy_identities legacy
      WHERE legacy.world_id=c.world_id
@@ -85,7 +86,21 @@ export async function calculateGorillaShow(
  const agent:GorillaAgent|null=staff?{
   staffId:staff.staffId,name:staff.name,craft:staff.craft,
   people:staff.people,reliability:staff.reliability}:null;
- return planGorillaPosition(receipt,facts,row.policy??"STICK_TO_CARD",agent);
+ const approved=await tx.query<{slot_id:string;protect_script:boolean;
+  crowd_choice:GorillaMatchInstruction["crowdChoice"];
+  timing_choice:GorillaMatchInstruction["timingChoice"]}>(`
+  SELECT g.slot_id,g.protect_script,g.crowd_choice,g.timing_choice
+  FROM ppw_gorilla_match_instructions g
+  JOIN ppw_card_slots s ON s.world_id=g.world_id AND s.draft_id=g.show_id
+   AND s.slot_id=g.slot_id AND s.kind='MATCH'
+  WHERE g.world_id=$1 AND g.show_id=$2 AND g.promotion_id=$3
+   AND g.owner_player_id=$4 AND g.slot_signature=md5(s.payload::text)
+  ORDER BY g.slot_id LIMIT 101`,
+  [receipt.worldId,receipt.showId,receipt.promotionId,row.player_id]);
+ if(approved.length>100)throw new Error("Gorilla match instruction capacity exceeded");
+ return planGorillaPosition(receipt,facts,row.policy??"STICK_TO_CARD",agent,
+  approved.map(x=>({matchId:x.slot_id,protectScript:x.protect_script,
+   crowdChoice:x.crowd_choice,timingChoice:x.timing_choice})));
 }
 export async function recordGorillaShow(tx:SqlRows,receipt:CompletedShowReceipt,log:GorillaShowLog){
  if(receipt.crowdResponse!==log.crowdAfter)
