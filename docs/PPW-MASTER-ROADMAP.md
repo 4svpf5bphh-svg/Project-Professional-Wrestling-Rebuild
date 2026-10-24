@@ -31,6 +31,16 @@ Reuse booking, appointed staff, weekly resolution and the one World Lock. A pre-
 
 **Conservative limits retained for this release:** a wrestler who is medically unavailable must be rebooked through existing authoritative booking rules **before** World Lock; Gorilla warns but deliberately never invents a substitute, a new winner or an injury waiver. It is an asynchronous pre-authorisation and post-show production feature, **not** an online live-choice pause during certification, an emergency card rewriting engine or a second World clock. Deeper lawful substitute proposals and live spectator presentation can be considered later without disturbing this safe first complete scope. Phase 3 persistent memories is next.
 
+## Playtest feedback insertion — immediate defects and Results presentation
+
+**Accepted for planning on 24 October 2026, not implemented or deployed.** See the detailed [playtest feedback roadmap](PPW-PLAYTEST-FEEDBACK-ROADMAP-2026-10-24.md) and its source-code audit, release criteria and preserved features.
+
+**Stage A, ahead of Phase 3:** tag-team Form button and persistence; Backstage gimmick-button/touch styling; missing additional-dates acceptance/decline attention; match graphic portraits legible without expanding except dense fields; owner's My Champions roster section.
+
+**Stage B, ahead of full Phase 3:** restore existing but inadvertently hidden Results highlight and Crowd Noise sections; redesign the show-first reading hierarchy; improve Groq's smark column, nonrepetition/evaluation and immutable preview workflow; remove mechanical score talk from all fan-facing prose; give named Road Agents a grounded human debrief.
+
+**Place new depth without displacing existing dependencies:** Phase 3: differentiated Backstage requests and wrestler memories; Phase 4: complete EWR-style eight-department Staff Meetings plus owner-promotion rankings built from career evidence; Phase 5: explicit primary/secondary title roles **before** secondary title activation and organic title prestige; Phase 7: wider World rankings and long-lived public fan/press reactions. Phase 6 unchanged. AI-run rival promotions retain cheap minimal results; all title/ranking/social history derives from certified World facts.
+
 ## Phase 3 — Persistent memories and living-world depth
 
 **Already foundational:** Backstage requests, relationship/trust consequences, promises, tag/rivalry pitches, persona carry-over, bounded historical Groq context. **To extend:** durable high-signal memories of honoured/broken promises, title chances, omissions, forced losses, injury support/treatment, contract conduct and promoter relationships. They explain and shape morale, negotiation, future requests and working relationships, with retention/decay rules. Scope private intent to the relevant promotion; public World history is separate.
