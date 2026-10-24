@@ -12,6 +12,9 @@ export interface PlayerWorldOverview {
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
+   dateDecisions?:{id:string;contractId:string;personId:string;name:string;
+    status:"ACCEPTED"|"REJECTED";additionalDates:number;
+    additionalPayment:number;year:number;week:number}[];
    backstageResults?:{id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"}[];
    injuryNews?:{id:string;personId:string;name:string;
     severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";
@@ -54,7 +57,7 @@ export async function readPlayerWorldOverview(
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
    pending_backstage:boolean|null;expiring_talent:boolean|null;
-   pending_contract_offers:boolean|null;offer_results:unknown;
+   pending_contract_offers:boolean|null;offer_results:unknown;date_decisions:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
    medical_clearances:unknown;world_stories:unknown;
@@ -69,7 +72,8 @@ export async function readPlayerWorldOverview(
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
-    notices.offer_results,notices.backstage_requests,notices.backstage_results,
+    notices.offer_results,notices.date_decisions,
+    notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories
@@ -138,6 +142,28 @@ export async function readPlayerWorldOverview(
            AND dismissal.attention_id='offer-result:'||o.offer_id)
        ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 5) recent
      ) AS offer_results,
+     (SELECT coalesce(jsonb_agg(jsonb_build_object(
+       'id','contract-dates:'||recent.event_id::text,
+       'contractId',recent.payload->>'contractId',
+       'personId',recent.payload->>'personId','name',person.name,
+       'status',recent.payload->>'status',
+       'additionalDates',(recent.payload->>'additionalDates')::integer,
+       'additionalPayment',(recent.payload->>'additionalPayment')::bigint,
+       'year',recent.year,'week',recent.week)
+       ORDER BY recent.event_id DESC),'[]'::jsonb)
+      FROM (SELECT e.event_id,e.year,e.week,e.payload FROM ppw_ledger_events e
+       WHERE e.world_id=w.world_id AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
+        AND e.payload->>'promotionId'=owned.promotion_id
+        AND (e.year-1)*52+e.week-1 BETWEEN
+         greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals d
+         WHERE d.world_id=e.world_id AND d.player_id=$2
+          AND d.promotion_id=owned.promotion_id
+          AND d.attention_id='contract-dates:'||e.event_id::text)
+       ORDER BY e.event_id DESC LIMIT 6) recent
+      JOIN ppw_people person ON person.world_id=w.world_id
+       AND person.person_id=recent.payload->>'personId'
+     ) AS date_decisions,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'id','backstage-result:'||recent.event_id::text,
        'personId',recent.person_id,'name',recent.name,'status',recent.status)
@@ -426,6 +452,20 @@ export async function readPlayerWorldOverview(
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
        (news.status==="ACCEPTED"||news.status==="REJECTED")):[],
+     dateDecisions:Array.isArray(x.date_decisions)?
+      x.date_decisions.filter((item):item is {
+       id:string;contractId:string;personId:string;name:string;
+       status:"ACCEPTED"|"REJECTED";additionalDates:number;
+       additionalPayment:number;year:number;week:number
+      }=>item!==null&&typeof item==="object"&&
+       typeof item.id==="string"&&/^contract-dates:[1-9][0-9]{0,18}$/.test(item.id)&&
+       typeof item.contractId==="string"&&typeof item.personId==="string"&&
+       typeof item.name==="string"&&
+       (item.status==="ACCEPTED"||item.status==="REJECTED")&&
+       Number.isSafeInteger(item.additionalDates)&&item.additionalDates>=1&&
+       Number.isFinite(item.additionalPayment)&&item.additionalPayment>=0&&
+       Number.isInteger(item.year)&&item.year>=1&&
+       Number.isInteger(item.week)&&item.week>=1&&item.week<=52):[],
      backstageResults:Array.isArray(x.backstage_results)?
       x.backstage_results.filter((news):news is {
        id:string;personId:string;name:string;status:"FULFILLED"|"BROKEN"

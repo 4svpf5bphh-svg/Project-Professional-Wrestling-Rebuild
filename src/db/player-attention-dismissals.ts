@@ -10,25 +10,28 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
  const {worldId,promotionId,playerId,attentionId}=scope;
  const prefix="offer-result:",backstagePrefix="backstage-result:",
   businessPrefix="business-update:",titlePrefix="title-reign:",
-  injuryPrefix="injury-report:",clearancePrefix="medical-clearance:";
+  injuryPrefix="injury-report:",clearancePrefix="medical-clearance:",
+  datePrefix="contract-dates:";
  const isBackstage=typeof attentionId==="string"&&attentionId.startsWith(backstagePrefix);
  const isBusiness=typeof attentionId==="string"&&attentionId.startsWith(businessPrefix);
  const isTitle=typeof attentionId==="string"&&attentionId.startsWith(titlePrefix);
  const isInjury=typeof attentionId==="string"&&attentionId.startsWith(injuryPrefix);
  const isClearance=typeof attentionId==="string"&&attentionId.startsWith(clearancePrefix);
+ const isDate=typeof attentionId==="string"&&attentionId.startsWith(datePrefix);
  if(![worldId,promotionId,playerId].every(x=>
   typeof x==="string"&&!!x.trim()&&x.length<=200)||
   typeof attentionId!=="string"||
-  !(attentionId.startsWith(prefix)||isBackstage||isBusiness||isTitle||isInjury||isClearance)||
+  !(attentionId.startsWith(prefix)||isBackstage||isBusiness||isTitle||isInjury||isClearance||isDate)||
   attentionId.length>230||
-  (isBackstage?!/^[1-9][0-9]{0,14}$/.test(attentionId.slice(backstagePrefix.length)):
+  (isDate?!/^[1-9][0-9]{0,18}$/.test(attentionId.slice(datePrefix.length)):
+   isBackstage?!/^[1-9][0-9]{0,14}$/.test(attentionId.slice(backstagePrefix.length)):
    isBusiness?!/^[1-9][0-9]{0,18}$/.test(attentionId.slice(businessPrefix.length)):
    isTitle?(attentionId.length<=titlePrefix.length||attentionId.length>212):
    isClearance?!/^medical-clearance:[1-9][0-9]{0,18}:[0-9a-f]{32}$/.test(attentionId):
    isInjury?!/^injury-report:[0-9a-f]{32}$/.test(attentionId):
    attentionId.length<=prefix.length))
   throw new Error("Invalid dismissible news");
- const offerId=isBackstage||isBusiness||isTitle||isInjury||isClearance?"":attentionId.slice(prefix.length);
+ const offerId=isBackstage||isBusiness||isTitle||isInjury||isClearance||isDate?"":attentionId.slice(prefix.length);
  return withSqlClient(pool,async tx=>{
   const result=await tx.query<{permitted:boolean;inserted:boolean}>(isClearance?[
     "WITH permitted AS (",
@@ -173,6 +176,29 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
    "RETURNING attention_id",
    ") SELECT EXISTS(SELECT 1 FROM permitted) AS permitted,",
    "EXISTS(SELECT 1 FROM created) AS inserted"
+  ].join(" "):isDate?[
+   "WITH permitted AS (",
+   "SELECT event.event_id FROM ppw_ledger_events event",
+   "JOIN ppw_promotion_controls c ON c.world_id=event.world_id",
+   "AND c.promotion_id=$2 AND c.player_id=$3 AND c.active",
+   "JOIN ppw_memberships m ON m.world_id=c.world_id",
+   "AND m.player_id=c.player_id AND m.status='ACTIVE'",
+   "JOIN ppw_promotions p ON p.world_id=c.world_id",
+   "AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'",
+   "JOIN ppw_worlds w ON w.world_id=event.world_id",
+   "WHERE event.world_id=$1 AND event.event_id=$4::bigint",
+   "AND event.event_type='CONTRACT_EXTRA_DATES_DECIDED'",
+   "AND event.payload->>'promotionId'=$2",
+   "AND (event.year-1)*52+event.week-1 BETWEEN",
+   "greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1",
+   "LIMIT 1",
+   "), created AS (",
+   "INSERT INTO ppw_player_attention_dismissals",
+   "(world_id,player_id,promotion_id,attention_id)",
+   "SELECT $1,$3,$2,$5 FROM permitted ON CONFLICT DO NOTHING",
+   "RETURNING attention_id",
+   ") SELECT EXISTS(SELECT 1 FROM permitted) AS permitted,",
+   "EXISTS(SELECT 1 FROM created) AS inserted"
   ].join(" "):isBackstage?[
    "WITH permitted AS (",
    "SELECT event.event_id FROM ppw_ledger_events event",
@@ -233,6 +259,8 @@ export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:D
    [worldId,promotionId,playerId,attentionId.slice(businessPrefix.length),attentionId]:
    isBackstage?
    [worldId,promotionId,playerId,attentionId.slice(backstagePrefix.length),attentionId]:
+   isDate?
+   [worldId,promotionId,playerId,attentionId.slice(datePrefix.length),attentionId]:
    [worldId,promotionId,playerId,offerId,attentionId]);
   if(result.length!==1||!result[0]!.permitted)
    throw new Error("This update is unavailable or cannot be dismissed");
@@ -252,6 +280,7 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
  )||/^backstage-result:[1-9][0-9]{0,14}$/.test(id)||
   /^business-update:[1-9][0-9]{0,18}$/.test(id)||
   (id.startsWith("title-reign:")&&id.length>12&&id.length<=212)||
+  /^contract-dates:[1-9][0-9]{0,18}$/.test(id)||
   /^injury-report:[0-9a-f]{32}$/.test(id)||
    /^medical-clearance:[1-9][0-9]{0,18}:[0-9a-f]{32}$/.test(id);
  if(![worldId,promotionId,playerId].every(x=>
@@ -280,6 +309,13 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "AND offer.status IN ('ACCEPTED','REJECTED')",
    "AND offer.submitted_week_index BETWEEN",
    "greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1)",
+   "OR EXISTS (SELECT 1 FROM ppw_ledger_events event",
+   "WHERE event.world_id=w.world_id",
+   "AND requested.attention_id='contract-dates:'||event.event_id::text",
+   "AND event.event_type='CONTRACT_EXTRA_DATES_DECIDED'",
+   "AND event.payload->>'promotionId'=$2",
+   "AND (event.year-1)*52+event.week-1 BETWEEN",
+   "greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1)",
    "OR EXISTS (SELECT 1 FROM ppw_ledger_events event",
    "JOIN ppw_backstage_requests request ON request.world_id=event.world_id",
    "AND request.request_id=event.payload->>'conversationId'",

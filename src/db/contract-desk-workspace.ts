@@ -74,6 +74,27 @@ export async function readContractDesk(
    ORDER BY CASE WHEN o.status='PENDING' THEN 0 ELSE 1 END,
     o.submitted_week_index DESC,o.offer_id DESC LIMIT 200`,
    [worldId,promotionId,currentWeekIndex]);
+  // Bounded history lives on the existing desk read; notifications can be
+  // dismissed without losing the negotiated decision from this history.
+  const dateDecisions=await tx.query<{
+   event_id:string|number;year:number;week:number;contract_id:string;
+   person_id:string;name:string;status:"ACCEPTED"|"REJECTED";
+   additional_dates:number;additional_payment:string|number;
+  }>(`
+   SELECT e.event_id,e.year,e.week,
+    e.payload->>'contractId' AS contract_id,
+    e.payload->>'personId' AS person_id,person.name,
+    e.payload->>'status' AS status,
+    (e.payload->>'additionalDates')::integer AS additional_dates,
+    (e.payload->>'additionalPayment')::bigint AS additional_payment
+   FROM ppw_ledger_events e
+   JOIN ppw_people person ON person.world_id=e.world_id
+    AND person.person_id=e.payload->>'personId'
+   WHERE e.world_id=$1 AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
+    AND e.payload->>'promotionId'=$2
+    AND (e.year-1)*52+e.week-1 BETWEEN greatest(0,$3-25) AND $3
+   ORDER BY e.event_id DESC LIMIT 20`,
+   [worldId,promotionId,currentWeekIndex]);
   const pendingOffers=offers.filter(o=>o.status==="PENDING");
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
@@ -95,6 +116,10 @@ export async function readContractDesk(
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
    renewals,offers:pendingOffers,
+   dateDecisions:dateDecisions.map(d=>({id:"contract-dates:"+d.event_id,
+    contractId:d.contract_id,personId:d.person_id,name:d.name,status:d.status,
+    additionalDates:d.additional_dates,additionalPayment:Number(d.additional_payment),
+    year:d.year,week:d.week})),
    resolvedOffers:decidedOffers.map(o=>({offerId:o.offer_id,
     personId:o.person_id,name:o.person_name,status:o.status,
     sourceContractId:o.source_contract_id,

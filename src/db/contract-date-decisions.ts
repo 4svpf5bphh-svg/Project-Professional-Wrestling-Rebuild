@@ -111,9 +111,20 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
        [input.worldId,year,week,r.contract_id,r.additional_dates,payment,input.promotionId]);
     }
    }
-   await tx.query(`UPDATE ppw_contract_date_requests SET status=$3
-     WHERE world_id=$1 AND request_id=$2 AND status='PENDING'`,
-     [input.worldId,input.dateRequestId,decision]);
+   const closed=await tx.query<{request_id:string}>(`UPDATE ppw_contract_date_requests
+     SET status=$3 WHERE world_id=$1 AND request_id=$2 AND status='PENDING'
+     RETURNING request_id`,[input.worldId,input.dateRequestId,decision]);
+   if(closed.length!==1)throw new Error("Date decision was not recorded");
+   // Every acceptance or refusal is published once with the canonical outcome,
+   // including an accepted addendum which required no extra payment.
+   await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+     VALUES($1,$2,$3,'CONTRACT_EXTRA_DATES_DECIDED',jsonb_build_object(
+      'dateRequestId',$4::text,'contractId',$5::text,'personId',$6::text,
+      'promotionId',$7::text,'status',$8::text,'additionalDates',$9::integer,
+      'additionalPayment',$10::bigint))`,
+     [input.worldId,year,week,input.dateRequestId,r.contract_id,r.person_id,
+      input.promotionId,decision,r.additional_dates,
+      decision==="ACCEPTED"?Number(r.additional_payment):0]);
    return {dateRequestId:input.dateRequestId,contractId:r.contract_id,
     decision,datesGranted:decision==="ACCEPTED"?r.additional_dates:0,
     additionalPayment:decision==="ACCEPTED"?Number(r.additional_payment):0};
