@@ -53,14 +53,14 @@ export async function readGorillaWorkspace(pool:TransactionPool,input:GorillaSco
      AND g.show_id=s.draft_id AND g.slot_id=s.slot_id
      AND g.owner_player_id=$2 AND g.promotion_id=$3
     WHERE d.world_id=$1 AND d.promotion_id=$3
-     AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+5
+     AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+6
      AND d.status IN ('DRAFT','SUBMITTED')
-    ORDER BY d.year,d.week,d.booking_class DESC,d.draft_id,s.position LIMIT 601`,
+    ORDER BY d.year,d.week,d.booking_class DESC,d.draft_id,s.position LIMIT 1401`,
     [input.worldId,input.playerId,input.promotionId,now]);
-  if(rows.length>600)throw new Error("Gorilla week card limit exceeded");
+  if(rows.length>1400)throw new Error("Gorilla week card limit exceeded");
   const people=[...new Set(rows.flatMap(r=>r.slot_id===null?[]:
    readCardParticipants(r.payload).map(p=>p.personId)))];
-  if(people.length>600)throw new Error("Gorilla booked talent limit exceeded");
+  if(people.length>1400)throw new Error("Gorilla booked talent limit exceeded");
   const names=people.length?await tx.query<{person_id:string;name:string}>(
    "SELECT person_id,name FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
    [input.worldId,people]):[];
@@ -69,7 +69,7 @@ export async function readGorillaWorkspace(pool:TransactionPool,input:GorillaSco
    SELECT person_id,injured_week_index,cleared_week_index FROM ppw_medical_absences
    WHERE world_id=$1 AND person_id=ANY($2::text[]) AND status='ACTIVE'
     AND injured_week_index<$3 AND cleared_week_index>$4`,
-   [input.worldId,people,now+6,now]):[];
+   [input.worldId,people,now+7,now]):[];
   const shows=new Map<string,GorillaShowItem>();
   for(const r of rows){
    let show=shows.get(r.draft_id);
@@ -127,7 +127,7 @@ export async function saveGorillaShowInstructions(pool:TransactionPool,input:Sav
     WHERE d.world_id=$1 AND d.promotion_id=$3 AND d.draft_id=$4
      AND d.status IN ('DRAFT','SUBMITTED')
      AND (d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1
-      AND (w.year-1)*52+w.week+5`,
+      AND (w.year-1)*52+w.week+6`,
     [input.worldId,input.playerId,input.promotionId,input.showId]);
    if(shows.length!==1)throw new Error("Show unavailable for Gorilla instructions");
    const slots=await tx.query<{slot_id:string}>(`
