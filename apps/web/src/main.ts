@@ -72,10 +72,13 @@ async function command(path:string,body:Record<string,unknown>,csrfToken?:string
   headers:{"content-type":"application/json",
    ...(csrfToken?{"x-ppw-csrf":csrfToken}:{})},
   body:JSON.stringify(body)});
- if(!r.ok)throw new Error(r.status===401?"Invalid player sign-in":
-  r.status===429?"Too many requests. Try again later.":
-  r.status===409?"Your promotion has changed. Refresh before continuing.":
-  "Request rejected. Review and try again.");
+ if(!r.ok){
+  const payload=await r.json().catch(()=>({error:""})) as {error?:string};
+  throw new Error(typeof payload.error==="string"&&payload.error.trim()?
+   payload.error.slice(0,240):r.status===401?"Invalid player sign-in":
+    r.status===429?"Too many requests. Try again later.":
+    "Request rejected. Review and try again.");
+ }
  return r.json();
 }
 
@@ -259,7 +262,25 @@ function renderSection(){
    const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
    if(line)line.textContent="Y"+updated.world.year+" W"+updated.world.week+
     " · "+updated.world.name;
-  },undefined,undefined);break;
+  },
+   session.canManualAdvance?async(year,week)=>{
+    for(let batch=0;batch<24;batch++){
+     const response=await command("/api/playtest-week",{
+      confirm:"ADVANCE_SHARED_WORLD",year,week
+     },session?.csrfToken) as {
+      status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";
+      blockers:string[];steps:{action:string;status:string}[]
+     };
+     if(response.status!=="LIMIT_REACHED")
+      return {status:response.status,blockers:response.blockers??[]};
+     if(!response.steps?.length)
+      return {status:"BLOCKED" as const,blockers:["World made no progress. Check Admin diagnostics."]};
+    }
+    return {status:"LIMIT_REACHED" as const,blockers:[]};
+   }:undefined,
+   session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
+    confirm:"EXTEND_SHARED_BOOKING",year,week
+   },session?.csrfToken):undefined);break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
   case "card":{
