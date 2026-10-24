@@ -64,7 +64,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page).toHaveURL(/#\/roster$/);
 });
 
-test("320px iPhone Staff Market uses two accessible rows of four departments",async({page})=>{
+test("320px iPhone Staff Market uses four readable rows of two departments",async({page})=>{
  await page.setViewportSize({width:320,height:720});
  const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
@@ -85,8 +85,14 @@ test("320px iPhone Staff Market uses two accessible rows of four departments",as
  const boxes=await tabs.evaluateAll(els=>els.map(el=>{
   const box=el.getBoundingClientRect();return {top:Math.round(box.top),height:box.height,width:box.width};
  }));
- expect(new Set(boxes.map(b=>b.top)).size).toBe(2);
- expect(boxes.every(b=>b.height>=44&&b.width>=50)).toBe(true);
+ expect(new Set(boxes.map(b=>b.top)).size).toBe(4);
+ expect(boxes.every(b=>b.height>=44&&b.width>=110)).toBe(true);
+ const readable=await tabs.evaluateAll(els=>els.every(el=>{
+  const style=getComputedStyle(el);
+  return style.wordBreak==="normal"&&style.overflowWrap==="normal"&&
+   el.scrollWidth<=el.clientWidth+1;
+ }));
+ expect(readable,"Department names must wrap at whole words").toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  await tabs.nth(7).click();
  await expect(tabs.nth(7)).toHaveAttribute("aria-pressed","true");
