@@ -82,3 +82,34 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
 });
+
+test("Fictional fan disagreement links to the certified finish on a 320px iPhone",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ const dirty={...show,entries:[{
+  ...show.entries[0],summary:"Omega won on a disqualification",
+  outcome:"DISQUALIFICATION",
+  fallout:{...show.entries[0]!.fallout,finishCheaterName:"Samoa Joe"}
+ },show.entries[1]]};
+ let resultsReads=0,providerReads=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  if(r.request().postDataJSON().method==="results")resultsReads++;
+  return r.fulfill({json:r.request().postDataJSON().method==="resultsArchive"?{
+   items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+    crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null
+  }:dirty});
+ });
+ await page.route("**/api/results-commentary",r=>{
+  providerReads++;return r.fulfill({json:{status:"unavailable"}});
+ });
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ const post=page.locator(".ppw-crowd-noise-card").first();
+ await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
+ await post.click();
+ await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");
+ await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
+ expect(resultsReads).toBe(1);expect(providerReads).toBe(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
