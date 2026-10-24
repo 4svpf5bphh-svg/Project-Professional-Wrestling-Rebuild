@@ -129,3 +129,17 @@
   padding-inline:4px;letter-spacing:-.012em;
  }
 }
+
+/* A readable two-column standing-policy selector, without an extra nav root. */
+.ppw-gorilla-policy{background:radial-gradient(circle at 100% 0,#2680aa33,transparent 60%),#122940}
+.ppw-gorilla-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:14px 0;min-width:0}
+.ppw-gorilla-choices .ppw-staff-button{min-width:0;padding:11px 7px;
+ font-size:13px;line-height:1.25;white-space:normal;overflow-wrap:normal;
+ word-break:normal;hyphens:none;text-wrap:balance}
+.ppw-gorilla-choices [aria-pressed=true]{border-color:#bef6ff;
+ background:linear-gradient(125deg,#28819e,#4b539e);
+ box-shadow:inset 0 0 0 1px #bef6ff}
+.ppw-gorilla-choices .ppw-staff-button:focus-visible{
+ outline:3px solid #ffe18f;outline-offset:2px}
+@media(min-width:700px){.ppw-gorilla-choices{grid-template-columns:repeat(4,minmax(0,1fr))}}
