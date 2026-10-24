@@ -10,6 +10,7 @@ import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {driveWorldResolution,planNextWorldResolutionAction}
  from "../src/db/world-resolution-pipeline.js";
+import {inspectWeekConflicts} from "../src/db/week-conflicts.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -96,11 +97,30 @@ test("two promotions resolve, certify and publish after restart without double c
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_completed_shows WHERE world_id=$1",[worldId]
   ))[0]!.n,"0");
+  // Canonical post-show medical consequences cannot retroactively
+  // invalidate the completed match. An undocumented injury still blocks.
+  const detailed=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:1});
+  assert.equal(detailed.status,"LIMIT_REACHED");
+  assert.deepEqual(detailed.steps.map(s=>s.action),["RESOLVE_DETAILED_SHOWS"]);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET status='INJURED' WHERE world_id=$1 AND person_id=$2",
+   [worldId,people[0]!]));
+  const undocumented=await withWorldTransaction(db.pool,tx=>inspectWeekConflicts(tx,worldId));
+  assert.ok(undocumented.blockers.some(b=>
+   b.code==="WRESTLER_UNAVAILABLE"&&b.resourceId===people[0]),
+   "An undocumented injury remains a hard blocker");
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+    INSERT INTO ppw_medical_absences
+    (world_id,person_id,show_id,match_id,injured_week_index,
+     cleared_week_index,weeks_out,severity,status)
+    VALUES ($1,$2,$3,'main-event-0',0,5,5,'MODERATE','ACTIVE')`,
+   [worldId,people[0]!,shows[0]!]));
+  const verified=await withWorldTransaction(db.pool,tx=>inspectWeekConflicts(tx,worldId));
+  assert.equal(verified.provisionalClear,true,
+   "Newly injured wrestler from this completed show must not block certification");
   const resumed=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:4});
   assert.equal(resumed.status,"PUBLISHED");
-  assert.deepEqual(resumed.steps.map(s=>s.action),[
-   "RESOLVE_DETAILED_SHOWS","CERTIFY_WEEK","PUBLISH_WEEK",
-  ]);
+  assert.deepEqual(resumed.steps.map(s=>s.action),["CERTIFY_WEEK","PUBLISH_WEEK"]);
   const clock=await read<{year:number;week:number;phase:string}>(
    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]);
   assert.deepEqual(clock,[{year:1,week:2,phase:"OPEN"}]);
@@ -175,7 +195,7 @@ test("two promotions resolve, certify and publish after restart without double c
     "ppw_programme_resolved_activities",
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships",
-    "ppw_completed_match_evidence","ppw_completed_show_segments",
+    "ppw_medical_absences","ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
