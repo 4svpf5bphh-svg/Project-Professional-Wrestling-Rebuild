@@ -299,13 +299,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    node("h2","","AT THE CURTAIN"),
    node("p","",gorilla.staffName+" · "+
     gorilla.policy.replaceAll("_"," ").toLowerCase()),
-   node("p","","Scripted winners, finishes and medical evidence were protected."));
+   node("p","","The crew's account of what happened between the curtain and the ring."));
   if(!gorilla.incidents.length)position.append(node("p","",
    "No exceptional production incident required a change of plan."));
   for(const incident of gorilla.incidents.slice(0,12)){
    const line=node("article","ppw-gorilla-incident");
+   const source=show.entries.find(entry=>entry.position===incident.position);
    line.append(node("strong","",incident.kind.replaceAll("_"," ")+
-    " · Card "+(incident.position+1)),
+    " · "+(source?.headline??"During the show")),
     node("p","",incident.evidence),
     node("p","",incident.choice.replaceAll("_"," ")+": "+incident.reason));
    position.append(line);
@@ -313,8 +314,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   if(gorilla.incidents.length>12)position.append(node("p","ppw-muted",
    "Additional production incidents remain in the official show log."));
   if(gorilla.crowdAdjustment>0)position.append(node("p","",
-   "Verified broadcast recovery: +"+gorilla.crowdAdjustment.toFixed(1)+
-   " to the show's crowd response. Match winners and ratings did not change."));
+   "Production recovered its rhythm, and the building responded."));
  }
  const analysis=document.createElement("details");
  analysis.className="ppw-results-analysis";
@@ -322,6 +322,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const stats=node("div","ppw-results-analysis-stats");
  stats.append(scoreWrap,pulseRow);analysis.append(stats);
  if(flowScores.length>=2)analysis.append(crowdFlow);
+ if(gorilla&&gorilla.crowdAdjustment>0)analysis.append(node("p","ppw-muted",
+  "Internal recovery adjustment: +"+gorilla.crowdAdjustment.toFixed(1)+
+  " audience response. Certified results remain unchanged."));
  root.replaceChildren(header,...(featured.length?[highlights]:[]),
   feature,timeline,...(reactions.length?[noise]:[]),
   ...(office?[office]:[]),...(position?[position]:[]),analysis);

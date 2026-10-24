@@ -32,7 +32,9 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  const voice=agent?.personality??"BALANCED";
  const prefix=voice==="FRANK"?"Here's what I'd change: ":
   voice==="PATIENT"?"There is plenty to build on. ":
-  voice==="ECCENTRIC"?"From my corner of the curtain: ":"";
+  voice==="ECCENTRIC"?"From my corner of the curtain: ":
+  voice==="AMBITIOUS"?"We can aim higher than this: ":
+  voice==="LOYAL"?"Our people put the work in: ":"";
  const bestCrowd=best?.m.crowdResponse??0;
  const praise=best?(
   bestCrowd>=70?
@@ -56,8 +58,15 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   receipt.segments.length===0?
    "Set up the next show's stakes with a short in-ring confrontation before asking for the big match.":
    "Keep what connected, trim what dragged, and give the audience a different opening next time.";
+ // A staff member's temperament should feel like a person advising the
+ // booker, never a mathematical trait modifier or re-scoring the result.
+ const parting=voice==="FRANK"?" And don't ask them to do it twice if it didn't work.":
+  voice==="PATIENT"?" Give them room to find their feet, but listen to the room.":
+  voice==="ECCENTRIC"?" One unexpected twist is worth more than a dozen empty promises.":
+  voice==="AMBITIOUS"?" Next week needs a hook they can't ignore.":
+  voice==="LOYAL"?" Tell the people who delivered that you noticed.":"";
  return {reporter,staffId:agent?.staffId??null,
   headline:prefix+(bestCrowd>=75?"That one gave us something to work with":
-   "Notes from the curtain"),praise,concern,recommendation,
+   "Notes from the curtain"),praise,concern,recommendation:recommendation+parting,
   strongestMatchId:best?.m.matchId??null,reviewedMatches:matches.length};
 }
