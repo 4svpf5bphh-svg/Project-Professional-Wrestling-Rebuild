@@ -105,6 +105,6 @@ test("submission and flash-pin reactions never guess specific manoeuvres",()=>{
 test("fictional fans do not speak in simulation scores or pass for real posts",()=>{
  const title=match("belt");title.fallout!.title={name:"World Title",winnerName:"Winner",priorHolderName:"Loser",changed:true};
  const bad=match("cold",20);const posts=showReactionWire(show([title,bad]));
- assert.ok(posts.every(p=>!/@|\\b(?:\\d+\\/100|simulation|crowd score|execution score|protected finish|foreign object)\\b/i.test(p.text)));
+ assert.ok(posts.every(p=>!(/@|\b(?:\d+\/100|simulation|crowd score|execution score|protected finish|foreign object)\b/i).test(p.text)));
  assert.ok(posts.every(p=>p.slotId==="belt"||p.slotId==="cold"));
 });
