@@ -191,18 +191,16 @@ async function main(){
    assert.equal(future?.shows.filter(x=>
     x.draftId===continued.result.draftId).length,1,
     "The next show must survive in the player's six-week Planner");
-   if(dueWeek.year===nextPlan.year&&dueWeek.week===nextPlan.week){
-    const nextDraft=await readShowCardEditor(db.pool,{...owner,
-     showId:continued.result.draftId});
-    assert.equal(nextDraft.week,nextPlan.week);
-    assert.equal(nextDraft.slots.length,0,
-     "A new week's show cannot carry accidental previous match cards");
-    assert.equal(nextDraft.canEdit,true);
-   }else{
-    await assert.rejects(readShowCardEditor(db.pool,{...owner,
-     showId:continued.result.draftId}),/accessible|Current show/i,
-     "Future shows stay in Planner; their card cannot be edited before its week");
-   }
+   // Players can author the current week plus six ahead. A future
+   // show must be its own empty card, not an inherited prior show.
+   const nextDraft=await readShowCardEditor(db.pool,{...owner,
+    showId:continued.result.draftId});
+   assert.equal(nextDraft.year,dueWeek.year);
+   assert.equal(nextDraft.week,dueWeek.week);
+   assert.equal(nextDraft.slots.length,0,
+    "An upcoming show's card must not inherit any prior-week matches");
+   assert.equal(nextDraft.canEdit,true,
+    "Both managers can book an upcoming show before its World week");
    readableResults.push({promotionId:owner.promotionId,
     showId:draft.draft_id,winner:bouts[0]!.matchContext!.winnerNames[0],
     nextWeek:nextPlan.week,nextScheduledWeek:dueWeek.week,
