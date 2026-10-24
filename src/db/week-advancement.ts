@@ -70,7 +70,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
            LEFT JOIN ppw_show_resolutions r
              ON r.world_id=d.world_id AND r.show_id=d.draft_id
              AND r.promotion_id=p.promotion_id AND r.resolved_week_index=$4
-          WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+          WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'${where}`,
         [input.worldId,year,week,weekIndex],
       );
       if(ready.length!==1) throw new Error("World readiness lookup failed");
@@ -101,7 +101,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
              ON c.world_id=d.world_id AND c.show_id=d.draft_id
            LEFT JOIN ppw_show_economics econ
              ON econ.world_id=c.world_id AND econ.show_id=c.show_id
-           WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+           WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'${where}`,
         [input.worldId,year,week],
       );
       if(detailed.length!==1||detailed[0]!.completed_promotions!==submitted||
@@ -125,7 +125,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
          LEFT JOIN ppw_show_resolutions r
            ON r.world_id=d.world_id AND r.show_id=d.draft_id
            AND r.promotion_id=p.promotion_id AND r.resolved_week_index=$4
-         WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+         WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'${where}`,
         [input.worldId,year,week,weekIndex],
       );
       if(paired.length!==1||paired[0]!.paired_promotions!==submitted||

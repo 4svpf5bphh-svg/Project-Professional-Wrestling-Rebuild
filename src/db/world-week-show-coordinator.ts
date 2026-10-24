@@ -41,7 +41,9 @@ export async function resolveWorldWeekShows(
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World changed during show discovery");
   return tx.query<{promotion_id:string}>(
-   "SELECT promotion_id FROM ppw_promotions WHERE world_id=$1 AND lifecycle='ACTIVE' ORDER BY promotion_id",
+   `SELECT p.promotion_id FROM ppw_promotions p
+    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'${where}
+    ORDER BY p.promotion_id`,
    [input.worldId]);
  });
  if(active.length===0||active.length>128)

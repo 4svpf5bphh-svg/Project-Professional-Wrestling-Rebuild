@@ -42,7 +42,10 @@ export async function certifyResolvedWorldWeek(
       AND r.resolved_week_index=$4
     LEFT JOIN ppw_completed_shows c ON c.world_id=d.world_id
       AND c.show_id=d.draft_id
-    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'`,
+    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
+  WHERE off_week.world_id=p.world_id
+   AND off_week.promotion_id=p.promotion_id
+   AND off_week.year=$2 AND off_week.week=$3)`,
     [input.worldId,year,week,index]);
    if(rows.length!==1||rows[0]!.already)
     throw new Error("Week already certified or missing certification state");

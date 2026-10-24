@@ -41,8 +41,8 @@ export async function inspectWorldResolutionReadiness(
    active:number;submitted:number;regular_submitted:number;cleared:number|null;
    certified:number|null;legacy_resolved:number;detailed_resolved:number;
   }>(`SELECT
-     (SELECT count(*)::integer FROM ppw_promotions WHERE world_id=$1
-        AND lifecycle='ACTIVE') AS active,
+     (SELECT count(*)::integer FROM ppw_promotions p WHERE p.world_id=$1
+        AND p.lifecycle='ACTIVE'${where}) AS active,
      (SELECT count(*)::integer FROM ppw_booking_drafts WHERE world_id=$1
         AND year=$2 AND week=$3 AND status='SUBMITTED') AS submitted,
      (SELECT count(*)::integer FROM ppw_booking_drafts d
