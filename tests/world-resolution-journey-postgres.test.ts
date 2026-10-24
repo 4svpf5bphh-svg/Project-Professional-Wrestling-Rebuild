@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
+import {setGorillaPolicy} from "../src/db/gorilla-position.js";
 import {readCompletedShowArchive} from "../src/db/completed-show-archive.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {driveWorldResolution,planNextWorldResolutionAction}
@@ -237,9 +238,17 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
      "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb)",
      [worldId,showIds[i]!,"match-"+i,JSON.stringify(payload)]);
    }
-   await tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]);
   });
-  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:0})).status,"APPLIED");
+  const instruction=await setGorillaPolicy(db.pool,{
+   worldId,promotionId:promotions[0]!,playerId,requestId:"policy-before-lock",
+   expectedRevision:0,policy:"FOLLOW_THE_CROWD"});
+  assert.equal(instruction.status,"APPLIED");
+  assert.equal((await setGorillaPolicy(db.pool,{
+   worldId,promotionId:promotions[0]!,playerId,requestId:"policy-before-lock",
+   expectedRevision:0,policy:"FOLLOW_THE_CROWD"})).status,"REPLAYED");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
+  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:1})).status,"APPLIED");
   const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12});
   assert.equal(stages.status,"PUBLISHED");
   assert.deepEqual(stages.steps.map(s=>s.action),[
@@ -263,6 +272,16 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
    promotionId:promotions[0]!,showId:showIds[1]!});
   assert.equal(ppvView.showName,"Royal Rumble");
   assert.equal(ppvView.bookingClass,"PREMIUM");
+  assert.equal(ppvView.gorillaLog?.policy,"FOLLOW_THE_CROWD");
+  assert.equal(ppvView.gorillaLog?.crowdAfter,ppvView.crowdResponse);
+  const logs=await read<{show_id:string;policy:string;
+   log_json:{crowdAdjustment:number;incidents:unknown[]}}>(
+    "SELECT show_id,policy,log_json FROM ppw_gorilla_show_logs WHERE world_id=$1 ORDER BY show_id",
+    [worldId]);
+  assert.deepEqual(logs.map(x=>x.show_id).sort(),[showIds[0]!,showIds[1]!].sort(),
+   "Both player-authored shows get exactly one Gorilla log; AI opponent does not");
+  assert.ok(logs.every(x=>x.policy==="FOLLOW_THE_CROWD"&&
+   x.log_json.crowdAdjustment>=0&&x.log_json.crowdAdjustment<=1));
   const contractBalances=await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
   assert.ok(contractBalances.every(x=>x.remaining_dates===0));
@@ -276,13 +295,16 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
   assert.equal(retry.status,"BLOCKED");
   assert.equal((await read<{total:number}>(
    "SELECT count(*)::integer AS total FROM ppw_completed_shows WHERE world_id=$1",[worldId]))[0]!.total,3);
+  assert.equal((await read<{n:number}>(
+   "SELECT count(*)::integer AS n FROM ppw_gorilla_show_logs WHERE world_id=$1",
+   [worldId]))[0]!.n,2,"Replay never adds a second incident log");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_programme_resolved_activities",
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships","ppw_completed_match_evidence",
     "ppw_completed_show_segments","ppw_completed_show_matches",
-    "ppw_completed_shows","ppw_show_resolutions","ppw_week_resolution_seals",
+    "ppw_gorilla_show_logs","ppw_completed_shows","ppw_gorilla_policies","ppw_show_resolutions","ppw_week_resolution_seals",
     "ppw_week_resource_clearances","ppw_week_prepared_finalizations",
     "ppw_week_continuity_assessments","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_alignment_changes","ppw_programme_match_activities",
