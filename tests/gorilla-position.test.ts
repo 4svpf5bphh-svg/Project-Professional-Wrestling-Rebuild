@@ -12,7 +12,7 @@ const receipt:CompletedShowReceipt={
   {matchId:"main",position:4,crowdResponse:39,actualFinish:"INJURY_STOPPAGE",actualWinnerSide:"A"}
  ],segments:[]};
 const facts:RecordedMatchReportFact[]=receipt.matches.map((m,i)=>({
- matchId:m.matchId,ratingStars:3+i/2,executionQuality:70,actualMinutes:i===1?49:14,
+ matchId:m.matchId,ratingStars:3+i/2,executionQuality:70,actualMinutes:i===1?49:14,plannedMinutes:i===1?15:14,
  chemistryModifier:0,finishCheaterPersonId:null,linkedProgrammes:0,
  programmeSignal:null,injuries:i===2?[{personId:"a",severity:"MINOR",weeksOut:2}]:[]
 }));
@@ -63,4 +63,33 @@ test("Gorilla rejects invented match evidence, duplicates, missing data and inva
   "FOLLOW_THE_CROWD",agent),/certified/);
  assert.throws(()=>planGorillaPosition(receipt,facts,"USE_JUDGEMENT",
   {...agent,craft:-2}),/competencies/);
+});
+
+test("Pre-authorised match protections and explicit legal choices preserve the canonical script",()=>{
+ const safe=planGorillaPosition(receipt,facts,"FOLLOW_THE_CROWD",agent,[{
+  matchId:"opener",protectScript:true,crowdChoice:"RESET_COMMENTARY",timingChoice:"TIGHTEN_TRANSITIONS"
+ }]);
+ assert.equal(safe.incidents.find(i=>i.matchId==="opener"&&i.kind==="CROWD_DIP")?.choice,"PROTECT_SCRIPT");
+ const manual=planGorillaPosition(receipt,facts,"STICK_TO_CARD",agent,[{
+  matchId:"opener",protectScript:false,crowdChoice:"RESET_COMMENTARY",timingChoice:"DELEGATE"
+ },{
+  matchId:"feature",protectScript:false,crowdChoice:"LET_CROWD_BREATHE",
+  timingChoice:"TIGHTEN_TRANSITIONS"
+ }]);
+ assert.ok(manual.incidents.some(i=>i.matchId==="opener"&&i.choice==="RESET_COMMENTARY"));
+ assert.ok(manual.incidents.some(i=>i.matchId==="feature"&&i.choice==="TIGHTEN_TRANSITIONS"));
+ assert.ok(manual.incidents.some(i=>i.matchId==="feature"&&i.choice==="LET_CROWD_BREATHE"));
+ assert.equal(receipt.matches[0]!.actualWinnerSide,"A");
+ assert.equal(receipt.matches[1]!.actualFinish,"SUBMISSION");
+ assert.throws(()=>planGorillaPosition(receipt,facts,"STICK_TO_CARD",agent,[{
+  matchId:"alien",protectScript:false,crowdChoice:"DELEGATE",timingChoice:"DELEGATE"
+ }]),/Unrecognized/);
+});
+test("Verified major timing overrun means runtime exceeded BOOKED time",()=>{
+ const calm=planGorillaPosition(receipt,facts.map(f=>f.matchId==="feature"?
+  {...f,plannedMinutes:49}:f),"FOLLOW_THE_CROWD",agent);
+ assert.ok(!calm.incidents.some(i=>i.kind==="TIME_PRESSURE"));
+ const actual=planGorillaPosition(receipt,facts,"FOLLOW_THE_CROWD",agent);
+ assert.ok(actual.incidents.some(i=>i.kind==="TIME_PRESSURE"&&
+  i.evidence.includes("against 15 booked minutes")));
 });
