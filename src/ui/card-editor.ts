@@ -17,7 +17,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
-import {createMatchBroadcast} from "./match-broadcast.js";
+import {createMatchBroadcast,createAngleBroadcast} from "./match-broadcast.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
@@ -726,14 +726,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
    bar.append(arrows);card.append(bar);
-   if(m&&assignedIds(m).length){
-    card.append(createMatchBroadcast(m,p=>selectedName(p),view.championships,{
-     show:view.showName??(view.bookingClass==="PREMIUM"?"Premium event":"Weekly show"),
-     promotion:view.promotionName,
-     premium:view.bookingClass==="PREMIUM",
-     mainEvent:card.classList.contains("ppw-main-event")
-    }));
-   }
+   const broadcastContext={
+    show:view.showName??(view.bookingClass==="PREMIUM"?"Premium event":"Weekly show"),
+    promotion:view.promotionName,premium:view.bookingClass==="PREMIUM"
+   };
+   if(m)card.append(createMatchBroadcast(m,p=>selectedName(p),view.championships,{
+    ...broadcastContext,mainEvent:card.classList.contains("ppw-main-event")
+   }));
+   else if(segment)card.append(createAngleBroadcast(segment,p=>selectedName(p),broadcastContext));
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);

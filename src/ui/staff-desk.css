@@ -68,16 +68,30 @@
 .ppw-staff-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;width:100%}
 .ppw-staff-actions button{font-size:12px;min-height:36px}
 .ppw-staff-buyout{width:100%;color:#f8ca91;font-size:12px;font-weight:800}
-.ppw-staff-departments{display:flex;gap:7px;overflow:auto;padding:8px 0 14px}
-.ppw-staff-departments button{min-height:38px;white-space:nowrap;font-size:12px}
-.ppw-staff-departments button[aria-pressed=true]{background:#338db6;border-color:#a2e4fa}
+.ppw-staff-departments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:8px;margin:10px 0 17px;min-width:0}
+.ppw-staff-departments button{min-width:0;min-height:52px;padding:8px 4px;
+ white-space:normal;overflow-wrap:anywhere;line-height:1.15;font-size:clamp(10px,2.6vw,13px);
+ border-radius:10px;border:1px solid #527e9d;
+ background:linear-gradient(145deg,#203f62,#162b4a)}
+.ppw-staff-departments button[aria-pressed=true]{background:linear-gradient(145deg,#347cac,#5755a6);
+ border-color:#b7edfb;box-shadow:inset 0 0 0 1px #b7edfb,0 0 17px #46bbef33}
+.ppw-staff-departments button:focus-visible{outline:3px solid #ffe18f;outline-offset:2px}
+@media(min-width:740px){.ppw-staff-departments{grid-template-columns:repeat(8,minmax(0,1fr))}
+ .ppw-staff-departments button{min-height:51px;padding:9px 5px}}
 .ppw-staff-term-options{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:13px}
 .ppw-staff-term,.ppw-staff-salary{background:#0e2034;color:white;
  border:1px solid #56869d;border-radius:9px;padding:8px;min-height:41px}
 .ppw-staff-salary{width:108px;min-width:0}
 .ppw-staff-market-card{flex-direction:column;align-items:stretch}
-.ppw-staff-market-actions{display:flex;gap:8px;align-items:center;width:100%}
-.ppw-staff-market-actions button{flex:1}
+.ppw-staff-market-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);
+ gap:8px;align-items:center;width:100%;min-width:0}
+.ppw-staff-market-actions button{width:100%;min-width:0;padding:10px 8px}
+.ppw-staff-market-actions input{width:100%;min-width:0;font-size:16px}
+@media(max-width:345px){.ppw-staff-market-actions{grid-template-columns:minmax(0,1fr)}
+ .ppw-staff-market-actions button{min-height:46px}}
+.ppw-staff-term-options{flex-wrap:wrap}
+.ppw-staff-candidate>div{overflow-wrap:anywhere}
 @media(min-width:680px){.ppw-staff-actions{width:auto}
  .ppw-staff-market-card{justify-content:space-between}}
 
