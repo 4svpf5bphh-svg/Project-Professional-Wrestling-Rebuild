@@ -115,6 +115,7 @@ test("two human managers retain separate current + six future weeks, protected c
      marketId:home[i]!.marketId,venueId:home[i]!.venueId,
      ticketStrategy:"STANDARD"});
     checked(reply.status);
+    if(reply.status!=="APPLIED")throw new Error("Advance-week planning did not commit");
     showIds[i]!.set(week,reply.result.draftId);
    }
   }
