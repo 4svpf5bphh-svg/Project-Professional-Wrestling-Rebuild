@@ -77,6 +77,8 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
  "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
  "Do not omit a segment, and keep all requested headlines and recaps substantial.":
+ message.includes("repeated")?
+ "Your slots sounded identical. Vary the first exchange, viewpoint and final judgement between bouts; do not reuse any sentence from another card entry.":
  message.includes("winner")?"Never reverse the officially recorded winners.":
  message.includes("title")?"Never invent a title change; use the verified match fallout.":
  message.includes("finish")||message.includes("submission")?
@@ -162,7 +164,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
-    const rescued=recoverRingsideCopy(candidate,show);
+    // Prefer one corrective pass over a bland canonical substitution for
+    // repetition. We still permit only the existing two provider attempts.
+    const rescued=reason.includes("Ringside repeated")&&attempt===0?null:
+     recoverRingsideCopy(candidate,show);
     if(rescued){
      if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",
       rescued.replaced,"unsafe entries using verified results");
