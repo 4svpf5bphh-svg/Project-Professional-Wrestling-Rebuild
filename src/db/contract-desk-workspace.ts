@@ -57,7 +57,41 @@ export async function readContractDesk(
    WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
    ORDER BY created_week_index,request_id LIMIT 200`,
    [worldId,promotionId]);
-  const renewals=await tx.query<{proposal_id:string;contract_id:string;person_id:string;status:string;created_week_index:number;proposed_terms:unknown}>(`SELECT proposal_id,contract_id,person_id,status,created_week_index,proposed_terms FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING' ORDER BY created_week_index,proposal_id LIMIT 200`,[worldId,promotionId]);
+  type RenewalRow={proposal_id:string;contract_id:string;person_id:string;
+   status:string;created_week_index:number;proposed_terms:unknown};
+  type DateDecisionRow={event_id:string|number;year:number;week:number;
+   contract_id:string;person_id:string;name:string;
+   status:"ACCEPTED"|"REJECTED";additional_dates:number;
+   additional_payment:string|number};
+  // Both short histories share the fourth bounded read: no sixth Neon query.
+  const [deskHistory]=await tx.query<{renewals:RenewalRow[];
+   date_decisions:DateDecisionRow[]}>(`
+   SELECT coalesce((SELECT jsonb_agg(to_jsonb(r)
+    ORDER BY r.created_week_index,r.proposal_id)
+    FROM (SELECT proposal_id,contract_id,person_id,status,
+      created_week_index,proposed_terms
+     FROM ppw_contract_renewal_proposals
+     WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
+     ORDER BY created_week_index,proposal_id LIMIT 200) r),
+    '[]'::jsonb) AS renewals,
+    coalesce((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.event_id DESC)
+      FROM (SELECT e.event_id,e.year,e.week,
+    e.payload->>'contractId' AS contract_id,
+    e.payload->>'personId' AS person_id,person.name,
+    e.payload->>'status' AS status,
+    (e.payload->>'additionalDates')::integer AS additional_dates,
+    (e.payload->>'additionalPayment')::bigint AS additional_payment
+   FROM ppw_ledger_events e
+   JOIN ppw_people person ON person.world_id=e.world_id
+    AND person.person_id=e.payload->>'personId'
+   WHERE e.world_id=$1 AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
+    AND e.payload->>'promotionId'=$2
+    AND (e.year-1)*52+e.week-1 BETWEEN greatest(0,$3-25) AND $3
+   ORDER BY e.event_id DESC LIMIT 20`,) d),
+      '[]'::jsonb) AS date_decisions`,
+    [worldId,promotionId,currentWeekIndex]);
+  const renewals=deskHistory?.renewals??[];
+  const dateDecisions=deskHistory?.date_decisions??[];
   // The very same fifth SQL read now includes recent decisions, allowing Home's
   // contract news to lead into a meaningful detail view without extra reads.
   const offers=await tx.query<{offer_id:string;person_id:string;person_name:string;
@@ -73,27 +107,6 @@ export async function readContractDesk(
        BETWEEN greatest(0,$3::integer-3) AND $3::integer))
    ORDER BY CASE WHEN o.status='PENDING' THEN 0 ELSE 1 END,
     o.submitted_week_index DESC,o.offer_id DESC LIMIT 200`,
-   [worldId,promotionId,currentWeekIndex]);
-  // Bounded history lives on the existing desk read; notifications can be
-  // dismissed without losing the negotiated decision from this history.
-  const dateDecisions=await tx.query<{
-   event_id:string|number;year:number;week:number;contract_id:string;
-   person_id:string;name:string;status:"ACCEPTED"|"REJECTED";
-   additional_dates:number;additional_payment:string|number;
-  }>(`
-   SELECT e.event_id,e.year,e.week,
-    e.payload->>'contractId' AS contract_id,
-    e.payload->>'personId' AS person_id,person.name,
-    e.payload->>'status' AS status,
-    (e.payload->>'additionalDates')::integer AS additional_dates,
-    (e.payload->>'additionalPayment')::bigint AS additional_payment
-   FROM ppw_ledger_events e
-   JOIN ppw_people person ON person.world_id=e.world_id
-    AND person.person_id=e.payload->>'personId'
-   WHERE e.world_id=$1 AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
-    AND e.payload->>'promotionId'=$2
-    AND (e.year-1)*52+e.week-1 BETWEEN greatest(0,$3-25) AND $3
-   ORDER BY e.event_id DESC LIMIT 20`,
    [worldId,promotionId,currentWeekIndex]);
   const pendingOffers=offers.filter(o=>o.status==="PENDING");
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
