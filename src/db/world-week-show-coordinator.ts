@@ -47,7 +47,7 @@ export async function resolveWorldWeekShows(
    AND off_week.promotion_id=p.promotion_id
    AND off_week.year=$2 AND off_week.week=$3)
     ORDER BY p.promotion_id`,
-   [input.worldId]);
+   [input.worldId,input.year,input.week]);
  });
  if(active.length===0||active.length>128)
   throw new Error("Invalid active promotion population");
