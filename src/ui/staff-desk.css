@@ -114,3 +114,11 @@
 .ppw-staff-conversation{margin:9px 0;border-radius:10px;
  border:1px solid #47728c;background:#102d44}
 .ppw-staff-conversation p{padding:0 12px 10px;margin:0;color:#eaf7fc}
+
+/* The global mobile PWA has a broad overflow-wrap rule on controls;
+   department names must use whole-word wrapping, without iPhone hyphenation. */
+#game .ppw-staff-market .ppw-staff-departments > button{
+ overflow-wrap:normal!important;word-break:normal!important;
+ hyphens:none!important;white-space:normal!important;
+ text-wrap:balance;min-width:0;max-width:100%;
+}

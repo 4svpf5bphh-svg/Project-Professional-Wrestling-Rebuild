@@ -87,12 +87,14 @@ test("320px iPhone Staff Market uses four readable rows of two departments",asyn
  }));
  expect(new Set(boxes.map(b=>b.top)).size).toBe(4);
  expect(boxes.every(b=>b.height>=44&&b.width>=110)).toBe(true);
- const readable=await tabs.evaluateAll(els=>els.every(el=>{
+ const readability=await tabs.evaluateAll(els=>els.map(el=>{
   const style=getComputedStyle(el);
-  return style.wordBreak==="normal"&&style.overflowWrap==="normal"&&
-   el.scrollWidth<=el.clientWidth+1;
+  return {text:el.textContent,break:style.wordBreak,wrap:style.overflowWrap,
+   width:el.clientWidth,scroll:el.scrollWidth};
  }));
- expect(readable,"Department names must wrap at whole words").toBe(true);
+ expect(readability.filter(m=>m.break!=="normal"||m.wrap!=="normal"||
+  m.scroll>m.width+1),"Department labels should never split or overflow")
+  .toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  await tabs.nth(7).click();
  await expect(tabs.nth(7)).toHaveAttribute("aria-pressed","true");
