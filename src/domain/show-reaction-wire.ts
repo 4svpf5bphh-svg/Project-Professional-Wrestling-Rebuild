@@ -10,7 +10,8 @@ export type ReactionVoice="THE FRONT ROW"|"THE SKEPTICAL SMARK"|"THE TAPE TRADER
 export type ReactionMood="BUZZ"|"DEBATE"|"CONCERN"|"COLD";
 export interface ResultReaction {
  slotId:string;voice:ReactionVoice;mood:ReactionMood;
- text:string;source:"TITLE"|"MEDICAL"|"FINISH"|"CRITIC_CROWD"|
+ text:string;reply?:{voice:ReactionVoice;text:string};
+ source:"TITLE"|"MEDICAL"|"FINISH"|"CRITIC_CROWD"|
   "RIVALRY"|"ELIMINATION"|"ANGLE"|"MATCH";
 }
 type Candidate=ResultReaction&{priority:number;position:number};
@@ -40,7 +41,9 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
      f.title.winnerName+" is the new "+f.title.name+" champion. My voice is gone, and I'm sending them the bill for it.",
      f.title.winnerName+" with the "+f.title.name+"? The division suddenly looks a whole lot more interesting.",
      "That belt really has changed hands. "+f.title.winnerName+" takes the "+f.title.name+" — and everybody else has homework.",
-    ],key,1)};
+    ],key,1),
+    reply:{voice:"THE SKEPTICAL SMARK",
+     text:"Good moment for "+f.title.winnerName+". Let's see what that reign looks like once the celebrating stops."}};
   }
   const injury=f?.injuries[0];
   if(injury)return {...base,voice:"THE CONCERNED FAN",mood:"CONCERN",source:"MEDICAL",priority:116,
@@ -53,13 +56,17 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
     text:pick([
      bout+" had the technique, but the room never went with it. Great wrestling doesn't guarantee great theatre.",
      "I liked the work in "+bout+". The quiet crowd? That's the bit the critics can't hand-wave away.",
-    ],key,2)};
+    ],key,2),
+    reply:{voice:"THE DIEHARD",
+     text:"I paid to feel something, not sit an exam. If the audience was quiet, the match still had a problem."}};
   if(rating!==undefined&&rating<2.5&&entry.crowdResponse>=78)
    return {...base,voice:"THE DIEHARD",mood:"DEBATE",source:"CRITIC_CROWD",priority:99,
     text:pick([
      "The critics can keep their notebooks. "+bout+" had that building losing its mind.",
      bout+" wasn't a technical masterpiece and I don't care. Sometimes wrestling is just ridiculous fun.",
-    ],key,3)};
+    ],key,3),
+    reply:{voice:"THE TAPE TRADER",
+     text:"Being popular and being well worked aren't the same thing. I can enjoy the noise and still want a better match."}};
   if(entry.outcome==="OVER_THE_TOP_ROPE"&&f?.eliminations.length){
    const last=f.eliminations.at(-1)!;
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
@@ -69,7 +76,9 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
     text:(f?.finishCheaterName?f.finishCheaterName+" knew exactly what they were doing. ":"Call it dirty if you want. ")+
      (winner?winner+" got the win. ":"")+
-     "I'm not saying it was fair. I'm saying the argument is half the fun."};
+     "I'm not saying it was fair. I'm saying the argument is half the fun.",
+    reply:{voice:"THE SKEPTICAL SMARK",
+     text:"The result is official. Doesn't mean I have to applaud the way they got there."}};
   if(f?.interference?.outcome==="SUCCESS")
    return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"FINISH",priority:91,
     text:"A run-in changed the complexion of "+bout+". Next week someone had better have something to say about that."};

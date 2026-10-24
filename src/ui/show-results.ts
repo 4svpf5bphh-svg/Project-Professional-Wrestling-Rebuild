@@ -142,8 +142,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    card.className="ppw-crowd-noise-card ppw-reaction-"+reaction.mood.toLowerCase();
    card.setAttribute("aria-label","Open source result for "+reaction.voice+": "+reaction.text);
    append(card,node("span","ppw-crowd-noise-voice",reaction.voice),
-    node("span","ppw-crowd-noise-quote",reaction.text),
-    node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
+    node("span","ppw-crowd-noise-quote",reaction.text));
+   if(reaction.reply){
+    const reply=node("span","ppw-crowd-noise-reply");
+    append(reply,node("span","ppw-crowd-noise-reply-voice",reaction.reply.voice),
+     node("span","ppw-crowd-noise-reply-text",reaction.reply.text));
+    card.append(reply);
+   }
+   card.append(node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
    card.onclick=()=>{
     setFilter("ALL");
     const target=storyLinks.get(reaction.slotId);

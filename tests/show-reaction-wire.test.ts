@@ -39,7 +39,10 @@ test("critic and audience contradiction drives different safe reactions",()=>{
  assert.equal(wire[0]!.source,"CRITIC_CROWD");
  assert.equal(wire[1]!.source,"CRITIC_CROWD");
  assert.match(wire[0]!.text,/technique|wrestling|quiet|critics/i);
+ assert.equal(wire[0]!.reply?.voice,"THE DIEHARD");
+ assert.match(wire[0]!.reply!.text,/audience/i);
  assert.match(wire[1]!.text,/critics|technical|building/i);
+ assert.equal(wire[1]!.reply?.voice,"THE TAPE TRADER");
 });
 test("dirty finish reaction never assigns an unrecorded attacker",()=>{
  const bout=match("dq",70);
@@ -49,6 +52,7 @@ test("dirty finish reaction never assigns an unrecorded attacker",()=>{
  assert.doesNotMatch(noActor.text,/caught (Winner|Loser)|used by (Winner|Loser)/);
  bout.fallout!.finishCheaterName="Loser";
  assert.match(showReactionWire(show([bout]))[0]!.text,/Loser/);
+ assert.equal(showReactionWire(show([bout]))[0]!.reply?.voice,"THE SKEPTICAL SMARK");
 });
 test("refused, interrupted and successful angles stay distinguishable",()=>{
  const refused:ShowResultEntry={...base,type:"SEGMENT",slotId:"no",
