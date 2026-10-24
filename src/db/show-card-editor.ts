@@ -1,4 +1,4 @@
-/** Authenticated editor: bounded current-show reads and atomic full-card saves.
+/** Authenticated editor: bounded seven-week reads and atomic full-card saves.
  * No full World hydration; a single 100-slot / 100-contract batch per save.
  */
 import type {SqlRows} from "./world-operations.js";
@@ -38,7 +38,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_day:number|null;venue_id:string|null;lock_ready_fingerprint:string|null;
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
- booking_open:boolean};
+ booking_open:boolean;within_window:boolean};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
@@ -56,12 +56,14 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
  if(![id.worldId,id.playerId,id.promotionId,id.showId].every(validId))
   throw new Error("Invalid card editor identity");
  const rows=await tx.query<ShowRow>([
-  "SELECT w.year,w.week,w.revision,w.seed,d.status,d.show_day,d.venue_id,",
+  "SELECT d.year,d.week,w.revision,w.seed,d.status,d.show_day,d.venue_id,",
   "d.lock_ready_fingerprint,d.show_name,d.booking_class,d.ticket_strategy,",
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
-  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open",
+  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
+   "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
+   "AND (w.year-1)*52+w.week+5) AS within_window",
   "FROM ppw_worlds w JOIN ppw_booking_drafts d",
-  "ON d.world_id=w.world_id AND d.year=w.year AND d.week=w.week",
+  "ON d.world_id=w.world_id",
   "JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id",
   "LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id",
   "LEFT JOIN ppw_markets mkt ON mkt.world_id=d.world_id AND mkt.market_id=d.market_id",
@@ -72,7 +74,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
   "WHERE w.world_id=$1 AND d.promotion_id=$3 AND d.draft_id=$4",
   "AND p.lifecycle='ACTIVE'",
  ].join(" "),[id.worldId,id.playerId,id.promotionId,id.showId]);
- if(rows.length!==1)throw new Error("Current show not accessible to this controller");
+ if(rows.length!==1)throw new Error("Show not accessible to this controller");
  return rows[0]!;
 }
 function boundedSlots(slots:readonly SlotRow[]){
@@ -186,7 +188,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    programmeLinks:links.filter(x=>x.kind==="SEGMENT")
     .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,
-   worldRevision:Number(show.revision),canEdit:show.booking_open&&show.status==="DRAFT",
+   worldRevision:Number(show.revision),canEdit:show.booking_open&&show.within_window&&show.status==="DRAFT",
    ready:show.lock_ready_fingerprint!==null,
    day:show.show_day,venueId:show.venue_id,showName:show.show_name,
    promotionName:show.promotion_name,venueName:show.venue_name,
@@ -354,8 +356,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
   commandType:"SAVE_SHOW_CARD_MATCHES",
   execute:async tx=>{
    const show=await readShowScope(tx,input);
-   if(!show.booking_open||show.status!=="DRAFT")
-    throw new Error("Show is not an editable current-week draft");
+   if(!show.booking_open||!show.within_window||show.status!=="DRAFT")
+    throw new Error("Show is not an editable draft in the advance booking window");
    const current=boundedSlots(await tx.query<SlotRow>(
     "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
     " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",

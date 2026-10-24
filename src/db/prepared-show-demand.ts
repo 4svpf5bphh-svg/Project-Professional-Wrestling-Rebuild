@@ -35,7 +35,7 @@ export async function snapshotPreparedShowDemand(
  LEFT JOIN ppw_promotion_market_states ps ON ps.world_id=d.world_id
   AND ps.promotion_id=d.promotion_id AND ps.market_id=d.market_id
  WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.draft_id=$3
-   AND d.year=w.year AND d.week=w.week AND d.status=$4`,
+   AND d.status=$4`,
  [worldId,promotionId,showId,status]);
  const x=rows[0];
  if(rows.length!==1||!x||!x.market_id||!x.event_type||!x.ticket_strategy

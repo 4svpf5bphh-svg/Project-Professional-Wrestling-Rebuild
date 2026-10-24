@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {validatePreparedDraft,preparedDraftFingerprint,type ReadyDraftEvidence} from "../domain/prepared-show.js";
 import {creativeReviewsInTransaction,creativeApprovalRequired} from "./match-creative-consent.js";
+import {snapshotPreparedShowDemand} from "./prepared-show-demand.js";
 
 export interface FinalizePreparedWorldShowsInput {
   worldId:string;requestId:string;expectedRevision:number;
@@ -13,7 +14,7 @@ type Candidate={
   ticket_strategy:"ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE"|null;
   booking_expected_demand:number|null;booking_ticket_yield:string|null;
   booking_snapshot_fingerprint:string|null;show_economics_enabled:boolean;
-  lock_ready_fingerprint:string;lock_ready_by_player_id:string;
+  lock_ready_fingerprint:string|null;lock_ready_by_player_id:string|null;
   controller_player_id:string|null;assessment_owner:string|null;
 };
 /** Runs ONCE after the one weekly Lock and its continuity snapshot, before
@@ -62,7 +63,9 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
           JOIN ppw_promotions p ON p.world_id=d.world_id
             AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
           WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
-            AND d.status='DRAFT' AND d.lock_ready_fingerprint IS NOT NULL
+            AND d.status='DRAFT'
+            AND EXISTS (SELECT 1 FROM ppw_card_slots slot
+              WHERE slot.world_id=d.world_id AND slot.draft_id=d.draft_id)
             AND (a.status='PREPARED_DRAFT' OR d.booking_class='PREMIUM')
           ORDER BY d.promotion_id,d.booking_class DESC LIMIT 257`,
         [input.worldId,year,week],
@@ -93,6 +96,7 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
         weekIndex:(d.year-1)*52+d.week-1,slots:byShow.get(d.draft_id)??[]})));
       const creativeBlocks=new Set(creativeApprovalRequired(concerns).map(c=>c.showId));
       const eligible:string[]=[];
+      const autoCommerce:Array<{showId:string;demand:number;yield:number;fingerprint:string}>=[];
       const flagged:Array<{showId:string;reason:string}>=[];
       for(const d of candidates){
         const evidence:ReadyDraftEvidence={
@@ -102,29 +106,48 @@ export async function finalizePreparedWorldShows(pool:TransactionPool,input:Fina
             slot_id,position,kind,payload,
           })),
         };
-        const missingCommerce=d.show_economics_enabled&&(
-          !d.market_id||!d.ticket_strategy||!d.event_type||
-          d.booking_expected_demand===null||d.booking_ticket_yield===null||
-          !d.booking_snapshot_fingerprint);
-        if(d.show_economics_enabled&&!missingCommerce)
-          evidence.commercial={marketId:d.market_id!,ticketStrategy:d.ticket_strategy!,
-            eventType:d.event_type!,expectedDemand:d.booking_expected_demand!,
-            ticketYield:Number(d.booking_ticket_yield)};
+        // Saved valid cards are accepted at World Lock even if Confirm was
+        // never pressed. An explicit confirmation remains tamper-evident.
+        const confirmed=d.lock_ready_fingerprint!==null;
         const error=validatePreparedDraft(evidence);
         const permitted=d.controller_player_id!==null&&
           d.controller_player_id===d.assessment_owner &&
-          d.lock_ready_by_player_id===d.controller_player_id;
+          (!confirmed||d.lock_ready_by_player_id===d.controller_player_id);
+        let commercialError:string|null=null;
+        if(!error&&permitted&&!creativeBlocks.has(d.draft_id)&&
+           venues.has(d.venue_id??"")&&d.show_economics_enabled){
+          if(confirmed&&d.booking_expected_demand!==null&&
+             d.booking_ticket_yield!==null&&d.market_id&&d.ticket_strategy&&d.event_type){
+            evidence.commercial={marketId:d.market_id,ticketStrategy:d.ticket_strategy,
+             eventType:d.event_type,expectedDemand:d.booking_expected_demand,
+             ticketYield:Number(d.booking_ticket_yield)};
+          }else if(!confirmed){
+            try{
+              const snapshot=await snapshotPreparedShowDemand(tx,input.worldId,
+               d.promotion_id,d.draft_id,evidence.slots);
+              evidence.commercial=snapshot;
+              autoCommerce.push({showId:d.draft_id,demand:snapshot.expectedDemand,
+               yield:snapshot.ticketYield,fingerprint:preparedDraftFingerprint(evidence)});
+            }catch{commercialError="MISSING_COMMERCIAL_SNAPSHOT";}
+          }
+        }
         const reason=!permitted?"OWNER_CHANGED":error??
          (creativeBlocks.has(d.draft_id)?"CREATIVE_APPROVAL_REQUIRED":null)??(
-          missingCommerce?"MISSING_COMMERCIAL_SNAPSHOT":
-          !venues.has(d.venue_id??"")?"VENUE_UNAVAILABLE":
-          d.show_economics_enabled&&d.booking_snapshot_fingerprint!==d.lock_ready_fingerprint?
-            "DRAFT_CHANGED":
-          preparedDraftFingerprint(evidence)!==d.lock_ready_fingerprint?"DRAFT_CHANGED":null
+          commercialError??(!venues.has(d.venue_id??"")?"VENUE_UNAVAILABLE":
+          confirmed&&d.show_economics_enabled&&d.booking_snapshot_fingerprint!==d.lock_ready_fingerprint?
+           "DRAFT_CHANGED":
+          confirmed&&preparedDraftFingerprint(evidence)!==d.lock_ready_fingerprint?"DRAFT_CHANGED":null)
         );
         if(reason)flagged.push({showId:d.draft_id,reason});
         else eligible.push(d.draft_id);
       }
+      // Commercial data is frozen once at Lock, not on every future-card edit.
+      for(const item of autoCommerce.filter(x=>eligible.includes(x.showId)))
+        await tx.query(
+          "UPDATE ppw_booking_drafts SET booking_expected_demand=$3,"+
+          " booking_ticket_yield=$4,booking_snapshot_fingerprint=$5"+
+          " WHERE world_id=$1 AND draft_id=$2 AND status='DRAFT'",
+          [input.worldId,item.showId,item.demand,item.yield,item.fingerprint]);
       const submitted=eligible.length?await tx.query<{draft_id:string}>(
         `UPDATE ppw_booking_drafts SET status='SUBMITTED',revision=revision+1
            WHERE world_id=$1 AND draft_id=ANY($2::text[]) AND status='DRAFT'
