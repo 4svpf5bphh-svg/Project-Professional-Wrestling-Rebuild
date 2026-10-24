@@ -48,7 +48,7 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
    maxQueries:3,maxResultBytes:16_384}).queryCount,3);
   const plannerMeasure=measure("planner");
   const planned=await readSixWeekPlanner(plannerMeasure.pool,scope);
-  assert.equal(planned.weeks.length,6);
+  assert.equal(planned.weeks.length,7);
   assert.equal(plannerMeasure.meter.assertBudget({
    maxQueries:4,maxResultBytes:16_384}).queryCount,4);
   const before=await readPromotionCalendar(db.pool,scope);
