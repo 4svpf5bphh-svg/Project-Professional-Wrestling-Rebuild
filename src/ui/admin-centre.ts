@@ -57,43 +57,61 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   world.replaceChildren(el("h2","","World Control"));
   const status=el("div","ppw-admin-world-data");
   status.append(el("strong","",`YEAR ${p.year} · WEEK ${p.week} · ${ready.phase}`),
-   el("p","",`Next stage: ${p.action.replaceAll("_"," ")}`),
-   el("p","",`Submitted ${ready.regularSubmitted}/${ready.active} · Earlier results ${ready.legacyResolved}/${ready.submitted} · Full broadcasts ${ready.detailedResolved}/${ready.submitted}`));
+   el("p","",ready.phase==="OPEN"?
+    "Advance when ready. With one human player and no show booked, your promotion takes an off-week. The AI World continues.":
+    "Processing the shared World. A stopped run can resume without replaying completed results."),
+   el("p","",ready.phase==="OPEN"?"No automatic deadline during the solo playtest.":
+    `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
   if(p.blockers.length)status.append(el("p","ppw-admin-warning",`Needs attention: ${p.blockers.join(", ").replaceAll("_"," ")}`));
   const actions=el("div","ppw-admin-actions");
   const info=el("p","ppw-admin-message","");
   if(lastNotice)message(info,lastNotice,lastError);
-  const advance=el("button","ppw-admin-primary",ready.phase==="OPEN"?"Advance World week":"Continue resolution") as HTMLButtonElement;
+  const advance=el("button","ppw-admin-primary","Advance Week") as HTMLButtonElement;
   advance.type="button";
   advance.onclick=async()=>{
    if(busy)return;
-   if(ready.phase==="OPEN"&&!window.confirm(`Lock Week ${p.week} for ALL promotions and start resolution? This cannot be undone.`))return;
+   if(ready.phase==="OPEN"&&!window.confirm(`Advance from Week ${p.week}? If you have no show booked this week, your promotion takes an off-week. Other promotions continue. Future cards remain intact.`))return;
    busy=true;advance.disabled=true;
    message(info,"Checking certified World stages…");
    try{
-    const result=await request("/api/playtest-week","POST",ctx.csrfToken,{
-     confirm:"ADVANCE_SHARED_WORLD",year:p.year,week:p.week
-    }) as {status:string;steps:{action:string;status:string}[];blockers:string[]};
-    const last=result.steps.at(-1)?.action?.replaceAll("_"," ")??"the next stage";
-    message(info,result.status==="PUBLISHED"?"The next playable World week is available.":
-     result.status==="BLOCKED"?`Blocked at ${last}: ${result.blockers.join(", ").replaceAll("_"," ")}`:
-     `Completed ${last}. The next stage is ready to continue.`,
-     result.status==="BLOCKED");
-    lastNotice=info.textContent??"";lastError=result.status==="BLOCKED";
+    let finished=false;
+    // One operator press; the existing server certifies a bounded six-stage
+    // batch each time. Loop over batches without adding a timer or cron.
+    for(let batch=0;batch<24;batch++){
+     const result=await request("/api/playtest-week","POST",ctx.csrfToken,{
+      confirm:"ADVANCE_SHARED_WORLD",year:p.year,week:p.week
+     }) as {status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";
+      steps:{action:string;status:string}[];blockers:string[]};
+     if(result.status==="PUBLISHED"){
+      message(info,"Week advanced. The next playable week is ready.");finished=true;break;
+     }
+     if(result.status==="BLOCKED"){
+      const reason=result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
+      message(info,`Could not finish Week ${p.week}: ${reason}. Completed stages were saved; correct the issue and press Advance Week again.`,true);
+      break;
+     }
+     if(result.steps.length===0){
+      message(info,"No progress recorded; review diagnostics and retry.",true);
+      break;
+     }
+     message(info,`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
+     if(batch===23)message(info,"The safe batch limit was reached; press Advance Week again to resume.",true);
+    }
+    lastNotice=info.textContent??"";lastError=!finished;
     await load();
    }catch(e){message(info,e instanceof Error?e.message:"Resolution failed",true);
     lastNotice=info.textContent??"";lastError=true;}
    finally{busy=false;advance.disabled=false;}
   };
-  const reopen=el("button","ppw-admin-secondary","Reopen booking for 24 hours") as HTMLButtonElement;
+  const reopen=el("button","ppw-admin-secondary","Keep booking open for 5 years") as HTMLButtonElement;
   reopen.type="button";
   reopen.onclick=async()=>{
-   if(busy||!window.confirm("Reopen booking for every promotion? The existing venue and cards are preserved."))return;
+   if(busy||!window.confirm("Extend the World booking window for five years? All existing cards and venues remain intact."))return;
    busy=true;reopen.disabled=true;
    try{
     await request("/api/playtest-booking","POST",ctx.csrfToken,{
      confirm:"EXTEND_SHARED_BOOKING",year:p.year,week:p.week
-    });message(info,"Booking reopened for 24 hours. Existing drafts remain intact.");
+    });message(info,"Booking deadline extended. All saved cards remain intact.");
     lastNotice=info.textContent??"";lastError=false;await load();
    }catch(e){message(info,e instanceof Error?e.message:"Booking could not be reopened",true);
     lastNotice=info.textContent??"";lastError=true;}
@@ -106,7 +124,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    message(info,e instanceof Error?e.message:"Cannot refresh World status",true));
   actions.append(refresh);
   world.append(status,actions,info,
-   el("p","ppw-admin-small","No automatic advance, World reset, or schedule modification. Each operation needs your explicit press."));
+   el("p","ppw-admin-small","No automatic World advance or reset. Only your explicit Advance Week action moves the clock."));
 
   const config={...data.settings};
   studio.replaceChildren(el("h2","","Ringside AI Studio"),
