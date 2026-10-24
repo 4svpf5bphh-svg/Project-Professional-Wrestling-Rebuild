@@ -61,7 +61,8 @@ test("eleven-item card requires eleven output objects; no missing-angle/article 
    showHeadline:"Eleven matches",opening:"The crowd was up for it.",
    closing:"Every recorded bout got its story.",
    slots:Object.fromEntries(fields.map((key,i)=>[key,{
-    headline:"A hard-fought match "+i,recap:"An even contest ended in the expected pinfall."
+    headline:"A hard-fought match "+i,
+    recap:"Encounter "+(i+1)+" ended in the expected pinfall after an even contest."
    }]))
   })}}]}));
  };

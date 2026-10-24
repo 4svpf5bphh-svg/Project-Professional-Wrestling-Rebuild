@@ -193,14 +193,27 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
   show.entries.length<4)return null;
  const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
+ const ordinals=["opening","second","third","fourth","fifth","sixth",
+  "seventh","eighth","ninth","tenth","eleventh","twelfth",
+  "thirteenth","fourteenth","fifteenth","sixteenth","seventeenth",
+  "eighteenth","nineteenth","twentieth","twenty-first","twenty-second",
+  "twenty-third","twenty-fourth","twenty-fifth","twenty-sixth",
+  "twenty-seventh","twenty-eighth","twenty-ninth","thirtieth"];
+ const ordinal=(n:number)=>ordinals[n]??"later";
  const base:RingsideCopy={
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
   opening:"The crowd gathered for a full night of wrestling.",
   closing:"The final bell gave the audience plenty to discuss.",
-  slots:show.entries.map(entry=>{
-   if(entry.type==="SEGMENT")return {slotId:entry.slotId,
-    headline:"A moment outside the ring",
-    recap:"The segment played out before the audience, leaving its participants to reckon with the reaction."};
+  slots:show.entries.map((entry,i)=>{
+   if(entry.type==="SEGMENT"){
+    const angleIndex=show.entries.slice(0,i).filter(e=>e.type==="SEGMENT").length;
+    const result=entry.outcome==="REFUSED"?"was refused":
+     entry.outcome==="INTERRUPTED"?"was interrupted":"took place";
+    return {slotId:entry.slotId,headline:"A moment outside the ring",
+     recap:"The "+ordinal(angleIndex)+" segment of the evening, "+
+      entry.headline.replace(/[.!?]+$/,"")+", "+result+
+      ". The audience has seen the outcome, whatever the intent."};
+   }
    const names=entry.matchContext?.winnerNames??[];
    const winner=names.length?names.join(" & "):"The winning side";
    const finish:Record<string,string>={
@@ -210,8 +223,10 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     FOREIGN_OBJECT:"emerged victorious after a controversial ending",
     PROTECTED_FINISH:"prevailed after a contentious ending",
     INJURY_STOPPAGE:"prevailed when the match was stopped"};
+   const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
    return {slotId:entry.slotId,headline:"The decision in the ring",
-    recap:winner+" "+(finish[entry.outcome]??"won the match")+
+    recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
+     (finish[entry.outcome]??"won the match")+
      ". The result settled the contest in front of the crowd."};
   })
  };

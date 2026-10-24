@@ -101,7 +101,8 @@ test("a six-slot article retains five AI recaps and replaces one false submissio
  }))};
  const candidate={...valid,slots:many.entries.map((s,i)=>({
   slotId:s.slotId,headline:"Omega survives the bout",
-  recap:i===3?"Omega won by submission.":"A V-Trigger and the One Winged Angel scored a clean pin."
+  recap:i===3?"Omega won by submission.":
+   "Encounter "+(i+1)+" ended after a V-Trigger and the One Winged Angel scored a clean pin."
  }))};
  const result=recoverRingsideCopy(candidate,many);
  assert.equal(result?.replaced,1);
