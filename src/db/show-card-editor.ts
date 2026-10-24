@@ -61,7 +61,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
-   "AND (w.year-1)*52+w.week+6) AS within_window",
+   "AND (w.year-1)*52+w.week+5) AS within_window",
   "FROM ppw_worlds w JOIN ppw_booking_drafts d",
   "ON d.world_id=w.world_id",
   "JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id",
