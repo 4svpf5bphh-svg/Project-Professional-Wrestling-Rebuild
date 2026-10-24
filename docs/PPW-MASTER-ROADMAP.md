@@ -1,6 +1,6 @@
 # PPW Rebuild — Master Roadmap
 
-**Authoritative priority order agreed 24 October 2026. Active: Phase 1 — immediate playtest polish and advance-booking verification.** Use this page, not an old parity checklist, to continue development in future conversations. Only edit the priority order with the owner's direction.
+**Authoritative priority order agreed 24 October 2026. Phase 1 VERIFIED in CI on the development branch, NOT DEPLOYED; next unfinished gameplay phase is Phase 2 — Gorilla Position.** Use this page, not an old parity checklist, to continue development in future conversations. Only edit the priority order with the owner's direction.
 
 ## Contracts and primary references
 
@@ -12,14 +12,14 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 
 **Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
 
-## Phase 1 — Immediate UI and advance-booking polish (ACTIVE)
+## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI, AWAITING RELEASE APPROVAL)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
 2. Staff selector must show **two readable columns on phones** for all eight departments. Maintain personality, dossier, contracting, renewal and buyout.
 3. Verify venue and card creation/edit/save during the current week and six future weeks, persistence through advancement, saved valid submissions when a player misses World Lock, results handoff, revision conflicts, and independent manager isolation. Use disposable CI data only.
 4. Regression 320px/390px iPhone navigation, keyboard and tap controls, scroll width, save controls and presentation.
 
-**Baseline:** `f75361ca20d863b0a994df67a369d0a6eba69839` (previous Production release, authentic two-manager Genesis check passed before this work). **Development branch:** `phase1-iphone-polish-2026-10-24`. UI milestone `affc688910beb4589c1b499dc141645f83a6a014` changes display/layout and adds browser assertions; **testing still pending** at creation of this roadmap. Only mark Phase 1 complete once all appropriate browser, TS, build, disposable PostgreSQL and authentic two-manager checks are green. Do not confuse passing an individual check with deployment approval.
+**Baseline:** `f75361ca20d863b0a994df67a369d0a6eba69839` (previous Production release, authentic two-manager Genesis check passed before this work). **Development branch:** `phase1-iphone-polish-2026-10-24`. UI milestone `affc688910beb4589c1b499dc141645f83a6a014`, readability refinement `11e2cdde200c9e7389fe4a786cde2fcfc1e6fac5`, and seven-week two-human PostgreSQL regression `53e7f26bedc8a16db5dd76495b0efd9180367f65` are **verified together** by [CI run 40098312106](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40098312106): TypeScript and Vite build PASS; **105/105 browser tests**, **558 unit passes, 0 failures, 115 expected skips without disposable DB**, and **106/106 real PostgreSQL tests**. The DB suite includes saved valid unconfirmed cards being taken at the one World Lock, confirmed and changed-draft behaviour, 26 certified weeks with two human managers and authored winners, and the new current-plus-six-week advance card/venue isolation test. This is CI verification, **not** live-device sign-off, new Production Genesis verification or permission to deploy.
 
 ## Phase 2 — Gorilla Position (NEXT MAJOR GAMEPLAY FEATURE)
 
@@ -63,12 +63,14 @@ These are implemented *foundations*, not claims every edge case is perfect. Test
 | Item | Status | Evidence or next action |
 | --- | --- | --- |
 | Baseline Production rebuild | Previously released | `f75361ca20d863b0a994df67a369d0a6eba69839`; previous authentic two-human Genesis green |
-| Compact graphics/brand and staff grid | On development branch | `affc688910beb4589c1b499dc141645f83a6a014`; CI and iPhone rendering verification outstanding |
-| Six-week booking across missed deadline and canonical results | Partially exercised | Prior planner/card Postgres, browser and 26-week two-manager tests exist; strengthen edge-case regression before calling Phase 1 done |
+| Compact graphics/brand and staff grid | Verified in disposable CI; not deployed | `affc688910beb4589c1b499dc141645f83a6a014` + `11e2cdde200c9e7389fe4a786cde2fcfc1e6fac5`; [run 40098312106](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40098312106), 105/105 Chromium mobile browser tests (320px included) |
+| Six-week booking across missed deadline and canonical results | Verified in disposable CI; not deployed | `53e7f26bedc8a16db5dd76495b0efd9180367f65`, 106/106 SQL tests, `prepared-show-postgres` for saved valid cards at Lock, `world-resolution-journey-postgres` for authored results, and `living-world-two-human-postgres` for certified 26-week progression. New advance test uses an isolated clock-boundary projection; certified advancing is checked separately, not asserted to occur in that test |
 | Portrait catalogue expansion | Deliberately deferred | Preserve good current portraits; no new mass asset rollout in Phase 1 |
 | Advanced medical treatment | Deliberately deferred | Preserve existing injury/recovery lifecycle |
 | World Lock cron | Disabled / no authorization | Never activate during the rebuild |
+| Production release | Held for user permission | No live advancement, reset, cron activation or deployment performed in Phase 1 |
+| Phase 2 — Gorilla Position | Next unfinished phase | Only begin implementation in the agreed order; reuse actual staff, booking, incident/resolution and one World Lock. Do not create cosmetic-only Gorilla |
 
 ### Continuation contract
 
-After each substantial verified implementation, update this table with commit hash, Actions run and relevant test counts, identify known failures and the **next unfinished milestone**. Finish Phase 1 and obtain release authorization before beginning Phase 2; subsequent handovers must link this file and state actual branch/HEAD, CI and deployment state. Never invent a replacement roadmap.
+After each substantial verified implementation, update this table with commit hash, Actions run and relevant test counts, identify known failures and the **next unfinished milestone**. Phase 1 has passed CI; obtain release authorization before deploying. Phase 2 Gorilla Position is the next unfinished development phase; subsequent handovers must link this file and state actual branch/HEAD, CI and deployment state. Never invent a replacement roadmap.
