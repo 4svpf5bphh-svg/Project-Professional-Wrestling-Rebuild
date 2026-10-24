@@ -61,12 +61,15 @@ export async function readGorillaWorkspace(pool:TransactionPool,input:GorillaSco
   const people=[...new Set(rows.flatMap(r=>r.slot_id===null?[]:
    readCardParticipants(r.payload).map(p=>p.personId)))];
   if(people.length>600)throw new Error("Gorilla booked talent limit exceeded");
-  const absences=people.length?await tx.query<{person_id:string}>(`
-   SELECT DISTINCT person_id FROM ppw_medical_absences
+  const names=people.length?await tx.query<{person_id:string;name:string}>(
+   "SELECT person_id,name FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
+   [input.worldId,people]):[];
+  const nameOf=new Map(names.map(x=>[x.person_id,x.name]));
+  const absences=people.length?await tx.query<{person_id:string;injured_week_index:number;cleared_week_index:number}>(`
+   SELECT person_id,injured_week_index,cleared_week_index FROM ppw_medical_absences
    WHERE world_id=$1 AND person_id=ANY($2::text[]) AND status='ACTIVE'
-    AND injured_week_index<$3 AND cleared_week_index>$3`,
-   [input.worldId,people,now]):[];
-  const unavailable=new Set(absences.map(a=>a.person_id));
+    AND injured_week_index<$3 AND cleared_week_index>$4`,
+   [input.worldId,people,now+6,now]):[];
   const shows=new Map<string,GorillaShowItem>();
   for(const r of rows){
    let show=shows.get(r.draft_id);
@@ -78,10 +81,13 @@ export async function readGorillaWorkspace(pool:TransactionPool,input:GorillaSco
    }
    if(r.slot_id===null)continue;
    const participants=readCardParticipants(r.payload);
+   const cardWeek=(r.year-1)*52+r.week-1;
+   const unavailable=new Set(absences.filter(a=>a.injured_week_index<cardWeek&&
+    a.cleared_week_index>cardWeek).map(a=>a.person_id));
    show.matches.push({matchId:r.slot_id,position:r.position??0,
-    description:participants.map(p=>p.personId).join(" vs "),
+    description:participants.map(p=>nameOf.get(p.personId)??p.personId).join(" vs "),
     unavailable:participants.filter(p=>unavailable.has(p.personId))
-     .map(p=>p.personId),
+     .map(p=>nameOf.get(p.personId)??p.personId),
     protectScript:r.stored_protect===true,
     crowdChoice:((["DELEGATE","PROTECT_SCRIPT","RESET_COMMENTARY","LET_CROWD_BREATHE"].includes(r.stored_crowd??"")
       ?r.stored_crowd:"DELEGATE") as GorillaCrowdDirective),
@@ -121,7 +127,7 @@ export async function saveGorillaShowInstructions(pool:TransactionPool,input:Sav
     WHERE d.world_id=$1 AND d.promotion_id=$3 AND d.draft_id=$4
      AND d.status IN ('DRAFT','SUBMITTED')
      AND (d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1
-      AND (w.year-1)*52+w.week+4`,
+      AND (w.year-1)*52+w.week+5`,
     [input.worldId,input.playerId,input.promotionId,input.showId]);
    if(shows.length!==1)throw new Error("Show unavailable for Gorilla instructions");
    const slots=await tx.query<{slot_id:string}>(`
