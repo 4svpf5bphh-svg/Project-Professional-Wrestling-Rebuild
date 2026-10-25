@@ -22,12 +22,20 @@ test("World History is an on-demand accessible iPhone archive for annual honours
     {year:1,category:"PROMOTION",subjectId:"human",
     name:"Human Pro",promotionName:"Human Pro",
     citation:"48 completed shows · 84/100 average crowd",week:null}],
+   momentCursor:{year:1,week:52,key:"classic:s1:m1"},
    hall:[{personId:"hero",name:"The Great One",division:"MEN",
     year:1,matches:143,wins:102,bestStars:4.93}],
    moments:[{id:"classic:s1:m1",year:1,week:52,kind:"CLASSIC",
     title:"A world classic for the ages",
     description:"A certified 4.93 star show-stealer.",
     promotionName:"Human Pro",showId:"s1"}]
+  }});
+  if(method==="worldMomentsOlder")return route.fulfill({json:{
+   moments:[{id:"title:s0:m0",year:1,week:40,kind:"TITLE",
+    title:"A historic championship change",
+    description:"The title changed hands at a completed broadcast.",
+    promotionName:"AI Elite",showId:"s0"}],
+   momentCursor:null
   }});
   return route.fulfill({json:method==="overview"?overview:{}});
  });
@@ -49,5 +57,8 @@ test("World History is an on-demand accessible iPhone archive for annual honours
  expect(bounds).not.toBeNull();
  expect(bounds!.x).toBeGreaterThanOrEqual(0);
  expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
- expect(called).toEqual(["industry","worldHeritage"]);
+ await page.getByRole("button",{name:"Load older World Moments"}).click();
+ await expect(page.getByText("A historic championship change")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Load older World Moments"})).toHaveCount(0);
+ expect(called).toEqual(["industry","worldHeritage","worldMomentsOlder"]);
 });
