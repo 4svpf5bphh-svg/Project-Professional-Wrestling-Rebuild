@@ -50,7 +50,13 @@ test("certified title headliners and real PPV editions earn prestige once; skipp
    await tx.query([
     "INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,",
     "crowd_response,actual_finish,actual_winner_side)",
-    "VALUES($1,'ppv','title-match',0,89,'CLEAN_PIN','A')"
+    "VALUES($1,'ppv','title-match',1,89,'CLEAN_PIN','A')"
+   ].join(" "),[world]);
+   // An additional non-title bout cannot manufacture a second edition.
+   await tx.query([
+    "INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,",
+    "crowd_response,actual_finish,actual_winner_side)",
+    "VALUES($1,'ppv','undercard',0,74,'CLEAN_PIN','A')"
    ].join(" "),[world]);
    await tx.query([
     "INSERT INTO ppw_completed_match_report_facts(world_id,show_id,match_id,",

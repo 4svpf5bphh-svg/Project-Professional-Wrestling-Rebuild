@@ -65,7 +65,7 @@ export async function settleWorldHeritage(tx:SqlRows,worldId:string,
  await tx.query(`
   WITH editions AS (
    SELECT d.promotion_id,d.show_series_id,
-    count(*)::integer AS appearances,
+    count(DISTINCT done.show_id)::integer AS appearances,
     max(done.crowd_response)::double precision AS crowd,
     max(facts.rating_stars)::double precision AS best_bout
    FROM ppw_completed_shows done
