@@ -6,6 +6,7 @@ export interface BusinessPort{
  load():Promise<BusinessView>;
  signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
+ openKayfabe?():void;
  restructure?(input:{requestId:string;expectedRevision:number}):
   Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
  openResults?(showId:string):void;
@@ -99,6 +100,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
       "Year "+view.year+" / Week "+view.week:
      "Your latest accounts, show takings and strength in each territory."));
   if(port.back)head.prepend(button("← Back",()=>port.back?.()));
+  if(view?.kpBrandStyle){
+   const crest=el("div","ppw-business-kp-crest",view.name.split(/\s+/).slice(0,2)
+    .map(w=>w[0]?.toUpperCase()).join(""));
+   crest.dataset.style=view.kpBrandStyle;crest.title="Kayfabe promotion crest";
+   head.append(crest);
+  }
+  if(port.openKayfabe)head.append(button("★ Kayfabe Points",()=>port.openKayfabe?.()));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(commercialNotice)root.append(el("p","ppw-alert ppw-success",commercialNotice));

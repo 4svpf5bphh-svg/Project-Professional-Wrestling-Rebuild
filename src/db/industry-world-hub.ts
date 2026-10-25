@@ -78,7 +78,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    promotion_id:string|null;promotion_name:string|null;from_tier:string|null;
    to_tier:string|null;career_stage:string|null}>(`
    SELECT e.event_id::text,e.year,e.week,e.event_type,
-    e.payload->>'personId' AS person_id,person.name AS person_name,
+    e.payload->>'personId' AS person_id,
+    coalesce(person.name,e.payload->>'name') AS person_name,
     e.payload->>'promotionId' AS promotion_id,promotion.name AS promotion_name,
     e.payload->>'fromTier' AS from_tier,e.payload->>'toTier' AS to_tier,
     e.payload->>'to' AS career_stage
@@ -90,7 +91,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    WHERE e.world_id=$1 AND (e.year,e.week)>=($2::integer,$3::integer)
     AND (e.year,e.week)<=($4::integer,$5::integer)
     AND e.event_type IN ('WRESTLER_RETIRED','WRESTLER_DEBUTED',
-     'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED','PROMOTION_RESTRUCTURED',
+     'LEGEND_ARRIVED','CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED','PROMOTION_RESTRUCTURED',
      'PROMOTION_ENTERED_DORMANCY','PROMOTION_RECOVERED_FROM_DISTRESS')
     AND (e.event_type<>'CAREER_STAGE_CHANGED' OR
      e.payload->>'significance'='NOTABLE')

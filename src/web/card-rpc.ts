@@ -3,7 +3,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
- staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
+ staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -50,6 +50,32 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
  if(method==="gorillaWorkspace")return gorillaWorkspaceAsActor(context,worldId,promotionId);
  if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
+ if(method==="industryNews")return industryNewsAsActor(context,worldId,promotionId);
+ if(method==="worldHeritage")return worldHeritageAsActor(context,worldId,promotionId);
+ if(method==="legendsVault")return legendsVaultAsActor(context,worldId,promotionId);
+ if(method==="legendSeen")return legendRevealSeenAsActor(context,worldId,promotionId,id("legendId"));
+ if(method==="kpWorkspace")return kayfabeWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="kpClaimWeek")return claimKayfabeWeekAsActor(context,worldId,promotionId);
+ if(method==="kpAction"){
+  const requestId=id("requestId");
+  if(typeof p.kind!=="string")throw new Error("Invalid Kayfabe action");
+  return kayfabeActionAsActor(context,worldId,promotionId,{
+   ...p,requestId} as unknown as import("../db/kayfabe-points.js").KpAction);
+ }
+ if(method==="worldMomentsOlder"){
+  const cursor=p.cursor as Record<string,unknown>|null;
+  if(!cursor||typeof cursor!=="object"||Array.isArray(cursor)||
+   !Number.isSafeInteger(cursor.year)||!Number.isSafeInteger(cursor.week)||
+   typeof cursor.key!=="string")
+   throw new Error("Invalid World Moments cursor");
+  return olderWorldMomentsAsActor(context,worldId,promotionId,
+   cursor as unknown as import("../db/world-honours.js").WorldMomentCursor);
+ }
+ if(method==="worldRankings")return worldTalentRankingsAsActor(context,worldId,promotionId);
+ if(method==="worldCareerSearch"){
+  if(typeof p.search!=="string")throw new Error("Invalid World career search");
+  return worldCareerSearchAsActor(context,worldId,promotionId,p.search);
+ }
  if(method==="promotionRecordBook")return promotionRecordBookAsActor(context,worldId,promotionId);
  if(method==="industryFeatured")return industryFeaturedAsActor(context,
   worldId,promotionId,id("targetPromotionId"));

@@ -24,6 +24,7 @@ const sections=new Set<string>(HOST_SECTIONS.map(s=>s.id));
 export type ContractFocus="ATTENTION"|"EXPIRING"|"PENDING";
 export type HomeAttentionFocus=ContractFocus|"CARD"|"UNREAD";
 export const plannerCardHash="#/planner/card";
+export const legendsVaultHash="#/industry/legends";
 export const backstageUnreadHash="#/backstage/unread";
 export const contractAttentionHash=(focus:"EXPIRING"|"PENDING")=>
  "#/contracts/"+focus.toLowerCase();
@@ -34,6 +35,7 @@ export function readContractFocus(hash:string):ContractFocus{
 }
 export function readHostSection(hash:string):HostSection{
  if(hash===plannerCardHash)return "planner";
+ if(hash===legendsVaultHash)return "industry";
  if(hash===backstageUnreadHash)return "backstage";
  if(hash==="#/contracts/expiring"||hash==="#/contracts/pending")return "contracts";
  const match=/^#\/([a-z-]+)$/.exec(hash);

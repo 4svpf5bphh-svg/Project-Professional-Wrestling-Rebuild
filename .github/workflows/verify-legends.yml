@@ -1,0 +1,47 @@
+name: Verify Legends simulation
+on:
+  push:
+    branches: [phase7-legends, phase7-undertaker-pilot]
+concurrency:
+  group: legends-targeted-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  legends:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ppw_test
+          POSTGRES_PASSWORD: ppw_test
+          POSTGRES_DB: ppw_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ppw_test -d ppw_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and application build
+        run: npm run typecheck && npm run web:build
+      - name: All unit tests, including Legend evidence
+        run: npm test
+      - name: Apply complete schema in order to disposable PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          set -euo pipefail
+          for migration in db/migrations/[0-9][0-9][0-9][0-9]_*.sql; do
+            echo "Applying ${migration}"
+            psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f "${migration}" >/dev/null
+          done
+      - name: Legend, KP, news and existing AI recruitment integration tests
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: npx tsx --test tests/legends-postgres.test.ts tests/kayfabe-points-postgres.test.ts tests/world-news-postgres.test.ts tests/living-ai-recruitment-postgres.test.ts

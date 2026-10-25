@@ -14,6 +14,7 @@ import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsid
  from "../db/admin-ringside-settings.js";
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
+import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -112,7 +113,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
   if(path==="/api/admin"&&get){
    try{
-    const [plan,settings,shows]=await Promise.all([
+    const [plan,settings,shows,pilot]=await Promise.all([
      planNextWorldResolutionAction(pool,cfg.worldId),
      readAdminRingsideSettings(pool,cfg.worldId),
      withSqlClient(pool,tx=>tx.query<{show_id:string;show_name:string|null;year:number;week:number}>(`
@@ -127,9 +128,10 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
         AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
         AND r.prompt_version='ringside-v4'
        WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
-       [cfg.worldId,user.playerId]))
+       [cfg.worldId,user.playerId])),
+     readLegendPilot(pool,cfg.worldId)
     ]);
-    return json(200,{plan,settings,shows,groqConfigured:!!process.env.GROQ_API_KEY});
+    return json(200,{plan,settings,shows,pilot,groqConfigured:!!process.env.GROQ_API_KEY});
    }catch(e){
     console.error("Admin read failed",e instanceof Error?e.message:"unknown");
     return json(503,{error:"Admin status unavailable. No World state was changed."});
@@ -141,6 +143,12 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(path==="/api/admin"){
    if(!allow("admin-settings:"+cfg.worldId,12,60*60_000))
     return json(429,{error:"Admin settings rate limit reached"});
+   if(body.action==="ARM_LEGEND_PILOT"||body.action==="CANCEL_LEGEND_PILOT"){
+    try{return json(200,body.action==="ARM_LEGEND_PILOT"?
+     await armLegendPilot(pool,cfg.worldId,user.playerId):
+     await cancelLegendPilot(pool,cfg.worldId,user.playerId));}
+    catch(e){return json(409,{error:e instanceof Error?e.message:"Legend pilot rejected"});}
+   }
    if(body.action==="RETRY_FAILED_RINGSIDE"){
     if(typeof body.showId!=="string"||body.showId.length>200)
      return json(400,{error:"Select a completed show"});

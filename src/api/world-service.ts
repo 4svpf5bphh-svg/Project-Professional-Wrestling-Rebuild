@@ -35,6 +35,13 @@ import {readGorillaWorkspace,saveGorillaShowInstructions,
 import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import {readIndustryWorldNews} from "../db/industry-news.js";
+import {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
+import {readLegendsVault,markLegendRevealSeen} from "../db/legends-vault.js";
+import {readWorldHeritage,readOlderWorldMoments,type WorldMomentCursor}
+ from "../db/world-honours.js";
+import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction,type KpAction}
+ from "../db/kayfabe-points.js";
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
@@ -137,6 +144,58 @@ export async function industryFeaturedAsActor(context:WorldApiContext,
  return readIndustryFeaturedTalent(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId,targetPromotionId});
 }
+/** Independently loaded public World News, with no rival creative access. */
+export async function industryNewsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readIndustryWorldNews(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+/** A lazily loaded, public-per-World Legends Vault with account-owned cards. */
+export async function legendsVaultAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readLegendsVault(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function legendRevealSeenAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,legendId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(legendId,"legend");
+ return markLegendRevealSeen(context.pool,{worldId,promotionId,playerId:context.actor.playerId},legendId);
+}
+/** Year-end honours, earned Hall of Fame and historic public moments. */
+export async function worldHeritageAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readWorldHeritage(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+/** On-demand, cursor-bounded historical World Moments with actor authority. */
+export async function olderWorldMomentsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,cursor:WorldMomentCursor){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readOlderWorldMoments(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId},cursor);
+}
+/** Read-only, certified public World talent leaderboard. */
+export async function worldTalentRankingsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readWorldTalentRankings(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+/** Explicit, bounded name search; career details reuse the existing dossier. */
+export async function worldCareerSearchAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,search:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return searchPublicWorldCareers(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId},search);
+}
 /** Promotion-private record book, loaded only after selecting Industry Records. */
 export async function promotionRecordBookAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
@@ -193,6 +252,19 @@ export async function claimPromotionAsActor(context:WorldApiContext,input:ClaimI
   validateMutation(input);
   validate(input.promotionId,"promotion");
   return submitPromotionClaim(context.pool,{...input,playerId:context.actor.playerId});
+}
+/** Account currency is never a World cash or wrestler power modifier. */
+export async function kayfabeWorkspaceAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readKayfabeWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function claimKayfabeWeekAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return claimKayfabeWeek(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function kayfabeActionAsActor(context:WorldApiContext,worldId:string,promotionId:string,action:KpAction){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return applyKayfabeAction(context.pool,{worldId,promotionId,playerId:context.actor.playerId},action);
 }
 /** The actor identity is injected from verified middleware, not client JSON. */
 export async function industryWorldAsActor(context:WorldApiContext,

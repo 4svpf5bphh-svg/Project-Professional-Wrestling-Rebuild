@@ -363,6 +363,10 @@ export async function recruitDistressedAiRosters(
   AND NOT EXISTS(SELECT 1 FROM ppw_contracts c
    WHERE c.world_id=p.world_id AND c.person_id=p.person_id
     AND c.status='SIGNED' AND c.expires_week_index>=$2)
+  -- Allow human promoters one OPEN World week to pursue new legends.
+  AND NOT EXISTS(SELECT 1 FROM ppw_world_legend_unlocks legend
+   WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
+    AND legend.ai_eligible_from_week_index>$2)
  ORDER BY ((500+p.recognition*50+p.popularity*30+
    (p.in_ring_quality+p.match_craft+p.presentation)/3*25)*
    CASE p.career_stage WHEN 'SPECIAL_ATTRACTION' THEN 1.35

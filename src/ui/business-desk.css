@@ -146,3 +146,13 @@
 .ppw-commercial-terms{display:flex;flex-wrap:wrap;gap:6px 12px;
  font-size:12px;font-weight:800;color:#99ddff}
 .ppw-commercial-offer button{width:100%;min-height:46px;box-shadow:none}
+
+/* Optional KP promotion crest: purely visual, no effect on standing or logos. */
+.ppw-business-kp-crest{display:grid;place-items:center;min-width:64px;min-height:55px;
+ justify-self:start;padding:9px 14px;border:2px solid #bcc9df;border-radius:12px;
+ font:950 19px system-ui;color:#e6f5ff;background:linear-gradient(140deg,#202f48,#738298);
+ box-shadow:0 4px 16px #0007}
+.ppw-business-kp-crest[data-style="NEON"]{color:#f6d8ff;border-color:#baf4ff;
+ background:linear-gradient(135deg,#452261,#0c5693)}
+.ppw-business-kp-crest[data-style="GOLD"]{color:#35220c;border-color:#ffeba8;
+ background:linear-gradient(135deg,#fff0b7,#b98329)}
