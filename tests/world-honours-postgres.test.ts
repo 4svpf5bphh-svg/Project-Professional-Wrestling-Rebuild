@@ -86,7 +86,7 @@ test("complete World year settles earned honours, career Hall and moments once f
    await tx.query(`
     INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
     VALUES($1,1,52,'WRESTLER_RETIRED',
-     jsonb_build_object('personId',$2))`,[world,hero]);
+     jsonb_build_object('personId',$2::text))`,[world,hero]);
    await tx.query(`
     INSERT INTO ppw_world_news_weeks(world_id,year,week)
     SELECT $1,1,generate_series(1,51)`,[world]);
