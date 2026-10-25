@@ -208,7 +208,11 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
    outcome={staffId:action.staffId,name};
   }else if(action.kind==="CREATE_WRESTLER"){
    if(!owner.can_edit)throw new Error("The World must be open to introduce a wrestler");
-   await tx.query("SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[s.worldId]);
+   const locked=await tx.query<{year:number;week:number;can_edit:boolean}>(
+    "SELECT year,week,(phase='OPEN' AND next_lock_at>clock_timestamp()) AS can_edit "+
+    "FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[s.worldId]);
+   if(locked.length!==1||!locked[0]!.can_edit||locked[0]!.year!==owner.year||
+    locked[0]!.week!==owner.week)throw new Error("World booking deadline passed");
    const name=cleanName(action.name);
    const same=await tx.query<{person_id:string}>(`
     SELECT person_id FROM ppw_people WHERE world_id=$1 AND lower(name)=lower($2)
