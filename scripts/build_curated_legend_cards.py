@@ -13,6 +13,7 @@ import json
 import re
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageEnhance
 
@@ -43,12 +44,19 @@ def center(draw,y,text,size,max_width,fill,serif=False):
  f=fit_text(draw,text,max_width,size,serif=serif)
  draw.text((W//2,y),text,font=f,fill=fill,anchor="mm",stroke_width=0)
 
-def obtain(url):
+def obtain(url,source_width):
  if not url.startswith("https://upload.wikimedia.org/wikipedia/commons/"):
   raise ValueError("Refusing non-Commons source")
- for attempt in range(3):
+ # Wikimedia explicitly asks high-volume tools to request scaled thumbnails
+ # rather than full original images. Never issue parallel requests.
+ parsed=urlparse(url)
+ basename=parsed.path.rsplit("/",1)[-1]
+ thumb_width=min(960,max(240,int(source_width)-1))
+ thumb=url.replace("/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
+ for attempt in range(5):
   try:
-   req=Request(url,headers={"User-Agent":
+   time.sleep(3)
+   req=Request(thumb,headers={"User-Agent":
     "PPW-Legends-Real-Photo-Curation/1.0 (GitHub PPW source/licence attribution)"})
    with urlopen(req,timeout=35) as reply:
     if reply.headers.get("Content-Type","").split(";")[0] not in (
@@ -61,9 +69,11 @@ def obtain(url):
    if image.width<500 or image.height<500:
     raise ValueError("Insufficient source image resolution")
    return image.convert("RGB")
-  except Exception:
-   if attempt==2:raise
-   time.sleep(attempt+1)
+  except Exception as exc:
+   if attempt==4:raise
+   # Honour rate limits instead of hammering the image CDN.
+   print("IMAGE RETRY",type(exc).__name__,"after",10*(attempt+1),"seconds",flush=True)
+   time.sleep(10*(attempt+1))
  raise RuntimeError("Unreachable")
 
 def title_parts(title:str):
@@ -77,7 +87,7 @@ def title_parts(title:str):
  return groups
 
 def draw_card(entry, tier, position):
- photo=obtain(entry["sourceUrl"])
+ photo=obtain(entry["sourceUrl"],entry["width"])
  photo=ImageOps.fit(photo,(W-36,H-36),method=Image.Resampling.LANCZOS,
                      centering=(.5,.42))
  photo=ImageEnhance.Contrast(photo).enhance(1.13).convert("RGBA")
@@ -145,7 +155,7 @@ def main():
    raise ValueError("Unacceptable photo licence: "+e["id"])
   batch.append((e,match.group(1),i))
  results=[]
- with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+ with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
   pending={pool.submit(draw_card,*args):args[0]["id"] for args in batch}
   for future in concurrent.futures.as_completed(pending):
    id=pending[future]
