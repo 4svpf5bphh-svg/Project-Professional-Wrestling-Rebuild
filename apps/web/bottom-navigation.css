@@ -37,3 +37,10 @@ body.ppw-drawer-active .ppw-bottom-navigation{z-index:210;pointer-events:auto;op
 .ppw-navigation .ppw-nav-drawer-heading strong{color:#ffb4e6}
 .ppw-navigation .ppw-nav-drawer-entry[aria-current="page"]{border-color:#ff66c1;background:#53234e}
 .ppw-navigation .ppw-nav-drawer-entry:nth-child(3n+1){border-left-color:#fc319f}
+
+/* Compact KP wallet access lives beside sign-out, never in the bottom dock. */
+.ppw-shell-actions{display:flex;align-items:center;gap:6px}
+.ppw-account-banner .ppw-shell-kp{border:1px solid #f0c76e;border-radius:10px;
+ background:linear-gradient(145deg,#4c2d67,#211634);color:#ffdf87;
+ font-weight:850;white-space:nowrap;padding:8px 10px}
+@media(max-width:380px){.ppw-account-banner .ppw-shell-kp{padding:7px 8px}}
