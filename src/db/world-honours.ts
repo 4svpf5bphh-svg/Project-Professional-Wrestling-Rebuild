@@ -163,6 +163,19 @@ export async function publishCertifiedWorldHeritage(tx:SqlRows,worldId:string,
     Number(company.avg_crowd).toFixed(1)+"/100 average crowd"]);
   annual++;
  }
+ return {moments:moments.length,annual};
+}
+
+/** Run AFTER living-career settlement in the SAME rollover transaction.
+ * Week-52 retirements must be eligible for their actual graduating class.
+ */
+export async function publishYearEndHallOfFame(tx:SqlRows,worldId:string,
+ year:number,week:number){
+ if(week!==52)return 0;
+ const check=await tx.query<{n:string}>(`
+  SELECT count(*)::text AS n FROM ppw_world_news_weeks
+  WHERE world_id=$1 AND year=$2`,[worldId,year]);
+ if(Number(check[0]?.n)!==52)return 0;
  // A historical Hall of Fame is harder to earn than a weekly feature.
  // Induct retirees who have PROVEN careers, up to three per annual class.
  // Not connected to playable legends or points; no player can nominate self.
@@ -207,7 +220,7 @@ export async function publishCertifiedWorldHeritage(tx:SqlRows,worldId:string,
    [worldId,c.person_id,c.name,c.division,year,c.matches,c.wins,
     Number(c.best_stars)]);
  }
- return {moments:moments.length,annual,inducted:candidates.length};
+ return candidates.length;
 }
 
 export async function readWorldHeritage(pool:TransactionPool,
