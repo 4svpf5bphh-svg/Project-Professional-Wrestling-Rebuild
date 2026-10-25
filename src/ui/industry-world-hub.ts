@@ -436,6 +436,27 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      section.append(archive);
     }
    }
+   if(official&&(news?.annualAwards??[]).length){
+    const sectionAnnual=el("section","ppw-news-annual");
+    sectionAnnual.append(el("span","ppw-news-eyebrow","THE ANNUAL HONOURS"),
+     el("h3","","Match & Angle of the Year"),
+     el("p","ppw-industry-muted",
+      "Awarded only after all 52 weeks of a World year have published. " +
+      "The highest certified weekly winner takes the annual crown."));
+    for(const award of news!.annualAwards){
+     const item=el("article","ppw-news-annual-card");
+     item.append(el("span","ppw-news-desk",
+      "YEAR "+award.year+" · "+(award.kind==="MATCH"?
+       "MATCH OF THE YEAR":"ANGLE OF THE YEAR")),
+      el("strong","",award.title),
+      el("small","ppw-industry-muted",award.promotionName+" · "+award.showName+
+       " · Week "+award.week),
+      el("span","ppw-news-annual-rating",award.ratingUnit==="STARS"?
+       award.rating.toFixed(2)+" ★":Math.round(award.rating)+"/100 CROWD"));
+     sectionAnnual.append(item);
+    }
+    section.append(sectionAnnual);
+   }
    const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"));
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?

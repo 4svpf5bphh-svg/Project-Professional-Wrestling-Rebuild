@@ -24,6 +24,9 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     {year:2,week:6,kind:"ANGLE",promotionId:"human",promotionName:"Human Pro",
     showId:"s1",showName:"Fight Night",slotId:"a1",title:"Alice — Turn",
     peopleNames:["Alice"],personIds:["a"],rating:88,ratingUnit:"CROWD"}],
+   annualAwards:[{year:1,week:37,kind:"MATCH",promotionId:"ai",
+    promotionName:"AI Elite",showId:"last-year",showName:"World Classic",
+    slotId:"m1",title:"Great Match of the Year",rating:5,ratingUnit:"STARS"}],
    stories:[{year:2,week:6,id:"m2",desk:"OFFICIAL",certainty:"CONFIRMED",
     promotionId:"ai",promotionName:"AI Elite",showId:"s2",
     title:"A certified classic",summary:"4.75 star match",sourceKind:"MATCH"},
@@ -42,6 +45,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.getByText("A certified classic")).toBeVisible();
+ await expect(page.getByText("MATCH OF THE YEAR")).toBeVisible();
+ await expect(page.getByText("Great Match of the Year")).toBeVisible();
  const poster=page.locator(".ppw-news-poster").first();
  const rect=await poster.boundingBox();
  expect(rect).not.toBeNull();

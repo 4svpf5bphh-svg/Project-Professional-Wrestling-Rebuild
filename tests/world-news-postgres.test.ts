@@ -89,6 +89,7 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   const result=await readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owner});
   assert.equal(result.awards[0]!.kind,"MATCH");
+  assert.deepEqual(result.annualAwards,[],"Year-end honours need a complete 52-week ledger");
   assert.equal(result.awards[0]!.promotionName,"Promotion 1");
   assert.equal(result.awards[0]!.rating,4.75);
   assert.ok(result.awards.some(x=>x.kind==="ANGLE"&&x.rating===92));
@@ -102,6 +103,18 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.ok(JSON.stringify(viaRpc).includes("AI Crown Night"));
   await assert.rejects(readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:"outsider"}),/access denied/);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_world_news_weeks(world_id,year,week)
+    SELECT $1,1,generate_series(2,52)`,[world]);
+   await tx.query(`UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1`,[world]);
+  });
+  const annual=await readIndustryWorldNews(db.pool,{
+   worldId:world,promotionId:"promotion-0",playerId:owner});
+  assert.equal(annual.annualAwards.length,2);
+  assert.equal(annual.annualAwards.find(a=>a.kind==="MATCH")?.rating,4.75);
+  assert.equal(annual.annualAwards.find(a=>a.kind==="ANGLE")?.rating,92);
+  assert.equal(annual.awards.length,0,"Older weekly awards leave the 13-week feed");
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_world_news_items","ppw_world_news_awards",
