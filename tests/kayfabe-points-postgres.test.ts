@@ -56,20 +56,20 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
     SET balance=5000,lifetime_earned=5000 WHERE player_id=$1`,[a]);
   });
   const brand={kind:"BUY" as const,sku:"BRAND_CHROME" as const,requestId:"buy-chrome"};
-  const paid=await applyKayfabeAction(db.pool,aa,brand);
+  const paid=await applyKayfabeAction(db.pool,aa,brand) as {price:number};
   assert.equal(paid.price,200);
   assert.equal((await applyKayfabeAction(db.pool,aa,brand)).replayed,true);
   await assert.rejects(applyKayfabeAction(db.pool,aa,{
    kind:"BUY",sku:"BADGE_GOLD",requestId:"buy-chrome"}),/request ID/);
   const rename=await applyKayfabeAction(db.pool,aa,{
    kind:"RENAME_STAFF",staffId:"staff-road-agent-001",name:"Riley The Agent",
-   requestId:"rename-agent"});
+   requestId:"rename-agent"}) as {price:number};
   assert.equal(rename.price,350);
   const office=await readStaffWorkspace(db.pool,aa);
   assert.equal(office.employees.find(e=>e.staffId==="staff-road-agent-001")?.name,"Riley The Agent");
   assert.equal((await readStaffWorkspace(db.pool,bb)).employees.length,0);
   const added=await applyKayfabeAction(db.pool,aa,{
-   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"});
+   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"}) as {market:string;price:number;personId:string};
   assert.equal(added.market,"FREE_AGENT");
   assert.equal(added.price,3000);
   assert.equal((await applyKayfabeAction(db.pool,aa,{
