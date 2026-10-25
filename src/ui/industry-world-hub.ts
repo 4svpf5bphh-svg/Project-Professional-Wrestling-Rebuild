@@ -1,9 +1,12 @@
 import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
+import type {readIndustryWorldNews} from "../db/industry-news.js";
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
 export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedTalent>>;
+export type IndustryNewsView=Awaited<ReturnType<typeof readIndustryWorldNews>>;
 export type PromotionRecordView=Awaited<ReturnType<typeof readPromotionRecordBook>>;
 export type IndustryPromotion=IndustryHubView["promotions"][number];
 export type IndustryOrder="REACH"|"FORM"|"NAME";
@@ -23,6 +26,7 @@ export function visibleIndustryPromotions<T extends {
 }
 export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
+ news?():Promise<IndustryNewsView>;
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
  records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
@@ -38,9 +42,17 @@ const btn=(label:string,fn:()=>void)=>{
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
-  active:"STANDINGS"|"BROADCASTS"|"HEADLINES"|"RECORDS"="STANDINGS",
+  active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
+ let news:IndustryNewsView|null=null,newsBusy=false,newsError="";
+ async function loadNews(){
+  if(!port.news||newsBusy||news)return;
+  newsBusy=true;newsError="";render();
+  try{news=await port.news();}
+  catch(e){newsError=e instanceof Error?e.message:"World News could not load";}
+  finally{newsBusy=false;render();}
+ }
  const loadRecords=async()=>{
   if(!port.records||recordsBusy||records)return;
   recordsBusy=true;recordsError="";render();
@@ -122,8 +134,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["HEADLINES","World stories"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"]] as const){
-   const b=btn(label,()=>{active=key;render();if(key==="RECORDS")void loadRecords();});
+  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"]] as const){
+   const b=btn(label,()=>{active=key;render();if(key==="RECORDS")void loadRecords();
+    if(key==="OFFICIAL"||key==="DIRT")void loadNews();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
   }
@@ -252,31 +265,103 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     section.append(item);
    }
    root.append(section);
-  }else if(active==="HEADLINES"){
-   const section=el("section","ppw-industry-list");
-   section.append(el("h2","","Around the wrestling world"),
-    el("p","ppw-industry-muted",
-     "Big career moves and company shifts from the past 13 weeks. No private backstage or contract details."));
-   const titles:Record<string,(s:IndustryHubView["headlines"][number])=>string>={
-    WRESTLER_RETIRED:s=>(s.personName??"A veteran")+" calls time on their in-ring career",
-    WRESTLER_DEBUTED:s=>(s.personName??"A fresh face")+" enters the wrestling business",
-    CAREER_STAGE_CHANGED:s=>(s.personName??"A wrestler")+" enters a new career chapter",
-    PROMOTION_TIER_CHANGED:s=>(s.promotionName??"A promotion")+" moves "+
-     (s.toTier??"to a new level"),
-    PROMOTION_RESTRUCTURED:s=>(s.promotionName??"A promotion")+" reshapes its operation",
-    PROMOTION_ENTERED_DORMANCY:s=>(s.promotionName??"A promotion")+" suspends operations",
-    PROMOTION_RECOVERED_FROM_DISTRESS:s=>(s.promotionName??"A promotion")+" finds its feet again",
-   };
-   if(!view.headlines.length)section.append(el("p","ppw-industry-muted",
-    "No major public developments have been reported recently."));
-   for(const story of view.headlines){
-    const card=el("article","ppw-industry-broadcast");
-    card.append(el("strong","",titles[story.kind]?.(story)??"Industry update"),
-     el("small","ppw-industry-muted",
-      "Year "+story.year+" · Week "+story.week));
-    if(story.personId&&port.openWrestler)
-     card.append(btn("Open wrestler dossier →",()=>port.openWrestler?.(story.personId!)));
-    section.append(card);
+  }else if(active==="OFFICIAL"||active==="DIRT"){
+   const section=el("section","ppw-industry-list ppw-news");
+   const official=active==="OFFICIAL";
+   section.append(el("span","ppw-news-eyebrow",official?
+    "THE RECORD / THE RESULTS":"THE RUMOUR MILL / BEHIND THE CURTAIN"),
+    el("h2","",official?"Official News":"Dirt Sheets"),
+    el("p","ppw-industry-muted",official?
+     "What actually happened in the wrestling world. Awards and reports come from certified completed shows.":
+     "The insider desk reads between the lines of public shows. Speculation is labelled; another manager's plans and negotiations stay private."));
+   if(newsBusy)section.append(el("p","ppw-industry-muted","Opening this week's news desk…"));
+   if(newsError)section.append(el("p","ppw-alert ppw-error",newsError),
+    btn("Retry",()=>void loadNews()));
+   if(official&&news?.awards.length){
+    const latest=news.awards[0]!;
+    const lead=news.awards.filter(a=>a.year===latest.year&&a.week===latest.week);
+    const features=el("div","ppw-news-features");
+    for(const award of lead){
+     const poster=el("article","ppw-news-poster");
+     poster.dataset.kind=award.kind.toLowerCase();
+     poster.append(el("span","ppw-news-poster-mast",
+      award.kind==="MATCH"?"★ MATCH OF THE WEEK":"◆ ANGLE OF THE WEEK"),
+      el("span","ppw-news-poster-week","YEAR "+award.year+"  /  WEEK "+award.week));
+     const faces=el("div","ppw-news-faces");
+     for(const person of award.peopleNames.slice(0,3)){
+      const portrait=createWrestlerPortrait(person,145);
+      if(portrait){
+       const frame=el("div","ppw-news-face");
+       portrait.alt="Portrait of "+person;
+       portrait.loading="lazy";
+       portrait.onerror=()=>frame.remove();
+       frame.append(portrait);faces.append(frame);
+      }
+     }
+     if(faces.childElementCount)poster.append(faces);
+     poster.append(el("span","ppw-news-poster-promotion",award.promotionName),
+      el("strong","ppw-news-poster-title",award.title),
+      el("span","ppw-news-poster-event",award.showName),
+      el("strong","ppw-news-poster-rating",
+       award.ratingUnit==="STARS"?award.rating.toFixed(2)+" ★":
+        Math.round(award.rating)+"/100 CROWD"));
+     features.append(poster);
+    }
+    section.append(features);
+    const history=news.awards.filter(a=>a.year!==latest.year||a.week!==latest.week);
+    if(history.length){
+     const archive=document.createElement("details");
+     archive.className="ppw-news-history";
+     archive.append(el("summary","","Previous weekly awards"));
+     for(const award of history){
+      const row=el("article","ppw-news-history-row");
+      row.append(el("small","",award.kind+" / Y"+award.year+" W"+award.week),
+       el("strong","",award.title),
+       el("span","",award.promotionName+" · "+
+        (award.ratingUnit==="STARS"?award.rating.toFixed(2)+" ★":
+         Math.round(award.rating)+"/100 crowd")));
+      archive.append(row);
+     }
+     section.append(archive);
+    }
+   }
+   const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"));
+   if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
+    section.append(el("p","ppw-industry-empty",official?
+     "No major certified headlines yet. The next completed World week will publish its highlights.":
+     "Nothing worth printing in the rumour mill. No fabricated backstage sources here."));
+   for(const story of published){
+    const item=el("article","ppw-news-story");
+    item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
+     "SPECULATION / NOT CONFIRMED"),
+     el("strong","ppw-news-story-title",story.title),
+     el("p","",story.summary),
+     el("small","ppw-industry-muted",story.promotionName+
+      " · Year "+story.year+" · Week "+story.week));
+    section.append(item);
+   }
+   if(official){
+    // The pre-existing ledger headlines stay on the official desk; they
+    // come from verified World changes, not other managers' private state.
+    const titles:Record<string,(s:IndustryHubView["headlines"][number])=>string>={
+     WRESTLER_RETIRED:s=>(s.personName??"A veteran")+" calls time on their in-ring career",
+     WRESTLER_DEBUTED:s=>(s.personName??"A fresh face")+" enters the wrestling business",
+     CAREER_STAGE_CHANGED:s=>(s.personName??"A wrestler")+" enters a new career chapter",
+     PROMOTION_TIER_CHANGED:s=>(s.promotionName??"A promotion")+" moves "+
+      (s.toTier??"to a new level"),
+     PROMOTION_RESTRUCTURED:s=>(s.promotionName??"A promotion")+" reshapes its operation",
+     PROMOTION_ENTERED_DORMANCY:s=>(s.promotionName??"A promotion")+" suspends operations",
+     PROMOTION_RECOVERED_FROM_DISTRESS:s=>(s.promotionName??"A promotion")+" finds its feet again"
+    };
+    for(const story of view.headlines){
+     const item=el("article","ppw-news-story");
+     item.append(el("span","ppw-news-desk","CONFIRMED / INDUSTRY"),
+      el("strong","ppw-news-story-title",titles[story.kind]?.(story)??"Industry update"),
+      el("small","ppw-industry-muted","Year "+story.year+" · Week "+story.week));
+     if(story.personId&&port.openWrestler)
+      item.append(btn("Open wrestler dossier →",()=>port.openWrestler?.(story.personId!)));
+     section.append(item);
+    }
    }
    root.append(section);
   }else{

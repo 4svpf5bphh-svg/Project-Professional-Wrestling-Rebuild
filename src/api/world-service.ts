@@ -35,6 +35,7 @@ import {readGorillaWorkspace,saveGorillaShowInstructions,
 import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import {readIndustryWorldNews} from "../db/industry-news.js";
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
@@ -136,6 +137,14 @@ export async function industryFeaturedAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");validate(targetPromotionId,"public promotion");
  return readIndustryFeaturedTalent(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId,targetPromotionId});
+}
+/** Independently loaded public World News, with no rival creative access. */
+export async function industryNewsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readIndustryWorldNews(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
 }
 /** Promotion-private record book, loaded only after selecting Industry Records. */
 export async function promotionRecordBookAsActor(context:WorldApiContext,

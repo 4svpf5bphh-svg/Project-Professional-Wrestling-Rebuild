@@ -99,3 +99,54 @@
  width:32px;height:32px;background:#285681;border-radius:9px}
 .ppw-industry-record-row>span{flex:1;min-width:120px;font-weight:750}
 .ppw-industry-record-row>small{color:#afcddc}
+
+
+/* World News: editorial posters, not generic event-title artwork. */
+.ppw-news-eyebrow,.ppw-news-desk{font-weight:900;font-size:10px;letter-spacing:.17em;color:#90d9f1}
+.ppw-news h2{font-size:clamp(24px,5vw,31px);letter-spacing:-.025em;margin:8px 0 2px}
+.ppw-news-features{display:grid;gap:12px;margin:17px 0}
+.ppw-news-poster{isolation:isolate;display:flex;position:relative;overflow:hidden;
+ flex-direction:column;gap:9px;min-height:260px;padding:21px 18px;
+ border-radius:18px;border:1px solid #a4ccf966;
+ background:radial-gradient(ellipse at 100% 5%,#285f94 0%,transparent 57%),
+ linear-gradient(140deg,#152843,#071222 90%);box-shadow:0 14px 28px #0004}
+.ppw-news-poster[data-kind=angle]{border-color:#e0af7980;
+ background:radial-gradient(ellipse at 100% 0%,#77513d 0%,transparent 60%),
+ linear-gradient(140deg,#3f2437,#101522 91%)}
+.ppw-news-poster-mast{font-size:11px;letter-spacing:.18em;color:#cbe6ff;
+ font-weight:950;z-index:1}
+.ppw-news-poster[data-kind=angle] .ppw-news-poster-mast{color:#ffce94}
+.ppw-news-poster-week{font-size:10px;letter-spacing:.13em;color:#bdd2e9;z-index:1}
+.ppw-news-poster-promotion{font-size:12px;font-weight:900;letter-spacing:.12em;
+ text-transform:uppercase;color:#99cce9;z-index:1;margin-top:auto}
+.ppw-news-poster-title{font-size:clamp(23px,4vw,31px);line-height:1.08;
+ max-width:90%;letter-spacing:-.025em;position:relative;z-index:1;
+ text-wrap:balance;overflow-wrap:anywhere;text-shadow:0 2px 8px #06101b}
+.ppw-news-poster-event{font-size:12px;color:#b4d1e6;z-index:1}
+.ppw-news-poster-rating{font-size:23px;font-weight:950;letter-spacing:.04em;
+ color:#fbd78d;z-index:1}
+.ppw-news-faces{position:absolute;right:-18px;top:31px;display:flex;
+ align-items:center;justify-content:flex-end;z-index:0;opacity:.27;
+ height:215px;width:66%;overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 40%)}
+.ppw-news-face{height:100%;width:42%;flex:none;overflow:hidden}
+.ppw-news-face img{height:100%;width:100%;object-fit:cover;object-position:top center;
+ filter:saturate(.7)}
+.ppw-news-story{display:flex;flex-direction:column;gap:8px;margin:10px 0;
+ padding:16px;border-radius:13px;border:1px solid #37516a;
+ background:linear-gradient(110deg,#16273b,#111d30)}
+.ppw-news-story-title{font-size:16px;line-height:1.35;color:#f5fbff}
+.ppw-news-story p{font-size:13px;line-height:1.55;color:#cedce8;margin:0}
+.ppw-news-story .ppw-industry-button{align-self:flex-start}
+.ppw-news-history{border:1px solid #39536a;border-radius:12px;
+ padding:13px;margin-bottom:18px;background:#112337}
+.ppw-news-history summary{font-weight:800;cursor:pointer;min-height:28px;color:#b5e9fa}
+.ppw-news-history-row{display:grid;gap:5px;padding:12px 3px;
+ border-top:1px solid #30445a}
+.ppw-news-history-row:first-of-type{margin-top:12px}
+.ppw-news-history-row small{font-size:10px;color:#8fbdd9;font-weight:800}
+.ppw-news-history-row strong{font-size:13px}
+.ppw-news-history-row span{font-size:11px;color:#aac6d8}
+@media(min-width:690px){.ppw-news-features{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ppw-news-poster{min-height:320px;padding:24px}}
+@media(max-width:360px){.ppw-news-poster-title{font-size:21px}
+ .ppw-news-poster{min-height:235px}}

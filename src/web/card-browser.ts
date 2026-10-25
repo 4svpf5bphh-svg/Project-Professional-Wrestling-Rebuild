@@ -194,6 +194,7 @@ function industryPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):IndustryHubPort{
  return {
   load:()=>call("industry"),
+  news:()=>call("industryNews"),
   records:()=>call("promotionRecordBook"),
   featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),

@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
 import {settleWorldHeritage} from "./world-heritage.js";
+import {publishCertifiedWorldNews} from "./world-news.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
 import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
  recruitDistressedAiRosters}
@@ -155,6 +156,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING'))
         AS pending`,[input.worldId]);
       if(outstanding[0]!.pending)throw new Error("Contract desk negotiations must resolve before World rollover");
+      // One atomic, idempotent publication of completed World news; no new cron.
+      // If news publishing fails the entire Week rollover rolls back.
+      await publishCertifiedWorldNews(tx,input.worldId,year,week);
       // The original simulator decays inactive rivalries every week, not only
       // when a segment was booked. One indexed, bounded global history read.
       await refreshWorldProgrammeSignals(tx,input.worldId,weekIndex);

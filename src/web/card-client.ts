@@ -21,7 +21,7 @@ export function createCardClient(scope:CardSessionScope,
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
    "backstageArchive","backstageDecision","resultsArchive",
    "championships","championshipHistory","tagTeams","createTagTeam","renameTagTeam",
-   "planner","planShow","calendar","saveCalendar","archiveCalendar","contracts","wrestlerDirectory","wrestlerProfile","wrestlerCareer","saveWrestlerRepertoire","submitContractOffer","business","signCommercial","previewRestructure","restructurePromotion","staff","setStaffContinuity","setGorillaPolicy","gorillaWorkspace","saveGorillaShow","hireTalentManager","releaseTalentManager","hireStaff","releaseStaff","renewStaff","industry","industryFeatured","promotionRecordBook","requestContractDates","cancelContractDates","renewContract",
+   "planner","planShow","calendar","saveCalendar","archiveCalendar","contracts","wrestlerDirectory","wrestlerProfile","wrestlerCareer","saveWrestlerRepertoire","submitContractOffer","business","signCommercial","previewRestructure","restructurePromotion","staff","setStaffContinuity","setGorillaPolicy","gorillaWorkspace","saveGorillaShow","hireTalentManager","releaseTalentManager","hireStaff","releaseStaff","renewStaff","industry","industryNews","industryFeatured","promotionRecordBook","requestContractDates","cancelContractDates","renewContract",
    "withdrawContractRenewal","withdrawContractOffer"].includes(method))
    throw new Error("Unknown card action");
   if(["load","talent","save","ready","results"].includes(method)&&!showId)
