@@ -48,7 +48,7 @@ export function permittedStipulationFinishes(value:MatchStipulation,
  if(value!=="STANDARD")return allowed[value].filter(f=>
   !["TRIPLE_THREAT","FOUR_WAY"].includes(format)||f!=="FOREIGN_OBJECT");
  return format==="BATTLE_ROYAL"?["OVER_THE_TOP_ROPE"]:
-  ["TRIPLE_THREAT","FOUR_WAY","MULTI_TEAM"].includes(format)?
+  ["TRIPLE_THREAT","FOUR_WAY"].includes(format)?
    ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH"]:
    ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH",
     "DISQUALIFICATION","FOREIGN_OBJECT"];
