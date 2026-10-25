@@ -16,7 +16,8 @@ const url=process.env.PPW_NEON_TEST_URL;
 test("Commercial negotiation is player-scoped, immutable per term and expires once without double-paying cash",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
- const world="commercial-"+randomUUID(),owner="owner-"+randomUUID();
+ const world="commercial-"+randomUUID(),owner="owner-"+randomUUID(),
+  secondOwner="second-"+randomUUID();
  const db=postgresPool(url!,3),promotion="promotion-0";
  try{
   await importOriginalGenesis(db.pool,originalGenesisFixture(world));
@@ -29,22 +30,24 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    await tx.query(`UPDATE ppw_worlds SET week=4,
     next_lock_at=clock_timestamp()+interval '2 days'
     WHERE world_id=$1`,[world]);
+   for(const company of [promotion,"promotion-1"]){
    for(let week=1;week<=3;week++){
-    const show="commercial-show-"+week;
+    const show="commercial-show-"+company+"-"+week;
     await tx.query(`INSERT INTO ppw_booking_drafts
      (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
      VALUES($1,$2,$3,1,$4,'SUBMITTED',2,'Regional event','REGULAR')`,
-     [world,show,promotion,week]);
+     [world,show,company,week]);
     await tx.query(`INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
      VALUES($1,$2,$3,1,$4,$5,75,'{}'::jsonb,$6)`,
-     [world,promotion,show,week,"certified-"+week,"a".repeat(63)+week]);
+     [world,company,show,week,"certified-"+company+"-"+week,"a".repeat(62)+(company==="promotion-1"?"b":"a")+week]);
     await tx.query(`INSERT INTO ppw_show_economics
      (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
       gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
       total_cost,net_result,incremental_cash)
      VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000)`,
-     [world,show,promotion,week]);
+     [world,show,company,week]);
+   }
    }
   });
   const business=await readBusinessWorkspace(db.pool,{
@@ -84,8 +87,32 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   assert.equal(active.commercialAgreements.length,2);
   assert.equal(active.cash,savedCash,"Signing never creates an instant cash bonus");
 
+  // A second human may manage a separate company but never see or sign
+  // the first owner's private contracts. The former company stays AI-run.
+  const secondJoin=await joinWorld(db.pool,{worldId:world,playerId:secondOwner,
+   requestId:"second-human-join",expectedRevision:sponsor.revision});
+  assert.equal(secondJoin.status,"APPLIED");
+  if(secondJoin.status!=="APPLIED")throw new Error("Second human did not join");
+  const secondClaim=await submitPromotionClaim(db.pool,{worldId:world,
+   playerId:secondOwner,promotionId:"promotion-2",requestId:"second-human-claim",
+   expectedRevision:secondJoin.revision});
+  assert.equal(secondClaim.status,"APPLIED");
+  const others=await readBusinessWorkspace(db.pool,{worldId:world,
+   promotionId:"promotion-2",playerId:secondOwner});
+  assert.deepEqual(others.commercialAgreements,[]);
+  await assert.rejects(readBusinessWorkspace(db.pool,{worldId:world,
+   promotionId:promotion,playerId:secondOwner}),/access denied/);
   // Test the existing locked-World settlement against disposable World data.
-  await withWorldTransaction(db.pool,tx=>settleCommercialWorldWeek(tx,world,1,16));
+  const firstSettlement=await withWorldTransaction(db.pool,
+   tx=>settleCommercialWorldWeek(tx,world,1,16));
+  assert.equal(firstSettlement.aiDeals,2,
+   "One AI broadcaster and one AI sponsor are signed from the same earned evidence");
+  const npc=await withWorldTransaction(db.pool,tx=>tx.query<{
+   kind:string;source:string
+  }>(`SELECT kind,source FROM ppw_commercial_deals
+   WHERE world_id=$1 AND promotion_id='promotion-1' AND status='ACTIVE'
+   ORDER BY kind`,[world]));
+  assert.deepEqual(npc,[{kind:"BROADCAST",source:"AI"},{kind:"SPONSOR",source:"AI"}]);
   const afterSponsor=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:owner});
   assert.equal(afterSponsor.weeklySponsorIncome,25000);
@@ -112,7 +139,7 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
     "ppw_championships","ppw_people","ppw_venues",
     "ppw_promotion_market_states","ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+name+" WHERE world_id=$1",[world]);
-   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1 OR player_id=$2",[owner,secondOwner]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());
  }
