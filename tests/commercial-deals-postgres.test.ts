@@ -121,6 +121,12 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
      crowd_response,receipt_json,receipt_digest)
     VALUES($1,$2,'regional-tour',1,16,'tour-receipt',
      83,'{}'::jsonb,repeat('f',64))`,[world,promotion]);
+   await tx.query(`INSERT INTO ppw_show_economics
+    (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+     gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+     total_cost,net_result,incremental_cash)
+    VALUES($1,'regional-tour',$2,1,16,1200,1350,195000,
+     25000,30000,10000,20000,85000,110000,110000)`,[world,promotion]);
   });
   const beforeTour=await withWorldTransaction(db.pool,tx=>tx.query<{
    awareness:number
