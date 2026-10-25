@@ -1,0 +1,45 @@
+name: Research authentic Legends photography (development only)
+on:
+  push:
+    branches: [feature/phase8-world-ux]
+    paths:
+      - "scripts/research-legend-photos.ts"
+      - ".github/workflows/research-legend-photos.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: legend-photo-sourcing-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  research:
+    if: github.ref == 'refs/heads/feature/phase8-world-ux'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Research authentic Creative Commons photographs only
+        run: npx tsx scripts/research-legend-photos.ts
+      - name: Preserve licence/identity research candidates for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legend-commons-source-research
+          path: data/legend-photo-candidates.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Save source research to draft branch, never assets or Production
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/legend-photo-candidates.json
+          if ! git diff --cached --quiet; then
+            git commit -m "docs(legends): catalogue metadata-checked photo candidates for manual review"
+            git push origin HEAD:feature/phase8-world-ux
+          fi
