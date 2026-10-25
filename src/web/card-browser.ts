@@ -195,6 +195,7 @@ function industryPort(root:HTMLElement,scope:Scope,
  return {
   load:()=>call("industry"),
   news:()=>call("industryNews"),
+  heritage:()=>call("worldHeritage"),
   rankings:()=>call("worldRankings"),
   careers:search=>call("worldCareerSearch",{search}),
   records:()=>call("promotionRecordBook"),
