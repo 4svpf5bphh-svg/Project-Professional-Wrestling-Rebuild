@@ -121,7 +121,10 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const weeklySponsor=number(w.weekly_sponsor_income);
   const weeklyOverhead=number(w.weekly_fixed_overhead);
   const guarantees=Number(w.guarantees),staffPayroll=Number(w.staff_payroll);
-  const certified=shows.slice(0,12);
+  const now=(w.year-1)*52+w.week-1;
+  const certified=shows.filter(show=>
+   (show.year-1)*52+show.week-1>=Math.max(0,now-25)&&
+   (show.year-1)*52+show.week-1<=now).slice(0,12);
   const earnedOffers=commercialOffers({
    tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
    weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
