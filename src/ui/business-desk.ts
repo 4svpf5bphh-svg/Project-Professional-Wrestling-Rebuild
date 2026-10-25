@@ -1,4 +1,5 @@
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
+import {commercialCompanyName} from "../domain/commercial-offers.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
@@ -392,7 +393,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    for(const deal of active){
     const item=el("article","ppw-commercial-offer");
     item.append(el("strong","",deal.kind==="BROADCAST"?"Broadcast partner":"Sponsor"),
-     el("p","",deal.offerCode.replaceAll("_"," ").toLowerCase()),
+     el("p","",commercialCompanyName(deal.offerCode)),
      el("small","","Weekly guarantee "+money(deal.weeklyIncome)+
       " · "+Math.max(0,deal.endWeekIndex-((view.year-1)*52+view.week-1)+1)+
       " weeks remaining"+
@@ -404,8 +405,11 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     "No new agreements currently qualify. Complete strong shows to attract offers, or let an existing agreement expire."));
    for(const offer of view.commercialOffers){
     const item=el("article","ppw-commercial-offer");
-    item.append(el("strong","",offer.name),
-     el("p","",offer.description));
+    item.append(el("strong","",offer.name));
+    if(offer.tagline)item.append(el("p","ppw-commercial-tagline",offer.tagline));
+    item.append(el("p","",offer.description));
+    if(offer.preference)item.append(el("small","ppw-business-muted",
+     "Best fit: "+offer.preference));
     const terms=el("div","ppw-commercial-terms");
     terms.append(el("span","",money(offer.weeklyIncome)+"/week"),
      el("span","",offer.termWeeks+" weeks"),

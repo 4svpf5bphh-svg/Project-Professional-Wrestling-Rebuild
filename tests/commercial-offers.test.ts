@@ -30,13 +30,26 @@ test("one earned broadcaster tradeoff and sensible sponsorship, with capped init
 test("major terms require sustained genuine results and national standing",()=>{
  const strong={...settled,tier:"NATIONAL",completedShows:10,averageCrowd:78};
  const offers=commercialOffers(strong);
- assert.deepEqual(offers.map(x=>x.code),[
-  "BROADCAST_STABLE","BROADCAST_GROWTH","BROADCAST_TV",
-  "SPONSOR_LOCAL","SPONSOR_PARTNER"
- ]);
- assert.equal(offers[2]!.weeklyIncome,12000);
- assert.equal(offers[4]!.weeklyIncome,2320);
+ assert.deepEqual(offers.filter(x=>["BROADCAST_STABLE","BROADCAST_GROWTH",
+  "BROADCAST_TV","SPONSOR_LOCAL","SPONSOR_PARTNER"].includes(x.code))
+  .map(x=>x.code),["BROADCAST_STABLE","BROADCAST_GROWTH","BROADCAST_TV",
+    "SPONSOR_LOCAL","SPONSOR_PARTNER"]);
+ assert.ok(offers.length>=9,"Established promotions receive a wide fictional commercial market");
+ assert.equal(offers.find(x=>x.code==="BROADCAST_TV")?.weeklyIncome,12000);
+ assert.equal(offers.find(x=>x.code==="SPONSOR_PARTNER")?.weeklyIncome,2320);
  assert.equal(commercialOffers({...strong,tier:"RISING"}).some(x=>x.code==="BROADCAST_TV"),false);
  assert.equal(commercialOffers({...strong,averageCrowd:71}).some(x=>x.code==="BROADCAST_TV"),false);
  assert.equal(commercialOffers({...strong,completedShows:8}).some(x=>x.code==="BROADCAST_TV"),false);
+});
+
+test("fictional sponsor and broadcaster identities keep their economics separate",()=>{
+ const offers=commercialOffers({...settled,completedShows:12,averageCrowd:84,
+  tier:"GLOBAL"});
+ assert.equal(new Set(offers.map(x=>x.name)).size,offers.length);
+ assert.ok(offers.length>=11);
+ assert.equal(offers.find(x=>x.code==="SPONSOR_LOCAL")?.name,"Jack's Crematorium");
+ assert.equal(offers.find(x=>x.code==="BROADCAST_GROWTH")?.name,"VibeFlix");
+ assert.equal(offers.find(x=>x.code==="BROADCAST_TV")?.name,"BBS Sports");
+ assert.ok(offers.filter(x=>x.kind==="SPONSOR").every(x=>x.reachIncrease===0));
+ assert.ok(offers.every(x=>x.termWeeks===13||x.termWeeks===26||x.termWeeks===52));
 });
