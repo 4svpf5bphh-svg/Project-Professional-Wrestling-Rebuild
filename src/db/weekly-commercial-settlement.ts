@@ -51,6 +51,56 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   )
  RETURNING s.promotion_id
  `,[worldId,year,week,lowerYear,lowerWeek]);
+ // Modest performance rewards only from certified, submitted shows with
+ // actual show economics. Replays insert no new receipts or money movements.
+ const bonuses=await tx.query<{promotion_id:string;amount:string}>(`
+ WITH certified AS (
+  SELECT s.promotion_id,max(s.crowd_response) AS crowd
+  FROM ppw_completed_shows s
+  JOIN ppw_show_economics e ON e.world_id=s.world_id
+   AND e.show_id=s.show_id AND e.promotion_id=s.promotion_id
+  JOIN ppw_booking_drafts b ON b.world_id=s.world_id
+   AND b.draft_id=s.show_id AND b.status='SUBMITTED'
+  WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3
+  GROUP BY s.promotion_id
+ ), eligible AS (
+  SELECT d.world_id,d.deal_id,d.promotion_id,c.crowd,
+   round(d.agreed_income*(CASE
+    WHEN d.offer_code='BROADCAST_GROWTH' AND c.crowd>=70 THEN .04
+    WHEN d.offer_code='BROADCAST_INDIE' AND c.crowd>=66 THEN .04
+    WHEN d.offer_code='BROADCAST_TV' AND c.crowd>=76 THEN .03
+    WHEN d.offer_code='BROADCAST_GLOBAL' AND c.crowd>=82 THEN .04
+    WHEN d.offer_code='SPONSOR_PARTNER' AND c.crowd>=73 THEN .06
+    WHEN d.offer_code='SPONSOR_FOOD' AND c.crowd>=72 THEN .04
+    WHEN d.offer_code='SPONSOR_TECH' AND c.crowd>=76 THEN .05
+    WHEN d.offer_code='SPONSOR_LUXURY' AND c.crowd>=82 THEN .06
+    ELSE 0 END))::bigint AS amount
+  FROM ppw_commercial_deals d
+  JOIN certified c ON c.promotion_id=d.promotion_id
+  WHERE d.world_id=$1 AND d.status='ACTIVE'
+   AND d.start_week_index<=$4 AND d.end_week_index>=$4
+ ), earned AS (
+  INSERT INTO ppw_commercial_bonus_receipts(
+   world_id,deal_id,promotion_id,year,week,amount,crowd_response)
+  SELECT world_id,deal_id,promotion_id,$2,$3,amount,crowd
+  FROM eligible WHERE amount>0
+  ON CONFLICT DO NOTHING
+  RETURNING deal_id,promotion_id,amount
+ ), totals AS (
+  SELECT promotion_id,sum(amount)::bigint AS amount
+  FROM earned GROUP BY promotion_id
+ ), paid AS (
+  UPDATE ppw_promotions p SET cash=p.cash+totals.amount
+  FROM totals WHERE p.world_id=$1 AND p.promotion_id=totals.promotion_id
+  RETURNING p.promotion_id,totals.amount::text AS amount
+ ), journal AS (
+  INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+  SELECT $1,$2,$3,'COMMERCIAL_PERFORMANCE_BONUS',
+   jsonb_build_object('promotionId',promotion_id,'dealId',deal_id,'amount',amount)
+  FROM earned RETURNING event_id
+ )
+ SELECT promotion_id,amount FROM paid
+ `,[worldId,year,week,weekIndex]);
  // Close the exact ending week's active deals AFTER the week's financial credit.
  // This also restores the original income and reach baselines, without
  // reverting legitimate territory awareness earned while the deal was live.
@@ -186,10 +236,11 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    WHERE p.world_id=$1 AND p.promotion_id=ai.promotion_id
   `,[worldId,nextWeek]);
  }
- if(expired.length||proposals.length||gained.length)await tx.query(`
+ if(expired.length||proposals.length||gained.length||bonuses.length)await tx.query(`
   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
   VALUES($1,$2,$3,'COMMERCIAL_WEEK_SETTLED',
    jsonb_build_object('expired',$4::integer,'newAiDeals',$5::integer,'earnedMarkets',$6::integer))
  `,[worldId,year,week,expired.length,proposals.length,gained.length]);
- return {expired:expired.length,aiDeals:proposals.length,earnedMarkets:gained.length};
+ return {expired:expired.length,aiDeals:proposals.length,earnedMarkets:gained.length,
+  bonusPromotions:bonuses.length};
 }

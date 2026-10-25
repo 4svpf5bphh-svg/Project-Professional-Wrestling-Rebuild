@@ -21,6 +21,7 @@ export async function settleWeeklyPromotionHealth(
       WHEN 'CONTRACT_TERMINATED_DURING_RESTRUCTURING'
        THEN -COALESCE((payload->>'settlement')::bigint,0)
       WHEN 'STAFF_BUYOUT' THEN -COALESCE((payload->>'amount')::bigint,0)
+      WHEN 'COMMERCIAL_PERFORMANCE_BONUS' THEN COALESCE((payload->>'amount')::bigint,0)
       WHEN 'PROMOTION_RECURRING_FINANCES' THEN COALESCE((payload->>'net')::bigint,0)
       WHEN 'SHOW_EVENT_ECONOMICS' THEN COALESCE((payload->>'incrementalCash')::bigint,0)
       ELSE 0::bigint END)::bigint AS weekly_net
@@ -29,7 +30,8 @@ export async function settleWeeklyPromotionHealth(
      AND event_type IN ('CONTRACT_SIGNED','CONTRACT_EXTRA_DATES_ACCEPTED',
       'CONTRACT_APPEARANCE_FEES','CONTRACT_GUARANTEE_PAID',
       'CONTRACT_TERMINATED_DURING_RESTRUCTURING',
-      'PROMOTION_RECURRING_FINANCES','SHOW_EVENT_ECONOMICS','STAFF_BUYOUT')
+      'PROMOTION_RECURRING_FINANCES','SHOW_EVENT_ECONOMICS','STAFF_BUYOUT',
+      'COMMERCIAL_PERFORMANCE_BONUS')
    GROUP BY payload->>'promotionId'
   ), base AS (
    SELECT p.promotion_id,p.cash,p.financial_distress AS old_distress,

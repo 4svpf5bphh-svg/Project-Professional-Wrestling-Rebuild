@@ -138,6 +138,8 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   const firstSettlement=await withWorldTransaction(db.pool,
    tx=>settleCommercialWorldWeek(tx,world,1,16));
   assert.equal(firstSettlement.earnedMarkets,1);
+  assert.equal(firstSettlement.bonusPromotions,1,
+   "A verified submitted show qualifies for one streaming reward");
   const afterTour=await withWorldTransaction(db.pool,tx=>tx.query<{
    awareness:number
   }>(`SELECT awareness FROM ppw_promotion_market_states
@@ -161,7 +163,13 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    promotionId:promotion,playerId:owner});
   assert.equal(expired.weeklyMediaIncome,300000);
   assert.equal(expired.mediaReach,90);
-  assert.equal(expired.cash,savedCash,"Commercial expiry never replays weekly payments");
+  assert.equal(expired.cash,savedCash+12480,
+   "Only the certified show bonus is credited in this explicit settlement");
+  const rewards=await withWorldTransaction(db.pool,tx=>tx.query<{amount:string}>(
+   "SELECT amount::text FROM ppw_commercial_bonus_receipts WHERE world_id=$1 AND promotion_id=$2",
+   [world,promotion]));
+  assert.deepEqual(rewards.map(x=>Number(x.amount)),[12480],
+   "A repeated World settlement never credits a bonus twice");
   assert.equal(expired.commercialAgreements.length,0);
   await withWorldTransaction(db.pool,tx=>settleCommercialWorldWeek(tx,world,1,29));
   const secondPass=await readBusinessWorkspace(db.pool,{worldId:world,

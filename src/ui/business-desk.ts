@@ -259,6 +259,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    section.append(figures);
    const labels:Record<string,string>={
     MEDIA_INCOME:"Broadcast income",SPONSOR_INCOME:"Sponsorship",
+    PERFORMANCE_BONUS:"Certified-show commercial reward",
     FIXED_OVERHEAD:"Fixed overhead",STAFF_SALARY:"Staff salaries",
     STAFF_BUYOUT:"Staff contract buyouts",
     CONTRACT_GUARANTEE:"Talent guarantees",
@@ -416,6 +417,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("span","",offer.kind==="BROADCAST"?
       "+"+Math.round(offer.reachIncrease)+" audience reach":"Sponsorship"));
     item.append(terms,el("small","ppw-business-muted",offer.obligation));
+    if(["BROADCAST_GROWTH","BROADCAST_INDIE","BROADCAST_TV","BROADCAST_GLOBAL",
+      "SPONSOR_PARTNER","SPONSOR_FOOD","SPONSOR_TECH","SPONSOR_LUXURY"]
+      .includes(offer.code))item.append(el("small","ppw-commercial-bonus",
+       "Eligible certified shows also earn a modest performance reward, paid after completion."));
     if(port.signCommercial)item.append(button(commercialBusy?
      "Reviewing…" : "Sign agreement",()=>void acceptCommercial(offer.code)));
     section.append(item);

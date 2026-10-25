@@ -247,9 +247,10 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // Complete original week P&L after ALL monetary movements have been
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
-      await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
-      // Future terms begin only after the current canonical week is paid.
+      // Apply exact-once commercial rewards after regular income but before
+      // calculating weekly financial health and the saved promotion net.
       await settleCommercialWorldWeek(tx,input.worldId,year,week);
+      await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
       // Staff morale responds once to the current week's audited finances.
       // Staff cannot independently alter player creative decisions or resign.
       await tx.query(`
