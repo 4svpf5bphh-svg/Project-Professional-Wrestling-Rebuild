@@ -60,3 +60,56 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  expect(called).toContain("legendSeen");
  expect(called).not.toContain("kpAction");
 });
+
+test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault, paid cabinet and full viewer",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const card="/assets/legends/undertaker-immortal-card.webp";
+ let seen=false,collected=false,collects=0;
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  if(method==="industry")return route.fulfill({json:{
+   worldName:"PPW",year:2,week:2,phase:"OPEN",nextLockEpoch:Date.now()/1000+6000,
+   ownPromotionId:"human",ownPromotionName:"Human Pro",
+   promotions:[],headlines:[],broadcasts:[]}});
+  if(method==="legendsVault")return route.fulfill({json:{
+   worldYear:2,worldWeek:2,curated:48,entries:[{
+    id:"undertaker",name:"The Undertaker",tier:"IMMORTAL",division:"MEN",
+    tradition:"American sports entertainment",visibility:"SECRET",
+    clue:"The dead refuse to stay buried",
+    achievement:"Undertaker reveal pilot: completed certified regular weekly show",
+    progress:100,exactProgress:15,target:15,unlocked:true,year:2,week:1,
+    personIds:["legend:undertaker:0"],revealSeen:seen,
+    collected,collectibleReady:true,cardAsset:card,price:4000
+   }]}});
+  if(method==="legendSeen"){seen=true;return route.fulfill({json:{seen:true}});}
+  if(method==="kpAction"){collects++;collected=true;
+   return route.fulfill({json:{ok:true}});}
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/industry");
+ await page.getByRole("button",{name:"Legends Vault"}).click();
+ const reveal=page.getByRole("dialog",{name:"Legend unlocked: The Undertaker"});
+ await expect(reveal).toBeVisible();
+ const visual=reveal.locator("img.ppw-undertaker-card");
+ await expect(visual).toHaveAttribute("src",card);
+ await expect(visual).toHaveJSProperty("naturalWidth",960);
+ await expect(reveal.getByRole("button",{name:"Skip reveal"})).toBeVisible();
+ await expect(reveal.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
+ await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
+ await expect(reveal).toHaveCount(0);
+ await expect.poll(()=>seen).toBe(true);
+ const tile=page.locator('.ppw-legend-tile[data-tier="IMMORTAL"]');
+ await expect(tile.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await tile.getByRole("button",{name:/Collect card/}).click();
+ await expect.poll(()=>collects).toBe(1);
+ const cabinet=page.locator(".ppw-legend-collection");
+ await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await cabinet.getByRole("button",{name:"Enlarge card"}).click();
+ const expanded=page.getByRole("dialog",{name:"Collectible card: The Undertaker"});
+ await expect(expanded.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await expect(expanded.locator("a[href*='commons.wikimedia.org']")).toBeVisible();
+ await expanded.getByRole("button",{name:"Close card"}).click();
+ await expect(page.getByRole("dialog")).toHaveCount(0);
+});
