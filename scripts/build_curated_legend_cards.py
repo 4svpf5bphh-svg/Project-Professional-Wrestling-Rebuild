@@ -10,6 +10,7 @@ from __future__ import annotations
 import concurrent.futures
 import io
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -19,8 +20,9 @@ from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageEnhance
 
 SOURCE = Path("data/legend-approved-photo-sources.json")
 DEST = Path("apps/web/public/assets/legends")
-AUDIT = Path("data/legend-render-audit.json")
-PREVIEW = Path("data/legend-card-contact-sheet.webp")
+BATCH = int(os.environ.get("PPW_LEGEND_BATCH","-1"))
+AUDIT = Path("data/legend-render-audit"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".json")
+PREVIEW = Path("data/legend-card-contact-sheet"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".webp")
 W,H=960,1440
 PALETTE={
  "CULT": ((124,166,202),(29,48,66)),
@@ -51,11 +53,12 @@ def obtain(url,source_width):
  # rather than full original images. Never issue parallel requests.
  parsed=urlparse(url)
  basename=parsed.path.rsplit("/",1)[-1]
- thumb_width=min(960,max(240,int(source_width)-1))
+ # Reuse standard, usually precached Commons widths to avoid thumbnail conversion throttles.
+ thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
  thumb=url.replace("/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
- for attempt in range(5):
+ for attempt in range(2):
   try:
-   time.sleep(3)
+   time.sleep(4)
    req=Request(thumb,headers={"User-Agent":
     "PPW-Legends-Real-Photo-Curation/1.0 (GitHub PPW source/licence attribution)"})
    with urlopen(req,timeout=35) as reply:
@@ -70,10 +73,10 @@ def obtain(url,source_width):
     raise ValueError("Insufficient source image resolution")
    return image.convert("RGB")
   except Exception as exc:
-   if attempt==4:raise
+   if attempt==1:raise
    # Honour rate limits instead of hammering the image CDN.
-   print("IMAGE RETRY",type(exc).__name__,"after",10*(attempt+1),"seconds",flush=True)
-   time.sleep(10*(attempt+1))
+   print("IMAGE RETRY",type(exc).__name__,"after 10 seconds",flush=True)
+   time.sleep(10)
  raise RuntimeError("Unreachable")
 
 def title_parts(title:str):
@@ -87,6 +90,13 @@ def title_parts(title:str):
  return groups
 
 def draw_card(entry, tier, position):
+ out=DEST/(entry["id"]+"-"+tier.lower()+"-card.webp")
+ if out.is_file() and out.stat().st_size>30_000 and not os.environ.get("PPW_LEGEND_FORCE_RENDER"):
+  with Image.open(out) as old:
+   if old.size==(W,H):
+    return {"id":entry["id"],"name":entry["name"],"tier":tier,
+     "file":str(out),"bytes":out.stat().st_size,"author":entry["author"],
+     "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True}
  photo=obtain(entry["sourceUrl"],entry["width"])
  photo=ImageOps.fit(photo,(W-36,H-36),method=Image.Resampling.LANCZOS,
                      centering=(.5,.42))
@@ -133,7 +143,6 @@ def draw_card(entry, tier, position):
  license=entry["license"]
  center(draw,1400,"PHOTO: "+credit+"  •  "+license+"  •  CROPPED",15,W-100,
         (228,226,235,255))
- out=DEST/(entry["id"]+"-"+tier.lower()+"-card.webp")
  out.parent.mkdir(parents=True,exist_ok=True)
  canvas.convert("RGB").save(out,"WEBP",quality=83,method=6)
  return {"id":entry["id"],"name":entry["name"],"tier":tier,
@@ -153,7 +162,8 @@ def main():
     "CC BY 2.0","CC BY 3.0","CC BY 4.0","CC BY-SA 2.0",
     "CC BY-SA 3.0","CC BY-SA 4.0","CC0"):
    raise ValueError("Unacceptable photo licence: "+e["id"])
-  batch.append((e,match.group(1),i))
+  if BATCH<0 or (i-1)//8==BATCH:
+   batch.append((e,match.group(1),i))
  results=[]
  with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
   pending={pool.submit(draw_card,*args):args[0]["id"] for args in batch}
@@ -178,6 +188,7 @@ def main():
   sheet.save(PREVIEW,"WEBP",quality=79)
  AUDIT.write_text(json.dumps({"attempted":len(batch),"completed":len(success),
   "failed":failed,"cards":results,
+  "batch":BATCH,
   "review":"Draft photo-verified card renders only; no collector/KP activation until visual and likeness-rights review"},indent=2)+"\n")
  print(json.dumps({"attempted":len(batch),"completed":len(success),
                    "failed":len(failed),"totalBytes":sum(x["bytes"] for x in success)}))
