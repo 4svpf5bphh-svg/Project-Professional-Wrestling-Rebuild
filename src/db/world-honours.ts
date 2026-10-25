@@ -223,9 +223,20 @@ export async function publishYearEndHallOfFame(tx:SqlRows,worldId:string,
  return candidates.length;
 }
 
+export interface WorldMomentCursor{year:number;week:number;key:string}
+export type WorldHeritageScope={worldId:string;promotionId:string;playerId:string};
+const validHeritageScope=(scope:WorldHeritageScope)=>
+ Object.values(scope).every(s=>typeof s==="string"&&s.length>0&&s.length<=200);
+const momentFromRow=(m:{moment_key:string;year:number;week:number;
+ kind:WorldMoment["kind"];headline:string;description:string;
+ promotion_name:string;show_id:string})=>({
+ id:m.moment_key,year:m.year,week:m.week,kind:m.kind,
+ title:m.headline,description:m.description,
+ promotionName:m.promotion_name,showId:m.show_id
+});
 export async function readWorldHeritage(pool:TransactionPool,
- scope:{worldId:string;promotionId:string;playerId:string}){
- if(!Object.values(scope).every(s=>typeof s==="string"&&s.length>0&&s.length<=200))
+ scope:WorldHeritageScope){
+ if(!validHeritageScope(scope))
   throw new Error("Invalid World history viewer");
  return withSqlClient(pool,async tx=>{
   const allowed=await tx.query<{year:number;week:number}>(`
@@ -256,9 +267,7 @@ export async function readWorldHeritage(pool:TransactionPool,
     headline:string;description:string;promotion_name:string;show_id:string}>(`
     SELECT year,week,moment_key,kind,headline,description,promotion_name,show_id
     FROM ppw_world_moments WHERE world_id=$1
-    ORDER BY year DESC,week DESC,
-     CASE kind WHEN 'TITLE' THEN 0 WHEN 'CLASSIC' THEN 1
-      WHEN 'TURN' THEN 2 ELSE 3 END,moment_key LIMIT 40`,[scope.worldId])
+    ORDER BY year DESC,week DESC,moment_key DESC LIMIT 41`,[scope.worldId])
   ]);
   return {
    honours:honours.map(h=>({year:h.year,category:h.category,
@@ -267,9 +276,45 @@ export async function readWorldHeritage(pool:TransactionPool,
    hall:hall.map(h=>({personId:h.person_id,name:h.wrestler_name,
     division:h.division,year:h.inducted_year,matches:h.career_matches,
     wins:h.career_wins,bestStars:Number(h.best_stars)})),
-   moments:moments.map(m=>({id:m.moment_key,year:m.year,week:m.week,
-    kind:m.kind,title:m.headline,description:m.description,
-    promotionName:m.promotion_name,showId:m.show_id}))
+   moments:moments.slice(0,40).map(momentFromRow),
+   momentCursor:moments.length>40?{
+    year:moments[39]!.year,week:moments[39]!.week,
+    key:moments[39]!.moment_key}:null
   };
+ });
+}
+
+/** Explicit keyset history paging: never preload the entire World timeline.
+ * The same owner/membership trust boundary applies to every older page.
+ */
+export async function readOlderWorldMoments(pool:TransactionPool,
+ scope:WorldHeritageScope,cursor:WorldMomentCursor){
+ if(!validHeritageScope(scope)||
+  !cursor||!Number.isSafeInteger(cursor.year)||cursor.year<1||
+  !Number.isSafeInteger(cursor.week)||cursor.week<1||cursor.week>52||
+  typeof cursor.key!=="string"||!cursor.key.length||cursor.key.length>200)
+  throw new Error("Invalid World Moments cursor");
+ return withSqlClient(pool,async tx=>{
+  const auth=await tx.query<{world_id:string}>(`
+   SELECT w.world_id FROM ppw_worlds w
+   JOIN ppw_promotion_controls c ON c.world_id=w.world_id
+    AND c.promotion_id=$3 AND c.player_id=$2 AND c.active
+   JOIN ppw_memberships m ON m.world_id=w.world_id AND m.player_id=$2
+    AND m.status='ACTIVE'
+   JOIN ppw_promotions p ON p.world_id=w.world_id
+    AND p.promotion_id=$3 AND p.lifecycle='ACTIVE'
+   WHERE w.world_id=$1`,[scope.worldId,scope.playerId,scope.promotionId]);
+  if(auth.length!==1)throw new Error("World history access denied");
+  const rows=await tx.query<{year:number;week:number;moment_key:string;
+   kind:WorldMoment["kind"];headline:string;description:string;
+   promotion_name:string;show_id:string}>(`
+   SELECT year,week,moment_key,kind,headline,description,promotion_name,show_id
+   FROM ppw_world_moments WHERE world_id=$1
+    AND (year,week,moment_key)<($2::integer,$3::integer,$4::text)
+   ORDER BY year DESC,week DESC,moment_key DESC LIMIT 41
+  `,[scope.worldId,cursor.year,cursor.week,cursor.key]);
+  return {moments:rows.slice(0,40).map(momentFromRow),
+   momentCursor:rows.length>40?{year:rows[39]!.year,
+    week:rows[39]!.week,key:rows[39]!.moment_key}:null};
  });
 }
