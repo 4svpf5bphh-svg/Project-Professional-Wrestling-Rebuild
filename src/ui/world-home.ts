@@ -386,6 +386,10 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Offers awaiting decisions",detail:
     "Contract offers are pending. Check the negotiation desk for their status.",
     action:port.contractsPending??port.contracts,icon:"◇",level:"normal"});
+  if(attention?.commercialRenewalDue)
+   items.push({title:"A commercial deal has ended",detail:
+    "A broadcast or sponsor agreement has reached its end. Open Business → Deals to review any new terms you've earned.",
+    action:port.business,icon:"▣",level:"normal"});
   if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
