@@ -34,15 +34,15 @@ test("living wrestler memories are idempotent, real, promoter-private and alter 
    await tx.query("INSERT INTO ppw_persona_change_requests(world_id,request_id,person_id,promotion_id,requested_gimmick_id,submitted_week_index,status,reason,assessed_resistance) VALUES($1,$2,$3,$4,'fresh-character',2,'DECLINED','CREATIVE_APPROVAL_WITHHELD',40)",
     [worldId,character,person,promotionId]);
    const show="injury-show-"+id;
-   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,7)",
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week) VALUES($1,$2,$3,1,14)",
     [worldId,show,promotionId]);
-   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,7,$4,65,'{}'::jsonb,$5)",
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,14,$4,65,'{}'::jsonb,$5)",
     [worldId,promotionId,show,"injury-resolution-"+id,"a".repeat(64)]);
-   await tx.query("INSERT INTO ppw_medical_absences(world_id,person_id,show_id,match_id,injured_week_index,cleared_week_index,weeks_out,severity,status) VALUES($1,$2,$3,$4,6,10,4,'MODERATE','ACTIVE')",
+   await tx.query("INSERT INTO ppw_medical_absences(world_id,person_id,show_id,match_id,injured_week_index,cleared_week_index,weeks_out,severity,status) VALUES($1,$2,$3,$4,13,17,4,'MODERATE','ACTIVE')",
     [worldId,person,show,"injury-match-"+id]);
-   await tx.query("UPDATE ppw_worlds SET week=8 WHERE world_id=$1",[worldId]);
+   await tx.query("UPDATE ppw_worlds SET week=15 WHERE world_id=$1",[worldId]);
   });
-  const projection=await withWorldTransaction(db.pool,tx=>publishBackstageMemories(tx,worldId,7));
+  const projection=await withWorldTransaction(db.pool,tx=>publishBackstageMemories(tx,worldId,14));
   assert.equal(projection.remembered,3,"real missed promise, rejected persona and medical absence");
   assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageMemories(tx,worldId,7))).remembered,0,
    "publication retry creates no duplicate memories");
@@ -53,7 +53,7 @@ test("living wrestler memories are idempotent, real, promoter-private and alter 
   assert.equal(rivals.memories.length,0,"another contracted employer learns no private conversations");
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{
    worldId,promotionId,playerId:rival,personId:person}),/access denied/);
-  const created=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,7));
+  const created=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,14));
   assert.equal(created.newMessages,1,"owner's active medical absence creates an authentic check-in");
   const updated=await readPortablePersonaWorkspace(db.pool,{worldId,promotionId,playerId:owner,personId:person});
   assert.equal(updated.conversations.at(-1)?.kind,"MEDICAL_SUPPORT");
