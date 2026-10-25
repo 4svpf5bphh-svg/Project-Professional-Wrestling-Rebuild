@@ -49,10 +49,31 @@ function photoCredit(item:LegendsVaultEntry){
  source.textContent="CC BY 2.0 · cropped for card";
  caption.append(source);return caption;
 }
+/** The reveal is portalled out of animated workspace ancestors.
+ * Cleanup is shared with route changes so no modal can outlive its screen. */
+export function clearLegendRevealPortal(){
+ document.querySelectorAll("body > .ppw-legend-reveal").forEach(node=>node.remove());
+ document.documentElement.classList.remove("ppw-legend-modal-open");
+}
+function showLegendPortal(overlay:HTMLElement){
+ document.body.append(overlay);
+ document.documentElement.classList.add("ppw-legend-modal-open");
+ overlay.scrollTop=0;
+ overlay.addEventListener("keydown",event=>{
+  if(event.key!=="Tab")return;
+  const buttons=Array.from(overlay.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+  if(!buttons.length)return;
+  const first=buttons[0]!,last=buttons[buttons.length-1]!;
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ });
+ overlay.querySelector<HTMLButtonElement>("button")?.focus({preventScroll:true});
+}
 export function drawLegendsVault(
  target:HTMLElement,view:LegendsVaultView,actions:LegendsVaultActions,revealing:string|null,
  expandedCard:string|null=null,
 ){
+ clearLegendRevealPortal();
  target.replaceChildren();
  const mast=el("div","ppw-legend-mast");
  mast.append(el("span","ppw-legend-kicker","WRESTLING HISTORY IS ALIVE"),
@@ -98,7 +119,7 @@ export function drawLegendsVault(
   const grid=el("div","ppw-legend-grid");
   for(const item of candidates){
    const n=el("article","ppw-legend-tile");
-   n.dataset.tier=tier;
+   n.dataset.tier=tier;n.dataset.legendId=item.id;
    n.dataset.unlocked=String(item.unlocked);
    n.append(el("span","ppw-legend-status",item.unlocked?"DISCOVERED":
     item.visibility==="KNOWN"?"KNOWN CHALLENGE":
@@ -125,10 +146,21 @@ export function drawLegendsVault(
      "Uncovered · Year "+item.year+" / Week "+item.week));
     n.append(button("Replay the reveal",()=>actions.showReveal(item.id)));
     if(item.collected)n.append(el("span","ppw-legend-owned","IN YOUR COLLECTION"));
-    else n.append(button(item.collectibleReady?
-     "Collect card · "+item.price.toLocaleString("en-GB")+" KP":
-     "Card artwork not yet available",
-     ()=>actions.collect(item.id),!item.collectibleReady));
+    else{
+     const balance=view.balance??0;
+     if(item.collectibleReady){
+      n.append(el("p","ppw-legend-price",
+       "Your balance: "+balance.toLocaleString("en-GB")+" KP · Card: "+
+        item.price.toLocaleString("en-GB")+" KP"));
+      n.append(button("Preview collectible",()=>actions.showCard(item.id)));
+      if(balance<item.price)n.append(el("p","ppw-legend-shortfall",
+       "Earn "+(item.price-balance).toLocaleString("en-GB")+" more KP to collect this card."));
+     }
+     n.append(button(item.collectibleReady?
+      "Collect card · "+item.price.toLocaleString("en-GB")+" KP":
+      "Card artwork not yet available",
+      ()=>actions.collect(item.id),!item.collectibleReady||balance<item.price));
+    }
     if(item.personIds.length&&actions.openWrestler)
      n.append(button("View wrestler dossier",()=>actions.openWrestler?.(item.personIds[0]!)));
    }else{
@@ -171,9 +203,9 @@ export function drawLegendsVault(
   scene.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
   const dismiss=button("Skip reveal",()=>actions.closeReveal(selected.id));
   dismiss.classList.add("ppw-legend-skip");scene.prepend(dismiss);
-  veil.append(scene);target.append(veil);
+  veil.append(scene);showLegendPortal(veil);
  }
- const ownedCard=view.entries.find(x=>x.id===expandedCard&&x.collected&&x.cardAsset);
+ const ownedCard=view.entries.find(x=>x.id===expandedCard&&x.unlocked&&x.cardAsset);
  if(ownedCard){
   const overlay=el("div","ppw-legend-reveal ppw-legend-card-viewer");
   overlay.dataset.tier=ownedCard.tier;
@@ -184,6 +216,6 @@ export function drawLegendsVault(
    el("h2","",ownedCard.name??"Legend"));
   const art=cardGraphic(ownedCard);if(art)panel.append(art);
   const credit=photoCredit(ownedCard);if(credit)panel.append(credit);
-  overlay.append(panel);target.append(overlay);
+  overlay.append(panel);showLegendPortal(overlay);
  }
 }
