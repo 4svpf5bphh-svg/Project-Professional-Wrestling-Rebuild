@@ -368,7 +368,7 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "WHERE sh.world_id=$1 AND sh.promotion_id=e.promotion_id",
   "AND (sh.year-1)*52+sh.week-1 BETWEEN greatest(0,$2-12) AND $2-1",
   "AND slot.payload->'participants' @>",
-  "jsonb_build_array(jsonb_build_object('personId',e.person_id))))",
+  "jsonb_build_array(jsonb_build_object('personId',e.person_id)))",
   "THEN 75 ELSE 0 END),",
   "('MORALE',CASE WHEN e.morale<35 THEN 70 ELSE 0 END),",
   "('MOMENTUM',CASE WHEN e.momentum<25 THEN 65 ELSE 0 END),",

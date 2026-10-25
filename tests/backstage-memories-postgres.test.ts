@@ -38,6 +38,8 @@ test("living wrestler memories are idempotent, real, promoter-private and alter 
     [worldId,show,promotionId]);
    await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,14,$4,65,'{}'::jsonb,$5)",
     [worldId,promotionId,show,"injury-resolution-"+id,"a".repeat(64)]);
+   await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,1,65,'PIN','A')",
+    [worldId,show,"injury-match-"+id]);
    await tx.query("INSERT INTO ppw_medical_absences(world_id,person_id,show_id,match_id,injured_week_index,cleared_week_index,weeks_out,severity,status) VALUES($1,$2,$3,$4,13,17,4,'MODERATE','ACTIVE')",
     [worldId,person,show,"injury-match-"+id]);
    await tx.query("UPDATE ppw_worlds SET week=15 WHERE world_id=$1",[worldId]);
@@ -54,10 +56,13 @@ test("living wrestler memories are idempotent, real, promoter-private and alter 
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{
    worldId,promotionId,playerId:rival,personId:person}),/access denied/);
   const created=await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,14));
-  assert.equal(created.newMessages,1,"owner's active medical absence creates an authentic check-in");
+  assert.equal(created.newMessages,2,"both employers independently see a real injury; no private promises leak");
   const updated=await readPortablePersonaWorkspace(db.pool,{worldId,promotionId,playerId:owner,personId:person});
   assert.equal(updated.conversations.at(-1)?.kind,"MEDICAL_SUPPORT");
   assert.equal(updated.conversations.at(-1)?.status,"PENDING");
+  const otherNow=await readPortablePersonaWorkspace(db.pool,{worldId,promotionId:rivalId,playerId:rival,personId:person});
+  assert.equal(otherNow.conversations.at(-1)?.kind,"MEDICAL_SUPPORT");
+  assert.equal(otherNow.memories.length,0,"rival does not inherit the other promoter's private history");
   assert.equal((await withWorldTransaction(db.pool,tx=>publishBackstageRequests(tx,worldId,7))).newMessages,0,
    "one request per promotion per World week");
   const unmodified=await withWorldTransaction(db.pool,tx=>tx.query<{status:string}>(
