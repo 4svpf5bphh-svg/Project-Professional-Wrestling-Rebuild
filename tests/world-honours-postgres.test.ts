@@ -43,8 +43,8 @@ test("complete World year settles earned honours, career Hall and moments once f
     INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
     SELECT $1,draft_id,'match',1,'MATCH',jsonb_build_object(
      'matchType','SINGLES','participants',jsonb_build_array(
-      jsonb_build_object('personId',$2,'contractId','a'),
-      jsonb_build_object('personId',$3,'contractId','b')),
+      jsonb_build_object('personId',$2::text,'contractId','a'),
+      jsonb_build_object('personId',$3::text,'contractId','b')),
      'secretCreative','UNPUBLISHED CARD PLANS')
     FROM ppw_booking_drafts WHERE world_id=$1
      AND draft_id LIKE 'heritage-%'`,[world,hero,rival]);
