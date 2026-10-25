@@ -4,7 +4,7 @@ import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
-import {drawLegendsVault,type LegendsVaultView} from "./legends-vault.js";
+import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
@@ -54,7 +54,7 @@ const btn=(label:string,fn:()=>void)=>{
  const x=el("button","ppw-industry-button",label) as HTMLButtonElement;
  x.type="button";x.onclick=fn;return x;
 };
-export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
+export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,initialLegends?:LegendsVaultView){
  let view:IndustryHubView|null=null,loading=false,error="",
   active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"|"LEGENDS"=
     typeof window!=="undefined"&&window.location.hash==="#/industry/legends"?"LEGENDS":
@@ -114,32 +114,49 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   catch(e){heritageError=e instanceof Error?e.message:"World history unavailable";}
   finally{heritageBusy=false;render();}
  }
- let legends:LegendsVaultView|null=null,legendsBusy=false,legendsError="";
+ let legends:LegendsVaultView|null=initialLegends??null,legendsBusy=false,legendsError="";
  let revealingLegend:string|null=null,inspectingCard:string|null=null,legendNotice="";
+ let revealBusy=false,revealReturnScroll=0;
+ const rarity:Record<string,number>={IMMORTAL:4,ICON:3,LEGEND:2,CULT:1};
+ const nextLegend=(v:LegendsVaultView)=>v.entries
+  .filter(e=>e.unlocked&&!e.revealSeen)
+  .sort((a,b)=>(rarity[b.tier]??0)-(rarity[a.tier]??0)||
+   (a.year??0)-(b.year??0)||(a.week??0)-(b.week??0)||
+   a.id.localeCompare(b.id))[0]?.id??null;
+ const retainScroll=()=>{
+  const current=revealReturnScroll;
+  render();
+  if(typeof window!=="undefined")requestAnimationFrame(()=>window.scrollTo(0,current));
+ };
+ if(legends)revealingLegend=nextLegend(legends);
  async function loadLegends(){
   if(!port.legends||legendsBusy||legends)return;
   legendsBusy=true;legendsError="";render();
   try{
    legends=await port.legends();
-   revealingLegend=legends.entries.find(e=>e.unlocked&&!e.revealSeen)?.id??null;
+   revealingLegend=nextLegend(legends);
   }catch(e){legendsError=e instanceof Error?e.message:"Legends Vault unavailable";}
   finally{legendsBusy=false;render();}
  }
  async function finishReveal(id:string,navigateMarket=false){
+  if(revealBusy)return;
+  revealBusy=true;
   const alreadySeen=legends?.entries.find(e=>e.id===id)?.revealSeen===true;
-  revealingLegend=null;render();
-  // Replay is local: the permanent account receipt is written once only.
-  // Do not redraw/refresh the entire Vault every time the user revisits a card.
-  if(alreadySeen){if(navigateMarket)port.openMarket?.();return;}
   try{
-   if(port.legendSeen)await port.legendSeen(id);
-   if(port.legends){
-    legends=await port.legends();
-    revealingLegend=legends.entries.find(e=>e.unlocked&&!e.revealSeen)?.id??null;
-   }
-  }catch(e){legendsError=e instanceof Error?e.message:"Could not save reveal acknowledgement";}
-  if(navigateMarket)port.openMarket?.();
-  else render();
+   if(!alreadySeen&&port.legendSeen)await port.legendSeen(id);
+   if(legends)legends={...legends,entries:legends.entries.map(e=>e.id===id?
+    {...e,revealSeen:true}:e)};
+   revealingLegend=legends?nextLegend(legends):null;
+   legendNotice="";legendsError="";
+  }catch(e){
+   legendsError=e instanceof Error?e.message:"Could not save reveal acknowledgement";
+   revealingLegend=id;
+  }finally{
+   revealBusy=false;
+   if(revealingLegend)retainScroll();
+   else if(navigateMarket)port.openMarket?.();
+   else retainScroll();
+  }
  }
  async function collectLegend(id:string){
   if(!port.collectLegend)return;
@@ -208,6 +225,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   finally{loading=false;render();}
  }
  function render(){
+  clearLegendRevealPortal();
   root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
@@ -248,11 +266,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     const content=el("div","ppw-legend-content");
     section.append(content);
     drawLegendsVault(content,legends,{
-     showReveal:id=>{revealingLegend=id;inspectingCard=null;render();},
-     showCard:id=>{inspectingCard=id;revealingLegend=null;render();},
-     closeCard:()=>{inspectingCard=null;render();},
+     showReveal:id=>{revealReturnScroll=window.scrollY;revealingLegend=id;inspectingCard=null;retainScroll();},
+     showCard:id=>{revealReturnScroll=window.scrollY;inspectingCard=id;revealingLegend=null;retainScroll();},
+     closeCard:()=>{inspectingCard=null;retainScroll();},
      closeReveal:id=>{void finishReveal(id);},
-     collect:id=>{void collectLegend(id);},
+     collect:id=>{if(!legendsBusy)void collectLegend(id);},
      openWrestler:port.openWrestler,
      goToMarket:id=>{void finishReveal(id,true);}
     },revealingLegend,inspectingCard);
