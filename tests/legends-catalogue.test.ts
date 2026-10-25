@@ -22,6 +22,7 @@ test("four curated tiers, real team and women's legends, authentic named cards n
   ["CULT","ICON","IMMORTAL","LEGEND"]);
  assert.ok(LEGENDS_CATALOGUE.filter(x=>x.division==="WOMEN").length>=5);
  assert.equal(LIVE_LEGENDS.length,9);
+ assert.equal(LIVE_LEGENDS.every(x=>x.hints?.length===2),true);
  assert.equal(findLegend("road-warriors")?.roster.length,2);
  assert.equal(findLegend("road-warriors")?.roster[0]?.name,"Road Warrior Hawk");
  assert.equal(LIVE_LEGENDS.every(x=>x.metric&&x.target&&x.roster.length&&x.cardAsset===null),true);

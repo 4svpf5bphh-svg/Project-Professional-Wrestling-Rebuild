@@ -6,7 +6,9 @@ export type LegendsVaultView=Awaited<ReturnType<typeof readLegendsVault>>;
 export type LegendsVaultEntry=LegendsVaultView["entries"][number];
 export interface LegendsVaultActions{
  showReveal(id:string):void;closeReveal(id:string):void;
+ showCard(id:string):void;closeCard():void;
  collect(id:string):void;openWrestler?(personId:string):void;
+ openMarket?():void;
 }
 const el=(tag:string,css:string,text?:string)=>{
  const n=document.createElement(tag);n.className=css;if(text!==undefined)n.textContent=text;return n;
@@ -20,7 +22,7 @@ const title:Record<string,string>={
 };
 const order=["CULT","LEGEND","ICON","IMMORTAL"];
 function cardGraphic(item:LegendsVaultEntry){
- if(!item.cardAsset||!item.unlocked)return null;
+ if(!item.cardAsset||(!item.unlocked&&!item.collected))return null;
  const art=document.createElement("img");
  art.className="ppw-legend-card-art";art.src=item.cardAsset;
  art.alt="Definitive collectible card of "+(item.name??"the legend");
@@ -28,6 +30,7 @@ function cardGraphic(item:LegendsVaultEntry){
 }
 export function drawLegendsVault(
  target:HTMLElement,view:LegendsVaultView,actions:LegendsVaultActions,revealing:string|null,
+ expandedCard:string|null=null,
 ){
  target.replaceChildren();
  const mast=el("div","ppw-legend-mast");
@@ -40,6 +43,27 @@ export function drawLegendsVault(
    view.entries.filter(x=>x.collected).length+" cards collected · "+
    view.curated+" historic entries under curation"));
  target.append(mast);
+ const owned=view.entries.filter(item=>item.collected);
+ const cabinet=el("section","ppw-legend-collection");
+ cabinet.append(el("span","ppw-legend-kicker","PERSONAL COLLECTION"),
+  el("h3","","My legend cards"),
+  el("p","ppw-industry-muted",
+   "Your account's permanent collection. Card ownership does not give you the wrestler, contract priority or extra abilities."));
+ if(!owned.length)cabinet.append(el("p","ppw-legend-collection-empty",
+  "No cards collected yet. After a legend arrives in this World, approved artwork can be added to your personal cabinet with KP."));
+ else{
+  const shelf=el("div","ppw-legend-collection-shelf");
+  for(const item of owned){
+   const frame=el("div","ppw-legend-collection-card");
+   const art=cardGraphic(item);
+   if(art)frame.append(art);
+   frame.append(el("strong","",item.name??"Legend"),
+    button("Enlarge card",()=>actions.showCard(item.id),!item.cardAsset));
+   shelf.append(frame);
+  }
+  cabinet.append(shelf);
+ }
+ target.append(cabinet);
  for(const tier of order){
   const section=el("section","ppw-legend-tier");
   section.dataset.tier=tier;
@@ -72,6 +96,8 @@ export function drawLegendsVault(
    n.append(visual,el("h3","",item.name??"Identity shrouded"));
    n.append(el("p","ppw-legend-clue",item.unlocked?
     (item.achievement??"An extraordinary World accomplishment"):item.clue));
+   if(item.nextHint&&!item.unlocked)n.append(el("p","ppw-legend-next-hint",
+    "NEW CLUE · "+item.nextHint));
    if(item.unlocked){
     n.append(el("p","ppw-legend-provenance",
      "Uncovered · Year "+item.year+" / Week "+item.week));
@@ -116,9 +142,23 @@ export function drawLegendsVault(
    "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
   if(selected.personIds.length&&actions.openWrestler)
    scene.append(button("View wrestler dossier",()=>actions.openWrestler?.(selected.personIds[0]!)));
+  if(actions.openMarket)scene.append(button("Visit the talent market",
+   ()=>{actions.closeReveal(selected.id);actions.openMarket?.();}));
   scene.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
   const dismiss=button("Skip reveal",()=>actions.closeReveal(selected.id));
   dismiss.classList.add("ppw-legend-skip");scene.prepend(dismiss);
   veil.append(scene);target.append(veil);
+ }
+ const ownedCard=view.entries.find(x=>x.id===expandedCard&&x.collected&&x.cardAsset);
+ if(ownedCard){
+  const overlay=el("div","ppw-legend-reveal ppw-legend-card-viewer");
+  overlay.dataset.tier=ownedCard.tier;
+  overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+  overlay.setAttribute("aria-label","Collectible card: "+ownedCard.name);
+  const panel=el("div","ppw-legend-reveal-scene");
+  panel.append(button("Close card",actions.closeCard),
+   el("h2","",ownedCard.name??"Legend"));
+  const art=cardGraphic(ownedCard);if(art)panel.append(art);
+  overlay.append(panel);target.append(overlay);
  }
 }

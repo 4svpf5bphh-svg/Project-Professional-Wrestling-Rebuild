@@ -45,7 +45,7 @@ export interface IndustryHubPort{
  records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
  openOwnResults?(showId:string):void;
- openBusiness?():void;openPlanner?():void;back?():void;
+ openBusiness?():void;openPlanner?():void;openMarket?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -113,7 +113,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   finally{heritageBusy=false;render();}
  }
  let legends:LegendsVaultView|null=null,legendsBusy=false,legendsError="";
- let revealingLegend:string|null=null,legendNotice="";
+ let revealingLegend:string|null=null,inspectingCard:string|null=null,legendNotice="";
  async function loadLegends(){
   if(!port.legends||legendsBusy||legends)return;
   legendsBusy=true;legendsError="";render();
@@ -245,11 +245,14 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     const content=el("div","ppw-legend-content");
     section.append(content);
     drawLegendsVault(content,legends,{
-     showReveal:id=>{revealingLegend=id;render();},
+     showReveal:id=>{revealingLegend=id;inspectingCard=null;render();},
+     showCard:id=>{inspectingCard=id;revealingLegend=null;render();},
+     closeCard:()=>{inspectingCard=null;render();},
      closeReveal:id=>{void finishReveal(id);},
      collect:id=>{void collectLegend(id);},
-     openWrestler:port.openWrestler
-    },revealingLegend);
+     openWrestler:port.openWrestler,
+     openMarket:port.openMarket
+    },revealingLegend,inspectingCard);
    }
    if(legendsBusy)section.append(el("p","ppw-industry-muted","Reading the World Legends…"));
    if(legendsError)section.append(el("p","ppw-alert ppw-error",legendsError),
@@ -658,6 +661,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     const titles:Record<string,(s:IndustryHubView["headlines"][number])=>string>={
      WRESTLER_RETIRED:s=>(s.personName??"A veteran")+" calls time on their in-ring career",
      WRESTLER_DEBUTED:s=>(s.personName??"A fresh face")+" enters the wrestling business",
+     LEGEND_ARRIVED:s=>(s.personName??"A historic legend")+" awakens in the World talent market",
      CAREER_STAGE_CHANGED:s=>(s.personName??"A wrestler")+" enters a new career chapter",
      PROMOTION_TIER_CHANGED:s=>(s.promotionName??"A promotion")+" moves "+
       (s.toTier??"to a new level"),

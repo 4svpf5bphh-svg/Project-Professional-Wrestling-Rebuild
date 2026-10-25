@@ -50,13 +50,16 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
    curated:LEGENDS_CATALOGUE.length,
    entries:LEGENDS_CATALOGUE.filter(d=>d.status==="ACTIVE").map(d=>{
     const record=unlocked.get(d.id),isUnlocked=Boolean(record);
-    const name=isUnlocked||d.visibility==="KNOWN"?d.name:null;
+    const inCollection=collected.has(d.id);
+    const name=isUnlocked||inCollection||d.visibility==="KNOWN"?d.name:null;
     const actual=d.metric?Number(progress.get(d.metric)??0):0;
     const target=d.target??0;
+    const nextHint=!isUnlocked&&target&&d.hints?
+     actual>=target*.7?d.hints[1]:actual>=target*.35?d.hints[0]:null:null;
     return {
      id:d.id,tier:d.tier,division:d.division,
      name,tradition:isUnlocked?d.tradition:null,
-     visibility:d.visibility,clue:d.clue,
+     visibility:d.visibility,clue:d.clue,nextHint,
      achievement:isUnlocked||d.visibility==="KNOWN"?d.achievement:null,
      progress:target?Math.round(Math.min(100,actual/target*100)):0,
      exactProgress:d.visibility==="KNOWN"||isUnlocked?Math.min(actual,target):null,
@@ -64,9 +67,9 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
      unlocked:isUnlocked,year:record?.year??null,week:record?.week??null,
      personIds:record?.person_ids??[],
      revealSeen:record?.seen??false,
-     collected:collected.has(d.id),
+     collected:inCollection,
      collectibleReady:Boolean(d.cardAsset),
-     cardAsset:isUnlocked?d.cardAsset:null,
+     cardAsset:isUnlocked||inCollection?d.cardAsset:null,
      price:LEGEND_TIER_PRICES[d.tier],
     };
    })}

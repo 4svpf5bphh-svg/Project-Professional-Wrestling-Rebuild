@@ -40,3 +40,12 @@
 .ppw-legend-skip{align-self:flex-end}
 @keyframes legend-appear{from{opacity:0;transform:scale(1.025)}to{opacity:1;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.ppw-legend-reveal{animation:none}.ppw-legend-fill{transition:none}}
+
+.ppw-legend-collection{padding:1rem;margin:0 0 1.8rem;border:1px solid rgba(238,199,120,.4);border-radius:14px;background:linear-gradient(130deg,rgba(136,97,42,.14),rgba(28,30,40,.68))}
+.ppw-legend-collection h3{font-size:1.35rem;margin:.5rem 0}
+.ppw-legend-collection-empty{font-size:.85rem;opacity:.72;line-height:1.5}
+.ppw-legend-collection-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.9rem}
+.ppw-legend-collection-card{display:flex;flex-direction:column;gap:.5rem;align-items:center;text-align:center;font-size:.8rem}
+.ppw-legend-collection-card .ppw-legend-card-art{width:100%}
+.ppw-legend-next-hint{padding:.7rem;border-left:3px solid var(--tier);background:var(--tier-soft);font-size:.78rem;line-height:1.45}
+.ppw-legend-card-viewer .ppw-legend-card-art{width:min(80vw,430px);max-height:70dvh;object-fit:contain}
