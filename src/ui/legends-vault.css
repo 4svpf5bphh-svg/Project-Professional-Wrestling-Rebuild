@@ -1,0 +1,42 @@
+/* Tier-specific colours stay on the stage, not on fake portrait assets. */
+.ppw-legend-mast{padding:1.2rem .25rem 1.6rem}
+.ppw-legend-mast h2{font-size:clamp(1.8rem,6vw,2.7rem);letter-spacing:-.05em;margin:.3rem 0}
+.ppw-legend-kicker,.ppw-legend-tier-title,.ppw-legend-status{font-size:.7rem;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
+.ppw-legend-kicker{color:#f5bb70}
+.ppw-legend-context{font-size:.78rem;opacity:.85}
+.ppw-legend-tier{--tier:#8196ab;--tier-soft:rgba(129,150,171,.1);margin:0 0 1.8rem}
+.ppw-legend-tier[data-tier="LEGEND"]{--tier:#d49f45;--tier-soft:rgba(212,159,69,.1)}
+.ppw-legend-tier[data-tier="ICON"]{--tier:#76bcea;--tier-soft:rgba(118,188,234,.1)}
+.ppw-legend-tier[data-tier="IMMORTAL"]{--tier:#d9a5f4;--tier-soft:rgba(217,165,244,.1)}
+.ppw-legend-tier-title{padding:.8rem .9rem;border-left:4px solid var(--tier);background:var(--tier-soft);font-size:1.05rem}
+.ppw-legend-tier-caption{margin:.5rem .9rem 1rem;font-size:.85rem;opacity:.75}
+.ppw-legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.ppw-legend-tile{display:flex;flex-direction:column;gap:.65rem;padding:1rem;background:linear-gradient(150deg,var(--tier-soft),rgba(16,20,31,.78));border:1px solid color-mix(in srgb,var(--tier),transparent 63%);border-radius:14px;min-width:0}
+.ppw-legend-status{color:var(--tier)}
+.ppw-legend-visual{min-height:100px;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:linear-gradient(140deg,var(--tier-soft),rgba(10,11,18,.92));color:var(--tier)}
+.ppw-legend-silhouette{font-family:Georgia,serif;font-size:4rem;filter:blur(.05rem);opacity:.55}
+.ppw-legend-vault-mark{font-size:2.5rem}
+.ppw-legend-visual small{font-size:.6rem;letter-spacing:.08em}
+.ppw-legend-tile h3{margin:.2rem 0;font-size:1.3rem}
+.ppw-legend-clue{margin:0;font-size:.89rem;line-height:1.5}
+.ppw-legend-provenance,.ppw-legend-progress{opacity:.7;font-size:.76rem}
+.ppw-legend-track{height:5px;background:rgba(255,255,255,.12);border-radius:100px;overflow:hidden}
+.ppw-legend-fill{display:block;height:100%;background:var(--tier);border-radius:inherit;transition:width .4s ease}
+.ppw-legend-button{background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:.75rem .85rem;min-height:42px;text-align:center;font-weight:650;cursor:pointer}
+.ppw-legend-button:not(:disabled):active{transform:scale(.99)}
+.ppw-legend-button:disabled{opacity:.42;cursor:default}
+.ppw-legend-owned{font-size:.75rem;font-weight:800;color:#f4cf7b}
+.ppw-legend-card-art{display:block;width:min(100%,250px);height:auto;object-fit:contain}
+.ppw-legend-reveal{--tier:#8196ab;position:fixed;inset:0;z-index:1000;background:radial-gradient(ellipse at 50% 40%,rgba(60,57,75,.45),rgba(0,0,0,.99) 72%);overflow:auto;padding:max(2rem,env(safe-area-inset-top)) 1rem max(2rem,env(safe-area-inset-bottom));animation:legend-appear .5s ease both}
+.ppw-legend-reveal[data-tier="LEGEND"]{--tier:#d49f45}
+.ppw-legend-reveal[data-tier="ICON"]{--tier:#76bcea}
+.ppw-legend-reveal[data-tier="IMMORTAL"]{--tier:#d9a5f4}
+.ppw-legend-reveal-scene{max-width:430px;min-height:85dvh;margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1rem}
+.ppw-legend-reveal-tier{color:var(--tier);font-size:1.2rem;letter-spacing:.3em;font-weight:900;text-transform:uppercase}
+.ppw-legend-reveal-scene h2{font-size:clamp(2.3rem,12vw,4rem);line-height:1.08;text-transform:uppercase;margin:0;text-shadow:0 0 35px var(--tier)}
+.ppw-legend-spotlight,.ppw-legend-market-confirm{font-size:.71rem;letter-spacing:.12em;font-weight:800}
+.ppw-legend-market-confirm{color:var(--tier)}
+.ppw-legend-reveal-artnote{max-width:300px;font-size:.8rem;opacity:.6}
+.ppw-legend-skip{align-self:flex-end}
+@keyframes legend-appear{from{opacity:0;transform:scale(1.025)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.ppw-legend-reveal{animation:none}.ppw-legend-fill{transition:none}}
