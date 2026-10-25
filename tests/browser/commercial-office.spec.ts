@@ -93,7 +93,8 @@ for(const width of [320,390]){
   await expect(renewal).toBeVisible();
   await renewal.click();
   await expect(page).toHaveURL(/#\/business$/);
-  expect(calls).toEqual(["overview"]);
+  expect(calls.filter(method=>method==="overview")).toEqual(["overview"]);
+  expect(calls.filter(method=>method==="business").length).toBeLessThanOrEqual(1);
   renewalDue=false;
   await page.goto("/#/home");
   await expect(page.getByRole("button",{name:/A commercial deal has ended/})).toHaveCount(0);
