@@ -163,3 +163,15 @@
 .ppw-staff-rank-position{display:grid;place-items:center;border-radius:7px;
  min-width:30px;height:30px;background:#295879;color:#fff}
 @media(min-width:680px){.ppw-staff-meeting-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Four clear staff sections; show one workspace at a time on a phone. */
+.ppw-staff-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:0 0 15px}
+.ppw-staff-nav .ppw-staff-button{min-width:0;min-height:48px;
+ padding:10px 7px;font-size:13px;line-height:1.25;white-space:normal;
+ overflow-wrap:normal;word-break:normal;hyphens:none;border-color:#426682;
+ background:#172d49;box-shadow:none}
+.ppw-staff-nav [aria-current="page"]{background:#23689e;
+ border-color:#a4e2ff;box-shadow:inset 0 0 0 1px #a4e2ff}
+.ppw-staff-nav .ppw-staff-button:focus-visible{outline:3px solid #ffe49b;outline-offset:2px}
+@media(min-width:690px){.ppw-staff-nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
