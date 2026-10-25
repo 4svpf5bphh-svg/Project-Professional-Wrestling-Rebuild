@@ -55,7 +55,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // actual show economics. Replays insert no new receipts or money movements.
  const bonuses=await tx.query<{promotion_id:string;amount:string}>(`
  WITH certified AS (
-  SELECT s.promotion_id,max(s.crowd_response) AS crowd
+  SELECT s.promotion_id,max(s.crowd_response) AS crowd,
+   bool_or(EXISTS(
+    SELECT 1 FROM ppw_completed_show_matches result
+    JOIN ppw_card_slots slot ON slot.world_id=result.world_id
+     AND slot.draft_id=result.show_id AND slot.slot_id=result.match_id
+     AND slot.kind='MATCH'
+    WHERE result.world_id=s.world_id AND result.show_id=s.show_id
+     AND slot.payload->>'stipulation'='HARDCORE'
+   )) AS hardcore
   FROM ppw_completed_shows s
   JOIN ppw_show_economics e ON e.world_id=s.world_id
    AND e.show_id=s.show_id AND e.promotion_id=s.promotion_id
@@ -66,6 +74,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  ), eligible AS (
   SELECT d.world_id,d.deal_id,d.promotion_id,c.crowd,
    round(d.agreed_income*(CASE
+    WHEN d.offer_code='SPONSOR_LOCAL' AND c.hardcore THEN .05
     WHEN d.offer_code='BROADCAST_GROWTH' AND c.crowd>=70 THEN .04
     WHEN d.offer_code='BROADCAST_INDIE' AND c.crowd>=66 THEN .04
     WHEN d.offer_code='BROADCAST_TV' AND c.crowd>=76 THEN .03
