@@ -21,6 +21,9 @@ const format=(n:number)=>n.toLocaleString("en-GB")+" KP";
 export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
+ let createOpen=false,reviewing=false;
+ let alignment:"FACE"|"HEEL"|"TWEENER"="FACE",primaryStyle="ALL_ROUNDER",gimmickId="AUTHENTIC";
+ let signatureMove="",finishingMove="";
  const refresh=async()=>{
   busy=true;draw();
   try{view=await port.load();error="";}
@@ -33,12 +36,18 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   try{
    const result=await port.apply(action) as {name?:string;market?:string};
    view=await port.load();
-   name="";alias="";
+   if(action.kind==="CREATE_WRESTLER"){
+    name="";division="MEN";alignment="FACE";primaryStyle="ALL_ROUNDER";
+    gimmickId="AUTHENTIC";signatureMove="";finishingMove="";
+    reviewing=false;createOpen=false;
+   }
+   if(action.kind==="RENAME_STAFF")alias="";
    notice=result.market==="FREE_AGENT"?
     result.name+" has entered the shared World as a free agent. Every promotion can negotiate normally.":
     action.kind==="RENAME_STAFF"?"Staff display name updated.":
     action.kind==="BUY"?"Unlocked. Your purchase is available on your account.":
-    "Promotion crest updated.";
+    "action.kind==="APPLY_BADGE"?"Prestige badge finish applied.":
+    Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
   finally{busy=false;draw();}
  };
@@ -151,25 +160,99 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   const creation=el("section","ppw-kp-section ppw-kp-creation");
   creation.append(el("span","ppw-kp-kicker","WORLD CONTRIBUTION"),
    el("h2","","Create a Wrestler"),
-   el("p","ppw-kp-muted","A major Kayfabe Points purchase. Add one balanced rookie per World year. They enter the shared free-agent market, not your roster. All promotions may try to sign them."));
-  const field=el("input","ppw-kp-input") as HTMLInputElement;
-  field.placeholder="Wrestler's name";field.value=name;field.maxLength=48;
-  field.setAttribute("aria-label","New wrestler name");
-  field.oninput=()=>{name=field.value;};
-  const pick=el("select","ppw-kp-input") as HTMLSelectElement;
-  pick.setAttribute("aria-label","Wrestler division");
-  for(const option of ["MEN","WOMEN"] as const){
-   const o=el("option","",option==="MEN"?"Men's division":"Women's division") as HTMLOptionElement;
-   o.value=option;pick.append(o);
+   el("p","ppw-kp-muted","Design a new wrestler for the shared World. Your KP pays for their introduction, not their contract. Once finalised, every promotion can negotiate to hire them."));
+  const quotaUsed=view.createdTalent.some(p=>p.year===view!.worldYear);
+  if(!createOpen&&!quotaUsed){
+   creation.append(btn("Design a Wrestler · "+format(view.createTalentPrice),
+    ()=>{createOpen=true;reviewing=false;draw();},busy));
   }
-  pick.value=division;pick.onchange=()=>{division=pick.value as typeof division;};
-  creation.append(field,pick,btn("Create for "+format(view.createTalentPrice),()=>{
-   if(name.trim().length<3){error="Enter a name of at least three characters.";draw();return;}
-   if(!window.confirm("Spend "+format(view!.createTalentPrice)+" to introduce "+
-    name.trim()+" as a shared World free agent? They will NOT join your promotion automatically."))return;
-   void run({kind:"CREATE_WRESTLER",name:name.trim(),division,requestId:crypto.randomUUID()});
-  },busy||view.balance<view.createTalentPrice||
-   view.createdTalent.some(p=>p.year===view!.worldYear)));
+  if(quotaUsed)creation.append(el("p","ppw-kp-muted",
+   "Your one wrestler contribution for this World year is complete."));
+  if(createOpen&&!quotaUsed){
+   const draft=el("section","ppw-kp-draft");
+   draft.append(el("span","ppw-kp-kicker","CHARACTER STUDIO"),
+    el("p","ppw-kp-muted","Choose their character and ring identity. Every created wrestler starts as a balanced prospect with the same fixed abilities. Nothing enters the World or costs KP until you finalise."));
+   function choose(label:string,options:{id:string;label:string}[],value:string,
+    update:(next:string)=>void){
+    const group=el("label","ppw-kp-field");
+    group.append(el("span","",label));
+    const select=el("select","ppw-kp-input") as HTMLSelectElement;
+    select.setAttribute("aria-label",label);
+    for(const option of options){
+     const node=el("option","",option.label) as HTMLOptionElement;
+     node.value=option.id;select.append(node);
+    }
+    select.value=value;select.onchange=()=>update(select.value);
+    group.append(select);return group;
+   }
+   function field(label:string,value:string,placeholder:string,change:(s:string)=>void){
+    const group=el("label","ppw-kp-field");
+    group.append(el("span","",label));
+    const input=el("input","ppw-kp-input") as HTMLInputElement;
+    input.setAttribute("aria-label",label);input.value=value;
+    input.placeholder=placeholder;input.maxLength=70;
+    input.oninput=()=>change(input.value);
+    group.append(input);return group;
+   }
+   if(!reviewing){
+    const form=el("div","ppw-kp-creator-fields");
+    form.append(field("Wrestler name",name,"Name your wrestler",v=>{name=v;}));
+    form.append(choose("Wrestler division",[
+     {id:"MEN",label:"Men's division"},{id:"WOMEN",label:"Women's division"}],
+     division,v=>{division=v as typeof division;}));
+    form.append(choose("Alignment",view.createOptions.alignments.map(id=>({
+     id,label:id==="FACE"?"Face":id==="HEEL"?"Heel":"Tweener"})),
+     alignment,v=>{alignment=v as typeof alignment;}));
+    form.append(choose("Wrestling style",view.createOptions.styles,primaryStyle,
+     v=>{primaryStyle=v;}));
+    form.append(choose("Character archetype",view.createOptions.gimmicks,gimmickId,
+     v=>{gimmickId=v;}));
+    form.append(field("Signature move",signatureMove,"e.g. Lightning Strike",
+     v=>{signatureMove=v;}));
+    form.append(field("Finishing move",finishingMove,"e.g. Comet Driver",
+     v=>{finishingMove=v;}));
+    draft.append(form);
+    const actions=el("div","ppw-kp-creator-actions");
+    actions.append(btn("Review Wrestler",()=>{
+     if(name.trim().length<3||signatureMove.trim().length<3||
+      finishingMove.trim().length<3){
+      error="Give your wrestler a name, signature move and finisher (at least 3 characters each).";
+      draw();return;
+     }
+     if(signatureMove.trim().toLowerCase()===finishingMove.trim().toLowerCase()){
+      error="Your signature move and finisher must have different names.";draw();return;
+     }
+     error="";reviewing=true;draw();
+    },busy),btn("Cancel",()=>{createOpen=false;reviewing=false;error="";draw();},busy));
+    draft.append(actions);
+   }else{
+    const details=el("div","ppw-kp-creation-review");
+    details.append(el("span","ppw-kp-kicker","READY TO FINALISE"),
+     el("h3","",name.trim()),
+     el("p","",division==="WOMEN"?"Women's division":"Men's division"),
+     el("p","","Alignment · "+alignment),
+     el("p","","Style · "+primaryStyle.replaceAll("_"," ")),
+     el("p","","Character · "+(view.createOptions.gimmicks.find(g=>g.id===gimmickId)?.label??gimmickId)),
+     el("p","","Signature · "+signatureMove.trim()),
+     el("p","","Finisher · "+finishingMove.trim()),
+     el("p","ppw-kp-muted","Prospect-level stats fixed for fair multiplayer. The wrestler joins the free-agent market; no contract is awarded to you."));
+    draft.append(details);
+    const actions=el("div","ppw-kp-creator-actions");
+    actions.append(btn("Finalise · "+format(view.createTalentPrice),()=>{
+     if(!window.confirm("Finalise "+name.trim()+" and spend "+
+      format(view!.createTalentPrice)+"? This creates a permanent shared free agent, "+
+      "not a wrestler on your roster. All promotions may bid. This cannot be undone."))return;
+     void run({kind:"CREATE_WRESTLER",name:name.trim(),division,
+      alignment,primaryStyle:primaryStyle as typeof view.createOptions.styles[number]["id"],
+      gimmickId:gimmickId as typeof view.createOptions.gimmicks[number]["id"],
+      signatureMove:signatureMove.trim(),finishingMove:finishingMove.trim(),
+      requestId:crypto.randomUUID()});
+    },busy||view.balance<view.createTalentPrice));
+    actions.append(btn("Edit Wrestler",()=>{reviewing=false;draw();},busy));
+    draft.append(actions);
+   }
+   creation.append(draft);
+  }
   if(view.createdTalent.length){
    const history=el("div","ppw-kp-contributions");
    for(const p of view.createdTalent)history.append(el("p","",
