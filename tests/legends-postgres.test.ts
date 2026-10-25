@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {settleCertifiedWorldLegends} from "../src/db/legends-settlement.js";
+import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../src/db/legend-reveal-pilot.js";
 import {readLegendsVault,markLegendRevealSeen} from "../src/db/legends-vault.js";
 import {applyKayfabeAction} from "../src/db/kayfabe-points.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
@@ -126,4 +127,93 @@ test("certified classics introduce Legends as competing free agents once; accoun
   // Disposable Postgres fixture; never connect this test to Production.
   await db.close();
  }
+});
+
+test("the designated operator arms one Undertaker reveal; another promotion, off-week, or repeat cannot trigger it",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const uid=randomUUID(),world="legend-pilot-"+uid,
+  operator="pilot-op-"+uid,other="pilot-other-"+uid,db=postgresPool(url!,3);
+ const operatorScope={worldId:world,promotionId:"operator",playerId:operator};
+ const otherScope={worldId:world,promotionId:"other",playerId:other};
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Undertaker pilot fixture",seed:42,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:"operator",name:"Operator Wrestling",tier:"LOCAL"});
+   await addPromotion(tx,world,{id:"other",name:"Second Wrestling",tier:"LOCAL"});
+   await tx.query(`INSERT INTO ppw_players(player_id) VALUES($1),($2)`,[operator,other]);
+   await tx.query(`INSERT INTO ppw_memberships(world_id,player_id,status)
+    VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')`,[world,operator,other]);
+   await tx.query(`INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id)
+    VALUES($1,$2,'operator'),($1,$3,'other')`,[world,operator,other]);
+   await tx.query(`INSERT INTO ppw_week_resolution_seals(world_id,year,week,certified_promotions)
+    VALUES($1,1,1,2),($1,1,2,2)`,[world]);
+   await tx.query(`INSERT INTO ppw_world_news_weeks(world_id,year,week)
+    VALUES($1,1,1),($1,1,2)`,[world]);
+   // Week 1 belongs to a different human promotion. It must not unlock the trial.
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,
+    status,booking_class) VALUES($1,'other-week-one','other',1,1,'SUBMITTED','REGULAR')`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_shows(
+    world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
+    receipt_json,receipt_digest)
+    VALUES($1,'other','other-week-one',1,1,'pilot-other-resolution',70,'{}'::jsonb,repeat('a',64))`,[world]);
+  });
+  assert.equal(await readLegendPilot(db.pool,world),null);
+  await assert.rejects(armLegendPilot(db.pool,world,"unauthorised"),/operator promotion/);
+  assert.equal((await armLegendPilot(db.pool,world,operator)).status,"ARMED");
+  await assert.rejects(armLegendPilot(db.pool,world,operator),/already armed/);
+  assert.equal((await cancelLegendPilot(db.pool,world,operator)).status,"CANCELLED");
+  assert.equal((await armLegendPilot(db.pool,world,operator)).status,"ARMED");
+  const otherShow=await withWorldTransaction(db.pool,tx=>
+   settleCertifiedWorldLegends(tx,world,1,1));
+  assert.deepEqual(otherShow.unlocked,[]);
+  assert.equal((await readLegendPilot(db.pool,world))?.status,"ARMED");
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`UPDATE ppw_worlds SET week=2 WHERE world_id=$1`,[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,
+    status,booking_class) VALUES($1,'operator-week-two','operator',1,2,'SUBMITTED','REGULAR')`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_shows(
+    world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
+    receipt_json,receipt_digest)
+    VALUES($1,'operator','operator-week-two',1,2,'pilot-operator-resolution',80,
+     '{}'::jsonb,repeat('b',64))`,[world]);
+  });
+  const unlocked=await withWorldTransaction(db.pool,tx=>
+   settleCertifiedWorldLegends(tx,world,1,2));
+  assert.deepEqual(unlocked.unlocked,["undertaker"]);
+  assert.equal((await readLegendPilot(db.pool,world))?.status,"CONSUMED");
+  assert.deepEqual(await withWorldTransaction(db.pool,tx=>
+   settleCertifiedWorldLegends(tx,world,1,2)),{processed:false,unlocked:[]});
+  await assert.rejects(armLegendPilot(db.pool,world,operator),/already entered/);
+  const myVault=await readLegendsVault(db.pool,operatorScope);
+  const theirVault=await readLegendsVault(db.pool,otherScope);
+  const deadman=myVault.entries.find(e=>e.id==="undertaker");
+  assert.equal(deadman?.unlocked,true);
+  assert.equal(deadman?.revealSeen,false);
+  assert.equal(deadman?.collectibleReady,true);
+  assert.equal(deadman?.price,4000);
+  assert.equal(theirVault.entries.find(e=>e.id==="undertaker")?.unlocked,true);
+  const arrival=await withWorldTransaction(db.pool,tx=>tx.query<{
+   metric:string;evidence_value:number;person_ids:string[]}>(`
+   SELECT metric,evidence_value,person_ids FROM ppw_world_legend_unlocks
+   WHERE world_id=$1 AND legend_id='undertaker'`,[world]));
+  assert.equal(arrival[0]?.metric,"PILOT_WEEKLY_SHOW");
+  assert.equal(arrival[0]?.evidence_value,1);
+  const ids=arrival[0]!.person_ids;
+  assert.equal((await withWorldTransaction(db.pool,tx=>tx.query(`
+   SELECT contract_id FROM ppw_contracts
+   WHERE world_id=$1 AND person_id=ANY($2::text[])`,[world,ids]))).length,0);
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_kp_wallets(player_id,balance,lifetime_earned)
+   VALUES($1,5000,5000)`,[operator]));
+  await applyKayfabeAction(db.pool,operatorScope,{
+   kind:"COLLECT_LEGEND",legendId:"undertaker",requestId:"pilot-card"});
+  const collected=await readLegendsVault(db.pool,operatorScope);
+  assert.equal(collected.entries.find(e=>e.id==="undertaker")?.collected,true);
+  assert.equal((await readLegendsVault(db.pool,otherScope)).entries.find(
+   e=>e.id==="undertaker")?.collected,false);
+  const wallet=await withWorldTransaction(db.pool,tx=>tx.query<{balance:string}>(`
+   SELECT balance::text FROM ppw_kp_wallets WHERE player_id=$1`,[operator]));
+  assert.equal(Number(wallet[0]!.balance),1000);
+ }finally{await db.close();}
 });
