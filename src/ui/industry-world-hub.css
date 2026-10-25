@@ -150,3 +150,15 @@
  .ppw-news-poster{min-height:320px;padding:24px}}
 @media(max-width:360px){.ppw-news-poster-title{font-size:21px}
  .ppw-news-poster{min-height:235px}}
+
+/* Phase 7 World records: compact ranked dossiers and keyboard-safe search. */
+.ppw-industry-world-rank,.ppw-industry-career-row{gap:10px;min-height:71px}
+.ppw-industry-rank-details{display:grid;gap:5px;flex:1;min-width:140px}
+.ppw-industry-rank-details>span{font-weight:850;font-size:15px;overflow-wrap:anywhere}
+.ppw-industry-rank-details>small{color:#a8c4d8;line-height:1.4;font-size:11px}
+.ppw-industry-record-row .ppw-industry-button{min-height:40px;font-size:12px;padding:9px 12px}
+.ppw-industry-record-book .ppw-industry-filters{align-items:end;
+ grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.ppw-industry-record-book .ppw-industry-filters .ppw-industry-field:first-child{grid-column:auto}
+@media(max-width:360px){.ppw-industry-record-row .ppw-industry-button{font-size:11px}
+.ppw-industry-record-book .ppw-industry-filters{grid-template-columns:1fr}}

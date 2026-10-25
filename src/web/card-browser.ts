@@ -195,6 +195,8 @@ function industryPort(root:HTMLElement,scope:Scope,
  return {
   load:()=>call("industry"),
   news:()=>call("industryNews"),
+  rankings:()=>call("worldRankings"),
+  careers:search=>call("worldCareerSearch",{search}),
   records:()=>call("promotionRecordBook"),
   featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),

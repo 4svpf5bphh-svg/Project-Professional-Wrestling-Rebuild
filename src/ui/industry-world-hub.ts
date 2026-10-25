@@ -1,12 +1,15 @@
 import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import type {readIndustryWorldNews} from "../db/industry-news.js";
+import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
 export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedTalent>>;
 export type IndustryNewsView=Awaited<ReturnType<typeof readIndustryWorldNews>>;
+export type WorldRankingsView=Awaited<ReturnType<typeof readWorldTalentRankings>>;
+export type WorldCareersView=Awaited<ReturnType<typeof searchPublicWorldCareers>>;
 export type PromotionRecordView=Awaited<ReturnType<typeof readPromotionRecordBook>>;
 export type IndustryPromotion=IndustryHubView["promotions"][number];
 export type IndustryOrder="REACH"|"FORM"|"NAME";
@@ -27,6 +30,8 @@ export function visibleIndustryPromotions<T extends {
 export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
  news?():Promise<IndustryNewsView>;
+ rankings?():Promise<WorldRankingsView>;
+ careers?(search:string):Promise<WorldCareersView>;
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
  records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
@@ -45,6 +50,27 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
+ let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
+ let rankings:WorldRankingsView|null=null,rankingBusy=false,rankingError="";
+ let careerSearch="",careerResults:WorldCareersView|null=null,
+  careerBusy=false,careerError="";
+ async function loadRankings(){
+  if(!port.rankings||rankingBusy||rankings)return;
+  rankingBusy=true;rankingError="";render();
+  try{rankings=await port.rankings();}
+  catch(e){rankingError=e instanceof Error?e.message:"Rankings unavailable";}
+  finally{rankingBusy=false;render();}
+ }
+ async function findCareers(){
+  if(!port.careers||careerBusy)return;
+  if(careerSearch.trim().length<2){
+   careerError="Enter at least two letters";render();return;
+  }
+  careerBusy=true;careerError="";render();
+  try{careerResults=await port.careers(careerSearch.trim());}
+  catch(e){careerError=e instanceof Error?e.message:"Career search unavailable";}
+  finally{careerBusy=false;render();}
+ }
  let news:IndustryNewsView|null=null,newsBusy=false,newsError="";
  async function loadNews(){
   if(!port.news||newsBusy||news)return;
@@ -135,7 +161,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
   for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"]] as const){
-   const b=btn(label,()=>{active=key;render();if(key==="RECORDS")void loadRecords();
+   const b=btn(label,()=>{active=key;render();if(key==="RECORDS"&&recordsTab==="MY")void loadRecords();
+    if(key==="RECORDS"&&recordsTab==="WORLD")void loadRankings();
     if(key==="OFFICIAL"||key==="DIRT")void loadNews();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
@@ -249,20 +276,100 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    root.append(section);
   }else if(active==="RECORDS"){
    const section=el("section","ppw-industry-list ppw-industry-record-book");
-   section.append(el("h2","","Promotion record book"),
+   section.append(el("h2","","The Record Books"),
     el("p","ppw-industry-muted",
-     "Your active roster's certified matches, wins and average star rating. No manual ranking boosts."));
-   if(recordsError)section.append(el("p","ppw-alert ppw-error",recordsError),
-    btn("Try again",()=>void loadRecords()));
-   if(recordsBusy)section.append(el("p","ppw-industry-muted","Checking completed match records…"));
-   if(records&&!records.leaders.length)section.append(el("p","ppw-industry-muted",
-    "No certified matches yet for your current roster."));
-   for(const [i,w] of (records?.leaders??[]).entries()){
-    const item=el("article","ppw-industry-record-row");
-    item.append(el("strong","",String(i+1)),el("span","",w.name),
-     el("small","",w.wins+" wins / "+w.matches+" matches"+
-      (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★")));
-    section.append(item);
+     "Explore your roster, compare wrestlers across the World or look up an individual career."));
+   const choice=el("div","ppw-industry-nav");
+   for(const [key,label] of [["MY","My Promotion"],["WORLD","World Rankings"],
+    ["SEARCH","Find a Career"]] as const){
+    const control=btn(label,()=>{
+     recordsTab=key;render();
+     if(key==="MY")void loadRecords();
+     if(key==="WORLD")void loadRankings();
+    });
+    control.setAttribute("aria-current",recordsTab===key?"page":"false");
+    choice.append(control);
+   }
+   section.append(choice);
+   if(recordsTab==="MY"){
+    section.append(el("p","ppw-industry-muted",
+     "Your active roster's verified matches, wins and average star ratings."));
+    if(recordsError)section.append(el("p","ppw-alert ppw-error",recordsError),
+     btn("Try again",()=>void loadRecords()));
+    if(recordsBusy)section.append(el("p","ppw-industry-muted","Checking promotion records…"));
+    if(records&&!records.leaders.length)section.append(el("p","ppw-industry-muted",
+     "No certified match records for the current roster yet."));
+    for(const [i,w] of (records?.leaders??[]).entries()){
+     const item=el("article","ppw-industry-record-row");
+     item.append(el("strong","",String(i+1)),el("span","",w.name),
+      el("small","",w.wins+" wins / "+w.matches+" matches"+
+       (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★")));
+     section.append(item);
+    }
+   }else if(recordsTab==="WORLD"){
+    section.append(el("p","ppw-industry-muted",
+     "Top 20 in each division, ranked on verified recent matches, actual wins, " +
+     "star ratings, crowd reception, level of competition, current form and championships. " +
+     "The latest unfinished week is excluded."));
+    const divisions=el("div","ppw-industry-nav");
+    for(const value of ["MEN","WOMEN"] as const){
+     const control=btn(value==="MEN"?"Men":"Women",()=>{
+      division=value;render();
+     });
+     control.setAttribute("aria-current",division===value?"page":"false");
+     divisions.append(control);
+    }
+    section.append(divisions);
+    if(rankingBusy)section.append(el("p","ppw-industry-muted","Reading the World rankings…"));
+    if(rankingError)section.append(el("p","ppw-alert ppw-error",rankingError),
+     btn("Retry",()=>void loadRankings()));
+    const leaders=(rankings?.leaders??[]).filter(r=>r.division===division);
+    if(rankings&&!leaders.length)section.append(el("p","ppw-industry-empty",
+     "No rated, completed matches in this division's recent window yet."));
+    for(const wrestler of leaders){
+     const item=el("article","ppw-industry-record-row ppw-industry-world-rank");
+     const rank=el("strong","","#"+wrestler.rank);
+     const identity=el("div","ppw-industry-rank-details");
+     identity.append(el("span","",wrestler.name+
+      (wrestler.champion?"  ♛":"")),
+      el("small","",wrestler.wins+"–"+wrestler.losses+" · "+
+       (wrestler.averageStars===null?"Unrated":wrestler.averageStars.toFixed(2)+"★")+" average"));
+     item.append(rank,identity);
+     if(port.openWrestler)item.append(btn("Career →",
+      ()=>port.openWrestler?.(wrestler.personId)));
+     section.append(item);
+    }
+   }else{
+    section.append(el("p","ppw-industry-muted",
+     "Search wrestlers across every promotion, including former stars. " +
+     "Open an existing dossier for their verified career history and title lineage."));
+    const form=document.createElement("form");form.className="ppw-industry-filters";
+    const label=el("label","ppw-industry-field","Wrestler's name");
+    const input=document.createElement("input");input.type="search";
+    input.value=careerSearch;input.placeholder="Search the wrestling World";
+    input.autocomplete="off";
+    label.append(input);
+    const submit=btn("Search careers",()=>{careerSearch=input.value;void findCareers();});
+    form.append(label,submit);
+    form.onsubmit=e=>{e.preventDefault();careerSearch=input.value;void findCareers();};
+    section.append(form);
+    if(careerBusy)section.append(el("p","ppw-industry-muted","Searching public careers…"));
+    if(careerError)section.append(el("p","ppw-alert ppw-error",careerError));
+    if(careerResults&&!careerResults.people.length)
+     section.append(el("p","ppw-industry-empty","No wrestlers found with that name."));
+    for(const wrestler of careerResults?.people??[]){
+     const item=el("article","ppw-industry-record-row ppw-industry-career-row");
+     const identity=el("div","ppw-industry-rank-details");
+     identity.append(el("span","",wrestler.name),
+      el("small","",(wrestler.division??"World talent").toLowerCase()+
+       " · "+(wrestler.promotionName??wrestler.status.toLowerCase())));
+     item.append(identity);
+     if(port.openWrestler)item.append(btn("View career →",
+      ()=>port.openWrestler?.(wrestler.personId)));
+     section.append(item);
+    }
+    if(careerResults?.hasMore)section.append(el("p","ppw-industry-muted",
+     "Showing the first 20 matches. Refine your search for more."));
    }
    root.append(section);
   }else if(active==="OFFICIAL"||active==="DIRT"){
