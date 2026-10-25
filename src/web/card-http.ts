@@ -1,7 +1,7 @@
 import {randomUUID} from "node:crypto";
 import type {WorldApiContext} from "../api/world-service.js";
 import {dispatchCardRpc} from "./card-rpc.js";
-import {bookingErrorCode} from "./card-error-feedback.js";
+import {bookingErrorCode,cardActionDomain,deskErrorCode} from "./card-error-feedback.js";
 export interface VerifiedCardSession {
  context:WorldApiContext;
  csrfToken:string;
@@ -34,6 +34,7 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
  if(!session.csrfToken||request.headers.get("x-ppw-csrf")!==session.csrfToken)
   return json(403,{error:"Forbidden"});
  if(!await deps.allowRequest(session))return json(429,{error:"Too many requests"});
+ let action="";
  try{
   const body=await request.text();
   if(new TextEncoder().encode(body).length>131072)return json(413,{error:"Request too large"});
@@ -41,14 +42,16 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return json(400,{error:"Invalid request"});
   const data=parsed as Record<string,unknown>;
   if(typeof data.method!=="string")return json(400,{error:"Invalid request"});
+  action=data.method;
   if(deps.expectedWorldId&&data.worldId!==deps.expectedWorldId)
    return json(403,{error:"World not available"});
   return json(200,await dispatchCardRpc(session.context,data.method,parsed));
  }catch(error){
   const message=error instanceof Error?error.message:"";
   if(/revision|stale|conflict/i.test(message))return json(409,{error:"Card changed. Reload to continue"});
-  const code=bookingErrorCode(message);
-  if(code)return json(400,{error:"Booking request rejected",code});
+  const code=cardActionDomain(action)==="booking"?bookingErrorCode(message):
+   deskErrorCode(message,action);
+  if(code)return json(400,{error:"Request rejected",code});
   // A single opaque support reference connects the player's screenshot to
   // a server diagnostic. Never log SQL text, raw exception messages, player
   // identity, booking participants, contract prices or entire payloads.
@@ -59,7 +62,7 @@ export async function handleCardHttp(request:Request,deps:CardHttpDependencies):
   const dbCode=typeof candidate==="string"&&/^[A-Z0-9]{5}$/.test(candidate)?
    candidate:null;
   console.warn("PPW card action rejected",{
-   reference,action:"booking-or-desk",exceptionClass:kind,dbCode});
-  return json(400,{error:"Booking request rejected",reference});
+   reference,action:cardActionDomain(action),exceptionClass:kind,dbCode});
+  return json(400,{error:"Request rejected",reference});
  }
 }
