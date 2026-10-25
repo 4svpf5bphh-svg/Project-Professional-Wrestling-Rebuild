@@ -17,11 +17,13 @@ export const KP_CATALOGUE=[
  {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"}
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
+type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
 export type KpSku=typeof KP_CATALOGUE[number]["sku"];
 export type KpScope={worldId:string;promotionId:string;playerId:string};
 export type KpAction=
  |{kind:"BUY";sku:KpSku;requestId:string}
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
+ |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
  |{kind:"CREATE_WRESTLER";name:string;division:"MEN"|"WOMEN";requestId:string};
 const validId=(v:string)=>typeof v==="string"&&v.length>0&&v.length<=200;
@@ -35,9 +37,10 @@ function cleanName(value:string){
 export const catalogueItem=(sku:string)=>KP_CATALOGUE.find(p=>p.sku===sku)??null;
 export function validateKpAction(action:KpAction){
  if(!action||!validId(action.requestId))throw new Error("Invalid Kayfabe request");
- if(action.kind==="BUY"||action.kind==="APPLY_BRAND"){
+ if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"){
   const item=catalogueItem(action.sku);
-  if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND"))
+  if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND")||
+   (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE"))
    throw new Error("Unknown Kayfabe Points item");
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
@@ -81,6 +84,8 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
   const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
    AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
+  const badge=await tx.query<{style:string}>(
+   "SELECT style FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
   const staff=await tx.query<{staff_id:string;alias:string|null}>(`
    SELECT e.staff_id,a.alias FROM ppw_staff_employments e
    LEFT JOIN ppw_kp_staff_aliases a ON a.world_id=e.world_id
@@ -116,6 +121,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     eligible:last.played&&!last.claimed&&!last.daily_claimed,
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
+   activeBadge:badge[0]?.style??null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:[
     {key:"FIRST_BELL",label:"First Bell",earned:total>=1,progress:Math.min(total,1),target:1},
@@ -180,6 +186,10 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
     SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
+   if(item.kind==="BADGE")await tx.query(`
+    INSERT INTO ppw_kp_badge_styles(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,action.sku.replace("BADGE_","")]);
    outcome={sku:action.sku,label:item.label};
   }else if(action.kind==="APPLY_BRAND"){
    const exists=await tx.query<{sku:string}>(`
@@ -191,6 +201,16 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
     SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
+   outcome={style:action.sku};
+  }else if(action.kind==="APPLY_BADGE"){
+   const exists=await tx.query<{sku:string}>(
+    "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",
+    [s.playerId,action.sku]);
+   if(!exists.length)throw new Error("Unlock this badge frame before using it");
+   await tx.query(`
+    INSERT INTO ppw_kp_badge_styles(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,action.sku.replace("BADGE_","")]);
    outcome={style:action.sku};
   }else if(action.kind==="RENAME_STAFF"){
    const name=cleanName(action.name);
