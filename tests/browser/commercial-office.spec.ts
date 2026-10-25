@@ -64,3 +64,40 @@ test("320px Business commercial agreements are optional, readable and consented 
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test(`iPhone ${width}px Home alerts only after a commercial deal actually expires`,async({page})=>{
+  await page.setViewportSize({width,height:780});
+  let renewalDue=true;
+  const calls:string[]=[];
+  const overview=()=>({
+   world:{revision:7,name:"Genesis",year:1,week:32,phase:"OPEN",
+    nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"indie",name:"Independent Wrestling",
+    tier:"LOCAL",cash:500000,debt:0,lastWeeklyNet:2000,financialDistress:"HEALTHY",
+    attention:{plannedShows:1,unpreparedShow:false,pendingBackstage:false,
+     expiringTalent:false,pendingContractOffers:false,commercialRenewalDue:renewalDue}}
+  });
+  await page.route("**/api/session",route=>route.fulfill({json:{
+   worldId:"genesis",playerId:"owner",csrfToken:"opaque",
+   overview:overview(),availablePromotions:[]
+  }}));
+  await page.route("**/api/card",route=>{
+   const input=route.request().postDataJSON() as {method:string};
+   calls.push(input.method);
+   if(input.method==="overview")return route.fulfill({json:overview()});
+   return route.fulfill({json:{}});
+  });
+  await page.goto("/#/home");
+  const renewal=page.getByRole("button",{name:/A commercial deal has ended/});
+  await expect(renewal).toBeVisible();
+  await renewal.click();
+  await expect(page).toHaveURL(/#\\/business$/);
+  expect(calls).toEqual(["overview"]);
+  renewalDue=false;
+  await page.goto("/#/home");
+  await expect(page.getByRole("button",{name:/A commercial deal has ended/})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
