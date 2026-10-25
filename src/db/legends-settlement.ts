@@ -8,7 +8,7 @@ import {validatePortablePersona} from "../domain/portable-persona.js";
 import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend}
  from "../domain/legends-catalogue.js";
 
-interface MatchRow {
+interface MatchRow extends Record<string,unknown> {
  match_id:string;position:number;last_position:number;
  rating_stars:string|null;booking_class:string;payload:unknown;
  evidence_json:{booking?:{family?:string}}|null;
