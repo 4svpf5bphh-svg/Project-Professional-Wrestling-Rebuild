@@ -52,7 +52,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.deepEqual(after?.promotion?.attention,{
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
-     backstageRequests:[],offerResults:[],backstageResults:[],businessUpdates:[],
+     backstageRequests:[],offerResults:[],dateDecisions:[],backstageResults:[],businessUpdates:[],
      contractAlerts:[],titleNews:[],injuryNews:[],medicalClearances:[],
      worldStories:[]});
     assert.equal(after?.membership,"ACTIVE");

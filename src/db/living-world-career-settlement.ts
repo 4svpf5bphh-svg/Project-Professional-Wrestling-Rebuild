@@ -5,6 +5,7 @@ import type {SqlRows} from "./world-operations.js";
 import {originalCareerWeek,type CareerStage,type CareerState,type CareerStatus}
  from "../domain/living-career.js";
 import {originalGeneratedProspect} from "../domain/generated-prospect.js";
+import {publishRetiredStaffCandidates} from "./retired-staff-succession.js";
 import {DeterministicRng,deterministicSeedFromText} from "../simulation/legacy/rng.js";
 type Row={person_id:string;name:string;status:CareerStatus;career_stage:CareerStage|null;
  biological_age:number|null;career_experience:number|null;
@@ -194,6 +195,7 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
     person_id text,name text,biological_age double precision,
     wear double precision,popularity double precision,recognition double precision)`,
    [worldId,JSON.stringify(retiredRows),year,week]);
+  await publishRetiredStaffCandidates(tx,worldId,retired,weekIndex);
  }
  let generated=0;
  const target=clocks[0]!.talent_population_target;

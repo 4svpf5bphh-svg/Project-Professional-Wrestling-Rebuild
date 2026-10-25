@@ -50,6 +50,7 @@ export function createMatchBroadcast(match:EditorMatch,
  nameFor:(person:PersonPick)=>string,titles:readonly Title[],
  context:{show:string;promotion:string;mainEvent:boolean;premium:boolean}):HTMLElement{
  const info=projectMatchGraphic(match,nameFor,titles,context);
+ const dense=match.format==="BATTLE_ROYAL"||info.entrants>4;
  const holder=document.createElement("section");holder.className="ppw-broadcast-preview";
  holder.dataset.format=match.format;holder.dataset.eventMotif=info.motif;
  // Artwork is immediately part of the card ticket, not a hidden preview.
@@ -92,13 +93,14 @@ export function createMatchBroadcast(match:EditorMatch,
    const panel=document.createElement("div");panel.className="ppw-broadcast-side";
    panel.dataset.side=String(i+1);
    // Only a handful of on-screen portraits, even for large teams.
-   const visible=side.slice(0,match.format==="SINGLES"?1:2);
+   const visible=side.slice(0,dense?2:side.length);
+   const portraitRow=document.createElement("div");portraitRow.className="ppw-broadcast-portraits";
    for(const personName of visible){
     const photo=createWrestlerPortrait(personName,160);
     if(photo){photo.loading="lazy";photo.classList.add("ppw-broadcast-portrait");
-     photo.onerror=()=>photo.remove();panel.append(photo);}
+     photo.onerror=()=>photo.remove();portraitRow.append(photo);}
    }
-   panel.append(span("ppw-broadcast-side-name",side.join(" & ")||"TBC"));
+   panel.append(portraitRow,span("ppw-broadcast-side-name",side.join(" & ")||"TBC"));
    line.append(panel);
    if(!multi&&i===0)line.append(span("ppw-broadcast-versus","VS"));
   }
@@ -107,7 +109,7 @@ export function createMatchBroadcast(match:EditorMatch,
   info.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
  holder.append(board);
  }
- return allowExpandedGraphic(holder,"match");
+ return dense?allowExpandedGraphic(holder,"match"):holder;
 }
 /** The same broadcast art system for angles, without placeholder asset packs. */
 export function createAngleBroadcast(segment:EditorSegment,
@@ -132,7 +134,7 @@ export function createAngleBroadcast(segment:EditorSegment,
  const headline=document.createElement("div");
  headline.className="ppw-angle-broadcast-spotlight";
  const booked=[...segment.actors,...segment.targets].filter((x):x is PersonPick=>x!==null);
- for(const person of booked.slice(0,3)){
+ for(const person of booked.slice(0,4)){
   const name=nameFor(person);
   const performer=document.createElement("div");
   performer.className="ppw-angle-broadcast-person";
@@ -144,5 +146,5 @@ export function createAngleBroadcast(segment:EditorSegment,
  if(!booked.length)headline.append(span("ppw-angle-broadcast-placeholder","CAST TO BE ANNOUNCED"));
  board.append(headline,span("ppw-broadcast-footer",
   context.premium?"PREMIUM EVENT · PPW":"LIVE FROM THE PPW WORLD"));
- frame.append(board);return allowExpandedGraphic(frame,"angle");
+ frame.append(board);return booked.length>4?allowExpandedGraphic(frame,"angle"):frame;
 }

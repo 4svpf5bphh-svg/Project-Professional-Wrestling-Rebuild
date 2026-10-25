@@ -86,6 +86,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    await port.dismissAttention(id);
    const news=overview?.promotion?.attention?.offerResults;
    if(news)overview!.promotion!.attention.offerResults=news.filter(x=>x.id!==id);
+   const dates=overview?.promotion?.attention?.dateDecisions;
+   if(dates)overview!.promotion!.attention.dateDecisions=dates.filter(x=>x.id!==id);
    const backstage=overview?.promotion?.attention?.backstageResults;
    if(backstage)overview!.promotion!.attention.backstageResults=
     backstage.filter(x=>x.id!==id);
@@ -106,7 +108,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  async function clearResolvedUpdates(){
   if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
   const attention=overview?.promotion?.attention;
-  const keys=[...(attention?.offerResults??[]),...(attention?.backstageResults??[]),
+  const keys=[...(attention?.offerResults??[]),...(attention?.dateDecisions??[]),...(attention?.backstageResults??[]),
    ...(attention?.businessUpdates??[]),...(attention?.titleNews??[]),
    ...(attention?.injuryNews??[]),...(attention?.medicalClearances??[])]
    .slice(0,10).map(item=>item.id);
@@ -117,6 +119,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const cleared=new Set(keys);
    if(attention){
     attention.offerResults=attention.offerResults?.filter(x=>!cleared.has(x.id));
+    attention.dateDecisions=attention.dateDecisions?.filter(x=>!cleared.has(x.id));
     attention.backstageResults=attention.backstageResults?.filter(x=>!cleared.has(x.id));
     attention.businessUpdates=attention.businessUpdates?.filter(x=>!cleared.has(x.id));
     attention.titleNews=attention.titleNews?.filter(x=>!cleared.has(x.id));
@@ -432,6 +435,37 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    root.append(wire);
   }
+  const dateDecisions=attention?.dateDecisions??[];
+  if(dateDecisions.length){
+   const wire=el("section","ppw-home-wire");
+   wire.append(el("span","ppw-home-brand","THE CONTRACT WIRE"),
+    el("h3","","Additional dates decided"));
+   for(const item of dateDecisions){
+    const accepted=item.status==="ACCEPTED";
+    const entry=el("article","ppw-home-wire-item");
+    entry.append(el("span","ppw-home-wire-status "+(accepted?
+     "ppw-home-wire-accepted":"ppw-home-wire-declined"),
+      accepted?"ACCEPTED":"DECLINED"),
+     el("strong","",item.name+(accepted?" accepted additional dates":" declined additional dates")),
+     el("p","",accepted?
+      "Contract "+item.contractId+" · +"+item.additionalDates+" dates agreed"+
+       (item.additionalPayment>0?" for $"+item.additionalPayment.toLocaleString("en-GB"):" at no extra cost")+
+       ". Year "+item.year+", Week "+item.week+".":
+      "Contract "+item.contractId+" · +"+item.additionalDates+
+       " proposed dates declined. Year "+item.year+", Week "+item.week+"."));
+    const actions=el("div","ppw-home-wire-actions");
+    const open=el("button","ppw-home-wire-button","Open Contract Desk") as HTMLButtonElement;
+    open.type="button";open.onclick=port.contractsPending??port.contracts;actions.append(open);
+    if(port.dismissAttention){
+     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
+     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
+     dismiss.onclick=()=>void dismissNews(item.id);
+     actions.append(dismiss);
+    }
+    entry.append(actions);wire.append(entry);
+   }
+   root.append(wire);
+  }
   const resolved=attention?.backstageResults??[];
   if(resolved.length){
    const wire=el("section","ppw-home-wire");
@@ -596,7 +630,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    root.append(wire);
   }
-  const resolvedCount=results.length+resolved.length+businessUpdates.length+
+  const resolvedCount=results.length+dateDecisions.length+resolved.length+businessUpdates.length+
    titleNews.length+injuryNews.length+clearanceNotices.length;
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",

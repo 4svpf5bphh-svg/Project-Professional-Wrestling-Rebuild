@@ -1,6 +1,6 @@
 # PPW Rebuild — Master Roadmap
 
-**Authoritative priority order agreed 24 October 2026. Phase 1 and the safe asynchronous Phase 2 Gorilla playtest implementation are VERIFIED in CI. User authorised a combined Production playtest release on 24 October; deployment status must be verified against GitHub main and Vercel.** Use this page, not an old parity checklist, to continue development in future conversations. Only edit the priority order with the owner's direction.
+**Authoritative priority order agreed 24 October 2026. Phases 1–2 are in Production; Stages A–B and Phases 3–4 are verified on a staged release branch. User authorised a combined Production playtest release on 24 October; deployment status must be verified against GitHub main and Vercel.** Use this page, not an old parity checklist, to continue development in future conversations. Only edit the priority order with the owner's direction.
 
 ## Contracts and primary references
 
@@ -29,7 +29,17 @@ Reuse booking, appointed staff, weekly resolution and the one World Lock. A pre-
 
 **Verified complete playtest scope:** commit `d0b8170dbb5cd7bfdda0b209282826ab6e6454d6`. [Rebuild CI 40103811562](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40103811562) passed TypeScript, Vite, **107/107 mobile browser tests**, **563 passed unit tests with 117 expected no-database skips**, and **108/108 real disposable PostgreSQL tests**, with zero failures. [Authentic original Genesis verification 40103811489](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40103811489) passed. The standing instructions now connect to a second, private iPhone Gorilla clipboard: the controller can protect exact authored match scripts, pre-authorise conditional crowd and major-runtime-overrun alternatives, and view verified medical availability alerts. A saved decision is bound to the current card payload signature; edited cards lose stale authority automatically. The server checks the exact owner, active membership, World revision, show and one deadline. The true overrun uses recorded minutes **versus booked duration** rather than an arbitrary 45-minute threshold. Human/AI outcomes, scripted finishes, verified injuries, appearance rights, backstage dialogue, financial ledgers and World publication remain authoritative. Results show the immutable production log; no player must attend the resolution.
 
-**Conservative limits retained for this release:** a wrestler who is medically unavailable must be rebooked through existing authoritative booking rules **before** World Lock; Gorilla warns but deliberately never invents a substitute, a new winner or an injury waiver. It is an asynchronous pre-authorisation and post-show production feature, **not** an online live-choice pause during certification, an emergency card rewriting engine or a second World clock. Deeper lawful substitute proposals and live spectator presentation can be considered later without disturbing this safe first complete scope. Phase 3 persistent memories is next.
+**Conservative limits retained for this release:** a wrestler who is medically unavailable must be rebooked through existing authoritative booking rules **before** World Lock; Gorilla warns but deliberately never invents a substitute, a new winner or an injury waiver. It is an asynchronous pre-authorisation and post-show production feature, **not** an online live-choice pause during certification, an emergency card rewriting engine or a second World clock. Deeper lawful substitute proposals and live spectator presentation can be considered later without disturbing this safe first complete scope. Phase 3 memory implementation has now been verified; production release is staged.
+
+## Playtest feedback insertion — immediate defects and Results presentation
+
+**Implementation completed and verified in CI by 25 October 2026; Production release staged.** See the detailed [playtest feedback roadmap](PPW-PLAYTEST-FEEDBACK-ROADMAP-2026-10-24.md) and its source-code audit, release criteria and preserved features.
+
+**Stage A, ahead of Phase 3:** tag-team Form button and persistence; Backstage gimmick-button/touch styling; missing additional-dates acceptance/decline attention; match graphic portraits legible without expanding except dense fields; owner's My Champions roster section.
+
+**Stage B, ahead of full Phase 3:** restore existing but inadvertently hidden Results highlight and Crowd Noise sections; redesign the show-first reading hierarchy; improve Groq's smark column, nonrepetition/evaluation and immutable preview workflow; remove mechanical score talk from all fan-facing prose; give named Road Agents a grounded human debrief.
+
+**Place new depth without displacing existing dependencies:** Phase 3: differentiated Backstage requests and wrestler memories; Phase 4: complete EWR-style eight-department Staff Meetings plus owner-promotion rankings built from career evidence; Phase 5: explicit primary/secondary title roles **before** secondary title activation and organic title prestige; Phase 7: wider World rankings and long-lived public fan/press reactions. Phase 6 unchanged. AI-run rival promotions retain cheap minimal results; all title/ranking/social history derives from certified World facts.
 
 ## Phase 3 — Persistent memories and living-world depth
 
@@ -79,4 +89,12 @@ These are implemented *foundations*, not claims every edge case is perfect. Test
 
 ### Continuation contract
 
-After each substantial verified implementation, update this table with commit hash, Actions run and relevant test counts, identify known failures and the **next unfinished milestone**. Phase 1 and the safe Phase 2 Gorilla playtest implementation passed CI and received release authorisation on 24 October 2026. Verify the exact merged Production commit and Vercel deployment before calling the release live. Phase 3 persistent memories is the next unfinished gameplay phase; subsequent handovers must link this file and state actual branch/HEAD, CI and deployment state. Never invent a replacement roadmap.
+After each substantial verified implementation, update this table with commit hash, Actions run and relevant test counts, identify known failures and the **next unfinished milestone**. Phase 1 and the safe Phase 2 Gorilla playtest implementation passed CI and received release authorisation on 24 October 2026. Verify the exact merged Production commit and Vercel deployment before calling the release live. Phase 5 organic prestige is the next separate unreleased gameplay phase; subsequent handovers must link this file and state actual branch/HEAD, CI and deployment state. Never invent a replacement roadmap.
+
+## Release ledger — 25 October 2026
+
+- Pre-Phase-5 release includes Results/UI feedback Stages A–B, Phase 3 private memories and Phase 4 reputations, Staff Meetings, rankings and succession. Phase 5 prestige is excluded.
+- Phase 4 aggregate implementation verified at 5a0e990d6b6964d8e2965c120e3f3a79eff87bdb (114 mobile browser tests, 570 unit passes, 112 PostgreSQL tests).
+- Migrations 0093 and 0094 rehearsed on a separate Neon live-World fork without changing people, promotion or Backstage request counts.
+- Pre-release Neon snapshot preserved. Verify release main SHA, Actions and Vercel Production after actual deployment.
+- World advancement, automatic lock cron and live reset are not part of this release.

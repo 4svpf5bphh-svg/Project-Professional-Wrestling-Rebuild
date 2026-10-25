@@ -11,7 +11,7 @@ import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
 import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
- RINGSIDE_PROMPT_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
+ RINGSIDE_PROMPT_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
 export type RingsideResponse={status:"ready";review:RingsideCopy}|
@@ -77,6 +77,8 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
  "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
  "Do not omit a segment, and keep all requested headlines and recaps substantial.":
+ message.includes("repeated")?
+ "Your slots sounded identical. Vary the first exchange, viewpoint and final judgement between bouts; do not reuse any sentence from another card entry.":
  message.includes("winner")?"Never reverse the officially recorded winners.":
  message.includes("title")?"Never invent a title change; use the verified match fallout.":
  message.includes("finish")||message.includes("submission")?
@@ -162,7 +164,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
-    const rescued=recoverRingsideCopy(candidate,show);
+    // Prefer one corrective pass over a bland canonical substitution for
+    // repetition. We still permit only the existing two provider attempts.
+    const rescued=reason.includes("Ringside repeated")&&attempt===0?null:
+     recoverRingsideCopy(candidate,show);
     if(rescued){
      if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",
       rescued.replaced,"unsafe entries using verified results");
@@ -205,11 +210,19 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
   JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id
    AND m.status='ACTIVE'
-  LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
-   AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
-   AND r.prompt_version=$5
+  LEFT JOIN LATERAL (
+   SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until
+   FROM ppw_ringside_reports r
+   WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
+    AND r.show_id=c.show_id
+    AND (r.prompt_version=$5 OR (r.prompt_version=$6 AND r.state='READY'))
+   -- An already-published v4 article always wins over a newer preview.
+   ORDER BY CASE WHEN r.prompt_version=$6 THEN 0 ELSE 1 END
+   LIMIT 1
+  ) r ON TRUE
   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
-  LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,RINGSIDE_PROMPT_VERSION]));
+  LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,
+   RINGSIDE_PROMPT_VERSION,RINGSIDE_LEGACY_VERSION]));
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
  if(saved?.state==="READY"){

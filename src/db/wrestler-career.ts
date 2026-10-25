@@ -3,6 +3,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {liveAppearanceStatus,type LiveAppearanceStatus} from "../domain/live-appearance-history.js";
 import {careerMatchLineup} from "../domain/career-match-lineup.js";
+import {earnedWrestlerReputations,type EarnedReputation} from "../domain/earned-reputations.js";
 import {readInjuryIncidents,type InjuryIncident} from "../domain/career-injury-incidents.js";
 export interface CareerScope{worldId:string;playerId:string;promotionId:string;personId:string}
 export interface CareerMatch{
@@ -30,6 +31,7 @@ export interface CareerView{
   teamName:string|null;startWeekIndex:number;defenses:number}[];
  /** Six most recent verified injury incidents; current clearance is in the dossier. */
  injuryHistory:InjuryIncident[];
+ reputations?:EarnedReputation[];
 }
 const id=(s:string)=>typeof s==="string"&&s.length>0&&s.length<=200;
 type MatchRow={
@@ -208,7 +210,7 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
   const total=matches[0];
   const n=(v:string|null|undefined)=>v==null?0:Number(v);
   const count=n(total?.total_matches),wins=n(total?.total_wins);
-  return {personId:scope.personId,
+  const record={personId:scope.personId,
    summary:{matches:count,wins,losses:count-wins,
     singles:n(total?.total_singles),tag:n(total?.total_tags),
     ratedMatches:n(total?.total_rated),
@@ -233,5 +235,6 @@ export async function readWrestlerCareer(pool:TransactionPool,scope:CareerScope)
     name:t.name,promotion:t.promotion_name,holderType:t.holder_type,
     teamName:t.team_name,startWeekIndex:t.start_week_index,defenses:t.defenses
    }))};
+  return {...record,reputations:earnedWrestlerReputations(record)};
  });
 }

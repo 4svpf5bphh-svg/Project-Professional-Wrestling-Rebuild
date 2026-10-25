@@ -1,6 +1,8 @@
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView} from "../db/show-results-view.js";
-export const RINGSIDE_PROMPT_VERSION="ringside-v4";
+// Updated editorial is versioned independently. Published v4 remains immutable.
+export const RINGSIDE_PROMPT_VERSION="ringside-v5";
+export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
@@ -103,10 +105,29 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
     throw new Error("Ringside used an unowned signature move");
   }
  }
+ // Reject unpublished editorial echoes without modifying canonical match facts.
+ const usedSentences=new Set<string>();
+ const openers=new Map<string,number>();
+ for(const slot of slots){
+  for(const sentence of slot.recap.split(/(?<=[.!?])\s+|\n+/)){
+   const normalized=moveSurface(sentence);
+   if(normalized.length>=65){
+    if(usedSentences.has(normalized))
+     throw new Error("Ringside repeated a full sentence across card entries");
+    usedSentences.add(normalized);
+   }
+  }
+  const opener=moveSurface(slot.recap).split(" ").slice(0,7).join(" ");
+  if(opener.split(" ").length===7){
+   const count=(openers.get(opener)??0)+1;
+   if(count>=3)throw new Error("Ringside repeated a stock opening across card entries");
+   openers.set(opener,count);
+  }
+ }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
- if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|recorded finish|official record|simulation result)\b/i.test(fullStory))
+ if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
- if(/\b\d{2,3}\.\d+\b/.test(String(v.opening)+" "+String(v.closing)))
+ if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
  for(const [i,slot] of slots.entries()){
   const source=show.entries[i]!;
@@ -172,14 +193,27 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
   show.entries.length<4)return null;
  const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
+ const ordinals=["opening","second","third","fourth","fifth","sixth",
+  "seventh","eighth","ninth","tenth","eleventh","twelfth",
+  "thirteenth","fourteenth","fifteenth","sixteenth","seventeenth",
+  "eighteenth","nineteenth","twentieth","twenty-first","twenty-second",
+  "twenty-third","twenty-fourth","twenty-fifth","twenty-sixth",
+  "twenty-seventh","twenty-eighth","twenty-ninth","thirtieth"];
+ const ordinal=(n:number)=>ordinals[n]??"later";
  const base:RingsideCopy={
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
   opening:"The crowd gathered for a full night of wrestling.",
   closing:"The final bell gave the audience plenty to discuss.",
-  slots:show.entries.map(entry=>{
-   if(entry.type==="SEGMENT")return {slotId:entry.slotId,
-    headline:"A moment outside the ring",
-    recap:"The segment played out before the audience, leaving its participants to reckon with the reaction."};
+  slots:show.entries.map((entry,i)=>{
+   if(entry.type==="SEGMENT"){
+    const angleIndex=show.entries.slice(0,i).filter(e=>e.type==="SEGMENT").length;
+    const result=entry.outcome==="REFUSED"?"was refused":
+     entry.outcome==="INTERRUPTED"?"was interrupted":"took place";
+    return {slotId:entry.slotId,headline:"A moment outside the ring",
+     recap:"The "+ordinal(angleIndex)+" segment of the evening, "+
+      entry.headline.replace(/[.!?]+$/,"")+", "+result+
+      ". The audience has seen the outcome, whatever the intent."};
+   }
    const names=entry.matchContext?.winnerNames??[];
    const winner=names.length?names.join(" & "):"The winning side";
    const finish:Record<string,string>={
@@ -189,8 +223,10 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     FOREIGN_OBJECT:"emerged victorious after a controversial ending",
     PROTECTED_FINISH:"prevailed after a contentious ending",
     INJURY_STOPPAGE:"prevailed when the match was stopped"};
+   const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
    return {slotId:entry.slotId,headline:"The decision in the ring",
-    recap:winner+" "+(finish[entry.outcome]??"won the match")+
+    recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
+     (finish[entry.outcome]??"won the match")+
      ". The result settled the contest in front of the crowd."};
   })
  };
@@ -220,12 +256,19 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  catch{return null;}
 }
 
+/** Atmospheric description for the writer; the UI retains canonical numbers. */
+const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
+ n>=42?"divided":n>=28?"muted":"quiet";
+
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView){
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
-  crowd:show.crowdResponse,
+  audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
-   key:"card_"+i,type:e.type,finish:e.outcome,crowd:e.crowdResponse,
+   editorialLens:["ring psychology","shifting crowd allegiance","pacing and the finishing stretch",
+    "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
+     (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
+   key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(e.matchContext?{match:{format:e.matchContext.format,
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
@@ -247,13 +290,16 @@ export function ringsideBrief(show:CompletedShowView){
 export const RINGSIDE_STYLE_GUIDE=`You are PPW Ringside's fictional veteran wrestling
 columnist Marty Vale: a sharp-eyed, entertaining critic who understands the
 craft, spectacle, history and occasional glorious absurdity of pro wrestling.
-Sound like a reporter who WATCHED the bell-to-bell action, never a game engine,
+Sound like a smart wrestling fan who WATCHED the bell-to-bell action, never a game engine,
 scorecard, office memo or omniscient booker. Do not imitate any real writer's
 distinctive phrases. Be opinionated: admire a great finish, call out a dead
 crowd, relish a crafty heel or a fearless babyface, and occasionally land a
 dry joke. No identical stock openings and no forced jokes. A dry, incisive aside is
 welcome when the character dynamics earn it; vary humour between articles.
-Never turn every wrestler or angle into a punchline.
+Never turn every wrestler or angle into a punchline.\nAvoid stock openers like "The match started", "In the end", "When the dust settled",\n"Fans were treated to", or "The crowd erupted" on repeat. Make each match\nfeel different: one can be a nasty slugfest, another a patient technical battle,\nanother a glorious mess. Do not force those descriptions when the facts disagree.\nThe optional editorialLens is variety direction, NOT a fact about unseen spots.
+Audience mood is a qualitative observation, not a number to repeat.
+Across a full card, every bout needs its own opening and concluding thought;
+never recycle a long sentence verbatim between different bouts.\nDon\u0027t write that a wrestler is over, buried or protected because of a numeric value.
 
 Write a MINI MATCH REVIEW with a beginning, turning point and closing beat.
 CRITICAL NON-REPETITION RULE: The match has ONE decisive finish. Describe that

@@ -12,6 +12,8 @@ export interface WorldStaffMember extends WorldManager{
  role:StaffRole;craft:number;people:number;reliability:number;
  personality:"FRANK"|"PATIENT"|"AMBITIOUS"|"LOYAL"|"ECCENTRIC";
  specialism:string;
+ /** Present only for one verified retired wrestler entering the staff market. */
+ formerWrestlerId?:string;careerNote?:string;
 }
 export function worldTalentManagers(seed:string|number|bigint):WorldManager[]{
  const first=["Morgan","Jamie","Casey","Rowan","Riley","Taylor","Avery","Drew"];

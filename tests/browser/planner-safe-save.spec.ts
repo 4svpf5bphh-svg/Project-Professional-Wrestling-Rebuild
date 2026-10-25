@@ -167,12 +167,9 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
   return Math.abs(box.left+box.width/2-logo.left-logo.width/2);
  });
  expect(centring).toBeLessThan(2);
- await artwork.getByRole("button",{name:"Expand match graphic"}).click();
- const large=await artwork.locator(".ppw-match-broadcast").evaluate(node=>
-  node.getBoundingClientRect().height);
- expect(large).toBeGreaterThan(compact+25);
- await artwork.getByRole("button",{name:"Compact match graphic"}).click();
- await expect(artwork).not.toHaveClass(/ppw-broadcast-expanded/);
+ // Ordinary match artwork shows its full portraits without a second tap.
+ await expect(artwork.getByRole("button",{name:"Expand match graphic"})).toHaveCount(0);
+ await expect(artwork.locator(".ppw-match-broadcast")).toBeVisible();
  await page.locator(".ppw-card-grip").first().press("ArrowDown");
  await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
  await page.getByRole("button",{name:"Save changes"}).click();

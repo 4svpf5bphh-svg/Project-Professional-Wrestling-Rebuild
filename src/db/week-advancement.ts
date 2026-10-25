@@ -14,6 +14,7 @@ import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js"
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
 import {settleBackstagePromises,publishBackstageRequests} from "./backstage-conversations.js";
+import {publishBackstageMemories} from "./backstage-memories.js";
 import {publishBackstageTeamMoments} from "./backstage-team-moments.js";
 import {settleBackstageMediations} from "./backstage-mediation.js";
 import {closeUnavailableBackstageRequests} from "./backstage-closure.js";
@@ -327,6 +328,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // One evidence-led partnership pitch may occupy this week's slot.
       await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
       await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);
+      // Evidence-backed recollections are certified before choosing new requests.
+      await publishBackstageMemories(tx,input.worldId,weekIndex+1);
       await publishBackstageRequests(tx,input.worldId,weekIndex+1);
       await publishBackstageTeamMoments(tx,input.worldId,weekIndex+1);
       await tx.query(

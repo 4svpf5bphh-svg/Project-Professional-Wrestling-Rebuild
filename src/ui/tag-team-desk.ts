@@ -84,12 +84,19 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   nameInput.type="text";nameInput.maxLength=70;
   nameInput.value=name;nameInput.placeholder="Name this team";
   nameInput.setAttribute("aria-label","New tag team name");nameInput.disabled=!editable();
-  nameInput.oninput=()=>{name=nameInput.value;resetCreate();};
+  nameInput.oninput=()=>{name=nameInput.value;resetCreate();submit.disabled=!canForm();};
   create.append(nameInput);
   const selected=el("div","ppw-pair-selected");
   selected.append(el("span","",one?"1. "+pickName(one):"1. First partner"),
    el("span","",two?"2. "+pickName(two):"2. Second partner"));
   create.append(selected);
+  const canForm=()=>editable()&&name.trim().length>0&&!!one&&!!two&&one!==two&&
+   view!.roster.find(x=>x.personId===one)?.division===
+   view!.roster.find(x=>x.personId===two)?.division;
+  const submit=btn(working?"Forming…":"✓ Form this team",()=>void form(),!canForm());
+  submit.classList.add("ppw-pair-submit");
+  create.append(submit,el("p","ppw-pair-instruction",
+   one&&two?"Partners selected. Name the team to make it official.":"Tap two compatible wrestlers below."));
   const find=document.createElement("input");
   find.type="search";find.value=rosterSearch;
   find.placeholder="Find a wrestler…";
@@ -141,7 +148,6 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   };
   find.oninput=()=>{rosterSearch=find.value;paintChoices();};
   paintChoices();
-  create.append(btn(working?"Forming…":"Form team",()=>void form(),!editable()));
   if(!view.canEdit)create.append(el("p","ppw-muted","The weekly deadline has passed. Team changes reopen next week."));
   root.append(create);
   const section=el("section","ppw-pair-list");

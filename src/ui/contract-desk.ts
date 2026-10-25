@@ -162,6 +162,32 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    recent.append(events);root.append(recent);
   }
+  if(view.dateDecisions?.length){
+   const history=document.createElement("details");history.className="ppw-contract-decisions";
+   history.open=initialFocus==="PENDING";
+   history.append(el("summary","","Additional-date decisions · "+view.dateDecisions.length));
+   const events=el("div","ppw-contract-decision-list");
+   for(const decision of view.dateDecisions){
+    const accepted=decision.status==="ACCEPTED";
+    const entry=el("article","ppw-contract-decision");
+    entry.append(el("small","ppw-contract-decision-state "+(accepted?
+     "ppw-contract-decision-accepted":"ppw-contract-decision-rejected"),
+      accepted?"ACCEPTED":"DECLINED"),
+     el("strong","",decision.name),
+     el("p","ppw-muted","Contract "+decision.contractId+" · "+
+      (accepted?"+":"")+(accepted?decision.additionalDates:0)+" dates granted"+
+      (accepted?(decision.additionalPayment>0?
+       " · $"+decision.additionalPayment.toLocaleString("en-GB")+" extra payment":
+       " · no extra payment"):
+       " · "+decision.additionalDates+" additional dates were requested")),
+     el("small","ppw-contract-decision-week",
+      "Decision · Year "+decision.year+" Week "+decision.week));
+    if(port.openWrestler)entry.append(btn("Wrestler dossier ↗",
+     ()=>port.openWrestler?.(decision.personId)));
+    events.append(entry);
+   }
+   history.append(events);root.append(history);
+  }
   const filters=el("div","ppw-contract-filters");
   const input=document.createElement("input");
   input.type="search";input.placeholder="Search your contracted wrestlers";

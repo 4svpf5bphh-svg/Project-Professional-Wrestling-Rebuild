@@ -18,14 +18,15 @@ const element=(tag:string,cls="",text="")=>{
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const week=(index:number)=>"YEAR "+(Math.floor(index/52)+1)+" / WEEK "+(index%52+1);
-export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPort,onBack?:()=>void){
+export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPort,
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="WORLD"){
  root.classList.add("ppw-editor","ppw-championship-desk");
  root.replaceChildren(element("p","ppw-muted","Opening championship records…"));
  try{
   const directory=await port.loadDirectory();
   const header=element("header","ppw-title-hero");
   const eyebrow=element("span","ppw-eyebrow","CHAMPIONSHIPS / THE RECORD BOOKS");
-  const heading=element("h1","","Championships");
+  const heading=element("h1","",initialScope==="MINE"?"My Champions":"World Championships");
   const subtitle=element("p","ppw-muted",
    directory.worldName+" · Year "+directory.year+" · Week "+directory.week);
   if(onBack){
@@ -47,21 +48,38 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const o=document.createElement("option");o.value=v;o.textContent=t;division.append(o);
   }
   const facts=element("section","ppw-title-overview");
-  const activeTitles=directory.titles.filter(t=>t.status==="ACTIVE");
-  for(const [name,value] of [
-   ["WORLD TITLES",directory.titles.length],
-   ["ACTIVE BELTS",activeTitles.length],
-   ["REIGNING CHAMPIONS",activeTitles.filter(t=>t.holderId!==null).length],
-  ] as const){
-   const box=element("article","ppw-title-overview-fact");
-   box.append(element("small","",name),element("strong","",String(value)));
-   facts.append(box);
-  }
+  let scope=initialScope;
+  const scopeTabs=element("nav","ppw-title-scope-tabs");
+  scopeTabs.setAttribute("aria-label","Championship scope");
+  const mine=element("button","ppw-title-back","My Champions") as HTMLButtonElement;
+  const world=element("button","ppw-title-back","World Championships") as HTMLButtonElement;
+  mine.type=world.type="button";
+  mine.onclick=()=>{scope="MINE";heading.textContent="My Champions";update();};
+  world.onclick=()=>{scope="WORLD";heading.textContent="World Championships";update();};
+  scopeTabs.append(mine,world);
+  // The headline totals always match the selected promotion scope.
+  const updateFacts=()=>{
+   const own=scope==="MINE"?directory.titles.filter(t=>
+    t.promotionId===directory.viewerPromotionId):directory.titles;
+   const live=own.filter(t=>t.status==="ACTIVE");
+   facts.replaceChildren();
+   for(const [name,value] of [
+    [scope==="MINE"?"MY TITLES":"WORLD TITLES",own.length],
+    ["ACTIVE BELTS",live.length],
+    ["REIGNING CHAMPIONS",live.filter(t=>t.holderId!==null).length],
+   ] as const){
+    const box=element("article","ppw-title-overview-fact");
+    box.append(element("small","",name),element("strong","",String(value)));
+    facts.append(box);
+   }
+  };
+  updateFacts();
   const tabs=element("div","ppw-title-filters");
   tabs.append(search,status,division);
   const summary=element("p","ppw-title-summary");
   const list=element("section","ppw-title-list");
-  root.replaceChildren(header,facts,tabs,summary,list);
+  const noTitles=element("p","ppw-title-scope-empty","No championships in this view yet.");
+  root.replaceChildren(header,scopeTabs,facts,tabs,summary,list,noTitles);
   const buckets=new Map<string,{card:HTMLElement;title:ChampionshipCard}>();
   function titleCard(title:ChampionshipCard){
    const details=document.createElement("details");
@@ -175,13 +193,17 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const query=search.value.trim().toLocaleLowerCase();
    let shown=0;
    for(const {card,title} of buckets.values()){
-    const match=(status.value==="ALL"||status.value===title.status)&&
+    const match=(scope==="WORLD"||title.promotionId===directory.viewerPromotionId)&&
+     (status.value==="ALL"||status.value===title.status)&&
      (division.value==="ALL"||division.value===title.division)&&
      (!query||[title.name,title.promotionName,title.holderName??""]
       .some(s=>s.toLocaleLowerCase().includes(query)));
     card.hidden=!match;if(match)shown++;
    }
-   summary.textContent=shown+" of "+directory.titles.length+" championships"+
+   mine.setAttribute("aria-pressed",String(scope==="MINE"));
+   world.setAttribute("aria-pressed",String(scope==="WORLD"));
+   updateFacts();noTitles.hidden=shown!==0;
+   summary.textContent=shown+" of "+(scope==="MINE"?directory.titles.filter(t=>t.promotionId===directory.viewerPromotionId).length:directory.titles.length)+" championships"+
     " · "+directory.titles.filter(t=>t.status==="ACTIVE").length+" active";
   };
   search.addEventListener("input",update);
@@ -194,7 +216,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
   const error=element("p","ppw-alert ppw-error",
    e instanceof Error?e.message:"Championship history unavailable");
   const retry=element("button","ppw-title-more","Try again") as HTMLButtonElement;
-  retry.type="button";retry.onclick=()=>void mountChampionshipDesk(root,port,onBack);
+  retry.type="button";retry.onclick=()=>void mountChampionshipDesk(root,port,onBack,initialScope);
   root.replaceChildren(error,retry);
  }
 }

@@ -161,7 +161,58 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    }
    overview.append(notes);
   }
+
   root.append(overview);
+  const meeting=el("section","ppw-staff-panel ppw-staff-meetings");
+  meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
+   el("h2","","Around the table"),
+   el("p","ppw-staff-muted",
+    "Eight departments. Each brief comes from your promotion's recorded business and completed shows; vacant departments have basic house cover."));
+  const attendees=el("div","ppw-staff-meeting-grid");
+  for(const brief of view.meetings??[]){
+   const slot=el("details","ppw-staff-meeting-brief");
+   const lead=el("summary","");
+   const caption=el("div","");
+   caption.append(el("span","ppw-staff-kicker",roles(brief.role)),
+    el("strong","",brief.staffName??"Position vacant · house cover"));
+   lead.append(caption);slot.append(lead);
+   slot.append(el("p","ppw-staff-muted",brief.message));
+   if(brief.staffName&&brief.personality)
+    slot.append(el("small","ppw-staff-voice",
+     brief.personality==="FRANK"?"A direct assessment from your department lead":
+     brief.personality==="PATIENT"?"Measured advice from your department lead":
+     brief.personality==="ECCENTRIC"?"An unconventional take from your department lead":
+     brief.personality==="LOYAL"?"Advice grounded in team continuity":
+     "An ambitious eye on the next opportunity"));
+   if(brief.target==="contracts"&&port.openContracts)
+    slot.append(button("Review contracts",()=>port.openContracts?.()));
+   if(brief.target==="roster"&&port.openRoster)
+    slot.append(button("Review roster",()=>port.openRoster?.()));
+   if(brief.target==="programmes"&&port.openProgrammes)
+    slot.append(button("Review programmes",()=>port.openProgrammes?.()));
+   if(brief.target==="gorilla"&&port.openGorilla)
+    slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
+   attendees.append(slot);
+  }
+  meeting.append(attendees);root.append(meeting);
+  const rank=el("section","ppw-staff-panel ppw-staff-rankings");
+  rank.append(el("span","ppw-staff-kicker","PROMOTION RECORD BOOK"),
+   el("h2","","Your in-ring leaders"),
+   el("p","ppw-staff-muted",
+    "Current roster only · completed matches for this promotion · ordered by verified wins, then appearances. No popularity or manual ranking boosts."));
+  const ladder=el("div","ppw-staff-rank-list");
+  if(!(view.ownerRankings??[]).length)
+   ladder.append(el("p","ppw-staff-muted",
+    "No completed matches yet for the current roster in your promotion."));
+  for(const [index,wrestler] of (view.ownerRankings??[]).entries()){
+   const item=el("article","ppw-staff-rank-item");
+   item.append(el("strong","ppw-staff-rank-position",String(index+1)),
+    el("div","",wrestler.name),
+    el("span","",wrestler.wins+" wins / "+wrestler.matches+" matches"+
+     (wrestler.averageStars===null?"":" · "+Number(wrestler.averageStars).toFixed(2)+"★")));
+   ladder.append(item);
+  }
+  rank.append(ladder);root.append(rank);
   if(port.saveGorilla){
    const gorilla=el("section","ppw-staff-panel ppw-gorilla-policy");
    gorilla.append(el("span","ppw-staff-kicker","GORILLA POSITION"),
@@ -275,6 +326,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("small","","CRAFT "+candidate.craft+" · PEOPLE "+candidate.people+
      " · RELIABILITY "+candidate.reliability),
     el("small","","ASKING "+money(candidate.weeklySalary)+"/week"));
+   if(candidate.formerWrestlerId)identity.append(el("small","",
+    "FORMER WRESTLER · "+(candidate.careerNote??"Verified career experience")));
    if(former)identity.append(el("small","",
     "PREVIOUSLY: "+former.promotionName+" · staff career record"));
    const amount=salaryInput(candidate.staffId,candidate.weeklySalary);
@@ -326,6 +379,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    LOYAL:"Places trust, stable teams and relationships first.",
    ECCENTRIC:"Brings unusual ideas and an unconventional approach."
   };
+  if(member.formerWrestlerId)profile.append(el("p","",
+   "Former wrestler · "+(member.careerNote??"Verified career history")));
   profile.append(el("p","",temperament[member.personality]),
    el("p","",roles(member.role)+" specialist · "+member.specialism));
   const attributes=el("div","ppw-staff-attribute-list");

@@ -269,3 +269,27 @@ html[data-ppw-screen="backstage"]:has(.ppw-messenger-thread) #game{padding-botto
 .ppw-angle-broadcast-placeholder{text-align:center;font-size:clamp(20px,5vw,29px);
  font-weight:950;letter-spacing:.07em;color:#ffe6b7}
 .ppw-angle-broadcast .ppw-broadcast-side-name{font-size:clamp(12px,3vw,18px)}
+
+/* Portraits are visible at ticket size; dense cards alone expand. */
+.ppw-match-broadcast{gap:5px;padding:10px 11px;min-height:0}
+.ppw-match-broadcast .ppw-broadcast-event{font-size:clamp(18px,4.9vw,27px)}
+.ppw-match-broadcast .ppw-broadcast-promotion{font-size:9px}
+.ppw-match-broadcast .ppw-broadcast-format{font-size:10px;letter-spacing:.08em}
+.ppw-match-broadcast .ppw-broadcast-main,.ppw-match-broadcast .ppw-broadcast-championship{
+ padding:3px 7px;font-size:9px}
+.ppw-match-broadcast .ppw-broadcast-brand-mark{align-self:center}
+.ppw-match-broadcast .ppw-broadcast-lineup{margin:1px 0 2px;gap:5px}
+.ppw-match-broadcast .ppw-broadcast-side{gap:4px}
+.ppw-match-broadcast .ppw-broadcast-side-name{font-size:clamp(11px,3.2vw,16px);line-height:1.08}
+.ppw-match-broadcast .ppw-broadcast-footer{font-size:8px;letter-spacing:.12em}
+.ppw-broadcast-portraits{display:flex;align-items:center;justify-content:center;
+ gap:3px;min-width:0;width:100%}
+.ppw-broadcast-portraits>.ppw-broadcast-portrait{flex:0 1 auto;min-width:0;
+ width:clamp(46px,13vw,77px);height:clamp(78px,22vw,112px);object-fit:cover}
+.ppw-match-broadcast .ppw-broadcast-multi .ppw-broadcast-side{padding:7px 3px}
+.ppw-angle-broadcast-spotlight{min-height:0;gap:5px;flex-wrap:nowrap;padding:3px 0}
+.ppw-angle-broadcast-person{min-width:0;flex:1}
+.ppw-angle-broadcast .ppw-broadcast-portrait{max-width:100%;height:clamp(78px,22vw,108px)}
+@media(max-width:390px){.ppw-match-broadcast{padding:8px 7px}
+ .ppw-broadcast-portraits>.ppw-broadcast-portrait{width:clamp(40px,12vw,65px)}
+ .ppw-match-broadcast .ppw-broadcast-versus{font-size:24px}}

@@ -75,13 +75,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const scoreWrap=node("div","ppw-result-score-wrap");
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
   node("span","ppw-result-score-label","CROWD / 100"));
- append(header,append(node("div","ppw-result-hero-main"),titleWrap,scoreWrap));
+ append(header,append(node("div","ppw-result-hero-main"),titleWrap));
+ const firstMoment=showBroadcastHighlights(show.entries)[0];
+ if(firstMoment)header.append(node("p","ppw-result-lead",firstMoment.headline));
  const pulseRow=node("div","ppw-result-pulse");
  append(pulseRow,
   metric(String(show.matchCount),"MATCHES"),
   metric(String(show.angleCount),"ANGLES"),
   metric(String(pulse.hotMoments),"HOT MOMENTS"));
- append(header,pulseRow);
+ // Verified operational numbers live in optional manager analysis, not the headline.
  const flowScores=showCrowdFlow(show);
  const crowdFlow=node("section","ppw-crowd-flow");
  if(flowScores.length>=2){
@@ -130,18 +132,24 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const reactions=showReactionWire(show);
  const noise=node("section","ppw-crowd-noise");
  if(reactions.length){
-  append(noise,node("span","ppw-eyebrow","PPW / CROWD NOISE"),
+  append(noise,node("span","ppw-eyebrow","PPW / FICTIONAL FAN REACTIONS"),
    node("h2","ppw-crowd-noise-title","THE NOISE AFTER THE BELL"),
    node("p","ppw-crowd-noise-disclaimer",
-    "Generated ringside reactions based on recorded results — editorial flavour, not actual fan posts."));
+    "Fictional in-World fan chatter inspired by the completed show. Not real posts or accounts."));
   const wall=node("div","ppw-crowd-noise-wall");
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
    card.className="ppw-crowd-noise-card ppw-reaction-"+reaction.mood.toLowerCase();
    card.setAttribute("aria-label","Open source result for "+reaction.voice+": "+reaction.text);
    append(card,node("span","ppw-crowd-noise-voice",reaction.voice),
-    node("span","ppw-crowd-noise-quote",reaction.text),
-    node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
+    node("span","ppw-crowd-noise-quote",reaction.text));
+   if(reaction.reply){
+    const reply=node("span","ppw-crowd-noise-reply");
+    append(reply,node("span","ppw-crowd-noise-reply-voice",reaction.reply.voice),
+     node("span","ppw-crowd-noise-reply-text",reaction.reply.text));
+    card.append(reply);
+   }
+   card.append(node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
    card.onclick=()=>{
     setFilter("ALL");
     const target=storyLinks.get(reaction.slotId);
@@ -281,6 +289,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    node("p","",report.praise),
    node("p","",report.concern),
    node("p","",report.recommendation));
+  const strong=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
+  if(strong)office.append(node("p","ppw-muted","Standout bout: "+strong.headline));
  }
  const gorilla=show.gorillaLog;
  const position=gorilla?node("section","ppw-staff-show-report ppw-gorilla-log"):null;
@@ -289,13 +299,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    node("h2","","AT THE CURTAIN"),
    node("p","",gorilla.staffName+" · "+
     gorilla.policy.replaceAll("_"," ").toLowerCase()),
-   node("p","","Scripted winners, finishes and medical evidence were protected."));
+   node("p","","The crew's account of what happened between the curtain and the ring."));
   if(!gorilla.incidents.length)position.append(node("p","",
    "No exceptional production incident required a change of plan."));
   for(const incident of gorilla.incidents.slice(0,12)){
    const line=node("article","ppw-gorilla-incident");
+   const source=show.entries.find(entry=>entry.position===incident.position);
    line.append(node("strong","",incident.kind.replaceAll("_"," ")+
-    " · Card "+(incident.position+1)),
+    " · "+(source?.headline??"During the show")),
     node("p","",incident.evidence),
     node("p","",incident.choice.replaceAll("_"," ")+": "+incident.reason));
    position.append(line);
@@ -303,11 +314,20 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   if(gorilla.incidents.length>12)position.append(node("p","ppw-muted",
    "Additional production incidents remain in the official show log."));
   if(gorilla.crowdAdjustment>0)position.append(node("p","",
-   "Verified broadcast recovery: +"+gorilla.crowdAdjustment.toFixed(1)+
-   " to the show's crowd response. Match winners and ratings did not change."));
+   "Production recovered its rhythm, and the building responded."));
  }
- root.replaceChildren(header,...(flowScores.length>=2?[crowdFlow]:[]),
-  feature,...(position?[position]:[]),...(office?[office]:[]),timeline);
+ const analysis=document.createElement("details");
+ analysis.className="ppw-results-analysis";
+ analysis.append(node("summary","","MANAGER ANALYSIS · Audience & production"));
+ const stats=node("div","ppw-results-analysis-stats");
+ stats.append(scoreWrap,pulseRow);analysis.append(stats);
+ if(flowScores.length>=2)analysis.append(crowdFlow);
+ if(gorilla&&gorilla.crowdAdjustment>0)analysis.append(node("p","ppw-muted",
+  "Internal recovery adjustment: +"+gorilla.crowdAdjustment.toFixed(1)+
+  " audience response. Certified results remain unchanged."));
+ root.replaceChildren(header,...(featured.length?[highlights]:[]),
+  feature,timeline,...(reactions.length?[noise]:[]),
+  ...(office?[office]:[]),...(position?[position]:[]),analysis);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

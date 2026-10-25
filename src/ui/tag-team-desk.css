@@ -56,3 +56,13 @@
  color:#aee8ff;text-decoration:underline;text-underline-offset:3px;
  text-align:right;font-size:12px;padding:4px 12px}
 .ppw-pair-scout:focus-visible{outline:2px solid #8bdcff;outline-offset:2px}
+
+/* Form action belongs to the selected pairing, before the long roster picker. */
+.ppw-pair-create .ppw-pair-submit{display:block;width:100%;text-align:center;
+ background:linear-gradient(120deg,#2474a2,#12516e);border-color:#79d9f1;
+ color:#fff;font-size:15px;font-weight:850;min-height:49px}
+.ppw-pair-create .ppw-pair-submit:disabled{opacity:.6}
+.ppw-pair-instruction{margin:6px 0 12px;font-size:12px;color:#b6cddb}
+.ppw-pair-selected span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:390px){.ppw-pair-create{padding:12px}
+ .ppw-pair-selected{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}

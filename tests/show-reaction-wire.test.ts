@@ -38,8 +38,11 @@ test("critic and audience contradiction drives different safe reactions",()=>{
  const wire=showReactionWire(show([good,pop]));
  assert.equal(wire[0]!.source,"CRITIC_CROWD");
  assert.equal(wire[1]!.source,"CRITIC_CROWD");
- assert.match(wire[0]!.text,/stars|critical|quality/i);
- assert.match(wire[1]!.text,/critics|rating|crowd/i);
+ assert.match(wire[0]!.text,/technique|wrestling|quiet|critics/i);
+ assert.equal(wire[0]!.reply?.voice,"THE DIEHARD");
+ assert.match(wire[0]!.reply!.text,/audience/i);
+ assert.match(wire[1]!.text,/critics|technical|building/i);
+ assert.equal(wire[1]!.reply?.voice,"THE TAPE TRADER");
 });
 test("dirty finish reaction never assigns an unrecorded attacker",()=>{
  const bout=match("dq",70);
@@ -49,6 +52,7 @@ test("dirty finish reaction never assigns an unrecorded attacker",()=>{
  assert.doesNotMatch(noActor.text,/caught (Winner|Loser)|used by (Winner|Loser)/);
  bout.fallout!.finishCheaterName="Loser";
  assert.match(showReactionWire(show([bout]))[0]!.text,/Loser/);
+ assert.equal(showReactionWire(show([bout]))[0]!.reply?.voice,"THE SKEPTICAL SMARK");
 });
 test("refused, interrupted and successful angles stay distinguishable",()=>{
  const refused:ShowResultEntry={...base,type:"SEGMENT",slotId:"no",
@@ -100,4 +104,11 @@ test("submission and flash-pin reactions never guess specific manoeuvres",()=>{
  assert.match(byId.get("tap")!,/submission/);
  assert.match(byId.get("flash")!,/flash pin/);
  assert.doesNotMatch(wire.map(x=>x.text).join(" "),/crossface|roll-up|cradle/);
+});
+
+test("fictional fans do not speak in simulation scores or pass for real posts",()=>{
+ const title=match("belt");title.fallout!.title={name:"World Title",winnerName:"Winner",priorHolderName:"Loser",changed:true};
+ const bad=match("cold",20);const posts=showReactionWire(show([title,bad]));
+ assert.ok(posts.every(p=>!(/@|\b(?:\d+\/100|simulation|crowd score|execution score|protected finish|foreign object)\b/i).test(p.text)));
+ assert.ok(posts.every(p=>p.slotId==="belt"||p.slotId==="cold"));
 });

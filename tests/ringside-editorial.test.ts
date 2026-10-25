@@ -58,7 +58,23 @@ test("Move ownership is protected across the whole show",()=>{
  }
 });
 
+test("Ringside rejects identical long prose across separate matches",()=>{
+ const repeated="For a few seconds it felt as though every person in the building was willing the match to continue.";
+ const duplicated={...valid,slots:[
+  {...valid.slots[0],recap:repeated},
+  {...valid.slots[1],recap:repeated}
+ ]};
+ assert.throws(()=>validateRingsideCopy(duplicated,example),/repeated a full sentence/);
+ assert.deepEqual(validateRingsideCopy(valid,example),valid);
+});
 test("Ringside rejects simulation labels and score numbers",()=>{
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{
+  ...valid.slots[0],recap:"Omega got an 84/100 reaction score."
+ },valid.slots[1]]},example),/terminology|score/);
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{
+  ...valid.slots[0],recap:"The crowd loved it with a 92% crowd reaction."
+ },valid.slots[1]]},example),/numerical score/);
+
  assert.throws(()=>validateRingsideCopy({...valid,opening:"The crowd score was 71.9."},example),/terminology|numerical score/);
  assert.throws(()=>validateRingsideCopy({...valid,slots:[
   {...valid.slots[0],recap:"Omega claimed a protected finish."},valid.slots[1]]},example),/terminology/);
@@ -85,13 +101,16 @@ test("a six-slot article retains five AI recaps and replaces one false submissio
  }))};
  const candidate={...valid,slots:many.entries.map((s,i)=>({
   slotId:s.slotId,headline:"Omega survives the bout",
-  recap:i===3?"Omega won by submission.":"A V-Trigger and the One Winged Angel scored a clean pin."
+  recap:i===3?"Omega won by submission.":
+   "Encounter "+(i+1)+" ended after a V-Trigger and the One Winged Angel scored a clean pin."
  }))};
  const result=recoverRingsideCopy(candidate,many);
  assert.equal(result?.replaced,1);
  assert.equal(result?.review.slots[2]?.recap,candidate.slots[2]?.recap);
  assert.ok(!result?.review.slots[3]?.recap.includes("submission"));
  assert.ok(JSON.stringify(ringsideBrief(many)).length<JSON.stringify(ringsideFacts(many)).length);
+ assert.doesNotMatch(JSON.stringify(ringsideBrief(many)),/crowd":(?:[0-9]+)/);
+ assert.ok(ringsideBrief(many).slots.every(s=>typeof s.audienceMood==="string"));
  const allBad={...candidate,slots:candidate.slots.map(s=>({...s,recap:"Omega won by submission."}))};
  assert.equal(recoverRingsideCopy(allBad,many),null);
 });

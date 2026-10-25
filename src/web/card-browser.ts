@@ -158,18 +158,19 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
 }
 
 /** Public World title records; each reign page is a separate, bounded read. */
-export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="WORLD"){
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
    call("championshipHistory",{titlePromotionId,championshipId,cursor}),
   openWrestler:(id:string)=>{
-   const back=()=>void mountChampionshipsPage(root,scope,onBack);
+   const back=()=>void mountChampionshipsPage(root,scope,onBack,initialScope);
    return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),id,back);
   }
  };
- return mountChampionshipDesk(root,port,onBack);
+ return mountChampionshipDesk(root,port,onBack,initialScope);
 }
 
 function contractPort(call:ReturnType<typeof createCardClient>,
@@ -278,6 +279,7 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
    ()=>open("ROSTER")),
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),
    ()=>open("ROSTER")),
+  openChampionships:()=>void mountChampionshipsPage(root,scope,()=>open("ROSTER"),"MINE"),
   openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
    ()=>open("ROSTER")),
   backToBooking:scope.showId?()=>mountBookingPage(root,scope):undefined,

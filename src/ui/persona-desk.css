@@ -330,3 +330,20 @@
  color:#0c4c9b!important;background:#fff!important;
  box-shadow:0 1px 5px #1b3b5b1c!important;
 }
+
+/* Gimmick proposal is a separate composer, visible before the long list. */
+.ppw-messenger .ppw-gimmick-pitch-controls{display:grid;gap:7px;align-items:center;
+ grid-template-columns:minmax(0,1fr) auto;margin:8px 14px 12px;padding:9px 10px;
+ background:#1b314a;border:1px solid #4b749c;border-radius:13px}
+.ppw-messenger .ppw-gimmick-pick-name{color:#e5f4ff;font-size:12px;
+ font-weight:750;overflow-wrap:anywhere}
+.ppw-messenger .ppw-gimmick-submit{background:#0a84ff!important;color:#fff!important;
+ border:1px solid #64baff!important;border-radius:11px!important;
+ text-align:center!important;min-height:44px!important;padding:10px!important}
+.ppw-messenger .ppw-gimmick-submit:disabled{opacity:.52!important}
+.ppw-messenger .ppw-gimmick-choice[aria-pressed=true]{
+ background:linear-gradient(120deg,#125b94,#244b8b)!important;
+ border:2px solid #83dcff!important;box-shadow:inset 0 0 0 1px #a4e5ff!important}
+@media(max-width:390px){.ppw-messenger .ppw-gimmick-pitch-controls{
+ grid-template-columns:minmax(0,1fr)}
+ .ppw-messenger .ppw-gimmick-submit{width:100%}}

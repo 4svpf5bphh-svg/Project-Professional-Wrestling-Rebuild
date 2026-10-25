@@ -100,7 +100,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
-   persona:null,history:[],recentRequests:[],conversations:[],archetypes:[],
+   persona:null,history:[],recentRequests:[],conversations:[],memories:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
    worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
    canEdit:false,nextPitchWeek:0};
@@ -132,7 +132,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected,s.promotionId]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
    related_person_id:string|null;status:string;
    decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
    created_week_index:number;responded_week_index:number|null;
@@ -143,7 +143,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    observed_average_crowd:number|string|null;
    team_verified_matches:number|null;observed_execution_quality:number|string|null;
    rival_verified_matches:number|null;rival_professional_trust:number|string|null;
-   follow_through_week_index:number|null;follow_through_kind:string|null}>([
+   follow_through_week_index:number|null;follow_through_kind:string|null;
+   observed_absent_weeks:number|null;observed_losses:number|null;
+   relevant_title:string|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
@@ -151,13 +153,25 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "observed_average_crowd,",
    "team_verified_matches,observed_execution_quality,",
    "rival_verified_matches,rival_professional_trust,",
-   "follow_through_week_index,follow_through_kind",
+   "follow_through_week_index,follow_through_kind,",
+   "observed_absent_weeks,observed_losses,relevant_title",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
+  // Only the selected wrestler thread reads memory. Never inflate inbox
+  // reads or pull rival-promoter conversations into this person's history.
+  const memories=await tx.query<{kind:string;source_id:string;
+   occurred_week_index:number;importance:number}>([
+   "SELECT kind,source_id,occurred_week_index,importance",
+   "FROM ppw_backstage_memories WHERE world_id=$1 AND promotion_id=$2",
+   "AND person_id=$3 AND occurred_week_index>=greatest(0,$4-104)",
+   "ORDER BY importance DESC,occurred_week_index DESC,memory_id DESC LIMIT 9"
+  ].join(" "),[s.worldId,s.promotionId,selected,now]);
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
+   memories:memories.map(m=>({kind:m.kind,sourceId:m.source_id,
+    weekIndex:m.occurred_week_index,importance:m.importance})),
    conversations:[...conversations].reverse().map(x=>({
     conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
     status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
@@ -176,6 +190,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     averageExecution:x.observed_execution_quality===null?null:Number(x.observed_execution_quality),
     followThroughWeekIndex:x.follow_through_week_index,
     followThroughKind:x.follow_through_kind,
+    observedAbsentWeeks:x.observed_absent_weeks,
+    observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

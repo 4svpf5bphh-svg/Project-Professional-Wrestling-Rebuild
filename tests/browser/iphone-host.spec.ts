@@ -808,7 +808,7 @@ test("Backstage messages read and archive in place without fetching the entire i
  await page.goto("/#/backstage");
  const list=page.locator(".ppw-backstage-contact");
  await expect(list).toHaveCount(1);
- await expect(list.first()).toContainText("My deal is nearly up");
+ await expect(list.first()).toContainText(/(?:deal is nearly up|contract.s coming up|deal runs out)/i);
  const initial=methods.filter(m=>m==="backstage").length;
  await list.first().click();
  await expect(page.getByLabel("Conversation with Ada Stone")).toBeVisible();

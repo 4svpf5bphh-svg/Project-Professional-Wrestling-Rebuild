@@ -5,12 +5,13 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {rearmFailedRingsideReport} from "../src/db/admin-ringside-settings.js";
+import {RINGSIDE_PROMPT_VERSION} from "../src/domain/ringside-editorial.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Admin can retry exhausted failed Ringside once without rewriting completed results",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const db=postgresPool(url!,3),suffix=randomUUID(),world="ai-recovery-"+suffix,
-  promo="promotion",show="show",player="owner",failed="ringside-v4";
+  promo="promotion",show="show",player="owner",failed=RINGSIDE_PROMPT_VERSION;
  try{
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:world,name:"AI Recovery",seed:9,rulesetVersion:"test"});
