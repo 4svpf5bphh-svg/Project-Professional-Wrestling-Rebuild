@@ -167,6 +167,17 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    promotionId:promotion,playerId:owner});
   assert.equal(secondPass.weeklyMediaIncome,300000);
   assert.equal(secondPass.weeklySponsorIncome,25000);
+  // Old ratings do not finance automatic renewals forever. After six
+  // months without three current verified shows, the opportunity disappears.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=40 WHERE world_id=$1",[world]));
+  const stale=await readBusinessWorkspace(db.pool,{worldId:world,
+   promotionId:promotion,playerId:owner});
+  assert.equal(stale.commercialOffers.length,0);
+  await assert.rejects(signCommercialDeal(db.pool,{
+   ...command,expectedRevision:secondClaim.revision,
+   requestId:"commercial-old-results",offerCode:"BROADCAST_STABLE"
+  }),/no longer available/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_commercial_deals","ppw_show_economics",
