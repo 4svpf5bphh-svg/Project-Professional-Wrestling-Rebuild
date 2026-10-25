@@ -132,7 +132,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected,s.promotionId]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
    related_person_id:string|null;status:string;
    decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
    created_week_index:number;responded_week_index:number|null;
@@ -143,7 +143,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    observed_average_crowd:number|string|null;
    team_verified_matches:number|null;observed_execution_quality:number|string|null;
    rival_verified_matches:number|null;rival_professional_trust:number|string|null;
-   follow_through_week_index:number|null;follow_through_kind:string|null}>([
+   follow_through_week_index:number|null;follow_through_kind:string|null;
+   observed_absent_weeks:number|null;observed_losses:number|null;
+   relevant_title:string|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
@@ -151,7 +153,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "observed_average_crowd,",
    "team_verified_matches,observed_execution_quality,",
    "rival_verified_matches,rival_professional_trust,",
-   "follow_through_week_index,follow_through_kind",
+   "follow_through_week_index,follow_through_kind,",
+   "observed_absent_weeks,observed_losses,relevant_title",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
@@ -187,6 +190,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     averageExecution:x.observed_execution_quality===null?null:Number(x.observed_execution_quality),
     followThroughWeekIndex:x.follow_through_week_index,
     followThroughKind:x.follow_through_kind,
+    observedAbsentWeeks:x.observed_absent_weeks,
+    observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

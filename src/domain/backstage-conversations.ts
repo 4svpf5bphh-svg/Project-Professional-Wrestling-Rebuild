@@ -1,5 +1,5 @@
 /** Text is presentation; request, decision and certified match evidence are gameplay. */
-export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT";
+export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
  "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
  "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW";
@@ -14,6 +14,11 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  TAG_TEAM_PITCH:["EXPLORE_TEAM","NOT_NOW"],
  RIVALRY_PITCH:["EXPLORE_RIVALRY","NOT_NOW"],
  TEAM_MOMENT:[],
+ MEDICAL_SUPPORT:["TALK","DECLINE"],
+ BOOKING_OMISSION:["PROMISE_APPEARANCE","TALK","DECLINE"],
+ LOSS_STREAK:["TALK","PROMISE_APPEARANCE","DECLINE"],
+ TITLE_AMBITION:["TALK","DECLINE"],
+ TRUST_CHECK_IN:["TALK","DECLINE"],
 };
 export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  TALK:"Hear them out",DECLINE:"Turn down request",
@@ -42,7 +47,63 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  partnerName?:string;verifiedTagShows?:number|null;averageExecution?:number|null;
  workingVerifiedShows?:number|null;workingTrustDelta?:number|null;
  verifiedSinglesShows?:number|null;professionalTrust?:number|null;
-}){
+ observedAbsentWeeks?:number|null;observedLosses?:number|null;
+ relevantTitle?:string|null;
+},requestId=""){
+ // Pure, deterministic conversational inflection; never generate a new
+ // message just because a wrestler thread is reopened.
+ let hash=0;
+ for(const ch of requestId)hash=(Math.imul(hash,31)+ch.charCodeAt(0))|0;
+ const voice=requestId?Math.abs(hash%3):0;
+ const partner=evidence?.partnerName??"that wrestler";
+ const alternatives:Partial<Record<BackstageKind,string[]>>={
+  CONTRACT:["My deal is nearly up. Can we talk about what happens next?",
+   "My contract's coming up. I need to know where I stand with you.",
+   "I'd rather hear the plan before my deal runs out. Can we talk?"],
+  MORALE:["I'm not happy with how things are going. I need to feel valued.",
+   "I want to matter here. Right now I'm struggling to see how I fit.",
+   "We need a chat. This isn't the run I imagined."],
+  MOMENTUM:["I've lost momentum. Can you get me back in the ring?",
+   "I'm slipping off the radar. I'd love a match I can get my teeth into.",
+   "The buzz has gone quiet. What's the plan for me?"],
+  CREATIVE:["I need more of a voice on this show. Can I get some mic time or an angle?",
+   "Let me show some personality out there. I've got more than another entrance.",
+   "Give me a story or something worthwhile to say."],
+  PARTNERSHIP:["Our tag work with "+partner+" has slipped. Can we talk about fixing it?",
+   "Something isn't right between me and "+partner+". I'd rather sort it out.",
+   "I'm not asking to break up with "+partner+". I want this partnership to work."],
+  ROLE_USAGE:["My deal says I should feature near the top. I've done the matches. Where's the spot?",
+   "I signed to be a big part of the show, not an afterthought. Where's my featured match?",
+   "I've done my part in the ring. The featured spot we agreed on hasn't happened."],
+  RIVALRY_PITCH:["There's something there with "+partner+". The crowd feels it. Can we build a rivalry?",
+   "Every time I face "+partner+", there's an edge to it. We could make a proper story.",
+   "Give me a programme with "+partner+". We've shown the spark in our matches."],
+  TEAM_MOMENT:["The tag chemistry with "+partner+" is clicking. Let's keep building.",
+   "That felt good out there with "+partner+". We're understanding each other.",
+   "I think "+partner+" and I have something special together."],
+  TAG_TEAM_PITCH:["We have chemistry with "+partner+". Could we make this team official?",
+   "I reckon "+partner+" and I could be a real team. What do you say?",
+   "We have put the work in as a pair. Let's give the team a name."],
+  GIMMICK_PITCH:["The crowd response has been cold. Maybe a different character could work?",
+   "I'm not getting through to the audience with this character. Got another idea?",
+   "This version of me isn't clicking. Could we agree on a new direction?"],
+  MEDICAL_SUPPORT:["That injury has me on the sidelines. Can we talk about a plan for my return?",
+   "Recovery isn't fun. I'd like to know you'll still have a place for me when I'm cleared.",
+   "I'm doing the rehab work. Just don't forget about me while I'm out."],
+  BOOKING_OMISSION:["It's been a while since I appeared on a show. Is there still a place for me?",
+   "I keep seeing cards without my name on them. Can we change that?",
+   "I'm ready to wrestle, but I need to be booked first. What's the plan?"],
+  LOSS_STREAK:["I've taken a run of losses lately. I can handle losing, but where's the story going?",
+   "Another match, another loss. Tell me there's a direction to this.",
+   "I'm not afraid to put someone over. I don't want it to become my whole career."],
+  TITLE_AMBITION:["I had a shot at "+(evidence?.relevantTitle??"the championship")+". I want to earn another.",
+   "That title match still stays with me. Is there a path back into the picture?",
+   "I've tasted a championship chance. I'm not done chasing that belt."],
+  TRUST_CHECK_IN:["I remember that booking promise you made. It never happened. We need to talk.",
+   "You gave me your word and it fell through. Can I get a straight answer this time?",
+   "It's hard to put that missed promise behind us. Can we clear the air?"]
+ };
+ if(alternatives[kind])return alternatives[kind]![voice]!;
  switch(kind){
   case "CONTRACT":return "My deal is nearly up. Can we talk about what happens next?";
   case "MORALE":return "I'm not happy with how things are going. I need to feel valued.";

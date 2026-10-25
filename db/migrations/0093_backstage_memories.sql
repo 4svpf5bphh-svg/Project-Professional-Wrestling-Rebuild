@@ -30,3 +30,7 @@ ALTER TABLE ppw_backstage_requests ADD CONSTRAINT ppw_backstage_requests_kind_ch
  CHECK(kind IN ('CONTRACT','MORALE','MOMENTUM','CREATIVE','PARTNERSHIP',
  'ROLE_USAGE','GIMMICK_PITCH','TAG_TEAM_PITCH','RIVALRY_PITCH','TEAM_MOMENT',
  'MEDICAL_SUPPORT','BOOKING_OMISSION','LOSS_STREAK','TITLE_AMBITION','TRUST_CHECK_IN'));
+ALTER TABLE ppw_backstage_requests
+ ADD COLUMN observed_absent_weeks integer CHECK(observed_absent_weeks>=0),
+ ADD COLUMN observed_losses integer CHECK(observed_losses>=0),
+ ADD COLUMN relevant_title text CHECK(relevant_title IS NULL OR length(relevant_title)<=240);

@@ -424,7 +424,10 @@ export function mountPersonaDesk(root:HTMLElement,
      verifiedTagShows:item.verifiedTagShows,
      averageExecution:item.averageExecution,
      workingVerifiedShows:item.workingVerifiedShows,
-     workingTrustDelta:item.workingTrustDelta},item.conversationId)));
+     workingTrustDelta:item.workingTrustDelta,
+     observedAbsentWeeks:item.observedAbsentWeeks,
+     observedLosses:item.observedLosses,
+     relevantTitle:item.relevantTitle},item.conversationId)));
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
