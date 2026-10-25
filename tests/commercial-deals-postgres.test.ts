@@ -102,9 +102,35 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   assert.deepEqual(others.commercialAgreements,[]);
   await assert.rejects(readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:secondOwner}),/access denied/);
+  // A well-received, certified show can raise awareness only where this
+  // broadcaster has actually staged a show beyond its home market.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_booking_drafts
+    (world_id,draft_id,promotion_id,year,week,status,show_day,
+     show_name,event_type,market_id)
+    VALUES($1,'regional-tour', $2,1,16,'SUBMITTED',2,
+     'An Away-Market Event','REGULAR','market-1')`,[world,promotion]);
+   await tx.query(`INSERT INTO ppw_completed_shows
+    (world_id,promotion_id,show_id,year,week,resolution_id,
+     crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,'regional-tour',1,16,'tour-receipt',
+     83,'{}'::jsonb,repeat('f',64))`,[world,promotion]);
+  });
+  const beforeTour=await withWorldTransaction(db.pool,tx=>tx.query<{
+   awareness:number
+  }>(`SELECT awareness FROM ppw_promotion_market_states
+   WHERE world_id=$1 AND promotion_id=$2 AND market_id='market-1'`,
+   [world,promotion]));
   // Test the existing locked-World settlement against disposable World data.
   const firstSettlement=await withWorldTransaction(db.pool,
    tx=>settleCommercialWorldWeek(tx,world,1,16));
+  assert.equal(firstSettlement.earnedMarkets,1);
+  const afterTour=await withWorldTransaction(db.pool,tx=>tx.query<{
+   awareness:number
+  }>(`SELECT awareness FROM ppw_promotion_market_states
+   WHERE world_id=$1 AND promotion_id=$2 AND market_id='market-1'`,
+   [world,promotion]));
+  assert.ok(afterTour[0]!.awareness>beforeTour[0]!.awareness);
   assert.equal(firstSettlement.aiDeals,2,
    "One AI broadcaster and one AI sponsor are signed from the same earned evidence");
   const npc=await withWorldTransaction(db.pool,tx=>tx.query<{
