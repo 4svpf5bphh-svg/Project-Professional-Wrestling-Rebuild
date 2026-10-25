@@ -8,7 +8,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {publishCertifiedWorldNews} from "../src/db/world-news.js";
-import {readWorldHeritage} from "../src/db/world-honours.js";
+import {readWorldHeritage,publishYearEndHallOfFame} from "../src/db/world-honours.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -102,6 +102,13 @@ test("complete World year settles earned honours, career Hall and moments once f
   assert.equal(response.published,true);
   assert.equal((await withWorldTransaction(db.pool,tx=>
    publishCertifiedWorldNews(tx,world,1,52))).published,false);
+  // Match the production sequencing: career retirement is settled before
+  // the year-end Hall decision, inside the same authoritative transaction.
+  assert.equal(await withWorldTransaction(db.pool,tx=>
+   publishYearEndHallOfFame(tx,world,1,52)),1);
+  assert.equal(await withWorldTransaction(db.pool,tx=>
+   publishYearEndHallOfFame(tx,world,1,52)),0,
+   "A deserving retiree cannot be inducted twice");
   const first=await readWorldHeritage(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owners[0]!});
   const second=await readWorldHeritage(db.pool,{
