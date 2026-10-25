@@ -109,3 +109,24 @@
  .ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-undertaker-card,
  .ppw-undertaker-reveal-scene::before{animation:none}
 }
+
+/* A portalled, wholly opaque stage prevents the Vault from bleeding through on iOS. */
+html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
+ overflow:hidden!important;overscroll-behavior:none}
+.ppw-legend-reveal{
+ inset:0!important;height:100dvh;max-height:100dvh;box-sizing:border-box;
+ z-index:3000;background:#080611;overflow-y:auto;overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;touch-action:pan-y;
+ padding:calc(20px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
+ calc(28px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.ppw-legend-reveal-scene{min-height:100%;max-width:430px;box-sizing:border-box}
+.ppw-legend-reveal[data-tier="IMMORTAL"]{
+ background:radial-gradient(ellipse at 50% 38%,#30173f 0%,#0a0511 52%,#000 90%)}
+.ppw-legend-reveal button{flex-shrink:0;max-width:100%}
+.ppw-legend-price,.ppw-legend-shortfall{font-size:.8rem;line-height:1.45;margin:.1rem 0}
+.ppw-legend-shortfall{color:#f9c888}
+@media(max-width:390px){.ppw-legend-reveal-scene{gap:.65rem}
+ .ppw-legend-reveal-scene h2{font-size:clamp(1.8rem,10vw,3rem)}
+ .ppw-legend-reveal .ppw-undertaker-card{width:min(62vw,255px)!important}}
+@media(prefers-reduced-motion:reduce){.ppw-legend-reveal,
+ .ppw-legend-reveal *{animation:none!important;transition:none!important}}
