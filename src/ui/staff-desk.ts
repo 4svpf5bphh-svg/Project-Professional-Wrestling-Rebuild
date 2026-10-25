@@ -37,6 +37,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let days=new Set<number>(),venues=new Set<string>(),requestId="";
  let department:StaffRole="ROAD_AGENT",termWeeks:52|104=52;
  let confirming="",renewing="";
+ let pane:"MEETINGS"|"TEAM"|"CONTRACTS"|"MARKET"="MEETINGS";
  const offers=new Map<string,number>();
  const hydrate=(v:StaffView)=>{
   view=v;fallback=v.allowUnfinishedFallback;logistics=v.allowLogisticsFallback;
@@ -137,32 +138,19 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    card.append(el("strong","",value),el("small","",label));cards.append(card);
   }
   overview.append(cards);
-  if(view.notices.length){
-   const notes=el("div","ppw-staff-advice");
-   notes.append(el("h2","","From your team"));
-   for(const info of view.notices){
-    const card=el("article","ppw-staff-note");
-    card.append(el("strong","",info.department),el("p","",info.message));
-    const employee=view.employees.find(e=>info.department.startsWith(e.name));
-    const tone=employee?.personality==="FRANK"?"I'll be direct. ":
-     employee?.personality==="ECCENTRIC"?"My clipboard has a theory. ":
-     employee?.personality==="PATIENT"?"I think it's worth considering. ":
-     employee?.personality==="LOYAL"?"For the good of our roster, ":
-     employee?.personality==="AMBITIOUS"?"Here's where we can get ahead. ":"";
-    const chat=el("details","ppw-staff-conversation");
-    chat.append(el("summary","","Talk to "+(employee?.name??"the department")));
-    chat.append(el("p","",tone+info.message));
-    card.append(chat);
-    if(info.target!=="staff")
-     card.append(button("Open "+info.target+" ↗",
-      ()=>info.target==="contracts"?port.openContracts?.():
-       info.target==="roster"?port.openRoster?.():port.openProgrammes?.()));
-    notes.append(card);
-   }
-   overview.append(notes);
-  }
 
   root.append(overview);
+  const nav=el("nav","ppw-staff-nav");
+  nav.setAttribute("aria-label","Staff Office sections");
+  for(const [key,label] of [
+   ["MEETINGS","Meetings"],["TEAM","My Staff"],
+   ["CONTRACTS","Contracts"],["MARKET","Staff Market"]
+  ] as const){
+   const tab=button(label,()=>{pane=key;render();});
+   tab.setAttribute("aria-current",pane===key?"page":"false");
+   nav.append(tab);
+  }
+  root.append(nav);
   const meeting=el("section","ppw-staff-panel ppw-staff-meetings");
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
@@ -194,25 +182,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
    attendees.append(slot);
   }
-  meeting.append(attendees);root.append(meeting);
-  const rank=el("section","ppw-staff-panel ppw-staff-rankings");
-  rank.append(el("span","ppw-staff-kicker","PROMOTION RECORD BOOK"),
-   el("h2","","Your in-ring leaders"),
-   el("p","ppw-staff-muted",
-    "Current roster only · completed matches for this promotion · ordered by verified wins, then appearances. No popularity or manual ranking boosts."));
-  const ladder=el("div","ppw-staff-rank-list");
-  if(!(view.ownerRankings??[]).length)
-   ladder.append(el("p","ppw-staff-muted",
-    "No completed matches yet for the current roster in your promotion."));
-  for(const [index,wrestler] of (view.ownerRankings??[]).entries()){
-   const item=el("article","ppw-staff-rank-item");
-   item.append(el("strong","ppw-staff-rank-position",String(index+1)),
-    el("div","",wrestler.name),
-    el("span","",wrestler.wins+" wins / "+wrestler.matches+" matches"+
-     (wrestler.averageStars===null?"":" · "+Number(wrestler.averageStars).toFixed(2)+"★")));
-   ladder.append(item);
-  }
-  rank.append(ladder);root.append(rank);
+  meeting.append(attendees);if(pane==="MEETINGS")root.append(meeting);
   if(port.saveGorilla){
    const gorilla=el("section","ppw-staff-panel ppw-gorilla-policy");
    gorilla.append(el("span","ppw-staff-kicker","GORILLA POSITION"),
@@ -238,7 +208,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    if(!view.employees.some(e=>e.role==="ROAD_AGENT"))
     gorilla.append(el("p","ppw-staff-muted",
      "Basic house cover protects the script. Hire a Road Agent to delegate competent on-air adaptations."));
-   root.append(gorilla);
+   if(pane==="MEETINGS")root.append(gorilla);
   }
   const team=el("section","ppw-staff-panel ppw-staff-team");
   team.append(el("span","ppw-staff-kicker","YOUR BACKSTAGE CREW"),
@@ -247,6 +217,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const teamRows=el("div","ppw-staff-team-list");
   for(const role of STAFF_ROLES){
    const member=view.employees.find(e=>e.role===role);
+   if(pane==="CONTRACTS"&&!member)continue;
    const item=el("article","ppw-staff-role-row");
    item.append(el("span","ppw-staff-manager-avatar",member?
     member.name.split(" ").slice(0,2).map(w=>w[0]).join(""):"＋"));
@@ -262,6 +233,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
    item.append(detail);
    if(member){
+    if(pane==="CONTRACTS"){
     const actions=el("div","ppw-staff-actions");
     if(member.weeksRemaining<=13){
      if(renewing===member.employmentId){
@@ -281,13 +253,19 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
       button("Cancel",()=>{confirming="";render();}));
     }else actions.append(button("Release",()=>{confirming=member.employmentId;render();},
      saving||!view.canEdit));
-    item.append(actions,staffDossier(member));
+    item.append(actions);
+    }else item.append(staffDossier(member));
    }else item.append(button("Recruit",()=>{
-    department=role;render();root.querySelector("#ppw-staff-market")?.scrollIntoView({block:"start"});
+    department=role;pane="MARKET";render();
    }));
    teamRows.append(item);
   }
-  team.append(teamRows);root.append(team);
+  team.append(teamRows);
+  if(pane==="CONTRACTS"){
+   team.querySelector("h2")!.textContent="Staff contracts";
+   team.querySelector(".ppw-staff-muted")!.textContent="Renew approaching terms or buy out an existing agreement. Staff wages are paid weekly.";
+  }
+  if(pane==="TEAM"||pane==="CONTRACTS")root.append(team);
   const market=el("section","ppw-staff-panel ppw-staff-market");
   market.id="ppw-staff-market";
   market.append(el("span","ppw-staff-kicker","SHARED WORLD TALENT"),
@@ -337,7 +315,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     saving||!view.canEdit||view.employees.some(e=>e.role===department)));
    card.append(identity,staffDossier(candidate),controls);candidates.append(card);
   }
-  market.append(candidates);root.append(market);
+  market.append(candidates);if(pane==="MARKET")root.append(market);
   const continuity=el("section","ppw-staff-panel");
   continuity.append(el("h2","","Show cover and delegation"),
    toggle("Emergency cover for an unfinished show",
@@ -366,7 +344,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    "This week's scheduling instructions are already frozen."));
   continuity.append(button(saving?"Saving…":"Save staff instructions",()=>void save(),
    !view.canEdit||saving||loading));
-  root.append(continuity);
+  if(pane==="MEETINGS")root.append(continuity);
  }
  function staffDossier(member:StaffView["market"][number]){
   const details=el("details","ppw-staff-dossier");
