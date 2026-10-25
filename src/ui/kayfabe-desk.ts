@@ -91,7 +91,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("p","ppw-kp-muted","Achievements come from verified completed shows. Cosmetics only change their presentation."));
   const badgeList=el("div","ppw-kp-achievements");
   for(const a of view.achievements){
-   const article=el("article","ppw-kp-badge"+(a.earned?" ppw-kp-earned":""));
+   const article=el("article","ppw-kp-badge"+(a.earned?" ppw-kp-earned":"")+
+    (a.earned&&view.activeBadge?" ppw-kp-achievement-"+view.activeBadge.toLowerCase():""));
    article.append(el("span","ppw-kp-badge-icon",a.earned?"★":"◇"),
     el("strong","",a.label),
     el("small","",a.earned?"Unlocked":a.progress+" / "+a.target+" shows"));
@@ -111,13 +112,15 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    const detail=el("div","ppw-kp-item-copy");
    detail.append(el("strong","",item.label),
     el("small","",owned?"Owned · account-wide":format(item.price)));
-   const activate=isBrand&&view.activeBrand===code;
+   const activate=isBrand?view.activeBrand===code:
+    view.activeBadge===item.sku.replace("BADGE_","");
    article.append(symbol,detail,
-    btn(activate?"Applied":owned?(isBrand?"Apply":"Owned"):"Unlock",
-     ()=>void run(owned?
+    btn(activate?"Applied":owned?"Apply":"Unlock",
+     ()=>void run(owned?isBrand?
       {kind:"APPLY_BRAND",sku:item.sku as "BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD",requestId:crypto.randomUUID()}:
+      {kind:"APPLY_BADGE",sku:item.sku as "BADGE_GOLD"|"BADGE_PLATINUM",requestId:crypto.randomUUID()}:
       {kind:"BUY",sku:item.sku,requestId:crypto.randomUUID()}),
-     busy||activate||(!isBrand&&owned)||(!owned&&view.balance<item.price)));
+     busy||activate||(!owned&&view.balance<item.price)));
    list.append(article);
   }
   shop.append(list);root.append(shop);
