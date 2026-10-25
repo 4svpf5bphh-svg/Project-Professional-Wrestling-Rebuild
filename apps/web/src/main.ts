@@ -9,7 +9,8 @@ import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
  type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
-import type {CardSessionScope} from "../../../src/web/card-client.js";
+import {createCardClient,type CardSessionScope} from "../../../src/web/card-client.js";
+import {clearLegendRevealPortal,type LegendsVaultView} from "../../../src/ui/legends-vault.js";
 import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
 import "../screen.css";
 import "../polish.css";
@@ -39,6 +40,7 @@ const game=document.querySelector<HTMLElement>("#game")!;
 const account=document.querySelector<HTMLElement>("#account")!;
 const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
+let pendingLegends:LegendsVaultView|null=null;
 // Latest session wins when overlapping requests complete out of order.
 let sessionReadSequence=0;
 let drawerExpanded=false;
