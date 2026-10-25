@@ -11,6 +11,42 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  year:number,week:number){
  const weekIndex=(year-1)*52+week-1,nextWeek=weekIndex+1;
  if(!worldId||weekIndex<0||week<1||week>52)throw new Error("Invalid commercial settlement");
+ // A successful broadcast carries recognition to previously visited
+ // away markets, but never fabricates an international audience in an unknown
+ // region. A current certified show with real crowd response is required.
+ // At most half an awareness point per successful week; the existing market
+ // response engine remains the primary source of territory growth.
+ const min=(Math.max(0,weekIndex-12)),lowerYear=Math.floor(min/52)+1,
+  lowerWeek=min%52+1;
+ const gained=await tx.query<{promotion_id:string}>(`
+ WITH certified AS (
+  SELECT c.promotion_id,avg(c.crowd_response)::double precision AS crowd
+  FROM ppw_completed_shows c
+  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
+  GROUP BY c.promotion_id
+ )
+ UPDATE ppw_promotion_market_states s
+ SET awareness=least(100.0,s.awareness+
+  least(0.5,(certified.crowd-60.0)/30.0))
+ FROM certified
+ JOIN ppw_promotions p ON p.world_id=$1
+  AND p.promotion_id=certified.promotion_id AND p.lifecycle='ACTIVE'
+ JOIN ppw_commercial_deals agreement ON agreement.world_id=p.world_id
+  AND agreement.promotion_id=p.promotion_id
+  AND agreement.kind='BROADCAST' AND agreement.status='ACTIVE'
+ WHERE s.world_id=p.world_id AND s.promotion_id=p.promotion_id
+  AND s.market_id<>p.home_market_id AND certified.crowd>=66
+  AND EXISTS(
+   SELECT 1 FROM ppw_completed_shows done
+   JOIN ppw_booking_drafts booked ON booked.world_id=done.world_id
+    AND booked.draft_id=done.show_id
+   WHERE done.world_id=s.world_id AND done.promotion_id=s.promotion_id
+    AND booked.market_id=s.market_id
+    AND (done.year,done.week)>=($4::integer,$5::integer)
+    AND (done.year,done.week)<=($2::integer,$3::integer)
+  )
+ RETURNING s.promotion_id
+ `,[worldId,year,week,lowerYear,lowerWeek]);
  // Close the exact ending week's active deals AFTER the week's financial credit.
  // This also restores the original income and reach baselines, without
  // reverting legitimate territory awareness earned while the deal was live.
@@ -132,10 +168,10 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    WHERE p.world_id=$1 AND p.promotion_id=ai.promotion_id
   `,[worldId,nextWeek]);
  }
- if(expired.length||proposals.length)await tx.query(`
+ if(expired.length||proposals.length||gained.length)await tx.query(`
   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
   VALUES($1,$2,$3,'COMMERCIAL_WEEK_SETTLED',
-   jsonb_build_object('expired',$4::integer,'newAiDeals',$5::integer))
- `,[worldId,year,week,expired.length,proposals.length]);
- return {expired:expired.length,aiDeals:proposals.length};
+   jsonb_build_object('expired',$4::integer,'newAiDeals',$5::integer,'earnedMarkets',$6::integer))
+ `,[worldId,year,week,expired.length,proposals.length,gained.length]);
+ return {expired:expired.length,aiDeals:proposals.length,earnedMarkets:gained.length};
 }
