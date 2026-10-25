@@ -341,6 +341,58 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    root.append(history);
   }
+  const now=(view.worldYear-1)*52+view.worldWeek-1;
+  const cooldown=view.nextPitchWeek>now;
+  if(cooldown)root.append(el("p","ppw-muted",
+   "Reconsideration available in "+(view.nextPitchWeek-now)+" weeks."));
+  if(view.canEdit&&!cooldown&&persona){
+   root.append(el("h3","","Pitch a new character"),
+    el("p","ppw-muted","These are creative archetypes, not simple face/heel switches. Your wrestler can accept or reject the pitch, and retains ownership of their identity."));
+   const filter=document.createElement("input");
+   filter.type="search";filter.placeholder="Search gimmicks or families";
+   filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
+   const options=el("div","ppw-persona-options");
+   const availableArchetypes=view.archetypes;
+   const refreshOptions=()=>{
+    options.replaceChildren();
+    // Surface the catalogue's variety on first opening; the initial
+    // classic Hero/Villain entries must not hide the deeper wrestling ideas.
+    const eligible=availableArchetypes.filter(x=>x.id!==persona.gimmickId&&(
+     !search||[x.label,x.familyLabel,x.description].some(y=>
+      y.toLowerCase().includes(search.trim().toLowerCase()))));
+    const familyFirst=eligible.filter(x=>x.familyLabel!=="Classic Wrestling");
+    const perFamily=new Set<string>();
+    const featured=familyFirst.filter(x=>{
+     if(perFamily.has(x.familyLabel))return false;
+     perFamily.add(x.familyLabel);return true;
+    });
+    const matches=(search?eligible:[...featured,...familyFirst.filter(x=>!featured.includes(x)),
+     ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")]).slice(0,24);
+    for(const p of matches){
+     const item=button("",()=>{chosen=p.id;render();},loading);
+     item.classList.add("ppw-gimmick-choice");
+     item.append(el("strong","",p.label),el("small","",p.familyLabel),
+      el("span","",p.description));
+     if(chosen===p.id)item.classList.add("ppw-persona-selected");
+     item.setAttribute("aria-pressed",String(chosen===p.id));
+     item.title=p.description;options.append(item);
+    }
+    if(!matches.length)options.append(el("p","ppw-muted","No matching gimmicks."));
+   };
+   // Keep the actual input node mounted while searching. Replacing the page
+   // on every keystroke dismisses the keyboard in iPhone standalone PWAs.
+   filter.oninput=()=>{search=filter.value;refreshOptions();};
+   root.append(filter);
+   const pitch=el("div","ppw-gimmick-pitch-controls");
+   pitch.append(el("span","ppw-gimmick-pick-name",
+    chosen?"Pitch: "+(availableArchetypes.find(x=>x.id===chosen)?.label??"Selected"):
+     "Choose a character below"));
+   const send=button(loading?"Asking wrestler…":"Suggest gimmick →",()=>{
+    void request();},loading||!chosen);
+   send.classList.add("ppw-gimmick-submit");pitch.append(send);
+   root.append(pitch);
+   refreshOptions();root.append(options);
+  }
   if(pane==="PROFILE")return;
   const contact=view.roster.find(x=>x.personId===view!.personId)?.latestIncoming;
   let archiveButton:HTMLButtonElement|null=null;
@@ -406,8 +458,10 @@ export function mountPersonaDesk(root:HTMLElement,
   const info=el("details","ppw-backstage-phone-info");
   info.append(el("summary","","Conversation options"),
    el("p","",
-    "You can suggest a character change, but the wrestler owns their identity and can refuse. Only the replies you send can influence what happens next."));
+    "Private conversations and promises stay here. Character changes belong in their character profile."));
   if(archiveButton)info.append(archiveButton);
+  if(persona&&view.roster.find(x=>x.personId===view?.personId)?.isCurrent!==false)
+   info.append(button("Character & gimmick →",()=>{pane="PROFILE";render();}));
   chat.append(info);
   const selectedPersonId=view.personId;
   const wrestler=view.roster.find(p=>p.personId===selectedPersonId);
@@ -510,58 +564,6 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   if(answer){const reply=el("div","ppw-persona-bubble ppw-persona-in",answer);
    reply.setAttribute("role","status");chat.append(reply);}
-  const now=(view.worldYear-1)*52+view.worldWeek-1;
-  const cooldown=view.nextPitchWeek>now;
-  if(cooldown)chat.append(el("p","ppw-muted",
-   "Reconsideration available in "+(view.nextPitchWeek-now)+" weeks."));
-  if(view.canEdit&&!cooldown&&persona){
-   chat.append(el("h3","","Pitch a new character"),
-    el("p","ppw-muted","These are creative archetypes, not simple face/heel switches. Your wrestler can accept or reject the pitch, and retains ownership of their identity."));
-   const filter=document.createElement("input");
-   filter.type="search";filter.placeholder="Search gimmicks or families";
-   filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
-   const options=el("div","ppw-persona-options");
-   const availableArchetypes=view.archetypes;
-   const refreshOptions=()=>{
-    options.replaceChildren();
-    // Surface the catalogue's variety on first opening; the initial
-    // classic Hero/Villain entries must not hide the deeper wrestling ideas.
-    const eligible=availableArchetypes.filter(x=>x.id!==persona.gimmickId&&(
-     !search||[x.label,x.familyLabel,x.description].some(y=>
-      y.toLowerCase().includes(search.trim().toLowerCase()))));
-    const familyFirst=eligible.filter(x=>x.familyLabel!=="Classic Wrestling");
-    const perFamily=new Set<string>();
-    const featured=familyFirst.filter(x=>{
-     if(perFamily.has(x.familyLabel))return false;
-     perFamily.add(x.familyLabel);return true;
-    });
-    const matches=(search?eligible:[...featured,...familyFirst.filter(x=>!featured.includes(x)),
-     ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")]).slice(0,24);
-    for(const p of matches){
-     const item=button("",()=>{chosen=p.id;render();},loading);
-     item.classList.add("ppw-gimmick-choice");
-     item.append(el("strong","",p.label),el("small","",p.familyLabel),
-      el("span","",p.description));
-     if(chosen===p.id)item.classList.add("ppw-persona-selected");
-     item.setAttribute("aria-pressed",String(chosen===p.id));
-     item.title=p.description;options.append(item);
-    }
-    if(!matches.length)options.append(el("p","ppw-muted","No matching gimmicks."));
-   };
-   // Keep the actual input node mounted while searching. Replacing the page
-   // on every keystroke dismisses the keyboard in iPhone standalone PWAs.
-   filter.oninput=()=>{search=filter.value;refreshOptions();};
-   chat.append(filter);
-   const pitch=el("div","ppw-gimmick-pitch-controls");
-   pitch.append(el("span","ppw-gimmick-pick-name",
-    chosen?"Pitch: "+(availableArchetypes.find(x=>x.id===chosen)?.label??"Selected"):
-     "Choose a character below"));
-   const send=button(loading?"Asking wrestler…":"Suggest gimmick →",()=>{
-    void request();},loading||!chosen);
-   send.classList.add("ppw-gimmick-submit");pitch.append(send);
-   chat.append(pitch);
-   refreshOptions();chat.append(options);
-  }
   root.append(chat);
   requestAnimationFrame(()=>{
    if(root.contains(chat))chat.scrollTop=previousScroll??chat.scrollHeight;
