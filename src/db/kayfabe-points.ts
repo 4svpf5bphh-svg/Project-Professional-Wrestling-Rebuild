@@ -49,7 +49,7 @@ export function validateKpAction(action:KpAction){
  return action;
 }
 async function assertOwner(tx:SqlRows,s:KpScope){
- const rows=await tx.query<{year:number;week:number;can_edit:boolean;name:string}>(\`
+ const rows=await tx.query<{year:number;week:number;can_edit:boolean;name:string}>(`
  SELECT w.year,w.week,p.name,
   (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
  FROM ppw_worlds w JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -58,14 +58,14 @@ async function assertOwner(tx:SqlRows,s:KpScope){
   AND m.status='ACTIVE'
  JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
   AND p.lifecycle='ACTIVE'
- WHERE w.world_id=$1 LIMIT 1\`,[s.worldId,s.playerId,s.promotionId]);
+ WHERE w.world_id=$1 LIMIT 1`,[s.worldId,s.playerId,s.promotionId]);
  if(rows.length!==1)throw new Error("Only your active promotion may use Kayfabe Points");
  return rows[0]!;
 }
 async function lockWallet(tx:SqlRows,id:string){
  await tx.query("INSERT INTO ppw_kp_wallets(player_id) VALUES($1) ON CONFLICT DO NOTHING",[id]);
- const r=await tx.query<{balance:string}>(\`
-  SELECT balance::text FROM ppw_kp_wallets WHERE player_id=$1 FOR UPDATE\`,[id]);
+ const r=await tx.query<{balance:string}>(`
+  SELECT balance::text FROM ppw_kp_wallets WHERE player_id=$1 FOR UPDATE`,[id]);
  if(r.length!==1)throw new Error("Kayfabe wallet unavailable");
  return Number(r[0]!.balance);
 }
@@ -73,25 +73,25 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
  if(!Object.values(s).every(validId))throw new Error("Invalid Kayfabe identity");
  return withSqlClient(pool,async tx=>{
   const world=await assertOwner(tx,s);
-  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string}>(\`
+  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string}>(`
    SELECT balance::text,lifetime_earned::text,lifetime_spent::text
-   FROM ppw_kp_wallets WHERE player_id=$1\`,[s.playerId]);
-  const items=await tx.query<{sku:string}>(\`
-   SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 20\`,[s.playerId]);
-  const style=await tx.query<{style:string}>(\`
+   FROM ppw_kp_wallets WHERE player_id=$1`,[s.playerId]);
+  const items=await tx.query<{sku:string}>(`
+   SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 20`,[s.playerId]);
+  const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
-   AND player_id=$3\`,[s.worldId,s.promotionId,s.playerId]);
-  const staff=await tx.query<{staff_id:string;alias:string|null}>(\`
+   AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
+  const staff=await tx.query<{staff_id:string;alias:string|null}>(`
    SELECT e.staff_id,a.alias FROM ppw_staff_employments e
    LEFT JOIN ppw_kp_staff_aliases a ON a.world_id=e.world_id
     AND a.promotion_id=e.promotion_id AND a.staff_id=e.staff_id
     AND a.player_id=$3
    WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
-   ORDER BY e.role LIMIT 8\`,[s.worldId,s.promotionId,s.playerId]);
-  const played=await tx.query<{total:string}>(\`
+   ORDER BY e.role LIMIT 8`,[s.worldId,s.promotionId,s.playerId]);
+  const played=await tx.query<{total:string}>(`
    SELECT count(*)::text AS total FROM ppw_completed_shows
-   WHERE world_id=$1 AND promotion_id=$2\`,[s.worldId,s.promotionId]);
-  const weeks=await tx.query<{year:number;week:number;played:boolean;claimed:boolean;daily_claimed:boolean}>(\`
+   WHERE world_id=$1 AND promotion_id=$2`,[s.worldId,s.promotionId]);
+  const weeks=await tx.query<{year:number;week:number;played:boolean;claimed:boolean;daily_claimed:boolean}>(`
    SELECT n.year,n.week,
     EXISTS(SELECT 1 FROM ppw_completed_shows c
      WHERE c.world_id=n.world_id AND c.promotion_id=$2
@@ -102,12 +102,12 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     EXISTS(SELECT 1 FROM ppw_kp_week_grants g
      WHERE g.player_id=$3 AND g.credited_on=timezone('utc',now())::date) AS daily_claimed
    FROM ppw_world_news_weeks n WHERE n.world_id=$1
-   ORDER BY n.year DESC,n.week DESC LIMIT 1\`,[s.worldId,s.promotionId,s.playerId]);
-  const created=await tx.query<{person_id:string;name:string;created_year:number}>(\`
+   ORDER BY n.year DESC,n.week DESC LIMIT 1`,[s.worldId,s.promotionId,s.playerId]);
+  const created=await tx.query<{person_id:string;name:string;created_year:number}>(`
    SELECT c.person_id,p.name,c.created_year FROM ppw_kp_created_talent c
    JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.creator_player_id=$2
-   ORDER BY c.created_year DESC LIMIT 10\`,[s.worldId,s.playerId]);
+   ORDER BY c.created_year DESC LIMIT 10`,[s.worldId,s.playerId]);
   const total=Number(played[0]?.total??0),last=weeks[0],money=balances[0];
   return {balance:Number(money?.balance??0),lifetimeEarned:Number(money?.lifetime_earned??0),
    lifetimeSpent:Number(money?.lifetime_spent??0),worldYear:world.year,week:world.week,
@@ -131,22 +131,22 @@ export async function claimKayfabeWeek(pool:TransactionPool,s:KpScope){
  return withWorldTransaction(pool,async tx=>{
   await assertOwner(tx,s);
   const balance=await lockWallet(tx,s.playerId);
-  const last=await tx.query<{year:number;week:number;played:boolean}>(\`
+  const last=await tx.query<{year:number;week:number;played:boolean}>(`
    SELECT n.year,n.week,EXISTS(SELECT 1 FROM ppw_completed_shows c
     WHERE c.world_id=n.world_id AND c.promotion_id=$2
      AND c.year=n.year AND c.week=n.week) AS played
    FROM ppw_world_news_weeks n WHERE n.world_id=$1
-   ORDER BY n.year DESC,n.week DESC LIMIT 1\`,[s.worldId,s.promotionId]);
+   ORDER BY n.year DESC,n.week DESC LIMIT 1`,[s.worldId,s.promotionId]);
   if(!last[0]?.played)return {awarded:0,balance,reason:"No completed certified show for your promotion"};
-  const grants=await tx.query<{amount:number}>(\`
+  const grants=await tx.query<{amount:number}>(`
    INSERT INTO ppw_kp_week_grants(player_id,world_id,year,week,amount)
-   VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING amount\`,
+   VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING amount`,
    [s.playerId,s.worldId,last[0].year,last[0].week,KP_WEEKLY_AWARD]);
   if(!grants.length)return {awarded:0,balance,
    reason:"This week or UTC day has already received Kayfabe Points"};
-  await tx.query(\`
+  await tx.query(`
    UPDATE ppw_kp_wallets SET balance=balance+$2,lifetime_earned=lifetime_earned+$2
-   WHERE player_id=$1\`,[s.playerId,KP_WEEKLY_AWARD]);
+   WHERE player_id=$1`,[s.playerId,KP_WEEKLY_AWARD]);
   return {awarded:KP_WEEKLY_AWARD,balance:balance+KP_WEEKLY_AWARD,
    year:last[0].year,week:last[0].week};
  });
@@ -157,9 +157,9 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
  return withWorldTransaction(pool,async tx=>{
   const owner=await assertOwner(tx,s),balance=await lockWallet(tx,s.playerId);
   const hash=createHash("sha256").update(JSON.stringify(action)).digest("hex");
-  const old=await tx.query<{kind:string;payload_hash:string;outcome:Record<string,unknown>}>(\`
+  const old=await tx.query<{kind:string;payload_hash:string;outcome:Record<string,unknown>}>(`
    SELECT kind,payload_hash,outcome FROM ppw_kp_receipts
-   WHERE player_id=$1 AND request_id=$2\`,[s.playerId,action.requestId]);
+   WHERE player_id=$1 AND request_id=$2`,[s.playerId,action.requestId]);
   if(old.length){
    if(old[0]!.kind!==action.kind||old[0]!.payload_hash!==hash)
     throw new Error("Kayfabe request ID was used for a different action");
@@ -168,60 +168,60 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
   let price=0,outcome:Record<string,unknown>={};
   if(action.kind==="BUY"){
    const item=catalogueItem(action.sku)!;
-   const exists=await tx.query<{sku:string}>(\`
-    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2\`,
+   const exists=await tx.query<{sku:string}>(`
+    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2`,
     [s.playerId,action.sku]);
    if(exists.length)throw new Error("You already own this style");
    price=item.price;
-   await tx.query(\`INSERT INTO ppw_kp_entitlements(player_id,sku) VALUES($1,$2)\`,
+   await tx.query(`INSERT INTO ppw_kp_entitlements(player_id,sku) VALUES($1,$2)`,
     [s.playerId,action.sku]);
-   if(item.kind==="BRAND")await tx.query(\`
+   if(item.kind==="BRAND")await tx.query(`
     INSERT INTO ppw_kp_promotion_styles(world_id,promotion_id,player_id,style)
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
-    SET style=excluded.style,player_id=excluded.player_id\`,
+    SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
    outcome={sku:action.sku,label:item.label};
   }else if(action.kind==="APPLY_BRAND"){
-   const exists=await tx.query<{sku:string}>(\`
-    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2\`,
+   const exists=await tx.query<{sku:string}>(`
+    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2`,
     [s.playerId,action.sku]);
    if(!exists.length)throw new Error("Unlock this crest before applying it");
-   await tx.query(\`
+   await tx.query(`
     INSERT INTO ppw_kp_promotion_styles(world_id,promotion_id,player_id,style)
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
-    SET style=excluded.style,player_id=excluded.player_id\`,
+    SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
    outcome={style:action.sku};
   }else if(action.kind==="RENAME_STAFF"){
    const name=cleanName(action.name);
-   const hired=await tx.query<{staff_id:string}>(\`
+   const hired=await tx.query<{staff_id:string}>(`
     SELECT staff_id FROM ppw_staff_employments
-    WHERE world_id=$1 AND promotion_id=$2 AND staff_id=$3 AND status='ACTIVE' LIMIT 1\`,
+    WHERE world_id=$1 AND promotion_id=$2 AND staff_id=$3 AND status='ACTIVE' LIMIT 1`,
     [s.worldId,s.promotionId,action.staffId]);
    if(!hired.length)throw new Error("Only employed staff may be renamed");
    price=KP_STAFF_ALIAS_COST;
-   await tx.query(\`
+   await tx.query(`
     INSERT INTO ppw_kp_staff_aliases(world_id,promotion_id,staff_id,player_id,alias)
     VALUES($1,$2,$3,$4,$5) ON CONFLICT(world_id,promotion_id,staff_id) DO UPDATE
-    SET alias=excluded.alias,player_id=excluded.player_id\`,
+    SET alias=excluded.alias,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,action.staffId,s.playerId,name]);
    outcome={staffId:action.staffId,name};
   }else if(action.kind==="CREATE_WRESTLER"){
    if(!owner.can_edit)throw new Error("The World must be open to introduce a wrestler");
    await tx.query("SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[s.worldId]);
    const name=cleanName(action.name);
-   const same=await tx.query<{person_id:string}>(\`
+   const same=await tx.query<{person_id:string}>(`
     SELECT person_id FROM ppw_people WHERE world_id=$1 AND lower(name)=lower($2)
-    LIMIT 1\`,[s.worldId,name]);
+    LIMIT 1`,[s.worldId,name]);
    if(same.length)throw new Error("That wrestler name already exists in this World");
-   const quota=await tx.query<{person_id:string}>(\`
+   const quota=await tx.query<{person_id:string}>(`
     SELECT person_id FROM ppw_kp_created_talent WHERE world_id=$1
-     AND creator_player_id=$2 AND created_year=$3 LIMIT 1\`,
+     AND creator_player_id=$2 AND created_year=$3 LIMIT 1`,
     [s.worldId,s.playerId,owner.year]);
    if(quota.length)throw new Error("One created wrestler per player per World year");
    price=KP_CREATE_TALENT_COST;
    const personId="kp-talent-"+randomUUID(),weekIndex=(owner.year-1)*52+owner.week-1;
-   await tx.query(\`
+   await tx.query(`
     INSERT INTO ppw_people(world_id,person_id,name,status,career_stage,
      recognition,popularity,momentum,fatigue,wear,morale,in_ring_quality,
      match_craft,presentation,stamina,safety,contract_priorities,
@@ -229,21 +229,21 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
      debut_week_index,booking_division,default_alignment)
     VALUES($1,$2,$3,'ACTIVE','PROSPECT',15,12,25,0,0,72,52,49,50,66,65,
      '{"money":65,"role":70,"prestige":50,"schedule":45,"loyalty":40,"exposure":60}'::jsonb,
-     24,2,60,true,$4,$5,'FACE')\`,
+     24,2,60,true,$4,$5,'FACE')`,
     [s.worldId,personId,name,weekIndex,action.division]);
-   await tx.query(\`
+   await tx.query(`
     INSERT INTO ppw_kp_created_talent(world_id,person_id,creator_player_id,created_year)
-    VALUES($1,$2,$3,$4)\`,[s.worldId,personId,s.playerId,owner.year]);
+    VALUES($1,$2,$3,$4)`,[s.worldId,personId,s.playerId,owner.year]);
    outcome={personId,name,division:action.division,market:"FREE_AGENT"};
   }
   if(balance<price)throw new Error("Not enough Kayfabe Points");
-  if(price)await tx.query(\`
+  if(price)await tx.query(`
    UPDATE ppw_kp_wallets SET balance=balance-$2,lifetime_spent=lifetime_spent+$2
-   WHERE player_id=$1 AND balance >=$2\`,[s.playerId,price]);
+   WHERE player_id=$1 AND balance >=$2`,[s.playerId,price]);
   const receipt={...outcome,price,balance:balance-price};
-  await tx.query(\`
+  await tx.query(`
    INSERT INTO ppw_kp_receipts(player_id,request_id,kind,payload_hash,outcome)
-   VALUES($1,$2,$3,$4,$5::jsonb)\`,
+   VALUES($1,$2,$3,$4,$5::jsonb)`,
    [s.playerId,action.requestId,action.kind,hash,JSON.stringify(receipt)]);
   return {replayed:false,...receipt};
  });
