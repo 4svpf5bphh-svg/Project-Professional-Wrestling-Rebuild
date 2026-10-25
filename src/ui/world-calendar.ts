@@ -258,7 +258,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   for(const s of data.series){
    const line=node("div","","ppw-calendar-series");
    const description=node("div");description.append(node("strong",s.name),
-    node("p",label(s.role)+" · Every "+s.cadenceWeeks+" weeks · Advertised importance "+s.importance),
+    node("p",label(s.role)+" · Every "+s.cadenceWeeks+" weeks · Importance "+s.importance+" (advertised)"),
     node("small",(s.earnedPrestige??0)>0?
      "Earned prestige "+(s.earnedPrestige??0).toFixed(1)+
       " · "+(s.celebratedEditions??0)+" completed editions":
