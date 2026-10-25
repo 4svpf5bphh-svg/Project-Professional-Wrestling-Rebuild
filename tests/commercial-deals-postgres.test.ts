@@ -8,6 +8,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readBusinessWorkspace} from "../src/db/business-workspace.js";
+import {readPromotionRecordBook} from "../src/db/promotion-record-book.js";
 import {signCommercialDeal} from "../src/db/commercial-deals.js";
 import {settleCommercialWorldWeek} from "../src/db/weekly-commercial-settlement.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
@@ -52,6 +53,9 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   });
   const business=await readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:owner});
+  const records=await readPromotionRecordBook(db.pool,
+   {worldId:world,promotionId:promotion,playerId:owner});
+  assert.deepEqual(records.leaders,[],"Record Book reads only verified career matches");
   assert.equal(business.commercialOffers.length,3);
   assert.equal(business.worldRevision,2);
   assert.equal(business.commercialAgreements.length,0);
@@ -100,6 +104,8 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   const others=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:"promotion-2",playerId:secondOwner});
   assert.deepEqual(others.commercialAgreements,[]);
+  await assert.rejects(readPromotionRecordBook(db.pool,{
+   worldId:world,promotionId:promotion,playerId:secondOwner}),/access denied/);
   await assert.rejects(readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:secondOwner}),/access denied/);
   // A well-received, certified show can raise awareness only where this
