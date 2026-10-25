@@ -50,71 +50,13 @@
 .ppw-legend-next-hint{padding:.7rem;border-left:3px solid var(--tier);background:var(--tier-soft);font-size:.78rem;line-height:1.45}
 .ppw-legend-card-viewer .ppw-legend-card-art{width:min(80vw,430px);max-height:70dvh;object-fit:contain}
 
-/* Undertaker pilot — ONE collectible card composition at all four display sizes.
-   The portrait is a licensed genuine photo, not an AI-generated likeness.
-   Stage lighting belongs to the reveal, never gets baked into the card. */
+
+/* One immutable, pre-rendered and bundled image at EVERY card size. */
 .ppw-undertaker-card{
- position:relative;isolation:isolate;display:block;flex:none;
- aspect-ratio:2/3;margin:0;width:min(100%,258px)!important;
- overflow:hidden;border:2px solid #bc96d0;border-radius:12px;
- background:#07050e;box-shadow:
-  inset 0 0 0 4px #110e1a,inset 0 0 0 6px #a080c0,
-  0 0 0 1px #44304d,0 20px 45px rgba(0,0,0,.54);
- font-family:Georgia,"Times New Roman",serif;color:#f4e9ff;
-}
-.ppw-undertaker-card::before{
- content:"";position:absolute;z-index:2;pointer-events:none;inset:7px;
- border:1px solid rgba(218,192,255,.62);border-radius:6px;
- box-shadow:inset 0 0 20px rgba(10,3,22,.35)
-}
-.ppw-undertaker-card::after{
- content:"";pointer-events:none;position:absolute;z-index:1;inset:0;
- background:
-  linear-gradient(0deg,#080410 0%,rgba(8,4,16,.97) 10%,rgba(18,8,30,.7) 25%,transparent 53%),
-  linear-gradient(180deg,rgba(7,4,16,.92) 0%,transparent 22%),
-  radial-gradient(ellipse at 50% 26%,transparent 8%,rgba(13,3,30,.16) 66%,rgba(0,0,0,.8));
-}
-.ppw-undertaker-photograph{
- position:absolute;inset:0;width:100%;height:100%;
- object-fit:cover;object-position:50% 40%;
- filter:contrast(1.14) saturate(.81)
-}
-.ppw-undertaker-grain{
- position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.16;
- background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(179,123,238,.22) 4px 5px)
-}
-.ppw-undertaker-card>span:not(.ppw-undertaker-grain){position:absolute;z-index:3}
-.ppw-undertaker-eyebrow{
- top:17px;left:13px;right:13px;text-align:center;color:#dbbcf6;
- font:800 clamp(7px,1.8vw,9px)/1.2 system-ui,sans-serif;
- letter-spacing:.19em
-}
-.ppw-undertaker-halo{
- left:0;right:0;top:39px;text-align:center;color:#b6a0d1;
- font:normal 27px/1 Georgia,serif;text-shadow:0 0 16px #d4aaff;opacity:.92
-}
-.ppw-undertaker-corner{color:#d1b7f0;font-size:18px}
-.ppw-undertaker-corner-top{top:10px;left:12px}
-.ppw-undertaker-corner-bottom{right:12px;bottom:12px}
-.ppw-undertaker-titles{
- left:0;right:0;bottom:94px;text-align:center;
- font:700 9px/1.1 system-ui,sans-serif;letter-spacing:.38em;color:#d1b7e7
-}
-.ppw-undertaker-name{
- left:4px;right:4px;bottom:52px;text-align:center;
- font:900 clamp(18px,5.3vw,25px)/1 Georgia,"Times New Roman",serif;
- letter-spacing:-.045em;text-shadow:0 2px 12px #000,0 0 15px #000;
- white-space:nowrap
-}
-.ppw-undertaker-plate{
- left:22px;right:22px;bottom:27px;padding:6px 2px;text-align:center;
- border-top:1px solid rgba(193,151,229,.85);
- border-bottom:1px solid rgba(193,151,229,.85);
- font:800 8px/1 system-ui,sans-serif;letter-spacing:.17em;color:#e3c4f4
-}
-.ppw-undertaker-edition{
- bottom:13px;left:15px;right:15px;text-align:center;
- font:700 6px/1 system-ui,sans-serif;letter-spacing:.19em;color:#aaa0bc
+ display:block;margin:0;aspect-ratio:2/3;height:auto;
+ width:min(100%,258px)!important;object-fit:contain;
+ border:1px solid #c69dda;border-radius:11px;
+ background:#080410;box-shadow:0 0 0 2px #372042,0 18px 45px rgba(0,0,0,.52)
 }
 .ppw-legend-visual:has(.ppw-undertaker-card){
  min-height:0;padding:12px 0;
@@ -122,11 +64,9 @@
 }
 .ppw-legend-visual .ppw-undertaker-card{width:min(100%,218px)!important}
 .ppw-legend-collection-card .ppw-undertaker-card{width:100%!important}
-.ppw-legend-card-viewer .ppw-undertaker-card{
- width:min(85vw,430px)!important;max-height:min(75dvh,650px)
-}
+.ppw-legend-card-viewer .ppw-undertaker-card{width:min(85vw,430px)!important;max-height:75dvh}
 .ppw-legend-reveal[data-tier="IMMORTAL"]{
- background:radial-gradient(ellipse at 50% 40%,#271337 0%,#09040f 52%,#000 90%)
+ background:radial-gradient(ellipse at 50% 38%,#30173f 0%,#0a0511 52%,#000 90%)
 }
 .ppw-legend-reveal[data-tier="IMMORTAL"]::before{
  content:"";pointer-events:none;position:fixed;z-index:2;inset:0;

@@ -28,25 +28,11 @@ const order=["CULT","LEGEND","ICON","IMMORTAL"];
 function cardGraphic(item:LegendsVaultEntry){
  if(!item.cardAsset||(!item.unlocked&&!item.collected))return null;
  if(item.id==="undertaker"){
-  const art=el("figure","ppw-legend-card-art ppw-undertaker-card");
-  art.setAttribute("role","img");
-  art.setAttribute("aria-label","The Undertaker — Immortal tier collectible card");
-  const photography=document.createElement("img");
-  photography.className="ppw-undertaker-photograph";
-  photography.src=item.cardAsset;
-  photography.alt="";photography.loading="lazy";
-  photography.decoding="async";
-  art.append(photography,
-   el("span","ppw-undertaker-grain"),
-   el("span","ppw-undertaker-corner ppw-undertaker-corner-top","✦"),
-   el("span","ppw-undertaker-corner ppw-undertaker-corner-bottom","✦"),
-   el("span","ppw-undertaker-eyebrow","PPW · LEGENDS COLLECTION"),
-   el("span","ppw-undertaker-halo","†"),
-   el("span","ppw-undertaker-titles",
-    "THE DEADMAN"),
-   el("span","ppw-undertaker-name","THE UNDERTAKER"),
-   el("span","ppw-undertaker-plate","IMMORTAL  ·  001 / 001"),
-   el("span","ppw-undertaker-edition","THE PHENOM  ·  1990s / 2000s"));
+  const art=document.createElement("img");
+  art.className="ppw-legend-card-art ppw-undertaker-card";
+  art.src=item.cardAsset;
+  art.alt="The Undertaker — definitive Immortal legend card, number 001";
+  art.loading="lazy";art.decoding="async";
   return art;
  }
  const art=document.createElement("img");
