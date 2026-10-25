@@ -22,7 +22,7 @@ CREATE TABLE ppw_kp_week_grants(
 CREATE TABLE ppw_kp_receipts(
  player_id text NOT NULL REFERENCES ppw_players(player_id),
  request_id text NOT NULL CHECK(length(request_id) BETWEEN 1 AND 200),
- kind text NOT NULL CHECK(kind IN ('BUY','APPLY_BRAND','RENAME_STAFF','CREATE_WRESTLER')),
+ kind text NOT NULL CHECK(kind IN ('BUY','APPLY_BRAND','APPLY_BADGE','RENAME_STAFF','CREATE_WRESTLER')),
  payload_hash text NOT NULL CHECK(length(payload_hash)=64),
  outcome jsonb NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
@@ -41,6 +41,10 @@ CREATE TABLE ppw_kp_promotion_styles(
  style text NOT NULL CHECK(style IN ('CHROME','NEON','GOLD')),
  PRIMARY KEY(world_id,promotion_id),
  FOREIGN KEY(world_id,promotion_id) REFERENCES ppw_promotions(world_id,promotion_id)
+);
+CREATE TABLE ppw_kp_badge_styles(
+ player_id text PRIMARY KEY REFERENCES ppw_players(player_id),
+ style text NOT NULL CHECK(style IN ('GOLD','PLATINUM'))
 );
 CREATE TABLE ppw_kp_staff_aliases(
  world_id text NOT NULL,
