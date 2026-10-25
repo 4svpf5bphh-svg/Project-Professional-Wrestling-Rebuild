@@ -238,6 +238,7 @@ function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
   load:()=>call("business"),
+  signCommercial:input=>call("signCommercial",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
