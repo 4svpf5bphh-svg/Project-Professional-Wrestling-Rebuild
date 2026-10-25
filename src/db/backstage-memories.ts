@@ -104,5 +104,22 @@ export async function publishBackstageMemories(
   "SELECT memory_id FROM written LIMIT 513"
  ].join(" "),[worldId,nextWeekIndex]);
  if(titleMatches.length>512)throw new Error("Backstage title memory overflow");
- return {remembered:fromRequests.length+followed.length+injuries.length+titleMatches.length};
+ // Wrestler-authorised character changes and actual vetoes matter to their
+ // private relationship with THIS promoter; a rejected pitch is not a change.
+ const personas=await tx.query<{memory_id:string}>([
+  "WITH written AS (INSERT INTO ppw_backstage_memories(",
+  "world_id,promotion_id,person_id,memory_id,kind,",
+  "occurred_week_index,importance,source_id)",
+  "SELECT r.world_id,r.promotion_id,r.person_id,",
+  "'persona:'||r.request_id,CASE WHEN r.status='ACCEPTED'",
+  "THEN 'CHARACTER_APPROVED' ELSE 'CHARACTER_DECLINED' END,",
+  "r.submitted_week_index,CASE WHEN r.status='ACCEPTED' THEN 4 ELSE 3 END,",
+  "r.request_id FROM ppw_persona_change_requests r",
+  "WHERE r.world_id=$1 AND r.submitted_week_index",
+  "BETWEEN greatest(0,$2-104) AND $2",
+  "ON CONFLICT DO NOTHING RETURNING memory_id)",
+  "SELECT memory_id FROM written LIMIT 513"
+ ].join(" "),[worldId,nextWeekIndex]);
+ if(personas.length>512)throw new Error("Backstage character memory overflow");
+ return {remembered:fromRequests.length+followed.length+injuries.length+titleMatches.length+personas.length};
 }
