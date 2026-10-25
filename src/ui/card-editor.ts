@@ -952,8 +952,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL","HIGH_RISK",
       "STORY","PROTECTIVE","EPIC"].map(x=>[x,nice(x)]),
       v=>setMatch(slotId,changeMatchIntent(m,v)),!mutable())));
-    const simFormat=["TRIOS","FOUR_V_FOUR","FIVE_V_FIVE"].includes(m.format)?
-     "TAG":m.format;
+    const simFormat=m.format==="MULTI_TEAM"?"MULTI_TEAM":
+     ["TRIOS","FOUR_V_FOUR","FIVE_V_FIVE"].includes(m.format)?"LARGE_TEAM":m.format;
     controls.append(field("Stipulation",selector(m.stipulation??"STANDARD",
      compatibleStipulations(simFormat).map(code=>[
       code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),

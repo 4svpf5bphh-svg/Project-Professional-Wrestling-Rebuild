@@ -7,6 +7,9 @@ import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/
 import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
 import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match.js";
 import {isBookableMatchFinish,type MatchFinish} from "../simulation/legacy/match-finishes.js";
+import {defaultMatchStyleForIntent,normalizeMatchStyle} from "../simulation/legacy/match-style.js";
+import {readMatchStipulation,permittedStipulationFinishes,stipulationScoringFinish,
+ stipulationInjuryRisk} from "../domain/match-stipulations.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
@@ -224,13 +227,15 @@ export async function previewArchivedShowMatchScoresInTransaction(
       if(format==="TRIPLE_THREAT"||format==="FOUR_WAY"||format==="BATTLE_ROYAL"){
         const raw=slot.payload as Record<string,unknown>;
         const intent=raw.intent??"COMPETITIVE";
+        const stip=readMatchStipulation(raw.stipulation,format);
         const finish=raw.plannedFinish??(format==="BATTLE_ROYAL"?
           "OVER_THE_TOP_ROPE":"CLEAN_PIN");
+        const scoringFinish=format==="BATTLE_ROYAL"?"CLEAN_PIN":
+         stipulationScoringFinish(String(finish));
         const length=raw.plannedLengthMinutes??18;
         if(!["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
          "HIGH_RISK","STORY","PROTECTIVE","EPIC"].includes(String(intent))||
-          !(format==="BATTLE_ROYAL"?finish==="OVER_THE_TOP_ROPE":
-            ["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"].includes(String(finish)))||
+          !permittedStipulationFinishes(stip,format).includes(String(finish))||
           raw.interference!==undefined||raw.style!==undefined||
           typeof length!=="number"||!Number.isInteger(length)||length<3||length>60)
          throw new Error("Unsupported multi-person intent, finish, run-in or length");
@@ -246,10 +251,10 @@ export async function previewArchivedShowMatchScoresInTransaction(
           matchId:`${input.showId}:${slot.slot_id}`,
           order:index+1,eventImportance:show.event_importance!,
           intent:intent as MatchIntent,plannedFinish:
-           (format==="BATTLE_ROYAL"?"CLEAN_PIN":finish) as
-           "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
+           scoringFinish as "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
           plannedLengthMinutes:length,
-          injuryRateMultiplier:Number(show.injury_rate_multiplier),
+          injuryRateMultiplier:Math.min(10,Number(show.injury_rate_multiplier)*
+           stipulationInjuryRisk(stip)),
           mediaReach:show.media_reach,isMainEvent:index===matches.length-1,
         });
         const winningIndex=layout.sides.findIndex(x=>
@@ -259,6 +264,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
          winnerId:ids[winningIndex]!,
          personIds:[ids[0]!,ids[1]!] as [string,string],
          plannedFinish:finish as "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
+         authoredFinish:String(finish),stipulation:stip,
          finishCheaterId:null,readiness:"READY" as const,chemistryModifier:0,
          score:result.score,injuryPreview:null,interferencePreview:{
           crowdResponse:result.score.crowdResponse,actualFinish:result.actualFinish,
@@ -276,9 +282,12 @@ export async function previewArchivedShowMatchScoresInTransaction(
         const allowed=["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
           "HIGH_RISK","STORY","PROTECTIVE","EPIC"];
         const intent=raw.intent??"COMPETITIVE";
-        const plannedFinish=raw.plannedFinish??"CLEAN_PIN";
+        const stipulated=readMatchStipulation(raw.stipulation,format);
+        const authoredFinish=String(raw.plannedFinish??"CLEAN_PIN");
+        const plannedFinish=stipulationScoringFinish(authoredFinish) as MatchFinish;
         const length=raw.plannedLengthMinutes??18;
         if(typeof intent!=="string"||!allowed.includes(intent)||
+          !permittedStipulationFinishes(stipulated,format).includes(authoredFinish)||
           !isBookableMatchFinish(plannedFinish)||
           typeof length!=="number"||!Number.isInteger(length)||
           length<3||length>60||raw.style!==undefined)
@@ -309,6 +318,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
           modifier+=sideSum/pairCount*2/layout.sides.length;
         }
         const interruption=readBookedInterference(slot.payload);
+        if(!["STANDARD","HARDCORE"].includes(stipulated)&&interruption)
+         throw new Error("Stipulated matches forbid outside interference");
         if(format==="MULTI_TEAM"&&interruption)
           throw new Error("Multi-team interference is not yet bookable");
         const profile=interruption?interfererProfiles.get(interruption.personId):null;
@@ -325,7 +336,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
           eventImportance:show.event_importance!,
           intent:intent as MatchIntent,plannedFinish,
           plannedLengthMinutes:length,chemistryModifier:modifier,
-          injuryRateMultiplier:rate,mediaReach:show.media_reach,
+          injuryRateMultiplier:Math.min(10,rate*stipulationInjuryRisk(stipulated)),
+          mediaReach:show.media_reach,
           isMainEvent:index===matches.length-1,
           interference:interruption,
           interferer:profile?{
@@ -338,13 +350,37 @@ export async function previewArchivedShowMatchScoresInTransaction(
           winnerId:result.injury.plannedWinnerId,
           personIds:[layout.sides[0]!.participants[0]!.personId,
             layout.sides[1]!.participants[0]!.personId] as [string,string],
-          finishCheaterId:null,plannedFinish,readiness:"READY" as const,
+          finishCheaterId:null,plannedFinish,authoredFinish,
+          stipulation:stipulated,readiness:"READY" as const,
           chemistryModifier:Math.round(modifier*1000)/1000,
           score:result.score,injuryPreview:result.injury,
           interferencePreview:result.final,
           consequencesPreview:null};
       }
-      const match=adaptBookedSinglesMatch(slot.payload,readiness);
+      const raw=slot.payload as Record<string,unknown>;
+      const stipulated=readMatchStipulation(raw.stipulation,format);
+      const authoredFinish=String(raw.plannedFinish??"CLEAN_PIN");
+      if(!permittedStipulationFinishes(stipulated,format).includes(authoredFinish))
+       throw new Error("Illegal finish for stipulated singles match");
+      if(!["STANDARD","HARDCORE"].includes(stipulated)&&raw.interference!==undefined)
+       throw new Error("Stipulated singles cannot book outside interference");
+      const scoringFinish=stipulationScoringFinish(authoredFinish);
+      const baseline=adaptBookedSinglesMatch(
+       {...raw,plannedFinish:scoringFinish},readiness);
+      const elevated=stipulated==="STANDARD"?null:(()=>{
+       const style=baseline.style;
+       const risk=stipulated==="SUBMISSION"?4:
+        stipulated==="TLC"?35:stipulated==="LADDER"?25:18;
+       const intensity=stipulated==="SUBMISSION"?3:
+        stipulated==="TLC"?20:stipulated==="LADDER"?15:10;
+       return normalizeMatchStyle({...style,
+        risk:Math.min(100,style.risk+risk),
+        intensity:Math.min(100,style.intensity+intensity),
+        technical:stipulated==="SUBMISSION"?
+         Math.min(100,style.technical+15):style.technical});
+      })();
+      const match=elevated?adaptBookedSinglesMatch(
+       {...raw,plannedFinish:scoringFinish,style:elevated},readiness):baseline;
       if(divisions.get(match.personIds[0])!==divisions.get(match.personIds[1]))
         throw new Error("Mixed booking division cannot be scored as singles");
       const [a,b]=pairIds(match.personIds[0],match.personIds[1]);
@@ -372,7 +408,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
       };
       const score=scoreArchivedSinglesBeforeInjuries(scoringInput);
       const injuryRate=show.injury_rate_multiplier===null?null:
-        Number(show.injury_rate_multiplier);
+        Math.min(10,Number(show.injury_rate_multiplier)*
+         stipulationInjuryRisk(stipulated));
       const injuryPreview=injuryRate===null?null:previewArchivedInjuryStoppage({
         ...scoringInput,personIds:match.personIds,bookedWinnerId:match.winnerId,
         injuryRateMultiplier:injuryRate,
@@ -400,7 +437,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
       return {multi:null,tag:null,slotId:slot.slot_id,position:slot.position,
         plannedMinutes:match.plannedLengthMinutes,winnerId:match.winnerId,
         personIds:match.personIds,finishCheaterId:match.finishCheaterId,
-        plannedFinish:match.plannedFinish,readiness:match.status,
+        plannedFinish:match.plannedFinish,authoredFinish,stipulation:stipulated,
+        readiness:match.status,
         chemistryModifier:Math.round(chemistryModifier*1000)/1000,score,injuryPreview,interferencePreview,consequencesPreview};
     });
     // All match crowd reactions must exist before inferring the card's pacing.

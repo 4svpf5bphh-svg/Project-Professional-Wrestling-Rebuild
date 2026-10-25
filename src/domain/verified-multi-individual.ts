@@ -24,7 +24,7 @@ export function verifyMultiIndividualEvidence(
   ids.some(x=>typeof x!=="string"||!x)||
   !booking.plannedFinish||
   !(battle?booking.plannedFinish==="OVER_THE_TOP_ROPE":
-   ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH"].includes(booking.plannedFinish))||
+   ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH","RETRIEVAL"].includes(booking.plannedFinish))||
   (battle&&!elimination)||
   (elimination?(eliminated.length!==ids.length-1||
    new Set(eliminated).size!==eliminated.length||

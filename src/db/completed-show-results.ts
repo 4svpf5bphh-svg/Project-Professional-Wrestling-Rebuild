@@ -15,6 +15,8 @@ const stableJson=(value:unknown):string=>JSON.stringify(value,(_key,v)=>
   Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b,"en"))):v);
 import {readCanonicalMatchLayout,requireSupportedScoringLayout}
  from "../domain/match-sides.js";
+import {readMatchStipulation,permittedStipulationFinishes}
+ from "../domain/match-stipulations.js";
 import type {BookedTeamOutcome} from "../domain/verified-team-evidence.js";
 import type {BookedMultiIndividualOutcome} from "../domain/verified-multi-individual.js";
 import type {BookedSinglesOutcome} from "../domain/verified-match-evidence.js";
@@ -122,6 +124,11 @@ export async function recordCompletedShowInTransaction(
     const typed=p.matchType!==undefined||p.sides!==undefined;
     const layout=typed?readCanonicalMatchLayout(raw):null;
     const format=layout?requireSupportedScoringLayout(layout):null;
+    if(format&&typeof p.plannedFinish==="string"){
+     const stipulated=readMatchStipulation(p.stipulation,format);
+     if(!permittedStipulationFinishes(stipulated,format).includes(p.plannedFinish))
+      throw new Error("Completed match has an illegal stipulated finish");
+    }
     if(format==="SINGLES"){
      if(!Array.isArray(p.participants)||p.participants.length!==2||
       p.participants.some(x=>!x||typeof x!=="object"||

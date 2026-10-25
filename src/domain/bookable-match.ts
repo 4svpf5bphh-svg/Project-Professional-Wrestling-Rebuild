@@ -45,6 +45,9 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
  if(typeof intent!=="string"||!intents.has(intent))
   throw new Error("Invalid match intent");
  const stipulation=readMatchStipulation(raw.stipulation,format);
+ if(layout.family==="TEAMS"&&layout.sides[0]!.participants.length>2&&
+  !["STANDARD","HARDCORE"].includes(stipulation))
+  throw new Error("Only standard or hardcore rules support large teams");
  if(stipulation!=="STANDARD"&&layout.ruleset==="ELIMINATION")
   throw new Error("Special stipulations do not support elimination matches");
  const finish=raw.plannedFinish??(stipulation==="STANDARD"?

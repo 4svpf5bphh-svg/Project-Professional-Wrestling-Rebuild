@@ -8,6 +8,7 @@ import type {CompletedMatchEvidence}
  from "../domain/completed-match-evidence.js";
 import type {CompletedMatchReceipt}
  from "../domain/completed-show-receipt.js";
+import {isSpecialStipulationFinish} from "../domain/match-stipulations.js";
 import {verifyResolvedSinglesEvidence}
  from "../domain/verified-match-evidence.js";
 import {verifyMultiIndividualEvidence,type BookedMultiIndividualOutcome,
@@ -23,16 +24,22 @@ export function deriveArchivedMatchEvidence(
  projection:Projection,
 ):DerivedArchivedMatch[]{
  return projection.projections.map(p=>{
+  // Low-level legacy quality scoring uses the closest original finish. At the
+  // authoritative boundary restore the exact booked stipulation's win method,
+  // unless certified serious injury forced a medical stoppage.
+  const authored=p.authoredFinish??p.plannedFinish;
+  const decisive=(simulated:string)=>isSpecialStipulationFinish(authored)&&
+   simulated!=="INJURY_STOPPAGE"?authored:simulated;
   if(p.multi){
    const {layout,result}=p.multi;
    const booking:BookedMultiIndividualOutcome={
     family:"INDIVIDUAL",participants:layout.participants.map(x=>x.personId),
     scriptedWinnerSide:layout.scriptedWinnerSide,
-    plannedFinish:p.plannedFinish,
+    plannedFinish:authored,
     ruleset:layout.ruleset,eliminationOrder:layout.eliminationOrder,
    };
    const resolution:ResolvedMultiIndividualEvidence={
-    actualWinnerSide:result.actualWinnerSide,actualFinish:result.actualFinish,
+    actualWinnerSide:result.actualWinnerSide,actualFinish:decisive(result.actualFinish),
     ...(result.medical?{medical:result.medical}:{}),
     completedEliminationOrder:result.completedEliminationOrder,
    };
@@ -56,12 +63,12 @@ export function deriveArchivedMatchEvidence(
     family:"TEAMS",sides:layout.sides.map(s=>({
       sideId:s.sideId,participants:s.participants.map(x=>x.personId)})),
     scriptedWinnerSide:layout.scriptedWinnerSide,
-    plannedFinish:injury.plannedFinish,
+    plannedFinish:authored,
     ruleset:layout.ruleset,eliminationOrder:layout.eliminationOrder,
     ...(interference?{interferencePlannedOutcome:interference.plannedOutcome}:{})
    };
    const resolution:ResolvedTeamEvidence={
-    actualWinnerSide:result.actualWinnerSide,actualFinish:final.actualFinish,
+    actualWinnerSide:result.actualWinnerSide,actualFinish:decisive(final.actualFinish),
     completedEliminationOrder:result.completedEliminationOrder,
     ...(serious?{medical:{injuredPersonId:serious.personId,
       severity:serious.severity as "MAJOR"|"SEVERE",
@@ -96,9 +103,9 @@ export function deriveArchivedMatchEvidence(
   const evidence:CompletedMatchEvidence={
    matchId:p.slotId,
    booking:{participants:[p.personIds[0],p.personIds[1]],
-    scriptedWinner:p.winnerId,plannedFinish:p.plannedFinish,
+    scriptedWinner:p.winnerId,plannedFinish:authored,
     ...(booked?{interferencePlannedOutcome:booked.plannedOutcome}:{})},
-   resolution:{actualWinner:final.actualWinnerId,actualFinish:final.actualFinish,
+   resolution:{actualWinner:final.actualWinnerId,actualFinish:decisive(final.actualFinish),
     ...(serious?{medical:{injuredPersonId:serious.personId,
      severity:serious.severity as "MAJOR"|"SEVERE",stoppage:true}}:{}),
     ...(booked?{interference:{plannedOutcome:booked.plannedOutcome,
