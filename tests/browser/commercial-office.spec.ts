@@ -51,10 +51,10 @@ test("320px Business commercial agreements are optional, readable and consented 
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
  await expect(page.getByText("+15 audience reach")).toBeVisible();
- expect(methods).toEqual(["business"],"Switching Business tabs cannot trigger new Neon reads");
+ expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.dismiss());
  await page.getByRole("button",{name:"Sign agreement"}).click();
- expect(methods).toEqual(["business"],"Dismissing consent must not sign anything");
+ expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.accept());
  await page.getByRole("button",{name:"Sign agreement"}).click();
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
