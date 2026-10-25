@@ -57,7 +57,8 @@ const btn=(label:string,fn:()=>void)=>{
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
   active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"|"LEGENDS"=
-    typeof window!=="undefined"&&window.location.hash==="#/industry/legends"?"LEGENDS":"STANDINGS",
+    typeof window!=="undefined"&&window.location.hash==="#/industry/legends"?"LEGENDS":
+     window.location.hash==="#/news"?"OFFICIAL":"STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
  let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
@@ -707,5 +708,6 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  // Deep link from the completed weekly show / operator desk. No polling;
  // the Vault is read once and the unseen one-time reveal appears immediately.
  if(active==="LEGENDS")void loadLegends();
+  if(active==="OFFICIAL")void loadNews();
  return {refresh:load};
 }
