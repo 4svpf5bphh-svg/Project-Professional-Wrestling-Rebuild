@@ -32,8 +32,10 @@ test("certified retired wrestler becomes a single contested World staff identity
     "INSERT INTO ppw_people(world_id,person_id,name,status,",
     "career_experience,in_ring_quality,match_craft,presentation,safety,popularity,recognition)",
     "VALUES ($1,'retired-veteran','Mara Bell','RETIRED',72,68,46,45,96,21,19),",
-    "($1,'famous-without-bouts','Famous Without Bouts','RETIRED',98,99,99,99,99,100,100)"
+    "($1,'famous-without-bouts','Famous Without Bouts','RETIRED',98,99,99,99,99,100,100),",
+    "($1,'working-roster','Working Roster','ACTIVE',40,60,60,60,70,50,50)"
    ].join(" "),[world]);
+   await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,status,family,start_week_index,expires_week_index,weekly_guarantee) VALUES($1,'working-contract','working-roster','human-a','SIGNED','EXCLUSIVE',0,104,500)",[world]);
    // One honest completed show per week; no draft, unplayed angle or invented
    // appearance can count. The contender's losing opponent isn't important.
    await tx.query([
@@ -59,6 +61,14 @@ test("certified retired wrestler becomes a single contested World staff identity
     "SELECT $1,'alumni-show-'||n,'match-1','retired-veteran',",
     "'A','A',true,'{}'::jsonb,'{}'::jsonb FROM generate_series(1,14) n"
    ].join(" "),[world]);
+   // A genuine booked but losing member of the current promotion roster.
+   await tx.query([
+    "INSERT INTO ppw_individual_field_career_effects(world_id,show_id,match_id,",
+    "person_id,actual_winner_side,performer_side,won,before_stats,after_stats)",
+    "SELECT $1,'alumni-show-'||n,'match-1','working-roster',",
+    "'A','B',false,'{}'::jsonb,'{}'::jsonb FROM generate_series(1,14) n"
+   ].join(" "),[world]);
+   await tx.query("UPDATE ppw_worlds SET week=15 WHERE world_id=$1",[world]);
    assert.equal(await publishRetiredStaffCandidates(tx,world,
     ["retired-veteran","famous-without-bouts"],20),1);
    assert.equal(await publishRetiredStaffCandidates(tx,world,
@@ -66,6 +76,13 @@ test("certified retired wrestler becomes a single contested World staff identity
   });
   const a=await readStaffWorkspace(db.pool,scope(playerA,"human-a"));
   const b=await readStaffWorkspace(db.pool,scope(playerB,"human-b"));
+  assert.equal(a.meetings.length,8);
+  assert.equal(b.meetings.length,8);
+  assert.equal(a.ownerRankings.length,1);
+  assert.deepEqual({name:a.ownerRankings[0]!.name,matches:a.ownerRankings[0]!.matches,
+   wins:a.ownerRankings[0]!.wins},
+   {name:"Working Roster",matches:14,wins:0});
+  assert.equal(b.ownerRankings.length,0,"No rival match evidence should leak");
   const alumnus=a.market.find(e=>e.formerWrestlerId==="retired-veteran");
   assert.ok(alumnus);
   assert.equal(alumnus.name,"Mara Bell");
@@ -89,7 +106,7 @@ test("certified retired wrestler becomes a single contested World staff identity
    for(const table of ["ppw_individual_field_career_effects","ppw_completed_show_matches",
     "ppw_completed_shows","ppw_booking_drafts","ppw_staff_employments",
     "ppw_staff_alumni","ppw_ledger_events","ppw_command_receipts",
-    "ppw_promotion_controls","ppw_memberships","ppw_people","ppw_promotions"])
+    "ppw_promotion_controls","ppw_memberships","ppw_contracts","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",
     [[playerA,playerB]]);
