@@ -48,6 +48,12 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await expect.poll(()=>acknowledged).toBe(true);
  await expect(page.getByRole("heading",{name:"Identity shrouded"})).toBeVisible();
  await expect(page.getByText("2 / 8 · 25%")).toBeVisible();
+ await page.getByRole("button",{name:"Discovered (1)"}).click();
+ await expect(page.locator(".ppw-legend-tile:visible")).toHaveCount(1);
+ await expect(page.getByRole("button",{name:"Discovered (1)"})).toHaveAttribute("aria-pressed","true");
+ await page.getByRole("button",{name:"Locked (2)"}).click();
+ await expect(page.locator(".ppw-legend-tile:visible")).toHaveCount(2);
+ await page.getByRole("button",{name:"All (3)"}).click();
  await page.getByRole("button",{name:"Replay the reveal"}).click();
  await expect(page.getByRole("dialog")).toBeVisible();
  await page.getByRole("button",{name:"Continue to the Vault"}).click();
