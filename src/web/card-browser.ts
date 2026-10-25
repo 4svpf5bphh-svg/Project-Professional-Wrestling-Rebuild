@@ -245,6 +245,14 @@ export function mountStaffPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  return mountStaffDesk(root,staffPort(root,scope,call));
 }
+/** Header KP route: fetch the wallet only when the player opens it. */
+export function mountKayfabePage(root:HTMLElement,scope:Scope,onBack:()=>void){
+ const call=createCardClient(scope);
+ return mountKayfabeDesk(root,{
+  load:()=>call("kpWorkspace"),claim:()=>call("kpClaimWeek"),
+  apply:action=>call("kpAction",{...action}),back:onBack,backLabel:"← Back to World"
+ });
+}
 function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
