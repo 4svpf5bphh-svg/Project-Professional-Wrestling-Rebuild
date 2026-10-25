@@ -76,7 +76,9 @@ for(const width of [320,390]){
    membership:"ACTIVE",promotion:{id:"indie",name:"Independent Wrestling",
     tier:"LOCAL",cash:500000,debt:0,lastWeeklyNet:2000,financialDistress:"HEALTHY",
     attention:{plannedShows:1,unpreparedShow:false,pendingBackstage:false,
-     expiringTalent:false,pendingContractOffers:false,commercialRenewalDue:renewalDue}}
+     expiringTalent:false,pendingContractOffers:false,
+     businessUpdates:renewalDue?[{id:"business-update:103",kind:"COMMERCIAL_EXPIRED",
+      year:1,week:31,prestigeDelta:null,before:null,after:null}]:[]}}
   });
   await page.route("**/api/session",route=>route.fulfill({json:{
    worldId:"genesis",playerId:"owner",csrfToken:"opaque",
@@ -89,15 +91,16 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/home");
-  const renewal=page.getByRole("button",{name:/A commercial deal has ended/});
-  await expect(renewal).toBeVisible();
-  await renewal.click();
+  await expect(page.getByRole("heading",{name:"Company updates"})).toBeVisible();
+  await expect(page.getByText("A commercial deal has ended")).toBeVisible();
+  await expect(page.getByText("AGREEMENT ENDED")).toBeVisible();
+  await page.getByRole("button",{name:"Review commercial deals"}).click();
   await expect(page).toHaveURL(/#\/business$/);
   expect(calls.filter(method=>method==="overview")).toEqual(["overview"]);
   expect(calls.filter(method=>method==="business").length).toBeLessThanOrEqual(1);
   renewalDue=false;
   await page.goto("/#/home");
-  await expect(page.getByRole("button",{name:/A commercial deal has ended/})).toHaveCount(0);
+  await expect(page.getByText("A commercial deal has ended")).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
