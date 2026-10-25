@@ -18,7 +18,7 @@ CREATE TABLE ppw_world_news_awards(
  rating_unit text NOT NULL CHECK(rating_unit IN ('STARS','CROWD')),
  PRIMARY KEY(world_id,year,week,kind),
  FOREIGN KEY(world_id,year,week) REFERENCES ppw_world_news_weeks(world_id,year,week),
- FOREIGN KEY(world_id,show_id) REFERENCES ppw_completed_shows(world_id,show_id)
+ FOREIGN KEY(world_id,show_id) REFERENCES ppw_completed_shows(world_id,show_id) ON DELETE CASCADE
 );
 CREATE TABLE ppw_world_news_items(
  world_id text NOT NULL,year integer NOT NULL,week integer NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE ppw_world_news_items(
  source_kind text NOT NULL CHECK(source_kind IN ('MATCH','ANGLE','TITLE','EVENT','CROWD')),
  PRIMARY KEY(world_id,year,week,story_key),
  FOREIGN KEY(world_id,year,week) REFERENCES ppw_world_news_weeks(world_id,year,week),
- FOREIGN KEY(world_id,show_id) REFERENCES ppw_completed_shows(world_id,show_id),
+ FOREIGN KEY(world_id,show_id) REFERENCES ppw_completed_shows(world_id,show_id) ON DELETE CASCADE,
  CHECK(length(story_key) BETWEEN 1 AND 200),
  CHECK(length(title) BETWEEN 1 AND 240),
  CHECK(length(summary)<=600),
