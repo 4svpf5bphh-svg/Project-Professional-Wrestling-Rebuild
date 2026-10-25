@@ -77,7 +77,7 @@ export async function publishBackstageMemories(
  // contender status nor gives anyone an unearned championship.
  const titleMatches=await tx.query<{memory_id:string}>([
   "WITH facts AS (SELECT contest.world_id,contest.promotion_id,",
-  "contest.show_id,contest.slot_id,sh.year,sh.week,",
+  "contest.show_id,contest.slot_id,contest.championship_id,sh.year,sh.week,",
   "entrant->>'personId' AS person_id,",
   "CASE WHEN contest.winner_person_id=entrant->>'personId'",
   "THEN 'TITLE_WON' ELSE 'TITLE_CHALLENGE' END AS kind",
@@ -97,10 +97,10 @@ export async function publishBackstageMemories(
   "), written AS (INSERT INTO ppw_backstage_memories(",
   "world_id,promotion_id,person_id,memory_id,kind,",
   "occurred_week_index,importance,source_id)",
-  "SELECT world_id,promotion_id,person_id,",
+  "SELECT world_id,promotion_id,person_id,
   "'title:'||show_id||':'||slot_id||':'||person_id,kind,",
   "(year-1)*52+week-1,CASE WHEN kind='TITLE_WON' THEN 5 ELSE 4 END,",
-  "show_id FROM facts ON CONFLICT DO NOTHING RETURNING memory_id)",
+  "championship_id FROM facts ON CONFLICT DO NOTHING RETURNING memory_id)",
   "SELECT memory_id FROM written LIMIT 513"
  ].join(" "),[worldId,nextWeekIndex]);
  if(titleMatches.length>512)throw new Error("Backstage title memory overflow");

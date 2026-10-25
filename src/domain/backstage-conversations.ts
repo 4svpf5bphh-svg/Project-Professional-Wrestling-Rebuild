@@ -132,7 +132,9 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
     " (average "+evidence.averageCrowd+"/100)":"")+
    ". Maybe a different character could work? I'm open to hearing a pitch.";
  }
+ return "I have something I want to discuss backstage.";
 }
+
 /** The manager speaks naturally; labels remain brief buttons, not dialogue. */
 export function backstageManagerReply(decision:BackstageDecision):string{
  switch(decision){
