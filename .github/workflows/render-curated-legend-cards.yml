@@ -11,7 +11,7 @@ permissions:
   contents: write
 concurrency:
   group: legend-draft-art-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   cards:
     if: github.ref == 'refs/heads/feature/phase8-world-ux'
@@ -27,6 +27,8 @@ jobs:
       - name: Install reproducible local renderer
         run: pip install "pillow==11.3.0"
       - name: Render verified-source photo drafts and audit metadata
+        id: render
+        continue-on-error: true
         run: python scripts/build_curated_legend_cards.py
       - name: Retain the contact sheet for manual visual review
         if: always()
@@ -39,11 +41,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Stage source-backed card draft assets only on development branch
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/web/public/assets/legends data/legend-render-audit.json
           if ! git diff --cached --quiet; then
             git commit -m "assets(legends): render actual wrestler-photo card drafts for review"
+            git pull --rebase origin feature/phase8-world-ux
             git push origin HEAD:feature/phase8-world-ux
+      - name: Surface partial artwork until Wikimedia source access succeeds
+        if: steps.render.outcome == 'failure'
+        run: |
+          echo "Partial real-photo drafts were saved; some Commons images were inaccessible. No collectible flags have been enabled."
+          exit 1
           fi
