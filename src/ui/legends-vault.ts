@@ -8,7 +8,7 @@ export interface LegendsVaultActions{
  showReveal(id:string):void;closeReveal(id:string):void;
  showCard(id:string):void;closeCard():void;
  collect(id:string):void;openWrestler?(personId:string):void;
- openMarket?():void;
+ goToMarket?(id:string):void;
 }
 const el=(tag:string,css:string,text?:string)=>{
  const n=document.createElement(tag);n.className=css;if(text!==undefined)n.textContent=text;return n;
@@ -142,8 +142,8 @@ export function drawLegendsVault(
    "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
   if(selected.personIds.length&&actions.openWrestler)
    scene.append(button("View wrestler dossier",()=>actions.openWrestler?.(selected.personIds[0]!)));
-  if(actions.openMarket)scene.append(button("Visit the talent market",
-   ()=>{actions.closeReveal(selected.id);actions.openMarket?.();}));
+  if(actions.goToMarket)scene.append(button("Visit the talent market",
+   ()=>actions.goToMarket?.(selected.id)));
   scene.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
   const dismiss=button("Skip reveal",()=>actions.closeReveal(selected.id));
   dismiss.classList.add("ppw-legend-skip");scene.prepend(dismiss);

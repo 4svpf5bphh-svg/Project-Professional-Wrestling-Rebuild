@@ -123,12 +123,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   }catch(e){legendsError=e instanceof Error?e.message:"Legends Vault unavailable";}
   finally{legendsBusy=false;render();}
  }
- async function finishReveal(id:string){
+ async function finishReveal(id:string,navigateMarket=false){
   const alreadySeen=legends?.entries.find(e=>e.id===id)?.revealSeen===true;
   revealingLegend=null;render();
   // Replay is local: the permanent account receipt is written once only.
   // Do not redraw/refresh the entire Vault every time the user revisits a card.
-  if(alreadySeen)return;
+  if(alreadySeen){if(navigateMarket)port.openMarket?.();return;}
   try{
    if(port.legendSeen)await port.legendSeen(id);
    if(port.legends){
@@ -136,7 +136,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
     revealingLegend=legends.entries.find(e=>e.unlocked&&!e.revealSeen)?.id??null;
    }
   }catch(e){legendsError=e instanceof Error?e.message:"Could not save reveal acknowledgement";}
-  render();
+  if(navigateMarket)port.openMarket?.();
+  else render();
  }
  async function collectLegend(id:string){
   if(!port.collectLegend)return;
@@ -251,7 +252,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      closeReveal:id=>{void finishReveal(id);},
      collect:id=>{void collectLegend(id);},
      openWrestler:port.openWrestler,
-     openMarket:port.openMarket
+     goToMarket:id=>{void finishReveal(id,true);}
     },revealingLegend,inspectingCard);
    }
    if(legendsBusy)section.append(el("p","ppw-industry-muted","Reading the World Legends…"));
