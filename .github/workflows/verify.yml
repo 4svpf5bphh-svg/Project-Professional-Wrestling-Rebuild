@@ -421,6 +421,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0094_earned_staff_succession.sql
+      - name: Apply Phase 5 heritage on disposable Postgres before Phase 6
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0095_organic_world_heritage.sql
       - name: Apply Phase 6 commercial deal schema in disposable Postgres
         env:
           PGPASSWORD: ppw_test

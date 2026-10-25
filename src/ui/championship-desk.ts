@@ -86,6 +86,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    details.className="ppw-belt-card";
    details.classList.add(title.status==="ACTIVE"?"ppw-belt-active":"ppw-belt-inactive");
    details.classList.add(title.division==="TAG"?"ppw-belt-tag":"ppw-belt-singles");
+   details.classList.add(title.titleRole==="SECONDARY"?"ppw-belt-secondary":"ppw-belt-primary");
    if(title.promotionId===directory.viewerPromotionId)details.classList.add("ppw-belt-ours");
    details.dataset.reign=title.currentReignId??"VACANT";
    if(title.holderId&&title.status==="ACTIVE")details.classList.add("ppw-belt-crowned");
@@ -103,7 +104,8 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    belt.append(plate);
    const identity=element("span","ppw-belt-identity");
    const promo=element("span","ppw-belt-promotion",
-    title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES"));
+    title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES")+
+    " · "+(title.titleRole==="SECONDARY"?"SECONDARY TITLE":"PRIMARY TITLE"));
    identity.append(promo);
    const throne=element("span","ppw-belt-current-display");
    if(title.holderType==="PERSON"&&title.holderName){
@@ -126,14 +128,22 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    throne.append(reign);identity.append(throne);
    const more=element("span","ppw-belt-meta");
    more.append(element("strong","",Math.round(title.prestige)+""),
-    element("small","","PRESTIGE"),
+    element("small","","EARNED PRESTIGE"),
     element("small","",title.defenses+" "+(title.defenses===1?"defense":"defenses")));
    head.append(belt,identity,more);
+   if(title.lastPrestigeChange!==undefined&&title.lastPrestigeChange!==0)
+    more.append(element("small","ppw-belt-prestige-change",
+     (title.lastPrestigeChange>0?"+":"")+title.lastPrestigeChange.toFixed(2)+" this week"));
    const history=element("div","ppw-belt-history");
    const historyIntro=element("div","ppw-belt-history-heading");
    historyIntro.append(element("h3","","Championship lineage"),
     element("span","",title.status==="ACTIVE"?"ACTIVE LINEAGE":"INACTIVE TITLE"));
    history.append(historyIntro);
+   if(title.lastContestWeekIndex!==undefined&&title.lastContestWeekIndex!==null)
+    history.append(element("p","ppw-title-heritage-fact",
+     "Last certified title contest: "+week(title.lastContestWeekIndex)));
+   else history.append(element("p","ppw-title-heritage-fact",
+    "No verified championship contest has been recorded yet."));
    details.append(head,history);
    let page:ReignCursor|null=null,loaded=false,busy=false;
    async function loadMore(){

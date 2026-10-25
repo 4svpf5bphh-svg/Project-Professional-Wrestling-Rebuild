@@ -29,7 +29,8 @@ type Owner={name:string;year:number;week:number;revision:string|number;
  booking_open:boolean;cadence:number;major_interval:number|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
- importance:number;active:boolean};
+ importance:number;active:boolean;earned_prestige:number;
+ celebrated_editions:number;last_celebrated_week_index:number|null};
 const validId=(s:unknown):s is string=>
  typeof s==="string"&&s.trim().length>0&&s.length<=200;
 async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
@@ -50,14 +51,17 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
 }
 async function load(tx:SqlRows,scope:CalendarScope,owned:Owner){
  const rows=await tx.query<Row>([
- "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",
+ "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active,",
+ "earned_prestige,celebrated_editions,last_celebrated_week_index",
  "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 AND active",
  "ORDER BY series_id LIMIT 17"
  ].join(" "),[scope.worldId,scope.promotionId]);
  if(rows.length>16)throw new Error("Calendar identity limit exceeded");
  return rows.length?rows.map(r=>({seriesId:r.series_id,name:r.name,role:r.role,
   eventType:r.event_type,cadenceWeeks:r.cadence_weeks,
-  anchorWeek:r.anchor_week,importance:r.importance,active:r.active})):
+  anchorWeek:r.anchor_week,importance:r.importance,active:r.active,
+  earnedPrestige:r.earned_prestige,celebratedEditions:r.celebrated_editions,
+  lastCelebratedWeekIndex:r.last_celebrated_week_index})):
   defaults(owned.name,owned.cadence,owned.major_interval??4);
 }
 async function bootstrap(tx:SqlRows,scope:CalendarScope,owned:Owner){
@@ -94,11 +98,14 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    major_interval:number|null;series_id:string|null;name:string|null;
    role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
    cadence_weeks:number|null;anchor_week:number|null;
-   importance:number|null;owned_bookings:unknown;
+   importance:number|null;earned_prestige:number|null;
+   celebrated_editions:number|null;last_celebrated_week_index:number|null;
+   owned_bookings:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
    "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
+   "s.earned_prestige,s.celebrated_editions,s.last_celebrated_week_index,",
    "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
    "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
    "'draftId',d.draft_id,'year',d.year,'week',d.week,",
@@ -158,7 +165,10 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     row.cadence_weeks!==null&&row.anchor_week!==null&&row.importance!==null)
     promotion.series.push({seriesId:row.series_id,name:row.name,role:row.role,
      eventType:row.event_type,cadenceWeeks:row.cadence_weeks,
-     anchorWeek:row.anchor_week,importance:row.importance,active:true});
+     anchorWeek:row.anchor_week,importance:row.importance,active:true,
+     earnedPrestige:row.earned_prestige??0,
+     celebratedEditions:row.celebrated_editions??0,
+     lastCelebratedWeekIndex:row.last_celebrated_week_index});
    else if(!promotion.series.length)
     promotion.series=defaults(row.promotion_name,row.cadence,row.major_interval??4);
   }

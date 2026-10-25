@@ -136,3 +136,9 @@
 .ppw-title-scope-empty{margin:12px 0;color:#d9dee9;line-height:1.6}
 @media(max-width:390px){.ppw-title-scope-tabs{gap:5px}
  .ppw-title-scope-tabs button{font-size:12px;padding:9px 5px}}
+
+/* Heritage is typography-first, not a generic belt image. */
+.ppw-belt-secondary{border-color:#49617a}
+.ppw-belt-secondary .ppw-belt-promotion{color:#b9cbe2}
+.ppw-title-heritage-fact{font-size:12px;color:#8dbecc;margin:10px 0}
+.ppw-belt-prestige-change{color:#f0ca87}
