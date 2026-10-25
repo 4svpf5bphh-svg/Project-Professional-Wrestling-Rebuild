@@ -48,7 +48,8 @@ export function bookingErrorCode(message:string):BookingErrorCode|null{
 /** Never expose raw SQL or exception text. Use a small, stable error vocabulary. */
 export function cardActionDomain(method:string):
  "booking"|"kayfabe"|"legends"|"business"|"general"{
- if(["save","ready","load","talent","results","creativeConsent"].includes(method))
+ if(["save","ready","load","talent","results","creativeConsent",
+  "planner","planShow","calendar","saveCalendar","archiveCalendar"].includes(method))
   return "booking";
  if(method.startsWith("kp")||method==="kpWorkspace")return "kayfabe";
  if(["legendsVault","legendSeen"].includes(method))return "legends";
