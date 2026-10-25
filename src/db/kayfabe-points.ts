@@ -7,6 +7,7 @@ import {withSqlClient} from "./postgres.js";
 import type {SqlRows} from "./world-operations.js";
 import {createKpWrestlerPersona,validateKpCreatedIdentity,kpWrestlerCreateOptions,
  type KpCreatedIdentity} from "../domain/kp-create-wrestler.js";
+import {findLegend,LEGEND_TIER_PRICES} from "../domain/legends-catalogue.js";
 
 export const KP_WEEKLY_AWARD=100;
 export const KP_STAFF_ALIAS_COST=350;
@@ -27,7 +28,8 @@ export type KpAction=
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
  |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
- |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity);
+ |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity)
+ |{kind:"COLLECT_LEGEND";legendId:string;requestId:string};
 const validId=(v:string)=>typeof v==="string"&&v.length>0&&v.length<=200;
 function cleanName(value:string){
  if(typeof value!=="string")throw new Error("A name is required");
@@ -49,6 +51,8 @@ export function validateKpAction(action:KpAction){
   cleanName(action.name);
  }else if(action.kind==="CREATE_WRESTLER"){
   validateKpCreatedIdentity(action);
+ }else if(action.kind==="COLLECT_LEGEND"){
+  if(!findLegend(action.legendId))throw new Error("Unknown collectible legend");
  }else throw new Error("Unknown Kayfabe Points action");
  return action;
 }
@@ -227,6 +231,25 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     SET alias=excluded.alias,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,action.staffId,s.playerId,name]);
    outcome={staffId:action.staffId,name};
+  }else if(action.kind==="COLLECT_LEGEND"){
+   const legend=findLegend(action.legendId)!;
+   if(legend.status!=="ACTIVE"||!legend.cardAsset)
+    throw new Error("This card is not yet available. Premium artwork must be cleared first.");
+   const announced=await tx.query<{legend_id:string}>(`
+    SELECT legend_id FROM ppw_world_legend_unlocks
+    WHERE world_id=$1 AND legend_id=$2
+   `,[s.worldId,legend.id]);
+   if(!announced.length)throw new Error("Legend must enter your World before the card can be collected");
+   const owned=await tx.query<{legend_id:string}>(`
+    SELECT legend_id FROM ppw_kp_legend_cards WHERE player_id=$1 AND legend_id=$2
+   `,[s.playerId,legend.id]);
+   if(owned.length)throw new Error("You already own this legend card");
+   price=LEGEND_TIER_PRICES[legend.tier];
+   await tx.query(`
+    INSERT INTO ppw_kp_legend_cards(player_id,legend_id,first_unlocked_world_id)
+    VALUES($1,$2,$3)
+   `,[s.playerId,legend.id,s.worldId]);
+   outcome={legendId:legend.id,name:legend.name,collected:true};
   }else if(action.kind==="CREATE_WRESTLER"){
    if(!owner.can_edit)throw new Error("The World must be open to introduce a wrestler");
    const locked=await tx.query<{year:number;week:number;can_edit:boolean}>(
