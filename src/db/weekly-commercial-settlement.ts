@@ -22,6 +22,10 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  WITH certified AS (
   SELECT c.promotion_id,avg(c.crowd_response)::double precision AS crowd
   FROM ppw_completed_shows c
+  JOIN ppw_show_economics econ ON econ.world_id=c.world_id
+   AND econ.show_id=c.show_id AND econ.promotion_id=c.promotion_id
+  JOIN ppw_booking_drafts draft ON draft.world_id=c.world_id
+   AND draft.draft_id=c.show_id AND draft.status='SUBMITTED'
   WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
   GROUP BY c.promotion_id
  )
@@ -89,7 +93,11 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  LEFT JOIN LATERAL (
   SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd
   FROM (
-   SELECT crowd_response FROM ppw_completed_shows show
+   SELECT show.crowd_response FROM ppw_completed_shows show
+   JOIN ppw_show_economics econ ON econ.world_id=show.world_id
+    AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id
+   JOIN ppw_booking_drafts draft ON draft.world_id=show.world_id
+    AND draft.draft_id=show.show_id AND draft.status='SUBMITTED'
    WHERE show.world_id=p.world_id AND show.promotion_id=p.promotion_id
    ORDER BY show.year DESC,show.week DESC,show.show_id DESC LIMIT 12
   ) last_twelve
