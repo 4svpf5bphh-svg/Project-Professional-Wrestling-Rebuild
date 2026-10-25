@@ -114,7 +114,7 @@ export async function settleWeeklyFatigueRecovery(
    FROM jsonb_to_recordset($3::jsonb) x(staff_id text,bonus numeric)
    UNION ALL
    SELECT a.staff_id,least(2.5::numeric,greatest(0.5::numeric,
-    round(a.craft::numeric/4,1))) AS bonus
+    round(a.craft::numeric/40,1))) AS bonus
    FROM ppw_staff_alumni a WHERE a.world_id=$1 AND a.role='TRAINER'
   ), coached AS MATERIALIZED (
    SELECT c.person_id,max(x.bonus) AS extra
