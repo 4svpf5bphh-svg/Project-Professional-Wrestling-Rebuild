@@ -7,10 +7,10 @@ import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 
-interface Broadcast {
+type Broadcast = {
  show_id:string;promotion_id:string;promotion_name:string;show_name:string;
  crowd_response:number|string;booking_class:string;
-}
+};
 interface Bout extends Broadcast{
  slot_id:string;position:number;rating_stars:string|number|null;
  match_crowd:string|number;payload:unknown;
