@@ -46,6 +46,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  });
  await page.goto("/#/staff");
  await expect(page.getByRole("heading",{name:"Staff Office"})).toBeVisible();
+ await page.getByRole("button",{name:"Staff Market"}).click();
  await page.getByText("View Morgan Stone's dossier").click();
  await expect(page.getByText(/A forthright voice/)).toBeVisible();
  await expect(page.getByText("No previous completed staff employment recorded in this World.")).toBeVisible();
@@ -53,6 +54,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByText("Staff contract signed. Weekly payroll now includes this employee.")).toBeVisible();
  await expect(page.locator(".ppw-staff-overview-metric")
   .filter({hasText:"WEEKLY PAYROLL"}).getByText("$950",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Contracts",exact:true}).click();
  await expect(page.getByText("Buyout $49,400")).toHaveCount(0);
  await page.getByRole("button",{name:"Release"}).click();
  await expect(page.getByText(/Buyout \$49,400/)).toBeVisible();
@@ -60,8 +62,8 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByText(/Employee released. The buyout was charged once/)).toBeVisible();
  expect(methods.filter(x=>x.method==="hireStaff")).toHaveLength(1);
  expect(methods.filter(x=>x.method==="releaseStaff")).toHaveLength(1);
- await page.getByRole("button",{name:"Open roster ↗"}).click();
- await expect(page).toHaveURL(/#\/roster$/);
+ await page.getByRole("button",{name:"Meetings",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Around the table"})).toBeVisible();
 });
 
 test("320px iPhone Staff Market uses four readable rows of two departments",async({page})=>{
@@ -80,6 +82,7 @@ test("320px iPhone Staff Market uses four readable rows of two departments",asyn
   employees:[],market:[],employmentHistory:[],venues:[],notices:[]
  }}));
  await page.goto("/#/staff");
+ await page.getByRole("button",{name:"Staff Market"}).click();
  const tabs=page.locator(".ppw-staff-departments button");
  await expect(tabs).toHaveCount(8);
  const boxes=await tabs.evaluateAll(els=>els.map(el=>{
