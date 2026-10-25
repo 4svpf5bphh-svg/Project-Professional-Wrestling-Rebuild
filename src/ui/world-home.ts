@@ -245,7 +245,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      const result=await port.manualAdvance!(world.year,world.week);
      if(result.status==="PUBLISHED"){
       manualStatus="Shows settled. Refreshing your World…";
-      await load();return;
+      await load();await port.onWeekPublished?.();return;
      }
      manualStatus=result.status==="BLOCKED"?
       (result.blockers?.length?result.blockers.slice(0,2).join(" · "):"World resolution needs a card or conflict decision. No results have been invented."):
