@@ -347,3 +347,23 @@
 @media(max-width:390px){.ppw-messenger .ppw-gimmick-pitch-controls{
  grid-template-columns:minmax(0,1fr)}
  .ppw-messenger .ppw-gimmick-submit{width:100%}}
+
+/* Flat, accessible Messages controls: no stacked black drop shadows. */
+.ppw-messenger .ppw-backstage-tabs,
+.ppw-messenger .ppw-backstage-tabs .ppw-persona-button,
+.ppw-messenger .ppw-backstage-filters .ppw-persona-button,
+.ppw-messenger .ppw-backstage-contact,
+.ppw-messenger .ppw-backstage-inbox,
+.ppw-messenger .ppw-persona-chat .ppw-backstage-composer{
+ box-shadow:none!important;text-shadow:none!important}
+.ppw-messenger .ppw-backstage-tabs .ppw-persona-button,
+.ppw-messenger .ppw-backstage-filters .ppw-persona-button{
+ min-height:44px!important;transform:none!important}
+.ppw-messenger .ppw-backstage-tabs button:focus-visible,
+.ppw-messenger .ppw-backstage-filters button:focus-visible{
+ outline:3px solid #81beff!important;outline-offset:2px}
+.ppw-messenger-thread .ppw-persona-chat{min-width:0;
+ overflow-wrap:anywhere;scroll-padding-bottom:28px}
+.ppw-messenger .ppw-persona-options{width:100%;min-width:0;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+@media(max-width:390px){.ppw-messenger .ppw-persona-options{grid-template-columns:minmax(0,1fr)}}
