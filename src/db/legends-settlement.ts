@@ -37,7 +37,9 @@ export function computeCertifiedLegendMatchMetrics(
   if(stars>=4.25&&m.booking_class==="PREMIUM"&&m.position===m.last_position)
    metric.PREMIUM_MAIN_EVENTS++;
  }
- return metric;
+ return {CLASSICS:metric.CLASSICS,MASTERPIECES:metric.MASTERPIECES,
+  WOMENS_CLASSICS:metric.WOMENS_CLASSICS,TAG_CLASSICS:metric.TAG_CLASSICS,
+  PREMIUM_MAIN_EVENTS:metric.PREMIUM_MAIN_EVENTS};
 }
 function moves(p:PrimeLegend){
  const category=p.style==="POWERHOUSE"?"POWER":
