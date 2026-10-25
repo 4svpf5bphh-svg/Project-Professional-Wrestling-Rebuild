@@ -4,6 +4,7 @@
 import type {EditorMatch,PersonPick} from "./card-editor-model.js";
 import type {EditorSegment} from "./card-segment-model.js";
 import {FORMATS} from "./card-editor-model.js";
+import {stipulationLabel} from "../domain/match-stipulations.js";
 import {eventDesign} from "./broadcast-identity.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
@@ -20,7 +21,9 @@ export function projectMatchGraphic(match:EditorMatch,
  const participants=match.teams.map(team=>team.filter((p):p is PersonPick=>p!==null).map(nameFor));
  const design=eventDesign(context.show,context.promotion,context.premium);
  const title=titles.find(t=>t.championshipId===match.championshipId);
- return {participants,format:FORMATS.find(f=>f.value===match.format)?.label??match.format,
+ return {participants,format:(match.stipulation&&match.stipulation!=="STANDARD"?
+  stipulationLabel(match.stipulation)+" · ":"")+
+   (FORMATS.find(f=>f.value===match.format)?.label??match.format),
   entrants:participants.reduce((n,side)=>n+side.length,0),
   totalEntrants:match.teams.reduce((n,side)=>n+side.length,0),
   championship:title?.name??null,elimination:match.elimination,

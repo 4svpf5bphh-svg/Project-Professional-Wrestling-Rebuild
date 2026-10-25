@@ -4,7 +4,7 @@
  */
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  resizeMatch,moveElimination,buildBookedMatch,assignedIds,
- editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
+ editorMatchStyle,changeMatchIntent,changeMatchStyle,changeMatchStipulation,editorStyleLoad,bookedMatchHeadline,
  bookedStyleReadiness,bookedConditionReport,type ConditionSnapshot,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
@@ -21,6 +21,9 @@ import {createMatchBroadcast,createAngleBroadcast} from "./match-broadcast.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
+import {MATCH_STIPULATIONS,compatibleStipulations,
+ permittedStipulationFinishes,type MatchStipulation}
+ from "../domain/match-stipulations.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
@@ -949,12 +952,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL","HIGH_RISK",
       "STORY","PROTECTIVE","EPIC"].map(x=>[x,nice(x)]),
       v=>setMatch(slotId,changeMatchIntent(m,v)),!mutable())));
+    const simFormat=["TRIOS","FOUR_V_FOUR","FIVE_V_FIVE"].includes(m.format)?
+     "TAG":m.format;
+    controls.append(field("Stipulation",selector(m.stipulation??"STANDARD",
+     compatibleStipulations(simFormat).map(code=>[
+      code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),
+     v=>setMatch(slotId,changeMatchStipulation(m,v as MatchStipulation)),!mutable())));
     controls.append(field("Finish",selector(m.plannedFinish,
-     (m.format==="BATTLE_ROYAL"?["OVER_THE_TOP_ROPE"]:
-      m.format==="TRIPLE_THREAT"||m.format==="FOUR_WAY"?
-      ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH"]:
-      ["CLEAN_PIN","SUBMISSION","FLASH_PIN","PROTECTED_FINISH",
-       "DISQUALIFICATION","FOREIGN_OBJECT"]).map(x=>[x,nice(x)]),
+     permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
+      .map(x=>[x,nice(x)]),
       v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined}),!mutable())));
     const cheatingSide=m.plannedFinish==="FOREIGN_OBJECT"?m.winnerSide:
      m.plannedFinish==="DISQUALIFICATION"?1-m.winnerSide:-1;

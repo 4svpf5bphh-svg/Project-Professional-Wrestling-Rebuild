@@ -8,6 +8,8 @@ import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
  type MatchStyleDimension,type MatchStyleProfile} from "../simulation/legacy/match-style.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {readBookedInterference,type BookedInterference} from "../simulation/legacy/match-interference.js";
+import {readMatchStipulation,defaultStipulationFinish,stipulationLabel,
+ type MatchStipulation} from "../domain/match-stipulations.js";
 export type Format="SINGLES"|"TRIPLE_THREAT"|"FOUR_WAY"|"TAG"|"TRIOS"|
  "FOUR_V_FOUR"|"FIVE_V_FIVE"|"MULTI_TEAM"|"BATTLE_ROYAL";
 export type PersonPick={personId:string;contractId:string};
@@ -20,6 +22,7 @@ export interface EditorMatch{
  /** Existing optional booking metadata must survive an edit. */
  championshipId?:string;interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
+ stipulation?:MatchStipulation;
 }
 export const FORMATS:readonly {value:Format;label:string}[]=[
  {value:"SINGLES",label:"Singles · 1v1"},
@@ -54,7 +57,7 @@ export function newEditorMatch(slotId:string,format:Format):EditorMatch{
   intent:"COMPETITIVE",plannedFinish:format==="BATTLE_ROYAL"?
    "OVER_THE_TOP_ROPE":"CLEAN_PIN",
   plannedLengthMinutes:format==="BATTLE_ROYAL"?30:18,
-  elimination:format==="BATTLE_ROYAL",
+  stipulation:"STANDARD",elimination:format==="BATTLE_ROYAL",
   eliminationOrder:Array.from({length:teams-1},(_,i)=>i+1)};
 }
 export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
@@ -75,6 +78,7 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
    format==="BATTLE_ROYAL"?"OVER_THE_TOP_ROPE":"CLEAN_PIN",
   plannedLengthMinutes:typeof raw.plannedLengthMinutes==="number"?
    raw.plannedLengthMinutes:18,
+  stipulation:readMatchStipulation(raw.stipulation,format),
   elimination:layout.ruleset==="ELIMINATION",
   eliminationOrder:layout.eliminationOrder.map(x=>
    layout.sides.findIndex(s=>s.sideId===x)),
@@ -106,15 +110,25 @@ export function editorStyleLoad(match:EditorMatch){
  return evaluateMatchStyleLoad(editorMatchStyle(match),match.plannedLengthMinutes);
 }
 /** The programme card should headline the performers, not merely a slot counter. */
+export function changeMatchStipulation(match:EditorMatch,
+ stipulation:MatchStipulation):EditorMatch{
+ readMatchStipulation(stipulation,match.format==="TRIOS"||
+  match.format==="FOUR_V_FOUR"||match.format==="FIVE_V_FIVE"?"TAG":match.format);
+ return {...match,stipulation,plannedFinish:defaultStipulationFinish(stipulation),
+  cheatingWrestlerId:undefined,
+  ...(stipulation==="STANDARD"||stipulation==="HARDCORE"?{}:{interference:undefined})};
+}
 export function bookedMatchHeadline(match:EditorMatch,
  nameFor:(participant:PersonPick|null)=>string):string{
  const teams=match.teams.map(side=>side.map(nameFor).join(" & "));
- if(match.format==="BATTLE_ROYAL")return "Battle royal · "+
+ const billing=match.stipulation&&match.stipulation!=="STANDARD"?
+  stipulationLabel(match.stipulation)+" · ":"";
+ if(match.format==="BATTLE_ROYAL")return billing+"Battle royal · "+
   match.teams.filter(side=>side.every(Boolean)).length+
   " of "+match.teams.length+" entrants";
- if(teams.length>3)return teams.slice(0,2).join(" vs ")+" + "+
+ if(teams.length>3)return billing+teams.slice(0,2).join(" vs ")+" + "+
   (teams.length-2)+" more";
- return teams.join(" vs ");
+ return billing+teams.join(" vs ");
 }
 export interface ConditionSnapshot{
  inRingQuality:number|null;matchCraft:number|null;presentation:number|null;
@@ -245,6 +259,7 @@ export function buildBookedMatch(match:EditorMatch):BookableMatch{
   plannedFinish:match.plannedFinish,
   plannedLengthMinutes:match.plannedLengthMinutes,intent:match.intent,
   ...(match.championshipId?{championshipId:match.championshipId}:{}),
+  ...(match.stipulation&&match.stipulation!=="STANDARD"?{stipulation:match.stipulation}:{}),
   ...(match.interference?{interference:match.interference}:{}),
   ...(match.style?{style:match.style}:{}),
   ...(match.cheatingWrestlerId?{cheatingWrestlerId:match.cheatingWrestlerId}:{}),

@@ -6,6 +6,8 @@ import {readCanonicalMatchLayout,requireSupportedScoringLayout,
 import {isBookableMatchFinish} from "../simulation/legacy/match-finishes.js";
 import {normalizeMatchStyle} from "../simulation/legacy/match-style.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
+import {readMatchStipulation,permittedStipulationFinishes,
+ defaultStipulationFinish,type MatchStipulation} from "./match-stipulations.js";
 
 const intents=new Set(["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
  "HIGH_RISK","STORY","PROTECTIVE","EPIC"]);
@@ -26,6 +28,7 @@ export interface BookableMatch {
  interference?:unknown;
  style?:unknown;
  cheatingWrestlerId?:string;
+ stipulation?:MatchStipulation;
 }
 export function normalizeBookableMatch(input:unknown):BookableMatch{
  if(!input||typeof input!=="object"||Array.isArray(input))
@@ -41,12 +44,18 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
  const intent=raw.intent??"COMPETITIVE";
  if(typeof intent!=="string"||!intents.has(intent))
   throw new Error("Invalid match intent");
- const finish=raw.plannedFinish??(format==="BATTLE_ROYAL"?
-  "OVER_THE_TOP_ROPE":"CLEAN_PIN");
- if(typeof finish!=="string"||!(format==="BATTLE_ROYAL"?
-  finish==="OVER_THE_TOP_ROPE":format==="TRIPLE_THREAT"||format==="FOUR_WAY"?
-  multiFinishes.has(finish):isBookableMatchFinish(finish)))
-  throw new Error("Unsupported authored match finish");
+ const stipulation=readMatchStipulation(raw.stipulation,format);
+ if(stipulation!=="STANDARD"&&layout.ruleset==="ELIMINATION")
+  throw new Error("Special stipulations do not support elimination matches");
+ const finish=raw.plannedFinish??(stipulation==="STANDARD"?
+  format==="BATTLE_ROYAL"?"OVER_THE_TOP_ROPE":"CLEAN_PIN":
+  defaultStipulationFinish(stipulation));
+ if(typeof finish!=="string"||
+  !permittedStipulationFinishes(stipulation,format).includes(finish)||
+  (stipulation==="STANDARD"&&!(format==="BATTLE_ROYAL"?
+   finish==="OVER_THE_TOP_ROPE":format==="TRIPLE_THREAT"||format==="FOUR_WAY"?
+   multiFinishes.has(finish):isBookableMatchFinish(finish))))
+  throw new Error("This finish is not legal for the chosen stipulation");
  if((format!=="SINGLES"&&format!=="TAG")&&
   (raw.interference!==undefined||raw.style!==undefined||
    raw.cheatingWrestlerId!==undefined))
@@ -59,6 +68,9 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
    format==="BATTLE_ROYAL"||
    (format==="TAG"&&layout.sides[0]!.participants.length!==2)))
   throw new Error("Unsupported championship format");
+ if(raw.interference!==undefined&&
+  !["STANDARD","HARDCORE"].includes(stipulation))
+  throw new Error("This stipulated match cannot contain an outside run-in");
  const interference=raw.interference===undefined?null:readBookedInterference(raw);
  if(interference&&(layout.participants.some(p=>p.personId===interference.personId)||
   interference.plannedOutcome==="SUCCESS"&&interference.aidedSide!==layout.scriptedWinnerSide))
@@ -75,6 +87,7 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
   ...(layout.ruleset==="ELIMINATION"?{
    ruleset:"ELIMINATION" as const,eliminationOrder:[...layout.eliminationOrder]}:{}),
   plannedFinish:finish,plannedLengthMinutes:length,intent,
+  ...(stipulation==="STANDARD"?{}:{stipulation}),
   ...(raw.championshipId===undefined?{}:{championshipId:raw.championshipId as string}),
   ...(interference?{interference}:{}),
  };
