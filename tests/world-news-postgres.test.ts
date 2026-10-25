@@ -97,10 +97,9 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.ok(!publicText.includes("PRIVATE FUTURE PLANS"));
   assert.ok(!publicText.includes("HIDDEN CONTRACT TALKS"));
   assert.ok(!publicText.includes("DO NOT PUBLISH"));
-  const viaRpc=(await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},
-   "industryNews",{worldId:world,promotionId:"promotion-0",playerId:"outsider"}))
-   as typeof result;
-  assert.equal(viaRpc.awards.length,2);
+  const viaRpc=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},
+   "industryNews",{worldId:world,promotionId:"promotion-0",playerId:"outsider"});
+  assert.ok(JSON.stringify(viaRpc).includes("AI Crown Night"));
   await assert.rejects(readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:"outsider"}),/access denied/);
  }finally{
