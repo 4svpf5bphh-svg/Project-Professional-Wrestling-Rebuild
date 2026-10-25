@@ -1,6 +1,8 @@
 /** URL navigation contains only section IDs, never player/World credentials. */
 export const HOST_SECTIONS=[
  {id:"home",label:"World",glyph:"W",primary:true},
+ {id:"news",label:"News",glyph:"N",primary:true},
+ {id:"kayfabe",label:"Kayfabe Points",glyph:"★"},
  {id:"planner",label:"Plan",glyph:"P",primary:true},
  {id:"card",label:"The Card",glyph:"▤"},
  {id:"roster",label:"Talent",glyph:"T",primary:true},
@@ -12,7 +14,7 @@ export const HOST_SECTIONS=[
  {id:"admin",label:"Admin",glyph:"⚙"},
  {id:"industry",label:"Industry",glyph:"◎"},
  {id:"calendar",label:"Calendar",glyph:"▦"},
- {id:"results",label:"Results",glyph:"R",primary:true},
+ {id:"results",label:"Results",glyph:"R"},
  {id:"programmes",label:"Programmes",glyph:"⚑"},
  {id:"championships",label:"Championships",glyph:"♛"},
  {id:"teams",label:"Tag Teams",glyph:"♧"},
@@ -46,34 +48,35 @@ export const hostSectionHash=(section:HostSection)=>"#/"+section;
 /** Original PPW IA: the five roots open a client-only drawer, never query Neon. */
 export const HOST_DRAWER_ROOTS=[
  {key:"world",label:"World",glyph:"W",landing:"home",destinations:[
-  ["home","World overview","Your promotion and this week\u0027s outlook"],
-  ["industry","Promotions","Rivals and the wrestling industry"],
-  ["championships","Championships","Titles and title history"]]},
- {key:"talent",label:"Talent",glyph:"T",landing:"roster",destinations:[
-  ["roster","Roster","Your wrestlers and divisions"],
-  ["market","Talent Market","Find talent and gauge interest"],
-  ["contracts","Contracts","Renewals and pending deals"],
-  ["backstage","Backstage","Private wrestler messages"],
-  ["teams","Tag Teams","Existing pairings"],
-  ["stables","Stables","Groups and membership"],
+  ["home","World dashboard","Deadline, next show and urgent decisions"]]},
+ {key:"news",label:"News",glyph:"N",landing:"news",destinations:[
+  ["news","Official News","The latest verified headlines"],
+  ["industry","Industry & dirt sheets","Rivals, rumours, rankings and archives"]]},
+ {key:"promotion",label:"Promotion",glyph:"P",landing:"roster",destinations:[
+  ["roster","My Roster","Wrestlers, divisions and dossiers"],
+  ["market","Talent Market","Recruitment and free agents"],
+  ["results","Results","Completed shows and reports"],
+  ["championships","Championships","Title holders and history"],
+  ["contracts","Contracts","Deals, renewals and dates"],
+  ["backstage","Backstage","Private wrestler conversations"],
+  ["teams","Tag Teams","Partnerships and pairings"],
+  ["stables","Stables","Groups and factions"],
   ["connections","Connections","Working relationships"]]},
  {key:"plan",label:"Plan",glyph:"P",landing:"planner",destinations:[
-  ["planner","Show Planner","Book this week's shows"],
-  ["calendar","Calendar","TV and premium events"],
-  ["programmes","Programmes","Manage rivalries and stories"]]},
+  ["planner","Show Planner","Prepare future shows"],
+  ["calendar","Calendar","Events and venues"],
+  ["programmes","Programmes","Rivalries and ongoing stories"]]},
  {key:"business",label:"Business",glyph:"B",landing:"business",destinations:[
-  ["business","Business overview","Finances and operations"],
-  ["staff","Staff","Delegated decisions and renewals"],
-  ["admin","Admin","Private World control and Ringside AI Studio"]]},
- {key:"results",label:"Results",glyph:"R",landing:"results",destinations:[
-  ["results","My Results","Completed shows and broadcasts"]]}
+  ["business","Finances & deals","Broadcasting, sponsorship and operations"],
+  ["staff","Staff Office","Your team and its decisions"],
+  ["admin","Admin","Operator-only World controls"]]}
 ] as const;
 export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
 export function drawerRootForSection(section:HostSection):HostDrawerRoot{
- if(["roster","market","contracts","backstage","teams","stables","connections"].includes(section))return "talent";
+ if(["news","industry"].includes(section))return "news";
+ if(["roster","market","results","championships","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";
- if(["business","staff","admin"].includes(section))return "business";
- if(section==="results")return "results";
+ if(["business","staff","admin","kayfabe"].includes(section))return "business";
  return "world";
 }
 
