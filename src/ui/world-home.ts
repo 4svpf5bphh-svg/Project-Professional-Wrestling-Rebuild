@@ -30,7 +30,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  let progressedFrom:{year:number;week:number}|null=null;
  let expiredOnScreen:string|null=null;
- let manualStatus="";let manualBusy=false;
+ let manualStatus="";let manualBusy=false;let claimingKP=false;
  const dismissing=new Set<string>();
  let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
@@ -325,6 +325,26 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   // Tolerate previously cached session projections and historical test fixtures.
   // Unavailable telemetry must never be interpreted as a confirmed alert.
   const attention=promotion.attention;
+   if(attention?.unseenLegends&&port.openLegends){
+    items.push({title:"Legend revealed in the World",detail:
+     attention.unseenLegends+" new historic arrival"+(attention.unseenLegends===1?" is":"s are")+
+     " ready for your reveal. All promotions can pursue these free agents.",
+     action:port.openLegends,icon:"★",level:"priority"});
+   }
+   if(attention?.kpClaimAvailable){
+    items.push({title:"Claim Reward",detail:
+     "Your latest certified show earned Kayfabe Points. Collect your reward.",
+     action:()=>{if(claimingKP)return;
+      if(!port.claimWeeklyKP){port.openKayfabe?.();return;}
+      claimingKP=true;
+      void port.claimWeeklyKP().then(result=>{
+       manualStatus=result.awarded>0?"Kayfabe Points claimed.":
+        result.reason??"No new points available.";
+       return load();
+      }).catch(e=>{error=e instanceof Error?e.message:"Could not claim points";})
+       .finally(()=>{claimingKP=false;draw();});
+     },icon:"★",level:"priority"});
+   }
   if(bookingOpen&&(world.year>1||world.week>1)){
    if(!progressedFrom)items.push({title:"Last week's results",detail:
     "The previous week's shows have been completed. Read your latest broadcasts.",
