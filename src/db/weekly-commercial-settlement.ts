@@ -75,6 +75,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  )
  SELECT closing.promotion_id,closing.kind FROM closing
  `,[worldId,weekIndex]);
+ // Expired terms are published to the already-existing, dismissible
+ // Business Wire. One batched journal write only when an agreement actually
+ // ends; no recurring Home query, polling, or repeated weekly notice.
+ if(expired.length)await tx.query(`
+  INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+  SELECT $1,$2,$3,'COMMERCIAL_DEAL_EXPIRED',
+   jsonb_build_object('promotionId',deal.promotion_id,'kind',deal.kind)
+  FROM jsonb_to_recordset($4::jsonb) AS deal(promotion_id text,kind text)
+ `,[worldId,year,week,JSON.stringify(expired)]);
  // One bounded set of AI promotions; recent verified shows only. Separate
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
