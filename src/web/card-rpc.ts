@@ -3,7 +3,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
+ staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -50,6 +50,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
  if(method==="gorillaWorkspace")return gorillaWorkspaceAsActor(context,worldId,promotionId);
  if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
+ if(method==="promotionRecordBook")return promotionRecordBookAsActor(context,worldId,promotionId);
  if(method==="industryFeatured")return industryFeaturedAsActor(context,
   worldId,promotionId,id("targetPromotionId"));
  if(method==="business")return businessAsActor(context,worldId,promotionId);
