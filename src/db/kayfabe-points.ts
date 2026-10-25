@@ -5,6 +5,8 @@ import {createHash,randomUUID} from "node:crypto";
 import {withWorldTransaction,type TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import type {SqlRows} from "./world-operations.js";
+import {createKpWrestlerPersona,validateKpCreatedIdentity,kpWrestlerCreateOptions,
+ type KpCreatedIdentity} from "../domain/kp-create-wrestler.js";
 
 export const KP_WEEKLY_AWARD=100;
 export const KP_STAFF_ALIAS_COST=350;
@@ -25,7 +27,7 @@ export type KpAction=
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
  |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
- |{kind:"CREATE_WRESTLER";name:string;division:"MEN"|"WOMEN";requestId:string};
+ |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity);
 const validId=(v:string)=>typeof v==="string"&&v.length>0&&v.length<=200;
 function cleanName(value:string){
  if(typeof value!=="string")throw new Error("A name is required");
@@ -46,8 +48,7 @@ export function validateKpAction(action:KpAction){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
   cleanName(action.name);
  }else if(action.kind==="CREATE_WRESTLER"){
-  cleanName(action.name);
-  if(!["MEN","WOMEN"].includes(action.division))throw new Error("Choose a division");
+  validateKpCreatedIdentity(action);
  }else throw new Error("Unknown Kayfabe Points action");
  return action;
 }
@@ -129,7 +130,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     {key:"YEAR_OF_SHOWS",label:"Iron Booker",earned:total>=52,progress:Math.min(total,52),target:52}],
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
    catalogue:KP_CATALOGUE,staffAliasPrice:KP_STAFF_ALIAS_COST,
-   createTalentPrice:KP_CREATE_TALENT_COST};
+   createTalentPrice:KP_CREATE_TALENT_COST,createOptions:kpWrestlerCreateOptions};
  });
 }
 export async function claimKayfabeWeek(pool:TransactionPool,s:KpScope){
@@ -233,7 +234,9 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     "FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[s.worldId]);
    if(locked.length!==1||!locked[0]!.can_edit||locked[0]!.year!==owner.year||
     locked[0]!.week!==owner.week)throw new Error("World booking deadline passed");
-   const name=cleanName(action.name);
+   const created=validateKpCreatedIdentity(action);
+   const name=created.name;
+   const persona=createKpWrestlerPersona(created);
    const same=await tx.query<{person_id:string}>(`
     SELECT person_id FROM ppw_people WHERE world_id=$1 AND lower(name)=lower($2)
     LIMIT 1`,[s.worldId,name]);
@@ -250,15 +253,19 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
      recognition,popularity,momentum,fatigue,wear,morale,in_ring_quality,
      match_craft,presentation,stamina,safety,contract_priorities,
      biological_age,career_experience,development_aptitude,generated_talent,
-     debut_week_index,booking_division,default_alignment)
+     debut_week_index,booking_division,default_alignment,portable_gimmick_id)
     VALUES($1,$2,$3,'ACTIVE','PROSPECT',15,12,25,0,0,72,52,49,50,66,65,
      '{"money":65,"role":70,"prestige":50,"schedule":45,"loyalty":40,"exposure":60}'::jsonb,
-     24,2,60,true,$4,$5,'FACE')`,
-    [s.worldId,personId,name,weekIndex,action.division]);
+     24,2,60,true,$4,$5,$6,$7)`,
+    [s.worldId,personId,name,weekIndex,created.division,created.alignment,created.gimmickId]);
+   await tx.query(`
+    INSERT INTO ppw_portable_personas(world_id,person_id,revision,persona,provenance,introduced_week_index)
+    VALUES($1,$2,1,$3::jsonb,'GAME_AUTHORED',$4)`,
+    [s.worldId,personId,JSON.stringify(persona),weekIndex]);
    await tx.query(`
     INSERT INTO ppw_kp_created_talent(world_id,person_id,creator_player_id,created_year)
     VALUES($1,$2,$3,$4)`,[s.worldId,personId,s.playerId,owner.year]);
-   outcome={personId,name,division:action.division,market:"FREE_AGENT"};
+   outcome={personId,name,division:created.division,market:"FREE_AGENT"};
   }
   if(balance<price)throw new Error("Not enough Kayfabe Points");
   if(price)await tx.query(`
