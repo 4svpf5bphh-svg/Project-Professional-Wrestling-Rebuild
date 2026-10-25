@@ -1,0 +1,49 @@
+name: Render real-photo Legends card drafts (development only)
+on:
+  push:
+    branches: [feature/phase8-world-ux]
+    paths:
+      - "scripts/build_curated_legend_cards.py"
+      - "data/legend-approved-photo-sources.json"
+      - ".github/workflows/render-curated-legend-cards.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: legend-draft-art-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  cards:
+    if: github.ref == 'refs/heads/feature/phase8-world-ux'
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install reproducible local renderer
+        run: pip install "pillow==11.3.0"
+      - name: Render verified-source photo drafts and audit metadata
+        run: python scripts/build_curated_legend_cards.py
+      - name: Retain the contact sheet for manual visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-photo-legend-card-review
+          path: |
+            data/legend-card-contact-sheet.webp
+            data/legend-render-audit.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Stage source-backed card draft assets only on development branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/public/assets/legends data/legend-render-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "assets(legends): render actual wrestler-photo card drafts for review"
+            git push origin HEAD:feature/phase8-world-ux
+          fi
