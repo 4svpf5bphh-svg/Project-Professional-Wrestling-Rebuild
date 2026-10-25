@@ -146,11 +146,16 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    weeklySalary:number;morale:number;startWeekIndex:number;expiresWeekIndex:number;termWeeks:52|104};
   const rows=current.employments as Row[];
   const weekIndex=(current.year-1)*52+current.week-1;
+  const aliasRows=await tx.query<{staff_id:string;alias:string}>(`
+   SELECT staff_id,alias FROM ppw_kp_staff_aliases
+   WHERE world_id=$1 AND promotion_id=$2 AND player_id=$3`,
+   [worldId,promotionId,playerId]);
+  const nicknames=new Map(aliasRows.map(x=>[x.staff_id,x.alias]));
   const employees=rows.map(e=>{
    const member=catalog.find(s=>s.staffId===e.staffId);
    if(!member||member.role!==e.role)throw new Error("Unknown employed World staff member");
    const salary=Number(e.weeklySalary);
-   return {...member,...e,weeklySalary:salary,
+   return {...member,...e,name:nicknames.get(e.staffId)??member.name,weeklySalary:salary,
     weeksRemaining:Math.max(0,e.expiresWeekIndex-weekIndex+1),
     buyoutCost:staffBuyout(salary,e.expiresWeekIndex,weekIndex)};
   });

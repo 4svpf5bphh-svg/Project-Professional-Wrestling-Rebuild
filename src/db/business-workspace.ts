@@ -15,7 +15,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   v.length>0&&v.length<=200))throw new Error("Invalid business scope");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{
-   year:number;week:number;revision:number|string;phase:string;name:string;tier:string;
+   year:number;week:number;revision:number|string;phase:string;name:string;tier:string;kp_style:string|null;
    home_market_name:string|null;media_reach:number|null;
    cash:string;debt:string;weekly_media_income:string|null;
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
@@ -31,6 +31,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI"}[];
   }>(`
    SELECT w.year,w.week,w.revision,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
+    (SELECT k.style FROM ppw_kp_promotion_styles k WHERE k.world_id=p.world_id
+     AND k.promotion_id=p.promotion_id AND k.player_id=$2) AS kp_style,
      p.media_reach,
      (SELECT market.name FROM ppw_markets market
       WHERE market.world_id=p.world_id
@@ -133,6 +135,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   }).filter(offer=>!w.commercial_deals.some(d=>d.kind===offer.kind));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
+   kpBrandStyle:w.kp_style,
    worldRevision:Number(w.revision),
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,
    standing:w.standing_prestige===null||w.standing_fan===null

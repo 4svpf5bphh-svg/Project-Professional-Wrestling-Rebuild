@@ -18,6 +18,7 @@ import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
 import {mountBusinessDesk,type BusinessPort} from "../ui/business-desk.js";
+import {mountKayfabeDesk} from "../ui/kayfabe-desk.js";
 import {mountStaffDesk,type StaffPort} from "../ui/staff-desk.js";
 import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
@@ -246,6 +247,11 @@ function businessPort(root:HTMLElement,scope:Scope,
   signCommercial:input=>call("signCommercial",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
+  openKayfabe:()=>mountKayfabeDesk(root,{
+   load:()=>call("kpWorkspace"),claim:()=>call("kpClaimWeek"),
+   apply:action=>call("kpAction",action),
+   back:()=>mountBusinessDesk(root,businessPort(root,scope,call))
+  }),
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
     ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
