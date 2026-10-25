@@ -7,21 +7,13 @@ ALTER TABLE ppw_championships
  ADD COLUMN last_contest_week_index integer CHECK(last_contest_week_index>=0),
  ADD COLUMN last_prestige_change double precision NOT NULL DEFAULT 0
   CHECK(last_prestige_change BETWEEN -5 AND 5);
--- Some historic Worlds may already contain several active belts in one
--- division. Their most established belt is the primary; never delete one.
-WITH ranked AS (
- SELECT world_id,promotion_id,championship_id,
-  row_number() OVER (PARTITION BY world_id,promotion_id,division
-   ORDER BY prestige DESC,championship_id) AS standing
- FROM ppw_championships WHERE status='ACTIVE'
-)
-UPDATE ppw_championships c SET title_role='SECONDARY'
-FROM ranked r
-WHERE c.world_id=r.world_id AND c.promotion_id=r.promotion_id
- AND c.championship_id=r.championship_id AND r.standing>1;
-CREATE UNIQUE INDEX ppw_one_active_primary_title_per_division
- ON ppw_championships(world_id,promotion_id,division)
- WHERE status='ACTIVE' AND title_role='PRIMARY';
+-- SINGLES is deliberately broader than men's/women's or brand identities.
+-- Several genuine top-tier titles may exist in one promotion/division (for
+-- example two flagship brands). Never silently demote an established belt.
+-- A new secondary title must instead be explicitly marked SECONDARY by its
+-- authorised creation workflow, before it may be activated.
+CREATE INDEX ppw_titles_role_directory
+ ON ppw_championships(world_id,promotion_id,division,title_role,status);
 UPDATE ppw_championships c SET last_contest_week_index=verified.week_index
 FROM (
  SELECT x.world_id,x.promotion_id,x.championship_id,
