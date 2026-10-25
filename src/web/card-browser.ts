@@ -8,7 +8,7 @@ import {mountCardEditor,type CardEditorPort} from "../ui/card-editor.js";
 import {createCardClient,type CardSessionScope} from "./card-client.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
- type HomeAttentionFocus} from "./host-navigation.js";
+ type HomeAttentionFocus,legendsVaultHash} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
@@ -52,12 +52,16 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void,
  onOverview?:(overview:PlayerWorldOverview|null)=>void,
  manualAdvance?:WorldHomePort["manualAdvance"],
- extendBooking?:WorldHomePort["extendBooking"]){
+ extendBooking?:WorldHomePort["extendBooking"],
+ onWeekPublished?:WorldHomePort["onWeekPublished"]){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
-  manualAdvance,extendBooking,
+  manualAdvance,extendBooking,onWeekPublished,
+  claimWeeklyKP:()=>call("kpClaimWeek") as Promise<{awarded:number;reason?:string}>,
+  openKayfabe:()=>onNavigate?.("kayfabe"),
+  openLegends:()=>{if(typeof window!=="undefined")window.location.hash=legendsVaultHash;},
   load:async()=>{
    const latest=await call("overview") as PlayerWorldOverview|null;
    onOverview?.(latest);
