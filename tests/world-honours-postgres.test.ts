@@ -8,7 +8,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {publishCertifiedWorldNews} from "../src/db/world-news.js";
-import {readWorldHeritage,publishYearEndHallOfFame} from "../src/db/world-honours.js";
+import {readWorldHeritage,readOlderWorldMoments,publishYearEndHallOfFame} from "../src/db/world-honours.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -109,6 +109,16 @@ test("complete World year settles earned honours, career Hall and moments once f
   assert.equal(await withWorldTransaction(db.pool,tx=>
    publishYearEndHallOfFame(tx,world,1,52)),0,
    "A deserving retiree cannot be inducted twice");
+  // Simulate a long-lived certified archive using only actually completed
+  // shows; older pages must remain reachable without preloading them.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_world_moments(world_id,year,week,moment_key,kind,
+    headline,description,promotion_name,show_id)
+   SELECT $1,1,s.week,'event:'||s.show_id||':'||suffix.n,
+    'EVENT','Historic edition '||s.week,'A completed public broadcast.',
+    'Human Pro',s.show_id
+   FROM ppw_completed_shows s CROSS JOIN (VALUES(1),(2)) AS suffix(n)
+   WHERE s.world_id=$1 AND s.week<52`,[world]));
   const first=await readWorldHeritage(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owners[0]!});
   const second=await readWorldHeritage(db.pool,{
@@ -121,6 +131,21 @@ test("complete World year settles earned honours, career Hall and moments once f
   assert.equal(first.hall[0]!.personId,hero);
   assert.equal(first.hall[0]!.matches,25);
   assert.ok(first.moments.some(m=>m.kind==="CLASSIC"&&m.week===52));
+  assert.equal(first.moments.length,40);
+  assert.ok(first.momentCursor);
+  const older=await readOlderWorldMoments(db.pool,{
+   worldId:world,promotionId:"promotion-0",playerId:owners[0]!},
+   first.momentCursor!);
+  assert.equal(older.moments.length,9,"Older certified Moments stay browseable");
+  assert.equal(older.momentCursor,null);
+  const olderViaRpc=await dispatchCardRpc({pool:db.pool,
+   actor:{playerId:owners[1]!}},"worldMomentsOlder",{
+    worldId:world,promotionId:"promotion-1",cursor:first.momentCursor,
+    playerId:"unknown"});
+  assert.deepEqual(olderViaRpc,older);
+  await assert.rejects(readOlderWorldMoments(db.pool,{
+   worldId:world,promotionId:"promotion-0",playerId:"unknown"},first.momentCursor!),
+   /access denied/);
   assert.ok(!JSON.stringify(first).includes("UNPUBLISHED CARD PLANS"));
   await assert.rejects(readWorldHeritage(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:"unknown"}),/access denied/);
