@@ -87,7 +87,10 @@ const active:LegendDefinition[]=[
  tradition:"American sports entertainment",era:"1990s–2000s",visibility:"SECRET",
  clue:"Under the brightest lights, the dead refuse to stay buried.",
  achievement:"Fifteen premium-event main events rated at least 4¼ stars",
- hints:["Only wrestling's biggest nights awaken this mystery.","An exceptional main event at a completed premium show counts."],metric:"PREMIUM_MAIN_EVENTS",target:15,status:"ACTIVE",cardAsset:null,
+ hints:["Only wrestling's biggest nights awaken this mystery.","An exceptional main event at a completed premium show counts."],metric:"PREMIUM_MAIN_EVENTS",target:15,status:"ACTIVE",
+ // Steve Wright Jr., 2012, CC BY 2.0. Real, attributed, identified Commons photo.
+ // The unique card composition is assembled consistently by cardGraphic().
+ cardAsset:"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/The_Undertaker.jpg/960px-The_Undertaker.jpg",
  roster:[roster("The Undertaker","MEN",34,"POWERHOUSE","MONSTER","TWEENER",
  "Chokeslam","Tombstone Piledriver",99,98,88,92,98,87,88)]}
 ];
