@@ -74,7 +74,7 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
    ownPromotionId:"human",ownPromotionName:"Human Pro",
    promotions:[],headlines:[],broadcasts:[]}});
   if(method==="legendsVault")return route.fulfill({json:{
-   worldYear:2,worldWeek:2,curated:48,entries:[{
+   worldYear:2,worldWeek:2,balance:5000,curated:48,entries:[{
     id:"undertaker",name:"The Undertaker",tier:"IMMORTAL",division:"MEN",
     tradition:"American sports entertainment",visibility:"SECRET",
     clue:"The dead refuse to stay buried",
