@@ -93,7 +93,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  LEFT JOIN LATERAL (
   SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd
   FROM (
-   SELECT show.crowd_response FROM ppw_completed_shows show
+   SELECT show.year,show.week,show.crowd_response FROM ppw_completed_shows show
    JOIN ppw_show_economics econ ON econ.world_id=show.world_id
     AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id
    JOIN ppw_booking_drafts draft ON draft.world_id=show.world_id
@@ -101,6 +101,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    WHERE show.world_id=p.world_id AND show.promotion_id=p.promotion_id
    ORDER BY show.year DESC,show.week DESC,show.show_id DESC LIMIT 12
   ) last_twelve
+  WHERE (last_twelve.year-1)*52+last_twelve.week-1>=greatest(0,$2-25)
  ) recent ON TRUE
  WHERE p.world_id=$1 AND p.management_mode='AI'
   AND p.lifecycle='ACTIVE'
