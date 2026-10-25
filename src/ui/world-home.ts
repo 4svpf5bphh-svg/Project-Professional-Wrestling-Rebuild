@@ -386,10 +386,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Offers awaiting decisions",detail:
     "Contract offers are pending. Check the negotiation desk for their status.",
     action:port.contractsPending??port.contracts,icon:"◇",level:"normal"});
-  if(attention?.commercialRenewalDue)
-   items.push({title:"A commercial deal has ended",detail:
-    "A broadcast or sponsor agreement has reached its end. Open Business → Deals to review any new terms you've earned.",
-    action:port.business,icon:"▣",level:"normal"});
   if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
@@ -513,11 +509,15 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     DISTRESSED:"Under pressure",CRISIS:"In crisis"};
    for(const item of businessUpdates){
     const annual=item.kind==="ANNUAL_REVIEW";
+    const commercial=item.kind==="COMMERCIAL_EXPIRED";
     const delta=item.prestigeDelta;
-    const improved=annual?delta!==null&&delta>=0:item.after==="HEALTHY";
-    const title=annual?"Your annual company review is in":
+    const improved=commercial|| (annual?delta!==null&&delta>=0:item.after==="HEALTHY");
+    const title=commercial?"A commercial deal has ended":
+     annual?"Your annual company review is in":
      "Your financial outlook has changed";
-    const detail=annual?(delta===null?
+    const detail=commercial?
+     "A broadcast or sponsorship agreement has completed its term. Open Business → Deals to consider fresh offers you've earned.":
+     annual?(delta===null?
      "Your company reputation has been evaluated. Review the ratings in Business.":
      "Your prestige "+(delta>=0?"rose by ":"fell by ")+
      Math.abs(delta).toLocaleString("en-GB",{maximumFractionDigits:1})+
@@ -528,12 +528,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const entry=el("article","ppw-home-wire-item");
     entry.append(el("span","ppw-home-wire-status "+
      (improved?"ppw-home-wire-accepted":"ppw-home-wire-declined"),
-     annual?"YEAR-END REVIEW":"FINANCIAL UPDATE"),
+     commercial?"AGREEMENT ENDED":annual?"YEAR-END REVIEW":"FINANCIAL UPDATE"),
      el("strong","",title),
      el("p","",detail),
      el("small","ppw-home-small","Year "+item.year+" · Week "+item.week));
     const actions=el("div","ppw-home-wire-actions");
-    const open=el("button","ppw-home-wire-button","Open Business") as HTMLButtonElement;
+    const open=el("button","ppw-home-wire-button",
+     commercial?"Review commercial deals":"Open Business") as HTMLButtonElement;
     open.type="button";open.onclick=port.business;actions.append(open);
     if(port.dismissAttention){
      const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
