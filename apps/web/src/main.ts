@@ -389,7 +389,7 @@ async function loadSession(){
   signout.className="ppw-shell-signout";
   if(session.overview.membership==="ACTIVE"&&session.overview.promotion){
    const kp=button("★ KP",()=>openSection("kayfabe"));
-   kp.className="ppw-shell-kp";kp.setAttribute("aria-label","Open Kayfabe Points");
+   kp.className="ppw-shell-kp";kp.setAttribute("aria-label","Open your KP wallet");
    actions.append(kp);
   }
   actions.append(signout);

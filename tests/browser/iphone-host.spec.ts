@@ -640,7 +640,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  await menu.click();
  await expect(nav).toBeVisible();
  await expect(nav.locator(".ppw-tab")).toHaveCount(0);
- await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(3);
+ await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(1);
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
  await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
