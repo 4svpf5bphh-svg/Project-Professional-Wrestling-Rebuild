@@ -138,6 +138,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     `Armed for your ${data.pilot.promotionId} promotion since Year ${data.pilot.armedYear}, Week ${data.pilot.armedWeek}. He unlocks after your next completed regular weekly show is certified when you Advance Week.`:
     "Arm once to release the Undertaker after your next successfully completed weekly show. Off-weeks, drafts and AI-run shows do not count.");
   legendTrial.append(trialInfo);
+  if(data.pilot?.status==="CONSUMED"){
+   const watch=el("button","ppw-admin-primary","Watch the Undertaker reveal") as HTMLButtonElement;
+   watch.type="button";
+   watch.onclick=()=>{window.location.hash="#/industry/legends";};
+   legendTrial.append(watch);
+  }
   const trialFeedback=el("p","ppw-admin-message","");
   if(data.pilot?.status!=="CONSUMED"){
    const isArmed=data.pilot?.status==="ARMED";

@@ -88,8 +88,8 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
    return route.fulfill({json:{ok:true}});}
   return route.fulfill({json:{}});
  });
- await page.goto("/#/industry");
- await page.getByRole("button",{name:"Legends Vault"}).click();
+ await page.goto("/#/industry/legends");
+
  const reveal=page.getByRole("dialog",{name:"Legend unlocked: The Undertaker"});
  await expect(reveal).toBeVisible();
  const visual=reveal.locator("img.ppw-undertaker-card");
