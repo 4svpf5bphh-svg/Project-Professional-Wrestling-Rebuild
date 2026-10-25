@@ -2,6 +2,7 @@
  * Exact collectible artwork, when cleared, is reused at every size.
  */
 import type {readLegendsVault} from "../db/legends-vault.js";
+import {LEGEND_CARD_PHOTO_CREDITS} from "../content/legend-card-photo-credits.js";
 export type LegendsVaultView=Awaited<ReturnType<typeof readLegendsVault>>;
 export type LegendsVaultEntry=LegendsVaultView["entries"][number];
 export interface LegendsVaultActions{
@@ -41,12 +42,14 @@ function cardGraphic(item:LegendsVaultEntry){
  art.loading="lazy";return art;
 }
 function photoCredit(item:LegendsVaultEntry){
- if(item.id!=="undertaker"||!item.cardAsset)return null;
- const caption=el("p","ppw-legend-photo-credit","Photo: Steve Wright Jr. · ");
+ if(!item.cardAsset)return null;
+ const credit=LEGEND_CARD_PHOTO_CREDITS[item.id];
+ if(!credit)return null;
+ const caption=el("p","ppw-legend-photo-credit","Photo: "+credit.author+" · ");
  const source=document.createElement("a");
- source.href="https://commons.wikimedia.org/wiki/File:The_Undertaker.jpg";
+ source.href=credit.sourcePage;
  source.target="_blank";source.rel="noopener noreferrer";
- source.textContent="CC BY 2.0 · cropped for card";
+ source.textContent=credit.license+" · cropped for card";
  caption.append(source);return caption;
 }
 /** The reveal is portalled out of animated workspace ancestors.
