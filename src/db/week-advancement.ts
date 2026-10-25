@@ -1,5 +1,6 @@
 import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
+import {settleWorldHeritage} from "./world-heritage.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
 import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
  recruitDistressedAiRosters}
@@ -10,6 +11,7 @@ import {worldStaff} from "../domain/world-staff.js";
 import {trainerFatigueBonus} from "../domain/staff-training.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
+import {settleCommercialWorldWeek} from "./weekly-commercial-settlement.js";
 import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
@@ -240,6 +242,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Future terms begin only after the current canonical week is paid.
+      await settleCommercialWorldWeek(tx,input.worldId,year,week);
       // Staff morale responds once to the current week's audited finances.
       // Staff cannot independently alter player creative decisions or resign.
       await tx.query(`
@@ -275,6 +279,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await recruitDistressedAiRosters(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
       await settleLivingMorale(tx,input.worldId,year,week);
+      // Certified title results and recurring show editions earn heritage once per World Lock.
+      await settleWorldHeritage(tx,input.worldId,year,week);
       // At the end of each 52-week year, evaluate original company standing
       // from actual completed shows, roster appearances, titles and renewals.
       // This returns immediately on weeks 1–51 and shares the World transaction.

@@ -194,6 +194,7 @@ function industryPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):IndustryHubPort{
  return {
   load:()=>call("industry"),
+  records:()=>call("promotionRecordBook"),
   featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
@@ -237,6 +238,7 @@ function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
   load:()=>call("business"),
+  signCommercial:input=>call("signCommercial",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},

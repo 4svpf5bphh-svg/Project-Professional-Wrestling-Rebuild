@@ -4,6 +4,7 @@ export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
  load():Promise<BusinessView>;
+ signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
  restructure?(input:{requestId:string;expectedRevision:number}):
   Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
@@ -27,12 +28,29 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
-  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"="FINANCES";
+  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
+  commercialBusy=false,commercialNotice="";
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
   catch(e){error=e instanceof Error?e.message:"Cannot load your finances";}
   finally{loading=false;draw();}
+ }
+ async function acceptCommercial(offerCode:string){
+  if(commercialBusy||!port.signCommercial||!view)return;
+  if(!window.confirm("Sign this commercial agreement? Its weekly income and distribution apply until the term ends. The offer cannot be replaced early."))return;
+  commercialBusy=true;error="";commercialNotice="";draw();
+  try{
+   const result=await port.signCommercial({offerCode,requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision});
+   const receipt=result as {status?:string;result?:{accepted?:boolean}};
+   if(receipt.status==="STALE"){
+    error="The World changed before you signed. Review current offers.";await refresh();
+   }else if(receipt.status==="APPLIED"||receipt.status==="REPLAYED"){
+    await refresh();commercialNotice="Commercial agreement signed. It will settle with your normal weekly accounts.";
+   }else error="The agreement was not accepted.";
+  }catch(e){error=e instanceof Error?e.message:"Agreement could not be signed";}
+  finally{commercialBusy=false;draw();}
  }
  async function reviewRescue(){
   if(rescueBusy||!port.previewRestructure)return;
@@ -83,11 +101,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   if(port.back)head.prepend(button("← Back",()=>port.back?.()));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
+  if(commercialNotice)root.append(el("p","ppw-alert ppw-success",commercialNotice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}
   const nav=el("nav","ppw-business-nav");
   nav.setAttribute("aria-label","Business reports");
   for(const [id,title] of [
-   ["FINANCES","Finances"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"]
+   ["FINANCES","Finances"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
   ] as const){
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
@@ -355,11 +374,47 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    }
    root.append(section);
   }
+  if(pane==="COMMERCIAL"){
+   const section=el("section","ppw-business-panel ppw-commercial-desk");
+   section.append(el("h2","","Broadcasting & sponsorship"),
+    el("p","ppw-business-muted",
+     "Your shows earn their audience. Commercial partners offer real weekly terms; contracts last until expiry and do not automatically renew."));
+   const active=view.commercialAgreements;
+   if(active.length)section.append(el("h3","","Current agreements"));
+   for(const deal of active){
+    const item=el("article","ppw-commercial-offer");
+    item.append(el("strong","",deal.kind==="BROADCAST"?"Broadcast partner":"Sponsor"),
+     el("p","",deal.offerCode.replaceAll("_"," ").toLowerCase()),
+     el("small","","Weekly guarantee "+money(deal.weeklyIncome)+
+      " · "+Math.max(0,deal.endWeekIndex-((view.year-1)*52+view.week-1)+1)+
+      " weeks remaining"+
+      (deal.kind==="BROADCAST"?" · additional reach +"+Math.round(deal.reachIncrease):"")));
+    section.append(item);
+   }
+   section.append(el("h3","","Available opportunities"));
+   if(!view.commercialOffers.length)section.append(el("p","ppw-business-muted",
+    "No new agreements currently qualify. Complete strong shows to attract offers, or let an existing agreement expire."));
+   for(const offer of view.commercialOffers){
+    const item=el("article","ppw-commercial-offer");
+    item.append(el("strong","",offer.name),
+     el("p","",offer.description));
+    const terms=el("div","ppw-commercial-terms");
+    terms.append(el("span","",money(offer.weeklyIncome)+"/week"),
+     el("span","",offer.termWeeks+" weeks"),
+     el("span","",offer.kind==="BROADCAST"?
+      "+"+Math.round(offer.reachIncrease)+" audience reach":"Sponsorship"));
+    item.append(terms,el("small","ppw-business-muted",offer.obligation));
+    if(port.signCommercial)item.append(button(commercialBusy?
+     "Reviewing…" : "Sign agreement",()=>void acceptCommercial(offer.code)));
+    section.append(item);
+   }
+   root.append(section);
+  }
   if(pane==="TERRITORIES"){
    const section=el("section","ppw-business-panel");
    section.append(el("h2","","Your markets"),
     el("p","ppw-business-muted",
-     "Territory awareness, audience loyalty and live strength, refreshed after completed events."));
+     "Your local following grows from real completed shows in each market. A wider broadcast reach is not a free pass to local loyalty."));
    if(!view.territories.length)section.append(el("p","ppw-business-muted",
     "No territory trading figures are available yet."));
    for(const t of view.territories){

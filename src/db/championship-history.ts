@@ -8,6 +8,9 @@ import {withSqlClient} from "./postgres.js";
 export interface ChampionshipCard {
  promotionId:string;championshipId:string;promotionName:string;name:string;
  division:"SINGLES"|"TAG";status:"ACTIVE"|"INACTIVE";prestige:number;
+ /** Explicit primary/secondary hierarchy; old client fixtures may omit it. */
+ titleRole?:"PRIMARY"|"SECONDARY";lastPrestigeChange?:number;
+ lastContestWeekIndex?:number|null;
  currentReignId:string|null;holderId:string|null;holderType:"PERSON"|"TEAM"|null;
  holderName:string|null;defenses:number;
 }
@@ -30,6 +33,7 @@ const requireId=(s:string)=>{if(!validId(s))throw new Error("Invalid championshi
 const baseSelect=`
  SELECT c.promotion_id,c.championship_id,p.name AS promotion_name,
  c.name,c.division,c.status,c.prestige,c.current_reign_id,
+ c.title_role,c.last_prestige_change,c.last_contest_week_index,
  r.holder_type,COALESCE(r.person_id,r.team_id) AS holder_id,
  COALESCE(person.name,team.name) AS holder_name,
  COALESCE(r.defenses,0)::integer AS defenses
@@ -44,12 +48,16 @@ const baseSelect=`
 type TitleRow={
  promotion_id:string;championship_id:string;promotion_name:string;name:string;
  division:"SINGLES"|"TAG";status:"ACTIVE"|"INACTIVE";prestige:number;
+ title_role:"PRIMARY"|"SECONDARY";last_prestige_change:number;
+ last_contest_week_index:number|null;
  current_reign_id:string|null;holder_type:"PERSON"|"TEAM"|null;
  holder_id:string|null;holder_name:string|null;defenses:number;
 };
 const card=(r:TitleRow):ChampionshipCard=>({
  promotionId:r.promotion_id,championshipId:r.championship_id,promotionName:r.promotion_name,
  name:r.name,division:r.division,status:r.status,prestige:r.prestige,
+ titleRole:r.title_role,lastPrestigeChange:r.last_prestige_change,
+ lastContestWeekIndex:r.last_contest_week_index,
  currentReignId:r.current_reign_id,
  holderId:r.holder_id,holderType:r.holder_type,holderName:r.holder_name,
  defenses:r.defenses,

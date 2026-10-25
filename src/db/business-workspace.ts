@@ -4,6 +4,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {commercialOffers} from "../domain/commercial-offers.js";
 import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
@@ -14,7 +15,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   v.length>0&&v.length<=200))throw new Error("Invalid business scope");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{
-   year:number;week:number;phase:string;name:string;tier:string;
+   year:number;week:number;revision:number|string;phase:string;name:string;tier:string;
    home_market_name:string|null;media_reach:number|null;
    cash:string;debt:string;weekly_media_income:string|null;
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
@@ -25,8 +26,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    standing_year:number|null;
    finance_event_count:number;finance_categories:FinanceLine[];
    finance_recent:FinanceEntry[];
+   commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
+    weeklyIncome:number;baselineIncome:number;reachIncrease:number;
+    startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI"}[];
   }>(`
-   SELECT w.year,w.week,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
+   SELECT w.year,w.week,w.revision,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
      p.media_reach,
      (SELECT market.name FROM ppw_markets market
       WHERE market.world_id=p.world_id
@@ -40,6 +44,18 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.talent_reputation AS standing_talent,
      standing.last_evaluated_year AS standing_year,
      financial.finance_event_count,financial.finance_categories,financial.finance_recent,
+     COALESCE((SELECT jsonb_agg(to_jsonb(agreement)) FROM (
+      SELECT d.deal_id AS "dealId",d.kind,d.offer_code AS "offerCode",
+       d.agreed_income::double precision AS "weeklyIncome",
+       d.baseline_income::double precision AS "baselineIncome",
+       coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",
+       d.start_week_index AS "startWeekIndex",d.end_week_index AS "endWeekIndex",
+       d.source
+      FROM ppw_commercial_deals d
+      WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
+       AND d.status='ACTIVE'
+      ORDER BY d.kind,d.deal_id LIMIT 2
+     ) agreement),'[]'::jsonb) AS commercial_deals,
      COALESCE((SELECT sum(c.weekly_guarantee)
       FROM ppw_contracts c WHERE c.world_id=p.world_id
        AND c.promotion_id=p.promotion_id AND c.status='SIGNED'
@@ -72,14 +88,16 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    attendance:number;expected_demand:number;
    gate_revenue:string;venue_cost:string;production_cost:string;
    travel_cost:string;appearance_fees:string;total_cost:string;
-   net_result:string;incremental_cash:string;
+   net_result:string;incremental_cash:string;crowd_response:string|number;
   }>(`
    SELECT e.show_id,e.year,e.week,d.show_name,d.booking_class,
     e.attendance,e.expected_demand,e.gate_revenue::text,
     e.venue_cost::text,e.production_cost::text,e.travel_cost::text,
     e.appearance_fees::text,e.total_cost::text,e.net_result::text,
-    e.incremental_cash::text
-   FROM ppw_show_economics e JOIN ppw_booking_drafts d
+    e.incremental_cash::text,cs.crowd_response
+   FROM ppw_show_economics e JOIN ppw_completed_shows cs
+    ON cs.world_id=e.world_id AND cs.show_id=e.show_id
+   JOIN ppw_booking_drafts d
     ON d.world_id=e.world_id AND d.draft_id=e.show_id
    WHERE e.world_id=$1 AND e.promotion_id=$2
    ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 13`,
@@ -103,8 +121,19 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const weeklySponsor=number(w.weekly_sponsor_income);
   const weeklyOverhead=number(w.weekly_fixed_overhead);
   const guarantees=Number(w.guarantees),staffPayroll=Number(w.staff_payroll);
+  const now=(w.year-1)*52+w.week-1;
+  const certified=shows.filter(show=>
+   (show.year-1)*52+show.week-1>=Math.max(0,now-25)&&
+   (show.year-1)*52+show.week-1<=now).slice(0,12);
+  const earnedOffers=commercialOffers({
+   tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
+   weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
+   averageCrowd:certified.length?
+    certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null
+  }).filter(offer=>!w.commercial_deals.some(d=>d.kind===offer.kind));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
+   worldRevision:Number(w.revision),
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,
    standing:w.standing_prestige===null||w.standing_fan===null
     ||w.standing_business===null||w.standing_talent===null
@@ -122,6 +151,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     weeklyMedia+weeklySponsor-weeklyOverhead-guarantees-staffPayroll,
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
+   commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
    recentTransactions:w.finance_recent,

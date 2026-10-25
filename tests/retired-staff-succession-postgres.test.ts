@@ -7,6 +7,7 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {publishRetiredStaffCandidates} from "../src/db/retired-staff-succession.js";
 import {readStaffWorkspace} from "../src/db/staff-workspace.js";
+import {readPromotionRecordBook} from "../src/db/promotion-record-book.js";
 import {hireWorldStaff} from "../src/db/staff-employment.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -78,11 +79,15 @@ test("certified retired wrestler becomes a single contested World staff identity
   const b=await readStaffWorkspace(db.pool,scope(playerB,"human-b"));
   assert.equal(a.meetings.length,8);
   assert.equal(b.meetings.length,8);
-  assert.equal(a.ownerRankings.length,1);
-  assert.deepEqual({name:a.ownerRankings[0]!.name,matches:a.ownerRankings[0]!.matches,
-   wins:a.ownerRankings[0]!.wins},
+  // Rankings moved from the expensive Staff Office load to the on-demand
+  // Industry records endpoint; keep the same certified career assertions.
+  const aRecords=await readPromotionRecordBook(db.pool,scope(playerA,"human-a"));
+  const bRecords=await readPromotionRecordBook(db.pool,scope(playerB,"human-b"));
+  assert.equal(aRecords.leaders.length,1);
+  assert.deepEqual({name:aRecords.leaders[0]!.name,matches:aRecords.leaders[0]!.matches,
+   wins:aRecords.leaders[0]!.wins},
    {name:"Working Roster",matches:14,wins:0});
-  assert.equal(b.ownerRankings.length,0,"No rival match evidence should leak");
+  assert.equal(bRecords.leaders.length,0,"No rival match evidence should leak");
   const alumnus=a.market.find(e=>e.formerWrestlerId==="retired-veteran");
   assert.ok(alumnus);
   assert.equal(alumnus.name,"Mara Bell");

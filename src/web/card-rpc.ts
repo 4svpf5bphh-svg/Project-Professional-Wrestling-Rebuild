@@ -2,8 +2,8 @@ import type {WorldApiContext} from "../api/world-service.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
- previewRestructureAsActor,restructurePromotionAsActor,
- staffWorkspaceAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
+ previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
+ staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
@@ -50,6 +50,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
  if(method==="gorillaWorkspace")return gorillaWorkspaceAsActor(context,worldId,promotionId);
  if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
+ if(method==="promotionRecordBook")return promotionRecordBookAsActor(context,worldId,promotionId);
  if(method==="industryFeatured")return industryFeaturedAsActor(context,
   worldId,promotionId,id("targetPromotionId"));
  if(method==="business")return businessAsActor(context,worldId,promotionId);
@@ -158,6 +159,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="restructurePromotion")
   return restructurePromotionAsActor(context,{worldId,promotionId,requestId,expectedRevision});
+ if(method==="signCommercial")
+  return signCommercialDealAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,offerCode:id("offerCode")});
  if(method==="hireStaff"||method==="renewStaff"){
    const salary=p.weeklySalary,term=p.termWeeks;
    if(typeof salary!=="number"||!Number.isSafeInteger(salary)||

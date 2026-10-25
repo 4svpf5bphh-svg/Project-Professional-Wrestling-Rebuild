@@ -29,7 +29,7 @@ export interface PlayerWorldOverview {
    worldStories?:{eventId:string;kind:string;year:number;week:number;
     personId:string|null;personName:string|null;
     promotionName:string|null;toTier:string|null}[];
-   businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
+   businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH"|"COMMERCIAL_EXPIRED";
     year:number;week:number;prestigeDelta:number|null;
     before:string|null;after:string|null}[];};
  };
@@ -198,7 +198,9 @@ export async function readPlayerWorldOverview(
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'id','business-update:'||recent.event_id::text,
        'kind',CASE WHEN recent.event_type='PROMOTION_STANDING_UPDATED'
-        THEN 'ANNUAL_REVIEW' ELSE 'FINANCIAL_HEALTH' END,
+        THEN 'ANNUAL_REVIEW'
+        WHEN recent.event_type='COMMERCIAL_DEAL_EXPIRED'
+        THEN 'COMMERCIAL_EXPIRED' ELSE 'FINANCIAL_HEALTH' END,
        'year',recent.year,'week',recent.week,
        'prestigeDelta',recent.prestige_delta,'before',recent.previous_status,
        'after',recent.next_status) ORDER BY recent.event_id DESC),'[]'::jsonb)
@@ -213,7 +215,8 @@ export async function readPlayerWorldOverview(
          THEN e.payload->>'to' ELSE NULL END AS next_status
        FROM ppw_ledger_events e
        WHERE e.world_id=w.world_id
-        AND e.event_type IN ('PROMOTION_STANDING_UPDATED','FINANCIAL_DISTRESS_CHANGED')
+        AND e.event_type IN ('PROMOTION_STANDING_UPDATED','FINANCIAL_DISTRESS_CHANGED',
+         'COMMERCIAL_DEAL_EXPIRED')
         AND e.payload->>'promotionId'=owned.promotion_id
         AND e.year BETWEEN greatest(1,w.year-1) AND w.year
         AND (e.year-1)*52+e.week-1 BETWEEN
@@ -222,6 +225,7 @@ export async function readPlayerWorldOverview(
           AND e.payload->>'from' IN ('HEALTHY','WATCH','DISTRESSED','CRISIS')
           AND e.payload->>'to' IN ('HEALTHY','WATCH','DISTRESSED','CRISIS')
           AND e.payload->>'from'<>e.payload->>'to')
+         OR e.event_type='COMMERCIAL_DEAL_EXPIRED'
          OR (e.event_type='PROMOTION_STANDING_UPDATED'
           AND jsonb_typeof(e.payload->'prestigeDelta')='number'
           AND jsonb_typeof(e.payload->'prestige')='number'))
@@ -539,12 +543,13 @@ export async function readPlayerWorldOverview(
        (item.toTier===null||typeof item.toTier==="string")):[],
      businessUpdates:Array.isArray(x.business_updates)?
       x.business_updates.filter((entry):entry is {
-       id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH";
+       id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH"|"COMMERCIAL_EXPIRED";
        year:number;week:number;prestigeDelta:number|null;
        before:string|null;after:string|null
       }=>entry!==null&&typeof entry==="object"&&
        typeof entry.id==="string"&&/^business-update:[1-9][0-9]{0,18}$/.test(entry.id)&&
-       (entry.kind==="ANNUAL_REVIEW"||entry.kind==="FINANCIAL_HEALTH")&&
+       (entry.kind==="ANNUAL_REVIEW"||entry.kind==="FINANCIAL_HEALTH"||
+        entry.kind==="COMMERCIAL_EXPIRED")&&
        Number.isInteger(entry.year)&&Number.isInteger(entry.week)&&
        (entry.prestigeDelta===null||
         typeof entry.prestigeDelta==="number"&&Number.isFinite(entry.prestigeDelta))&&

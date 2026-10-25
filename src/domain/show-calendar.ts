@@ -7,6 +7,9 @@ export type ShowKind="REGULAR"|"MAJOR";
 export interface ShowSeries {
  seriesId:string;name:string;role:ShowRole;eventType:ShowKind;
  cadenceWeeks:number;anchorWeek:number;importance:number;active:boolean;
+ /** Earned only by certified completed editions; never editable importance. */
+ earnedPrestige?:number;celebratedEditions?:number;
+ lastCelebratedWeekIndex?:number|null;
 }
 export const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 export function dateAt(index:number){

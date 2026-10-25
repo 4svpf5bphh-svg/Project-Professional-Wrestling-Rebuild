@@ -35,11 +35,13 @@ import {readGorillaWorkspace,saveGorillaShowInstructions,
 import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseWorldStaff,renewWorldStaff,type StaffEmploymentInput}
  from "../db/staff-employment.js";
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {readBusinessWorkspace} from "../db/business-workspace.js";
+import {signCommercialDeal} from "../db/commercial-deals.js";
 import {previewHumanPromotionRestructure,applyHumanPromotionRestructure}
  from "../db/human-promotion-restructuring.js";
 import {readWrestlerDirectory,type DirectoryFilter} from "../db/wrestler-directory.js";
@@ -63,6 +65,14 @@ export async function businessAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readBusinessWorkspace(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+/** Authoritative broadcast/sponsor signing — client prices are never trusted. */
+export async function signCommercialDealAsActor(context:WorldApiContext,
+ input:{worldId:string;promotionId:string;requestId:string;
+  expectedRevision:number;offerCode:string}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.offerCode,"offer");
+ return signCommercialDeal(context.pool,{...input,playerId:context.actor.playerId});
 }
 /** Explicitly authorised human rescue, sharing revision/replay safeguards. */
 export async function previewRestructureAsActor(context:WorldApiContext,
@@ -126,6 +136,14 @@ export async function industryFeaturedAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");validate(targetPromotionId,"public promotion");
  return readIndustryFeaturedTalent(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId,targetPromotionId});
+}
+/** Promotion-private record book, loaded only after selecting Industry Records. */
+export async function promotionRecordBookAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readPromotionRecordBook(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
 }
 /** Authenticated player-facing wrestler directory, never a global
  * unguarded market read. Filtering is validated inside the query module. */

@@ -23,7 +23,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    world_seed:string;promotion_cash:string;employments:unknown;
    contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
    recent_shows:number;recent_matches:number;recent_disqualifications:number;
-   fatigue_concerns:number;active_programmes:number;owner_rankings:unknown;
+   fatigue_concerns:number;active_programmes:number;
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
   }>(`
@@ -91,41 +91,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     (SELECT count(*)::integer FROM ppw_programmes programme
       WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
        AND programme.status='ACTIVE') AS active_programmes,
-    COALESCE((SELECT jsonb_agg(to_jsonb(ranked)) FROM (
-      SELECT person.person_id AS "personId",person.name,
-       count(bout.match_id)::integer AS "matches",
-       count(*) FILTER(WHERE bout.won)::integer AS "wins",
-       round(avg(bout.stars)::numeric,2)::double precision AS "averageStars"
-      FROM (
-       SELECT DISTINCT c.person_id FROM ppw_contracts c
-       WHERE c.world_id=w.world_id AND c.promotion_id=$3
-        AND c.status='SIGNED' AND c.start_week_index<=(w.year-1)*52+w.week-1
-        AND c.expires_week_index>=(w.year-1)*52+w.week-1
-      ) roster JOIN ppw_people person ON person.world_id=w.world_id
-       AND person.person_id=roster.person_id AND person.status='ACTIVE'
-      LEFT JOIN LATERAL (
-       SELECT e.match_id,e.won,f.rating_stars::double precision AS stars
-       FROM ppw_individual_field_career_effects e
-       JOIN ppw_completed_shows done ON done.world_id=e.world_id
-        AND done.show_id=e.show_id AND done.promotion_id=$3
-       LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=e.world_id
-        AND f.show_id=e.show_id AND f.match_id=e.match_id
-       WHERE e.world_id=w.world_id AND e.person_id=roster.person_id
-       UNION ALL
-       SELECT e.match_id,e.won,f.rating_stars::double precision AS stars
-       FROM ppw_tag_match_career_effects e
-       JOIN ppw_completed_shows done ON done.world_id=e.world_id
-        AND done.show_id=e.show_id AND done.promotion_id=$3
-       LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=e.world_id
-        AND f.show_id=e.show_id AND f.match_id=e.match_id
-       WHERE e.world_id=w.world_id AND e.person_id=roster.person_id
-      ) bout ON TRUE
-      GROUP BY person.person_id,person.name
-      HAVING count(bout.match_id)>0
-      ORDER BY count(*) FILTER(WHERE bout.won) DESC,
-       count(bout.match_id) DESC,person.name,person.person_id
-      LIMIT 8
-    ) ranked),'[]'::jsonb) AS owner_rankings,
+
     employed.staff_id AS employed_staff_id,
     employed.employment_id,employed.weekly_salary::text AS manager_salary,
     ARRAY(SELECT e.staff_id FROM ppw_staff_employments e
@@ -216,9 +182,6 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    notices.push({department:e.role.replaceAll("_"," "),target:"staff",
     message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+
      (e.weeksRemaining===1?"":"s")+"."});
-  const squad=(current.owner_rankings as {
-   personId:string;name:string;matches:number;wins:number;averageStars:number|null
-  }[]).slice(0,8);
   const meetingContent:Record<StaffRole,{message:string;target:"staff"|"roster"|"contracts"|"programmes"|"gorilla"}>={
    TALENT_MANAGER:{target:"contracts",message:renewals.length?
     renewals.length+" signed talent deal"+(renewals.length===1?"":"s")+
@@ -277,7 +240,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    promotionCash:Number(current.promotion_cash),
    weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
    notices:notices.slice(0,8),
-   meetings,ownerRankings:squad,
+   meetings,
    employmentHistory:current.employment_history as {staffId:string;role:StaffRole;promotionName:string;startedWeekIndex:number;endedWeekIndex:number}[],
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
