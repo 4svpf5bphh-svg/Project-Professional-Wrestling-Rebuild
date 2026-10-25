@@ -1,6 +1,6 @@
 import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
- mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,
+ mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountKayfabePage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost}
