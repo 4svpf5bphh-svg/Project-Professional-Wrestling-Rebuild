@@ -1,8 +1,10 @@
 import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
 export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedTalent>>;
+export type PromotionRecordView=Awaited<ReturnType<typeof readPromotionRecordBook>>;
 export type IndustryPromotion=IndustryHubView["promotions"][number];
 export type IndustryOrder="REACH"|"FORM"|"NAME";
 /** Public data already fetched with Industry; no search RPC or new DB work. */
@@ -22,6 +24,7 @@ export function visibleIndustryPromotions<T extends {
 export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
+ records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
  openOwnResults?(showId:string):void;
  openBusiness?():void;openPlanner?():void;back?():void;
@@ -35,8 +38,16 @@ const btn=(label:string,fn:()=>void)=>{
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
-  active:"STANDINGS"|"BROADCASTS"|"HEADLINES"="STANDINGS",
+  active:"STANDINGS"|"BROADCASTS"|"HEADLINES"|"RECORDS"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
+ let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
+ const loadRecords=async()=>{
+  if(!port.records||recordsBusy||records)return;
+  recordsBusy=true;recordsError="";render();
+  try{records=await port.records();}
+  catch(e){recordsError=e instanceof Error?e.message:"Records could not load";}
+  finally{recordsBusy=false;render();}
+ };
  const featuredCache=new Map<string,IndustryFeaturedView>();
  const featuredBusy=new Set<string>();
  async function showFeatured(promotionId:string,container:HTMLElement){
@@ -111,8 +122,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["HEADLINES","World stories"],["BROADCASTS","Recent broadcasts"]] as const){
-   const b=btn(label,()=>{active=key;render();});
+  for(const [key,label] of [["STANDINGS","Promotions"],["HEADLINES","World stories"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"]] as const){
+   const b=btn(label,()=>{active=key;render();if(key==="RECORDS")void loadRecords();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
   }
@@ -222,6 +233,24 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    tierSelect.onchange=()=>{tier=tierSelect.value;drawCompanies();};
    sortSelect.onchange=()=>{sort=sortSelect.value as IndustryOrder;drawCompanies();};
    drawCompanies();
+   root.append(section);
+  }else if(active==="RECORDS"){
+   const section=el("section","ppw-industry-list ppw-industry-record-book");
+   section.append(el("h2","","Promotion record book"),
+    el("p","ppw-industry-muted",
+     "Your active roster's certified matches, wins and average star rating. No manual ranking boosts."));
+   if(recordsError)section.append(el("p","ppw-alert ppw-error",recordsError),
+    btn("Try again",()=>void loadRecords()));
+   if(recordsBusy)section.append(el("p","ppw-industry-muted","Checking completed match records…"));
+   if(records&&!records.leaders.length)section.append(el("p","ppw-industry-muted",
+    "No certified matches yet for your current roster."));
+   for(const [i,w] of (records?.leaders??[]).entries()){
+    const item=el("article","ppw-industry-record-row");
+    item.append(el("strong","",String(i+1)),el("span","",w.name),
+     el("small","",w.wins+" wins / "+w.matches+" matches"+
+      (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★")));
+    section.append(item);
+   }
    root.append(section);
   }else if(active==="HEADLINES"){
    const section=el("section","ppw-industry-list");
