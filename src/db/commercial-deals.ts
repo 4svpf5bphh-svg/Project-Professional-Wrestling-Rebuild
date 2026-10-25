@@ -42,13 +42,15 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
     LEFT JOIN LATERAL (
      SELECT count(*)::integer AS completed,avg(r.crowd_response) AS crowd
-     FROM (SELECT r.crowd_response FROM ppw_completed_shows r
+     FROM (SELECT r.year,r.week,r.crowd_response FROM ppw_completed_shows r
       JOIN ppw_show_economics econ ON econ.world_id=r.world_id
        AND econ.show_id=r.show_id AND econ.promotion_id=r.promotion_id
       JOIN ppw_booking_drafts draft ON draft.world_id=r.world_id
        AND draft.draft_id=r.show_id AND draft.status='SUBMITTED'
       WHERE r.world_id=w.world_id AND r.promotion_id=p.promotion_id
       ORDER BY r.year DESC,r.week DESC,r.show_id DESC LIMIT 12) r
+     WHERE (r.year-1)*52+r.week-1>=
+      greatest(0,(w.year-1)*52+w.week-26)
     ) results ON TRUE
     WHERE w.world_id=$1
    `,[input.worldId,input.playerId,input.promotionId]);
