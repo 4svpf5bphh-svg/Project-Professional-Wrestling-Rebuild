@@ -376,7 +376,8 @@ export function mountPersonaDesk(root:HTMLElement,
   details.setAttribute("aria-label","View "+view.personName+" wrestler dossier");
   chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
-  if(view.memories.length){
+  const wrestlerMemories=view.memories??[];
+  if(wrestlerMemories.length){
    const remembered=el("details","ppw-backstage-phone-info ppw-backstage-memories");
    remembered.append(el("summary","","What they remember"));
    const descriptions:Record<string,string>={
@@ -394,7 +395,7 @@ export function mountPersonaDesk(root:HTMLElement,
     CHARACTER_APPROVED:"A character change was approved",
     CHARACTER_DECLINED:"A proposed character change was rejected"
    };
-   for(const m of view.memories){
+   for(const m of wrestlerMemories){
     remembered.append(el("p","ppw-backstage-memory",
      (descriptions[m.kind]??"A remembered career event")+
      " · Y"+(Math.floor(m.weekIndex/52)+1)+" W"+(m.weekIndex%52+1)));
