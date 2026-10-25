@@ -29,7 +29,7 @@ test("Kayfabe purchase and Create-a-Wrestler validation rejects unsafe client da
   finishingMove:"Sky's The Limit"},
   gimmickId:"BEST_BOUT_MACHINE" as never}),/generic character/);
  assert.throws(()=>validateKpAction({kind:"CREATE_WRESTLER",name:"<script>",
-  division:"MEN",requestId:"r1"}),/name/);
+  division:"MEN",requestId:"r1"} as never),/name/);
  assert.throws(()=>validateKpAction({kind:"RENAME_STAFF",name:"A",
   staffId:"s1",requestId:"r2"}),/name/);
  assert.throws(()=>validateKpAction({kind:"BUY",sku:"NOT_AN_ITEM" as never,
