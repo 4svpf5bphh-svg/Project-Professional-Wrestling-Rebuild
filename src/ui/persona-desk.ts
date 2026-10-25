@@ -207,7 +207,7 @@ export function mountPersonaDesk(root:HTMLElement,
      " · Career check-in":"";
     const preview=incoming&&incoming.status==="PENDING"&&
      Object.hasOwn(BACKSTAGE_CHOICES,incoming.kind)?
-      backstageMessage(incoming.kind as keyof typeof BACKSTAGE_CHOICES):null;
+      backstageMessage(incoming.kind as keyof typeof BACKSTAGE_CHOICES,undefined,incoming.request_id):null;
     const summary=preview??(incoming?" · "+(incoming.status==="PENDING"?"New message":
      incoming.status==="PROMISED"?"Awaiting your booking":
      incoming.status==="FULFILLED"?"Promise kept":
@@ -376,6 +376,31 @@ export function mountPersonaDesk(root:HTMLElement,
   details.setAttribute("aria-label","View "+view.personName+" wrestler dossier");
   chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
+  if(view.memories.length){
+   const remembered=el("details","ppw-backstage-phone-info ppw-backstage-memories");
+   remembered.append(el("summary","","What they remember"));
+   const descriptions:Record<string,string>={
+    PROMISE_MADE:"You gave your word about a booking",
+    PROMISE_KEPT:"You followed through on a booking promise",
+    PROMISE_BROKEN:"A promised booking never happened",
+    PROMISE_EXCUSED:"A promised booking became impossible",
+    REQUEST_DECLINED:"Their request was turned down",
+    REQUEST_HEARD:"You had a conversation about their concern",
+    CONTRACT_FOLLOW_THROUGH:"Real contract talks followed your conversation",
+    CREATIVE_FOLLOW_THROUGH:"A creative idea led to an actual show decision",
+    MEDICAL_ABSENCE:"They were injured in an actual match",
+    TITLE_WON:"They won a championship match",
+    TITLE_CHALLENGE:"They had a championship opportunity",
+    CHARACTER_APPROVED:"A character change was approved",
+    CHARACTER_DECLINED:"A proposed character change was rejected"
+   };
+   for(const m of view.memories){
+    remembered.append(el("p","ppw-backstage-memory",
+     (descriptions[m.kind]??"A remembered career event")+
+     " · Y"+(Math.floor(m.weekIndex/52)+1)+" W"+(m.weekIndex%52+1)));
+   }
+   chat.append(remembered);
+  }
   const info=el("details","ppw-backstage-phone-info");
   info.append(el("summary","","Conversation options"),
    el("p","",
@@ -399,7 +424,7 @@ export function mountPersonaDesk(root:HTMLElement,
      verifiedTagShows:item.verifiedTagShows,
      averageExecution:item.averageExecution,
      workingVerifiedShows:item.workingVerifiedShows,
-     workingTrustDelta:item.workingTrustDelta})));
+     workingTrustDelta:item.workingTrustDelta},item.conversationId)));
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?

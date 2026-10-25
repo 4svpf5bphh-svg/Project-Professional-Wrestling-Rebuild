@@ -66,7 +66,7 @@ test("Backstage iPhone inbox avoids persona hydration: four bounded SQL reads fo
    worldId,promotionId,playerId,personId:"worker-1"});
   assert.equal(thread.personId,"worker-1");
   assert.ok(thread.persona);
-  assert.equal(meter.assertBudget({maxQueries:12,maxResultBytes:100_000}).queryCount-beforeFull,8);
+  assert.equal(meter.assertBudget({maxQueries:13,maxResultBytes:100_000}).queryCount-beforeFull,9);
   await assert.rejects(readPortablePersonaWorkspace(measured,{
    worldId,promotionId:otherId,playerId}),/access denied/);
  }finally{

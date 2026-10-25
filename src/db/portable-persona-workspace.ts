@@ -100,7 +100,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
-   persona:null,history:[],recentRequests:[],conversations:[],archetypes:[],
+   persona:null,history:[],recentRequests:[],conversations:[],memories:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
    worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
    canEdit:false,nextPitchWeek:0};
@@ -155,9 +155,20 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
+  // Only the selected wrestler thread reads memory. Never inflate inbox
+  // reads or pull rival-promoter conversations into this person's history.
+  const memories=await tx.query<{kind:string;source_id:string;
+   occurred_week_index:number;importance:number}>([
+   "SELECT kind,source_id,occurred_week_index,importance",
+   "FROM ppw_backstage_memories WHERE world_id=$1 AND promotion_id=$2",
+   "AND person_id=$3 AND occurred_week_index>=greatest(0,$4-104)",
+   "ORDER BY importance DESC,occurred_week_index DESC,memory_id DESC LIMIT 9"
+  ].join(" "),[s.worldId,s.promotionId,selected,now]);
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
+   memories:memories.map(m=>({kind:m.kind,sourceId:m.source_id,
+    weekIndex:m.occurred_week_index,importance:m.importance})),
    conversations:[...conversations].reverse().map(x=>({
     conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
     status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
