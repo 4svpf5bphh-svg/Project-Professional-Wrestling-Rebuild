@@ -26,7 +26,7 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
  if(!Object.values(scope).every(valid))throw new Error("Invalid Vault identity");
  return withSqlClient(pool,async tx=>{
   const world=await assertVaultMember(tx,scope);
-  const [metrics,arrived,cards]=await Promise.all([
+  const [metrics,arrived,cards,wallet]=await Promise.all([
    tx.query<{metric:string;value:number}>(`
     SELECT metric,value FROM ppw_legend_metrics WHERE world_id=$1
    `,[scope.worldId]),
@@ -41,12 +41,16 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
    `,[scope.worldId,scope.playerId]),
    tx.query<{legend_id:string}>(`
     SELECT legend_id FROM ppw_kp_legend_cards WHERE player_id=$1
+   `,[scope.playerId]),
+   tx.query<{balance:string}>(`
+    SELECT balance::text FROM ppw_kp_wallets WHERE player_id=$1
    `,[scope.playerId])
   ]);
   const progress=new Map(metrics.map(m=>[m.metric,Number(m.value)]));
   const unlocked=new Map(arrived.map(x=>[x.legend_id,x]));
   const collected=new Set(cards.map(x=>x.legend_id));
   return {worldYear:world.year,worldWeek:world.week,
+   balance:Number(wallet[0]?.balance??0),
    curated:LEGENDS_CATALOGUE.length,
    entries:LEGENDS_CATALOGUE.filter(d=>d.status==="ACTIVE").map(d=>{
     const record=unlocked.get(d.id),isUnlocked=Boolean(record);
