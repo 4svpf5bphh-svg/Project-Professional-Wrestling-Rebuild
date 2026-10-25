@@ -10,6 +10,9 @@ export interface WorldHomePort{
  manualAdvance?:(year:number,week:number)=>Promise<{
   status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";blockers:string[]}>;
  extendBooking?:(year:number,week:number)=>Promise<{status:string}>;
+ onWeekPublished?():Promise<void>;
+ claimWeeklyKP?():Promise<{awarded:number;reason?:string}>;
+ openLegends?():void;openKayfabe?():void;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;

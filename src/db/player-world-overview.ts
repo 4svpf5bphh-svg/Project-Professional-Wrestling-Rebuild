@@ -26,6 +26,7 @@ export interface PlayerWorldOverview {
     year:number;week:number}[];
    contractAlerts?:{contractId:string;personId:string;name:string;
     kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean}[];
+   kpClaimAvailable?:boolean;unseenLegends?:number;
    worldStories?:{eventId:string;kind:string;year:number;week:number;
     personId:string|null;personName:string|null;
     promotionName:string|null;toTier:string|null}[];
@@ -61,6 +62,7 @@ export async function readPlayerWorldOverview(
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
    medical_clearances:unknown;world_stories:unknown;
+   kp_claim_available:boolean|null;unseen_legends:number|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -76,7 +78,7 @@ export async function readPlayerWorldOverview(
     notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
-    public_news.world_stories
+    public_news.world_stories,kp.kp_claim_available,legends.unseen_legends
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -468,7 +470,9 @@ export async function readPlayerWorldOverview(
     cash:Number(x.cash),debt:Number(x.debt),
     lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),
     runwayWeeks:x.runway_weeks,financialDistress:x.financial_distress,
-    attention:{unpreparedShow:x.unprepared_show===true,
+    attention:{kpClaimAvailable:x.kp_claim_available===true,
+     unseenLegends:Number(x.unseen_legends??0),
+     unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
