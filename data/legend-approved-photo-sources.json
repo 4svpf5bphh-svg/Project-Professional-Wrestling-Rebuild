@@ -1,5 +1,5 @@
 {
-  "notes": "Individually selected named wrestler photographs, not bulk search top hits. Candidate licensing and identity still require visual review in addition to photographer metadata; other 11 missing records are deliberately not approved. Derivatives of CC BY-SA photos must carry compatible share-alike terms.",
+  "notes": "Named wrestlers selected individually from documented Wikimedia Commons photographs. Sources must still pass final photo review and likeness-rights assessment; commercial collectible activation is separate from assets.",
   "images": [
     {
       "id": "jerry-lynn",
@@ -432,6 +432,102 @@
       "description": "Kobashi Kenta...",
       "width": 660,
       "height": 649
+    },
+    {
+      "id": "raven",
+      "name": "Raven",
+      "file": "Raven in 2011.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Raven_in_2011.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Raven_in_2011.jpg",
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "description": "Professional wrestler Raven (Scott Levy) at Wrestlecade in 2011.",
+      "width": 1664,
+      "height": 2496
+    },
+    {
+      "id": "sting",
+      "name": "Sting",
+      "file": "Sting Jan 2013.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Sting_Jan_2013.jpg",
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "description": "Professional wrestler Sting (Steve Borden) at TNA Impact! tapings in January 2013.",
+      "width": 3264,
+      "height": 2448
+    },
+    {
+      "id": "taz",
+      "name": "Taz",
+      "file": "Taz Hardcore Hall of Fame.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Taz_Hardcore_Hall_of_Fame.jpg",
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0",
+      "description": "Taz (Peter Senerchia) at the Hardcore Hall of Fame.",
+      "width": 2240,
+      "height": 3360
+    },
+    {
+      "id": "d-lo-brown",
+      "name": "D’Lo Brown",
+      "file": "D Lo Brown.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:D_Lo_Brown.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/8/83/D_Lo_Brown.jpg",
+      "author": "shstrng",
+      "license": "CC BY 2.0",
+      "description": "Professional wrestler D'Lo Brown at a Chikara show in 2009.",
+      "width": 2304,
+      "height": 3072
+    },
+    {
+      "id": "booker-t",
+      "name": "Booker T",
+      "file": "Booker T 2018.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Booker_T_2018.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Booker_T_2018.jpg",
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "description": "Professional wrestler Booker T photographed in December 2018.",
+      "width": 1464,
+      "height": 2450
+    },
+    {
+      "id": "chyna",
+      "name": "Chyna",
+      "file": "Chyna and Triple H in 1997 (cropped).jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chyna_and_Triple_H_in_1997_(cropped).jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/da/Chyna_and_Triple_H_in_1997_(cropped).jpg",
+      "author": "MandyJC72",
+      "license": "CC BY-SA 2.0",
+      "description": "Professional wrestlers Chyna and Triple H in 1997, cropped.",
+      "width": 914,
+      "height": 1066
+    },
+    {
+      "id": "vader",
+      "name": "Vader",
+      "file": "Vader One Night Only.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Vader_One_Night_Only.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Vader_One_Night_Only.jpg",
+      "author": "Mandy Coombes",
+      "license": "CC BY-SA 2.0",
+      "description": "Big Van Vader at WWF One Night Only, Birmingham, 1997.",
+      "width": 715,
+      "height": 1207
+    },
+    {
+      "id": "the-rock",
+      "name": "The Rock",
+      "file": "WWE Wrestlemania 28 - The Rock pose.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:WWE_Wrestlemania_28_-_The_Rock_pose.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/de/WWE_Wrestlemania_28_-_The_Rock_pose.jpg",
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "description": "The Rock at WrestleMania XXVIII in 2012.",
+      "width": 1688,
+      "height": 3264
     }
   ]
 }
