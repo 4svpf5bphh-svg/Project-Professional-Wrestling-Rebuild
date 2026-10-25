@@ -132,7 +132,26 @@ export async function settleCertifiedWorldLegends(
   RETURNING metric,value
  `,[worldId,JSON.stringify(Object.entries(metric).map(([k,v])=>({metric:k,value:v})))]);
  const total=Object.fromEntries(totals.map(x=>[x.metric,x.value])) as Record<LegendMetric,number>;
- const winners=LIVE_LEGENDS.filter(x=>legendUnlockEligible(x,total));
+ // A one-off authorised test fires only after THIS operator's actual regular
+ // completed show has been certified. An AI show, draft or off-week cannot fire.
+ const pilots=await tx.query<{promotion_id:string}>(`
+  SELECT p.promotion_id FROM ppw_legend_reveal_pilots p
+  WHERE p.world_id=$1 AND p.status='ARMED'
+   AND ((p.armed_year-1)*52+p.armed_week) <= (($2-1)*52+$3)
+   AND EXISTS (
+    SELECT 1 FROM ppw_completed_shows s
+    JOIN ppw_booking_drafts d ON d.world_id=s.world_id
+     AND d.draft_id=s.show_id AND d.booking_class='REGULAR'
+    WHERE s.world_id=p.world_id AND s.promotion_id=p.promotion_id
+     AND s.year=$2 AND s.week=$3
+   ) FOR UPDATE OF p
+ `,[worldId,year,week]);
+ const pilotReady=pilots.length===1;
+ const winners=[...LIVE_LEGENDS.filter(x=>legendUnlockEligible(x,total))];
+ if(pilotReady&&!winners.some(x=>x.id==="undertaker")){
+  const testLegend=LIVE_LEGENDS.find(x=>x.id==="undertaker");
+  if(testLegend)winners.push(testLegend);
+ }
  if(!winners.length)return {processed:true,unlocked:[] as string[]};
  const old=await tx.query<{legend_id:string}>(`
   SELECT legend_id FROM ppw_world_legend_unlocks WHERE world_id=$1
@@ -195,7 +214,9 @@ export async function settleCertifiedWorldLegends(
    INSERT INTO ppw_world_legend_unlocks(world_id,legend_id,year,week,
     metric,evidence_value,person_ids,ai_eligible_from_week_index)
    VALUES($1,$2,$3,$4,$5,$6,$7::text[],$8)
-  `,[worldId,legend.id,year,week,legend.metric,total[legend.metric!],
+  `,[worldId,legend.id,year,week,
+   pilotReady&&legend.id==="undertaker"?"PILOT_WEEKLY_SHOW":legend.metric,
+   pilotReady&&legend.id==="undertaker"?1:total[legend.metric!],
    people.map(p=>p.id),currentIndex+1]);
   await tx.query(`
    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
@@ -204,6 +225,10 @@ export async function settleCertifiedWorldLegends(
     legendId:legend.id,name:legend.name,tier:legend.tier,
     personIds:people.map(p=>p.id),market:"FREE_AGENT"
    })]);
+  if(pilotReady&&legend.id==="undertaker")await tx.query(`
+   UPDATE ppw_legend_reveal_pilots SET status='CONSUMED',
+    consumed_year=$2,consumed_week=$3 WHERE world_id=$1 AND status='ARMED'
+  `,[worldId,year,week]);
   arrived.push(legend.id);
  }
  return {processed:true,unlocked:arrived};
