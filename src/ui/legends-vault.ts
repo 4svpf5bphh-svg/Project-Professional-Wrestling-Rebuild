@@ -21,12 +21,47 @@ const title:Record<string,string>={
  CULT:"Cult / Heritage",LEGEND:"Legend",ICON:"Icon",IMMORTAL:"Immortal"
 };
 const order=["CULT","LEGEND","ICON","IMMORTAL"];
+/** One canonical card composition is reused at every display size.
+ * Wrestler photography is NOT AI-generated or retouched into a lookalike.
+ * Treat source/photo rights separately from any wrestler likeness rights.
+ */
 function cardGraphic(item:LegendsVaultEntry){
  if(!item.cardAsset||(!item.unlocked&&!item.collected))return null;
+ if(item.id==="undertaker"){
+  const art=el("figure","ppw-legend-card-art ppw-undertaker-card");
+  art.setAttribute("role","img");
+  art.setAttribute("aria-label","The Undertaker — Immortal tier collectible card");
+  const photography=document.createElement("img");
+  photography.className="ppw-undertaker-photograph";
+  photography.src=item.cardAsset;
+  photography.alt="";photography.loading="lazy";
+  photography.decoding="async";
+  art.append(photography,
+   el("span","ppw-undertaker-grain"),
+   el("span","ppw-undertaker-corner ppw-undertaker-corner-top","✦"),
+   el("span","ppw-undertaker-corner ppw-undertaker-corner-bottom","✦"),
+   el("span","ppw-undertaker-eyebrow","PPW · LEGENDS COLLECTION"),
+   el("span","ppw-undertaker-halo","†"),
+   el("span","ppw-undertaker-titles",
+    "THE DEADMAN"),
+   el("span","ppw-undertaker-name","THE UNDERTAKER"),
+   el("span","ppw-undertaker-plate","IMMORTAL  ·  001 / 001"),
+   el("span","ppw-undertaker-edition","THE PHENOM  ·  1990s / 2000s"));
+  return art;
+ }
  const art=document.createElement("img");
  art.className="ppw-legend-card-art";art.src=item.cardAsset;
  art.alt="Definitive collectible card of "+(item.name??"the legend");
  art.loading="lazy";return art;
+}
+function photoCredit(item:LegendsVaultEntry){
+ if(item.id!=="undertaker"||!item.cardAsset)return null;
+ const caption=el("p","ppw-legend-photo-credit","Photo: Steve Wright Jr. · ");
+ const source=document.createElement("a");
+ source.href="https://commons.wikimedia.org/wiki/File:The_Undertaker.jpg";
+ source.target="_blank";source.rel="noopener noreferrer";
+ source.textContent="CC BY 2.0 · cropped for card";
+ caption.append(source);return caption;
 }
 export function drawLegendsVault(
  target:HTMLElement,view:LegendsVaultView,actions:LegendsVaultActions,revealing:string|null,
@@ -94,6 +129,7 @@ export function drawLegendsVault(
      el("small","","COLLECTIBLE ART PENDING"));
    }
    n.append(visual,el("h3","",item.name??"Identity shrouded"));
+   const credit=photoCredit(item);if(credit)n.append(credit);
    n.append(el("p","ppw-legend-clue",item.unlocked?
     (item.achievement??"An extraordinary World accomplishment"):item.clue));
    if(item.nextHint&&!item.unlocked)n.append(el("p","ppw-legend-next-hint",
@@ -138,6 +174,8 @@ export function drawLegendsVault(
   if(fullCard)scene.append(fullCard);
   else scene.append(el("p","ppw-legend-reveal-artnote",
    "The definitive collectible image will appear here after its real photograph is cleared."));
+  if(selected.id==="undertaker")scene.classList.add("ppw-undertaker-reveal-scene");
+  const credit=photoCredit(selected);if(credit)scene.append(credit);
   scene.append(el("p","ppw-legend-market-confirm",
    "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
   if(selected.personIds.length&&actions.openWrestler)
@@ -159,6 +197,7 @@ export function drawLegendsVault(
   panel.append(button("Close card",actions.closeCard),
    el("h2","",ownedCard.name??"Legend"));
   const art=cardGraphic(ownedCard);if(art)panel.append(art);
+  const credit=photoCredit(ownedCard);if(credit)panel.append(credit);
   overlay.append(panel);target.append(overlay);
  }
 }
