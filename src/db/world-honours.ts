@@ -31,7 +31,7 @@ export function chooseWorldMoments(
    a.promotionName,a.showId);
  }
  for(const item of stories.filter(s=>s.desk==="OFFICIAL"&&
-  s.sourceKind==="ANGLE"&&/\\bturn\\b/i.test(s.title))
+  s.sourceKind==="ANGLE"&&/\bturn\b/i.test(s.title))
   .sort((a,b)=>a.key.localeCompare(b.key))){
   add(item.key,"TURN",item.title,item.summary,item.promotionName,item.showId);
  }
