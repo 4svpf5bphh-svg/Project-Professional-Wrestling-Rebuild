@@ -4,6 +4,7 @@ import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {drawLegendsVault,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
@@ -33,6 +34,9 @@ export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
  news?():Promise<IndustryNewsView>;
  heritage?():Promise<WorldHeritageView>;
+ legends?():Promise<LegendsVaultView>;
+ legendSeen?(id:string):Promise<unknown>;
+ collectLegend?(id:string):Promise<unknown>;
  olderMoments?(cursor:WorldMomentCursor):Promise<{
   moments:WorldHeritageView["moments"];momentCursor:WorldMomentCursor|null}>;
  rankings?():Promise<WorldRankingsView>;
@@ -52,7 +56,7 @@ const btn=(label:string,fn:()=>void)=>{
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
-  active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"="STANDINGS",
+  active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"|"LEGENDS"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
  let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
@@ -107,6 +111,38 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   }
   catch(e){heritageError=e instanceof Error?e.message:"World history unavailable";}
   finally{heritageBusy=false;render();}
+ }
+ let legends:LegendsVaultView|null=null,legendsBusy=false,legendsError="";
+ let revealingLegend:string|null=null,legendNotice="";
+ async function loadLegends(){
+  if(!port.legends||legendsBusy||legends)return;
+  legendsBusy=true;legendsError="";render();
+  try{
+   legends=await port.legends();
+   revealingLegend=legends.entries.find(e=>e.unlocked&&!e.revealSeen)?.id??null;
+  }catch(e){legendsError=e instanceof Error?e.message:"Legends Vault unavailable";}
+  finally{legendsBusy=false;render();}
+ }
+ async function finishReveal(id:string){
+  revealingLegend=null;render();
+  try{
+   if(port.legendSeen)await port.legendSeen(id);
+   if(port.legends){
+    legends=await port.legends();
+    revealingLegend=legends.entries.find(e=>e.unlocked&&!e.revealSeen)?.id??null;
+   }
+  }catch(e){legendsError=e instanceof Error?e.message:"Could not save reveal acknowledgement";}
+  render();
+ }
+ async function collectLegend(id:string){
+  if(!port.collectLegend)return;
+  legendsBusy=true;legendNotice="";legendsError="";render();
+  try{
+   await port.collectLegend(id);
+   if(port.legends)legends=await port.legends();
+   legendNotice="Card permanently added to your personal collection.";
+  }catch(e){legendsError=e instanceof Error?e.message:"Card could not be collected";}
+  finally{legendsBusy=false;render();}
  }
  const loadRecords=async()=>{
   if(!port.records||recordsBusy||records)return;
@@ -189,16 +225,34 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"],["HERITAGE","World History"]] as const){
+  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"],["HERITAGE","World History"],["LEGENDS","Legends Vault"]] as const){
    const b=btn(label,()=>{active=key;render();if(key==="RECORDS"&&recordsTab==="MY")void loadRecords();
     if(key==="RECORDS"&&recordsTab==="WORLD")void loadRankings();
     if(key==="OFFICIAL"||key==="DIRT")void loadNews();
-    if(key==="HERITAGE")void loadHeritage();});
+    if(key==="HERITAGE")void loadHeritage();
+    if(key==="LEGENDS")void loadLegends();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
   }
   root.append(nav);
-  if(active==="STANDINGS"){
+  if(active==="LEGENDS"){
+   const section=el("section","ppw-industry-list ppw-legends");
+   if(legends){
+    const content=el("div","ppw-legend-content");
+    section.append(content);
+    drawLegendsVault(content,legends,{
+     showReveal:id=>{revealingLegend=id;render();},
+     closeReveal:id=>{void finishReveal(id);},
+     collect:id=>{void collectLegend(id);},
+     openWrestler:port.openWrestler
+    },revealingLegend);
+   }
+   if(legendsBusy)section.append(el("p","ppw-industry-muted","Reading the World Legends…"));
+   if(legendsError)section.append(el("p","ppw-alert ppw-error",legendsError),
+    btn("Retry",()=>{legends=null;void loadLegends();}));
+   if(legendNotice)section.append(el("p","ppw-alert ppw-success",legendNotice));
+   root.append(section);
+  }else if(active==="STANDINGS"){
    const section=el("section","ppw-industry-list");
    section.append(el("h2","","The promotion landscape"),
     el("p","ppw-industry-muted",

@@ -23,6 +23,7 @@ import {mountStaffDesk,type StaffPort} from "../ui/staff-desk.js";
 import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
 import "../ui/industry-world-hub.css";
+import "../ui/legends-vault.css";
 import "../ui/staff-desk.css";
 import "../ui/gorilla-desk.css";
 import "../ui/business-desk.css";
