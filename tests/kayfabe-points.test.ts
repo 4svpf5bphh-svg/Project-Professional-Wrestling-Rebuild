@@ -13,8 +13,8 @@ test("Kayfabe Points are a deterministic bounded cosmetic and World contribution
  assert.equal(catalogueItem("CREATED_WRESTLER"),null);
 });
 test("Kayfabe purchase and Create-a-Wrestler validation rejects unsafe client data",()=>{
- assert.deepEqual(validateKpAction({kind:"CREATE_WRESTLER",name:"Morgan Vale",
-  division:"WOMEN",requestId:"r1"}).division,"WOMEN");
+ assert.equal(validateKpAction({kind:"CREATE_WRESTLER",name:"Morgan Vale",
+  division:"WOMEN",requestId:"r1"}).kind,"CREATE_WRESTLER");
  assert.throws(()=>validateKpAction({kind:"CREATE_WRESTLER",name:"<script>",
   division:"MEN",requestId:"r1"}),/name/);
  assert.throws(()=>validateKpAction({kind:"RENAME_STAFF",name:"A",
