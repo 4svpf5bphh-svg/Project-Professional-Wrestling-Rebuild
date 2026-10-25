@@ -69,13 +69,19 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(office.employees.find(e=>e.staffId==="staff-road-agent-001")?.name,"Riley The Agent");
   assert.equal((await readStaffWorkspace(db.pool,bb)).employees.length,0);
   const added=await applyKayfabeAction(db.pool,aa,{
-   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"}) as unknown as {market:string;price:number;personId:string};
+   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",
+   gimmickId:"UNDERDOG",alignment:"TWEENER",primaryStyle:"HIGH_FLYER",
+   signatureMove:"Shooting Star Dive",finishingMove:"Comet Driver",requestId:"create-comet"}) as unknown as {market:string;price:number;personId:string};
   assert.equal(added.market,"FREE_AGENT");
   assert.equal(added.price,3000);
   assert.equal((await applyKayfabeAction(db.pool,aa,{
-   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"})).replayed,true);
+   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",
+   gimmickId:"UNDERDOG",alignment:"TWEENER",primaryStyle:"HIGH_FLYER",
+   signatureMove:"Shooting Star Dive",finishingMove:"Comet Driver",requestId:"create-comet"})).replayed,true);
   await assert.rejects(applyKayfabeAction(db.pool,aa,{
-   kind:"CREATE_WRESTLER",name:"Taylor Star",division:"MEN",requestId:"second-caw"}),/One created wrestler/);
+   kind:"CREATE_WRESTLER",name:"Taylor Star",division:"MEN",
+   gimmickId:"VILLAIN",alignment:"HEEL",primaryStyle:"STRIKER",
+   signatureMove:"Spear",finishingMove:"Tornado Kick",requestId:"second-caw"}),/One created wrestler/);
   const rookie=await withWorldTransaction(db.pool,tx=>tx.query<{
    person_id:string;in_ring_quality:number;popularity:number;booking_division:string}>(
    `SELECT person_id,in_ring_quality,popularity,booking_division
@@ -84,6 +90,18 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(rookie[0]!.in_ring_quality,52);
   assert.equal(rookie[0]!.popularity,12);
   assert.equal(rookie[0]!.booking_division,"WOMEN");
+  const identities=await withWorldTransaction(db.pool,tx=>tx.query<{persona:{
+   primaryStyle:string;gimmickId:string;signatureMoves:{name:string}[];
+   finishingMoves:{name:string}[]};provenance:string;default_alignment:string}>(`
+    SELECT pp.persona,pp.provenance,p.default_alignment FROM ppw_portable_personas pp
+    JOIN ppw_people p ON p.world_id=pp.world_id AND p.person_id=pp.person_id
+    WHERE pp.world_id=$1 AND pp.person_id=$2`,[world,added.personId]));
+  assert.equal(identities.length,1);
+  assert.equal(identities[0]!.provenance,"GAME_AUTHORED");
+  assert.equal(identities[0]!.persona.primaryStyle,"HIGH_FLYER");
+  assert.equal(identities[0]!.persona.gimmickId,"UNDERDOG");
+  assert.equal(identities[0]!.default_alignment,"TWEENER");
+  assert.equal(identities[0]!.persona.finishingMoves[0]?.name,"Comet Driver");
   const market=await readWrestlerDirectory(db.pool,bb,{
    view:"MARKET",availability:"FREE_AGENT",division:"WOMEN",search:"Taylor Comet"});
   assert.ok(market.people.some(p=>p.personId===added.personId));

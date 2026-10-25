@@ -30,7 +30,11 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
    achievements:[{key:"FIRST_BELL",label:"First Bell",earned:true,progress:1,target:1},
     {key:"TEN_SHOWS",label:"The Regular",earned:false,progress:3,target:10},
     {key:"YEAR_OF_SHOWS",label:"Iron Booker",earned:false,progress:3,target:52}],
-   createdTalent:[],catalogue:[
+   createdTalent:[],createOptions:{
+    styles:[{id:"ALL_ROUNDER",label:"All Rounder"},{id:"HIGH_FLYER",label:"High Flyer"}],
+    gimmicks:[{id:"AUTHENTIC",label:"Authentic"},{id:"UNDERDOG",label:"Underdog"}],
+    alignments:["FACE","HEEL","TWEENER"]
+   },catalogue:[
     {sku:"BRAND_CHROME",label:"Chrome promotion crest",price:200,kind:"BRAND"},
     {sku:"BRAND_NEON",label:"Neon promotion crest",price:350,kind:"BRAND"},
     {sku:"BADGE_GOLD",label:"Gold achievement display",price:350,kind:"BADGE"}
@@ -63,9 +67,17 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  await page.getByRole("textbox",{name:"New staff display name"}).fill("Alex Ringside");
  await page.getByRole("button",{name:/Rename/}).click();
  await expect(page.getByText("Staff display name updated.")).toBeVisible();
- await page.getByRole("textbox",{name:"New wrestler name"}).fill("Jules Comet");
+ await page.getByRole("button",{name:/Design a Wrestler/}).click();
+ await page.getByRole("textbox",{name:"Wrestler name"}).fill("Jules Comet");
+ await page.getByRole("combobox",{name:"Wrestling style"}).selectOption("HIGH_FLYER");
+ await page.getByRole("combobox",{name:"Character archetype"}).selectOption("UNDERDOG");
+ await page.getByRole("textbox",{name:"Signature move"}).fill("Rising Splash");
+ await page.getByRole("textbox",{name:"Finishing move"}).fill("Comet Driver");
+ await page.getByRole("button",{name:"Review Wrestler"}).click();
+ await expect(page.getByRole("heading",{name:"Jules Comet"})).toBeVisible();
+ await expect(page.getByText("Comet Driver")).toBeVisible();
  await page.once("dialog",dialog=>void dialog.accept());
- await page.getByRole("button",{name:/Create for 3,000 KP/}).click();
+ await page.getByRole("button",{name:/Finalise · 3,000 KP/}).click();
  await expect(page.getByText(/Jules Comet has entered the shared World/)).toBeVisible();
  const bounds=await page.locator(".ppw-kp-funds").boundingBox();
  expect(bounds).not.toBeNull();expect(bounds!.x).toBeGreaterThanOrEqual(0);

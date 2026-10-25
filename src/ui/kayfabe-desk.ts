@@ -3,6 +3,7 @@
  */
 import type {readKayfabeWorkspace,KpAction} from "../db/kayfabe-points.js";
 import "./kayfabe-desk.css";
+import type {KpCreateStyle,KpCreateGimmick} from "../domain/kp-create-wrestler.js";
 export type KayfabeView=Awaited<ReturnType<typeof readKayfabeWorkspace>>;
 export interface KayfabePort{
  load():Promise<KayfabeView>;
@@ -22,7 +23,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
  let createOpen=false,reviewing=false;
- let alignment:"FACE"|"HEEL"|"TWEENER"="FACE",primaryStyle="ALL_ROUNDER",gimmickId="AUTHENTIC";
+ let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
+ let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
  let signatureMove="",finishingMove="";
  const refresh=async()=>{
   busy=true;draw();
@@ -204,9 +206,9 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
      id,label:id==="FACE"?"Face":id==="HEEL"?"Heel":"Tweener"})),
      alignment,v=>{alignment=v as typeof alignment;}));
     form.append(choose("Wrestling style",view.createOptions.styles,primaryStyle,
-     v=>{primaryStyle=v;}));
+     v=>{primaryStyle=v as KpCreateStyle;}));
     form.append(choose("Character archetype",view.createOptions.gimmicks,gimmickId,
-     v=>{gimmickId=v;}));
+     v=>{gimmickId=v as KpCreateGimmick;}));
     form.append(field("Signature move",signatureMove,"e.g. Lightning Strike",
      v=>{signatureMove=v;}));
     form.append(field("Finishing move",finishingMove,"e.g. Comet Driver",
@@ -243,8 +245,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
       format(view!.createTalentPrice)+"? This creates a permanent shared free agent, "+
       "not a wrestler on your roster. All promotions may bid. This cannot be undone."))return;
      void run({kind:"CREATE_WRESTLER",name:name.trim(),division,
-      alignment,primaryStyle:primaryStyle as typeof view.createOptions.styles[number]["id"],
-      gimmickId:gimmickId as typeof view.createOptions.gimmicks[number]["id"],
+      alignment,primaryStyle,gimmickId,
       signatureMove:signatureMove.trim(),finishingMove:finishingMove.trim(),
       requestId:crypto.randomUUID()});
     },busy||view.balance<view.createTalentPrice));
