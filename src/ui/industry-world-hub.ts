@@ -2,7 +2,7 @@ import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/indust
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
-import type {readWorldHeritage} from "../db/world-honours.js";
+import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -33,6 +33,8 @@ export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
  news?():Promise<IndustryNewsView>;
  heritage?():Promise<WorldHeritageView>;
+ olderMoments?(cursor:WorldMomentCursor):Promise<{
+  moments:WorldHeritageView["moments"];momentCursor:WorldMomentCursor|null}>;
  rankings?():Promise<WorldRankingsView>;
  careers?(search:string):Promise<WorldCareersView>;
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
@@ -84,10 +86,25 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  }
  let heritage:WorldHeritageView|null=null,heritageBusy=false,heritageError="";
  let heritageTab:"AWARDS"|"HALL"|"MOMENTS"="AWARDS";
+ let olderMoments:WorldHeritageView["moments"]=[],olderBusy=false,olderError="";
+ let moreMoments:WorldMomentCursor|null=null;
+ async function loadOlderMoments(){
+  if(!port.olderMoments||!moreMoments||olderBusy)return;
+  olderBusy=true;olderError="";render();
+  try{
+   const page=await port.olderMoments(moreMoments);
+   olderMoments.push(...page.moments);
+   moreMoments=page.momentCursor;
+  }catch(e){olderError=e instanceof Error?e.message:"Older World Moments unavailable";}
+  finally{olderBusy=false;render();}
+ }
  async function loadHeritage(){
   if(!port.heritage||heritageBusy||heritage)return;
   heritageBusy=true;heritageError="";render();
-  try{heritage=await port.heritage();}
+  try{
+   heritage=await port.heritage();
+   olderMoments=[];moreMoments=heritage.momentCursor;
+  }
   catch(e){heritageError=e instanceof Error?e.message:"World history unavailable";}
   finally{heritageBusy=false;render();}
  }
@@ -362,7 +379,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
       "and landmark events. Only a few verified moments make the cut each week."));
     if(heritage&&!heritage.moments.length)section.append(el("p","ppw-industry-empty",
      "The World hasn't recorded a landmark moment yet."));
-    for(const moment of heritage?.moments??[]){
+    for(const moment of [...(heritage?.moments??[]),...olderMoments]){
      const card=el("article","ppw-heritage-moment");
      card.dataset.kind=moment.kind.toLowerCase();
      card.append(el("span","ppw-news-desk",
@@ -372,6 +389,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
       el("small","ppw-industry-muted",moment.promotionName));
      section.append(card);
     }
+    if(olderBusy)section.append(el("p","ppw-industry-muted","Turning back the World clock…"));
+    if(olderError)section.append(el("p","ppw-alert ppw-error",olderError),
+     btn("Retry older moments",()=>void loadOlderMoments()));
+    if(moreMoments&&!olderBusy)section.append(btn("Load older World Moments",
+     ()=>void loadOlderMoments()));
    }
    root.append(section);
   }else if(active==="RECORDS"){
