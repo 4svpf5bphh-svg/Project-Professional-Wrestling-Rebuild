@@ -1,0 +1,32 @@
+name: Build verified Undertaker card
+on:
+  push:
+    branches: [phase7-undertaker-pilot]
+    paths:
+      - "scripts/build_undertaker_card.py"
+      - ".github/workflows/build-legend-card.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  card:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pillow==11.3.0"
+      - name: Download verified CC BY portrait and render definitive card
+        run: python scripts/build_undertaker_card.py
+      - name: Save ONE immutable source-backed card on the development branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/assets/legends/undertaker-immortal-card.webp
+          if ! git diff --cached --quiet; then
+            git commit -m "Add source-backed Undertaker Immortal card asset [pilot]"
+            git push origin HEAD:phase7-undertaker-pilot
+          fi
