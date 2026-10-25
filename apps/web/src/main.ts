@@ -8,7 +8,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
- type HomeAttentionFocus} from "../../../src/web/host-navigation.js";
+ type HomeAttentionFocus,legendsVaultHash} from "../../../src/web/host-navigation.js";
 import {createCardClient,type CardSessionScope} from "../../../src/web/card-client.js";
 import {clearLegendRevealPortal,type LegendsVaultView} from "../../../src/ui/legends-vault.js";
 import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
@@ -129,10 +129,10 @@ function openBooking(showId:string){
 function departmentIcon(name:HostDrawerRoot):SVGSVGElement{
  const paths:Record<HostDrawerRoot,string[]>={
   world:["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z","M2 12h20","M12 2a15.3 15.3 0 0 1 0 20","M12 2a15.3 15.3 0 0 0 0 20"],
-  talent:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M22 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],
+  promotion:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M22 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],
   plan:["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z","M8 14h3","M8 18h3","M15 14h2"],
   business:["M3 21h18","M5 21V5l7-3 7 3v16","M9 9h1","M14 9h1","M9 13h1","M14 13h1","M10 21v-4h4v4"],
-  results:["M8 21h8","M12 17v4","M7 4h10v7a5 5 0 0 1-10 0V4Z","M7 6H4a2 2 0 0 0-2 2c0 3 2 5 5 5","M17 6h3a2 2 0 0 1 2 2c0 3-2 5-5 5"]
+  news:["M8 21h8","M12 17v4","M7 4h10v7a5 5 0 0 1-10 0V4Z","M7 6H4a2 2 0 0 0-2 2c0 3 2 5 5 5","M17 6h3a2 2 0 0 1 2 2c0 3-2 5-5 5"]
  };
  const ns="http://www.w3.org/2000/svg";
  const svg=document.createElementNS(ns,"svg");
@@ -237,6 +237,7 @@ function renderSection(){
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
  pendingBackstagePersonId=null;
+ clearLegendRevealPortal();
  const scope:CardSessionScope={worldId:session.worldId,
   promotionId:session.overview.promotion.id,showId:"",
   csrfToken:session.csrfToken};
@@ -282,7 +283,21 @@ function renderSection(){
    }:undefined,
    session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
     confirm:"EXTEND_SHARED_BOOKING",year,week
-   },session?.csrfToken):undefined);break;
+   },session?.csrfToken):undefined,
+   async()=>{
+    // One targeted check only after successful manual World publication.
+    try{
+     const newest=await createCardClient(scope)("legendsVault") as LegendsVaultView;
+     if(!view.isConnected||!session?.overview.promotion)return;
+     if(newest.entries.some(e=>e.unlocked&&!e.revealSeen)){
+      pendingLegends=newest;
+      if(location.hash!==legendsVaultHash)location.hash=legendsVaultHash;
+      else renderSection();
+     }
+    }catch{
+     // The World has already advanced; Home retains the unseen Legends cue.
+    }
+   });break;
   case "planner":mountPlannerPage(view,scope,back,
    location.hash===plannerCardHash,undefined,openBooking);break;
   case "card":{
@@ -310,7 +325,10 @@ function renderSection(){
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken});break;
-  case "industry":mountIndustryPage(view,scope);break;
+  case "industry":mountIndustryPage(view,scope,pendingLegends??undefined);
+   pendingLegends=null;break;
+  case "news":mountIndustryPage(view,scope);break;
+  case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"));break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;
   case "programmes":mountProgrammePage(view,scope);break;
@@ -339,7 +357,8 @@ window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 
 async function loadSession(){
  const sequence=++sessionReadSequence;
- pendingBackstagePersonId=null;
+ pendingBackstagePersonId=null;pendingLegends=null;
+ clearLegendRevealPortal();
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
@@ -368,6 +387,11 @@ async function loadSession(){
   const actions=el("div","ppw-shell-actions");
   const signout=button("Sign out",()=>void signOut());
   signout.className="ppw-shell-signout";
+  if(session.overview.membership==="ACTIVE"&&session.overview.promotion){
+   const kp=button("★ KP",()=>openSection("kayfabe"));
+   kp.className="ppw-shell-kp";kp.setAttribute("aria-label","Open Kayfabe Points");
+   actions.append(kp);
+  }
   actions.append(signout);
   banner.append(identity,actions);
   account.append(banner);
