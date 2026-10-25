@@ -48,8 +48,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     result.name+" has entered the shared World as a free agent. Every promotion can negotiate normally.":
     action.kind==="RENAME_STAFF"?"Staff display name updated.":
     action.kind==="BUY"?"Unlocked. Your purchase is available on your account.":
-    "action.kind==="APPLY_BADGE"?"Prestige badge finish applied.":
-    Promotion crest updated.";
+    action.kind==="APPLY_BADGE"?"Prestige badge finish applied.":
+    "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
   finally{busy=false;draw();}
  };
