@@ -265,6 +265,17 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     tile.append(el("small","",title),el("strong","",value));stats.append(tile);
    }
    careerBody.append(stats);
+   const earned=el("section","ppw-profile-career-honors");
+   earned.append(el("h3","","Earned reputations"),
+    el("p","ppw-profile-muted","Verified matches and championship honours; current form can change."));
+   if(!(career.reputations??[]).length)earned.append(el("p","ppw-profile-muted",
+    "No reputation has met the evidence threshold yet."));
+   for(const reputation of career.reputations??[]){
+    const item=el("article","ppw-profile-career-match");
+    item.append(el("strong","",reputation.name),el("span","",reputation.evidence));
+    earned.append(item);
+   }
+   careerBody.append(earned);
    const appearances=el("section","ppw-profile-career-honors");
    appearances.append(el("h3","","On-screen appearances"),
     el("p","ppw-profile-muted",

@@ -5,6 +5,7 @@ import {randomUUID} from "node:crypto";
 import {applyWorldCommand} from "./world-commands.js";
 import {worldStaff,evaluateStaffOffer,staffBuyout,type StaffRole}
  from "../domain/world-staff.js";
+import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 export interface StaffEmploymentInput{
@@ -16,10 +17,11 @@ type ContractTerm=52|104;
 const money=(n:number)=>Number.isSafeInteger(n)&&n>0&&n<=1_000_000;
 async function employer(tx:SqlRows,
  input:StaffEmploymentInput){
- const owner=await tx.query<{seed:string;cash:string;year:number;week:number;legacy_staff_ids:string[]}>([
+ const owner=await tx.query<{seed:string;cash:string;year:number;week:number;legacy_staff_ids:string[];alumni_staff:unknown}>([
   "SELECT w.seed::text AS seed,p.cash::text AS cash,w.year,w.week,",
    "ARRAY(SELECT staff_id FROM ppw_staff_legacy_identities",
-   "WHERE world_id=w.world_id) AS legacy_staff_ids",
+   "WHERE world_id=w.world_id) AS legacy_staff_ids,",
+  STAFF_ALUMNI_JSON_SQL,
   "FROM ppw_worlds w JOIN ppw_promotion_controls c",
   "ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active",
   "JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id",
@@ -40,7 +42,8 @@ export async function hireWorldStaff(pool:TransactionPool,
   commandType:"HIRE_WORLD_STAFF",requiresOpenWeek:true,
   execute:async tx=>{
    const m=await employer(tx,input);
-   const member=worldStaff(m.seed,m.legacy_staff_ids).find(p=>p.staffId===input.staffId);
+   const member=worldStaffWithAlumni(m.seed,m.legacy_staff_ids,m.alumni_staff)
+    .find(p=>p.staffId===input.staffId);
    if(!member)throw new Error("Unknown World staff candidate");
    const current=(m.year-1)*52+m.week-1;
    const verdict=evaluateStaffOffer(member,input.weeklySalary,input.termWeeks);
@@ -152,7 +155,8 @@ export async function renewWorldStaff(pool:TransactionPool,
    const contract=rows[0]!;
    if(contract.expires_week_index-current>12)
     throw new Error("Staff renewal opens in the final 13 weeks");
-   const member=worldStaff(m.seed,m.legacy_staff_ids).find(s=>s.staffId===contract.staff_id);
+   const member=worldStaffWithAlumni(m.seed,m.legacy_staff_ids,m.alumni_staff)
+    .find(s=>s.staffId===contract.staff_id);
    if(!member)throw new Error("Unknown World staff employee");
    if(!evaluateStaffOffer(member,input.weeklySalary,input.termWeeks).accepted||
      (contract.morale<40&&input.weeklySalary<Math.ceil(member.weeklySalary*1.07)))

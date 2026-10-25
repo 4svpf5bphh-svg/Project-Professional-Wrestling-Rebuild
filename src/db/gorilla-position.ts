@@ -53,8 +53,12 @@ export async function calculateGorillaShow(
  // The active controller, not any anonymous visitor, owns this log. AI
  // promotions have no policy and produce no costly extra narrative.
  const rows=await tx.query<{policy:GorillaPolicy|null;player_id:string;
-  staff_id:string|null;legacy:boolean}>(`
+  staff_id:string|null;legacy:boolean;alumnus_name:string|null;
+  alumnus_craft:number|null;alumnus_people:number|null;
+  alumnus_reliability:number|null}>(`
    SELECT c.player_id,instruction.policy,employee.staff_id,
+    alumnus_person.name AS alumnus_name,alumnus.craft AS alumnus_craft,
+    alumnus.people AS alumnus_people,alumnus.reliability AS alumnus_reliability,
     employee.staff_id IS NOT NULL AND EXISTS(
      SELECT 1 FROM ppw_staff_legacy_identities legacy
      WHERE legacy.world_id=c.world_id
@@ -74,12 +78,20 @@ export async function calculateGorillaShow(
      AND e.start_week_index <= $3 AND e.expires_week_index >= $3
     LIMIT 1
    ) employee ON TRUE
+   LEFT JOIN ppw_staff_alumni alumnus ON alumnus.world_id=c.world_id
+    AND alumnus.staff_id=employee.staff_id AND alumnus.role='ROAD_AGENT'
+   LEFT JOIN ppw_people alumnus_person ON alumnus_person.world_id=alumnus.world_id
+    AND alumnus_person.person_id=alumnus.person_id AND alumnus_person.status='RETIRED'
    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.active`,
    [receipt.worldId,receipt.promotionId,(receipt.year-1)*52+receipt.week-1]);
  if(!rows.length)return null;
  if(rows.length!==1)throw new Error("Multiple Gorilla controllers for one show");
  const row=rows[0]!;
  const staff=row.staff_id?
+  row.alumnus_name&&row.alumnus_craft!==null&&row.alumnus_people!==null&&
+  row.alumnus_reliability!==null?{staffId:row.staff_id,name:row.alumnus_name,
+   role:"ROAD_AGENT" as const,craft:row.alumnus_craft,
+   people:row.alumnus_people,reliability:row.alumnus_reliability}:
   worldStaff(seed,row.legacy?[row.staff_id]:[]).find(x=>x.staffId===row.staff_id):null;
  if(row.staff_id&&(!staff||staff.role!=="ROAD_AGENT"))
   throw new Error("Unrecognized Gorilla Road Agent");

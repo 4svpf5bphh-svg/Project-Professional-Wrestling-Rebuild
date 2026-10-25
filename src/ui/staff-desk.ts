@@ -275,6 +275,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("small","","CRAFT "+candidate.craft+" · PEOPLE "+candidate.people+
      " · RELIABILITY "+candidate.reliability),
     el("small","","ASKING "+money(candidate.weeklySalary)+"/week"));
+   if(candidate.formerWrestlerId)identity.append(el("small","",
+    "FORMER WRESTLER · "+(candidate.careerNote??"Verified career experience")));
    if(former)identity.append(el("small","",
     "PREVIOUSLY: "+former.promotionName+" · staff career record"));
    const amount=salaryInput(candidate.staffId,candidate.weeklySalary);
@@ -326,6 +328,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    LOYAL:"Places trust, stable teams and relationships first.",
    ECCENTRIC:"Brings unusual ideas and an unconventional approach."
   };
+  if(member.formerWrestlerId)profile.append(el("p","",
+   "Former wrestler · "+(member.careerNote??"Verified career history")));
   profile.append(el("p","",temperament[member.personality]),
    el("p","",roles(member.role)+" specialist · "+member.specialism));
   const attributes=el("div","ppw-staff-attribute-list");

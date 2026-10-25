@@ -3,7 +3,8 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
-import {worldStaff,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+import {worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {GorillaPolicy} from "../domain/gorilla-position.js";
 
 export async function readStaffWorkspace(pool:TransactionPool,input:{
@@ -22,7 +23,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    world_seed:string;promotion_cash:string;employments:unknown;
    contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
    employed_staff_id:string|null;employment_id:string|null;
-   manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];
+   manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
@@ -64,6 +65,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      WHERE e.world_id=w.world_id AND e.status='ACTIVE') AS occupied_staff_ids,
      ARRAY(SELECT legacy.staff_id FROM ppw_staff_legacy_identities legacy
       WHERE legacy.world_id=w.world_id) AS legacy_staff_ids,
+    ${STAFF_ALUMNI_JSON_SQL},
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit,
     (SELECT gp.policy FROM ppw_gorilla_policies gp WHERE gp.world_id=w.world_id
      AND gp.promotion_id=$3 AND gp.owner_player_id=$2) AS gorilla_policy,
@@ -101,7 +103,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      AND e.status='ACTIVE' LIMIT 1) employed ON TRUE
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(owners.length!==1)throw new Error("Staff desk access denied");
-  const current=owners[0]!,catalog=worldStaff(current.world_seed,current.legacy_staff_ids);
+  const current=owners[0]!,catalog=worldStaffWithAlumni(current.world_seed,
+   current.legacy_staff_ids,current.alumni_staff);
   const managers=worldTalentManagers(current.world_seed);
   const busy=new Set(current.occupied_staff_ids);
   const employed=managers.find(p=>p.staffId===current.employed_staff_id);

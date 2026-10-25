@@ -109,9 +109,16 @@ export async function settleWeeklyFatigueRecovery(
  // execution params, then join only active staff and exclusive contracts.
  // The original recovery formula is unchanged for everyone without a coach.
  await tx.query(`
-  WITH coached AS MATERIALIZED (
-   SELECT c.person_id,max(x.bonus) AS extra
+  WITH trainer_profiles AS MATERIALIZED (
+   SELECT x.staff_id,x.bonus
    FROM jsonb_to_recordset($3::jsonb) x(staff_id text,bonus numeric)
+   UNION ALL
+   SELECT a.staff_id,least(2.5::numeric,greatest(0.5::numeric,
+    round(a.craft::numeric/4,1))) AS bonus
+   FROM ppw_staff_alumni a WHERE a.world_id=$1 AND a.role='TRAINER'
+  ), coached AS MATERIALIZED (
+   SELECT c.person_id,max(x.bonus) AS extra
+   FROM trainer_profiles x
    JOIN ppw_staff_employments s ON s.world_id=$1
     AND s.staff_id=x.staff_id AND s.role='TRAINER' AND s.status='ACTIVE'
     AND s.start_week_index<=$2 AND s.expires_week_index>=$2
