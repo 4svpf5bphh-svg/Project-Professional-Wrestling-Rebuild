@@ -87,7 +87,9 @@ export function actionStatusMessage(method:string,status:number):string{
  if(status===403)return "Your session cannot perform this action. Refresh and sign in again.";
  if(status===409)return "The World has changed. Refresh this screen before trying again.";
  if(status===429)return "Too many requests. Try again shortly.";
- if(status>=500)return subject+" is temporarily unavailable. Please try again.";
+ if(status>=500)return domain==="booking"?
+  "Booking request failed. The server could not confirm this change; retry the same saved action.":
+  subject+" is temporarily unavailable. Please try again.";
  return domain==="booking"?"Booking request failed. Review the card and try again.":
   subject+" request could not be completed. Review the selection and try again.";
 }
