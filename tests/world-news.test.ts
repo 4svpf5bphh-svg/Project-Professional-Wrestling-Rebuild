@@ -51,6 +51,8 @@ test("official stories describe events while dirt sheet claims remain explicitly
  const rumour=out.filter(x=>x.desk==="DIRT");
  assert.ok(rumour.length>0);
  assert.ok(rumour.every(x=>x.certainty==="SPECULATION"));
+ assert.equal(new Set(out.map(x=>x.key)).size,out.length,
+  "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
  assert.ok(rumour.some(x=>/not a report from backstage/.test(x.summary)));
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));

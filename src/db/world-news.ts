@@ -32,8 +32,11 @@ export interface WorldNewsStory{
 }
 const significant=new Set(["TURN","ATTACK","POST_MATCH_ASSAULT","DEBUT",
  "STABLE_EXIT","STABLE_INVITATION","RESCUE","CONFRONTATION","CHALLENGE"]);
-const impact=(k:string)=>["TURN","POST_MATCH_ASSAULT","ATTACK","DEBUT","STABLE_EXIT",
- "RESCUE","STABLE_INVITATION","CHALLENGE","CONFRONTATION"].indexOf(k);
+const impact=(k:string)=>{
+ const index=["TURN","POST_MATCH_ASSAULT","ATTACK","DEBUT","STABLE_EXIT",
+  "RESCUE","STABLE_INVITATION","CHALLENGE","CONFRONTATION"].indexOf(k);
+ return index<0?99:index;
+};
 const name=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase());
 function participants(raw:unknown):string[]{
  try{return readCardParticipants(raw).map(x=>x.personId);}catch{return [];}

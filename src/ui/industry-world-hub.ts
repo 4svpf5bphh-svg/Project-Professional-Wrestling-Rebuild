@@ -308,6 +308,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
      features.append(poster);
     }
     section.append(features);
+    section.append(el("p","ppw-industry-muted",
+     "Selection: certified match stars then crowd response; for angles, " +
+     "completed crowd response then angle significance. Remaining ties use " +
+     "stable promotion, show and segment IDs."));
     const history=news.awards.filter(a=>a.year!==latest.year||a.week!==latest.week);
     if(history.length){
      const archive=document.createElement("details");
