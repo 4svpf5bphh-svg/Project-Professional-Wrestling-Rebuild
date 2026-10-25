@@ -1,7 +1,7 @@
 name: Verify Legends simulation
 on:
   push:
-    branches: [phase7-legends]
+    branches: [phase7-legends, phase7-undertaker-pilot]
 concurrency:
   group: legends-targeted-${{ github.ref }}
   cancel-in-progress: true
