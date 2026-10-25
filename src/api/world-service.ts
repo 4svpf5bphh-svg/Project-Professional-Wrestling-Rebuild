@@ -37,6 +37,7 @@ import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseW
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import {readIndustryWorldNews} from "../db/industry-news.js";
 import {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
+import {readLegendsVault,markLegendRevealSeen} from "../db/legends-vault.js";
 import {readWorldHeritage,readOlderWorldMoments,type WorldMomentCursor}
  from "../db/world-honours.js";
 import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction,type KpAction}
@@ -150,6 +151,18 @@ export async function industryNewsAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");
  return readIndustryWorldNews(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
+}
+/** A lazily loaded, public-per-World Legends Vault with account-owned cards. */
+export async function legendsVaultAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readLegendsVault(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function legendRevealSeenAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,legendId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(legendId,"legend");
+ return markLegendRevealSeen(context.pool,{worldId,promotionId,playerId:context.actor.playerId},legendId);
 }
 /** Year-end honours, earned Hall of Fame and historic public moments. */
 export async function worldHeritageAsActor(context:WorldApiContext,
