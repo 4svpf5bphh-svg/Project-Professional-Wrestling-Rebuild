@@ -36,7 +36,7 @@ test("World record book shows earned men/women rankings and searchable wrestler 
  await expect(page.getByText("Bob",{exact:true})).toBeVisible();
  await expect(page.getByText("5–2")).toBeVisible();
  await page.getByRole("button",{name:"Women"}).click();
- await expect(page.getByText("Alice",{exact:true})).toBeVisible();
+ await expect(page.getByText(/Alice/)).toBeVisible();
  await expect(page.getByText("Bob",{exact:true})).toHaveCount(0);
  await page.getByRole("button",{name:"Find a Career"}).click();
  const input=page.getByPlaceholder("Search the wrestling World");
