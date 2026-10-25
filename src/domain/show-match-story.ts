@@ -19,6 +19,9 @@ export function describeMatchFinish(input:{
   PROTECTED_FINISH:"A protected finish ended the contest without a clean decision.",
   INJURY_STOPPAGE:"The match was stopped because of an injury.",
   OVER_THE_TOP_ROPE:"The last elimination settled the battle royal.",
+  RETRIEVAL:"The winner climbed above the ring and retrieved the suspended prize.",
+  TABLE_BREAK:"The winner drove the opponent through a table to end the contest.",
+  TEN_COUNT:"The opponent could not answer the referee's ten-count.",
  };
  const base=descriptions[finish]??"The bout reached its official finish: "+
   finish.toLowerCase().replaceAll("_"," ")+".";
