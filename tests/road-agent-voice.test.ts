@@ -5,7 +5,9 @@ import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js
 import type {RecordedMatchReportFact} from "../src/db/record-match-report-facts.js";
 import type {WorldStaffMember} from "../src/domain/world-staff.js";
 
-const receipt={
+const receipt:CompletedShowReceipt={
+ worldId:"test-world",promotionId:"promoter",showId:"test-show",
+ year:1,week:1,resolutionId:"test-resolution",crowdResponse:70,
  matches:[
   {matchId:"opener",position:0,crowdResponse:78,actualFinish:"SUBMISSION",
    actualWinnerSide:"A"},
@@ -14,7 +16,7 @@ const receipt={
  ],
  segments:[{slotId:"promo",position:1,kind:"PROMO",outcome:"HAPPENS",
   crowdResponse:65}]
-} as CompletedShowReceipt;
+};
 const facts:RecordedMatchReportFact[]=[
  {matchId:"opener",ratingStars:4,executionQuality:83,actualMinutes:18,
   plannedMinutes:18,chemistryModifier:5,finishCheaterPersonId:null,
