@@ -229,8 +229,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
-  head.append(el("span","ppw-industry-kicker","THE INDUSTRY / PROMOTIONS"),
-   el("h1","","Industry"),
+  head.append(el("span","ppw-industry-kicker",window.location.hash.startsWith("#/news")?
+    "THE WORLD / ON THE WIRE":"THE INDUSTRY / PROMOTIONS"),
+   el("h1","",window.location.hash.startsWith("#/news")?"World News":"Industry"),
    el("p","ppw-industry-muted",view?
     view.worldName+" · Year "+view.year+" · Week "+view.week:
     "See the competition, follow rival promotions and find out who's making headlines."));

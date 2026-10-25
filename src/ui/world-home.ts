@@ -18,7 +18,7 @@ export interface WorldHomePort{
  openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
- industry():void;calendar():void;championships():void;
+ industry():void;calendar():void;championships():void;news?():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
  dismissAttentionBatch?(attentionIds:string[]):Promise<unknown>;
  openWrestler?(personId:string):void;
@@ -211,6 +211,33 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    hero.append(check);
   }
   root.append(hero);
+  if(promotion){
+   const dashboard=el("section","ppw-home-dashboard");
+   dashboard.setAttribute("aria-label","Your promotion at a glance");
+   const next=promotion.nextShow;
+   dashboard.append(control(next?"NEXT SHOW · "+next.showName:"NEXT SHOW · Not yet planned",
+    next?"Year "+next.year+" · Week "+next.week+" · "+
+     (next.ready?"Card is prepared":"Booking needs attention"):
+     "Put your next show in the calendar, then write the card.",
+    port.planner,"▣"));
+   const last=promotion.latestShow;
+   dashboard.append(control(last?"LATEST SHOW · "+last.showName:"LATEST SHOW · Results archive",
+    last?"Year "+last.year+" · Week "+last.week+" · Audience response "+
+     Math.round(last.crowdResponse)+"/100":
+     "See your completed events and verified finishes.",port.results,"★"));
+   const standing=promotion.standing;
+   dashboard.append(control(standing?"WORLD RANK · #"+standing.position+" / "+standing.total:
+    "WORLD RANK · Standings",
+    "See where your promotion stands by broadcast reach.",port.industry,"◆"));
+   root.append(dashboard);
+   const newsStrip=el("section","ppw-home-news-strip");
+   newsStrip.setAttribute("aria-label","World headlines and weekly awards");
+   newsStrip.append(control("Official News & Dirt Sheets",
+    "The major headlines and what insiders are whispering.",port.news??port.industry,"✦"),
+    control("Match & Angle of the Week",
+     "The standout moments from across the shared World.",port.news??port.industry,"★"));
+   root.append(newsStrip);
+  }
   if(port.manualAdvance&&promotion){
    const controls=el("section","ppw-manual-test");
    controls.append(el("span","ppw-home-brand","PRIVATE PLAYTEST CONTROL"),
@@ -420,7 +447,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    entry.classList.add("ppw-home-action-"+item.level);
    brief.append(entry);
   }
-  root.append(brief);
+  root.insertBefore(brief,stats);
   const results=attention?.offerResults??[];
   if(results.length){
    const wire=el("section","ppw-home-wire");
@@ -669,7 +696,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    root.append(clear);
   }
   root.append(el("p","ppw-home-small ppw-home-drawer-hint",
-   "The five bottom buttons open your World, Talent, Plan, Business and Results departments."));
+   "The five bottom buttons open World, News, Promotion, Plan and Business."));
  }
  void load();
  return {refresh:load};

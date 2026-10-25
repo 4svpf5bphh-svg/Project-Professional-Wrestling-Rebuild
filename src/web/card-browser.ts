@@ -100,6 +100,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
   industry:go("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
+  news:go("news",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   calendar:go("calendar",()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope))),
   championships:go("championships",()=>{void mountChampionshipsPage(root,scope,
    ()=>mountWorldHomePage(root,scope));})

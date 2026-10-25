@@ -6,6 +6,9 @@ export interface PlayerWorldOverview {
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
  membership:"ACTIVE"|"INACTIVE"|"NONE";
  promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
+   standing?:{position:number;total:number}|null;
+   nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
+   latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
@@ -63,6 +66,7 @@ export async function readPlayerWorldOverview(
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
+   standing:unknown;next_show:unknown;latest_show:unknown;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -78,7 +82,8 @@ export async function readPlayerWorldOverview(
     notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
-    public_news.world_stories,kp.kp_claim_available,legends.unseen_legends
+    public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
+    dashboard.standing,dashboard.next_show,dashboard.latest_show
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -455,6 +460,32 @@ export async function readPlayerWorldOverview(
       AND seen.player_id=$2
     )
    ) legends ON owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (
+    SELECT
+     (SELECT jsonb_build_object('position',rank.position,'total',rank.total)
+      FROM (
+       SELECT promotion_id,
+        row_number() OVER (ORDER BY media_reach DESC NULLS LAST,name,promotion_id)::integer AS position,
+        count(*) OVER()::integer AS total
+       FROM ppw_promotions WHERE world_id=w.world_id AND lifecycle='ACTIVE'
+      ) rank WHERE rank.promotion_id=owned.promotion_id) AS standing,
+     (SELECT jsonb_build_object('year',d.year,'week',d.week,
+      'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
+       THEN 'Premium event' ELSE 'Weekly show' END),
+      'ready',d.lock_ready_fingerprint IS NOT NULL,'status',d.status)
+      FROM ppw_booking_drafts d
+      WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+       AND (d.year,d.week)>=(w.year,w.week)
+      ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 1) AS next_show,
+     (SELECT jsonb_build_object('year',c.year,'week',c.week,
+      'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
+       THEN 'Premium event' ELSE 'Weekly show' END),
+      'crowdResponse',c.crowd_response::float8)
+      FROM ppw_completed_shows c
+      JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
+      WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
+      ORDER BY c.year DESC,c.week DESC,c.show_id DESC LIMIT 1) AS latest_show
+   ) dashboard ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
@@ -466,6 +497,24 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
+    standing:x.standing&&typeof x.standing==="object"&&"position" in x.standing&&
+     "total" in x.standing&&typeof x.standing.position==="number"&&
+     typeof x.standing.total==="number"?
+     {position:x.standing.position,total:x.standing.total}:null,
+    nextShow:x.next_show&&typeof x.next_show==="object"&&"year" in x.next_show&&
+     "week" in x.next_show&&"showName" in x.next_show&&"ready" in x.next_show&&
+     "status" in x.next_show&&typeof x.next_show.year==="number"&&
+     typeof x.next_show.week==="number"&&typeof x.next_show.showName==="string"&&
+     typeof x.next_show.ready==="boolean"&&typeof x.next_show.status==="string"?
+     {year:x.next_show.year,week:x.next_show.week,showName:x.next_show.showName,
+      ready:x.next_show.ready,status:x.next_show.status}:null,
+    latestShow:x.latest_show&&typeof x.latest_show==="object"&&"year" in x.latest_show&&
+     "week" in x.latest_show&&"showName" in x.latest_show&&
+     "crowdResponse" in x.latest_show&&typeof x.latest_show.year==="number"&&
+     typeof x.latest_show.week==="number"&&typeof x.latest_show.showName==="string"&&
+     typeof x.latest_show.crowdResponse==="number"?
+     {year:x.latest_show.year,week:x.latest_show.week,
+      showName:x.latest_show.showName,crowdResponse:x.latest_show.crowdResponse}:null,
     homeMarketName:x.home_market_name,
     cash:Number(x.cash),debt:Number(x.debt),
     lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),
