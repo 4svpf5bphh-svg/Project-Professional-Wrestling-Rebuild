@@ -134,3 +134,15 @@
  }
  .ppw-business .ppw-business-total>strong{color:#98ffd6!important}
 }
+
+/* Purposefully compact commercial decisions, not a parallel contract simulator. */
+.ppw-commercial-desk h3{margin:20px 0 10px;font-size:16px}
+.ppw-commercial-offer{border:1px solid rgba(120,193,234,.26);
+ border-radius:13px;padding:14px;margin:10px 0;background:#10283d;
+ display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.ppw-commercial-offer strong{font-size:16px}
+.ppw-commercial-offer p{margin:0;line-height:1.45;font-size:13px}
+.ppw-commercial-offer small{font-size:12px;line-height:1.4}
+.ppw-commercial-terms{display:flex;flex-wrap:wrap;gap:6px 12px;
+ font-size:12px;font-weight:800;color:#99ddff}
+.ppw-commercial-offer button{width:100%;min-height:46px;box-shadow:none}
