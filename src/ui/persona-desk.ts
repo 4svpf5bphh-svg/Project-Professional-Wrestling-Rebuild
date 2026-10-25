@@ -341,6 +341,7 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    root.append(history);
   }
+  if(pane==="PROFILE"){
   const now=(view.worldYear-1)*52+view.worldWeek-1;
   const cooldown=view.nextPitchWeek>now;
   if(cooldown)root.append(el("p","ppw-muted",
@@ -392,6 +393,7 @@ export function mountPersonaDesk(root:HTMLElement,
    send.classList.add("ppw-gimmick-submit");pitch.append(send);
    root.append(pitch);
    refreshOptions();root.append(options);
+  }
   }
   if(pane==="PROFILE")return;
   const contact=view.roster.find(x=>x.personId===view!.personId)?.latestIncoming;
