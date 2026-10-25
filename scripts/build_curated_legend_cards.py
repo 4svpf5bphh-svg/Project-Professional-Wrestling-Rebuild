@@ -55,7 +55,8 @@ def obtain(url,source_width):
  basename=parsed.path.rsplit("/",1)[-1]
  # Reuse standard, usually precached Commons widths to avoid thumbnail conversion throttles.
  thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
- thumb=url.replace("/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
+ thumb=parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
+  "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
  for attempt in range(2):
   try:
    time.sleep(4)
