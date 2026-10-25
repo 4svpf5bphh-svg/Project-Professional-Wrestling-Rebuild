@@ -9,7 +9,7 @@ export interface KayfabePort{
  load():Promise<KayfabeView>;
  claim():Promise<unknown>;
  apply(action:KpAction):Promise<unknown>;
- back():void;
+ back():void;backLabel?:string;
 }
 const el=(tag:string,cls="",content="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=content;return n;
@@ -67,7 +67,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  function draw(){
   root.classList.add("ppw-editor","ppw-kp");root.replaceChildren();
   const head=el("header","ppw-kp-head");
-  head.append(btn("← Back to Business",port.back));
+  head.append(btn(port.backLabel??"← Back to Business",port.back));
   head.append(el("span","ppw-kp-kicker","YOUR PERSONAL LEGACY"),
    el("h1","","Kayfabe Points"),
    el("p","ppw-kp-muted","Earned account-wide. A creative collection, never a shortcut to winning."));
