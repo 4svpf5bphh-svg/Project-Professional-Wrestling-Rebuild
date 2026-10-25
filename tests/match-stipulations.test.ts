@@ -60,7 +60,7 @@ test("seven stipulations save only allowed winning methods without overriding au
  assert.throws(()=>normalizeBookableMatch({...singles,stipulation:"STEEL_CAGE",
   interference:{personId:"outside"}}),/outside run-in/);
  assert.throws(()=>normalizeBookableMatch({...singles,stipulation:"LADDER",
-  scriptedWinnerSide:"Z"}),/winner/i);
+  scriptedWinnerSide:"Z"}),/booked side|outcome/i);
 });
 test("special finishes are proxies for scoring but authoritative for evidence and replay",()=>{
  for(const finish of ["RETRIEVAL","TABLE_BREAK","TEN_COUNT"]){
