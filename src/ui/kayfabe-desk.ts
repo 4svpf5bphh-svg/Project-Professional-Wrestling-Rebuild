@@ -162,7 +162,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   const creation=el("section","ppw-kp-section ppw-kp-creation");
   creation.append(el("span","ppw-kp-kicker","WORLD CONTRIBUTION"),
    el("h2","","Create a Wrestler"),
-   el("p","ppw-kp-muted","Design a new wrestler for the shared World. Your KP pays for their introduction, not their contract. Once finalised, every promotion can negotiate to hire them."));
+   el("p","ppw-kp-muted","Design a new wrestler for the shared World. Your KP pays for their introduction, not their contract. Once finalised, they enter the free-agent market where every promotion can negotiate to hire them."));
   const quotaUsed=view.createdTalent.some(p=>p.year===view!.worldYear);
   if(!createOpen&&!quotaUsed){
    creation.append(btn("Design a Wrestler · "+format(view.createTalentPrice),
