@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
 import {settleWorldHeritage} from "./world-heritage.js";
 import {publishCertifiedWorldNews} from "./world-news.js";
+import {publishYearEndHallOfFame} from "./world-honours.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
 import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
  recruitDistressedAiRosters}
@@ -282,6 +283,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await settleLivingPromotionSurvival(tx,input.worldId,year,week);
       await recruitDistressedAiRosters(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
+      // Hall of Fame induction follows the actual retirement ledger,
+      // including wrestlers retiring in Week 52, with no new scheduler.
+      if(week===52)await publishYearEndHallOfFame(tx,input.worldId,year,week);
       await settleLivingMorale(tx,input.worldId,year,week);
       // Certified title results and recurring show editions earn heritage once per World Lock.
       await settleWorldHeritage(tx,input.worldId,year,week);
