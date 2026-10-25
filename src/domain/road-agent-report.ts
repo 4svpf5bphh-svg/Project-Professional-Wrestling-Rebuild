@@ -32,7 +32,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  const voice=agent?.personality??"BALANCED";
  const bestCrowd=best?.m.crowdResponse??0;
  const mood=best?.f.ratingStars!==undefined&&best.f.ratingStars>=4?
-  "worth watching again":bestCrowd>=70?"got the room on its side":"showed promise";
+  "was worth watching again":bestCrowd>=70?"got the room on its side":"showed promise";
  const finalMatch=matches.reduce((max,item)=>Math.max(max,item.m.position),-1);
  const opener=matches.reduce((min,item)=>Math.min(min,item.m.position),Infinity);
  const place=best?.m.position===finalMatch?"the closing bout":
