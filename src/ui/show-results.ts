@@ -43,6 +43,27 @@ function entryIcon(entry:ShowResultEntry){
  if(entry.outcome==="INTERRUPTED")return "↯";
  return "✦";
 }
+/** Grounded bridges make the card read like one event when Groq is unavailable.
+ * These use only completed card facts, never invent a wrestler's actions. */
+function transitionFor(entries:ShowResultEntry[],index:number,showName:string):string{
+ const current=entries[index]!,previous=index?entries[index-1]:null;
+ const competitors=current.matchContext?.sides.flat().join(", ")??"the competitors";
+ if(!previous)return current.type==="MATCH"?
+  showName+" opened with a contest featuring "+competitors+".":
+  showName+" opened with "+current.headline.toLowerCase()+".";
+ if(current.type==="MATCH"){
+  const openers=previous.type==="SEGMENT"?
+   ["The talking was done; now it was time for "+competitors+".",
+    "That set the scene. Next came a contest featuring "+competitors+"."]:
+   ["There was more wrestling to come, with "+competitors+" up next.",
+    "The bell rang again, and "+competitors+" stepped into the spotlight."];
+  return openers[index%openers.length]!;
+ }
+ return previous.type==="MATCH"?
+  ["There was barely time to digest that finish before the next chapter unfolded.",
+   "Wrestling gave way to the next twist in the evening's story."][index%2]!:
+  ["And the drama didn't stop there.","The stories kept moving between the bells."][index%2]!;
+}
 /** One async bounded read. Filtering, opening reviews and highlights never refetch. */
 export async function mountShowResults(root:HTMLElement,port:{
  load():Promise<CompletedShowView>;
@@ -65,6 +86,7 @@ export async function mountShowResults(root:HTMLElement,port:{
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
+ let changePage:(page:0|1|2)=>void=()=>{};
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
@@ -114,7 +136,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
     node("span","ppw-flow-slot",String(point.position+1)),
     node("span","ppw-flow-kind",kind.toUpperCase()));
    button.onclick=()=>{
-    setFilter("ALL");
+    changePage(1);setFilter("ALL");
     const target=storyLinks.get(point.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -151,7 +173,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    }
    card.append(node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
    card.onclick=()=>{
-    setFilter("ALL");
+    changePage(1);setFilter("ALL");
     const target=storyLinks.get(reaction.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -172,7 +194,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
     node("strong","",item.headline),node("p","",item.detail),
     node("span","ppw-result-read","READ THE STORY  ↗"));
    button.addEventListener("click",()=>{
-    setFilter("ALL");
+    changePage(1);setFilter("ALL");
     const target=storyLinks.get(item.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -181,17 +203,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   }
  }
  const timeline=node("section","ppw-result-timeline");
- append(timeline,node("h2","ppw-broadcast-section-title","THE FULL CARD"));
+ append(timeline,node("h2","ppw-broadcast-section-title","THE FULL SHOW"));
  const controls=node("div","ppw-result-filters");
  const filters:Record<ResultFilter,HTMLButtonElement>={} as Record<ResultFilter,HTMLButtonElement>;
- const entries:({element:HTMLElement;type:ShowResultEntry["type"]})[]=[];
+ const entries:({element:HTMLElement;lead:HTMLElement;type:ShowResultEntry["type"]})[]=[];
  let activeFilter:ResultFilter="ALL";
  const setFilter=(filter:ResultFilter)=>{
   activeFilter=filter;
   for(const key of Object.keys(filters) as ResultFilter[]){
    filters[key].setAttribute("aria-pressed",String(key===filter));
   }
-  for(const row of entries)row.element.hidden=filter!=="ALL"&&row.type!==filter;
+  for(const row of entries){row.element.hidden=filter!=="ALL"&&row.type!==filter;
+   row.lead.hidden=row.element.hidden;}
  };
  for(const [filter,buttonText] of [["ALL","Full show"],["MATCH","Matches"],["SEGMENT","Angles"]] as const){
   const button=document.createElement("button");button.type="button";
@@ -208,7 +231,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   details.className="ppw-result-entry "+(entry.type==="MATCH"?
    "ppw-result-match":"ppw-result-angle")+
    " ppw-tone-"+review.tone.toLowerCase();
-  if(index===0)details.open=true;
+  details.open=true;
   const summary=document.createElement("summary");
   const meta=node("span","ppw-result-meta");
   append(meta,node("span","ppw-result-category",
@@ -275,8 +298,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   }
   append(details,body);
   storyLinks.set(entry.slotId,details);
-  entries.push({element:details,type:entry.type});
-  append(timeline,details);
+  const lead=node("p","ppw-show-transition",
+   transitionFor(show.entries,index,show.showName??"The show"));
+  entries.push({element:details,lead,type:entry.type});
+  append(timeline,lead,details);
  }
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
@@ -325,9 +350,39 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  if(gorilla&&gorilla.crowdAdjustment>0)analysis.append(node("p","ppw-muted",
   "Internal recovery adjustment: +"+gorilla.crowdAdjustment.toFixed(1)+
   " audience response. Certified results remain unchanged."));
- root.replaceChildren(header,...(featured.length?[highlights]:[]),
-  feature,timeline,...(reactions.length?[noise]:[]),
-  ...(office?[office]:[]),...(position?[position]:[]),analysis);
+ // All three chapters reuse one immutable completed show; no extra reads.
+ const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
+ headlines.append(header,feature,...(featured.length?[highlights]:[]));
+ const full=node("section","ppw-results-page");full.dataset.page="full";
+ full.append(timeline);
+ const after=node("section","ppw-results-page");after.dataset.page="after";
+ after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
+  ...(reactions.length?[noise]:[]),...(office?[office]:[]),
+  ...(position?[position]:[]),analysis);
+ const steps=node("nav","ppw-results-steps");
+ steps.setAttribute("aria-label","Results chapters");
+ const pages=[headlines,full,after];
+ const labels=["Headlines & Ringside","The Full Show","After the Bell"];
+ const tabButtons:HTMLButtonElement[]=[];
+ const goButton=(label:string,dest:0|1|2)=>{
+  const button=node("button","ppw-results-next",label) as HTMLButtonElement;
+  button.type="button";button.onclick=()=>changePage(dest);return button;
+ };
+ for(const [index,label] of labels.entries()){
+  const button=goButton(label,index as 0|1|2);
+  button.className="ppw-results-step";tabButtons.push(button);steps.append(button);
+ }
+ headlines.append(goButton("Read the Full Show",1));
+ full.append(goButton("Read After the Bell",2));
+ after.append(goButton("Return to Headlines",0));
+ root.replaceChildren(steps,...pages);
+ changePage=(index:0|1|2)=>{
+  for(const [i,page] of pages.entries())page.hidden=i!==index;
+  for(const [i,button] of tabButtons.entries())
+   button.setAttribute("aria-current",i===index?"step":"false");
+  window.scrollTo({top:0,behavior:"instant"});
+ };
+ changePage(0);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),
