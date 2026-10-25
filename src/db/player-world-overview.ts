@@ -423,6 +423,36 @@ export async function readPlayerWorldOverview(
      ORDER BY e.year DESC,e.week DESC,e.event_id DESC LIMIT 3
     ) headline
    ) public_news ON owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (
+    SELECT EXISTS (
+     SELECT 1 FROM (
+      SELECT n.year,n.week FROM ppw_world_news_weeks n
+      WHERE n.world_id=w.world_id
+      ORDER BY n.year DESC,n.week DESC LIMIT 1
+     ) last_week
+     WHERE EXISTS (
+      SELECT 1 FROM ppw_completed_shows c
+      WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
+       AND c.year=last_week.year AND c.week=last_week.week
+     ) AND NOT EXISTS (
+      SELECT 1 FROM ppw_kp_week_grants g
+      WHERE g.player_id=$2 AND g.world_id=w.world_id
+       AND g.year=last_week.year AND g.week=last_week.week
+     ) AND NOT EXISTS (
+      SELECT 1 FROM ppw_kp_week_grants g
+      WHERE g.player_id=$2 AND g.credited_on=timezone('utc',now())::date
+     )
+    ) AS kp_claim_available
+   ) kp ON owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (
+    SELECT count(*)::integer AS unseen_legends
+    FROM ppw_world_legend_unlocks u
+    WHERE u.world_id=w.world_id AND NOT EXISTS (
+     SELECT 1 FROM ppw_legend_reveals_seen seen
+     WHERE seen.world_id=u.world_id AND seen.legend_id=u.legend_id
+      AND seen.player_id=$2
+    )
+   ) legends ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
