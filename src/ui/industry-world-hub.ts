@@ -124,7 +124,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   finally{legendsBusy=false;render();}
  }
  async function finishReveal(id:string){
+  const alreadySeen=legends?.entries.find(e=>e.id===id)?.revealSeen===true;
   revealingLegend=null;render();
+  // Replay is local: the permanent account receipt is written once only.
+  // Do not redraw/refresh the entire Vault every time the user revisits a card.
+  if(alreadySeen)return;
   try{
    if(port.legendSeen)await port.legendSeen(id);
    if(port.legends){
