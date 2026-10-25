@@ -31,8 +31,8 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
     SELECT metric,value FROM ppw_legend_metrics WHERE world_id=$1
    `,[scope.worldId]),
    tx.query<{legend_id:string;year:number;week:number;person_ids:string[];
-    evidence_value:number;seen:boolean}>(`
-    SELECT u.legend_id,u.year,u.week,u.person_ids,u.evidence_value,
+    evidence_value:number;metric:string;seen:boolean}>(`
+    SELECT u.legend_id,u.year,u.week,u.person_ids,u.evidence_value,u.metric,
      (s.legend_id IS NOT NULL) AS seen
     FROM ppw_world_legend_unlocks u
     LEFT JOIN ppw_legend_reveals_seen s ON s.world_id=u.world_id
@@ -50,6 +50,7 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
    curated:LEGENDS_CATALOGUE.length,
    entries:LEGENDS_CATALOGUE.filter(d=>d.status==="ACTIVE").map(d=>{
     const record=unlocked.get(d.id),isUnlocked=Boolean(record);
+    const isSpecialTrial=record?.metric==="PILOT_WEEKLY_SHOW";
     const inCollection=collected.has(d.id);
     const name=isUnlocked||inCollection||d.visibility==="KNOWN"?d.name:null;
     const actual=d.metric?Number(progress.get(d.metric)??0):0;
@@ -60,8 +61,10 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
      id:d.id,tier:d.tier,division:d.division,
      name,tradition:isUnlocked?d.tradition:null,
      visibility:d.visibility,clue:d.clue,nextHint,
-     achievement:isUnlocked||d.visibility==="KNOWN"?d.achievement:null,
-     progress:target?Math.round(Math.min(100,actual/target*100)):0,
+     achievement:isSpecialTrial?
+      "The lights went out after your latest weekly show. The Deadman has entered the World.":
+      isUnlocked||d.visibility==="KNOWN"?d.achievement:null,
+     progress:isUnlocked?100:target?Math.round(Math.min(100,actual/target*100)):0,
      exactProgress:d.visibility==="KNOWN"||isUnlocked?Math.min(actual,target):null,
      target:d.visibility==="KNOWN"||isUnlocked?target:null,
      unlocked:isUnlocked,year:record?.year??null,week:record?.week??null,
