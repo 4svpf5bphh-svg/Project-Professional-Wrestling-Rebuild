@@ -26,9 +26,13 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    fatigue_concerns:number;active_programmes:number;
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
+   staff_aliases:Record<string,string>;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
+     COALESCE((SELECT jsonb_object_agg(a.staff_id,a.alias) FROM ppw_kp_staff_aliases a
+      WHERE a.world_id=w.world_id AND a.promotion_id=$3
+       AND a.player_id=$2),'{}'::jsonb) AS staff_aliases,
     COALESCE(medical.risks,0) AS medical_risks,
     medical.wrestler AS medical_example,
     COALESCE((SELECT jsonb_agg(to_jsonb(history)) FROM
@@ -146,11 +150,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    weeklySalary:number;morale:number;startWeekIndex:number;expiresWeekIndex:number;termWeeks:52|104};
   const rows=current.employments as Row[];
   const weekIndex=(current.year-1)*52+current.week-1;
-  const aliasRows=await tx.query<{staff_id:string;alias:string}>(`
-   SELECT staff_id,alias FROM ppw_kp_staff_aliases
-   WHERE world_id=$1 AND promotion_id=$2 AND player_id=$3`,
-   [worldId,promotionId,playerId]);
-  const nicknames=new Map(aliasRows.map(x=>[x.staff_id,x.alias]));
+  const nicknames=new Map(Object.entries(current.staff_aliases??{}));
   const employees=rows.map(e=>{
    const member=catalog.find(s=>s.staffId===e.staffId);
    if(!member||member.role!==e.role)throw new Error("Unknown employed World staff member");
