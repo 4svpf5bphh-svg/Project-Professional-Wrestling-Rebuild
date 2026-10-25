@@ -1,0 +1,41 @@
+/* Kayfabe collection desk: on-demand iPhone-first UI, no global nav changes. */
+.ppw-kp{color:#f2f5ff;max-width:960px;margin:0 auto;padding:12px 12px 110px}
+.ppw-kp-head{display:grid;gap:9px;padding:12px 3px 16px}
+.ppw-kp-head h1{font:900 clamp(29px,8vw,44px)/1.08 system-ui;margin:0;letter-spacing:-.04em}
+.ppw-kp-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#e0bd77}
+.ppw-kp-muted{color:#abb7cf;font-size:13px;line-height:1.5;margin:0}
+.ppw-kp-button{font:800 12px/1.2 system-ui;color:#fff;border:1px solid #5d7294;
+ background:linear-gradient(135deg,#24354f,#18243a);border-radius:10px;padding:11px 13px;min-height:41px}
+.ppw-kp-button:disabled{opacity:.5;cursor:not-allowed}
+.ppw-kp-head>.ppw-kp-button{justify-self:start}
+.ppw-kp-funds{border:1px solid #927446;border-radius:17px;background:
+ radial-gradient(ellipse at 100% 0,#b68b3240,transparent 62%),
+ linear-gradient(140deg,#222a40,#111d32);padding:18px;display:grid;gap:9px}
+.ppw-kp-total{font-size:clamp(33px,10vw,54px);color:#fff2cc;line-height:1;font-weight:950;letter-spacing:-.06em}
+.ppw-kp-grant{border-top:1px solid #ffffff2b;padding-top:13px;display:grid;gap:8px}
+.ppw-kp-grant .ppw-kp-button{justify-self:start}
+.ppw-kp-section{display:grid;gap:13px;border:1px solid #435471;border-radius:15px;padding:16px;
+ background:linear-gradient(138deg,#222e47,#131e33);margin-top:13px;min-width:0}
+.ppw-kp-section h2{margin:0;font-size:21px;letter-spacing:-.03em}
+.ppw-kp-achievements{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ppw-kp-badge{display:flex;flex-direction:column;align-items:center;text-align:center;
+ border:1px solid #47516a;border-radius:10px;padding:12px 6px;gap:7px;min-width:0;background:#131d31}
+.ppw-kp-badge strong{font-size:12px}.ppw-kp-badge small{font-size:10px;color:#b6c0d2}
+.ppw-kp-earned{border-color:#d0a85d;background:#483923}
+.ppw-kp-badge-icon{font-size:23px;color:#dec58a}
+.ppw-kp-catalogue{display:grid;gap:8px}
+.ppw-kp-item{display:flex;gap:10px;align-items:center;min-width:0;padding:9px;border-radius:11px;border:1px solid #465774;background:#17233a}
+.ppw-kp-item-copy{display:grid;gap:4px;flex:1;min-width:0}
+.ppw-kp-item-copy strong{font-size:13px;line-height:1.24}
+.ppw-kp-item-copy small{color:#c0cadc;font-size:11px}
+.ppw-kp-symbol{display:grid;place-items:center;flex-shrink:0;width:46px;height:48px;border:2px solid #a5adb9;
+ background:linear-gradient(140deg,#c0cedc,#29394d);color:#13223d;
+ font:900 13px system-ui;letter-spacing:-.08em;clip-path:polygon(14% 0,86% 0,100% 20%,100% 80%,86% 100%,14% 100%,0 80%,0 20%)}
+.ppw-kp-symbol[data-style="NEON"]{border-color:#86e4ff;background:linear-gradient(130deg,#552479,#104a86);color:#e9d2ff}
+.ppw-kp-symbol[data-style="GOLD"]{border-color:#f4df9b;background:linear-gradient(135deg,#ffe39a,#996018);color:#462b06}
+.ppw-kp-input{box-sizing:border-box;width:100%;min-height:44px;border-radius:9px;border:1px solid #5e6c85;
+ background:#0e192b;color:#fff;padding:10px 12px;font-size:16px}
+.ppw-kp-creation{border-color:#9c8044}
+.ppw-kp-contributions{color:#dac99f;font-size:12px;border-top:1px solid #ffffff30}
+@media(max-width:350px){.ppw-kp-achievements{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ppw-kp-item{flex-wrap:wrap}.ppw-kp-item .ppw-kp-button{margin-left:auto}}
