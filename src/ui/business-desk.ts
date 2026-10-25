@@ -417,6 +417,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("span","",offer.kind==="BROADCAST"?
       "+"+Math.round(offer.reachIncrease)+" audience reach":"Sponsorship"));
     item.append(terms,el("small","ppw-business-muted",offer.obligation));
+    if(offer.code==="SPONSOR_LOCAL")item.append(el("small","ppw-commercial-bonus",
+     "Hardcore-match bonus: a certified show with a Hardcore / No DQ bout adds 5% of the weekly guarantee."));
     if(["BROADCAST_GROWTH","BROADCAST_INDIE","BROADCAST_TV","BROADCAST_GLOBAL",
       "SPONSOR_PARTNER","SPONSOR_FOOD","SPONSOR_TECH","SPONSOR_LUXURY"]
       .includes(offer.code))item.append(el("small","ppw-commercial-bonus",

@@ -128,6 +128,14 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
      total_cost,net_result,incremental_cash)
     VALUES($1,'regional-tour',$2,1,16,1200,1350,195000,
      25000,30000,10000,20000,85000,110000,110000)`,[world,promotion]);
+   // A finished match AND its matching submitted card slot are both required.
+   await tx.query(`INSERT INTO ppw_card_slots
+    (world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'regional-tour','tour-hardcore',0,'MATCH',
+     '{"stipulation":"HARDCORE","plannedFinish":"CLEAN_PIN"}'::jsonb)`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_show_matches
+    (world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,'regional-tour','tour-hardcore',0,83,'CLEAN_PIN','A')`,[world]);
   });
   const beforeTour=await withWorldTransaction(db.pool,tx=>tx.query<{
    awareness:number
@@ -163,12 +171,12 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    promotionId:promotion,playerId:owner});
   assert.equal(expired.weeklyMediaIncome,300000);
   assert.equal(expired.mediaReach,90);
-  assert.equal(expired.cash,savedCash+12480,
+  assert.equal(expired.cash,savedCash+13830,
    "Only the certified show bonus is credited in this explicit settlement");
   const rewards=await withWorldTransaction(db.pool,tx=>tx.query<{amount:string}>(
    "SELECT amount::text FROM ppw_commercial_bonus_receipts WHERE world_id=$1 AND promotion_id=$2",
    [world,promotion]));
-  assert.deepEqual(rewards.map(x=>Number(x.amount)),[12480],
+  assert.deepEqual(rewards.map(x=>Number(x.amount)).sort((a,b)=>a-b),[1350,12480],
    "A repeated World settlement never credits a bonus twice");
   assert.equal(expired.commercialAgreements.length,0);
   await withWorldTransaction(db.pool,tx=>settleCommercialWorldWeek(tx,world,1,29));
