@@ -71,7 +71,7 @@ test("Promotion-wide routes do not depend on a show draft",async()=>{
 });
 test("a rejected session returns a user-visible error",async()=>{
  const client=createCardClient(scope,async()=>new Response("",{status:403}));
- await assert.rejects(client("results"),/session expired/i);
+ await assert.rejects(client("results"),/session cannot perform this action/i);
 });
 
 test("programme desk works through verified browser boundary",async()=>{
@@ -222,7 +222,7 @@ test("authenticated iPhone card errors are useful but never reveal server diagno
  }),{status:400}));
  await assert.rejects(forged("save"),error=>{
   assert.ok(error instanceof Error);
-  assert.match(error.message,/Booking request failed.*server could not identify/);
+  assert.match(error.message,/Booking request failed.*Review the card/i);
   assert.doesNotMatch(error.message,/SQL password|secrets/);
   return true;
  });
@@ -237,7 +237,7 @@ test("unclassified save rejection shows an opaque support reference, never serve
  }),{status:400}));
  await assert.rejects(call("save"),error=>{
   assert.ok(error instanceof Error);
-  assert.match(error.message,/support reference deadbeef1234/);
+  assert.match(error.message,/Support reference: deadbeef1234/i);
   assert.doesNotMatch(error.message,/payroll|Private|SQL|£9m/);
   return true;
  });
