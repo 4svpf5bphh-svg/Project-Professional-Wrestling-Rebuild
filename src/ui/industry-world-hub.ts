@@ -2,6 +2,7 @@ import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/indust
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
+import type {readWorldHeritage} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -10,6 +11,7 @@ export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedT
 export type IndustryNewsView=Awaited<ReturnType<typeof readIndustryWorldNews>>;
 export type WorldRankingsView=Awaited<ReturnType<typeof readWorldTalentRankings>>;
 export type WorldCareersView=Awaited<ReturnType<typeof searchPublicWorldCareers>>;
+export type WorldHeritageView=Awaited<ReturnType<typeof readWorldHeritage>>;
 export type PromotionRecordView=Awaited<ReturnType<typeof readPromotionRecordBook>>;
 export type IndustryPromotion=IndustryHubView["promotions"][number];
 export type IndustryOrder="REACH"|"FORM"|"NAME";
@@ -30,6 +32,7 @@ export function visibleIndustryPromotions<T extends {
 export interface IndustryHubPort{
  load():Promise<IndustryHubView>;
  news?():Promise<IndustryNewsView>;
+ heritage?():Promise<WorldHeritageView>;
  rankings?():Promise<WorldRankingsView>;
  careers?(search:string):Promise<WorldCareersView>;
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
@@ -47,7 +50,7 @@ const btn=(label:string,fn:()=>void)=>{
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
  let view:IndustryHubView|null=null,loading=false,error="",
-  active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"="STANDINGS",
+  active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"="STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
  let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
@@ -78,6 +81,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   try{news=await port.news();}
   catch(e){newsError=e instanceof Error?e.message:"World News could not load";}
   finally{newsBusy=false;render();}
+ }
+ let heritage:WorldHeritageView|null=null,heritageBusy=false,heritageError="";
+ let heritageTab:"AWARDS"|"HALL"|"MOMENTS"="AWARDS";
+ async function loadHeritage(){
+  if(!port.heritage||heritageBusy||heritage)return;
+  heritageBusy=true;heritageError="";render();
+  try{heritage=await port.heritage();}
+  catch(e){heritageError=e instanceof Error?e.message:"World history unavailable";}
+  finally{heritageBusy=false;render();}
  }
  const loadRecords=async()=>{
   if(!port.records||recordsBusy||records)return;
@@ -160,10 +172,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
   root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"]] as const){
+  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"],["HERITAGE","World History"]] as const){
    const b=btn(label,()=>{active=key;render();if(key==="RECORDS"&&recordsTab==="MY")void loadRecords();
     if(key==="RECORDS"&&recordsTab==="WORLD")void loadRankings();
-    if(key==="OFFICIAL"||key==="DIRT")void loadNews();});
+    if(key==="OFFICIAL"||key==="DIRT")void loadNews();
+    if(key==="HERITAGE")void loadHeritage();});
    b.setAttribute("aria-current",active===key?"page":"false");
    nav.append(b);
   }
@@ -273,6 +286,93 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort){
    tierSelect.onchange=()=>{tier=tierSelect.value;drawCompanies();};
    sortSelect.onchange=()=>{sort=sortSelect.value as IndustryOrder;drawCompanies();};
    drawCompanies();
+   root.append(section);
+  }else if(active==="HERITAGE"){
+   const section=el("section","ppw-industry-list ppw-heritage");
+   section.append(el("span","ppw-news-eyebrow","THE WORLD / THE LEGACY"),
+    el("h2","","World History"),
+    el("p","ppw-industry-muted",
+     "The moments worth remembering, the season's finest and careers that earned their place in history. Everything comes from completed, certified World events."));
+   const choice=el("div","ppw-industry-nav");
+   for(const [key,label] of [["AWARDS","Annual Awards"],["HALL","Hall of Fame"],
+    ["MOMENTS","World Moments"]] as const){
+    const control=btn(label,()=>{heritageTab=key;render();});
+    control.setAttribute("aria-current",heritageTab===key?"page":"false");
+    choice.append(control);
+   }
+   section.append(choice);
+   if(heritageBusy)section.append(el("p","ppw-industry-muted",
+    "Opening the World archives…"));
+   if(heritageError)section.append(el("p","ppw-alert ppw-error",heritageError),
+    btn("Retry",()=>void loadHeritage()));
+   if(heritageTab==="AWARDS"){
+    section.append(el("h3","","The End-of-Year Honours"),
+     el("p","ppw-industry-muted",
+      "Match, angle, men's wrestler, women's wrestler and promotion of the year. " +
+      "Only a fully completed 52-week year can produce a new class of winners; " +
+      "wrestlers and promotions must have enough verified performances to qualify."));
+    const labels:Record<string,string>={
+     MATCH:"MATCH OF THE YEAR",ANGLE:"ANGLE OF THE YEAR",
+     WRESTLER_MEN:"MEN'S WRESTLER OF THE YEAR",
+     WRESTLER_WOMEN:"WOMEN'S WRESTLER OF THE YEAR",
+     PROMOTION:"PROMOTION OF THE YEAR"
+    };
+    if(heritage&&!heritage.honours.length)section.append(el("p","ppw-industry-empty",
+     "No full World year has been certified since the honours archive began."));
+    for(const award of heritage?.honours??[]){
+     const card=el("article","ppw-heritage-honour");
+     card.append(el("span","ppw-news-desk","YEAR "+award.year+" · "+
+       (labels[award.category]??award.category)),
+      el("strong","ppw-heritage-honour-name",award.name));
+     if(award.promotionName&&award.promotionName!==award.name)
+      card.append(el("small","ppw-industry-muted",award.promotionName));
+     card.append(el("p","ppw-heritage-proof",award.citation));
+     section.append(card);
+    }
+   }else if(heritageTab==="HALL"){
+    section.append(el("h3","","The Hall of Fame"),
+     el("p","ppw-industry-muted",
+      "A permanent honour for retired wrestlers with exceptional, documented " +
+      "careers. Inductions take place at completed year-end ceremonies. " +
+      "This does not unlock playable legends or award points."));
+    if(heritage&&!heritage.hall.length)section.append(el("p","ppw-industry-empty",
+     "The Hall is waiting for its first deserving class. Nobody is inducted just for being famous."));
+    for(const member of heritage?.hall??[]){
+     const card=el("article","ppw-heritage-inductee");
+     const portrait=createWrestlerPortrait(member.name,96);
+     if(portrait){
+      portrait.alt="Portrait of "+member.name;portrait.loading="lazy";
+      const frame=el("div","ppw-heritage-portrait");
+      portrait.onerror=()=>frame.remove();
+      frame.append(portrait);card.append(frame);
+     }
+     const detail=el("div","ppw-heritage-inductee-detail");
+     detail.append(el("span","ppw-news-desk","CLASS OF "+member.year+" · "+member.division),
+      el("strong","",member.name),
+      el("small","ppw-industry-muted",member.wins+" career wins · "+
+       member.matches+" certified matches · "+member.bestStars.toFixed(2)+"★ best"));
+     if(port.openWrestler)detail.append(btn("Career dossier →",
+      ()=>port.openWrestler?.(member.personId)));
+     card.append(detail);section.append(card);
+    }
+   }else{
+    section.append(el("h3","","World Moments"),
+     el("p","ppw-industry-muted",
+      "The enduring highlight reel: historic title changes, classics, big turns " +
+      "and landmark events. Only a few verified moments make the cut each week."));
+    if(heritage&&!heritage.moments.length)section.append(el("p","ppw-industry-empty",
+     "The World hasn't recorded a landmark moment yet."));
+    for(const moment of heritage?.moments??[]){
+     const card=el("article","ppw-heritage-moment");
+     card.dataset.kind=moment.kind.toLowerCase();
+     card.append(el("span","ppw-news-desk",
+       moment.kind.replaceAll("_"," ")+" · YEAR "+moment.year+" / WEEK "+moment.week),
+      el("strong","",moment.title),
+      el("p","",moment.description),
+      el("small","ppw-industry-muted",moment.promotionName));
+     section.append(card);
+    }
+   }
    root.append(section);
   }else if(active==="RECORDS"){
    const section=el("section","ppw-industry-list ppw-industry-record-book");
