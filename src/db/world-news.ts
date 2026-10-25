@@ -6,6 +6,7 @@
 import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
+import {publishCertifiedWorldHeritage} from "./world-honours.js";
 
 type Broadcast = {
  show_id:string;promotion_id:string;promotion_name:string;show_name:string;
@@ -256,5 +257,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
    JSON.stringify(stories.map(s=>({story_key:s.key,desk:s.desk,
     certainty:s.certainty,promotion_id:s.promotionId,promotion_name:s.promotionName,
     show_id:s.showId,title:s.title,summary:s.summary,source_kind:s.sourceKind})))]);
+ // Shares the authoritative certification transaction and replay seal.
+ await publishCertifiedWorldHeritage(tx,worldId,year,week,awards,stories);
  return {published:true,awards:awards.length,stories:stories.length};
 }
