@@ -269,6 +269,8 @@ export function ringsideBrief(show:CompletedShowView){
     "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
      (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
+    previous:i?{type:show.entries[i-1]!.type,headline:show.entries[i-1]!.headline}:null,
+    next:show.entries[i+1]?{type:show.entries[i+1]!.type,headline:show.entries[i+1]!.headline}:null,
    summary:e.summary,
    ...(e.matchContext?{match:{format:e.matchContext.format,
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
@@ -301,7 +303,14 @@ Audience mood is a qualitative observation, not a number to repeat.
 Across a full card, every bout needs its own opening and concluding thought;
 never recycle a long sentence verbatim between different bouts.\nDon\u0027t write that a wrestler is over, buried or protected because of a numeric value.
 
-Write a MINI MATCH REVIEW with a beginning, turning point and closing beat.
+Write ONE CHRONOLOGICAL SHOW ARTICLE, not independent mini-reports.
+Each slot is the NEXT passage in that article. Use the provided preceding and
+following card headline to stitch verified developments together naturally,
+without inventing that one segment caused the next. A debut can open the
+show, lead into the bell, and set up the next confrontation. Do not repeat
+"next up" or "then came" at every transition. The opening frames the night,
+and the closing gives a distinct judgement rather than re-listing winners.
+Within each match, write a MINI REVIEW with a beginning, turning point and closing beat.
 CRITICAL NON-REPETITION RULE: The match has ONE decisive finish. Describe that
 finish ONCE, near the end. Do not describe a pin, roll-up, decisive move or
 three-count in the first paragraph and then re-stage it in the second.
@@ -322,7 +331,7 @@ For strong/important bouts use ONE OR TWO PARAGRAPHS, normally 90–150 words
 (total, separated by a blank line). For squashes or poor short bouts 55–100
 words is enough. Angles get 35–85 words and actual character, but no invented
 direct quotes. A dull angle can be described with less ceremony. Opening and
-closing are 1 concise sentence each; do not repeat the individual finishes.
+closing are one or two concise sentences each; do not repeat individual finishes. do not repeat the individual finishes.
 
 All RECORDS are authoritative: participant identities, match format, winner,
 finish type, title movement, injuries, interference, booked angle outcomes
