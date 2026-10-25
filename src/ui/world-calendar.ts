@@ -126,7 +126,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const importance=document.createElement("input");importance.type="number";
   importance.min="1";importance.max="100";importance.step="1";importance.value=String(s.importance);
   importance.setAttribute("aria-label","Event importance");
-  section.append(field("Event importance (1–100)",importance));
+  section.append(field("Advertised show importance (1–100)",importance));
+  section.append(node("p",
+   "Advertised importance affects booking presentation, not earned prestige. Heritage is recognised only after certified shows.",
+   "ppw-calendar-tradition"));
   const forecast=node("div","","ppw-calendar-forecast");
   forecast.setAttribute("aria-live","polite");
   section.append(forecast);
@@ -255,7 +258,12 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   for(const s of data.series){
    const line=node("div","","ppw-calendar-series");
    const description=node("div");description.append(node("strong",s.name),
-    node("p",label(s.role)+" · Every "+s.cadenceWeeks+" weeks · Importance "+s.importance));
+    node("p",label(s.role)+" · Every "+s.cadenceWeeks+" weeks · Advertised importance "+s.importance),
+    node("small",(s.earnedPrestige??0)>0?
+     "Earned prestige "+(s.earnedPrestige??0).toFixed(1)+
+      " · "+(s.celebratedEditions??0)+" completed editions":
+     "Tradition builds from completed editions — no artificial prestige boost",
+     "ppw-calendar-tradition"));
    line.append(description,
     button("Edit",()=>{editing={...s};render();},!data.canEdit||busy));
    if(s.role!=="FLAGSHIP")line.append(button("Archive",()=>{

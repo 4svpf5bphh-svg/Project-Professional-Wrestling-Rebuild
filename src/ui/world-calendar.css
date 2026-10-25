@@ -111,3 +111,5 @@
 .ppw-calendar-occurrence .ppw-calendar-week-head{padding:10px 7px 16px!important}
 .ppw-calendar-week-head strong{line-height:1.45;white-space:normal}
 .ppw-calendar-current .ppw-calendar-now{flex:none}
+
+.ppw-calendar-tradition{display:block;color:#a5d0e0;font-size:12px;line-height:1.5;margin:5px 0 9px}

@@ -1,5 +1,6 @@
 import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
+import {settleWorldHeritage} from "./world-heritage.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
 import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
  recruitDistressedAiRosters}
@@ -275,6 +276,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       await recruitDistressedAiRosters(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
       await settleLivingMorale(tx,input.worldId,year,week);
+      // All shows/results have been certified; no other clock or manual prestige.
+      await settleWorldHeritage(tx,input.worldId,year,week);
       // At the end of each 52-week year, evaluate original company standing
       // from actual completed shows, roster appearances, titles and renewals.
       // This returns immediately on weeks 1–51 and shares the World transaction.
