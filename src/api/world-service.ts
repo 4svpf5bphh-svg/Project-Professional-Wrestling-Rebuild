@@ -39,6 +39,8 @@ import {readIndustryWorldNews} from "../db/industry-news.js";
 import {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
 import {readWorldHeritage,readOlderWorldMoments,type WorldMomentCursor}
  from "../db/world-honours.js";
+import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction,type KpAction}
+ from "../db/kayfabe-points.js";
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
@@ -237,6 +239,19 @@ export async function claimPromotionAsActor(context:WorldApiContext,input:ClaimI
   validateMutation(input);
   validate(input.promotionId,"promotion");
   return submitPromotionClaim(context.pool,{...input,playerId:context.actor.playerId});
+}
+/** Account currency is never a World cash or wrestler power modifier. */
+export async function kayfabeWorkspaceAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readKayfabeWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function claimKayfabeWeekAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return claimKayfabeWeek(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function kayfabeActionAsActor(context:WorldApiContext,worldId:string,promotionId:string,action:KpAction){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return applyKayfabeAction(context.pool,{worldId,promotionId,playerId:context.actor.playerId},action);
 }
 /** The actor identity is injected from verified middleware, not client JSON. */
 export async function industryWorldAsActor(context:WorldApiContext,
