@@ -37,6 +37,7 @@ import {hireWorldTalentManager,releaseWorldTalentManager,hireWorldStaff,releaseW
 import {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import {readIndustryWorldNews} from "../db/industry-news.js";
 import {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
+import {readWorldHeritage} from "../db/world-honours.js";
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
@@ -145,6 +146,14 @@ export async function industryNewsAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validate(worldId,"World");
  validate(promotionId,"promotion");
  return readIndustryWorldNews(context.pool,{worldId,promotionId,
+  playerId:context.actor.playerId});
+}
+/** Year-end honours, earned Hall of Fame and historic public moments. */
+export async function worldHeritageAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readWorldHeritage(context.pool,{worldId,promotionId,
   playerId:context.actor.playerId});
 }
 /** Read-only, certified public World talent leaderboard. */
