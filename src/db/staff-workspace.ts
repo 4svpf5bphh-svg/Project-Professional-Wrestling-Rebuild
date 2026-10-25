@@ -3,7 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
-import {worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+import {STAFF_ROLES,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
 import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {GorillaPolicy} from "../domain/gorilla-position.js";
 
@@ -22,6 +22,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    gorilla_policy:GorillaPolicy|null;
    world_seed:string;promotion_cash:string;employments:unknown;
    contracts_due:unknown;repeated_programmes:number;medical_risks:number;medical_example:string|null;employment_history:unknown;
+   recent_shows:number;recent_matches:number;recent_disqualifications:number;
+   fatigue_concerns:number;active_programmes:number;owner_rankings:unknown;
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
   }>(`
@@ -59,6 +61,71 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     (SELECT count(*)::integer FROM ppw_programmes programme
      WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
      AND programme.status='ACTIVE' AND programme.repetition>=3) AS repeated_programmes,
+    (SELECT count(*)::integer FROM ppw_completed_shows done
+      WHERE done.world_id=w.world_id AND done.promotion_id=$3
+       AND (done.year-1)*52+done.week-1
+        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
+         AND (w.year-1)*52+w.week-1) AS recent_shows,
+    (SELECT count(*)::integer FROM ppw_completed_show_matches match
+      JOIN ppw_completed_shows done ON done.world_id=match.world_id
+       AND done.show_id=match.show_id
+      WHERE done.world_id=w.world_id AND done.promotion_id=$3
+       AND (done.year-1)*52+done.week-1
+        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
+         AND (w.year-1)*52+w.week-1) AS recent_matches,
+    (SELECT count(*)::integer FROM ppw_completed_show_matches match
+      JOIN ppw_completed_shows done ON done.world_id=match.world_id
+       AND done.show_id=match.show_id
+      WHERE done.world_id=w.world_id AND done.promotion_id=$3
+       AND match.actual_finish IN ('DQ','DISQUALIFICATION')
+       AND (done.year-1)*52+done.week-1
+        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
+         AND (w.year-1)*52+w.week-1) AS recent_disqualifications,
+    (SELECT count(DISTINCT c.person_id)::integer
+      FROM ppw_contracts c JOIN ppw_people p
+       ON p.world_id=c.world_id AND p.person_id=c.person_id
+      WHERE c.world_id=w.world_id AND c.promotion_id=$3
+       AND c.status='SIGNED' AND c.start_week_index<=(w.year-1)*52+w.week-1
+       AND c.expires_week_index>=(w.year-1)*52+w.week-1
+       AND p.status='ACTIVE' AND p.fatigue>=65) AS fatigue_concerns,
+    (SELECT count(*)::integer FROM ppw_programmes programme
+      WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
+       AND programme.status='ACTIVE') AS active_programmes,
+    COALESCE((SELECT jsonb_agg(to_jsonb(ranked)) FROM (
+      SELECT person.person_id AS "personId",person.name,
+       count(bout.match_id)::integer AS "matches",
+       count(*) FILTER(WHERE bout.won)::integer AS "wins",
+       round(avg(bout.stars)::numeric,2)::double precision AS "averageStars"
+      FROM (
+       SELECT DISTINCT c.person_id FROM ppw_contracts c
+       WHERE c.world_id=w.world_id AND c.promotion_id=$3
+        AND c.status='SIGNED' AND c.start_week_index<=(w.year-1)*52+w.week-1
+        AND c.expires_week_index>=(w.year-1)*52+w.week-1
+      ) roster JOIN ppw_people person ON person.world_id=w.world_id
+       AND person.person_id=roster.person_id AND person.status='ACTIVE'
+      LEFT JOIN LATERAL (
+       SELECT e.match_id,e.won,f.rating_stars::double precision AS stars
+       FROM ppw_individual_field_career_effects e
+       JOIN ppw_completed_shows done ON done.world_id=e.world_id
+        AND done.show_id=e.show_id AND done.promotion_id=$3
+       LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=e.world_id
+        AND f.show_id=e.show_id AND f.match_id=e.match_id
+       WHERE e.world_id=w.world_id AND e.person_id=roster.person_id
+       UNION ALL
+       SELECT e.match_id,e.won,f.rating_stars::double precision AS stars
+       FROM ppw_tag_match_career_effects e
+       JOIN ppw_completed_shows done ON done.world_id=e.world_id
+        AND done.show_id=e.show_id AND done.promotion_id=$3
+       LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=e.world_id
+        AND f.show_id=e.show_id AND f.match_id=e.match_id
+       WHERE e.world_id=w.world_id AND e.person_id=roster.person_id
+      ) bout ON TRUE
+      GROUP BY person.person_id,person.name
+      HAVING count(bout.match_id)>0
+      ORDER BY count(*) FILTER(WHERE bout.won) DESC,
+       count(bout.match_id) DESC,person.name,person.person_id
+      LIMIT 8
+    ) ranked),'[]'::jsonb) AS owner_rankings,
     employed.staff_id AS employed_staff_id,
     employed.employment_id,employed.weekly_salary::text AS manager_salary,
     ARRAY(SELECT e.staff_id FROM ppw_staff_employments e
@@ -149,6 +216,49 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    notices.push({department:e.role.replaceAll("_"," "),target:"staff",
     message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+
      (e.weeksRemaining===1?"":"s")+"."});
+  const squad=(current.owner_rankings as {
+   personId:string;name:string;matches:number;wins:number;averageStars:number|null
+  }[]).slice(0,8);
+  const meetingContent:Record<StaffRole,{message:string;target:"staff"|"roster"|"contracts"|"programmes"|"gorilla"}>={
+   TALENT_MANAGER:{target:"contracts",message:renewals.length?
+    renewals.length+" signed talent deal"+(renewals.length===1?"":"s")+
+     " coming due; "+renewals[0]!.personName+" is first on my list.":
+    "No signed wrestler contracts are due within the next twelve weeks."},
+   ROAD_AGENT:{target:"gorilla",message:current.recent_matches?
+    "We certified "+current.recent_matches+" matches over the last nine World weeks. "+
+     "The standing Gorilla instructions still govern any authorised on-show adjustment.":
+    "No completed matches in the last nine World weeks. Review Gorilla instructions before the next card."},
+   MEDICAL:{target:"roster",message:current.medical_risks?
+    current.medical_risks+" contracted wrestlers are unavailable. "+
+     "Check their clearance dates rather than assuming they can work.":
+    "No contracted wrestlers currently have an active medical restriction on record."},
+   CREATIVE:{target:"programmes",message:current.repeated_programmes?
+    current.repeated_programmes+" ongoing programme"+(current.repeated_programmes===1?" is":"s are")+
+     " repeating beats. Review the direction before your next show.":
+    current.active_programmes+" active programmes on the books. No repetition warning is currently triggered."},
+   COMMENTATOR:{target:"programmes",message:current.active_programmes?
+    current.active_programmes+" current programmes give us real storylines to call. "+
+     "Keep the commentary tied to what actually happened.":
+    "No active programmes to follow on commentary right now; new match history will build the story."},
+   REFEREE:{target:"staff",message:current.recent_disqualifications?
+    current.recent_disqualifications+" certified disqualification finishes in the last nine weeks. "+
+     "Make the next scripted finish unmistakable to the referee.":
+    "No certified disqualification finishes in the last nine weeks. "+
+     "Our referees will stick to the authorised card."},
+   PRODUCTION:{target:"staff",message:current.recent_shows?
+    current.recent_shows+" shows completed in the last nine weeks. "+
+     "Each has a recorded result; future venue plans remain yours to approve.":
+    "No completed shows in the last nine weeks. The planner and venue approvals remain under your control."},
+   TRAINER:{target:"roster",message:current.fatigue_concerns?
+    current.fatigue_concerns+" roster members have high recorded fatigue. "+
+     "A trainer's limited recovery support never bypasses medical clearance.":
+    "No active contracted wrestlers currently exceed the high-fatigue watch threshold."}
+  };
+  const meetings=STAFF_ROLES.map(role=>{
+   const member=officeRole(role);
+   return {role,staffName:member?.name??null,
+    personality:member?.personality??null,...meetingContent[role]};
+  });
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`
    SELECT venue_id,name,capacity,weekly_hire_cost::text
@@ -167,6 +277,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    promotionCash:Number(current.promotion_cash),
    weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
    notices:notices.slice(0,8),
+   meetings,ownerRankings:squad,
    employmentHistory:current.employment_history as {staffId:string;role:StaffRole;promotionName:string;startedWeekIndex:number;endedWeekIndex:number}[],
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],
