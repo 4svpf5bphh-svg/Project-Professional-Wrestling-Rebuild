@@ -7,7 +7,7 @@ import {readCanonicalMatchLayout,requireSupportedScoringLayout} from "../domain/
 import {simulateBookedTagMatch} from "../simulation/tag-match-simulation.js";
 import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match.js";
 import {isBookableMatchFinish,type MatchFinish} from "../simulation/legacy/match-finishes.js";
-import {defaultMatchStyleForIntent,normalizeMatchStyle} from "../simulation/legacy/match-style.js";
+import {normalizeMatchStyle} from "../simulation/legacy/match-style.js";
 import {readMatchStipulation,permittedStipulationFinishes,stipulationScoringFinish,
  stipulationInjuryRisk} from "../domain/match-stipulations.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";

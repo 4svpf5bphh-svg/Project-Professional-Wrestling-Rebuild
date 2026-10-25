@@ -23,7 +23,8 @@ function finishLabel(entry:ShowResultEntry):string{
   CLEAN_PIN:"Pinfall",FLASH_PIN:"Surprise pin",SUBMISSION:"Tap-out",
   DISQUALIFICATION:"Disqualification",FOREIGN_OBJECT:"Controversial win",
   PROTECTED_FINISH:"Disputed decision",INJURY_STOPPAGE:"Referee stoppage",
-  OVER_THE_TOP_ROPE:"Final elimination"};
+  OVER_THE_TOP_ROPE:"Final elimination",
+  RETRIEVAL:"Prize retrieval",TABLE_BREAK:"Table break",TEN_COUNT:"Ten-count knockout"};
  return labels[entry.outcome]??"Decision";
 }
 function node(tag:string,className:string,content=""):HTMLElement{

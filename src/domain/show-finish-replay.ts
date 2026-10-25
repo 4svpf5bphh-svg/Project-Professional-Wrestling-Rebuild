@@ -28,6 +28,9 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
    tone:"MEDICAL"},
   OVER_THE_TOP_ROPE:{title:"THE LAST ONE STANDING",description:"The final elimination came over the top rope, leaving one winner in the ring.",
    tone:"ELIMINATION"},
+  RETRIEVAL:{title:"REACHING FOR GLORY",description:"The decisive climb ended with the suspended prize retrieved. This was a win above the canvas, not a pinfall.",tone:"CLEAN"},
+  TABLE_BREAK:{title:"CRASH THROUGH THE TABLE",description:"The opponent was driven through a table, fulfilling the stipulated win condition. No three-count necessary.",tone:"CLEAN"},
+  TEN_COUNT:{title:"TEN — AND IT'S OVER",description:"One wrestler remained standing while the opponent could not answer the referee's ten-count.",tone:"CLEAN"},
  };
  const match=finishes[method];
  const injury=entry.fallout?.injuries.find(x=>x.stoppage);

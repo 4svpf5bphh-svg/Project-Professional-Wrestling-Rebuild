@@ -3,6 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import type {RoadAgentReport} from "../domain/road-agent-report.js";
+import {readMatchStipulation,stipulationLabel} from "../domain/match-stipulations.js";
 import type {GorillaShowLog} from "../domain/gorilla-position.js";
 import {withSqlClient} from "./postgres.js";
 import {validateCompletedShowReceipt,type CompletedShowReceipt}
@@ -207,7 +208,15 @@ export async function readCompletedShowView(
       String(layout.sides.length)+"-team "+String(size)+"v"+String(size)):
      payload.matchType==="BATTLE_ROYAL"?"BATTLE ROYAL":
      layout.sides.length===2?"SINGLES":String(layout.sides.length)+"-WAY";
-    matchContext={format,isMainEvent:match.position===mainEventPosition,
+    const stipFormat=payload.matchType==="BATTLE_ROYAL"?"BATTLE_ROYAL":
+     layout.family==="TEAMS"&&layout.sides.length===2?"TAG":
+     layout.family==="TEAMS"?"MULTI_TEAM":
+     layout.sides.length===3?"TRIPLE_THREAT":
+     layout.sides.length===4?"FOUR_WAY":"SINGLES";
+    const stipulation=readMatchStipulation(payload.stipulation,stipFormat);
+    matchContext={format:stipulation==="STANDARD"?format:
+      stipulationLabel(stipulation)+" · "+format,
+     isMainEvent:match.position===mainEventPosition,
      intent:typeof payload.intent==="string"?payload.intent:"COMPETITIVE",
      plannedMinutes:typeof payload.plannedLengthMinutes==="number"?
       payload.plannedLengthMinutes:null,

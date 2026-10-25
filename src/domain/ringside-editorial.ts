@@ -355,6 +355,13 @@ this card\u0027s winners, finishes or title consequences.
 Use PROVIDED wrestler signature and finisher moves with precision, especially
 when they naturally fit the decisive result. A name in the supplied repertoire
 is evidence that wrestler can use it; it is not proof it caused every finish.
+For special stipulations, the winning condition is real, not merely billing.
+RETRIEVAL means a ladder climb and retrieving the suspended prize in Ladder/TLC;
+no pin or tap wins it. TABLE_BREAK means sending an opponent through a table;
+no three-count. TEN_COUNT means the opponent fails a referee's ten-count.
+Steel Cage is fought inside an enclosure, but escape is not an authored win
+condition and interference cannot be invented. Hardcore has no disqualification.
+SUBMISSION stipulations end by tap-out or referee stoppage.
 If the finish is CLEAN_PIN, favour an appropriate impact finisher and cover.
 A submission hold like Samoa Joe's Coquina Clutch cannot directly score a pin.
 Joe's Muscle Buster can. FLASH_PIN is an opportunistic roll-up or cradle,
