@@ -207,8 +207,11 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   }),/no longer available/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const name of ["ppw_commercial_deals","ppw_show_economics",
-    "ppw_completed_shows","ppw_booking_drafts",
+   // Explicit child-first disposal; bonus receipts remain immutable while
+   // a real commercial agreement exists in a saved World.
+   for(const name of ["ppw_commercial_bonus_receipts","ppw_commercial_deals",
+    "ppw_show_economics","ppw_completed_show_matches",
+    "ppw_completed_shows","ppw_card_slots","ppw_booking_drafts",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",

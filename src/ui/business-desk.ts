@@ -1,5 +1,5 @@
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
-import {commercialCompanyName} from "../domain/commercial-offers.js";
+import {commercialCompanyName,COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
@@ -407,10 +407,11 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    for(const offer of view.commercialOffers){
     const item=el("article","ppw-commercial-offer");
     item.append(el("strong","",offer.name));
-    if(offer.tagline)item.append(el("p","ppw-commercial-tagline",offer.tagline));
+    const identity=COMMERCIAL_COMPANIES[offer.code];
+    if(identity)item.append(el("p","ppw-commercial-tagline",identity.tagline));
     item.append(el("p","",offer.description));
-    if(offer.preference)item.append(el("small","ppw-business-muted",
-     "Best fit: "+offer.preference));
+    if(identity)item.append(el("small","ppw-business-muted",
+     "Best fit: "+identity.preference));
     const terms=el("div","ppw-commercial-terms");
     terms.append(el("span","",money(offer.weeklyIncome)+"/week"),
      el("span","",offer.termWeeks+" weeks"),

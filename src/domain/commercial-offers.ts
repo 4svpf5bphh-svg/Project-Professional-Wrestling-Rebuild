@@ -54,8 +54,9 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
  const add=(code:string,kind:CommercialKind,base:number,percent:number,
   reachPercent:number,termWeeks:13|26|52,description:string,obligation:string)=>{
   const company=COMMERCIAL_COMPANIES[code]!;
-  offers.push({code,kind,name:company.name,tagline:company.tagline,
-   preference:company.preference,description,
+  // Identity copy lives in the already-shipped client catalogue; do not
+  // transfer it repeatedly in every Business workspace RPC.
+  offers.push({code,kind,name:company.name,description,
    weeklyIncome:term(base,percent),
    reachIncrease:Math.round((reach??0)*reachPercent),
    termWeeks,obligation});

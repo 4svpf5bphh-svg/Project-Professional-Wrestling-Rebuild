@@ -50,6 +50,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.equal(after?.promotion?.runwayWeeks,9.5);
     assert.equal(after?.promotion?.financialDistress,"WATCH");
     assert.deepEqual(after?.promotion?.attention,{
+     kpClaimAvailable:false,unseenLegends:0,
      unpreparedShow:false,pendingBackstage:false,expiringTalent:false,
      pendingContractOffers:false,plannedShows:0,
      backstageRequests:[],offerResults:[],dateDecisions:[],backstageResults:[],businessUpdates:[],
