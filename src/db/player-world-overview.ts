@@ -453,7 +453,7 @@ export async function readPlayerWorldOverview(
      pendingBackstage:x.pending_backstage===true,
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
-     commercialRenewalDue:x.commercial_renewal_due===true,
+     ...(x.commercial_renewal_due===true?{commercialRenewalDue:true}:{}),
      plannedShows:x.planned_shows??0,
      backstageRequests:Array.isArray(x.backstage_requests)?
       x.backstage_requests.filter((request):request is {
