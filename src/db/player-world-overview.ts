@@ -10,6 +10,8 @@ export interface PlayerWorldOverview {
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
    pendingContractOffers:boolean;plannedShows:number;
+   /** True only immediately after an actual commercial agreement expires. */
+   commercialRenewalDue?:boolean;
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
    dateDecisions?:{id:string;contractId:string;personId:string;name:string;
@@ -57,6 +59,7 @@ export async function readPlayerWorldOverview(
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
    pending_backstage:boolean|null;expiring_talent:boolean|null;
+   commercial_renewal_due:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;date_decisions:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
@@ -72,6 +75,7 @@ export async function readPlayerWorldOverview(
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
     notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
+    notices.commercial_renewal_due,
     notices.offer_results,notices.date_decisions,
     notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
@@ -94,6 +98,17 @@ export async function readPlayerWorldOverview(
    ) owned ON TRUE
    LEFT JOIN LATERAL (
     SELECT
+     EXISTS(SELECT 1 FROM ppw_commercial_deals deal
+      WHERE deal.world_id=w.world_id AND deal.promotion_id=owned.promotion_id
+       AND deal.status='EXPIRED'
+       AND deal.end_week_index BETWEEN
+        greatest(0,(w.year-1)*52+w.week-1-3)
+        AND (w.year-1)*52+w.week-2
+       AND NOT EXISTS(SELECT 1 FROM ppw_commercial_deals active_deal
+        WHERE active_deal.world_id=deal.world_id
+         AND active_deal.promotion_id=deal.promotion_id
+         AND active_deal.kind=deal.kind AND active_deal.status='ACTIVE')
+      LIMIT 1) AS commercial_renewal_due,
      (SELECT count(*)::integer FROM ppw_booking_drafts d
        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
         AND d.year=w.year AND d.week=w.week
@@ -438,6 +453,7 @@ export async function readPlayerWorldOverview(
      pendingBackstage:x.pending_backstage===true,
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
+     commercialRenewalDue:x.commercial_renewal_due===true,
      plannedShows:x.planned_shows??0,
      backstageRequests:Array.isArray(x.backstage_requests)?
       x.backstage_requests.filter((request):request is {
