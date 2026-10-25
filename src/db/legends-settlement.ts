@@ -121,12 +121,12 @@ export async function settleCertifiedWorldLegends(
  metric.TITLE_CHANGES=Number(contests[0]?.count??0);
  metric.LONGEST_REIGN=Math.max(0,Number(reign[0]?.longest??0));
  const totals=await tx.query<{metric:LegendMetric;value:number}>(`
-  INSERT INTO ppw_legend_metrics AS current(world_id,metric,value)
+  INSERT INTO ppw_legend_metrics AS existing(world_id,metric,value)
   SELECT $1,x.metric,x.value FROM jsonb_to_recordset($2::jsonb) x(metric text,value integer)
   ON CONFLICT(world_id,metric) DO UPDATE SET value=
    CASE WHEN excluded.metric='LONGEST_REIGN'
-    THEN greatest(current.value,excluded.value)
-    ELSE current.value+excluded.value END
+    THEN greatest(existing.value,excluded.value)
+    ELSE existing.value+excluded.value END
   RETURNING metric,value
  `,[worldId,JSON.stringify(Object.entries(metric).map(([k,v])=>({metric:k,value:v})))]);
  const total=Object.fromEntries(totals.map(x=>[x.metric,x.value])) as Record<LegendMetric,number>;
