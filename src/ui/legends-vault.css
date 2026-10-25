@@ -130,3 +130,13 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  .ppw-legend-reveal .ppw-undertaker-card{width:min(62vw,255px)!important}}
 @media(prefers-reduced-motion:reduce){.ppw-legend-reveal,
  .ppw-legend-reveal *{animation:none!important;transition:none!important}}
+
+/* 48-entry discovery index: horizontal, safe-area-aware filters on a phone. */
+.ppw-legend-filters{display:flex;gap:.45rem;overflow-x:auto;max-width:100%;padding:.3rem .1rem 1rem;
+ scroll-snap-type:x proximity;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
+.ppw-legend-filter-button{flex:0 0 auto;min-height:40px;padding:.55rem .75rem;
+ font-size:.76rem;white-space:nowrap;scroll-snap-align:start}
+.ppw-legend-filter-button[aria-pressed="true"]{background:rgba(245,187,112,.24);
+ border-color:#f5bb70;color:#ffdcaa}
+.ppw-legend-tier[hidden],.ppw-legend-tile[hidden],.ppw-legend-filter-empty[hidden]{display:none!important}
+.ppw-legend-filter-empty{padding:1.1rem;text-align:center;font-size:.9rem;opacity:.75}
