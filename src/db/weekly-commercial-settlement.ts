@@ -109,7 +109,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
     AND control.active)
  ORDER BY p.promotion_id LIMIT 129
- `,[worldId]);
+ `,[worldId,nextWeek]);
  if(owners.length>128)throw new Error("AI commercial batch bound exceeded");
  type Proposal={deal_id:string;promotion_id:string;kind:string;offer_code:string;
   baseline_income:number;agreed_income:number;baseline_reach:number|null;
