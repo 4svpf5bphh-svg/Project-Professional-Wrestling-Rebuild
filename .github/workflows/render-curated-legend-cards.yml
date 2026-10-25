@@ -16,7 +16,12 @@ jobs:
   cards:
     if: github.ref == 'refs/heads/feature/phase8-world-ux'
     runs-on: ubuntu-latest
-    timeout-minutes: 28
+    timeout-minutes: 17
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        batch: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,15 +34,17 @@ jobs:
       - name: Render verified-source photo drafts and audit metadata
         id: render
         continue-on-error: true
+        env:
+          PPW_LEGEND_BATCH: ${{ matrix.batch }}
         run: python scripts/build_curated_legend_cards.py
       - name: Retain the contact sheet for manual visual review
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: real-photo-legend-card-review
+          name: real-photo-legends-batch-${{ matrix.batch }}-review
           path: |
-            data/legend-card-contact-sheet.webp
-            data/legend-render-audit.json
+            data/legend-card-contact-sheet-batch-${{ matrix.batch }}.webp
+            data/legend-render-audit-batch-${{ matrix.batch }}.json
           if-no-files-found: warn
           retention-days: 30
       - name: Stage source-backed card draft assets only on development branch
@@ -45,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web/public/assets/legends data/legend-render-audit.json
+          git add apps/web/public/assets/legends data/legend-render-audit-batch-${{ matrix.batch }}.json
           if ! git diff --cached --quiet; then
             git commit -m "assets(legends): render actual wrestler-photo card drafts for review"
             git pull --rebase origin feature/phase8-world-ux
