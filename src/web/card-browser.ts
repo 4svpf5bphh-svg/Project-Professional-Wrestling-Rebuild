@@ -249,7 +249,7 @@ function businessPort(root:HTMLElement,scope:Scope,
   restructure:input=>call("restructurePromotion",input),
   openKayfabe:()=>mountKayfabeDesk(root,{
    load:()=>call("kpWorkspace"),claim:()=>call("kpClaimWeek"),
-   apply:action=>call("kpAction",action),
+   apply:action=>call("kpAction",{...action}),
    back:()=>mountBusinessDesk(root,businessPort(root,scope,call))
   }),
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
