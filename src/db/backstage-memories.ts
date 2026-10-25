@@ -97,7 +97,7 @@ export async function publishBackstageMemories(
   "), written AS (INSERT INTO ppw_backstage_memories(",
   "world_id,promotion_id,person_id,memory_id,kind,",
   "occurred_week_index,importance,source_id)",
-  "SELECT world_id,promotion_id,person_id,
+  "SELECT world_id,promotion_id,person_id,",
   "'title:'||show_id||':'||slot_id||':'||person_id,kind,",
   "(year-1)*52+week-1,CASE WHEN kind='TITLE_WON' THEN 5 ELSE 4 END,",
   "championship_id FROM facts ON CONFLICT DO NOTHING RETURNING memory_id)",
