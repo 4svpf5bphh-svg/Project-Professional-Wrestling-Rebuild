@@ -10,6 +10,7 @@ import {worldStaff} from "../domain/world-staff.js";
 import {trainerFatigueBonus} from "../domain/staff-training.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
+import {settleCommercialWorldWeek} from "./weekly-commercial-settlement.js";
 import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
@@ -240,6 +241,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // recorded. One indexed current-week aggregate and one batched update;
       // no per-promotion historical ledger scan or added player polling.
       await settleWeeklyPromotionHealth(tx,input.worldId,year,week);
+      // Future terms begin only after the current canonical week is paid.
+      await settleCommercialWorldWeek(tx,input.worldId,year,week);
       // Staff morale responds once to the current week's audited finances.
       // Staff cannot independently alter player creative decisions or resign.
       await tx.query(`
