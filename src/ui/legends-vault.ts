@@ -83,7 +83,7 @@ export function drawLegendsVault(
   el("p","ppw-legend-context",
    view.entries.filter(x=>x.unlocked).length+" discovered · "+
    view.entries.filter(x=>x.collected).length+" cards collected · "+
-   view.curated+" historic entries under curation"));
+   view.curated+" historic legends catalogued"));
  target.append(mast);
  const owned=view.entries.filter(item=>item.collected);
  const cabinet=el("section","ppw-legend-collection");
@@ -106,6 +106,42 @@ export function drawLegendsVault(
   cabinet.append(shelf);
  }
  target.append(cabinet);
+ // Large rosters must be scannable on iPhone without losing mystery or tier context.
+ // Filter state survives a redraw, but remains local to this Vault, not in Neon.
+ const controls=el("nav","ppw-legend-filters");
+ controls.setAttribute("aria-label","Filter Legends by tier or discovery");
+ let filter=target.dataset.legendFilter??"ALL";
+ const filters=[["ALL","All ("+view.entries.length+")"],
+  ["LOCKED","Locked ("+view.entries.filter(x=>!x.unlocked).length+")"],
+  ["DISCOVERED","Discovered ("+view.entries.filter(x=>x.unlocked).length+")"],
+  ...order.map(t=>[t,title[t]??t])] as const;
+ const buttons=new Map<string,HTMLButtonElement>();
+ const applyFilter=()=>{
+  let visibleCount=0;
+  target.querySelectorAll<HTMLElement>(".ppw-legend-tier").forEach(section=>{
+   let sectionVisible=0;
+   section.querySelectorAll<HTMLElement>(".ppw-legend-tile").forEach(tile=>{
+    const shown=(filter==="ALL"||filter===section.dataset.tier||
+     filter==="DISCOVERED"&&tile.dataset.unlocked==="true"||
+     filter==="LOCKED"&&tile.dataset.unlocked==="false");
+    tile.hidden=!shown;
+    if(shown)sectionVisible++;
+   });
+   section.hidden=sectionVisible===0;
+   visibleCount+=sectionVisible;
+  });
+  for(const [key,b] of buttons)b.setAttribute("aria-pressed",String(filter===key));
+  const noMatches=target.querySelector<HTMLElement>(".ppw-legend-filter-empty");
+  if(noMatches)noMatches.hidden=visibleCount!==0;
+ };
+ for(const [key,label] of filters){
+  const b=button(label,()=>{
+   filter=key;target.dataset.legendFilter=key;applyFilter();
+  });
+  b.classList.add("ppw-legend-filter-button");
+  controls.append(b);buttons.set(key,b);
+ }
+ target.append(controls);
  for(const tier of order){
   const section=el("section","ppw-legend-tier");
   section.dataset.tier=tier;
@@ -177,6 +213,11 @@ export function drawLegendsVault(
   }
   section.append(grid);target.append(section);
  }
+ const noMatches=el("p","ppw-legend-filter-empty",
+  "No legends in this group yet. Choose another filter to explore the Vault.");
+ noMatches.hidden=true;target.append(noMatches);
+ if(!buttons.has(filter))filter="ALL";
+ applyFilter();
  const selected=view.entries.find(x=>x.id===revealing&&x.unlocked);
  if(selected){
   const veil=el("div","ppw-legend-reveal");
