@@ -92,7 +92,7 @@ for(const width of [320,390]){
   const renewal=page.getByRole("button",{name:/A commercial deal has ended/});
   await expect(renewal).toBeVisible();
   await renewal.click();
-  await expect(page).toHaveURL(/#\\/business$/);
+  await expect(page).toHaveURL(/#\/business$/);
   expect(calls).toEqual(["overview"]);
   renewalDue=false;
   await page.goto("/#/home");
