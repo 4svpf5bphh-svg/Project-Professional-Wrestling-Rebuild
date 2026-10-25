@@ -392,6 +392,7 @@ export function mountPersonaDesk(root:HTMLElement,
     MEDICAL_ABSENCE:"They were injured in an actual match",
     TITLE_WON:"They won a championship match",
     TITLE_CHALLENGE:"They had a championship opportunity",
+    TITLE_DEFENDED:"They successfully defended a championship",
     CHARACTER_APPROVED:"A character change was approved",
     CHARACTER_DECLINED:"A proposed character change was rejected"
    };

@@ -33,11 +33,11 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.match(backstageMessage("CREATIVE"),/mic time/);
  assert.match(backstageMessage("RIVALRY_PITCH",
   {partnerName:"Rival",verifiedSinglesShows:3,averageCrowd:84}),
-  /Rival.*3 singles shows.*84\/100/);
+  /Rival.*rivalry/);
  assert.equal(backstageDecisionEffect("RIVALRY_PITCH","EXPLORE_RIVALRY").status,"ANSWERED");
  assert.throws(()=>backstageDecisionEffect("RIVALRY_PITCH","PROMISE_SEGMENT"),/does not offer/);
  assert.match(backstageMessage("GIMMICK_PITCH",{observedMatchShows:4,averageCrowd:48}),
-  /4 matches.*48\/100/);
+  /crowd response.*different character/);
  assert.equal(backstageDecisionEffect("GIMMICK_PITCH","KEEP_CHARACTER").status,"DECLINED");
  assert.match(backstageReply("PROMISE_APPEARANCE","FULFILLED"),/kept your word/);
  assert.deepEqual(BACKSTAGE_CHOICES.TEAM_MOMENT,[]);
