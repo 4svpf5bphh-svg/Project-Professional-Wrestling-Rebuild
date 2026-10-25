@@ -8,6 +8,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readBusinessWorkspace} from "../src/db/business-workspace.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import {readPromotionRecordBook} from "../src/db/promotion-record-book.js";
 import {signCommercialDeal} from "../src/db/commercial-deals.js";
 import {settleCommercialWorldWeek} from "../src/db/weekly-commercial-settlement.js";
@@ -167,6 +168,16 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    promotionId:promotion,playerId:owner});
   assert.equal(secondPass.weeklyMediaIncome,300000);
   assert.equal(secondPass.weeklySponsorIncome,25000);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=30 WHERE world_id=$1",[world]));
+  const home=await readPlayerWorldOverview(db.pool,world,owner);
+  assert.equal(home?.promotion?.attention.businessUpdates?.filter(
+   notice=>notice.kind==="COMMERCIAL_EXPIRED").length,1,
+   "A genuine ended human deal publishes one dismissible private Business update");
+  const rivalHome=await readPlayerWorldOverview(db.pool,world,secondOwner);
+  assert.equal(rivalHome?.promotion?.attention.businessUpdates?.filter(
+   notice=>notice.kind==="COMMERCIAL_EXPIRED").length,0,
+   "Business updates must never leak between human-controlled promotions");
   // Old ratings do not finance automatic renewals forever. After six
   // months without three current verified shows, the opportunity disappears.
   await withWorldTransaction(db.pool,tx=>tx.query(
