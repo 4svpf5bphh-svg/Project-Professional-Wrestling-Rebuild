@@ -6,7 +6,9 @@ type ActionPlan={
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
   cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number};
 };
-type AdminData={plan:ActionPlan;settings:RingsideSettings;
+type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
+ armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
+type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null;
  groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
@@ -46,9 +48,10 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   el("p","ppw-admin-sub","Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
+ const legendTrial=el("section","ppw-admin-panel");
  world.append(el("h2","","World Control"),el("p","ppw-admin-status","Loading verified World state…"));
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
- root.append(world,studio);
+ root.append(world,legendTrial,studio);
  let busy=false;
  let lastNotice="";let lastError=false;
  async function load(){
@@ -126,6 +129,39 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   world.append(status,actions,info,
    el("p","ppw-admin-small","No automatic World advance or reset. Only your explicit Advance Week action moves the clock."));
 
+  legendTrial.replaceChildren(el("h2","","Legend Reveal Playtest"),
+   el("p","ppw-admin-sub","THE UNDERTAKER · IMMORTAL · one-time test"));
+  const trialInfo=el("p","ppw-admin-status",
+   data.pilot?.status==="CONSUMED"?
+    `Released at Year ${data.pilot.consumedYear}, Week ${data.pilot.consumedWeek}. Visit Industry → Legends Vault to watch or replay the full reveal.`:
+   data.pilot?.status==="ARMED"?
+    `Armed for your ${data.pilot.promotionId} promotion since Year ${data.pilot.armedYear}, Week ${data.pilot.armedWeek}. He unlocks after your next completed regular weekly show is certified when you Advance Week.`:
+    "Arm once to release the Undertaker after your next successfully completed weekly show. Off-weeks, drafts and AI-run shows do not count.");
+  legendTrial.append(trialInfo);
+  const trialFeedback=el("p","ppw-admin-message","");
+  if(data.pilot?.status!=="CONSUMED"){
+   const isArmed=data.pilot?.status==="ARMED";
+   const change=el("button",isArmed?"ppw-admin-secondary":"ppw-admin-primary",
+    isArmed?"Cancel armed reveal test":"Arm Undertaker for next completed show") as HTMLButtonElement;
+   change.type="button";change.disabled=ready.phase!=="OPEN"||busy;
+   change.onclick=async()=>{
+    if(busy||!window.confirm(isArmed?
+     "Cancel the armed Undertaker test? No World results or existing legends will change.":
+     "Release the Undertaker into the shared free-agent market after YOUR next certified weekly show? This is a one-time test and does not sign him to your promotion."))return;
+    busy=true;change.disabled=true;
+    try{
+     await request("/api/admin","POST",ctx.csrfToken,{
+      action:isArmed?"CANCEL_LEGEND_PILOT":"ARM_LEGEND_PILOT"});
+     lastNotice=isArmed?"Legend test cancelled.":"Undertaker reveal test armed.";
+     lastError=false;await load();
+    }catch(e){message(trialFeedback,e instanceof Error?e.message:"Legend test unavailable",true);}
+    finally{busy=false;change.disabled=ready.phase!=="OPEN";}
+   };
+   legendTrial.append(change);
+  }
+  legendTrial.append(trialFeedback,
+   el("p","ppw-admin-small",
+    "Only the operator can arm this fixture. The normal Immortal milestone, multiplayer market, KP card price and one World Lock remain unchanged."));
   const config={...data.settings};
   studio.replaceChildren(el("h2","","Ringside AI Studio"),
    el("p","ppw-admin-sub","These preferences govern future AI reports. Previously published Ringside reports stay unchanged."));
