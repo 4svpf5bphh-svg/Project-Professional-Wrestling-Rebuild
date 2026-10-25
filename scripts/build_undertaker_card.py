@@ -16,7 +16,7 @@ import math
 
 SOURCE = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/The_Undertaker.jpg/960px-The_Undertaker.jpg"
 BACKUP = "https://upload.wikimedia.org/wikipedia/commons/7/77/The_Undertaker.jpg"
-DEST = Path("public/assets/legends/undertaker-immortal-card.webp")
+DEST = Path("apps/web/public/assets/legends/undertaker-immortal-card.webp")
 W,H = 960,1440
 def load_photo():
     for url in (SOURCE,BACKUP):
