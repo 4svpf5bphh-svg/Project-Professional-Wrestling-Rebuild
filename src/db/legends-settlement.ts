@@ -11,18 +11,23 @@ import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend}
 interface MatchRow extends Record<string,unknown> {
  match_id:string;position:number;last_position:number;
  rating_stars:string|null;booking_class:string;payload:unknown;
+ actual_finish?:string;crowd_response?:number;
  evidence_json:{booking?:{family?:string}}|null;
 }
 const emptyMetrics=():Record<LegendMetric,number>=>({
  CLASSICS:0,HOT_ANGLES:0,DIRTY_FINISHES:0,MASTERPIECES:0,
  WOMENS_CLASSICS:0,TAG_CLASSICS:0,TITLE_CHANGES:0,LONGEST_REIGN:0,
- PREMIUM_MAIN_EVENTS:0
+ PREMIUM_MAIN_EVENTS:0,HARDCORE_CLASSICS:0,HARDCORE_MATCHES:0,
+ SUBMISSIONS:0,WEEKLY_CLASSICS:0,BIG_REACTIONS:0,
+ TAG_MASTERPIECES:0,WOMENS_MASTERPIECES:0,PREMIUM_CLASSICS:0,
+ MAIN_EVENT_CLASSICS:0,FIVE_STARS:0,STIPULATED_CLASSICS:0
 });
 export function computeCertifiedLegendMatchMetrics(
  bouts:readonly MatchRow[],divisions:ReadonlyMap<string,string>,
-):Pick<Record<LegendMetric,number>,
- "CLASSICS"|"MASTERPIECES"|"WOMENS_CLASSICS"|"TAG_CLASSICS"|"PREMIUM_MAIN_EVENTS">{
+):Record<LegendMetric,number>{
  const metric=emptyMetrics();
+ const danger=new Set(["HARDCORE","STEEL_CAGE","LADDER","TABLES","TLC","LAST_MAN_STANDING"]);
+ const stipulated=new Set([...danger,"SUBMISSION"]);
  for(const m of bouts){
   const stars=m.rating_stars===null?NaN:Number(m.rating_stars);
   if(!Number.isFinite(stars)||stars<0||stars>5)continue;
@@ -36,10 +41,25 @@ export function computeCertifiedLegendMatchMetrics(
    metric.TAG_CLASSICS++;
   if(stars>=4.25&&m.booking_class==="PREMIUM"&&m.position===m.last_position)
    metric.PREMIUM_MAIN_EVENTS++;
+  const raw=m.payload as Record<string,unknown>;
+  const stip=typeof raw.stipulation==="string"?raw.stipulation:"STANDARD";
+  if(stipulated.has(stip)&&stars>=4.25)metric.STIPULATED_CLASSICS++;
+  if(danger.has(stip)){
+   metric.HARDCORE_MATCHES++;
+   if(stars>=4)metric.HARDCORE_CLASSICS++;
+  }
+  if(m.actual_finish==="SUBMISSION")metric.SUBMISSIONS++;
+  if(m.booking_class==="REGULAR"&&stars>=4)metric.WEEKLY_CLASSICS++;
+  if(stars>=4.25&&m.booking_class==="PREMIUM")metric.PREMIUM_CLASSICS++;
+  if(m.position===m.last_position&&stars>=4.5)metric.MAIN_EVENT_CLASSICS++;
+  if(stars>=4.99)metric.FIVE_STARS++;
+  if(Number(m.crowd_response)>=90)metric.BIG_REACTIONS++;
+  if(stars>=4.75&&cast.every(id=>divisions.get(id)==="WOMEN"))
+   metric.WOMENS_MASTERPIECES++;
+  if(stars>=4.75&&m.evidence_json?.booking?.family==="TEAMS")
+   metric.TAG_MASTERPIECES++;
  }
- return {CLASSICS:metric.CLASSICS,MASTERPIECES:metric.MASTERPIECES,
-  WOMENS_CLASSICS:metric.WOMENS_CLASSICS,TAG_CLASSICS:metric.TAG_CLASSICS,
-  PREMIUM_MAIN_EVENTS:metric.PREMIUM_MAIN_EVENTS};
+ return metric;
 }
 function moves(p:PrimeLegend){
  const category=p.style==="POWERHOUSE"?"POWER":
@@ -75,7 +95,8 @@ export async function settleCertifiedWorldLegends(
  const matches=await tx.query<MatchRow>(`
   SELECT m.match_id,m.position,
     max(m.position) OVER (PARTITION BY m.show_id) AS last_position,
-    f.rating_stars::text,d.booking_class,slot.payload,e.evidence_json
+    f.rating_stars::text,d.booking_class,slot.payload,e.evidence_json,
+    m.actual_finish,m.crowd_response
   FROM ppw_completed_shows s
   JOIN ppw_completed_show_matches m ON m.world_id=s.world_id AND m.show_id=s.show_id
   JOIN ppw_completed_match_report_facts f ON f.world_id=m.world_id
