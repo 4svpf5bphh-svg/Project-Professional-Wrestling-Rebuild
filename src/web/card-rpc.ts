@@ -159,6 +159,9 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="restructurePromotion")
   return restructurePromotionAsActor(context,{worldId,promotionId,requestId,expectedRevision});
+ if(method==="signCommercial")
+  return signCommercialDealAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,offerCode:id("offerCode")});
  if(method==="hireStaff"||method==="renewStaff"){
    const salary=p.weeklySalary,term=p.termWeeks;
    if(typeof salary!=="number"||!Number.isSafeInteger(salary)||
