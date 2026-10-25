@@ -21,7 +21,7 @@ test("card HTTP never accepts unverified actor or unknown method",async()=>{
  const response=await handleCardHttp(request(JSON.stringify({worldId:"w",promotionId:"p",showId:"s",method:"unknown",playerId:"forged"})),deps);
  assert.equal(response.status,400);
  const body=await response.json() as {error:string;reference:string};
- assert.equal(body.error,"Booking request rejected");
+ assert.equal(body.error,"Request rejected");
  assert.match(body.reference,/^[a-f0-9]{12}$/);
  assert.equal(JSON.stringify(body).includes("unknown"),false);
 });
@@ -41,7 +41,7 @@ test("unknown card rejection is safely correlatable without leaking database int
  })),deps);
  assert.equal(response.status,400);
  const body=await response.json() as {error:string;reference:string};
- assert.equal(body.error,"Booking request rejected");
+ assert.equal(body.error,"Request rejected");
  assert.match(body.reference,/^[a-f0-9]{12}$/);
  assert.doesNotMatch(JSON.stringify(body),/9000000|secret|SQL/i);
 });
