@@ -90,3 +90,12 @@
 .ppw-industry-featured .ppw-wrestler-name{font-size:15px}
 .ppw-industry-featured .ppw-wrestler-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
 .ppw-industry-featured .ppw-wrestler-identity{line-height:1.35}
+
+.ppw-industry-record-book{min-width:0}
+.ppw-industry-record-row{display:flex;align-items:center;flex-wrap:wrap;gap:9px;
+ padding:12px;border-radius:12px;border:1px solid #354f67;
+ background:#172739;margin:8px 0}
+.ppw-industry-record-row>strong{display:grid;place-items:center;flex:none;
+ width:32px;height:32px;background:#285681;border-radius:9px}
+.ppw-industry-record-row>span{flex:1;min-width:120px;font-weight:750}
+.ppw-industry-record-row>small{color:#afcddc}
