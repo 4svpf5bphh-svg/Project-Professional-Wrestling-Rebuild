@@ -23,11 +23,11 @@ export interface DirectoryFilter{
 }
 type PersonRow={
  person_id:string;name:string;booking_division:string|null;
- in_ring_quality:number|null;portable_gimmick_id:string|null;
+ in_ring_quality:number|null;gid:string|null;
  default_alignment:string|null;active_alignment:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
- career_stage:string|null;interest_score:number|null;
+ career_stage:string|null;it:number|null;
  contract_id:string|null;aff:string|null;
  family:string|null;role_expectation:string|null;remaining_dates:number|null;
  start_week_index:number|null;
@@ -100,9 +100,9 @@ export async function readWrestlerDirectory(
   const rows=await tx.query<PersonRow>(`
    SELECT p.person_id,p.name,p.booking_division,p.popularity,p.recognition,
     p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
-    p.in_ring_quality,p.portable_gimmick_id,p.default_alignment,
+    p.in_ring_quality,p.portable_gimmick_id AS gid,p.default_alignment,
     aligned.alignment AS active_alignment,
-    interest.score AS interest_score,
+    interest.score AS it,
     ${f.view==="ROSTER"?"(SELECT a.cleared_week_index FROM ppw_medical_absences a "+
      "WHERE a.world_id=p.world_id AND a.person_id=p.person_id "+
      "AND a.status='ACTIVE' AND a.injured_week_index<$3 "+
@@ -208,7 +208,7 @@ export async function readWrestlerDirectory(
    currentWeekIndex:now,worldRevision:Number(auth[0]!.revision),
    canEdit:auth[0]!.can_edit,view:f.view,offset:f.offset,
    hasMore,people:rows.slice(0,f.limit).map(p=>{
-    const fallback=originalPersonaBaseline(p.name,p.portable_gimmick_id);
+    const fallback=originalPersonaBaseline(p.name,p.gid);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
      medicalWeeksRemaining:p.med==null?null:
@@ -226,9 +226,9 @@ export async function readWrestlerDirectory(
     ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),
     roleExpectation:p.role_expectation,
     interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
-     p.interest_score===null?"UNKNOWN":p.interest_score>=78?"KEEN":
-     p.interest_score>=63?"INTERESTED":p.interest_score>=40?"OPEN_TO_TALKS":
-     p.interest_score>=22?"RELUCTANT":"NOT_INTERESTED",
+     p.it===null?"UNKNOWN":p.it>=78?"KEEN":
+     p.it>=63?"INTERESTED":p.it>=40?"OPEN_TO_TALKS":
+     p.it>=22?"RELUCTANT":"NOT_INTERESTED",
     startWeekIndex:p.start_week_index,
     startsInWeeks:p.start_week_index===null?null:Math.max(0,p.start_week_index-now),
     remainingDates:p.remaining_dates,expiresWeekIndex:p.expires_week_index,
