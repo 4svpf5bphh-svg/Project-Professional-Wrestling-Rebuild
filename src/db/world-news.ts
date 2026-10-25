@@ -148,7 +148,7 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(a.kind)&&
   Number(a.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
   Number(a.angle_crowd)||byId(a,b))[0];
- if(hot)add("DIRT",hot,"angle:"+hot.show_id+":"+hot.slot_id,
+ if(hot)add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
   "What follows "+name(hot.kind).toLowerCase()+" at "+hot.promotion_name+"?",
   "The completed "+hot.show_name+" broadcast featured a "+name(hot.kind).toLowerCase()+
    " with a "+Math.round(Number(hot.angle_crowd))+
