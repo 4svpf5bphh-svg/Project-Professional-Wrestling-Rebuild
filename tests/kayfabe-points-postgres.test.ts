@@ -69,7 +69,7 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(office.employees.find(e=>e.staffId==="staff-road-agent-001")?.name,"Riley The Agent");
   assert.equal((await readStaffWorkspace(db.pool,bb)).employees.length,0);
   const added=await applyKayfabeAction(db.pool,aa,{
-   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"}) as {market:string;price:number;personId:string};
+   kind:"CREATE_WRESTLER",name:"Taylor Comet",division:"WOMEN",requestId:"create-comet"}) as unknown as {market:string;price:number;personId:string};
   assert.equal(added.market,"FREE_AGENT");
   assert.equal(added.price,3000);
   assert.equal((await applyKayfabeAction(db.pool,aa,{
