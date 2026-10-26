@@ -732,7 +732,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableDecision:null,
       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
-       kind==="RESCUE"?segment.actors.slice(0,2):segment.actors,
+       (kind==="RESCUE"||kind==="TURN")?segment.actors.slice(0,2):segment.actors,
       targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
        []:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
         segment.targets.slice(0,1):segment.targets});
