@@ -47,13 +47,13 @@ test("World History is an on-demand accessible iPhone archive for annual honours
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  await page.getByRole("button",{name:"Open World menu"}).click();
  await nav.getByRole("button",{name:/Hall of Fame/}).click();
- await expect(page).toHaveURL(/#\\/hall-of-fame$/);
+ await expect(page).toHaveURL(/#\/hall-of-fame$/);
  await expect(page.getByRole("heading",{name:"The Hall of Fame"})).toBeVisible();
  await expect(page.getByText("CLASS OF 1")).toBeVisible();
  await expect(page.getByText("143 certified matches",{exact:false})).toBeVisible();
  await page.getByRole("button",{name:"Open World menu"}).click();
  await nav.getByRole("button",{name:/World Moments/}).click();
- await expect(page).toHaveURL(/#\\/world-moments$/);
+ await expect(page).toHaveURL(/#\/world-moments$/);
  await expect(page.getByRole("heading",{name:"World Moments"}).toBeVisible();
  await expect(page.getByText("A world classic for the ages")).toBeVisible();
  const bounds=await page.locator(".ppw-heritage-moment").boundingBox();
