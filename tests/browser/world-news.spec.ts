@@ -36,8 +36,9 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
   }});
   return route.fulfill({json:method==="overview"?overview:{}});
  });
- await page.goto("/#/industry");
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
+ await page.goto("/#/news");
+ await expect(page.getByRole("heading",{name:"World News"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Promotions"})).toHaveCount(0);
  expect(calls).toEqual(["industry"]);
  await page.getByRole("button",{name:"Official News"}).click();
  await expect(page.getByText("MATCH OF THE WEEK")).toBeVisible();
