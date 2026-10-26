@@ -92,11 +92,13 @@ test("seven original-main specialist angle deliveries survive saves and reopenin
   assert.deepEqual(buildEditorSegment(restoreEditorSegment("angle",saved)),saved);
  }
 });
-test("old interview keeps generic delivery rather than inventing an answer",()=>{
- let model=newEditorSegment("old","INTERVIEW");
- model=addSegmentPerson(model,"actors",{personId:"a",contractId:"ca"});
- assert.equal(buildEditorSegment(model).creativeBeat,undefined);
- assert.equal(restoreEditorSegment("old",buildEditorSegment(model)).creativeBeat,null);
+test("older interview remains unscripted but new ones offer full creative direction",()=>{
+ const old={kind:"INTERVIEW",outcome:"HAPPENS",
+  participants:[{personId:"a",contractId:"ca"}],actorIds:["a"],targetIds:[]};
+ assert.equal(restoreEditorSegment("old",old).creativeBeat,null);
+ let fresh=newEditorSegment("fresh","INTERVIEW");
+ fresh=addSegmentPerson(fresh,"actors",{personId:"a",contractId:"ca"});
+ assert.ok(buildEditorSegment(fresh).creativeBeat);
 });
 
 test("interruption, rescue and post-match assault retain explicitly directed roles",()=>{
