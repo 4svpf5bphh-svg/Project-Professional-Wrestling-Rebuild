@@ -54,9 +54,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "IMMORTAL"
   },
   "sabu": {
-    "author": "Chatsam",
-    "license": "CC BY-SA 3.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
+    "author": "Robert Newsome",
+    "license": "CC BY-SA 2.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
     "tier": "CULT"
   },
   "steve-corino": {
@@ -252,15 +252,15 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "CULT"
   },
   "sting": {
-    "author": "Simon Q",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
+    "author": "Wrestling's Main Event editorial photographer unverified",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_1988,_red_facepaint.jpg",
     "tier": "ICON"
   },
   "taz": {
-    "author": "KMcWrestling Photography",
-    "license": "CC BY-SA 4.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
+    "author": "Jennifer",
+    "license": "CC BY-SA 2.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
     "tier": "CULT"
   },
   "d-lo-brown": {

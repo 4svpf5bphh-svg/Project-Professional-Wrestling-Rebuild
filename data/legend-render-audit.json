@@ -1,20 +1,7 @@
 {
   "attempted": 47,
-  "completed": 44,
-  "failed": [
-    {
-      "id": "sabu",
-      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
-    },
-    {
-      "id": "sting",
-      "error": "All authenticated photo-origin paths failed for sting-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
-    },
-    {
-      "id": "taz",
-      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
-    }
-  ],
+  "completed": 47,
+  "failed": [],
   "cards": [
     {
       "id": "abdullah-butcher",
@@ -169,6 +156,7 @@
       "author": "Bill Apter",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Dusty_Rhodes_as_NWA_Champion,_circa_1979_to_1981.jpg",
+      "cached": true,
       "artRevision": 1
     },
     {
@@ -300,6 +288,7 @@
       "author": "Jocsh3",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Mana.JPG",
+      "cached": true,
       "artRevision": 1
     },
     {
@@ -412,7 +401,14 @@
     },
     {
       "id": "sabu",
-      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "name": "Sabu",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/sabu-cult-card.webp",
+      "bytes": 80332,
+      "author": "Robert Newsome",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
+      "artRevision": 1
     },
     {
       "id": "shawn-michaels",
@@ -464,7 +460,14 @@
     },
     {
       "id": "sting",
-      "error": "All authenticated photo-origin paths failed for sting-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "name": "Sting",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/sting-icon-card.webp",
+      "bytes": 123906,
+      "author": "Wrestling's Main Event editorial photographer unverified",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_1988,_red_facepaint.jpg",
+      "artRevision": 1
     },
     {
       "id": "super-crazy",
@@ -492,7 +495,14 @@
     },
     {
       "id": "taz",
-      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "name": "Taz",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/taz-cult-card.webp",
+      "bytes": 103502,
+      "author": "Jennifer",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
+      "artRevision": 1
     },
     {
       "id": "the-rock",
@@ -551,6 +561,7 @@
       "author": "Adster95, cropped by CeltBrowne",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
+      "cached": true,
       "artRevision": 1
     }
   ],
