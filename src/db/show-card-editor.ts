@@ -423,6 +423,35 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     throw new Error("Running order must include each match and segment exactly once");
    // Pure authoritative check against this controlled card; no new SQL read.
    validatePostMatchLinks(matches,segments,input.runningOrder);
+   // A double turn belongs to a real active two-person tag team, not an
+   // arbitrary pair selected in the UI. Verify all planned turns in one read.
+   const turnPairs=segments.flatMap(s=>{
+    const scene=s.payload as {kind?:string;actorIds?:string[]};
+    return scene.kind==="TURN"&&Array.isArray(scene.actorIds)&&
+     scene.actorIds.length===2?[{slotId:s.slotId,
+      personA:scene.actorIds[0]!,personB:scene.actorIds[1]!}]:[];
+   });
+   if(turnPairs.length){
+    const confirmed=await tx.query<{slot_id:string}>([
+     "SELECT pair.slot_id FROM jsonb_to_recordset($2::jsonb)",
+     "AS pair(slot_id text,person_a text,person_b text)",
+     "WHERE EXISTS(SELECT 1 FROM ppw_tag_teams team",
+     "JOIN ppw_tag_team_members first ON first.world_id=team.world_id",
+     "AND first.team_id=team.team_id AND first.active",
+     "JOIN ppw_tag_team_members second ON second.world_id=team.world_id",
+     "AND second.team_id=team.team_id AND second.active",
+     "WHERE team.world_id=$1 AND team.status='ACTIVE'",
+     "AND first.person_id=pair.person_a AND second.person_id=pair.person_b",
+     "AND (SELECT count(*) FROM ppw_tag_team_members all_members",
+     "WHERE all_members.world_id=team.world_id",
+     "AND all_members.team_id=team.team_id AND all_members.active)=2)"
+    ].join(" "),[input.worldId,JSON.stringify(turnPairs.map(t=>({
+     slot_id:t.slotId,person_a:t.personA,person_b:t.personB
+    })))]);
+    if(confirmed.length!==turnPairs.length)
+     throw new Error("Both turning wrestlers must belong to the same active tag team");
+   }
+
    const linkedIds=[...new Set(authored?.flatMap(s=>s.programmeId?[s.programmeId]:[])??[])];
    if(linkedIds.length>100)throw new Error("Too many linked programmes");
    if(linkedIds.length){
