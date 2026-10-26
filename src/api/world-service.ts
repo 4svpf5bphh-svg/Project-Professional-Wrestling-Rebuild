@@ -8,6 +8,7 @@ import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readPublicCompletedShow} from "../db/public-completed-show.js";
 import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-show-archive.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
@@ -537,6 +538,17 @@ export async function completedShowAsActor(context:WorldApiContext,
  validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
  return readCompletedShowView(context.pool,{worldId,promotionId,showId,
   playerId:context.actor.playerId});
+}
+
+/** The audience may only read finished shows of another HUMAN manager.
+ * No ownership bypass of private cards or editorial/staff datasets. */
+export async function publicCompletedShowAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,targetPromotionId:string,showId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(targetPromotionId,"rival promotion");
+ validate(showId,"completed show");
+ return readPublicCompletedShow(context.pool,{worldId,playerId:context.actor.playerId,
+  viewerPromotionId:promotionId,targetPromotionId,showId});
 }
 
 /** Past shows are a bounded, indexed one-read archive for this controller. */
