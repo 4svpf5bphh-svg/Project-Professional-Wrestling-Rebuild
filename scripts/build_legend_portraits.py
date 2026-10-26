@@ -43,7 +43,7 @@ def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AU
     derived=[]
     for index in range(count):
      output=Path(root)/(slug+"-"+str(index)+"-portrait.webp")
-     if not output.is_file() or output.stat().st_size<6000 or output.stat().st_mtime<original.stat().st_mtime:
+     if (count==2 and reviewed_members) or not output.is_file() or output.stat().st_size<6000 or output.stat().st_mtime<original.stat().st_mtime:
       fx=float(entry.get("focalX",.5))
       fy=float(entry.get("focalY",.36))
       # Verified March 1987 Weekly Pro Wrestling portrait:
