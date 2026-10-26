@@ -73,6 +73,9 @@ def obtain(url,source_width,identity):
   # and independent read-through caches have the same authentic source.
   # Try only explicitly recorded original content, never a substitute person.
   if clean_url!=request_url:candidates.append(clean_url)
+  if "/wikipedia/commons/thumb/" in request_url:
+   candidates.append(request_url.replace("upload.wikimedia.org","thumb.wikimedia.org",1))
+  candidates.append("https://commons.wikimedia.org/wiki/Special:Redirect/file/"+quote(basename,safe=""))
   for origin in [request_url,clean_url]:
    for cdn in ["https://images.weserv.nl/","https://wsrv.nl/"]:
     candidate=cdn+"?url="+quote(origin,safe="")+"&output=jpg"
