@@ -1,24 +1,22 @@
 {
   "attempted": 47,
-  "completed": 44,
+  "completed": 46,
   "failed": [
     {
-      "id": "abdullah-butcher",
-      "error": "All authenticated photo-origin paths failed for abdullah-butcher: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
-    },
-    {
-      "id": "bruno-sammartino",
-      "error": "All authenticated photo-origin paths failed for bruno-sammartino: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
-    },
-    {
       "id": "kenta-kobashi",
-      "error": "All authenticated photo-origin paths failed for kenta-kobashi: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for kenta-kobashi: ValueError: Insufficient source image resolution"
     }
   ],
   "cards": [
     {
       "id": "abdullah-butcher",
-      "error": "All authenticated photo-origin paths failed for abdullah-butcher: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "name": "Abdullah the Butcher",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/abdullah-butcher-cult-card.webp",
+      "bytes": 75186,
+      "author": "WWE via Getty Images, photographer not verified, editorial reproduction",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues"
     },
     {
       "id": "aja-kong",
@@ -88,7 +86,13 @@
     },
     {
       "id": "bruno-sammartino",
-      "error": "All authenticated photo-origin paths failed for bruno-sammartino: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "name": "Bruno Sammartino",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/bruno-sammartino-immortal-card.webp",
+      "bytes": 113714,
+      "author": "WWE archival promotional photograph, photographer not verified",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html"
     },
     {
       "id": "bull-nakano",
@@ -151,9 +155,10 @@
       "tier": "LEGEND",
       "file": "apps/web/public/assets/legends/eddie-guerrero-legend-card.webp",
       "bytes": 112158,
-      "author": "EDDIE_GUERRERO.jpg : paddynapper derivative work: RanZag ( talk )",
-      "license": "CC BY-SA 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AEddie_Guerrero_2004.jpg"
+      "author": "WWE promotional photograph, photographer not verified, via L\u00edbero",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://libero.pe/deportes/wwe/2021/10/09/repasemos-carrera-eddie-guerrero-leyenda-wwe-lucha-libre-noticia-22700",
+      "cached": true
     },
     {
       "id": "el-santo",
@@ -212,7 +217,7 @@
     },
     {
       "id": "kenta-kobashi",
-      "error": "All authenticated photo-origin paths failed for kenta-kobashi: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for kenta-kobashi: ValueError: Insufficient source image resolution"
     },
     {
       "id": "konnan",
@@ -473,9 +478,10 @@
       "tier": "LEGEND",
       "file": "apps/web/public/assets/legends/trish-stratus-legend-card.webp",
       "bytes": 89360,
-      "author": "Super Festivals",
-      "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ATrish_Stratus_2019_(cropped).jpg"
+      "author": "WWE promotional photograph of Trish Stratus in 2005, photographer not verified",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.wwe.com/gallery/every-female-champion-ever-photos",
+      "cached": true
     },
     {
       "id": "ultimo-dragon",

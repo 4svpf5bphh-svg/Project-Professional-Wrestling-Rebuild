@@ -1,9 +1,7 @@
 {
-  "cardsFound": 45,
-  "portraitsRegistered": 46,
+  "cardsFound": 47,
+  "portraitsRegistered": 48,
   "missing": [
-    "bruno-sammartino",
-    "abdullah-butcher",
     "kenta-kobashi"
   ],
   "failed": [],
@@ -23,7 +21,7 @@
       "files": [
         "apps/web/public/assets/legends/eddie-guerrero-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -32,12 +30,17 @@
       "files": [
         "apps/web/public/assets/legends/trish-stratus-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
       "id": "bruno-sammartino",
-      "status": "missing-card"
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/bruno-sammartino-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
     },
     {
       "id": "sabu",
@@ -68,7 +71,12 @@
     },
     {
       "id": "abdullah-butcher",
-      "status": "missing-card"
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/abdullah-butcher-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
     },
     {
       "id": "new-jack",

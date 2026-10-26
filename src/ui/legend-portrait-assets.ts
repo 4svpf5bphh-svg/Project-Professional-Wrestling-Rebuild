@@ -1,12 +1,14 @@
 /** Generated from actual static source-backed Legend portraits.
  * Person IDs survive changes of employer, roster and ring name. */
 export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.freeze({
+  "legend:abdullah-butcher:0": "/assets/legends/abdullah-butcher-0-portrait.webp",
   "legend:aja-kong:0": "/assets/legends/aja-kong-0-portrait.webp",
   "legend:andre-giant:0": "/assets/legends/andre-giant-0-portrait.webp",
   "legend:antonio-inoki:0": "/assets/legends/antonio-inoki-0-portrait.webp",
   "legend:arn-anderson:0": "/assets/legends/arn-anderson-0-portrait.webp",
   "legend:booker-t:0": "/assets/legends/booker-t-0-portrait.webp",
   "legend:bret-hart:0": "/assets/legends/bret-hart-0-portrait.webp",
+  "legend:bruno-sammartino:0": "/assets/legends/bruno-sammartino-0-portrait.webp",
   "legend:bull-nakano:0": "/assets/legends/bull-nakano-0-portrait.webp",
   "legend:chyna:0": "/assets/legends/chyna-0-portrait.webp",
   "legend:d-lo-brown:0": "/assets/legends/d-lo-brown-0-portrait.webp",
