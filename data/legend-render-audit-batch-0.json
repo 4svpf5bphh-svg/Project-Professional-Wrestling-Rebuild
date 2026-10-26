@@ -1,0 +1,74 @@
+{
+  "attempted": 8,
+  "completed": 0,
+  "failed": [
+    {
+      "id": "abdullah-butcher",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bruno-sammartino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "dean-malenko",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "eddie-guerrero",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "jerry-lynn",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "sabu",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "steve-corino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "trish-stratus",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    }
+  ],
+  "cards": [
+    {
+      "id": "abdullah-butcher",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bruno-sammartino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "dean-malenko",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "eddie-guerrero",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "jerry-lynn",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "sabu",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "steve-corino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "trish-stratus",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    }
+  ],
+  "batch": 0,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}
