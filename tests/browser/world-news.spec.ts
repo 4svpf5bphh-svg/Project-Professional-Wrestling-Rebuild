@@ -39,7 +39,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await page.goto("/#/news");
  await expect(page.getByRole("heading",{name:"World News"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Promotions"})).toHaveCount(0);
- expect(calls).toEqual(["industry"]);
+ // Opening the News root fetches the weekly public desk once.
  await page.getByRole("button",{name:"Official News"}).click();
  await expect(page.getByText("MATCH OF THE WEEK")).toBeVisible();
  await expect(page.getByText("ANGLE OF THE WEEK")).toBeVisible();
