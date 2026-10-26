@@ -332,11 +332,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const description="Y"+headline.year+" W"+headline.week;
     worldWire.append(control(title,description,
      headline.personId&&port.openWrestler?
-      ()=>port.openWrestler!(headline.personId!):port.industry,"★"));
+      ()=>port.openWrestler!(headline.personId!):(port.news??port.industry),"★"));
    }
-   worldWire.append(control("Read more industry stories",
-    "See the latest public career and promotion developments.",
-    port.industry,"→"));
+   worldWire.append(control("Read World News",
+    "Official headlines and the latest from the rumour mill.",
+    port.news??port.industry,"→"));
    root.append(worldWire);
   }
   // Contextual actions, never a persistent tab bar. Only authoritative facts

@@ -46,8 +46,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.getByText("A certified classic")).toBeVisible();
- await expect(page.locator(".ppw-news-annual .ppw-news-desk").filter({hasText:"MATCH OF THE YEAR"})).toBeVisible();
- await expect(page.getByText("Great Match of the Year")).toBeVisible();
+ await expect(page.locator(".ppw-news-annual")).toHaveCount(0);
+ // The annual awards now have their own World destination.
  const poster=page.locator(".ppw-news-poster").first();
  const rect=await poster.boundingBox();
  expect(rect).not.toBeNull();

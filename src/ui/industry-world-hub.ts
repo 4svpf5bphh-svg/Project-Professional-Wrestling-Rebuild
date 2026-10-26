@@ -57,10 +57,14 @@ const btn=(label:string,fn:()=>void)=>{
  x.type="button";x.onclick=fn;return x;
 };
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,initialLegends?:LegendsVaultView){
+ const route=typeof window==="undefined"?"":window.location.hash;
  let view:IndustryHubView|null=null,loading=false,error="",
   active:"STANDINGS"|"BROADCASTS"|"OFFICIAL"|"DIRT"|"RECORDS"|"HERITAGE"|"LEGENDS"=
-    typeof window!=="undefined"&&window.location.hash==="#/industry/legends"?"LEGENDS":
-     window.location.hash==="#/news"?"OFFICIAL":"STANDINGS",
+    route==="#/industry/legends"||route==="#/legends"?"LEGENDS":
+    route==="#/broadcasts"?"BROADCASTS":
+    route==="#/records"?"RECORDS":
+    ["#/hall-of-fame","#/annual-awards","#/world-moments"].includes(route)?"HERITAGE":
+    route==="#/news"?"OFFICIAL":"STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
  let watched:PublicCompletedShow|null=null,watching=false,watchError="";
  async function readRivalResult(targetPromotionId:string,showId:string){
@@ -135,7 +139,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   finally{newsBusy=false;render();}
  }
  let heritage:WorldHeritageView|null=null,heritageBusy=false,heritageError="";
- let heritageTab:"AWARDS"|"HALL"|"MOMENTS"="AWARDS";
+ let heritageTab:"AWARDS"|"HALL"|"MOMENTS"=
+  route==="#/hall-of-fame"?"HALL":route==="#/world-moments"?"MOMENTS":"AWARDS";
  let olderMoments:WorldHeritageView["moments"]=[],olderBusy=false,olderError="";
  let moreMoments:WorldMomentCursor|null=null;
  async function loadOlderMoments(){
@@ -274,43 +279,37 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
-  head.append(el("span","ppw-industry-kicker",window.location.hash.startsWith("#/news")?
-    "THE WORLD / ON THE WIRE":"THE INDUSTRY / PROMOTIONS"),
-   el("h1","",window.location.hash.startsWith("#/news")?"World News":"Industry"),
+  const headings:Record<string,[string,string]>={
+   STANDINGS:["THE WORLD / COMPANIES","Promotions"],
+   BROADCASTS:["THE WORLD / COMPLETED SHOWS","Recent Broadcasts"],
+   RECORDS:["THE WORLD / THE ARCHIVE","Record Book"],
+   LEGENDS:["THE WORLD / COLLECTIBLES","Legends Vault"],
+   OFFICIAL:["THE PPW WIRE / THE RECORD","World News"],
+   DIRT:["THE PPW WIRE / THE RUMOUR MILL","World News"],
+   HERITAGE:["THE WORLD / THE LEGACY",
+    heritageTab==="HALL"?"Hall of Fame":heritageTab==="MOMENTS"?"World Moments":"Annual Awards"]
+  };
+  const heading=headings[active]??headings.STANDINGS!;
+  head.append(el("span","ppw-industry-kicker",heading[0]),
+   el("h1","",heading[1]),
    el("p","ppw-industry-muted",view?
     view.worldName+" · Year "+view.year+" · Week "+view.week:
-    "See the competition, follow rival promotions and find out who's making headlines."));
+    "The companies, careers and history of the shared wrestling World."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){if(!loading)root.append(btn("Retry",()=>void load()));return;}
-  const status=el("section","ppw-industry-status");
-  status.append(el("span","","THIS WEEK"),
-   el("strong","",view.phase==="OPEN"?"Bookings open":
-    view.phase==="LOCKED"?"Cards locked":"Shows taking place"));
-  const when=Number.isFinite(view.nextLockEpoch)&&view.nextLockEpoch>0?
-    new Date(view.nextLockEpoch*1000).toLocaleString("en-GB",{
-     dateStyle:"medium",timeStyle:"short"}):"Not scheduled";
-  status.append(el("span","","BOOKING DEADLINE"),el("strong","",when));
-  status.append(el("p","ppw-industry-muted",
-   "All promotions share the same weekly deadline. Their cards stay private until the shows take place."));
-  if(window.location.hash!=="#/news")root.append(status);
-  const nav=el("nav","ppw-industry-nav");
-  nav.setAttribute("aria-label","Industry views");
-  const deskTabs=window.location.hash==="#/news"?
-   [["OFFICIAL","Official News"],["DIRT","Dirt Sheets"]] as const:
-   [["STANDINGS","Promotions"],["BROADCASTS","Recent broadcasts"],
-    ["RECORDS","Record book"],["HERITAGE","World History"],
-    ["LEGENDS","Legends Vault"]] as const;
-  for(const [key,label] of deskTabs){
-   const b=btn(label,()=>{active=key;render();if(key==="RECORDS"&&recordsTab==="MY")void loadRecords();
-    if(key==="RECORDS"&&recordsTab==="WORLD")void loadRankings();
-    if(key==="OFFICIAL"||key==="DIRT")void loadNews();
-    if(key==="HERITAGE")void loadHeritage();
-    if(key==="LEGENDS")void loadLegends();});
-   b.setAttribute("aria-current",active===key?"page":"false");
-   nav.append(b);
+  // World destinations have distinct URLs and no duplicated Industry
+  // menu/booking clock. News alone uses two editorial desk tabs.
+  if(route==="#/news"){
+   const nav=el("nav","ppw-industry-nav");
+   nav.setAttribute("aria-label","News desks");
+   for(const [key,label] of [["OFFICIAL","Official News"],["DIRT","Dirt Sheets"]] as const){
+    const b=btn(label,()=>{active=key;render();void loadNews();});
+    b.setAttribute("aria-current",active===key?"page":"false");
+    nav.append(b);
+   }
+   root.append(nav);
   }
-  root.append(nav);
   if(active==="LEGENDS"){
    const section=el("section","ppw-industry-list ppw-legends");
    if(legends){
@@ -442,17 +441,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   }else if(active==="HERITAGE"){
    const section=el("section","ppw-industry-list ppw-heritage");
    section.append(el("span","ppw-news-eyebrow","THE WORLD / THE LEGACY"),
-    el("h2","","World History"),
     el("p","ppw-industry-muted",
-     "The moments worth remembering, the season's finest and careers that earned their place in history. Everything comes from completed, certified World events."));
-   const choice=el("div","ppw-industry-nav");
-   for(const [key,label] of [["AWARDS","Annual Awards"],["HALL","Hall of Fame"],
-    ["MOMENTS","World Moments"]] as const){
-    const control=btn(label,()=>{heritageTab=key;render();});
-    control.setAttribute("aria-current",heritageTab===key?"page":"false");
-    choice.append(control);
-   }
-   section.append(choice);
+     "Recorded from completed World events, not future plans or private booking."));
    if(heritageBusy)section.append(el("p","ppw-industry-muted",
     "Opening the World archives…"));
    if(heritageError)section.append(el("p","ppw-alert ppw-error",heritageError),
@@ -672,10 +662,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      features.append(poster);
     }
     section.append(features);
-    section.append(el("p","ppw-industry-muted",
-     "Selection: certified match stars then crowd response; for angles, " +
-     "completed crowd response then angle significance. Remaining ties use " +
-     "stable promotion, show and segment IDs."));
+    // Internal award ordering stays in the resolver, not the reader's newsroom.
     const history=news.awards.filter(a=>a.year!==latest.year||a.week!==latest.week);
     if(history.length){
      const archive=document.createElement("details");
@@ -692,27 +679,6 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      }
      section.append(archive);
     }
-   }
-   if(official&&(news?.annualAwards??[]).length){
-    const sectionAnnual=el("section","ppw-news-annual");
-    sectionAnnual.append(el("span","ppw-news-eyebrow","THE ANNUAL HONOURS"),
-     el("h3","","Match & Angle of the Year"),
-     el("p","ppw-industry-muted",
-      "Awarded only after all 52 weeks of a World year have published. " +
-      "The highest certified weekly winner takes the annual crown."));
-    for(const award of news!.annualAwards){
-     const item=el("article","ppw-news-annual-card");
-     item.append(el("span","ppw-news-desk",
-      "YEAR "+award.year+" · "+(award.kind==="MATCH"?
-       "MATCH OF THE YEAR":"ANGLE OF THE YEAR")),
-      el("strong","",award.title),
-      el("small","ppw-industry-muted",award.promotionName+" · "+award.showName+
-       " · Week "+award.week),
-      el("span","ppw-news-annual-rating",award.ratingUnit==="STARS"?
-       award.rating.toFixed(2)+" ★":Math.round(award.rating)+"/100 CROWD"));
-     sectionAnnual.append(item);
-    }
-    section.append(sectionAnnual);
    }
    const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"));
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
@@ -781,6 +747,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
  // Deep link from the completed weekly show / operator desk. No polling;
  // the Vault is read once and the unseen one-time reveal appears immediately.
  if(active==="LEGENDS")void loadLegends();
-  if(active==="OFFICIAL")void loadNews();
+ if(active==="OFFICIAL"||active==="DIRT")void loadNews();
+ if(active==="HERITAGE")void loadHeritage();
+ if(active==="RECORDS")void loadRecords();
  return {refresh:load};
 }

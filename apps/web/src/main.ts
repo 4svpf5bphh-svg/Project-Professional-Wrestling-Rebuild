@@ -325,7 +325,15 @@ function renderSection(){
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken});break;
-  case "industry":mountIndustryPage(view,scope,pendingLegends??undefined);
+  case "industry":
+  case "promotions":
+  case "broadcasts":
+  case "records":
+  case "legends":
+  case "hall-of-fame":
+  case "annual-awards":
+  case "world-moments":
+   mountIndustryPage(view,scope,pendingLegends??undefined);
    pendingLegends=null;break;
   case "news":mountIndustryPage(view,scope);break;
   case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"));break;
