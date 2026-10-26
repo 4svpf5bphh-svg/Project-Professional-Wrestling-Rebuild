@@ -58,10 +58,13 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const broadcasts=await tx.query<{show_id:string;promotion_id:string;
    promotion_name:string;show_name:string|null;booking_class:string;
    year:number;week:number;crowd_response:string|number;
-   show_day:number|null}>(`
+   show_day:number|null;human_managed:boolean}>(`
    SELECT c.show_id,c.promotion_id,p.name AS promotion_name,
     d.show_name,d.booking_class,c.year,c.week,
-    c.crowd_response,d.show_day
+    c.crowd_response,d.show_day,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls controller
+     WHERE controller.world_id=c.world_id AND controller.promotion_id=c.promotion_id
+     AND controller.active) AS human_managed
    FROM ppw_completed_shows c
    JOIN ppw_promotions p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id
@@ -120,7 +123,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     showName:s.show_name??(s.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
     bookingClass:s.booking_class,year:s.year,week:s.week,
     day:s.show_day,crowdResponse:Number(s.crowd_response),
-    isYours:s.promotion_id===promotionId
+    isYours:s.promotion_id===promotionId,
+    humanManaged:s.human_managed
    }))
   };
  });
