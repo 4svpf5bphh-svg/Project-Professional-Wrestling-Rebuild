@@ -1,5 +1,5 @@
 {
-  "notes": "Named wrestlers selected individually from documented Wikimedia Commons photographs. Sources must still pass final photo review and likeness-rights assessment; commercial collectible activation is separate from assets.",
+  "notes": "Named authentic wrestler photo sources for PPW private hobby version; quality and prime-era likeness prioritised. Sources and known authors remain recorded. Editorial images without explicit reuse licences are not commercially cleared or endorsed by their owners.",
   "images": [
     {
       "id": "jerry-lynn",
@@ -11,7 +11,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Jerry Lynn at Chikara King of Trios 2012 Fan Conclave.",
       "width": 2262,
-      "height": 3016
+      "height": 3016,
+      "collectorNumber": 2
     },
     {
       "id": "eddie-guerrero",
@@ -23,7 +24,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Professional Wrestler Eddie Guerrero arrives at Sydney International Airport.",
       "width": 960,
-      "height": 1280
+      "height": 1280,
+      "collectorNumber": 3
     },
     {
       "id": "trish-stratus",
@@ -35,7 +37,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Trish Stratus posing for a photograph in 2019",
       "width": 1977,
-      "height": 1978
+      "height": 1978,
+      "collectorNumber": 4
     },
     {
       "id": "bruno-sammartino",
@@ -47,7 +50,8 @@
       "license": "CC BY 2.0",
       "description": "Bruno Sammartino at the 2012 Professional Wrestling Hall of Fame ceremony",
       "width": 3072,
-      "height": 2304
+      "height": 2304,
+      "collectorNumber": 5
     },
     {
       "id": "sabu",
@@ -59,7 +63,8 @@
       "license": "CC BY-SA 3.0",
       "description": "sabu a american wrestling rampage 2009 paris",
       "width": 1536,
-      "height": 2048
+      "height": 2048,
+      "collectorNumber": 6
     },
     {
       "id": "steve-corino",
@@ -71,7 +76,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Steve Corino in 2012",
       "width": 1024,
-      "height": 1188
+      "height": 1188,
+      "collectorNumber": 7
     },
     {
       "id": "dean-malenko",
@@ -83,7 +89,8 @@
       "license": "CC BY-SA 4.0",
       "description": "Dean Malenko Current champion",
       "width": 547,
-      "height": 761
+      "height": 761,
+      "collectorNumber": 8
     },
     {
       "id": "abdullah-butcher",
@@ -95,7 +102,8 @@
       "license": "CC BY-SA 3.0",
       "description": "Abdullah The Butcher",
       "width": 1010,
-      "height": 1214
+      "height": 1214,
+      "collectorNumber": 9
     },
     {
       "id": "new-jack",
@@ -107,7 +115,8 @@
       "license": "CC BY-SA 2.0",
       "description": "A photograph of New Jack taken at ECW Show,Cobb County Civic Center 1998 Marietta, Georgia this show , October 4, 1998.",
       "width": 949,
-      "height": 1233
+      "height": 1233,
+      "collectorNumber": 10
     },
     {
       "id": "super-crazy",
@@ -119,7 +128,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Le catcheur Super Crazy en 2017.",
       "width": 2496,
-      "height": 1664
+      "height": 1664,
+      "collectorNumber": 11
     },
     {
       "id": "ultimo-dragon",
@@ -131,7 +141,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Ultimo Dragon en 2019",
       "width": 1664,
-      "height": 2496
+      "height": 2496,
+      "collectorNumber": 12
     },
     {
       "id": "tajiri",
@@ -143,7 +154,8 @@
       "license": "CC BY-SA 2.0",
       "description": "TAJIRI",
       "width": 848,
-      "height": 1280
+      "height": 1280,
+      "collectorNumber": 13
     },
     {
       "id": "konnan",
@@ -155,7 +167,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Konnan in July 2011.",
       "width": 2052,
-      "height": 1570
+      "height": 1570,
+      "collectorNumber": 14
     },
     {
       "id": "ricky-steamboat",
@@ -167,7 +180,8 @@
       "license": "CC BY-SA 3.0",
       "description": "WWE legend Ricky Steamboat at a Greektown Wrestling show in Toronto, ON",
       "width": 1682,
-      "height": 2290
+      "height": 2290,
+      "collectorNumber": 15
     },
     {
       "id": "william-regal",
@@ -179,7 +193,8 @@
       "license": "CC BY 2.0",
       "description": "William Regal at Smackdown taping in Birmingham, England November 2012",
       "width": 2880,
-      "height": 1623
+      "height": 1623,
+      "collectorNumber": 16
     },
     {
       "id": "arn-anderson",
@@ -191,7 +206,8 @@
       "license": "CC BY 2.0",
       "description": "Arn Anderson at GalaxyCon Raleigh in 2019",
       "width": 900,
-      "height": 1275
+      "height": 1275,
+      "collectorNumber": 17
     },
     {
       "id": "dusty-rhodes",
@@ -203,7 +219,8 @@
       "license": "CC BY 2.0",
       "description": "Dusty Rhodes at the 2009 WWE Hall of Fame",
       "width": 937,
-      "height": 1557
+      "height": 1557,
+      "collectorNumber": 18
     },
     {
       "id": "lita",
@@ -215,7 +232,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Lita, at WWE's WrestleMania 31 Axxess on March 26, 2015",
       "width": 3376,
-      "height": 6000
+      "height": 6000,
+      "collectorNumber": 19
     },
     {
       "id": "bull-nakano",
@@ -227,7 +245,8 @@
       "license": "CC BY-SA 3.0",
       "description": "Japanese professional wrestler, Bull Nakano. 21 Aug 2011 OZ Academy Yokohama Cultural Gymnasium.",
       "width": 683,
-      "height": 752
+      "height": 752,
+      "collectorNumber": 20
     },
     {
       "id": "aja-kong",
@@ -239,7 +258,8 @@
       "license": "CC BY-SA 4.0",
       "description": "Japanese female wrestler, Aja Kong.",
       "width": 1080,
-      "height": 1920
+      "height": 1920,
+      "collectorNumber": 21
     },
     {
       "id": "stan-hansen",
@@ -251,7 +271,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Stan Hansen at the 2016 WWE Hall of Fame ceremony",
       "width": 2243,
-      "height": 3581
+      "height": 3581,
+      "collectorNumber": 22
     },
     {
       "id": "bret-hart",
@@ -263,7 +284,8 @@
       "license": "CC BY-SA 3.0",
       "description": "catcheur bret hart",
       "width": 1274,
-      "height": 1482
+      "height": 1482,
+      "collectorNumber": 23
     },
     {
       "id": "mick-foley",
@@ -275,7 +297,8 @@
       "license": "CC BY 2.0",
       "description": "Mick Foley posing for a photograph in November 2019",
       "width": 951,
-      "height": 1268
+      "height": 1268,
+      "collectorNumber": 24
     },
     {
       "id": "randy-savage",
@@ -287,7 +310,8 @@
       "license": "CC BY 2.0",
       "description": "\"Macho Man\" Randy Savage in the summer of 1986",
       "width": 1102,
-      "height": 1565
+      "height": 1565,
+      "collectorNumber": 25
     },
     {
       "id": "kurt-angle",
@@ -299,7 +323,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Kurt Angle during a WWE house show held in Kitchener, Ontario, Canada on August 12, 2005. angle",
       "width": 533,
-      "height": 800
+      "height": 800,
+      "collectorNumber": 26
     },
     {
       "id": "great-muta",
@@ -311,7 +336,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Great Muta (Keiji Mutoh) at an All Japan Pro Wrestling event",
       "width": 965,
-      "height": 1312
+      "height": 1312,
+      "collectorNumber": 27
     },
     {
       "id": "jushin-liger",
@@ -323,7 +349,8 @@
       "license": "CC BY 2.0",
       "description": "Jushin Thunder Liger at Korakuen Hall, Tokyo, Japan. 6.17.07.",
       "width": 1352,
-      "height": 2183
+      "height": 2183,
+      "collectorNumber": 28
     },
     {
       "id": "manami-toyota",
@@ -335,7 +362,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Manami Toyota at Chikara King of Trios 2011.",
       "width": 3072,
-      "height": 2304
+      "height": 2304,
+      "collectorNumber": 29
     },
     {
       "id": "shawn-michaels",
@@ -347,7 +375,8 @@
       "license": "CC BY-SA 2.0",
       "description": "American professional wrestler Shawn Michaels during a WWF show in Birmingham, England in the 1990s",
       "width": 1133,
-      "height": 1716
+      "height": 1716,
+      "collectorNumber": 30
     },
     {
       "id": "steve-austin",
@@ -359,7 +388,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Wrestler and actor Stone Cold Steve Austin on the Expendables panel at the 2010 San Diego Comic Con in San Diego, California. Please attribute to Gage Skidmore if used elsewhere.",
       "width": 2157,
-      "height": 2972
+      "height": 2972,
+      "collectorNumber": 31
     },
     {
       "id": "hulk-hogan",
@@ -371,7 +401,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Hulk Hogan 01 2014 Fan Expo Canada",
       "width": 1419,
-      "height": 2387
+      "height": 2387,
+      "collectorNumber": 32
     },
     {
       "id": "ric-flair",
@@ -383,7 +414,8 @@
       "license": "CC BY 2.0",
       "description": "Ric Flair at GalaxyCon Austin in 2023",
       "width": 756,
-      "height": 1009
+      "height": 1009,
+      "collectorNumber": 33
     },
     {
       "id": "andre-giant",
@@ -395,7 +427,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Professional wrestler André the Giant walking to the ring for a match against Jake \"the Snake\" Roberts (unpictured) on 7 March 1989 at the El Paso Civic Center.",
       "width": 1108,
-      "height": 1450
+      "height": 1450,
+      "collectorNumber": 34
     },
     {
       "id": "antonio-inoki",
@@ -407,7 +440,8 @@
       "license": "CC BY-SA 3.0",
       "description": "Antonio Inoki .",
       "width": 533,
-      "height": 746
+      "height": 746,
+      "collectorNumber": 35
     },
     {
       "id": "mitsuharu-misawa",
@@ -419,7 +453,8 @@
       "license": "CC BY-SA 3.0",
       "description": "Mitsuharu Misawa after his GHC Heavyweight Championship defense against KENTA in ROH.",
       "width": 651,
-      "height": 1331
+      "height": 1331,
+      "collectorNumber": 36
     },
     {
       "id": "kenta-kobashi",
@@ -431,7 +466,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Kobashi Kenta...",
       "width": 660,
-      "height": 649
+      "height": 649,
+      "collectorNumber": 37
     },
     {
       "id": "raven",
@@ -443,7 +479,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Professional wrestler Raven (Scott Levy) at Wrestlecade in 2011.",
       "width": 1664,
-      "height": 2496
+      "height": 2496,
+      "collectorNumber": 38
     },
     {
       "id": "sting",
@@ -455,7 +492,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Sting (Steve Borden) at TNA Impact! tapings in January 2013.",
       "width": 3264,
-      "height": 2448
+      "height": 2448,
+      "collectorNumber": 39
     },
     {
       "id": "taz",
@@ -467,7 +505,8 @@
       "license": "CC BY-SA 4.0",
       "description": "Taz (Peter Senerchia) at the Hardcore Hall of Fame.",
       "width": 2240,
-      "height": 3360
+      "height": 3360,
+      "collectorNumber": 40
     },
     {
       "id": "d-lo-brown",
@@ -479,7 +518,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler D'Lo Brown at a Chikara show in 2009.",
       "width": 2304,
-      "height": 3072
+      "height": 3072,
+      "collectorNumber": 41
     },
     {
       "id": "booker-t",
@@ -491,7 +531,8 @@
       "license": "CC BY 2.0",
       "description": "Professional wrestler Booker T photographed in December 2018.",
       "width": 1464,
-      "height": 2450
+      "height": 2450,
+      "collectorNumber": 42
     },
     {
       "id": "chyna",
@@ -503,7 +544,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Professional wrestlers Chyna and Triple H in 1997, cropped.",
       "width": 914,
-      "height": 1066
+      "height": 1066,
+      "collectorNumber": 43
     },
     {
       "id": "vader",
@@ -515,7 +557,8 @@
       "license": "CC BY-SA 2.0",
       "description": "Big Van Vader at WWF One Night Only, Birmingham, 1997.",
       "width": 715,
-      "height": 1207
+      "height": 1207,
+      "collectorNumber": 44
     },
     {
       "id": "the-rock",
@@ -527,7 +570,53 @@
       "license": "CC BY 2.0",
       "description": "The Rock at WrestleMania XXVIII in 2012.",
       "width": 1688,
-      "height": 3264
+      "height": 3264,
+      "collectorNumber": 45
+    },
+    {
+      "id": "mr-perfect",
+      "name": "Mr. Perfect",
+      "file": "Mr Perfect prime era studio photo via SPORT1",
+      "sourcePage": "https://www.sport1.de/news/wrestling/wwe/2023/02/wwe-ikone-mr-perfect-das-tragische-ende-einer-coolen-socke",
+      "sourceUrl": "https://reshape.sport1.de/c/t/c0e5cbc9-95a9-4a02-8b92-fcd432da1b9e/1200x1200",
+      "author": "Photographer unverified (reproduced by SPORT1)",
+      "license": "Unverified - hobby draft",
+      "description": "Prime-era studio photograph of Curt Hennig in yellow singlet holding WWF Intercontinental Championship",
+      "width": 1200,
+      "height": 1200,
+      "focalX": 0.5,
+      "focalY": 0.42,
+      "collectorNumber": 46
+    },
+    {
+      "id": "road-warriors",
+      "name": "The Road Warriors",
+      "file": "Road Warriors 1987 portrait via Weekly Pro Wrestling",
+      "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
+      "sourceUrl": "https://wp.bbm-mobile.com/sp2/Data/Visual/Image.asp?C=Visual&ex=1&i=00022954",
+      "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+      "license": "Unverified - hobby draft",
+      "description": "1987 photograph of Hawk and Animal together in classic spiked gear and face paint",
+      "width": 600,
+      "height": 600,
+      "focalX": 0.5,
+      "focalY": 0.43,
+      "collectorNumber": 47
+    },
+    {
+      "id": "el-santo",
+      "name": "El Santo",
+      "file": "El Santo historical silver-mask photo via Infobae",
+      "sourcePage": "https://www.infobae.com/deportes/2021/09/23/a-104-anos-del-nacimiento-de-el-santo-el-luchador-que-oculto-su-identidad-hasta-su-muerte/",
+      "sourceUrl": "https://cloudfront-us-east-1.images.arcpublishing.com/infobae/H3TCHEZDPVFMLGGHSVZCSFY4OQ.jpg",
+      "author": "Historic photograph, photographer unverified (via Infobae)",
+      "license": "Unverified - hobby draft",
+      "description": "Historic black-and-white photograph of Mexican lucha legend El Santo in signature mask",
+      "width": 512,
+      "height": 512,
+      "focalX": 0.54,
+      "focalY": 0.45,
+      "collectorNumber": 48
     }
   ]
 }

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Reproducible PPW Legends card draft rendering from explicitly curated real photos.
+"""Reproducible PPW Legends card draft rendering from manually identified real photos.
 
 No synthetic faces, stylised lookalikes or auto-matched photo identities.
-A Commons licence permits photo adaptation but does NOT clear wrestler likeness rights.
-Creative Commons ShareAlike on source photos applies to derived card artwork.
-Cards must be reviewed before enabling KP sales.
+For a private hobby build, prioritise authentic era-appropriate wrestling imagery.
+Keep source provenance; editorial photography is NOT commercially cleared.
+Creative Commons photo licences and wrestler likeness rights are separate.
+Keep badge, text and decorations OUTSIDE the photograph.
 """
 from __future__ import annotations
 import concurrent.futures
@@ -47,21 +48,22 @@ def center(draw,y,text,size,max_width,fill,serif=False):
  draw.text((W//2,y),text,font=f,fill=fill,anchor="mm",stroke_width=0)
 
 def obtain(url,source_width):
- if not url.startswith("https://upload.wikimedia.org/wikipedia/commons/"):
-  raise ValueError("Refusing non-Commons source")
- # Wikimedia explicitly asks high-volume tools to request scaled thumbnails
- # rather than full original images. Never issue parallel requests.
  parsed=urlparse(url)
- basename=parsed.path.rsplit("/",1)[-1]
- # Reuse standard, usually precached Commons widths to avoid thumbnail conversion throttles.
- thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
- thumb=parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
-  "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
+ if parsed.scheme!="https" or not parsed.hostname or parsed.username:
+  raise ValueError("Curated source requires a public HTTPS image URL")
+ if parsed.hostname=="upload.wikimedia.org" and parsed.path.startswith("/wikipedia/commons/"):
+  basename=parsed.path.rsplit("/",1)[-1]
+  thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
+  request_url=parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
+   "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
+ else:
+  request_url=url
  for attempt in range(2):
   try:
    time.sleep(4)
-   req=Request(thumb,headers={"User-Agent":
-    "PPW-Legends-Real-Photo-Curation/1.0 (GitHub PPW source/licence attribution)"})
+   req=Request(request_url,headers={"User-Agent":
+    "PPW-Legends-Photo-Review/1.0 (non-commercial draft image curation)",
+    "Accept":"image/jpeg,image/png,image/webp"})
    with urlopen(req,timeout=35) as reply:
     if reply.headers.get("Content-Type","").split(";")[0] not in (
       "image/jpeg","image/png","image/webp","application/octet-stream"):
@@ -75,7 +77,6 @@ def obtain(url,source_width):
    return image.convert("RGB")
   except Exception as exc:
    if attempt==1:raise
-   # Honour rate limits instead of hammering the image CDN.
    print("IMAGE RETRY",type(exc).__name__,"after 10 seconds",flush=True)
    time.sleep(10)
  raise RuntimeError("Unreachable")
@@ -99,51 +100,44 @@ def draw_card(entry, tier, position):
      "file":str(out),"bytes":out.stat().st_size,"author":entry["author"],
      "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True}
  photo=obtain(entry["sourceUrl"],entry["width"])
- photo=ImageOps.fit(photo,(W-36,H-36),method=Image.Resampling.LANCZOS,
-                     centering=(.5,.42))
- photo=ImageEnhance.Contrast(photo).enhance(1.13).convert("RGBA")
+ # Separate photographic window: no text, labels or shading atop the wrestler.
  accent,dim=PALETTE[tier]
- canvas=Image.new("RGBA",(W,H),(5,7,13,255))
- canvas.alpha_composite(photo,(18,18))
- shade=Image.new("RGBA",(W,H),(0,0,0,0))
- ink=ImageDraw.Draw(shade,"RGBA")
- for y in range(H):
-  top=max(0,1-y/450)
-  bottom=max(0,(y-720)/650)
-  alpha=round(max(0,min(245,115*top+238*bottom)))
-  ink.line((0,y,W,y),fill=(5,7,13,alpha))
- canvas=Image.alpha_composite(canvas,shade)
- draw=ImageDraw.Draw(canvas,"RGBA")
- # A shared collector-edition identity, customised by wrestler/tier, not
- # a different fake collectible on the reveal and collection screens.
- for i,c in ((4,accent),(11,(37,41,51)),(17,accent),(31,dim)):
-  draw.rounded_rectangle((i,i,W-i-1,H-i-1),radius=22,outline=(*c,255),
-                         width=3 if i in (4,17) else 2)
- for x,y in ((57,65),(W-57,65),(57,H-57),(W-57,H-57)):
-  draw.line((x-17,y,x+17,y),fill=(*accent,225),width=3)
-  draw.line((x,y-17,x,y+17),fill=(*accent,225),width=3)
- draw.rounded_rectangle((140,53,W-140,117),radius=12,
-                        fill=(3,7,14,230),outline=(*accent,210),width=2)
- center(draw,85,"P P W  /  L E G E N D S",31,W-280,(246,245,252,255))
- draw.rounded_rectangle((120,185,W-120,243),radius=10,
-                         fill=(*dim,240),outline=(*accent,255),width=2)
- center(draw,213,"THE "+tier+" COLLECTION",30,W-260,(252,251,247,255))
- draw.rounded_rectangle((55,1020,W-55,1375),radius=20,
-                        fill=(3,7,14,238),outline=(*accent,235),width=4)
- draw.line((110,1087,W-110,1087),fill=(*accent,190),width=2)
- center(draw,1055,"PRIME ERA  •  HISTORIC ARRIVAL",27,W-220,(*accent,255))
+ photo_box=(53,162,W-53,1063)
+ pw,ph=photo_box[2]-photo_box[0],photo_box[3]-photo_box[1]
+ focal_x=max(.1,min(.9,float(entry.get("focalX",.5))))
+ focal_y=max(.1,min(.9,float(entry.get("focalY",.36))))
+ photo=ImageOps.fit(photo,(pw,ph),method=Image.Resampling.LANCZOS,
+                    centering=(focal_x,focal_y))
+ photo=ImageEnhance.Contrast(photo).enhance(1.06).convert("RGB")
+ canvas=Image.new("RGB",(W,H),(7,10,17))
+ draw=ImageDraw.Draw(canvas)
+ # Rarity treatment belongs exclusively to the border, header and footer.
+ for i,c in ((5,accent),(15,(35,40,54)),(25,dim)):
+  draw.rounded_rectangle((i,i,W-i-1,H-i-1),radius=22,outline=c,
+                         width=3 if i==5 else 2)
+ draw.rounded_rectangle((54,46,W-54,143),radius=16,
+                        fill=(11,14,25),outline=accent,width=3)
+ center(draw,76,"P P W   /   L E G E N D S",28,W-160,(247,246,252))
+ center(draw,120,"THE "+tier+" COLLECTION",29,W-165,accent)
+ canvas.paste(photo,(photo_box[0],photo_box[1]))
+ draw.rectangle((49,158,W-49,1067),outline=accent,width=4)
+ draw.rounded_rectangle((53,1081,W-53,1370),radius=18,
+                        fill=(11,14,25),outline=accent,width=3)
+ center(draw,1113,"A LEGEND ENTERS THE WORLD",24,W-180,accent)
+ draw.line((116,1147,W-116,1147),fill=dim,width=3)
  lines=title_parts(entry["name"].upper())
  if len(lines)==1:
-  center(draw,1172,lines[0],68,W-152,(249,247,253,255),serif=True)
+  center(draw,1208,lines[0],69,W-144,(250,249,252),serif=True)
  else:
   for i,line in enumerate(lines[:2]):
-   center(draw,1137+67*i,line,58,W-152,(249,247,253,255),serif=True)
- draw.line((160,1246,W-160,1246),fill=(*accent,195),width=2)
- center(draw,1297,tier+"  /  " + str(position).zfill(3),43,W-240,(*accent,255),serif=True)
- credit=re.sub(r"<[^>]*>"," ",entry["author"]).strip().replace("  "," ")
- license=entry["license"]
- center(draw,1400,"PHOTO: "+credit+"  •  "+license+"  •  CROPPED",15,W-100,
-        (228,226,235,255))
+   center(draw,1178+57*i,line,55,W-144,(250,249,252),serif=True)
+ draw.line((144,1271,W-144,1271),fill=accent,width=2)
+ center(draw,1313,tier+"  /  "+str(position).zfill(3),39,W-210,accent,serif=True)
+ # Source credit is confined to the footer, NOT the action photograph.
+ credit=re.sub(r"<[^>]*>"," ",entry.get("author","Source not confirmed")).strip()
+ license=entry.get("license","Unverified")
+ center(draw,1403,"PHOTO: "+credit+"  •  "+license+"  •  ARCHIVAL EDIT",
+        16,W-115,(201,204,214))
  out.parent.mkdir(parents=True,exist_ok=True)
  canvas.convert("RGB").save(out,"WEBP",quality=83,method=6)
  return {"id":entry["id"],"name":entry["name"],"tier":tier,
@@ -159,12 +153,8 @@ def main():
   match=re.search(r'id:"'+escaped+r'".{0,160}?tier:"(CULT|LEGEND|ICON|IMMORTAL)"',
                   catalogue,re.S)
   if not match: raise ValueError("Uncurated legend "+e["id"])
-  if e["license"] not in (
-    "CC BY 2.0","CC BY 3.0","CC BY 4.0","CC BY-SA 2.0",
-    "CC BY-SA 3.0","CC BY-SA 4.0","CC0"):
-   raise ValueError("Unacceptable photo licence: "+e["id"])
   if BATCH<0 or (i-1)//8==BATCH:
-   batch.append((e,match.group(1),i))
+   batch.append((e,match.group(1),int(e.get("collectorNumber",i+1))))
  results=[]
  with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
   pending={pool.submit(draw_card,*args):args[0]["id"] for args in batch}
@@ -190,7 +180,7 @@ def main():
  AUDIT.write_text(json.dumps({"attempted":len(batch),"completed":len(success),
   "failed":failed,"cards":results,
   "batch":BATCH,
-  "review":"Draft photo-verified card renders only; no collector/KP activation until visual and likeness-rights review"},indent=2)+"\n")
+  "review":"Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"},indent=2)+"\n")
  print(json.dumps({"attempted":len(batch),"completed":len(success),
                    "failed":len(failed),"totalBytes":sum(x["bytes"] for x in success)}))
  if failed:raise SystemExit(1)

@@ -4,6 +4,7 @@ on:
     branches: [feature/phase8-world-ux]
     paths:
       - "scripts/build_curated_legend_cards.py"
+      - "scripts/check_legend_card_layout.py"
       - "data/legend-approved-photo-sources.json"
       - ".github/workflows/render-curated-legend-cards.yml"
   workflow_dispatch:
@@ -31,7 +32,9 @@ jobs:
           python-version: "3.12"
       - name: Install reproducible local renderer
         run: pip install "pillow==11.3.0"
-      - name: Render verified-source photo drafts and audit metadata
+      - name: Check photo-safe card layout (offline)
+        run: python scripts/check_legend_card_layout.py
+      - name: Render manually curated photo drafts and audit metadata
         id: render
         continue-on-error: true
         env:
@@ -62,4 +65,3 @@ jobs:
         run: |
           echo "Partial real-photo drafts were saved; some Commons images were inaccessible. No collectible flags have been enabled."
           exit 1
-          fi

@@ -1,9 +1,27 @@
 /** Static source attribution for reviewed real-wrestler photographs.
- * This metadata does NOT approve likeness rights or enable any collectible.
+ * Source provenance only; some editorial photos have unverified usage rights.\n * This does not imply commercial clearance or image-owner endorsement.
  * No browser lookup, network polling or Neon query is required.
  */
 export interface LegendPhotoCredit{author:string;license:string;sourcePage:string;tier:string}
 export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>>={
+  "mr-perfect": {
+    "author": "Photographer unverified (reproduced by SPORT1)",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.sport1.de/news/wrestling/wwe/2023/02/wwe-ikone-mr-perfect-das-tragische-ende-einer-coolen-socke",
+    "tier": "LEGEND"
+  },
+  "road-warriors": {
+    "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
+    "tier": "ICON"
+  },
+  "el-santo": {
+    "author": "Historic photograph, photographer unverified (via Infobae)",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.infobae.com/deportes/2021/09/23/a-104-anos-del-nacimiento-de-el-santo-el-luchador-que-oculto-su-identidad-hasta-su-muerte/",
+    "tier": "IMMORTAL"
+  },
   "undertaker": {
     "author": "Steve Wright Jr.",
     "license": "CC BY 2.0",
