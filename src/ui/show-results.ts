@@ -4,6 +4,7 @@
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
@@ -43,6 +44,38 @@ function entryIcon(entry:ShowResultEntry){
  if(entry.outcome==="REFUSED")return "×";
  if(entry.outcome==="INTERRUPTED")return "↯";
  return "✦";
+}
+/** The results show audited portraits; the running-order editor stays small. */
+function matchPortraits(entry:ShowResultEntry):HTMLElement|null{
+ const sides=entry.matchContext?.sideParticipants;
+ if(entry.type!=="MATCH"||!sides?.length)return null;
+ const strip=node("div","ppw-result-lineup");
+ strip.setAttribute("aria-label","Match competitors");
+ for(const [index,side] of sides.slice(0,4).entries()){
+  if(index)strip.append(node("span","ppw-result-vs","VS"));
+  const group=node("div","ppw-result-team");
+  for(const person of side.slice(0,3)){
+   const competitor=node("div","ppw-result-competitor");
+   const photoWell=node("span","ppw-result-photo");
+   const fallback=node("span","ppw-result-photo-fallback",
+    person.name.trim().split(" ").slice(0,2).map(x=>x[0]?.toUpperCase()??"").join(""));
+   photoWell.append(fallback);
+   const photo=createWrestlerPortrait(person.name,140,person.personId);
+   if(photo){
+    photo.addEventListener("load",()=>{fallback.hidden=true;});
+    photo.addEventListener("error",()=>{photo.remove();fallback.hidden=false;});
+    photoWell.append(photo);
+   }
+   competitor.append(photoWell,node("span","ppw-result-competitor-name",person.name));
+   group.append(competitor);
+  }
+  if(side.length>3)group.append(node("span","ppw-result-more",
+   "+"+(side.length-3)+" more"));
+  strip.append(group);
+ }
+ if(sides.length>4)strip.append(node("span","ppw-result-more",
+  "+"+(sides.length-4)+" entrants / sides"));
+ return strip;
 }
 /** Grounded bridges make the card read like one event when Groq is unavailable.
  * These use only completed card facts, never invent a wrestler's actions. */
@@ -257,7 +290,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
    append(meta,node("span","ppw-result-flag ppw-flag-medical","MEDICAL UPDATE"));
   const trail=node("span","ppw-result-trail",
    "CARD "+String(entry.position+1)+"  ·  "+finishLabel(entry));
-  append(summary,meta,heading,trail);
+  append(summary,meta,heading);
+  const portraits=matchPortraits(entry);
+  if(portraits)summary.append(portraits);
+  summary.append(trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
   const narrative=node("div","ppw-ringside-slot");
@@ -307,16 +343,47 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
  const report=show.staffReport;
- const office=report?node("section","ppw-staff-show-report"):null;
- if(office&&report){
-  append(office,node("span","ppw-eyebrow","PPW / STAFF OFFICE"),
-   node("h2","",report.reporter.toUpperCase()+" — ROAD AGENT'S REPORT"),
-   node("h3","",report.headline),
-   node("p","",report.praise),
-   node("p","",report.concern),
-   node("p","",report.recommendation));
-  const strong=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
-  if(strong)office.append(node("p","ppw-muted","Standout bout: "+strong.headline));
+ const management=node("section","ppw-post-show-brief");
+ management.append(node("span","ppw-eyebrow","PPW / MANAGEMENT"),
+  node("h2","","POST-SHOW MANAGEMENT BRIEF"));
+ const priorities:{label:string;message:string}[]=[];
+ const medical=show.entries.flatMap(entry=>entry.fallout?.injuries??[]);
+ if(medical.length){
+  const names=[...new Set(medical.map(p=>p.personName))];
+  priorities.push({label:"MEDICAL",message:names.join(", ")+
+   (names.length===1?" needs":" need")+" clearance before being booked again."});
+ }
+ const titleChange=show.entries.find(entry=>entry.fallout?.title?.changed)?.fallout?.title;
+ if(titleChange)priorities.push({label:"CHAMPIONSHIPS",message:
+  titleChange.winnerName+" is the new "+titleChange.name+" holder. Review the next defence."});
+ const cooling=show.entries.find(entry=>entry.fallout?.programmeSignal===
+  "COOL_PROGRAMME"||entry.fallout?.programmeSignal==="PROGRAMME_REPETITION");
+ if(cooling)priorities.push({label:"CREATIVE",message:
+  "A rivalry may need a different next chapter after "+cooling.headline+"."});
+ if(show.gorillaLog?.incidents.length)priorities.push({label:"PRODUCTION",message:
+  show.gorillaLog.incidents.length+" curtain decision"+
+  (show.gorillaLog.incidents.length===1?"":"s")+
+  " recorded. Review the Gorilla log before the next event."});
+ const highPriority=priorities.slice(0,3);
+ if(highPriority.length){
+  const items=node("div","ppw-post-show-priorities");
+  for(const priority of highPriority){
+   const item=node("article","ppw-post-show-priority");
+   item.append(node("strong","",priority.label),node("p","",priority.message));
+   items.append(item);
+  }
+  management.append(items);
+ }else management.append(node("p","ppw-muted",
+  "No urgent medical, title or production decisions were recorded."));
+ if(report){
+  const office=node("div","ppw-post-show-road-agent");
+  office.append(node("h3","",report.reporter+" · Road Agent's Report"),
+   node("strong","",report.headline),node("p","",report.praise),
+   node("p","",report.concern),node("p","",report.recommendation));
+  const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
+  if(strongest)office.append(node("small","ppw-muted",
+   "Standout: "+strongest.headline));
+  management.append(office);
  }
  const gorilla=show.gorillaLog;
  const position=gorilla?node("section","ppw-staff-show-report ppw-gorilla-log"):null;
@@ -358,12 +425,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
-  ...(reactions.length?[noise]:[]),...(office?[office]:[]),
+  ...(reactions.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);
  const steps=node("nav","ppw-results-steps");
  steps.setAttribute("aria-label","Results chapters");
  const pages=[headlines,full,after];
- const labels=["Headlines & Ringside","The Full Show","After the Bell"];
+ const labels=["Headlines & Ringside","The Full Show","Post-show Brief"];
  const tabButtons:HTMLButtonElement[]=[];
  const goButton=(label:string,dest:0|1|2)=>{
   const button=node("button","ppw-results-next",label) as HTMLButtonElement;
@@ -374,7 +441,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
   button.className="ppw-results-step";tabButtons.push(button);steps.append(button);
  }
  headlines.append(goButton("Read the Full Show",1));
- full.append(goButton("Read After the Bell",2));
+ full.append(goButton("Read Post-show Brief",2));
  after.append(goButton("Return to Headlines",0));
  root.replaceChildren(steps,...pages);
  changePage=(index:0|1|2)=>{
