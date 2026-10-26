@@ -48,5 +48,5 @@ test("iPhone can read another human's completed results without viewing any unbo
  expect(calls).toEqual(["industry","publicResults"]);
  await page.getByRole("button",{name:"← Back to Industry"}).click();
  await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
- expect(calls).toEqual(["industry","publicResults"],"Back reuses the existing Industry response");
+ expect(calls).toEqual(["industry","publicResults"]); // Reuse the already loaded Industry state.
 });
