@@ -28,9 +28,8 @@ test("World record book shows earned men/women rankings and searchable wrestler 
   if(req.method==="worldCareerSearch")expect(req.search).toBe("Ali");
   return route.fulfill({json:responses[req.method]??overview});
  });
- await page.goto("/#/industry");
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
- await page.getByRole("button",{name:"Record book"}).click();
+ await page.goto("/#/records");
+ await expect(page.getByRole("heading",{name:"Record Book"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"The Record Books"})).toBeVisible();
  await page.getByRole("button",{name:"World Rankings"}).click();
  await expect(page.getByText("Bob",{exact:true})).toBeVisible();

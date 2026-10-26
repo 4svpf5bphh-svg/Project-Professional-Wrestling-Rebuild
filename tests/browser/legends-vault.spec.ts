@@ -37,10 +37,8 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
   }
   return route.fulfill({json:{}});
  });
- await page.goto("/#/industry");
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
- expect(called).toEqual(["industry"]);
- await page.getByRole("button",{name:"Legends Vault"}).click();
+ await page.goto("/#/legends");
+ await expect(page.getByRole("heading",{name:"Legends Vault"})).toBeVisible();
  await expect(page.getByRole("dialog",{name:"Legend unlocked: Eddie Guerrero"})).toBeVisible();
  await expect(page.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
  await page.getByRole("button",{name:"Skip reveal"}).click();

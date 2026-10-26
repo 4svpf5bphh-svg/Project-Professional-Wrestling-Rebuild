@@ -747,7 +747,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
  // Deep link from the completed weekly show / operator desk. No polling;
  // the Vault is read once and the unseen one-time reveal appears immediately.
  if(active==="LEGENDS")void loadLegends();
- if(active==="OFFICIAL"||active==="DIRT")void loadNews();
+ if(route==="#/news")void loadNews();
  if(active==="HERITAGE")void loadHeritage();
  if(active==="RECORDS")void loadRecords();
  return {refresh:load};

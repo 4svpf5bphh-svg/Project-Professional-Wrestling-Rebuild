@@ -55,6 +55,9 @@ test("official stories describe events while dirt sheet claims remain explicitly
   "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
  assert.ok(rumour.some(x=>/not a report from backstage/.test(x.summary)));
+ assert.ok(out.some(x=>/replay queue/.test(x.summary)));
+ assert.ok(out.every(x=>!x.summary.includes("/100")),
+  "The newspaper should not sound like a dashboard or disclose sim scales");
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));
  assert.ok(!JSON.stringify(out).includes("REFUSED"));
 });

@@ -94,6 +94,10 @@ export function chooseWeeklyAwards(bouts:readonly Bout[],angles:readonly Angle[]
  }
  return results;
 }
+/** Short, personality-led newsroom copy built only from certified public facts.
+ * Smark flavour is editorial; it never invents sources, backstage leaks,
+ * booking decisions or a result that the player did not author.
+ */
 export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  shows:readonly Broadcast[],changes:readonly TitleChange[],
  names:ReadonlyMap<string,string>):WorldNewsStory[]{
@@ -108,56 +112,81 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  for(const c of [...changes].sort((a,b)=>byId(a,b))){
   add("OFFICIAL",c,"title:"+c.show_id+":"+c.slot_id,
    c.title_name+" changes hands at "+c.show_name,
-   "The title change was confirmed in the completed results.", "TITLE");
+   "A new name enters the "+c.title_name+" lineage after "+c.show_name+
+   ". The result is in the books; the rest of the division now has its next chapter to write.",
+   "TITLE");
  }
- for(const a of [...angles].filter(x=>x.authored_outcome==="HAPPENS"&&
-  significant.has(x.kind)).sort((a,b)=>{
-   return impact(a.kind)-impact(b.kind)||
-    Number(b.angle_crowd)-Number(a.angle_crowd)||byId(a,b);
-  }).slice(0,5)){
-  const cast=storyPeople(a.story_json).map(id=>names.get(id)).filter(
+ const angleHeadlines:Record<string,(person:string,show:string)=>string>={
+  TURN:(p,s)=>p+" changes course at "+s,
+  ATTACK:(p,s)=>p+" sparks trouble at "+s,
+  POST_MATCH_ASSAULT:(p,s)=>p+" makes a statement at "+s,
+  DEBUT:(p,s)=>p+" arrives at "+s,
+  STABLE_EXIT:(p,s)=>p+" parts company at "+s,
+  STABLE_INVITATION:(p,s)=>p+" gets a faction invitation at "+s,
+  RESCUE:(p,s)=>p+" makes the save at "+s,
+  CONFRONTATION:(p,s)=>p+" gets face to face at "+s,
+  CHALLENGE:(p,s)=>p+" issues a challenge at "+s
+ };
+ for(const s of [...angles].filter(x=>x.authored_outcome==="HAPPENS"&&
+  significant.has(x.kind)).sort((a,b)=>impact(a.kind)-impact(b.kind)||
+   Number(b.angle_crowd)-Number(a.angle_crowd)||byId(a,b)).slice(0,5)){
+  const cast=storyPeople(s.story_json).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
-  add("OFFICIAL",a,"angle:"+a.show_id+":"+a.slot_id,
-   (cast.length?cast.join(" and ")+": ":"")+name(a.kind)+" at "+a.show_name,
-   "The "+name(a.kind).toLowerCase()+" took place on the completed broadcast.", "ANGLE");
+  const lead=cast[0]??"A familiar face",reaction=Number(s.angle_crowd);
+  add("OFFICIAL",s,"angle:"+s.show_id+":"+s.slot_id,
+   (angleHeadlines[s.kind]??((p,t)=>p+" makes headlines at "+t))(lead,s.show_name),
+   "The "+name(s.kind).toLowerCase()+" happened on "+s.promotion_name+
+   "'s "+s.show_name+(cast.length>1?", with "+cast.slice(1).join(", ")+" also involved":"")+
+   ". "+(reaction>=80?"The crowd gave it plenty back. Now that's how you get people talking.":
+    "The bell may have moved on, but that on-screen moment is part of the story now."),
+   "ANGLE");
  }
- for(const b of [...bouts].filter(x=>x.rating_stars!==null&&
+ for(const s of [...bouts].filter(x=>x.rating_stars!==null&&
   Number(x.rating_stars)>=4).sort((a,b)=>Number(b.rating_stars)-
   Number(a.rating_stars)||byId(a,b)).slice(0,3)){
-  const cast=participants(b.payload).map(id=>names.get(id)).filter(
+  const cast=participants(s.payload).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
-  add("OFFICIAL",b,"match:"+b.show_id+":"+b.slot_id,
-   (cast.length?cast.join(" vs ")+" ":"")+"steals the show",
-   "Awarded "+Number(b.rating_stars).toFixed(2)+" stars in the official match report at "+
-    b.show_name+".","MATCH");
+  const opposition=cast.length>=2?cast.join(" vs "):"A standout contest";
+  add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,
+   opposition+" steals the show at "+s.show_name,
+   s.show_name+" delivered a "+Number(s.rating_stars).toFixed(2)+
+   "-star match for "+s.promotion_name+". One for the replay queue; performances like that do the talking.",
+   "MATCH");
  }
  for(const s of shows.filter(s=>s.booking_class==="PREMIUM")
   .sort((a,b)=>Number(b.crowd_response)-Number(a.crowd_response)||
    a.show_id.localeCompare(b.show_id)).slice(0,2)){
-  add("OFFICIAL",s,"event:"+s.show_id,s.show_name+" makes headlines",
-   s.promotion_name+" presented a major completed event to a crowd response of "+
-    Math.round(Number(s.crowd_response))+"/100.","EVENT");
+  add("OFFICIAL",s,"event:"+s.show_id,s.show_name+" takes centre stage",
+   s.promotion_name+" staged its premium event, "+s.show_name+
+   ". "+(Number(s.crowd_response)>=75?
+    "The audience responded to the occasion; big nights are supposed to feel like big nights.":
+    "The crowd response was more restrained than the billing, leaving plenty to prove next time."),
+   "EVENT");
  }
- // The rumour mill must be explicitly framed as public-result analysis,
- // NEVER as leaked information or a fabricated confidential conversation.
+ // The rumour mill analyses public outcomes. It has no inside sources,
+ // private contracts, manager conversations or knowledge of future cards.
  const rough=shows.filter(s=>Number(s.crowd_response)<50).sort((a,b)=>
   Number(a.crowd_response)-Number(b.crowd_response)||
   a.show_id.localeCompare(b.show_id))[0];
  if(rough)add("DIRT",rough,"crowd:"+rough.show_id,
-  "Questions for "+rough.promotion_name+" after a rough night",
-  rough.show_name+" drew a "+Math.round(Number(rough.crowd_response))+
-   "/100 crowd response. Is a creative shake-up coming? That's speculation, not a report from backstage. "+
-   "The rumour mill has seen less smoke from a barbecue.","CROWD");
- const hot=angles.filter(a=>a.authored_outcome==="HAPPENS"&&
-  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(a.kind)&&
-  Number(a.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
+  "A rough night puts "+rough.promotion_name+" under the microscope",
+  rough.show_name+" struggled to win over its audience. Will the promotion change direction?"+
+  " That's speculation, not a report from backstage. But the next card might tell us plenty.",
+  "CROWD");
+ const hot=angles.filter(s=>s.authored_outcome==="HAPPENS"&&
+  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(s.kind)&&
+  Number(s.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
   Number(a.angle_crowd)||byId(a,b))[0];
- if(hot)add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
-  "What follows "+name(hot.kind).toLowerCase()+" at "+hot.promotion_name+"?",
-  "The completed "+hot.show_name+" broadcast featured a "+name(hot.kind).toLowerCase()+
-   " with a "+Math.round(Number(hot.angle_crowd))+
-   "/100 reaction. Talk of the next big programme is speculation; nobody has confirmed any plans. "+
-   "But you can practically hear the fantasy bookers warming up.","ANGLE");
+ if(hot){
+  const cast=storyPeople(hot.story_json).map(id=>names.get(id)).filter(
+   (x):x is string=>!!x),star=cast[0]??"Someone";
+  add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
+   "The fallout from "+star+"'s "+name(hot.kind).toLowerCase(),
+   hot.promotion_name+" has given the fans something to chew over after "+
+   hot.show_name+". There could be a new rivalry in it, or it could go somewhere entirely different."+
+   " That's the fun of wrestling: the card is still the booker's to write.",
+   "ANGLE");
+ }
  return [...official.slice(0,8),...dirt.slice(0,2)];
 }
 export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:number,week:number){
