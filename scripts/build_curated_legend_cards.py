@@ -21,6 +21,7 @@ from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageEnhance
 
 SOURCE = Path("data/legend-approved-photo-sources.json")
 DEST = Path("apps/web/public/assets/legends")
+PHOTO_CACHE = Path("data/.legend-photo-cache")
 BATCH = int(os.environ.get("PPW_LEGEND_BATCH","-1"))
 AUDIT = Path("data/legend-render-audit"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".json")
 PREVIEW = Path("data/legend-card-contact-sheet"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".webp")
@@ -47,7 +48,13 @@ def center(draw,y,text,size,max_width,fill,serif=False):
  f=fit_text(draw,text,max_width,size,serif=serif)
  draw.text((W//2,y),text,font=f,fill=fill,anchor="mm",stroke_width=0)
 
-def obtain(url,source_width):
+def obtain(url,source_width,identity):
+ PHOTO_CACHE.mkdir(parents=True,exist_ok=True)
+ cached=PHOTO_CACHE/(identity+".webp")
+ if cached.is_file():
+  with Image.open(cached) as master:
+   master.load()
+   if min(master.size)>=500:return master.convert("RGB")
  parsed=urlparse(url)
  if parsed.scheme!="https" or not parsed.hostname or parsed.username:
   raise ValueError("Curated source requires a public HTTPS image URL")
@@ -74,7 +81,9 @@ def obtain(url,source_width):
    image.load()
    if image.width<500 or image.height<500:
     raise ValueError("Insufficient source image resolution")
-   return image.convert("RGB")
+   photo=image.convert("RGB")
+   photo.save(cached,"WEBP",quality=91,method=6)
+   return photo
   except Exception as exc:
    if attempt==1:raise
    print("IMAGE RETRY",type(exc).__name__,"after 10 seconds",flush=True)
@@ -99,7 +108,7 @@ def draw_card(entry, tier, position):
     return {"id":entry["id"],"name":entry["name"],"tier":tier,
      "file":str(out),"bytes":out.stat().st_size,"author":entry["author"],
      "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True}
- photo=obtain(entry["sourceUrl"],entry["width"])
+ photo=obtain(entry["sourceUrl"],entry["width"],entry["id"])
  # Separate photographic window: no text, labels or shading atop the wrestler.
  accent,dim=PALETTE[tier]
  photo_box=(53,162,W-53,1063)

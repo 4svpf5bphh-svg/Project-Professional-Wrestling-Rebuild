@@ -1,10 +1,11 @@
-name: Render real-photo Legends card drafts (development only)
+name: Render authentic Legends artwork (development only)
 on:
   push:
     branches: [feature/phase8-world-ux]
     paths:
       - "scripts/build_curated_legend_cards.py"
-      - "scripts/check_legend_card_layout.py"
+      - "scripts/build_legend_portraits.py"
+      - "scripts/check_legend_portraits.py"
       - "data/legend-approved-photo-sources.json"
       - ".github/workflows/render-curated-legend-cards.yml"
   workflow_dispatch:
@@ -12,57 +13,59 @@ permissions:
   contents: write
 concurrency:
   group: legend-draft-art-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
-  cards:
+  artwork:
     if: github.ref == 'refs/heads/feature/phase8-world-ux'
     runs-on: ubuntu-latest
-    timeout-minutes: 17
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        batch: [0, 1, 2, 3, 4, 5]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install reproducible local renderer
-        run: pip install "pillow==11.3.0"
-      - name: Check photo-safe card layout (offline)
-        run: python scripts/check_legend_card_layout.py
-      - name: Render manually curated photo drafts and audit metadata
-        id: render
+      - run: pip install "pillow==11.3.0"
+      - name: Test card safety and photo-derived portrait pixels
+        run: |
+          python scripts/check_legend_card_layout.py
+          python scripts/check_legend_portraits.py
+      - name: Reuse originals without repeatedly downloading photo masters
+        uses: actions/cache@v4
+        with:
+          path: data/.legend-photo-cache
+          key: legend-photo-masters-${{ hashFiles('data/legend-approved-photo-sources.json') }}
+          restore-keys: |
+            legend-photo-masters-
+      - name: Resume any missing authentic card drafts
+        id: cards
         continue-on-error: true
-        env:
-          PPW_LEGEND_BATCH: ${{ matrix.batch }}
         run: python scripts/build_curated_legend_cards.py
-      - name: Retain the contact sheet for manual visual review
+      - name: Generate ALL available portrait variants and exact asset registry
+        run: python scripts/build_legend_portraits.py
+      - name: Save visual review sheet and exact success/failure audits
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: real-photo-legends-batch-${{ matrix.batch }}-review
+          name: legend-photo-review
           path: |
-            data/legend-card-contact-sheet-batch-${{ matrix.batch }}.webp
-            data/legend-render-audit-batch-${{ matrix.batch }}.json
+            data/legend-card-contact-sheet.webp
+            data/legend-render-audit.json
+            data/legend-portrait-audit.json
           if-no-files-found: warn
           retention-days: 30
-      - name: Stage source-backed card draft assets only on development branch
+      - name: Commit successful artwork and portrait inventory to draft branch only
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web/public/assets/legends data/legend-render-audit-batch-${{ matrix.batch }}.json
+          git add apps/web/public/assets/legends src/ui/legend-portrait-assets.ts data/legend-render-audit.json data/legend-portrait-audit.json
           if ! git diff --cached --quiet; then
-            git commit -m "assets(legends): render actual wrestler-photo card drafts for review"
+            git commit -m "assets(legends): cache originals and restore static cards plus portraits"
             git pull --rebase origin feature/phase8-world-ux
             git push origin HEAD:feature/phase8-world-ux
           fi
-      - name: Surface partial artwork until Wikimedia source access succeeds
-        if: steps.render.outcome == 'failure'
+      - name: Flag source failures but preserve finished artwork
+        if: steps.cards.outcome == 'failure'
         run: |
-          echo "Partial real-photo drafts were saved; some Commons images were inaccessible. No collectible flags have been enabled."
+          echo "Outstanding photo sources are listed in the audit. No production assets or collectibles were activated."
           exit 1
