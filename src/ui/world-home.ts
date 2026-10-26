@@ -230,13 +230,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "WORLD RANK · Standings",
     "See where your promotion stands by broadcast reach.",port.industry,"◆"));
    root.append(dashboard);
-   const newsStrip=el("section","ppw-home-news-strip");
-   newsStrip.setAttribute("aria-label","World headlines and weekly awards");
-   newsStrip.append(control("Official News & Dirt Sheets",
-    "The major headlines and what insiders are whispering.",port.news??port.industry,"✦"),
-    control("Match & Angle of the Week",
-     "The standout moments from across the shared World.",port.news??port.industry,"★"));
-   root.append(newsStrip);
+   // News, weekly awards and the rumour mill already live under the persistent
+   // News tab. Do not add two Home shortcuts pointing to that same screen.
   }
   if(port.manualAdvance&&promotion){
    const controls=el("section","ppw-manual-test");
