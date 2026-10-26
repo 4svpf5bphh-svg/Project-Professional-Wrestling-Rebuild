@@ -140,3 +140,33 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  border-color:#f5bb70;color:#ffdcaa}
 .ppw-legend-tier[hidden],.ppw-legend-tile[hidden],.ppw-legend-filter-empty[hidden]{display:none!important}
 .ppw-legend-filter-empty{padding:1.1rem;text-align:center;font-size:.9rem;opacity:.75}
+
+
+/* The same collectible image is used for the reveal, framed by tier-specific
+   theatrical lighting. Never place rarity labels over the actual photograph. */
+.ppw-legend-reveal[data-tier="CULT"]{
+ background:radial-gradient(ellipse at 50% 43%,#21465a 0%,#101b29 48%,#030609 95%)}
+.ppw-legend-reveal[data-tier="LEGEND"]{
+ background:radial-gradient(ellipse at 50% 38%,#573913 0%,#20170d 50%,#030303 94%)}
+.ppw-legend-reveal[data-tier="ICON"]{
+ background:radial-gradient(ellipse at 50% 35%,#155272 0%,#10222e 48%,#02080c 96%)}
+.ppw-legend-reveal[data-tier="CULT"] .ppw-legend-reveal-tier{letter-spacing:.19em}
+.ppw-legend-reveal[data-tier="LEGEND"] .ppw-legend-reveal-tier{
+ color:#f8d995;text-shadow:0 0 25px rgba(248,204,120,.4)}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-reveal-tier{
+ color:#96e5ff;text-shadow:0 0 28px rgba(55,191,255,.65)}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-reveal-tier{
+ color:#e1baff;text-shadow:0 0 35px rgba(183,105,250,.85)}
+.ppw-legend-reveal:not(.ppw-legend-card-viewer) .ppw-legend-card-art:not(.ppw-undertaker-card){
+ width:min(67vw,295px);border-radius:8px;
+ box-shadow:0 20px 55px rgba(0,0,0,.7),0 0 38px color-mix(in srgb,var(--tier),transparent 63%);
+ animation:ppw-legend-card-arrive .75s cubic-bezier(.12,.88,.25,1) both}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-card-art:not(.ppw-undertaker-card){
+ animation-duration:1.1s}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-card-art:not(.ppw-undertaker-card){
+ animation-duration:1.4s}
+@keyframes ppw-legend-card-arrive{
+ from{opacity:0;transform:translateY(22px) scale(.9)}
+ to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+ .ppw-legend-reveal .ppw-legend-card-art{animation:none!important}}

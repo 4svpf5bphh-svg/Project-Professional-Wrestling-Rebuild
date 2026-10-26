@@ -74,6 +74,22 @@ def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AU
    "missing":[r["id"] for r in results if r["status"]=="missing-card"],
    "failed":[r for r in results if r["status"]=="failed"],"details":results}
  Path(audit).write_text(json.dumps(report,indent=2)+"\n")
+ # Offline thumbnail sheet is review evidence, not automatic art approval.
+ if urls:
+  from PIL import ImageDraw
+  cellw,cellh=180,260
+  names=sorted(urls.items())
+  sheet=Image.new("RGB",(cellw*6,cellh*((len(names)+5)//6)),(16,19,30))
+  draw=ImageDraw.Draw(sheet)
+  for n,(person_id,url) in enumerate(names):
+   path=Path(root)/url.rsplit("/",1)[-1]
+   with Image.open(path) as item:
+    small=item.convert("RGB").resize((170,221),Image.Resampling.LANCZOS)
+   x=(n%6)*cellw+5;y=(n//6)*cellh+5
+   sheet.paste(small,(x,y))
+   draw.text((x,y+224),person_id[7:29],fill=(235,238,245))
+  sheet.save(Path(audit).with_name("legend-portrait-contact-sheet.webp"),"WEBP",quality=82)
+
  print(json.dumps({k:report[k] for k in ("cardsFound","portraitsRegistered","missing","failed")}))
  return report
 

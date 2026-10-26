@@ -51,6 +51,7 @@ jobs:
             data/legend-card-contact-sheet.webp
             data/legend-render-audit.json
             data/legend-portrait-audit.json
+            data/legend-portrait-contact-sheet.webp
           if-no-files-found: warn
           retention-days: 30
       - name: Commit successful artwork and portrait inventory to draft branch only
