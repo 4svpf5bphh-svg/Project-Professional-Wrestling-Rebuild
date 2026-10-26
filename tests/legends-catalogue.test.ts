@@ -45,7 +45,8 @@ test("four curated tiers, real team and women's legends, authentic named cards n
   x.author.trim().length>2&&x.sourcePage.startsWith("https://")));
  for(const id of ["mr-perfect","road-warriors","el-santo"]){
   assert.equal(LEGEND_CARD_PHOTO_CREDITS[id].license,"Unverified - hobby draft");
-  assert.equal(findLegend(id)?.cardAsset,null);\n }
+  assert.equal(findLegend(id)?.cardAsset,null);
+ }
  assert.ok(LEGEND_TIER_PRICES.IMMORTAL>LEGEND_TIER_PRICES.ICON);
  assert.ok(LEGEND_TIER_PRICES.CULT>500);
 });
