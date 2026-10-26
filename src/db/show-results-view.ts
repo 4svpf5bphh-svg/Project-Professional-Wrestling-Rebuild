@@ -21,7 +21,8 @@ export interface CompletedMatchBroadcastContext{
  /** Locked card context, not an invented account of the match action. */
  format:string;intent:string;plannedMinutes:number|null;
  isMainEvent?:boolean;
- sides:string[][];winnerNames:string[];championshipContested:boolean;
+ sides:string[][];sideParticipants?:{personId:string;name:string}[][];
+  winnerNames:string[];championshipContested:boolean;
 }
 export interface CompletedAngleContext{
  actorNames:string[];targetNames:string[];
@@ -221,6 +222,8 @@ export async function readCompletedShowView(
      plannedMinutes:typeof payload.plannedLengthMinutes==="number"?
       payload.plannedLengthMinutes:null,
      sides:layout.sides.map(side=>side.participants.map(p=>name(p.personId))),
+     sideParticipants:layout.sides.map(side=>side.participants.map(p=>({
+      personId:p.personId,name:name(p.personId)}))),
      winnerNames:[...winnerNames],
      championshipContested:typeof payload.championshipId==="string"&&
       payload.championshipId.length>0};
