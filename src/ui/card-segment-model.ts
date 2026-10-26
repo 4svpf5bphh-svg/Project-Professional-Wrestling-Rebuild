@@ -35,8 +35,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 export const LIMITED_ACTORS=new Set<SegmentKind>(["DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  creativeBeat:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
-   initialCreativeBeat(kind):null,sourceMatchSlotId:null,
+  creativeBeat:initialCreativeBeat(kind),sourceMatchSlotId:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
