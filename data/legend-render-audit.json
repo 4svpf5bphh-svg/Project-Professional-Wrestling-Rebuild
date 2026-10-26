@@ -1,12 +1,7 @@
 {
   "attempted": 47,
-  "completed": 46,
-  "failed": [
-    {
-      "id": "kenta-kobashi",
-      "error": "All authenticated photo-origin paths failed for kenta-kobashi: ValueError: Insufficient source image resolution"
-    }
-  ],
+  "completed": 47,
+  "failed": [],
   "cards": [
     {
       "id": "abdullah-butcher",
@@ -16,7 +11,8 @@
       "bytes": 75186,
       "author": "WWE via Getty Images, photographer not verified, editorial reproduction",
       "license": "Unverified - hobby draft",
-      "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues"
+      "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues",
+      "cached": true
     },
     {
       "id": "aja-kong",
@@ -92,7 +88,8 @@
       "bytes": 113714,
       "author": "WWE archival promotional photograph, photographer not verified",
       "license": "Unverified - hobby draft",
-      "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html"
+      "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html",
+      "cached": true
     },
     {
       "id": "bull-nakano",
@@ -217,7 +214,13 @@
     },
     {
       "id": "kenta-kobashi",
-      "error": "All authenticated photo-origin paths failed for kenta-kobashi: ValueError: Insufficient source image resolution"
+      "name": "Kenta Kobashi",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/kenta-kobashi-immortal-card.webp",
+      "bytes": 173746,
+      "author": "Tokyo Sports archival Kobashi wrestling photograph; photographer unverified",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://note.tokyo-sports.co.jp/n/na8bc06274c7e"
     },
     {
       "id": "konnan",

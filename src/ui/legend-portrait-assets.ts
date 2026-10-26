@@ -20,6 +20,7 @@ export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.fr
   "legend:hulk-hogan:0": "/assets/legends/hulk-hogan-0-portrait.webp",
   "legend:jerry-lynn:0": "/assets/legends/jerry-lynn-0-portrait.webp",
   "legend:jushin-liger:0": "/assets/legends/jushin-liger-0-portrait.webp",
+  "legend:kenta-kobashi:0": "/assets/legends/kenta-kobashi-0-portrait.webp",
   "legend:konnan:0": "/assets/legends/konnan-0-portrait.webp",
   "legend:kurt-angle:0": "/assets/legends/kurt-angle-0-portrait.webp",
   "legend:lita:0": "/assets/legends/lita-0-portrait.webp",

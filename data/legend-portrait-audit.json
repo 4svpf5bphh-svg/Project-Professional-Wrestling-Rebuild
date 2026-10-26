@@ -1,9 +1,7 @@
 {
-  "cardsFound": 47,
-  "portraitsRegistered": 48,
-  "missing": [
-    "kenta-kobashi"
-  ],
+  "cardsFound": 48,
+  "portraitsRegistered": 49,
+  "missing": [],
   "failed": [],
   "details": [
     {
@@ -39,7 +37,7 @@
       "files": [
         "apps/web/public/assets/legends/bruno-sammartino-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -75,7 +73,7 @@
       "files": [
         "apps/web/public/assets/legends/abdullah-butcher-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -323,7 +321,12 @@
     },
     {
       "id": "kenta-kobashi",
-      "status": "missing-card"
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/kenta-kobashi-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
     },
     {
       "id": "raven",
