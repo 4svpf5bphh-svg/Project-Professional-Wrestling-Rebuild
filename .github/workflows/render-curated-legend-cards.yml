@@ -60,6 +60,7 @@ jobs:
             git commit -m "assets(legends): render actual wrestler-photo card drafts for review"
             git pull --rebase origin feature/phase8-world-ux
             git push origin HEAD:feature/phase8-world-ux
+          fi
       - name: Surface partial artwork until Wikimedia source access succeeds
         if: steps.render.outcome == 'failure'
         run: |
