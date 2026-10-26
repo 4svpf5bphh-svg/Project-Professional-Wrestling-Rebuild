@@ -36,8 +36,11 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  INTERRUPTION:`${subject} interrupts ${object}`,
  RESCUE:`${actors[0]??"An attacker"} assaults ${object} before ${actors[1]??"a rescuer"} intervenes`,
  POST_MATCH_ASSAULT:`${subject} attacks ${object} after their bout`,
- TURN:`${subject} turns${object?" on "+object:""}${segment.turnTargetAlignment?
-   " and adopts a "+segment.turnTargetAlignment.toLowerCase()+" alignment":""}`,
+ TURN:actors.length>1?
+   `${subject} turn${object?" on "+object:""}${segment.turnTargetAlignment?
+    " and become "+(segment.turnTargetAlignment==="FACE"?"faces":segment.turnTargetAlignment==="HEEL"?"heels":"tweeners"):""}`:
+   `${subject} turns${object?" on "+object:""}${segment.turnTargetAlignment?
+    " and adopts a "+segment.turnTargetAlignment.toLowerCase()+" alignment":""}`,
  CONTRACT_SIGNING:`${subject} meets for a contract signing`,
  INTERFERENCE:`${subject} interferes against ${object}`,
  DEBUT:`${subject} makes an in-person debut`,
