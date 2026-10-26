@@ -1,6 +1,39 @@
-/** This source-backed inventory is populated when real portrait crops are saved.
- * No speculative image path is exposed before a file actually exists. */
-export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.freeze({});
+/** Generated from actual static source-backed Legend portraits.
+ * Person IDs survive changes of employer, roster and ring name. */
+export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.freeze({
+  "legend:andre-giant:0": "/assets/legends/andre-giant-0-portrait.webp",
+  "legend:antonio-inoki:0": "/assets/legends/antonio-inoki-0-portrait.webp",
+  "legend:arn-anderson:0": "/assets/legends/arn-anderson-0-portrait.webp",
+  "legend:booker-t:0": "/assets/legends/booker-t-0-portrait.webp",
+  "legend:chyna:0": "/assets/legends/chyna-0-portrait.webp",
+  "legend:d-lo-brown:0": "/assets/legends/d-lo-brown-0-portrait.webp",
+  "legend:dean-malenko:0": "/assets/legends/dean-malenko-0-portrait.webp",
+  "legend:el-santo:0": "/assets/legends/el-santo-0-portrait.webp",
+  "legend:great-muta:0": "/assets/legends/great-muta-0-portrait.webp",
+  "legend:hulk-hogan:0": "/assets/legends/hulk-hogan-0-portrait.webp",
+  "legend:jerry-lynn:0": "/assets/legends/jerry-lynn-0-portrait.webp",
+  "legend:jushin-liger:0": "/assets/legends/jushin-liger-0-portrait.webp",
+  "legend:konnan:0": "/assets/legends/konnan-0-portrait.webp",
+  "legend:kurt-angle:0": "/assets/legends/kurt-angle-0-portrait.webp",
+  "legend:manami-toyota:0": "/assets/legends/manami-toyota-0-portrait.webp",
+  "legend:mitsuharu-misawa:0": "/assets/legends/mitsuharu-misawa-0-portrait.webp",
+  "legend:mr-perfect:0": "/assets/legends/mr-perfect-0-portrait.webp",
+  "legend:new-jack:0": "/assets/legends/new-jack-0-portrait.webp",
+  "legend:raven:0": "/assets/legends/raven-0-portrait.webp",
+  "legend:ric-flair:0": "/assets/legends/ric-flair-0-portrait.webp",
+  "legend:ricky-steamboat:0": "/assets/legends/ricky-steamboat-0-portrait.webp",
+  "legend:shawn-michaels:0": "/assets/legends/shawn-michaels-0-portrait.webp",
+  "legend:steve-austin:0": "/assets/legends/steve-austin-0-portrait.webp",
+  "legend:sting:0": "/assets/legends/sting-0-portrait.webp",
+  "legend:super-crazy:0": "/assets/legends/super-crazy-0-portrait.webp",
+  "legend:tajiri:0": "/assets/legends/tajiri-0-portrait.webp",
+  "legend:taz:0": "/assets/legends/taz-0-portrait.webp",
+  "legend:the-rock:0": "/assets/legends/the-rock-0-portrait.webp",
+  "legend:ultimo-dragon:0": "/assets/legends/ultimo-dragon-0-portrait.webp",
+  "legend:undertaker:0": "/assets/legends/undertaker-0-portrait.webp",
+  "legend:vader:0": "/assets/legends/vader-0-portrait.webp",
+  "legend:william-regal:0": "/assets/legends/william-regal-0-portrait.webp",
+});
 export function legendPortraitSource(personId?:string|null):string|null {
   return personId ? LEGEND_PORTRAIT_ASSETS[personId] ?? null : null;
 }

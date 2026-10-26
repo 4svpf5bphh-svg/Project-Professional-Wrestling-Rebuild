@@ -1,0 +1,480 @@
+{
+  "attempted": 47,
+  "completed": 32,
+  "failed": [
+    {
+      "id": "abdullah-butcher",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "aja-kong",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bret-hart",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bruno-sammartino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bull-nakano",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "dusty-rhodes",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "eddie-guerrero",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "kenta-kobashi",
+      "error": "Insufficient source image resolution"
+    },
+    {
+      "id": "lita",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "mick-foley",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "randy-savage",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "sabu",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "stan-hansen",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "steve-corino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "trish-stratus",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    }
+  ],
+  "cards": [
+    {
+      "id": "abdullah-butcher",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "aja-kong",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "andre-giant",
+      "name": "Andr\u00e9 the Giant",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/andre-giant-immortal-card.webp",
+      "bytes": 118954,
+      "author": "John McKeon",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAndr%C3%A9_the_Giant_in_the_late_'80s_(cropped).jpg",
+      "cached": true
+    },
+    {
+      "id": "antonio-inoki",
+      "name": "Antonio Inoki",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/antonio-inoki-immortal-card.webp",
+      "bytes": 73250,
+      "author": "Ogiyoshisan",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAntonio_Inoki_IMG_0398-2_20121224_(cropped).JPG",
+      "cached": true
+    },
+    {
+      "id": "arn-anderson",
+      "name": "Arn Anderson",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/arn-anderson-legend-card.webp",
+      "bytes": 106088,
+      "author": "Super Festivals from Ft. Lauderdale, USA",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AArn_Anderson_(48481801426).jpg",
+      "cached": true
+    },
+    {
+      "id": "booker-t",
+      "name": "Booker T",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/booker-t-icon-card.webp",
+      "bytes": 239156,
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Booker_T_2018.jpg",
+      "cached": true
+    },
+    {
+      "id": "bret-hart",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bruno-sammartino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bull-nakano",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "chyna",
+      "name": "Chyna",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/chyna-icon-card.webp",
+      "bytes": 83666,
+      "author": "MandyJC72",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chyna_and_Triple_H_in_1997_(cropped).jpg",
+      "cached": true
+    },
+    {
+      "id": "d-lo-brown",
+      "name": "D\u2019Lo Brown",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/d-lo-brown-cult-card.webp",
+      "bytes": 84864,
+      "author": "shstrng",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:D_Lo_Brown.jpg",
+      "cached": true
+    },
+    {
+      "id": "dean-malenko",
+      "name": "Dean Malenko",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/dean-malenko-cult-card.webp",
+      "bytes": 93784,
+      "author": "REW ( Revolution Eastern Wrestling)",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADean_Malenko.jpg"
+    },
+    {
+      "id": "dusty-rhodes",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "eddie-guerrero",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "el-santo",
+      "name": "El Santo",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/el-santo-immortal-card.webp",
+      "bytes": 77938,
+      "author": "Historic photograph, photographer unverified (via Infobae)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.infobae.com/deportes/2021/09/23/a-104-anos-del-nacimiento-de-el-santo-el-luchador-que-oculto-su-identidad-hasta-su-muerte/",
+      "cached": true
+    },
+    {
+      "id": "great-muta",
+      "name": "The Great Muta",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/great-muta-icon-card.webp",
+      "bytes": 135560,
+      "author": "NWharry",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AGreat_Muta.jpg",
+      "cached": true
+    },
+    {
+      "id": "hulk-hogan",
+      "name": "Hulk Hogan",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/hulk-hogan-immortal-card.webp",
+      "bytes": 131904,
+      "author": "GabboT",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AHulk_Hogan_(cropped).jpg",
+      "cached": true
+    },
+    {
+      "id": "jerry-lynn",
+      "name": "Jerry Lynn",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/jerry-lynn-cult-card.webp",
+      "bytes": 122912,
+      "author": "shstrng",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJerry_Lynn_CHIKARA.jpg"
+    },
+    {
+      "id": "jushin-liger",
+      "name": "Jushin Thunder Liger",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/jushin-liger-icon-card.webp",
+      "bytes": 235092,
+      "author": "tenaciousme (cropped by User:charlesy )",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJushin_Thunder_Liger_2007_crop.jpg",
+      "cached": true
+    },
+    {
+      "id": "kenta-kobashi",
+      "error": "Insufficient source image resolution"
+    },
+    {
+      "id": "konnan",
+      "name": "Konnan",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/konnan-cult-card.webp",
+      "bytes": 68556,
+      "author": "John Jewell",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKonnanJuly2011.png",
+      "cached": true
+    },
+    {
+      "id": "kurt-angle",
+      "name": "Kurt Angle",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/kurt-angle-icon-card.webp",
+      "bytes": 65288,
+      "author": "static",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKurt_Angle.jpg",
+      "cached": true
+    },
+    {
+      "id": "lita",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "manami-toyota",
+      "name": "Manami Toyota",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/manami-toyota-icon-card.webp",
+      "bytes": 119700,
+      "author": "shstrng",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AManami_Toyota_Chikara.jpg",
+      "cached": true
+    },
+    {
+      "id": "mick-foley",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "mitsuharu-misawa",
+      "name": "Mitsuharu Misawa",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/mitsuharu-misawa-immortal-card.webp",
+      "bytes": 103112,
+      "author": "The Doppelganger at en.Wikipedia",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMitsuharu_Misawa%2C_2007.jpg",
+      "cached": true
+    },
+    {
+      "id": "mr-perfect",
+      "name": "Mr. Perfect",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/mr-perfect-legend-card.webp",
+      "bytes": 99796,
+      "author": "Photographer unverified (reproduced by SPORT1)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.sport1.de/news/wrestling/wwe/2023/02/wwe-ikone-mr-perfect-das-tragische-ende-einer-coolen-socke",
+      "cached": true
+    },
+    {
+      "id": "new-jack",
+      "name": "New Jack",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/new-jack-cult-card.webp",
+      "bytes": 87288,
+      "author": "Robert Newsome",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ANew_Jack_in_the_ECW%2C_1998.jpg",
+      "cached": true
+    },
+    {
+      "id": "randy-savage",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "raven",
+      "name": "Raven",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/raven-cult-card.webp",
+      "bytes": 67494,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Raven_in_2011.jpg",
+      "cached": true
+    },
+    {
+      "id": "ric-flair",
+      "name": "Ric Flair",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/ric-flair-immortal-card.webp",
+      "bytes": 134826,
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARic_Flair_Photo_Op_GalaxyCon_Austin_2023.jpg",
+      "cached": true
+    },
+    {
+      "id": "ricky-steamboat",
+      "name": "Ricky Steamboat",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/ricky-steamboat-legend-card.webp",
+      "bytes": 251244,
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARicky_Steamboat_Greektown_2018_(cropped).jpg",
+      "cached": true
+    },
+    {
+      "id": "road-warriors",
+      "name": "The Road Warriors",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/road-warriors-icon-card.webp",
+      "bytes": 75360,
+      "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
+      "cached": true
+    },
+    {
+      "id": "sabu",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "shawn-michaels",
+      "name": "Shawn Michaels",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/shawn-michaels-immortal-card.webp",
+      "bytes": 148466,
+      "author": "MandyJC72",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AShawn_Michaels_-_Birmingham_200997_(27).jpg",
+      "cached": true
+    },
+    {
+      "id": "stan-hansen",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "steve-austin",
+      "name": "Stone Cold Steve Austin",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/steve-austin-immortal-card.webp",
+      "bytes": 119998,
+      "author": "Gage Skidmore from Peoria, AZ, United States of America",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStone_Cold_Steve_Austin_(4840047167)_(cropped).jpg",
+      "cached": true
+    },
+    {
+      "id": "steve-corino",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "sting",
+      "name": "Sting",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/sting-icon-card.webp",
+      "bytes": 86282,
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
+      "cached": true
+    },
+    {
+      "id": "super-crazy",
+      "name": "Super Crazy",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/super-crazy-cult-card.webp",
+      "bytes": 95808,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASuper_Crazy_2017.jpg",
+      "cached": true
+    },
+    {
+      "id": "tajiri",
+      "name": "Tajiri",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/tajiri-cult-card.webp",
+      "bytes": 125248,
+      "author": "Andrew Quentin",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AHustle_2008-07-27_TAJIRI.jpg",
+      "cached": true
+    },
+    {
+      "id": "taz",
+      "name": "Taz",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/taz-cult-card.webp",
+      "bytes": 77620,
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
+      "cached": true
+    },
+    {
+      "id": "the-rock",
+      "name": "The Rock",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/the-rock-immortal-card.webp",
+      "bytes": 202594,
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:WWE_Wrestlemania_28_-_The_Rock_pose.jpg",
+      "cached": true
+    },
+    {
+      "id": "trish-stratus",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "ultimo-dragon",
+      "name": "Ultimo Dragon",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/ultimo-dragon-cult-card.webp",
+      "bytes": 124352,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AUltimo_Dragon_2019.jpg",
+      "cached": true
+    },
+    {
+      "id": "vader",
+      "name": "Vader",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/vader-icon-card.webp",
+      "bytes": 86404,
+      "author": "Mandy Coombes",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Vader_One_Night_Only.jpg",
+      "cached": true
+    },
+    {
+      "id": "william-regal",
+      "name": "William Regal",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/william-regal-legend-card.webp",
+      "bytes": 99320,
+      "author": "Ed Webster",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
+      "cached": true
+    }
+  ],
+  "batch": -1,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}

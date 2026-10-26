@@ -1,0 +1,382 @@
+{
+  "cardsFound": 33,
+  "portraitsRegistered": 32,
+  "missing": [
+    "eddie-guerrero",
+    "trish-stratus",
+    "bruno-sammartino",
+    "sabu",
+    "steve-corino",
+    "abdullah-butcher",
+    "dusty-rhodes",
+    "lita",
+    "bull-nakano",
+    "aja-kong",
+    "stan-hansen",
+    "bret-hart",
+    "mick-foley",
+    "randy-savage",
+    "kenta-kobashi"
+  ],
+  "failed": [],
+  "details": [
+    {
+      "id": "jerry-lynn",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/jerry-lynn-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "eddie-guerrero",
+      "status": "missing-card"
+    },
+    {
+      "id": "trish-stratus",
+      "status": "missing-card"
+    },
+    {
+      "id": "bruno-sammartino",
+      "status": "missing-card"
+    },
+    {
+      "id": "sabu",
+      "status": "missing-card"
+    },
+    {
+      "id": "steve-corino",
+      "status": "missing-card"
+    },
+    {
+      "id": "dean-malenko",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/dean-malenko-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "abdullah-butcher",
+      "status": "missing-card"
+    },
+    {
+      "id": "new-jack",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/new-jack-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "super-crazy",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/super-crazy-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "ultimo-dragon",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/ultimo-dragon-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "tajiri",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/tajiri-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "konnan",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/konnan-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "ricky-steamboat",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/ricky-steamboat-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "william-regal",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/william-regal-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "arn-anderson",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/arn-anderson-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "dusty-rhodes",
+      "status": "missing-card"
+    },
+    {
+      "id": "lita",
+      "status": "missing-card"
+    },
+    {
+      "id": "bull-nakano",
+      "status": "missing-card"
+    },
+    {
+      "id": "aja-kong",
+      "status": "missing-card"
+    },
+    {
+      "id": "stan-hansen",
+      "status": "missing-card"
+    },
+    {
+      "id": "bret-hart",
+      "status": "missing-card"
+    },
+    {
+      "id": "mick-foley",
+      "status": "missing-card"
+    },
+    {
+      "id": "randy-savage",
+      "status": "missing-card"
+    },
+    {
+      "id": "kurt-angle",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/kurt-angle-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "great-muta",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/great-muta-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "jushin-liger",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/jushin-liger-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "manami-toyota",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/manami-toyota-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "shawn-michaels",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/shawn-michaels-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "steve-austin",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/steve-austin-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "hulk-hogan",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/hulk-hogan-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "ric-flair",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/ric-flair-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "andre-giant",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/andre-giant-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "antonio-inoki",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/antonio-inoki-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "mitsuharu-misawa",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/mitsuharu-misawa-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "kenta-kobashi",
+      "status": "missing-card"
+    },
+    {
+      "id": "raven",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/raven-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "sting",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/sting-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "taz",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/taz-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "d-lo-brown",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/d-lo-brown-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "booker-t",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/booker-t-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "chyna",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/chyna-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "vader",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/vader-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "the-rock",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/the-rock-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "mr-perfect",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/mr-perfect-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "road-warriors",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/road-warriors-0-portrait.webp",
+        "apps/web/public/assets/legends/road-warriors-1-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": true
+    },
+    {
+      "id": "el-santo",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/el-santo-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    },
+    {
+      "id": "undertaker",
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/undertaker-0-portrait.webp"
+      ],
+      "source": "card-photo-window",
+      "memberReviewRequired": false
+    }
+  ]
+}
