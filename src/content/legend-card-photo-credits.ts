@@ -1,5 +1,6 @@
 /** Static source attribution for reviewed real-wrestler photographs.
- * Source provenance only; some editorial photos have unverified usage rights.\n * This does not imply commercial clearance or image-owner endorsement.
+ * Source provenance only; some editorial photos have unverified usage rights.
+ * This does not imply commercial clearance or image-owner endorsement.
  * No browser lookup, network polling or Neon query is required.
  */
 export interface LegendPhotoCredit{author:string;license:string;sourcePage:string;tier:string}

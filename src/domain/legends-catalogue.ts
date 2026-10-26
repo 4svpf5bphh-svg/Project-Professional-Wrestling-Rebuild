@@ -1,5 +1,5 @@
 /** Historic Legends: certified World unlocks and hand-curated prime-era identities.
- * Card image rights are independent; absent cleared art is never collectible.
+ * Artwork rights remain unverified in this hobby build; missing/review-pending card files are never purchasable.
  */
 export type LegendTier="CULT"|"LEGEND"|"ICON"|"IMMORTAL";
 export type LegendMetric="CLASSICS"|"HOT_ANGLES"|"DIRTY_FINISHES"|"MASTERPIECES"|
@@ -22,7 +22,7 @@ export interface LegendDefinition {
  metric:LegendMetric|null;target:number|null;
  hints?:readonly [string,string];
  roster:readonly PrimeLegend[];
- /** Art may only become collectible with a genuinely cleared photograph. */
+ /** A manually reviewed authentic-photo card is required for hobby collectibles; public release needs a separate rights review. */
  cardAsset:string|null;
  status:"ACTIVE"|"PLANNED";
 }
@@ -98,7 +98,7 @@ const active:LegendDefinition[]=[
 ];
 /** Historical roster verified for simulated prime-era play. Each challenge is
  * based on an actually stored, certified World signal; no fabricated move/finish
- * evidence and no automatic contract grants. Artwork is separately cleared.
+ * evidence and no automatic contract grants. Photo art is separately selected and reviewed.
  */
 const curated:LegendDefinition[]=[
  {id:"sabu",name:"Sabu",tier:"CULT",division:"MEN",tradition:"ECW aerial risk",era:"1990s",visibility:"CLUED",

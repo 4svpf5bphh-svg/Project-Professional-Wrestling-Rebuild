@@ -1,5 +1,5 @@
 /** Industry Legends Vault: no extra navigation bar or asset fakery.
- * Exact collectible artwork, when cleared, is reused at every size.
+ * One reviewed image asset is used for both reveal and collectible at every size.
  */
 import type {readLegendsVault} from "../db/legends-vault.js";
 import {LEGEND_CARD_PHOTO_CREDITS} from "../content/legend-card-photo-credits.js";
@@ -170,7 +170,7 @@ export function drawLegendsVault(
     visual.append(el("span","ppw-legend-silhouette","?"));
    }else{
     // Deliberately not a fake collectible card: nothing here is for sale
-    // until a real cleared wrestler photograph is supplied.
+    // until its selected authentic wrestler photograph is rendered and reviewed.
     visual.append(el("span","ppw-legend-vault-mark","★"),
      el("small","","COLLECTIBLE ART PENDING"));
    }
@@ -235,7 +235,7 @@ export function drawLegendsVault(
   const fullCard=cardGraphic(selected);
   if(fullCard)scene.append(fullCard);
   else scene.append(el("p","ppw-legend-reveal-artnote",
-   "The definitive collectible image will appear here after its real photograph is cleared."));
+   "The definitive collectible image will appear here when its photo design has been reviewed."));
   if(selected.id==="undertaker")scene.classList.add("ppw-undertaker-reveal-scene");
   const credit=photoCredit(selected);if(credit)scene.append(credit);
   scene.append(el("p","ppw-legend-market-confirm",
