@@ -54,7 +54,7 @@ test("World History is an on-demand accessible iPhone archive for annual honours
  await page.getByRole("button",{name:"Open World menu"}).click();
  await nav.getByRole("button",{name:/World Moments/}).click();
  await expect(page).toHaveURL(/#\/world-moments$/);
- await expect(page.getByRole("heading",{name:"World Moments"}).toBeVisible();
+ await expect(page.getByRole("heading",{name:"World Moments"})).toBeVisible();
  await expect(page.getByText("A world classic for the ages")).toBeVisible();
  const bounds=await page.locator(".ppw-heritage-moment").boundingBox();
  expect(bounds).not.toBeNull();

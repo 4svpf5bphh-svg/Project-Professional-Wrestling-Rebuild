@@ -36,8 +36,8 @@ test("iPhone can read another human's completed results without viewing any unbo
   }
   throw Error("Unexpected method "+method);
  });
- await page.goto("/#/industry");
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
+ await page.goto("/#/promotions");
+ await expect(page.getByRole("heading",{name:"Promotions"})).toBeVisible();
  await page.locator(".ppw-industry-company").filter({hasText:"Rival Promotion"})
   .locator("summary").click();
  await page.getByRole("button",{name:"Read Results"}).click();
@@ -48,6 +48,6 @@ test("iPhone can read another human's completed results without viewing any unbo
  await expect(page.getByText(/future creative remain private/)).toBeVisible();
  expect(calls).toEqual(["industry","industryFeatured","publicResults"]);
  await page.getByRole("button",{name:"← Back to Industry"}).click();
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Promotions"})).toBeVisible();
  expect(calls).toEqual(["industry","industryFeatured","publicResults"]); // Reuse the already loaded Industry state.
 });
