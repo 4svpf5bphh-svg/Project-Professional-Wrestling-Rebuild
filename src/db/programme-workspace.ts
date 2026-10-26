@@ -61,10 +61,16 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   if(rows.length>100)throw new Error("Programme capacity exceeded");
   const programmes=rows.map(p=>p.programme_id);
   const refs=programmes.length?await tx.query<{programme_id:string;side:"A"|"B";
-   position:number;ref_kind:"PERSON"|"TEAM";ref_id:string}>([
-   "SELECT programme_id,side,position,ref_kind,ref_id FROM ppw_programme_side_refs",
-   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY programme_id,side,position LIMIT 401"
+   position:number;ref_kind:"PERSON"|"TEAM";ref_id:string;
+   person_name:string|null;team_name:string|null}>([
+   "SELECT r.programme_id,r.side,r.position,r.ref_kind,r.ref_id,",
+   "p.name AS person_name,t.name AS team_name FROM ppw_programme_side_refs r",
+   "LEFT JOIN ppw_people p ON p.world_id=r.world_id",
+   "AND p.person_id=r.ref_id AND r.ref_kind='PERSON'",
+   "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id",
+   "AND t.team_id=r.ref_id AND r.ref_kind='TEAM'",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.programme_id=ANY($3::text[])",
+   "ORDER BY r.programme_id,r.side,r.position LIMIT 401"
   ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
   if(refs.length>400)throw new Error("Programme refs exceed bounded capacity");
   // Distinct signed roster: no per-wrestler queries, and zero date balances
@@ -102,6 +108,12 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   const names=new Map(roster.map(p=>[p.person_id,p.name]));
   const teamOptions=teams.filter(t=>t.person_ids.every(id=>names.has(id)));
   const teamNames=new Map(teamOptions.map(t=>[t.team_id,t.name]));
+  // Resolve historical programme identity from World people, not just the
+  // currently signed and medically active booking choices.
+  const historicPeople=new Map(refs.filter(r=>r.ref_kind==="PERSON"&&r.person_name)
+   .map(r=>[r.ref_id,r.person_name!]));
+  const historicTeams=new Map(refs.filter(r=>r.ref_kind==="TEAM"&&r.team_name)
+   .map(r=>[r.ref_id,r.team_name!]));
   // Both the completed beats and standing terms ride ONE existing bounded
   // workspace statement. No extra SQL read when opening a Programme.
   type Recent={programme_id:string;show_id:string;slot_id:string;
@@ -138,8 +150,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    const own=refs.filter(x=>x.programme_id===p.programme_id);
    const side=(which:"A"|"B")=>own.filter(x=>x.side===which).map(x=>({
     kind:x.ref_kind,refId:x.ref_id,
-    name:x.ref_kind==="PERSON"?names.get(x.ref_id)??x.ref_id:
-     teamNames.get(x.ref_id)??x.ref_id,
+    name:x.ref_kind==="PERSON"?names.get(x.ref_id)??historicPeople.get(x.ref_id)??x.ref_id:
+     teamNames.get(x.ref_id)??historicTeams.get(x.ref_id)??x.ref_id,
    }));
    return {programmeId:p.programme_id,status:p.status,heat:p.heat,
     repetition:p.repetition,activityCount:p.activity_count,
