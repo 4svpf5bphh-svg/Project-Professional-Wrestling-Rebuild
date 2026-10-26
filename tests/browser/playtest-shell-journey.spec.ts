@@ -171,8 +171,8 @@ test("iPhone standalone keeps one five-root drawer reachable from the bottom",as
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
  await expect(drawer.locator(".ppw-tab")).toHaveCount(0);
- await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(1);
- await expect(drawer.getByRole("button",{name:/World dashboard/})).toBeVisible();
+ await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(8);
+ await expect(drawer.getByRole("button",{name:/World Dashboard/})).toBeVisible();
  await page.getByRole("button",{name:"Open Business menu"}).click();
  await expect(drawer.getByRole("button",{name:/Staff/})).toBeVisible();
  await page.keyboard.press("Escape");

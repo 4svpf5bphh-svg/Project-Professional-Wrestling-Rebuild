@@ -29,7 +29,7 @@ test("World record book shows earned men/women rankings and searchable wrestler 
   return route.fulfill({json:responses[req.method]??overview});
  });
  await page.goto("/#/records");
- await expect(page.getByRole("heading",{name:"Record Book"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Record Book",level:1})).toBeVisible();
  await expect(page.getByRole("heading",{name:"The Record Books"})).toBeVisible();
  await page.getByRole("button",{name:"World Rankings"}).click();
  await expect(page.getByText("Bob",{exact:true})).toBeVisible();

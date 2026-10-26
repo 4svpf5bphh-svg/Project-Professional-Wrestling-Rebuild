@@ -47,7 +47,7 @@ test("iPhone can read another human's completed results without viewing any unbo
  await expect(page.getByText(/4.25 \/ 5/)).toBeVisible();
  await expect(page.getByText(/future creative remain private/)).toBeVisible();
  expect(calls).toEqual(["industry","industryFeatured","publicResults"]);
- await page.getByRole("button",{name:"← Back to Industry"}).click();
+ await page.getByRole("button",{name:"← Back to Promotions"}).click();
  await expect(page.getByRole("heading",{name:"Promotions"})).toBeVisible();
  expect(calls).toEqual(["industry","industryFeatured","publicResults"]); // Reuse the already loaded Industry state.
  // The separate Broadcasts destination reuses the same certified result projection.
