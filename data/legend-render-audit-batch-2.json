@@ -1,0 +1,74 @@
+{
+  "attempted": 8,
+  "completed": 0,
+  "failed": [
+    {
+      "id": "aja-kong",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bret-hart",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bull-nakano",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "dusty-rhodes",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "lita",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "mick-foley",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "randy-savage",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "stan-hansen",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    }
+  ],
+  "cards": [
+    {
+      "id": "aja-kong",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bret-hart",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "bull-nakano",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "dusty-rhodes",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "lita",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "mick-foley",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "randy-savage",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    },
+    {
+      "id": "stan-hansen",
+      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+    }
+  ],
+  "batch": 2,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}
