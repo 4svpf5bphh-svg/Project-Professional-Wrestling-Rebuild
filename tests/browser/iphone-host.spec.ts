@@ -654,8 +654,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
  await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News menu"}).click();
-  await nav.getByRole("button",{name:/PPW Wire/}).click();
+ await page.getByRole("button",{name:"Open News"}).click();
  await expect(page).toHaveURL(/#\/news$/);
  await expect(nav).toBeHidden();
  expect(await overflow()).toBeLessThanOrEqual(1);
@@ -727,8 +726,7 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await requested;
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News menu"}).click();
-  await nav.getByRole("button",{name:/PPW Wire/}).click();
+ await page.getByRole("button",{name:"Open News"}).click();
  await expect(page).toHaveURL(/#\/news$/);
  releaseShow();
  await page.waitForTimeout(250);
