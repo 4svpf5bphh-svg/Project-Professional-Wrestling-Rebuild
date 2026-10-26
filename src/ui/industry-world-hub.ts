@@ -1,4 +1,5 @@
 import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
+import type {PublicCompletedShow} from "../db/public-completed-show.js";
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
@@ -45,6 +46,7 @@ export interface IndustryHubPort{
  records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
  openOwnResults?(showId:string):void;
+ publicResults?(targetPromotionId:string,showId:string):Promise<PublicCompletedShow>;
  openBusiness?():void;openPlanner?():void;openMarket?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
@@ -60,6 +62,48 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     typeof window!=="undefined"&&window.location.hash==="#/industry/legends"?"LEGENDS":
      window.location.hash==="#/news"?"OFFICIAL":"STANDINGS",
   search="",tier="ALL",sort:IndustryOrder="REACH";
+ let watched:PublicCompletedShow|null=null,watching=false,watchError="";
+ async function readRivalResult(targetPromotionId:string,showId:string){
+  if(!port.publicResults||watching)return;
+  watching=true;watchError="";watched=null;render();
+  try{watched=await port.publicResults(targetPromotionId,showId);}
+  catch(e){watchError=e instanceof Error?e.message:"Completed results unavailable";}
+  finally{watching=false;render();}
+ }
+ function renderPublicShow(){
+  root.classList.add("ppw-editor","ppw-industry");
+  root.replaceChildren();
+  const section=el("section","ppw-public-results");
+  section.append(btn("← Back to Industry",()=>{
+   watched=null;watchError="";watching=false;render();
+  }));
+  if(watching)section.append(el("p","ppw-industry-muted","Opening completed results…"));
+  if(watchError)section.append(el("p","ppw-alert ppw-error",watchError));
+  if(watched){
+   section.append(el("span","ppw-news-eyebrow","PUBLISHED WORLD RESULTS"),
+    el("h2","",watched.showName),
+    el("p","ppw-industry-muted",watched.promotionName+" · Year "+watched.year+
+     " / Week "+watched.week+" · Crowd "+Math.round(watched.crowdResponse)+"/100"),
+    el("p","ppw-industry-privacy",
+     "Completed outcomes only. Personal show reports and future creative remain private."));
+   for(const entry of watched.entries){
+    const card=el("article","ppw-public-result");
+    card.append(el("span","ppw-news-desk",
+     "CARD "+(entry.position+1)+" · "+(entry.type==="MATCH"?"MATCH":"ANGLE")),
+     el("strong","",entry.headline));
+    if(entry.type==="MATCH"){
+     if(entry.winner)card.append(el("p","","WINNER · "+entry.winner));
+     card.append(el("small","ppw-industry-muted",
+      entry.outcome.replaceAll("_"," ").toLowerCase()+
+      (entry.ratingStars===null?"":" · ★ "+entry.ratingStars.toFixed(2)+" / 5")));
+    }else card.append(el("small","ppw-industry-muted",
+     entry.outcome==="HAPPENS"?"Aired as planned":
+     entry.outcome==="REFUSED"?"Did not take place":"Interrupted"));
+    section.append(card);
+   }
+  }
+  root.append(section);
+ }
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
  let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
  let rankings:WorldRankingsView|null=null,rankingBusy=false,rankingError="";
@@ -226,6 +270,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
  }
  function render(){
   clearLegendRevealPortal();
+  if(watching||watched||watchError){renderPublicShow();return;}
   root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
@@ -358,8 +403,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
        row.append(el("strong","",show.showName),el("small","",
         "Y"+show.year+" W"+show.week+
         " · Crowd "+Math.round(show.crowdResponse)+"/100"));
-       if(show.isYours&&port.openOwnResults)row.append(btn("Open Results →",
+       if(show.isYours&&port.openOwnResults)row.append(btn("Open Results",
         ()=>port.openOwnResults?.(show.showId)));
+       else if(show.humanManaged&&port.publicResults)row.append(btn("Read Results",
+        ()=>void readRivalResult(show.promotionId,show.showId)));
        detail.append(row);
       }
      }else detail.append(el("p","ppw-industry-muted",
