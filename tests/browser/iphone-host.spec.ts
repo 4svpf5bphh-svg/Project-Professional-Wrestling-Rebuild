@@ -1396,7 +1396,6 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await dialog.getByRole("button",{name:"Script the exact angle"}).click();
  await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
  await dialog.getByLabel("The intention").selectOption("ESCALATE_RIVALRY");
  await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
