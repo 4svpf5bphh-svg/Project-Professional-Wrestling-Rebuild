@@ -61,8 +61,11 @@ def obtain(url,source_width,identity):
  if parsed.hostname=="upload.wikimedia.org" and parsed.path.startswith("/wikipedia/commons/"):
   basename=parsed.path.rsplit("/",1)[-1]
   thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
-  request_url=parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
-   "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename
+  # Narrow originals (notably Kobashi at 660×649) are larger than a
+  # 500px thumbnail in BOTH dimensions, so do not reject a valid original.
+  request_url=(parsed.scheme+"://"+parsed.netloc+parsed.path) if source_width<800 else (
+   parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
+   "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename)
  else:
   request_url=url
  for attempt in range(2):
