@@ -1,0 +1,88 @@
+{
+  "attempted": 8,
+  "completed": 7,
+  "failed": [
+    {
+      "id": "kenta-kobashi",
+      "error": "Insufficient source image resolution"
+    }
+  ],
+  "cards": [
+    {
+      "id": "andre-giant",
+      "name": "Andr\u00e9 the Giant",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/andre-giant-immortal-card.webp",
+      "bytes": 118954,
+      "author": "John McKeon",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAndr%C3%A9_the_Giant_in_the_late_'80s_(cropped).jpg"
+    },
+    {
+      "id": "antonio-inoki",
+      "name": "Antonio Inoki",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/antonio-inoki-immortal-card.webp",
+      "bytes": 73250,
+      "author": "Ogiyoshisan",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAntonio_Inoki_IMG_0398-2_20121224_(cropped).JPG"
+    },
+    {
+      "id": "d-lo-brown",
+      "name": "D\u2019Lo Brown",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/d-lo-brown-cult-card.webp",
+      "bytes": 84864,
+      "author": "shstrng",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:D_Lo_Brown.jpg"
+    },
+    {
+      "id": "kenta-kobashi",
+      "error": "Insufficient source image resolution"
+    },
+    {
+      "id": "mitsuharu-misawa",
+      "name": "Mitsuharu Misawa",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/mitsuharu-misawa-immortal-card.webp",
+      "bytes": 103112,
+      "author": "The Doppelganger at en.Wikipedia",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMitsuharu_Misawa%2C_2007.jpg"
+    },
+    {
+      "id": "raven",
+      "name": "Raven",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/raven-cult-card.webp",
+      "bytes": 67494,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Raven_in_2011.jpg"
+    },
+    {
+      "id": "sting",
+      "name": "Sting",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/sting-icon-card.webp",
+      "bytes": 86282,
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg"
+    },
+    {
+      "id": "taz",
+      "name": "Taz",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/taz-cult-card.webp",
+      "bytes": 77620,
+      "author": "KMcWrestling Photography",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg"
+    }
+  ],
+  "batch": 4,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}
