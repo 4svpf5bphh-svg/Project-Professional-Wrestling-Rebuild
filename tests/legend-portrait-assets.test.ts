@@ -42,3 +42,15 @@ test("rejected sign and venue snapshots are replaced with individual source cita
   assert.ok(entry.previousSource?.sourcePage);
  }
 });
+
+test("Road Warriors keep two immutable individually identified photographic portraits",()=>{
+ const files=["legend:road-warriors:0","legend:road-warriors:1"].map(id=>LEGEND_PORTRAIT_ASSETS[id]);
+ assert.ok(files.every(Boolean));
+ assert.notEqual(files[0],files[1]);
+ assert.ok(files.every(file=>existsSync("apps/web/public"+file)));
+ const sources=JSON.parse(readFileSync("data/legend-approved-photo-sources.json","utf8")).images;
+ const team=sources.find((item:{id:string})=>item.id==="road-warriors");
+ assert.deepEqual(team.memberCropBoxes.length,2);
+ assert.deepEqual(team.reviewedMemberOrder,["Road Warrior Hawk","Road Warrior Animal"]);
+ assert.equal(team.artRevision,1);
+});

@@ -150,6 +150,12 @@ def draw_card(entry, tier, position):
      "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True,"artRevision":rev}
  cache_key=entry["id"]+("-r"+str(rev) if rev>0 else "")
  photo=obtain(entry["sourceUrl"],entry["width"],cache_key)
+ # For a team plus manager, show the tag pair rather than the manager.
+ if entry.get("groupPhotoCrop"):
+  l,t,r,b=entry["groupPhotoCrop"]
+  if not (0<=l<r<=1 and 0<=t<b<=1):raise ValueError("Invalid photographic crop bounds")
+  photo=photo.crop((round(l*photo.width),round(t*photo.height),
+                   round(r*photo.width),round(b*photo.height)))
  # Separate photographic window: no text, labels or shading atop the wrestler.
  accent,dim=PALETTE[tier]
  photo_box=(53,162,W-53,1063)

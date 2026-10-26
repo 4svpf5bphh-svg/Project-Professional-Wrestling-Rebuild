@@ -19,6 +19,8 @@ AUDIT=Path("data/legend-portrait-audit.json")
 def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AUDIT):
  records=json.loads(Path(manifest).read_text())["images"]
  records.append({"id":"undertaker","name":"The Undertaker","tier":"IMMORTAL"})
+ revisions_path=Path("data/legend-card-art-revisions.json")
+ revisions=json.loads(revisions_path.read_text()) if revisions_path.is_file() else {}
  urls={}
  results=[]
  for entry in records:
@@ -50,8 +52,17 @@ def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AU
       # Verified March 1987 Weekly Pro Wrestling portrait:
       # Hawk (blue mask) stands on the LEFT; Animal (gold mask) on the RIGHT.
       # Take each genuine half individually before changing aspect ratio.
-      half=photo.width//2
-      candidate=photo.crop((index*half,0,(index+1)*half,photo.height)) if count==2 else photo
+      crop_boxes=entry.get("memberCropBoxes") if master.is_file() and revisions.get(slug)==rev else None
+      if count==2 and crop_boxes:
+       if len(crop_boxes)!=2:raise ValueError("Team requires two individual crop bounds")
+       l,t,r,b=crop_boxes[index]
+       if not (0<=l<r<=1 and 0<=t<b<=1):raise ValueError("Invalid individual portrait crop")
+       candidate=photo.crop((round(l*photo.width),round(t*photo.height),
+                             round(r*photo.width),round(b*photo.height)))
+      elif count==2:
+       half=photo.width//2
+       candidate=photo.crop((index*half,0,(index+1)*half,photo.height))
+      else:candidate=photo
       if count==2:fx=.5
       if not 0<=fx<=1 or not 0<=fy<=1:raise ValueError("Focal point outside 0..1")
       crop=ImageOps.fit(candidate,SIZE,method=Image.Resampling.LANCZOS,centering=(fx,fy))

@@ -50,6 +50,17 @@
       "candidate": "https://commons.wikimedia.org/wiki/File:Sting_1988,_red_facepaint.jpg",
       "sourceLicense": "Unverified - hobby draft",
       "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION"
+    },
+    {
+      "id": "road-warriors",
+      "issue": "Original 1987 group photo made both registered individual portraits faceless: frame primarily displayed gear",
+      "candidate": "https://commons.wikimedia.org/wiki/File:The_Road_Warriors_and_Paul_Ellering,_circa_1985_(cropped).jpg",
+      "sourceLicense": "Unverified - hobby draft",
+      "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION",
+      "memberIdentityEvidence": [
+        "https://commons.wikimedia.org/wiki/File:Road_Warrior_Hawk_1985.png",
+        "https://commons.wikimedia.org/wiki/File:Road_Warrior_Animal_1987.png"
+      ]
     }
   ],
   "outstandingQualityReview": [

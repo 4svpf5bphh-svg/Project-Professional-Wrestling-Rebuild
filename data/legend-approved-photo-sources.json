@@ -702,22 +702,50 @@
     {
       "id": "road-warriors",
       "name": "The Road Warriors",
-      "file": "Road Warriors 1987 portrait via Weekly Pro Wrestling",
-      "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
-      "sourceUrl": "https://wp.bbm-mobile.com/sp2/Data/Visual/Image.asp?C=Visual&ex=1&i=00022954",
-      "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+      "file": "The Road Warriors and Paul Ellering, circa 1985 (cropped).jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:The_Road_Warriors_and_Paul_Ellering,_circa_1985_(cropped).jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/24/The_Road_Warriors_and_Paul_Ellering%2C_circa_1985_%28cropped%29.jpg",
+      "author": "Photographer unknown, via Pro Wrestling Illustrated Annual Winter 1985; cropped by McPhail",
       "license": "Unverified - hobby draft",
-      "description": "1987 photograph of Hawk and Animal together in classic spiked gear and face paint",
-      "width": 600,
-      "height": 600,
+      "description": "1985 wrestling editorial photograph: Road Warrior Hawk left in red paint, Road Warrior Animal centre in black and red paint, manager Paul Ellering at right removed from card crop",
+      "width": 1176,
+      "height": 849,
       "focalX": 0.5,
-      "focalY": 0.43,
+      "focalY": 0.34,
       "collectorNumber": 47,
       "reviewedMemberOrder": [
         "Road Warrior Hawk",
         "Road Warrior Animal"
       ],
-      "memberPhotoReview": "1987 Weekly Pro Wrestling group photograph: blue-painted Hawk on left, gold-painted Animal on right; individually cropped before reformatting"
+      "memberPhotoReview": "Authentic individually verified solo 1985 Hawk and 1987 Animal portraits support identification: Hawk left red eye flash, Animal centre red-and-black mask. Each face appears above shoulders in original 1985 Commons team photo.",
+      "previousSource": {
+        "file": "Road Warriors 1987 portrait via Weekly Pro Wrestling",
+        "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
+        "sourceUrl": "https://wp.bbm-mobile.com/sp2/Data/Visual/Image.asp?C=Visual&ex=1&i=00022954",
+        "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+        "license": "Unverified - hobby draft"
+      },
+      "artRevision": 1,
+      "groupPhotoCrop": [
+        0,
+        0,
+        0.69,
+        1
+      ],
+      "memberCropBoxes": [
+        [
+          0,
+          0,
+          0.44,
+          0.77
+        ],
+        [
+          0.25,
+          0,
+          0.72,
+          0.77
+        ]
+      ]
     },
     {
       "id": "el-santo",
