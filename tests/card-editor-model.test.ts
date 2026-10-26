@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
- resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,FORMATS,
+ resizeMatch,moveElimination,moveRunningOrder,buildBookedMatch,assignBookedTeam,FORMATS,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,editorStyleLoad,bookedMatchHeadline,
  bookedStyleReadiness,bookedConditionReport}
  from "../src/ui/card-editor-model.js";
@@ -177,4 +177,22 @@ test("resizing a multi-entrant match cannot rewrite an authored winner",()=>{
  teams=changeWinner(teams,5);
  assert.throws(()=>resizeMatch(teams,5,2),/Choose a new winner/);
  assert.equal(resizeMatch(changeWinner(teams,4),5,2).winnerSide,4);
+});
+
+
+test("selecting an established tag team casts both members without altering the finish",()=>{
+ let match=newEditorMatch("tag","TAG");
+ match=changeWinner(match,1);
+ match={...match,plannedFinish:"SUBMISSION"};
+ const first=[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}];
+ const second=[{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}];
+ match=assignBookedTeam(match,0,first);
+ match=assignBookedTeam(match,1,second);
+ assert.deepEqual(match.teams[0],first);
+ assert.equal(match.winnerSide,1);
+ assert.equal(match.plannedFinish,"SUBMISSION");
+ assert.deepEqual(buildBookedMatch(restoreEditorMatch("tag",buildBookedMatch(match))),buildBookedMatch(match));
+ assert.throws(()=>assignBookedTeam(match,1,first),/both sides/);
+ assert.throws(()=>assignBookedTeam(match,1,[first[0]!,first[0]!]),/distinct/);
+ assert.throws(()=>assignBookedTeam(match,0,[first[0]!]),/fit/);
 });
