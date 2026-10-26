@@ -154,22 +154,10 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.locator(".ppw-card-show-copy").getByText("Next Week Live")).toBeVisible();
  await expect(page.locator(".ppw-card-show-location").getByText("Town Hall")).toBeVisible();
- await expect(page.locator(".ppw-match-broadcast")).toHaveCount(2);
- await expect(page.locator(".ppw-broadcast-preview summary")).toHaveCount(0);
- // Presentation controls must not issue a save or obscure the card.
- const artwork=page.locator(".ppw-card > .ppw-broadcast-preview").first();
- const compact=await artwork.locator(".ppw-match-broadcast").evaluate(node=>
-  node.getBoundingClientRect().height);
- expect(compact).toBeLessThan(185);
- const centring=await artwork.evaluate(node=>{
-  const box=node.querySelector(".ppw-match-broadcast")!.getBoundingClientRect();
-  const logo=node.querySelector(".ppw-broadcast-brand-mark")!.getBoundingClientRect();
-  return Math.abs(box.left+box.width/2-logo.left-logo.width/2);
- });
- expect(centring).toBeLessThan(2);
- // Ordinary match artwork shows its full portraits without a second tap.
- await expect(artwork.getByRole("button",{name:"Expand match graphic"})).toHaveCount(0);
- await expect(artwork.locator(".ppw-match-broadcast")).toBeVisible();
+ // Reordering uses compact, portrait-free tickets rather than full-size artwork.
+ await expect(page.locator(".ppw-card")).toHaveCount(2);
+ await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
+ await expect(page.locator(".ppw-card-lineup")).toHaveCount(2);
  await page.locator(".ppw-card-grip").first().press("ArrowDown");
  await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
  await page.getByRole("button",{name:"Save changes"}).click();
@@ -177,5 +165,5 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  expect(saveCount).toBe(1);
  await page.reload();
  await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
- await expect(page.locator(".ppw-match-broadcast")).toHaveCount(2);
+ await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
 });
