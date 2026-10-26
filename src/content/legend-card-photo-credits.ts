@@ -114,9 +114,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "LEGEND"
   },
   "william-regal": {
-    "author": "Ed Webster",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
+    "author": "Adster95, cropped by CeltBrowne",
+    "license": "CC BY-SA 3.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
     "tier": "LEGEND"
   },
   "arn-anderson": {
@@ -126,9 +126,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "LEGEND"
   },
   "dusty-rhodes": {
-    "author": "Mark Hodgins",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Dusty_Rhodes_HallofFame.jpg",
+    "author": "Bill Apter",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Dusty_Rhodes_as_NWA_Champion,_circa_1979_to_1981.jpg",
     "tier": "LEGEND"
   },
   "lita": {
@@ -192,9 +192,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "ICON"
   },
   "manami-toyota": {
-    "author": "shstrng",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Manami_Toyota_Chikara.jpg",
+    "author": "Jocsh3",
+    "license": "CC BY-SA 3.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Mana.JPG",
     "tier": "ICON"
   },
   "shawn-michaels": {

@@ -7,12 +7,12 @@
       "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
-      "id": "taz",
-      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "id": "sting",
+      "error": "All authenticated photo-origin paths failed for sting-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
-      "id": "william-regal",
-      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "id": "taz",
+      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "cards": [
@@ -165,12 +165,11 @@
       "name": "Dusty Rhodes",
       "tier": "LEGEND",
       "file": "apps/web/public/assets/legends/dusty-rhodes-legend-card.webp",
-      "bytes": 102602,
-      "author": "Mark Hodgins",
-      "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg",
-      "cached": true,
-      "artRevision": 0
+      "bytes": 110694,
+      "author": "Bill Apter",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Dusty_Rhodes_as_NWA_Champion,_circa_1979_to_1981.jpg",
+      "artRevision": 1
     },
     {
       "id": "eddie-guerrero",
@@ -297,12 +296,11 @@
       "name": "Manami Toyota",
       "tier": "ICON",
       "file": "apps/web/public/assets/legends/manami-toyota-icon-card.webp",
-      "bytes": 119700,
-      "author": "shstrng",
-      "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AManami_Toyota_Chikara.jpg",
-      "cached": true,
-      "artRevision": 0
+      "bytes": 96278,
+      "author": "Jocsh3",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Mana.JPG",
+      "artRevision": 1
     },
     {
       "id": "mick-foley",
@@ -466,15 +464,7 @@
     },
     {
       "id": "sting",
-      "name": "Sting",
-      "tier": "ICON",
-      "file": "apps/web/public/assets/legends/sting-icon-card.webp",
-      "bytes": 86282,
-      "author": "Simon Q",
-      "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
-      "cached": true,
-      "artRevision": 0
+      "error": "All authenticated photo-origin paths failed for sting-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "super-crazy",
@@ -554,7 +544,14 @@
     },
     {
       "id": "william-regal",
-      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
+      "name": "William Regal",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/william-regal-legend-card.webp",
+      "bytes": 80960,
+      "author": "Adster95, cropped by CeltBrowne",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
+      "artRevision": 1
     }
   ],
   "batch": -1,
