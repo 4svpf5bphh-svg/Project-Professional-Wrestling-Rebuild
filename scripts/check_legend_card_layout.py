@@ -9,7 +9,7 @@ import build_curated_legend_cards as renderer
 
 with TemporaryDirectory() as work:
  renderer.DEST=Path(work)
- renderer.obtain=lambda url,width:Image.new("RGB",(1200,1200),(100,145,190))
+ renderer.obtain=lambda url,width,identity:Image.new("RGB",(1200,1200),(100,145,190))
  for tier in renderer.PALETTE:
   card=renderer.draw_card({
    "id":"layout-probe-"+tier.lower(),
