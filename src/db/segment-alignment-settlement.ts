@@ -12,7 +12,7 @@ export async function settleCanonicalAuthoredTurns(
 ):Promise<{changed:number}>{
  const targets=contexts.flatMap(({segment})=>
   segment.kind==="TURN"&&segment.outcome==="HAPPENS"&&segment.turnTargetAlignment?
-   [{personId:segment.actorIds[0]!,to:segment.turnTargetAlignment}]:[]);
+   segment.actorIds.map(personId=>({personId,to:segment.turnTargetAlignment!})):[]);
  if(!targets.length)return {changed:0};
  if(targets.length>100||new Set(targets.map(t=>t.personId)).size!==targets.length)
   throw new Error("Multiple or excessive turns for the same wrestler");
