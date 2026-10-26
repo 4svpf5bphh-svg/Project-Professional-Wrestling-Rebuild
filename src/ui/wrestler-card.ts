@@ -72,7 +72,8 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
 const media=span("ppw-wrestler-media","");
 media.setAttribute("aria-hidden","true");
 media.append(span("ppw-wrestler-media-mark",wrestlerInitials(p.ringName||p.name)));
-const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220)??(p.ringName?createWrestlerPortrait(p.name,options.compact?150:220):null);
+const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220,p.personId)??
+  (p.ringName?createWrestlerPortrait(p.name,options.compact?150:220,p.personId):null);
 if(photo){
  root.dataset.hasPhoto="true";
  photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};

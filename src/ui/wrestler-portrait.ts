@@ -1,3 +1,4 @@
+import {legendPortraitSource} from "./legend-portrait-assets.js";
 /** Wikimedia Commons portrait candidates. External file existence and licensing\n * must be independently audited; local tests alone cannot verify remote media.
  * Client media only: NO live search, AI, Neon metadata, database reads/writes.
  * Match the base legal name as well as stable ring aliases. Never invent photos.
@@ -463,7 +464,9 @@ export function portraitCredit(name:string):PhotoCredit|null{
  const key=normalizePortraitName(name);
  return catalogue[knownAliases[key]??key]??null;
 }
-export function portraitSource(name:string,width=220):string|null{
+export function portraitSource(name:string,width=220,personId?:string):string|null{
+ const local=legendPortraitSource(personId);
+ if(local)return local;
  const photo=portraitCredit(name);
  if(!photo)return null;
  return "https://commons.wikimedia.org/wiki/Special:FilePath/"+
@@ -477,6 +480,7 @@ export function createWrestlerPortrait(name:string,width=220):HTMLImageElement|n
  img.className="ppw-real-wrestler-photo";
  img.src=src;img.alt="";img.loading="lazy";img.decoding="async";
  img.width=width;img.height=Math.round(width*1.3);
- img.title="Photo: "+credit.author+" · "+credit.license+" · Wikimedia Commons (credits in portrait-credits.html)";
+ img.title=local?"Authentic Legend photo · source credited in Legends Vault":
+   "Photo: "+credit!.author+" · "+credit!.license+" · Wikimedia Commons (credits in portrait-credits.html)";
  return img;
 }
