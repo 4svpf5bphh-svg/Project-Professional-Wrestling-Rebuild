@@ -584,8 +584,10 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await expect(page).toHaveURL(/#\/(?:planner\/card|card)$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load"]);
- await page.locator("details.ppw-management-menu summary").click();
- await page.getByRole("button",{name:"Show Planner"}).click();
+ // Card editing stays task-focused; the existing contextual Planner return
+ // replaces the retired Management Tools accordion.
+ await expect(page.locator("details.ppw-management-menu")).toHaveCount(0);
+ await page.getByRole("button",{name:"← Planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await expect.poll(()=>methods).toEqual(["overview","planner","load","planner"]);
