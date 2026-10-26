@@ -17,41 +17,65 @@
     {
       "id": "eddie-guerrero",
       "name": "Eddie Guerrero",
-      "file": "Eddie Guerrero 2004.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AEddie_Guerrero_2004.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/0/06/Eddie_Guerrero_2004.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "EDDIE_GUERRERO.jpg : paddynapper derivative work: RanZag ( talk )",
-      "license": "CC BY-SA 2.0",
-      "description": "Professional Wrestler Eddie Guerrero arrives at Sydney International Airport.",
-      "width": 960,
-      "height": 1280,
-      "collectorNumber": 3
+      "file": "Alternate prime-era editorial image (private hobby review)",
+      "sourcePage": "https://libero.pe/deportes/wwe/2021/10/09/repasemos-carrera-eddie-guerrero-leyenda-wwe-lucha-libre-noticia-22700",
+      "sourceUrl": "https://libero.cronosmedia.glr.pe/original/2021/10/09/6161e4831c540155cd6f8b6c.jpg",
+      "author": "WWE promotional photograph, photographer not verified, via Líbero",
+      "license": "Unverified - hobby draft",
+      "description": "Authentic prime-era promotional photograph of WWE Champion Eddie Guerrero with title belt",
+      "width": 1000,
+      "height": 1000,
+      "collectorNumber": 3,
+      "priorSource": {
+        "file": "Eddie Guerrero 2004.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AEddie_Guerrero_2004.jpg",
+        "author": "EDDIE_GUERRERO.jpg : paddynapper derivative work: RanZag ( talk )",
+        "license": "CC BY-SA 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.36
     },
     {
       "id": "trish-stratus",
       "name": "Trish Stratus",
-      "file": "Trish Stratus 2019 (cropped).jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ATrish_Stratus_2019_(cropped).jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/7/79/Trish_Stratus_2019_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "Super Festivals",
-      "license": "CC BY 2.0",
-      "description": "Professional wrestler Trish Stratus posing for a photograph in 2019",
-      "width": 1977,
-      "height": 1978,
-      "collectorNumber": 4
+      "file": "Alternate prime-era editorial image (private hobby review)",
+      "sourcePage": "https://www.wwe.com/gallery/every-female-champion-ever-photos",
+      "sourceUrl": "https://www.wwe.com/f/styles/gallery_img_l/public/all/2020/02/02_TRIS_10172005jg_027--6775906058e1bc6b5a2e401993be0c88.jpg",
+      "author": "WWE promotional photograph of Trish Stratus in 2005, photographer not verified",
+      "license": "Unverified - hobby draft",
+      "description": "Authentic 2005 Trish Stratus photo with WWE Women's Championship",
+      "width": 900,
+      "height": 900,
+      "collectorNumber": 4,
+      "priorSource": {
+        "file": "Trish Stratus 2019 (cropped).jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3ATrish_Stratus_2019_(cropped).jpg",
+        "author": "Super Festivals",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.37
     },
     {
       "id": "bruno-sammartino",
       "name": "Bruno Sammartino",
-      "file": "Bruno Sammartino PWHOF.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABruno_Sammartino_PWHOF.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Bruno_Sammartino_PWHOF.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "John Jewell",
-      "license": "CC BY 2.0",
-      "description": "Bruno Sammartino at the 2012 Professional Wrestling Hall of Fame ceremony",
-      "width": 3072,
-      "height": 2304,
-      "collectorNumber": 5
+      "file": "Alternate prime-era editorial image (private hobby review)",
+      "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html",
+      "sourceUrl": "https://www.wwe.com/f/rd-talent/Profile/Bruno_Sammartino_pro.png",
+      "author": "WWE archival promotional photograph, photographer not verified",
+      "license": "Unverified - hobby draft",
+      "description": "Prime-era studio photograph of Bruno Sammartino with classic WWWF belt",
+      "width": 700,
+      "height": 700,
+      "collectorNumber": 5,
+      "priorSource": {
+        "file": "Bruno Sammartino PWHOF.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABruno_Sammartino_PWHOF.jpg",
+        "author": "John Jewell",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.37
     },
     {
       "id": "sabu",
@@ -95,15 +119,23 @@
     {
       "id": "abdullah-butcher",
       "name": "Abdullah the Butcher",
-      "file": "Abdullah the butcher.png",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAbdullah_the_butcher.png",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Abdullah_the_butcher.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "GreatTiger89",
-      "license": "CC BY-SA 3.0",
-      "description": "Abdullah The Butcher",
-      "width": 1010,
-      "height": 1214,
-      "collectorNumber": 9
+      "file": "Alternate prime-era editorial image (private hobby review)",
+      "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues",
+      "sourceUrl": "https://www.mensjournal.com/.image/NDI6MDAwMDAwMDAwOTc3NjEx/unspecified-unspecified-unknown-date-abdullah-the-butcher-poses-for-photosphoto-by-wwewwe-via-getty-images-stockpack-gettyimages.jpg?io=1&profile=share1-1&x=41&y=13",
+      "author": "WWE via Getty Images, photographer not verified, editorial reproduction",
+      "license": "Unverified - hobby draft",
+      "description": "Authentic archival promo photograph of Abdullah the Butcher wearing red hood",
+      "width": 1000,
+      "height": 1000,
+      "collectorNumber": 9,
+      "priorSource": {
+        "file": "Abdullah the butcher.png",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAbdullah_the_butcher.png",
+        "author": "GreatTiger89",
+        "license": "CC BY-SA 3.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.36
     },
     {
       "id": "new-jack",
@@ -459,15 +491,23 @@
     {
       "id": "kenta-kobashi",
       "name": "Kenta Kobashi",
-      "file": "Kenta Kobashi, 2007.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKenta_Kobashi%2C_2007.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Kenta_Kobashi%2C_2007.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "shawnsavior",
-      "license": "CC BY-SA 2.0",
-      "description": "Kobashi Kenta...",
-      "width": 660,
-      "height": 649,
-      "collectorNumber": 37
+      "file": "Alternate prime-era editorial image (private hobby review)",
+      "sourcePage": "https://www.mediotiempo.com/lucha-libre/se-retiro-el-luchador-japones-kenta-kobashi",
+      "sourceUrl": "https://cdn2.mediotiempo.com/uploads/media/2016/05/11/kenta-kobashi.jpg",
+      "author": "Photo from MedioTiempo archival wrestling coverage, photographer unverified",
+      "license": "Unverified - hobby draft",
+      "description": "Authentic promotional close-up of former GHC champion Kenta Kobashi",
+      "width": 800,
+      "height": 800,
+      "collectorNumber": 37,
+      "priorSource": {
+        "file": "Kenta Kobashi, 2007.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKenta_Kobashi%2C_2007.jpg",
+        "author": "shawnsavior",
+        "license": "CC BY-SA 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.37
     },
     {
       "id": "raven",

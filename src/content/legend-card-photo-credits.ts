@@ -36,21 +36,21 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "CULT"
   },
   "eddie-guerrero": {
-    "author": "EDDIE_GUERRERO.jpg : paddynapper derivative work: RanZag ( talk )",
-    "license": "CC BY-SA 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Eddie_Guerrero_2004.jpg",
+    "author": "WWE promotional photograph, photographer not verified, via Líbero",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://libero.pe/deportes/wwe/2021/10/09/repasemos-carrera-eddie-guerrero-leyenda-wwe-lucha-libre-noticia-22700",
     "tier": "LEGEND"
   },
   "trish-stratus": {
-    "author": "Super Festivals",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Trish_Stratus_2019_(cropped).jpg",
+    "author": "WWE promotional photograph of Trish Stratus in 2005, photographer not verified",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.wwe.com/gallery/every-female-champion-ever-photos",
     "tier": "LEGEND"
   },
   "bruno-sammartino": {
-    "author": "John Jewell",
-    "license": "CC BY 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Bruno_Sammartino_PWHOF.jpg",
+    "author": "WWE archival promotional photograph, photographer not verified",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html",
     "tier": "IMMORTAL"
   },
   "sabu": {
@@ -72,9 +72,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "CULT"
   },
   "abdullah-butcher": {
-    "author": "GreatTiger89",
-    "license": "CC BY-SA 3.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Abdullah_the_butcher.png",
+    "author": "WWE via Getty Images, photographer not verified, editorial reproduction",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues",
     "tier": "CULT"
   },
   "new-jack": {
@@ -240,9 +240,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "IMMORTAL"
   },
   "kenta-kobashi": {
-    "author": "shawnsavior",
-    "license": "CC BY-SA 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Kenta_Kobashi%2C_2007.jpg",
+    "author": "Photo from MedioTiempo archival wrestling coverage, photographer unverified",
+    "license": "Unverified - hobby draft",
+    "sourcePage": "https://www.mediotiempo.com/lucha-libre/se-retiro-el-luchador-japones-kenta-kobashi",
     "tier": "IMMORTAL"
   },
   "raven": {
