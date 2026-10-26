@@ -7,12 +7,18 @@ const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN"},
 const session={worldId:"genesis",playerId:"booker",csrfToken:"fixture",
  overview,availablePromotions:[]};
 const show={showId:"omega-night",showName:"Dynamite",bookingClass:"REGULAR",
- year:1,week:4,crowdResponse:84,matchCount:1,angleCount:1,entries:[
+ year:1,week:4,crowdResponse:84,matchCount:1,angleCount:1,
+ staffReport:{reporter:"Alex Stone",staffId:"agent",headline:"A strong main event",
+  praise:"The main event delivered.",concern:"Keep the next card tighter.",
+  recommendation:"Give the rivalry room to grow.",strongestMatchId:"omega-match",reviewedMatches:1},
+ entries:[
   {slotId:"omega-match",position:0,type:"MATCH",headline:"Kenny Omega def. Samoa Joe",
    summary:"Omega won by a clean pinfall",crowdResponse:89,outcome:"CLEAN_PIN",
    actorIds:["omega","joe"],targetIds:[],
    matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:18,
-    sides:[["Kenny Omega"],["Samoa Joe"]],winnerNames:["Kenny Omega"],
+    sides:[["Kenny Omega"],["Samoa Joe"]],
+    sideParticipants:[[{personId:"omega",name:"Kenny Omega"}],
+     [{personId:"joe",name:"Samoa Joe"}]],winnerNames:["Kenny Omega"],
     championshipContested:false,isMainEvent:true},
    fallout:{ratingStars:4.5,actualMinutes:18,injuries:[],eliminations:[]},
    performerIdentities:[{personId:"omega",ringName:"Kenny Omega",character:"The Cleaner",
@@ -59,9 +65,14 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
+  await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
+  await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeVisible();
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
+  await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent's Report"})).toBeVisible();
+  await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).not.toHaveAttribute("open");
   await expect(page.locator(".ppw-flow-track")).toHaveCount(2);
