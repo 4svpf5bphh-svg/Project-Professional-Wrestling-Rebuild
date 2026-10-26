@@ -47,6 +47,7 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  });
  await page.goto("/#/programmes");
  await expect(page.getByRole("heading",{name:"Match agreements"})).toBeVisible();
+ await expect(page.getByText("Building the issue")).toBeVisible();
  // Standing terms cannot replace the long-standing rivalry dossier and
  // post-match direction choices from the original Programme desk.
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
