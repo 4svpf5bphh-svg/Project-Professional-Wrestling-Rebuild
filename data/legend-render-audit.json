@@ -4,15 +4,15 @@
   "failed": [
     {
       "id": "sabu",
-      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "taz",
-      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "william-regal",
-      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "cards": [
@@ -414,7 +414,7 @@
     },
     {
       "id": "sabu",
-      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "shawn-michaels",
@@ -437,6 +437,7 @@
       "author": "Bill Apter",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Stan_Hansen,_1985.jpg",
+      "cached": true,
       "artRevision": 1
     },
     {
@@ -501,7 +502,7 @@
     },
     {
       "id": "taz",
-      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "the-rock",
@@ -553,7 +554,7 @@
     },
     {
       "id": "william-regal",
-      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found; HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "batch": -1,
