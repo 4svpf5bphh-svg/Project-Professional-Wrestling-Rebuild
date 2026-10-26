@@ -1,76 +1,42 @@
 {
   "attempted": 47,
-  "completed": 32,
+  "completed": 42,
   "failed": [
     {
       "id": "abdullah-butcher",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "aja-kong",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "bret-hart",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for abdullah-butcher: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "bruno-sammartino",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "bull-nakano",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "dusty-rhodes",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for bruno-sammartino: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "eddie-guerrero",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for eddie-guerrero: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "kenta-kobashi",
-      "error": "Insufficient source image resolution"
-    },
-    {
-      "id": "lita",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "mick-foley",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "randy-savage",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "sabu",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "stan-hansen",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
-    },
-    {
-      "id": "steve-corino",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for kenta-kobashi: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "trish-stratus",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for trish-stratus: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "cards": [
     {
       "id": "abdullah-butcher",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for abdullah-butcher: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "aja-kong",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Aja Kong",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/aja-kong-legend-card.webp",
+      "bytes": 123190,
+      "author": "Savers Liner",
+      "license": "CC BY-SA 4.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAja_Kong_2019.jpg"
     },
     {
       "id": "andre-giant",
@@ -118,15 +84,27 @@
     },
     {
       "id": "bret-hart",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Bret Hart",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/bret-hart-icon-card.webp",
+      "bytes": 233100,
+      "author": "Chatsam",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABret_hart_paris_2008.JPG"
     },
     {
       "id": "bruno-sammartino",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for bruno-sammartino: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "bull-nakano",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Bull Nakano",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/bull-nakano-legend-card.webp",
+      "bytes": 58546,
+      "author": "2for6",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABull_Nakano.jpg"
     },
     {
       "id": "chyna",
@@ -158,15 +136,22 @@
       "bytes": 93784,
       "author": "REW ( Revolution Eastern Wrestling)",
       "license": "CC BY-SA 4.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADean_Malenko.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADean_Malenko.jpg",
+      "cached": true
     },
     {
       "id": "dusty-rhodes",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Dusty Rhodes",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/dusty-rhodes-legend-card.webp",
+      "bytes": 102602,
+      "author": "Mark Hodgins",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg"
     },
     {
       "id": "eddie-guerrero",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for eddie-guerrero: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "el-santo",
@@ -209,7 +194,8 @@
       "bytes": 122912,
       "author": "shstrng",
       "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJerry_Lynn_CHIKARA.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJerry_Lynn_CHIKARA.jpg",
+      "cached": true
     },
     {
       "id": "jushin-liger",
@@ -224,7 +210,7 @@
     },
     {
       "id": "kenta-kobashi",
-      "error": "Insufficient source image resolution"
+      "error": "All authenticated photo-origin paths failed for kenta-kobashi: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "konnan",
@@ -250,7 +236,13 @@
     },
     {
       "id": "lita",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Lita",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/lita-legend-card.webp",
+      "bytes": 82340,
+      "author": "Miguel Discart",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ALita_WrestleMania_Axxess_2015.jpg"
     },
     {
       "id": "manami-toyota",
@@ -265,7 +257,13 @@
     },
     {
       "id": "mick-foley",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Mick Foley",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/mick-foley-icon-card.webp",
+      "bytes": 124846,
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMick_Foley_2019_(cropped).jpg"
     },
     {
       "id": "mitsuharu-misawa",
@@ -302,7 +300,13 @@
     },
     {
       "id": "randy-savage",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Randy Savage",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/randy-savage-icon-card.webp",
+      "bytes": 160768,
+      "author": "Rob DiCaterino from Jersey City, NJ, USA",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARandy_Savage_1986.jpg"
     },
     {
       "id": "raven",
@@ -350,7 +354,13 @@
     },
     {
       "id": "sabu",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Sabu",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/sabu-cult-card.webp",
+      "bytes": 152292,
+      "author": "Chatsam",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG"
     },
     {
       "id": "shawn-michaels",
@@ -365,7 +375,13 @@
     },
     {
       "id": "stan-hansen",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Stan Hansen",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/stan-hansen-legend-card.webp",
+      "bytes": 71600,
+      "author": "Miguel Discart",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg"
     },
     {
       "id": "steve-austin",
@@ -380,7 +396,13 @@
     },
     {
       "id": "steve-corino",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "name": "Steve Corino",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/steve-corino-cult-card.webp",
+      "bytes": 86294,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASteve_Corino_2012_(cropped).jpg"
     },
     {
       "id": "sting",
@@ -439,7 +461,7 @@
     },
     {
       "id": "trish-stratus",
-      "error": "HTTP Error 429: Too Many Requests (015d12c)"
+      "error": "All authenticated photo-origin paths failed for trish-stratus: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "ultimo-dragon",
