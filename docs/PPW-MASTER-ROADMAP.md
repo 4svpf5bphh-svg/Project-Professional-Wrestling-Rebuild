@@ -12,6 +12,12 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 
 **Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
 
+## Phase 9 — 26 October 2026: Booker usability and public results (DEVELOPMENT ONLY)
+
+Owner-approved direction: compact text-first draggable Edit Card entries with no large match/angle graphics; Results instead present verified wrestler portraits, labels and match outcomes. Established signed tag teams can be selected atomically for 2v2 booking and scripted together for a Face/Heel/Tweener turn; retain individual choices and the existing authored finish authority. The Road Agent's verified assessment belongs inside one post-show Management Brief alongside grounded decisions, not on a separate screen. Remove duplicate Home news shortcuts; preserve the dedicated Official and Dirt Sheets news desks and weekly awards, plus iPhone-first five-root bottom navigation. World completed-show viewing for fellow human managers is **results only after completion**; no private cards, editorial, backstage, staff notes, loans or crossover events.
+
+**Implementation branch:** `phase9-booking-results-consolidation-2026-10-26`, draft PR #21. Gameplay changes, read-only rival completed-results view, revised tests and UI developed there. CI must be verified as a whole before any merge or Production release. No live World advance, reset, second deadline or World Lock cron. Legends roster remains subject to owner list approval; do not autonomously select or expand it.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
@@ -55,7 +61,7 @@ Reuse booking, appointed staff, weekly resolution and the one World Lock. A pre-
 
 ## Phase 6 — Commercial and international expansion
 
-In dependency order: negotiable streaming/TV and sponsorship terms; campaigns and facilities; expanded academies; consent-based time/date-limited loans and excursions; promotion working agreements and diplomacy; joint shows and advanced commercial partnerships; local market history and affinity. All must work fairly with both AI and humans, respect contracts, private booking, player ownership and scarce venues.
+In dependency order: negotiable streaming/TV and sponsorship terms; campaigns and facilities; expanded academies; local market history and affinity. **Explicit exclusions:** no wrestler loans or excursions, no cross-promotion/joint shows. Existing promotions operate independently; preserve current contract and multiplayer rules. All must work fairly with both AI and humans, respect contracts, private booking, player ownership and scarce venues.
 
 ## Phase 7 — Historical World and legacy progression
 
