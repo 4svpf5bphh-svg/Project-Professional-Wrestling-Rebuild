@@ -1,0 +1,79 @@
+{
+  "attempted": 7,
+  "completed": 7,
+  "failed": [],
+  "cards": [
+    {
+      "id": "booker-t",
+      "name": "Booker T",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/booker-t-icon-card.webp",
+      "bytes": 239156,
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Booker_T_2018.jpg"
+    },
+    {
+      "id": "chyna",
+      "name": "Chyna",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/chyna-icon-card.webp",
+      "bytes": 83666,
+      "author": "MandyJC72",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chyna_and_Triple_H_in_1997_(cropped).jpg"
+    },
+    {
+      "id": "el-santo",
+      "name": "El Santo",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/el-santo-immortal-card.webp",
+      "bytes": 77938,
+      "author": "Historic photograph, photographer unverified (via Infobae)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.infobae.com/deportes/2021/09/23/a-104-anos-del-nacimiento-de-el-santo-el-luchador-que-oculto-su-identidad-hasta-su-muerte/"
+    },
+    {
+      "id": "mr-perfect",
+      "name": "Mr. Perfect",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/mr-perfect-legend-card.webp",
+      "bytes": 99796,
+      "author": "Photographer unverified (reproduced by SPORT1)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://www.sport1.de/news/wrestling/wwe/2023/02/wwe-ikone-mr-perfect-das-tragische-ende-einer-coolen-socke"
+    },
+    {
+      "id": "road-warriors",
+      "name": "The Road Warriors",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/road-warriors-icon-card.webp",
+      "bytes": 75360,
+      "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954"
+    },
+    {
+      "id": "the-rock",
+      "name": "The Rock",
+      "tier": "IMMORTAL",
+      "file": "apps/web/public/assets/legends/the-rock-immortal-card.webp",
+      "bytes": 202594,
+      "author": "Simon Q",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:WWE_Wrestlemania_28_-_The_Rock_pose.jpg"
+    },
+    {
+      "id": "vader",
+      "name": "Vader",
+      "tier": "ICON",
+      "file": "apps/web/public/assets/legends/vader-icon-card.webp",
+      "bytes": 86404,
+      "author": "Mandy Coombes",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Vader_One_Night_Only.jpg"
+    }
+  ],
+  "batch": 5,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}
