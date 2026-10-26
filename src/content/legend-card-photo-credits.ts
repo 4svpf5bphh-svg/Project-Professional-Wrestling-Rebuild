@@ -240,9 +240,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "IMMORTAL"
   },
   "kenta-kobashi": {
-    "author": "Photo from MedioTiempo archival wrestling coverage, photographer unverified",
+    "author": "Tokyo Sports archival Kobashi wrestling photograph; photographer unverified",
     "license": "Unverified - hobby draft",
-    "sourcePage": "https://www.mediotiempo.com/lucha-libre/se-retiro-el-luchador-japones-kenta-kobashi",
+    "sourcePage": "https://note.tokyo-sports.co.jp/n/na8bc06274c7e",
     "tier": "IMMORTAL"
   },
   "raven": {
