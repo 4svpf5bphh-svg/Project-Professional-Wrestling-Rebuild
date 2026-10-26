@@ -25,6 +25,7 @@ PHOTO_CACHE = Path("data/.legend-photo-cache")
 BATCH = int(os.environ.get("PPW_LEGEND_BATCH","-1"))
 AUDIT = Path("data/legend-render-audit"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".json")
 PREVIEW = Path("data/legend-card-contact-sheet"+("-batch-"+str(BATCH) if BATCH>=0 else "")+".webp")
+SOURCE_REVISIONS = Path("data/legend-card-art-revisions.json")
 W,H=960,1440
 PALETTE={
  "CULT": ((124,166,202),(29,48,66)),
@@ -110,14 +111,17 @@ def title_parts(title:str):
  return groups
 
 def draw_card(entry, tier, position):
+ rev=int(entry.get("artRevision",0))
+ recorded=json.loads(SOURCE_REVISIONS.read_text()) if SOURCE_REVISIONS.is_file() else {}
  out=DEST/(entry["id"]+"-"+tier.lower()+"-card.webp")
- if out.is_file() and out.stat().st_size>30_000 and not os.environ.get("PPW_LEGEND_FORCE_RENDER"):
+ if out.is_file() and out.stat().st_size>30_000 and (rev==0 or recorded.get(entry["id"])==rev) and not os.environ.get("PPW_LEGEND_FORCE_RENDER"):
   with Image.open(out) as old:
    if old.size==(W,H):
     return {"id":entry["id"],"name":entry["name"],"tier":tier,
      "file":str(out),"bytes":out.stat().st_size,"author":entry["author"],
-     "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True}
- photo=obtain(entry["sourceUrl"],entry["width"],entry["id"])
+     "license":entry["license"],"sourcePage":entry["sourcePage"],"cached":True,"artRevision":rev}
+ cache_key=entry["id"]+("-r"+str(rev) if rev>0 else "")
+ photo=obtain(entry["sourceUrl"],entry["width"],cache_key)
  # Separate photographic window: no text, labels or shading atop the wrestler.
  accent,dim=PALETTE[tier]
  photo_box=(53,162,W-53,1063)
@@ -160,7 +164,7 @@ def draw_card(entry, tier, position):
  canvas.convert("RGB").save(out,"WEBP",quality=83,method=6)
  return {"id":entry["id"],"name":entry["name"],"tier":tier,
          "file":str(out),"bytes":out.stat().st_size,"author":credit,
-         "license":license,"sourcePage":entry["sourcePage"]}
+         "license":license,"sourcePage":entry["sourcePage"],"artRevision":rev}
 
 def main():
  manifest=json.loads(SOURCE.read_text())["images"]
@@ -185,6 +189,11 @@ def main():
  results.sort(key=lambda x:x["id"])
  failed=[x for x in results if "error" in x]
  success=[x for x in results if "file" in x]
+ revisions=json.loads(SOURCE_REVISIONS.read_text()) if SOURCE_REVISIONS.is_file() else {}
+ for result in success:
+  if result.get("artRevision",0)>0:revisions[result["id"]]=result["artRevision"]
+ if any(result.get("artRevision",0)>0 for result in success):
+  SOURCE_REVISIONS.write_text(json.dumps(revisions,indent=2,sort_keys=True)+"\n")
  # The contact sheet and status report deliberately remain external review
  # artifacts. This script NEVER activates a collectible in the game.
  if success:

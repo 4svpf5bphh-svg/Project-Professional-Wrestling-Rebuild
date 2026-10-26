@@ -1,0 +1,61 @@
+{
+  "purpose": "Manual inspection queue for PPW hobby-only authentic-photo Legend drafts. A generated file is NOT a cleared collectible.",
+  "blocker": "No card other than the existing Undertaker pilot may be sold for KP without identity, image-quality and applicable photo/likeness-rights review.",
+  "improvementsUnderReview": [
+    {
+      "id": "taz",
+      "issue": "previous image did not adequately show the playable prime-era wrestler",
+      "candidate": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
+      "sourceLicense": "CC BY-SA 2.0",
+      "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION"
+    },
+    {
+      "id": "william-regal",
+      "issue": "previous image did not adequately show the playable prime-era wrestler",
+      "candidate": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
+      "sourceLicense": "CC BY-SA 3.0",
+      "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION"
+    },
+    {
+      "id": "sabu",
+      "issue": "previous image did not adequately show the playable prime-era wrestler",
+      "candidate": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
+      "sourceLicense": "CC BY-SA 2.0",
+      "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION"
+    },
+    {
+      "id": "stan-hansen",
+      "issue": "previous image did not adequately show the playable prime-era wrestler",
+      "candidate": "https://commons.wikimedia.org/wiki/File:Stan_Hansen,_1985.jpg",
+      "sourceLicense": "Unverified - hobby draft",
+      "visualApproval": "PENDING_GENERATED_ASSET_INSPECTION"
+    }
+  ],
+  "outstandingQualityReview": [
+    {
+      "id": "manami-toyota",
+      "issue": "Wrestler is small and dark behind ring rope"
+    },
+    {
+      "id": "sting",
+      "issue": "Wrestler occupies too little of dark arena frame"
+    },
+    {
+      "id": "dusty-rhodes",
+      "issue": "Side-on podium photograph rather than prime-era wrestler"
+    },
+    {
+      "id": "vader",
+      "issue": "Mostly back-facing camera angle"
+    },
+    {
+      "id": "konnan",
+      "issue": "Dim image with ring rope obscuring torso"
+    },
+    {
+      "id": "chyna",
+      "issue": "Two-person group photograph; cropped identity positioning needs review"
+    }
+  ],
+  "publicOrCommercialUse": "NO: private development artwork is not a likeness-rights clearance or licence audit."
+}

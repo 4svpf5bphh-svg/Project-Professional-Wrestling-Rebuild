@@ -60,7 +60,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A apps/web/public/assets/legends src/ui/legend-portrait-assets.ts
-          for audit in data/legend-render-audit.json data/legend-portrait-audit.json; do
+          for audit in data/legend-render-audit.json data/legend-portrait-audit.json data/legend-card-art-revisions.json; do
             if [ -f "$audit" ]; then git add "$audit"; fi
           done
           if ! git diff --cached --quiet; then

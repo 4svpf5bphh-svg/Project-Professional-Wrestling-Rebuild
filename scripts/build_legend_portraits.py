@@ -27,7 +27,8 @@ def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AU
   if not card:
    results.append({"id":slug,"status":"missing-card"})
    continue
-  master=Path(cache)/(slug+".webp")
+  rev=int(entry.get("artRevision",0))
+  master=Path(cache)/(slug+("-r"+str(rev) if rev>0 else "")+".webp")
   original=master if master.is_file() else card
   try:
    with Image.open(original) as photo:

@@ -80,15 +80,25 @@
     {
       "id": "sabu",
       "name": "Sabu",
-      "file": "Sabu AWR 2009.JPG",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Sabu_AWR_2009.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "Chatsam",
-      "license": "CC BY-SA 3.0",
-      "description": "sabu a american wrestling rampage 2009 paris",
-      "width": 1536,
-      "height": 2048,
-      "collectorNumber": 6
+      "file": "Sabu in ECW.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/d0/Sabu_in_ECW.jpg",
+      "author": "Robert Newsome",
+      "license": "CC BY-SA 2.0",
+      "description": "Authentic in-character ECW-era 1998 ringside photo with Sabu's face and wrestling gear clearly visible",
+      "width": 964,
+      "height": 1006,
+      "collectorNumber": 6,
+      "previousSource": {
+        "file": "Sabu AWR 2009.JPG",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Sabu_AWR_2009.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "author": "Chatsam",
+        "license": "CC BY-SA 3.0"
+      },
+      "focalX": 0.46,
+      "focalY": 0.45,
+      "artRevision": 1
     },
     {
       "id": "steve-corino",
@@ -218,15 +228,25 @@
     {
       "id": "william-regal",
       "name": "William Regal",
-      "file": "William Regal at Smackdown taping in Birmingham, England November 2012 (8622224149).jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/6/69/William_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_%288622224149%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "Ed Webster",
-      "license": "CC BY 2.0",
-      "description": "William Regal at Smackdown taping in Birmingham, England November 2012",
-      "width": 2880,
-      "height": 1623,
-      "collectorNumber": 16
+      "file": "Regal in Belfast for wrestlemania revenge tour in 2008 (cropped).jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_%28cropped%29.jpg",
+      "author": "Adster95, cropped by CeltBrowne",
+      "license": "CC BY-SA 3.0",
+      "description": "Sharp 2008 face-and-shoulders portrait of wrestler William Regal, replacing a distant arena photo",
+      "width": 661,
+      "height": 992,
+      "collectorNumber": 16,
+      "previousSource": {
+        "file": "William Regal at Smackdown taping in Birmingham, England November 2012 (8622224149).jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/6/69/William_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_%288622224149%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "author": "Ed Webster",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.37,
+      "artRevision": 1
     },
     {
       "id": "arn-anderson",
@@ -296,15 +316,25 @@
     {
       "id": "stan-hansen",
       "name": "Stan Hansen",
-      "file": "Stan Hansen HOF 2016.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Stan_Hansen_HOF_2016.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "Miguel Discart",
-      "license": "CC BY-SA 2.0",
-      "description": "Stan Hansen at the 2016 WWE Hall of Fame ceremony",
-      "width": 2243,
-      "height": 3581,
-      "collectorNumber": 22
+      "file": "Stan Hansen, 1985.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Stan_Hansen,_1985.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Stan_Hansen%2C_1985.jpg",
+      "author": "Bill Apter",
+      "license": "Unverified - hobby draft",
+      "description": "1985 prime-era promotional photograph of the Lariat legend in cowboy hat; US public-domain claim has non-US restrictions",
+      "width": 779,
+      "height": 1074,
+      "collectorNumber": 22,
+      "previousSource": {
+        "file": "Stan Hansen HOF 2016.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Stan_Hansen_HOF_2016.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "author": "Miguel Discart",
+        "license": "CC BY-SA 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.32,
+      "artRevision": 1
     },
     {
       "id": "bret-hart",
@@ -539,15 +569,25 @@
     {
       "id": "taz",
       "name": "Taz",
-      "file": "Taz Hardcore Hall of Fame.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Taz_Hardcore_Hall_of_Fame.jpg",
-      "author": "KMcWrestling Photography",
-      "license": "CC BY-SA 4.0",
-      "description": "Taz (Peter Senerchia) at the Hardcore Hall of Fame.",
-      "width": 2240,
-      "height": 3360,
-      "collectorNumber": 40
+      "file": "Tazz.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Tazz.jpg",
+      "author": "Jennifer",
+      "license": "CC BY-SA 2.0",
+      "description": "Recognisable 2006 ringside autograph photograph of former ECW champion Taz; replaces image of a hall-of-fame banner",
+      "width": 1397,
+      "height": 777,
+      "collectorNumber": 40,
+      "previousSource": {
+        "file": "Taz Hardcore Hall of Fame.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Taz_Hardcore_Hall_of_Fame.jpg",
+        "author": "KMcWrestling Photography",
+        "license": "CC BY-SA 4.0"
+      },
+      "focalX": 0.31,
+      "focalY": 0.44,
+      "artRevision": 1
     },
     {
       "id": "d-lo-brown",
