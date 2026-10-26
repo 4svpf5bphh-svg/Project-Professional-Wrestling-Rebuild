@@ -264,15 +264,25 @@
     {
       "id": "dusty-rhodes",
       "name": "Dusty Rhodes",
-      "file": "Dusty Rhodes HallofFame.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Dusty_Rhodes_HallofFame.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "Mark Hodgins",
-      "license": "CC BY 2.0",
-      "description": "Dusty Rhodes at the 2009 WWE Hall of Fame",
-      "width": 937,
-      "height": 1557,
-      "collectorNumber": 18
+      "file": "Dusty Rhodes as NWA Champion, circa 1979 to 1981.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Dusty_Rhodes_as_NWA_Champion,_circa_1979_to_1981.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/7/70/Dusty_Rhodes_as_NWA_Champion%2C_circa_1979_to_1981.jpg",
+      "author": "Bill Apter",
+      "license": "Unverified - hobby draft",
+      "description": "Early 1980s archival in-ring Dusty Rhodes with NWA Championship; US public domain notice status does not imply UK clearance",
+      "width": 1006,
+      "height": 1620,
+      "collectorNumber": 18,
+      "previousSource": {
+        "file": "Dusty Rhodes HallofFame.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Dusty_Rhodes_HallofFame.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "author": "Mark Hodgins",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.39,
+      "artRevision": 1
     },
     {
       "id": "lita",
@@ -417,15 +427,25 @@
     {
       "id": "manami-toyota",
       "name": "Manami Toyota",
-      "file": "Manami Toyota Chikara.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AManami_Toyota_Chikara.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Manami_Toyota_Chikara.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
-      "author": "shstrng",
-      "license": "CC BY 2.0",
-      "description": "Professional wrestler Manami Toyota at Chikara King of Trios 2011.",
-      "width": 3072,
-      "height": 2304,
-      "collectorNumber": 29
+      "file": "Mana.JPG",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Mana.JPG",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Mana.JPG",
+      "author": "Jocsh3",
+      "license": "CC BY-SA 3.0",
+      "description": "2011 photograph of Manami Toyota in black-and-gold wrestling gear; clear face and torso",
+      "width": 2592,
+      "height": 3888,
+      "collectorNumber": 29,
+      "previousSource": {
+        "file": "Manami Toyota Chikara.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File%3AManami_Toyota_Chikara.jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Manami_Toyota_Chikara.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+        "author": "shstrng",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.38,
+      "artRevision": 1
     },
     {
       "id": "shawn-michaels",
@@ -556,15 +576,25 @@
     {
       "id": "sting",
       "name": "Sting",
-      "file": "Sting Jan 2013.jpg",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
-      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Sting_Jan_2013.jpg",
-      "author": "Simon Q",
-      "license": "CC BY 2.0",
-      "description": "Professional wrestler Sting (Steve Borden) at TNA Impact! tapings in January 2013.",
-      "width": 3264,
-      "height": 2448,
-      "collectorNumber": 39
+      "file": "Sting 1988, red facepaint.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_1988,_red_facepaint.jpg",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Sting_1988%2C_red_facepaint.jpg",
+      "author": "Wrestling's Main Event editorial photographer unverified",
+      "license": "Unverified - hobby draft",
+      "description": "Prime-era 1988 Sting full-body red facepaint wrestling-gear photo; non-US copyright clearance needed",
+      "width": 802,
+      "height": 1104,
+      "collectorNumber": 39,
+      "previousSource": {
+        "file": "Sting Jan 2013.jpg",
+        "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
+        "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Sting_Jan_2013.jpg",
+        "author": "Simon Q",
+        "license": "CC BY 2.0"
+      },
+      "focalX": 0.5,
+      "focalY": 0.49,
+      "artRevision": 1
     },
     {
       "id": "taz",
