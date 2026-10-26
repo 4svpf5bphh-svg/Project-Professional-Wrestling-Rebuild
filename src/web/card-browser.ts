@@ -99,7 +99,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
-  industry:go("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
+  industry:go("promotions",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   news:go("news",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   calendar:go("calendar",()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope))),
   championships:go("championships",()=>{void mountChampionshipsPage(root,scope,
@@ -221,7 +221,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   openOwnResults:showId=>{void mountResultsPage(root,{...scope,showId},
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");},
   back:scope.showId?()=>mountBookingPage(root,scope):
-   ()=>mountWorldHomePage(root,scope)
+   ()=>{window.location.hash=hostSectionHash("home");}
  };
 }
 export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView){

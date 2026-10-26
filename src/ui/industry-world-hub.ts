@@ -78,7 +78,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   root.classList.add("ppw-editor","ppw-industry");
   root.replaceChildren();
   const section=el("section","ppw-public-results");
-  section.append(btn("← Back to Industry",()=>{
+  section.append(btn(active==="BROADCASTS"?"← Back to Broadcasts":"← Back to Promotions",()=>{
    watched=null;watchError="";watching=false;render();
   }));
   if(watching)section.append(el("p","ppw-industry-muted","Opening completed results…"));
@@ -498,7 +498,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      card.append(detail);section.append(card);
     }
    }else{
-    section.append(el("h3","","World Moments"),
+    section.append(el("h3","","Historic Highlights"),
      el("p","ppw-industry-muted",
       "The enduring highlight reel: historic title changes, classics, big turns " +
       "and landmark events. Only a few verified moments make the cut each week."));
