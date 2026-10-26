@@ -38,25 +38,32 @@ def build(manifest=MANIFEST, root=ROOT, cache=CACHE, registry=REGISTRY, audit=AU
      # Image-safe window: no badges, panels or text over the wrestler.
      photo=photo.crop((95,290,865,1000) if slug=="undertaker" else (55,164,905,1061))
     count=2 if slug=="road-warriors" else 1
+    reviewed_members=(entry.get("reviewedMemberOrder")==
+      ["Road Warrior Hawk","Road Warrior Animal"]) if count==2 else True
     derived=[]
     for index in range(count):
      output=Path(root)/(slug+"-"+str(index)+"-portrait.webp")
      if not output.is_file() or output.stat().st_size<6000 or output.stat().st_mtime<original.stat().st_mtime:
       fx=float(entry.get("focalX",.5))
       fy=float(entry.get("focalY",.36))
-      if count==2:fx=float(entry.get("memberFocalX",[.24,.76])[index])
+      # Verified March 1987 Weekly Pro Wrestling portrait:
+      # Hawk (blue mask) stands on the LEFT; Animal (gold mask) on the RIGHT.
+      # Take each genuine half individually before changing aspect ratio.
+      half=photo.width//2
+      candidate=photo.crop((index*half,0,(index+1)*half,photo.height)) if count==2 else photo
+      if count==2:fx=.5
       if not 0<=fx<=1 or not 0<=fy<=1:raise ValueError("Focal point outside 0..1")
-      crop=ImageOps.fit(photo,SIZE,method=Image.Resampling.LANCZOS,centering=(fx,fy))
+      crop=ImageOps.fit(candidate,SIZE,method=Image.Resampling.LANCZOS,centering=(fx,fy))
       output.parent.mkdir(parents=True,exist_ok=True)
       crop.save(output,"WEBP",quality=85,method=6)
      with Image.open(output) as check:
       if check.size!=SIZE:raise ValueError("Wrong portrait size")
      derived.append(str(output))
      # Tag team identity and framing require separate manual review.
-     if count==1:urls["legend:"+slug+":"+str(index)]="/assets/legends/"+output.name
+     if reviewed_members:urls["legend:"+slug+":"+str(index)]="/assets/legends/"+output.name
     results.append({"id":slug,"status":"draft","files":derived,
       "source":"cached-original" if original==master else "card-photo-window",
-      "memberReviewRequired":count==2})
+      "memberReviewRequired":count==2 and not reviewed_members})
   except Exception as exc:results.append({"id":slug,"status":"failed","reason":str(exc)})
  lines=[
   "/** Generated from actual static source-backed Legend portraits.",

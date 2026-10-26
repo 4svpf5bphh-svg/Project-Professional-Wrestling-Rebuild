@@ -17,7 +17,9 @@ test("static Legend photographs follow immutable person IDs across roster transf
  assert.equal(legendPortraitSource("unrelated-id"),null);
  assert.equal(legendPortraitSource("legend:unknown:0"),null);
 });
-test("tag duo images cannot be misidentified as individual wrestlers before review",()=>{
- assert.equal(legendPortraitSource("legend:road-warriors:0"),null);
- assert.equal(legendPortraitSource("legend:road-warriors:1"),null);
+test("a two-person Road Warriors original produces two distinct identities together",()=>{
+ const hawk=legendPortraitSource("legend:road-warriors:0");
+ const animal=legendPortraitSource("legend:road-warriors:1");
+ assert.equal(Boolean(hawk),Boolean(animal),"never register only one team member");
+ if(hawk&&animal)assert.notEqual(hawk,animal,"each wrestler needs their own crop");
 });

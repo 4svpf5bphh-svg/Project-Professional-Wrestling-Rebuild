@@ -7,14 +7,19 @@ from build_legend_portraits import build,SIZE
 with TemporaryDirectory() as folder:
  root=Path(folder);assets=root/"assets";assets.mkdir()
  manifest=root/"manifest.json"
- manifest.write_text('{"images":[{"id":"tester","name":"Tester","tier":"CULT"}]}')
- for slug,tier in [("tester","cult"),("undertaker","immortal")]:
+ manifest.write_text('{"images":[{"id":"tester","name":"Tester","tier":"CULT"},'
+ '{"id":"road-warriors","name":"The Road Warriors","tier":"ICON",'
+ '"reviewedMemberOrder":["Road Warrior Hawk","Road Warrior Animal"]}]}')
+ for slug,tier in [("tester","cult"),("undertaker","immortal"),("road-warriors","icon")]:
   image=Image.new("RGB",(960,1440),(222,15,22));draw=ImageDraw.Draw(image)
   draw.rectangle((55,164,905,1061) if slug=="tester" else (95,290,865,1000),fill=(40,135,185))
+  if slug=="road-warriors":
+   draw.rectangle((55,164,480,1061),fill=(20,25,235))
+   draw.rectangle((480,164,905,1061),fill=(235,220,20))
   image.save(assets/(slug+"-"+tier+"-card.webp"))
  registry=root/"registry.ts"
  report=build(manifest,assets,root/"cache",registry,root/"audit.json")
- assert report["portraitsRegistered"]==2,report
+ assert report["portraitsRegistered"]==4,report
  assert not report["failed"],report
  assert "legend:undertaker:0" in registry.read_text()
  for slug in ["tester","undertaker"]:
@@ -22,4 +27,10 @@ with TemporaryDirectory() as folder:
    assert photo.size==SIZE
    r,g,b=photo.getpixel((240,312))
    assert abs(r-40)<10 and abs(g-135)<10 and abs(b-185)<10,(r,g,b)
-print("All source-matched portrait crops and registry checks passed.")
+for index,expected in [(0,(20,25,235)),(1,(235,220,20))]:
+ with Image.open(assets/("road-warriors-"+str(index)+"-portrait.webp")) as photo:
+  found=photo.getpixel((240,312))
+  assert all(abs(found[i]-expected[i])<15 for i in range(3)),(index,found)
+assert "legend:road-warriors:0" in registry.read_text()
+assert "legend:road-warriors:1" in registry.read_text()
+print("All source-matched portrait crops and individually verified team identities pass.")
