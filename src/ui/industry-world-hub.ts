@@ -293,10 +293,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   status.append(el("span","","BOOKING DEADLINE"),el("strong","",when));
   status.append(el("p","ppw-industry-muted",
    "All promotions share the same weekly deadline. Their cards stay private until the shows take place."));
-  root.append(status);
+  if(window.location.hash!=="#/news")root.append(status);
   const nav=el("nav","ppw-industry-nav");
   nav.setAttribute("aria-label","Industry views");
-  for(const [key,label] of [["STANDINGS","Promotions"],["OFFICIAL","Official News"],["DIRT","Dirt Sheets"],["BROADCASTS","Recent broadcasts"],["RECORDS","Record book"],["HERITAGE","World History"],["LEGENDS","Legends Vault"]] as const){
+  const deskTabs=window.location.hash==="#/news"?
+   [["OFFICIAL","Official News"],["DIRT","Dirt Sheets"]] as const:
+   [["STANDINGS","Promotions"],["BROADCASTS","Recent broadcasts"],
+    ["RECORDS","Record book"],["HERITAGE","World History"],
+    ["LEGENDS","Legends Vault"]] as const;
+  for(const [key,label] of deskTabs){
    const b=btn(label,()=>{active=key;render();if(key==="RECORDS"&&recordsTab==="MY")void loadRecords();
     if(key==="RECORDS"&&recordsTab==="WORLD")void loadRankings();
     if(key==="OFFICIAL"||key==="DIRT")void loadNews();
@@ -763,8 +768,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       show.promotionName+" · Year "+show.year+" Week "+show.week),
      el("span","ppw-industry-crowd",
       "Crowd response "+Math.round(show.crowdResponse)+"/100"));
-    if(show.isYours&&port.openOwnResults)card.append(btn("Open Results →",
+    if(show.isYours&&port.openOwnResults)card.append(btn("Open Results",
      ()=>port.openOwnResults?.(show.showId)));
+    else if(show.humanManaged&&port.publicResults)card.append(btn("Read Results",
+     ()=>void readRivalResult(show.promotionId,show.showId)));
     section.append(card);
    }
    root.append(section);
