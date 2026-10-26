@@ -1,0 +1,89 @@
+{
+  "attempted": 8,
+  "completed": 8,
+  "failed": [],
+  "cards": [
+    {
+      "id": "arn-anderson",
+      "name": "Arn Anderson",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/arn-anderson-legend-card.webp",
+      "bytes": 106088,
+      "author": "Super Festivals from Ft. Lauderdale, USA",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AArn_Anderson_(48481801426).jpg"
+    },
+    {
+      "id": "konnan",
+      "name": "Konnan",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/konnan-cult-card.webp",
+      "bytes": 68556,
+      "author": "John Jewell",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKonnanJuly2011.png"
+    },
+    {
+      "id": "new-jack",
+      "name": "New Jack",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/new-jack-cult-card.webp",
+      "bytes": 87288,
+      "author": "Robert Newsome",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ANew_Jack_in_the_ECW%2C_1998.jpg"
+    },
+    {
+      "id": "ricky-steamboat",
+      "name": "Ricky Steamboat",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/ricky-steamboat-legend-card.webp",
+      "bytes": 251244,
+      "author": "Tabercil",
+      "license": "CC BY-SA 3.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARicky_Steamboat_Greektown_2018_(cropped).jpg"
+    },
+    {
+      "id": "super-crazy",
+      "name": "Super Crazy",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/super-crazy-cult-card.webp",
+      "bytes": 95808,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASuper_Crazy_2017.jpg"
+    },
+    {
+      "id": "tajiri",
+      "name": "Tajiri",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/tajiri-cult-card.webp",
+      "bytes": 125248,
+      "author": "Andrew Quentin",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AHustle_2008-07-27_TAJIRI.jpg"
+    },
+    {
+      "id": "ultimo-dragon",
+      "name": "Ultimo Dragon",
+      "tier": "CULT",
+      "file": "apps/web/public/assets/legends/ultimo-dragon-cult-card.webp",
+      "bytes": 124352,
+      "author": "Mike Kalasnik",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AUltimo_Dragon_2019.jpg"
+    },
+    {
+      "id": "william-regal",
+      "name": "William Regal",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/william-regal-legend-card.webp",
+      "bytes": 99320,
+      "author": "Ed Webster",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg"
+    }
+  ],
+  "batch": 1,
+  "review": "Private hobby drafts; provenance kept, commercial rights unverified; review identities and photos before activation"
+}
