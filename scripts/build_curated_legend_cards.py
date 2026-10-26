@@ -15,7 +15,7 @@ import os
 import re
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 from urllib.request import Request, urlopen
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageEnhance
 
@@ -58,40 +58,46 @@ def obtain(url,source_width,identity):
  parsed=urlparse(url)
  if parsed.scheme!="https" or not parsed.hostname or parsed.username:
   raise ValueError("Curated source requires a public HTTPS image URL")
+ clean_url=parsed.scheme+"://"+parsed.netloc+parsed.path
  if parsed.hostname=="upload.wikimedia.org" and parsed.path.startswith("/wikipedia/commons/"):
   basename=parsed.path.rsplit("/",1)[-1]
-  thumb_width=960 if source_width>=960 else 500 if source_width>=500 else 330
-  # Narrow originals (notably Kobashi at 660×649) are larger than a
-  # 500px thumbnail in BOTH dimensions, so do not reject a valid original.
-  request_url=(parsed.scheme+"://"+parsed.netloc+parsed.path) if source_width<800 else (
-   parsed.scheme+"://"+parsed.netloc+parsed.path.replace(
-   "/commons/","/commons/thumb/",1)+"/"+str(thumb_width)+"px-"+basename)
+  thumb_width=960 if source_width>=960 else 500 if source_width>=800 else 0
+  request_url=(clean_url.replace("/commons/","/commons/thumb/",1)+"/"+
+   str(thumb_width)+"px-"+basename) if thumb_width else clean_url
  else:
   request_url=url
- for attempt in range(2):
+ candidates=[request_url]
+ if parsed.hostname=="upload.wikimedia.org":
+  # Commons shared GitHub runners often return HTTP 429. An independent
+  # read-through image cache provides a bounded alternative for the *same*
+  # source photograph. This is offline artwork preparation ONLY: no in-game
+  # browser calls to this proxy and no changed image provenance or approval.
+  candidates.append("https://images.weserv.nl/?url="+quote(request_url,safe="")+
+                    "&output=jpg")
+ errors=[]
+ for image_url in candidates:
   try:
-   time.sleep(4)
-   req=Request(request_url,headers={"User-Agent":
+   time.sleep(2)
+   req=Request(image_url,headers={"User-Agent":
     "PPW-Legends-Photo-Review/1.0 (non-commercial draft image curation)",
     "Accept":"image/jpeg,image/png,image/webp"})
    with urlopen(req,timeout=35) as reply:
     if reply.headers.get("Content-Type","").split(";")[0] not in (
-      "image/jpeg","image/png","image/webp","application/octet-stream"):
+       "image/jpeg","image/png","image/webp","application/octet-stream"):
      raise ValueError("Unexpected image content type")
     data=reply.read(26_000_000)
-   if len(data)>=26_000_000: raise ValueError("Source image exceeds safe budget")
-   image=Image.open(io.BytesIO(data))
-   image.load()
-   if image.width<500 or image.height<500:
-    raise ValueError("Insufficient source image resolution")
-   photo=image.convert("RGB")
-   photo.save(cached,"WEBP",quality=91,method=6)
-   return photo
+   if len(data)>=26_000_000:raise ValueError("Source image exceeds safe budget")
+   image=Image.open(io.BytesIO(data));image.load()
+   if min(image.size)<500:raise ValueError("Insufficient source image resolution")
+   original=image.convert("RGB")
+   original.save(cached,"WEBP",quality=91,method=6)
+   return original
   except Exception as exc:
-   if attempt==1:raise
-   print("IMAGE RETRY",type(exc).__name__,"after 10 seconds",flush=True)
-   time.sleep(10)
- raise RuntimeError("Unreachable")
+   errors.append(type(exc).__name__+": "+str(exc))
+   print("SOURCE UNAVAILABLE",identity,urlparse(image_url).hostname,
+         errors[-1],flush=True)
+ raise RuntimeError("All authenticated photo-origin paths failed for "+identity+
+                    ": "+"; ".join(errors))
 
 def title_parts(title:str):
  if len(title)<=22:return [title]
