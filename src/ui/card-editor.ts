@@ -174,6 +174,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
     });
    }
+   // Selecting an established team must show actual wrestler names without
+   // two extra talent queries; the canonical card continues storing IDs.
+   for(const team of view.bookableTeams??[]){
+    for(const member of team.members){
+     const old=roster.get(member.personId);
+     roster.set(member.personId,{...old,personId:member.personId,
+      contractId:member.contractId,name:member.name,
+      division:old?.division??null,available:true,reason:"AVAILABLE"});
+    }
+   }
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
     roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
