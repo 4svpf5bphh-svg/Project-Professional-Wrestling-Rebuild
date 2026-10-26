@@ -1,6 +1,6 @@
 {
   "attempted": 47,
-  "completed": 42,
+  "completed": 44,
   "failed": [
     {
       "id": "abdullah-butcher",
@@ -11,16 +11,8 @@
       "error": "All authenticated photo-origin paths failed for bruno-sammartino: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
-      "id": "eddie-guerrero",
-      "error": "All authenticated photo-origin paths failed for eddie-guerrero: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
-    },
-    {
       "id": "kenta-kobashi",
       "error": "All authenticated photo-origin paths failed for kenta-kobashi: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
-    },
-    {
-      "id": "trish-stratus",
-      "error": "All authenticated photo-origin paths failed for trish-stratus: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "cards": [
@@ -36,7 +28,8 @@
       "bytes": 123190,
       "author": "Savers Liner",
       "license": "CC BY-SA 4.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAja_Kong_2019.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAja_Kong_2019.jpg",
+      "cached": true
     },
     {
       "id": "andre-giant",
@@ -90,7 +83,8 @@
       "bytes": 233100,
       "author": "Chatsam",
       "license": "CC BY-SA 3.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABret_hart_paris_2008.JPG"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABret_hart_paris_2008.JPG",
+      "cached": true
     },
     {
       "id": "bruno-sammartino",
@@ -104,7 +98,8 @@
       "bytes": 58546,
       "author": "2for6",
       "license": "CC BY-SA 3.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABull_Nakano.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABull_Nakano.jpg",
+      "cached": true
     },
     {
       "id": "chyna",
@@ -147,11 +142,18 @@
       "bytes": 102602,
       "author": "Mark Hodgins",
       "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg",
+      "cached": true
     },
     {
       "id": "eddie-guerrero",
-      "error": "All authenticated photo-origin paths failed for eddie-guerrero: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "name": "Eddie Guerrero",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/eddie-guerrero-legend-card.webp",
+      "bytes": 112158,
+      "author": "EDDIE_GUERRERO.jpg : paddynapper derivative work: RanZag ( talk )",
+      "license": "CC BY-SA 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AEddie_Guerrero_2004.jpg"
     },
     {
       "id": "el-santo",
@@ -242,7 +244,8 @@
       "bytes": 82340,
       "author": "Miguel Discart",
       "license": "CC BY-SA 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ALita_WrestleMania_Axxess_2015.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ALita_WrestleMania_Axxess_2015.jpg",
+      "cached": true
     },
     {
       "id": "manami-toyota",
@@ -263,7 +266,8 @@
       "bytes": 124846,
       "author": "Super Festivals",
       "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMick_Foley_2019_(cropped).jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMick_Foley_2019_(cropped).jpg",
+      "cached": true
     },
     {
       "id": "mitsuharu-misawa",
@@ -306,7 +310,8 @@
       "bytes": 160768,
       "author": "Rob DiCaterino from Jersey City, NJ, USA",
       "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARandy_Savage_1986.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARandy_Savage_1986.jpg",
+      "cached": true
     },
     {
       "id": "raven",
@@ -360,7 +365,8 @@
       "bytes": 152292,
       "author": "Chatsam",
       "license": "CC BY-SA 3.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
+      "cached": true
     },
     {
       "id": "shawn-michaels",
@@ -381,7 +387,8 @@
       "bytes": 71600,
       "author": "Miguel Discart",
       "license": "CC BY-SA 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg",
+      "cached": true
     },
     {
       "id": "steve-austin",
@@ -402,7 +409,8 @@
       "bytes": 86294,
       "author": "Mike Kalasnik",
       "license": "CC BY-SA 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASteve_Corino_2012_(cropped).jpg"
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASteve_Corino_2012_(cropped).jpg",
+      "cached": true
     },
     {
       "id": "sting",
@@ -461,7 +469,13 @@
     },
     {
       "id": "trish-stratus",
-      "error": "All authenticated photo-origin paths failed for trish-stratus: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+      "name": "Trish Stratus",
+      "tier": "LEGEND",
+      "file": "apps/web/public/assets/legends/trish-stratus-legend-card.webp",
+      "bytes": 89360,
+      "author": "Super Festivals",
+      "license": "CC BY 2.0",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ATrish_Stratus_2019_(cropped).jpg"
     },
     {
       "id": "ultimo-dragon",

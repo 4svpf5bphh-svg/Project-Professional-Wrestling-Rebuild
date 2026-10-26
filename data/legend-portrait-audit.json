@@ -1,9 +1,7 @@
 {
-  "cardsFound": 43,
-  "portraitsRegistered": 44,
+  "cardsFound": 45,
+  "portraitsRegistered": 46,
   "missing": [
-    "eddie-guerrero",
-    "trish-stratus",
     "bruno-sammartino",
     "abdullah-butcher",
     "kenta-kobashi"
@@ -21,11 +19,21 @@
     },
     {
       "id": "eddie-guerrero",
-      "status": "missing-card"
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/eddie-guerrero-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
     },
     {
       "id": "trish-stratus",
-      "status": "missing-card"
+      "status": "draft",
+      "files": [
+        "apps/web/public/assets/legends/trish-stratus-0-portrait.webp"
+      ],
+      "source": "cached-original",
+      "memberReviewRequired": false
     },
     {
       "id": "bruno-sammartino",
@@ -37,7 +45,7 @@
       "files": [
         "apps/web/public/assets/legends/sabu-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -46,7 +54,7 @@
       "files": [
         "apps/web/public/assets/legends/steve-corino-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -140,7 +148,7 @@
       "files": [
         "apps/web/public/assets/legends/dusty-rhodes-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -149,7 +157,7 @@
       "files": [
         "apps/web/public/assets/legends/lita-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -158,7 +166,7 @@
       "files": [
         "apps/web/public/assets/legends/bull-nakano-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -167,7 +175,7 @@
       "files": [
         "apps/web/public/assets/legends/aja-kong-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -176,7 +184,7 @@
       "files": [
         "apps/web/public/assets/legends/stan-hansen-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -185,7 +193,7 @@
       "files": [
         "apps/web/public/assets/legends/bret-hart-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -194,7 +202,7 @@
       "files": [
         "apps/web/public/assets/legends/mick-foley-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
@@ -203,7 +211,7 @@
       "files": [
         "apps/web/public/assets/legends/randy-savage-0-portrait.webp"
       ],
-      "source": "cached-original",
+      "source": "card-photo-window",
       "memberReviewRequired": false
     },
     {
