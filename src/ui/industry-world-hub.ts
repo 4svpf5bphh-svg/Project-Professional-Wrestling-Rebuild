@@ -280,7 +280,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
   const headings:Record<string,[string,string]>={
-   STANDINGS:["THE WORLD / COMPANIES","Promotions"],
+   STANDINGS:["THE WORLD / COMPANIES",route==="#/industry"?"Industry":"Promotions"],
    BROADCASTS:["THE WORLD / COMPLETED SHOWS","Recent Broadcasts"],
    RECORDS:["THE WORLD / THE ARCHIVE","Record Book"],
    LEGENDS:["THE WORLD / COLLECTIBLES","Legends Vault"],
