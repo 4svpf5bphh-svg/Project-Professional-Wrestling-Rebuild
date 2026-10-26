@@ -161,9 +161,10 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   // complete two-person teams with two valid signed appearance rights are
   // offered; final card save still independently validates all contracts.
   const bookableTeams=await tx.query<{team_id:string;name:string;
-   members:{personId:string;contractId:string}[]}>([
+   members:{personId:string;contractId:string;name:string}[]}>([
    "SELECT t.team_id,t.name,jsonb_agg(jsonb_build_object(",
-   "'personId',m.person_id,'contractId',rights.contract_id)",
+   "'personId',m.person_id,'contractId',rights.contract_id,",
+   "'name',person.name)",
    "ORDER BY m.person_id) AS members",
    "FROM ppw_tag_teams t JOIN ppw_tag_team_members m",
    "ON m.world_id=t.world_id AND m.team_id=t.team_id AND m.active",
