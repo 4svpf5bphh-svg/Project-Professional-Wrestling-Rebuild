@@ -163,3 +163,16 @@ test("original live arrival reveals and objectives survive canonical save and re
   kind:"DEBUT",presentation:"UNSCRIPTED",objective:"UNSETTLE_RIVAL"
  } as never}),/Invalid|creative|segment/i);
 });
+
+
+test("a complete two-person tag team can turn together while scripted direction survives reloading",()=>{
+ let turn=newEditorSegment("team-turn","TURN");
+ turn=addSegmentPerson(turn,"actors",{personId:"a",contractId:"ca"});
+ turn=addSegmentPerson(turn,"actors",{personId:"b",contractId:"cb"});
+ assert.throws(()=>addSegmentPerson(turn,"actors",{personId:"c",contractId:"cc"}),/capacity/);
+ turn.turnTargetAlignment="FACE";
+ const saved=buildEditorSegment(turn);
+ assert.deepEqual(saved.actorIds,["a","b"]);
+ assert.equal(saved.turnTargetAlignment,"FACE");
+ assert.deepEqual(buildEditorSegment(restoreEditorSegment("team-turn",saved)),saved);
+});
