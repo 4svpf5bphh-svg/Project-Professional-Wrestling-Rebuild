@@ -392,12 +392,11 @@
       "name": "The Road Warriors",
       "tier": "ICON",
       "file": "apps/web/public/assets/legends/road-warriors-icon-card.webp",
-      "bytes": 75360,
-      "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+      "bytes": 158886,
+      "author": "Photographer unknown, via Pro Wrestling Illustrated Annual Winter 1985; cropped by McPhail",
       "license": "Unverified - hobby draft",
-      "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
-      "cached": true,
-      "artRevision": 0
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:The_Road_Warriors_and_Paul_Ellering,_circa_1985_(cropped).jpg",
+      "artRevision": 1
     },
     {
       "id": "sabu",
@@ -408,6 +407,7 @@
       "author": "Robert Newsome",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
+      "cached": true,
       "artRevision": 1
     },
     {
@@ -467,6 +467,7 @@
       "author": "Wrestling's Main Event editorial photographer unverified",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_1988,_red_facepaint.jpg",
+      "cached": true,
       "artRevision": 1
     },
     {
@@ -502,6 +503,7 @@
       "author": "Jennifer",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
+      "cached": true,
       "artRevision": 1
     },
     {

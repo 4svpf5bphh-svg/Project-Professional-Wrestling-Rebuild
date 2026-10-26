@@ -416,7 +416,7 @@
         "apps/web/public/assets/legends/road-warriors-0-portrait.webp",
         "apps/web/public/assets/legends/road-warriors-1-portrait.webp"
       ],
-      "source": "card-photo-window",
+      "source": "cached-original",
       "memberReviewRequired": false
     },
     {

@@ -12,9 +12,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "LEGEND"
   },
   "road-warriors": {
-    "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
+    "author": "Photographer unknown, via Pro Wrestling Illustrated Annual Winter 1985; cropped by McPhail",
     "license": "Unverified - hobby draft",
-    "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:The_Road_Warriors_and_Paul_Ellering,_circa_1985_(cropped).jpg",
     "tier": "ICON"
   },
   "el-santo": {
