@@ -473,9 +473,10 @@ export function portraitSource(name:string,width=220,personId?:string):string|nu
   encodeURIComponent(photo.file)+"?width="+Math.max(100,Math.min(420,Math.round(width)));
 }
 /** A real photo or no image. Do not impersonate real talent with AI silhouettes. */
-export function createWrestlerPortrait(name:string,width=220):HTMLImageElement|null{
- const credit=portraitCredit(name),src=portraitSource(name,width);
- if(!credit||!src)return null;
+export function createWrestlerPortrait(name:string,width=220,personId?:string):HTMLImageElement|null{
+ const local=legendPortraitSource(personId);
+ const credit=portraitCredit(name),src=portraitSource(name,width,personId);
+ if(!src)return null;
  const img=document.createElement("img");
  img.className="ppw-real-wrestler-photo";
  img.src=src;img.alt="";img.loading="lazy";img.decoding="async";
