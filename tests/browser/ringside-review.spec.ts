@@ -59,7 +59,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
-  await page.getByRole("button",{name:"Read After the Bell"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeVisible();
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
   await expect(page.locator(".ppw-results-analysis")).toHaveCount(1);
@@ -109,7 +109,7 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"After the Bell",exact:true}).click();
+ await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
  const post=page.locator(".ppw-crowd-noise-card").first();
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
