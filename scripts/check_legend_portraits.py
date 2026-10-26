@@ -27,10 +27,10 @@ with TemporaryDirectory() as folder:
    assert photo.size==SIZE
    r,g,b=photo.getpixel((240,312))
    assert abs(r-40)<10 and abs(g-135)<10 and abs(b-185)<10,(r,g,b)
-for index,expected in [(0,(20,25,235)),(1,(235,220,20))]:
- with Image.open(assets/("road-warriors-"+str(index)+"-portrait.webp")) as photo:
-  found=photo.getpixel((240,312))
-  assert all(abs(found[i]-expected[i])<15 for i in range(3)),(index,found)
-assert "legend:road-warriors:0" in registry.read_text()
-assert "legend:road-warriors:1" in registry.read_text()
+ for index,expected in [(0,(20,25,235)),(1,(235,220,20))]:
+  with Image.open(assets/("road-warriors-"+str(index)+"-portrait.webp")) as photo:
+   found=photo.getpixel((240,312))
+   assert all(abs(found[i]-expected[i])<15 for i in range(3)),(index,found)
+ assert "legend:road-warriors:0" in registry.read_text()
+ assert "legend:road-warriors:1" in registry.read_text()
 print("All source-matched portrait crops and individually verified team identities pass.")
