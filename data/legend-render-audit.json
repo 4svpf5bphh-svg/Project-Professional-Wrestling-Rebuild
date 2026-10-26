@@ -1,7 +1,20 @@
 {
   "attempted": 47,
-  "completed": 47,
-  "failed": [],
+  "completed": 44,
+  "failed": [
+    {
+      "id": "sabu",
+      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+    },
+    {
+      "id": "taz",
+      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+    },
+    {
+      "id": "william-regal",
+      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
+    }
+  ],
   "cards": [
     {
       "id": "abdullah-butcher",
@@ -12,7 +25,8 @@
       "author": "WWE via Getty Images, photographer not verified, editorial reproduction",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://www.mensjournal.com/sports/abdullah-the-butcher-hospitalized-serious-health-issues",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "aja-kong",
@@ -23,7 +37,8 @@
       "author": "Savers Liner",
       "license": "CC BY-SA 4.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAja_Kong_2019.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "andre-giant",
@@ -34,7 +49,8 @@
       "author": "John McKeon",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAndr%C3%A9_the_Giant_in_the_late_'80s_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "antonio-inoki",
@@ -45,7 +61,8 @@
       "author": "Ogiyoshisan",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AAntonio_Inoki_IMG_0398-2_20121224_(cropped).JPG",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "arn-anderson",
@@ -56,7 +73,8 @@
       "author": "Super Festivals from Ft. Lauderdale, USA",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AArn_Anderson_(48481801426).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "booker-t",
@@ -67,7 +85,8 @@
       "author": "Super Festivals",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Booker_T_2018.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "bret-hart",
@@ -78,7 +97,8 @@
       "author": "Chatsam",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABret_hart_paris_2008.JPG",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "bruno-sammartino",
@@ -89,7 +109,8 @@
       "author": "WWE archival promotional photograph, photographer not verified",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://www.wrestlingattitude.com/2017/06/bruno-sammartino-reveals-why-his-long.html",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "bull-nakano",
@@ -100,7 +121,8 @@
       "author": "2for6",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ABull_Nakano.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "chyna",
@@ -111,7 +133,8 @@
       "author": "MandyJC72",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Chyna_and_Triple_H_in_1997_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "d-lo-brown",
@@ -122,7 +145,8 @@
       "author": "shstrng",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:D_Lo_Brown.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "dean-malenko",
@@ -133,7 +157,8 @@
       "author": "REW ( Revolution Eastern Wrestling)",
       "license": "CC BY-SA 4.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADean_Malenko.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "dusty-rhodes",
@@ -144,7 +169,8 @@
       "author": "Mark Hodgins",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ADusty_Rhodes_HallofFame.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "eddie-guerrero",
@@ -155,7 +181,8 @@
       "author": "WWE promotional photograph, photographer not verified, via L\u00edbero",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://libero.pe/deportes/wwe/2021/10/09/repasemos-carrera-eddie-guerrero-leyenda-wwe-lucha-libre-noticia-22700",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "el-santo",
@@ -166,7 +193,8 @@
       "author": "Historic photograph, photographer unverified (via Infobae)",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://www.infobae.com/deportes/2021/09/23/a-104-anos-del-nacimiento-de-el-santo-el-luchador-que-oculto-su-identidad-hasta-su-muerte/",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "great-muta",
@@ -177,7 +205,8 @@
       "author": "NWharry",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AGreat_Muta.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "hulk-hogan",
@@ -188,7 +217,8 @@
       "author": "GabboT",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AHulk_Hogan_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "jerry-lynn",
@@ -199,7 +229,8 @@
       "author": "shstrng",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJerry_Lynn_CHIKARA.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "jushin-liger",
@@ -210,7 +241,8 @@
       "author": "tenaciousme (cropped by User:charlesy )",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AJushin_Thunder_Liger_2007_crop.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "kenta-kobashi",
@@ -220,7 +252,9 @@
       "bytes": 173746,
       "author": "Tokyo Sports archival Kobashi wrestling photograph; photographer unverified",
       "license": "Unverified - hobby draft",
-      "sourcePage": "https://note.tokyo-sports.co.jp/n/na8bc06274c7e"
+      "sourcePage": "https://note.tokyo-sports.co.jp/n/na8bc06274c7e",
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "konnan",
@@ -231,7 +265,8 @@
       "author": "John Jewell",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKonnanJuly2011.png",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "kurt-angle",
@@ -242,7 +277,8 @@
       "author": "static",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AKurt_Angle.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "lita",
@@ -253,7 +289,8 @@
       "author": "Miguel Discart",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ALita_WrestleMania_Axxess_2015.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "manami-toyota",
@@ -264,7 +301,8 @@
       "author": "shstrng",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AManami_Toyota_Chikara.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "mick-foley",
@@ -275,7 +313,8 @@
       "author": "Super Festivals",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMick_Foley_2019_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "mitsuharu-misawa",
@@ -286,7 +325,8 @@
       "author": "The Doppelganger at en.Wikipedia",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AMitsuharu_Misawa%2C_2007.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "mr-perfect",
@@ -297,7 +337,8 @@
       "author": "Photographer unverified (reproduced by SPORT1)",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://www.sport1.de/news/wrestling/wwe/2023/02/wwe-ikone-mr-perfect-das-tragische-ende-einer-coolen-socke",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "new-jack",
@@ -308,7 +349,8 @@
       "author": "Robert Newsome",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ANew_Jack_in_the_ECW%2C_1998.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "randy-savage",
@@ -319,7 +361,8 @@
       "author": "Rob DiCaterino from Jersey City, NJ, USA",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARandy_Savage_1986.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "raven",
@@ -330,7 +373,8 @@
       "author": "Mike Kalasnik",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Raven_in_2011.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "ric-flair",
@@ -341,7 +385,8 @@
       "author": "Super Festivals",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARic_Flair_Photo_Op_GalaxyCon_Austin_2023.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "ricky-steamboat",
@@ -352,7 +397,8 @@
       "author": "Tabercil",
       "license": "CC BY-SA 3.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ARicky_Steamboat_Greektown_2018_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "road-warriors",
@@ -363,18 +409,12 @@
       "author": "Photographer unverified (Weekly Pro Wrestling, 1987)",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://wp.bbm-mobile.com/sp2/Data/Visual/DispImage.asp?c=0759&i=00022954",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "sabu",
-      "name": "Sabu",
-      "tier": "CULT",
-      "file": "apps/web/public/assets/legends/sabu-cult-card.webp",
-      "bytes": 152292,
-      "author": "Chatsam",
-      "license": "CC BY-SA 3.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
-      "cached": true
+      "error": "All authenticated photo-origin paths failed for sabu-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "shawn-michaels",
@@ -385,18 +425,19 @@
       "author": "MandyJC72",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AShawn_Michaels_-_Birmingham_200997_(27).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "stan-hansen",
       "name": "Stan Hansen",
       "tier": "LEGEND",
       "file": "apps/web/public/assets/legends/stan-hansen-legend-card.webp",
-      "bytes": 71600,
-      "author": "Miguel Discart",
-      "license": "CC BY-SA 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStan_Hansen_HOF_2016.jpg",
-      "cached": true
+      "bytes": 95964,
+      "author": "Bill Apter",
+      "license": "Unverified - hobby draft",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Stan_Hansen,_1985.jpg",
+      "artRevision": 1
     },
     {
       "id": "steve-austin",
@@ -407,7 +448,8 @@
       "author": "Gage Skidmore from Peoria, AZ, United States of America",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AStone_Cold_Steve_Austin_(4840047167)_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "steve-corino",
@@ -418,7 +460,8 @@
       "author": "Mike Kalasnik",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASteve_Corino_2012_(cropped).jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "sting",
@@ -429,7 +472,8 @@
       "author": "Simon Q",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Sting_Jan_2013.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "super-crazy",
@@ -440,7 +484,8 @@
       "author": "Mike Kalasnik",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASuper_Crazy_2017.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "tajiri",
@@ -451,18 +496,12 @@
       "author": "Andrew Quentin",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AHustle_2008-07-27_TAJIRI.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "taz",
-      "name": "Taz",
-      "tier": "CULT",
-      "file": "apps/web/public/assets/legends/taz-cult-card.webp",
-      "bytes": 77620,
-      "author": "KMcWrestling Photography",
-      "license": "CC BY-SA 4.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
-      "cached": true
+      "error": "All authenticated photo-origin paths failed for taz-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     },
     {
       "id": "the-rock",
@@ -473,7 +512,8 @@
       "author": "Simon Q",
       "license": "CC BY 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:WWE_Wrestlemania_28_-_The_Rock_pose.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "trish-stratus",
@@ -484,7 +524,8 @@
       "author": "WWE promotional photograph of Trish Stratus in 2005, photographer not verified",
       "license": "Unverified - hobby draft",
       "sourcePage": "https://www.wwe.com/gallery/every-female-champion-ever-photos",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "ultimo-dragon",
@@ -495,7 +536,8 @@
       "author": "Mike Kalasnik",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File%3AUltimo_Dragon_2019.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "vader",
@@ -506,18 +548,12 @@
       "author": "Mandy Coombes",
       "license": "CC BY-SA 2.0",
       "sourcePage": "https://commons.wikimedia.org/wiki/File:Vader_One_Night_Only.jpg",
-      "cached": true
+      "cached": true,
+      "artRevision": 0
     },
     {
       "id": "william-regal",
-      "name": "William Regal",
-      "tier": "LEGEND",
-      "file": "apps/web/public/assets/legends/william-regal-legend-card.webp",
-      "bytes": 99320,
-      "author": "Ed Webster",
-      "license": "CC BY 2.0",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
-      "cached": true
+      "error": "All authenticated photo-origin paths failed for william-regal-r1: HTTPError: HTTP Error 429: Too Many Requests (015d12c); HTTPError: HTTP Error 404: Not Found"
     }
   ],
   "batch": -1,

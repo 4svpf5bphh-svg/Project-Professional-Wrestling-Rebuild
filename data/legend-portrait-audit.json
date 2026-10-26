@@ -190,7 +190,7 @@
       "files": [
         "apps/web/public/assets/legends/stan-hansen-0-portrait.webp"
       ],
-      "source": "card-photo-window",
+      "source": "cached-original",
       "memberReviewRequired": false
     },
     {
