@@ -69,12 +69,14 @@ def obtain(url,source_width,identity):
   request_url=url
  candidates=[request_url]
  if parsed.hostname=="upload.wikimedia.org":
-  # Commons shared GitHub runners often return HTTP 429. An independent
-  # read-through image cache provides a bounded alternative for the *same*
-  # source photograph. This is offline artwork preparation ONLY: no in-game
-  # browser calls to this proxy and no changed image provenance or approval.
-  candidates.append("https://images.weserv.nl/?url="+quote(request_url,safe="")+
-                    "&output=jpg")
+  # A Wikimedia thumbnail can transiently return 429 even when the original
+  # and independent read-through caches have the same authentic source.
+  # Try only explicitly recorded original content, never a substitute person.
+  if clean_url!=request_url:candidates.append(clean_url)
+  for origin in [request_url,clean_url]:
+   for cdn in ["https://images.weserv.nl/","https://wsrv.nl/"]:
+    candidate=cdn+"?url="+quote(origin,safe="")+"&output=jpg"
+    if candidate not in candidates:candidates.append(candidate)
  errors=[]
  for image_url in candidates:
   try:
@@ -99,6 +101,29 @@ def obtain(url,source_width,identity):
          errors[-1],flush=True)
  raise RuntimeError("All authenticated photo-origin paths failed for "+identity+
                     ": "+"; ".join(errors))
+
+
+def sync_card_credits(entries,revisions,destination=Path("src/content/legend-card-photo-credits.ts")):
+ """Keep credits linked to the actual rendered pixels, NOT an unbuilt photo plan."""
+ if not destination.is_file():return
+ code=destination.read_text()
+ for entry in entries:
+  rev=int(entry.get("artRevision",0))
+  if not rev:continue
+  source=entry if revisions.get(entry["id"])==rev else entry.get("previousSource")
+  if not source:raise ValueError("Photo revision needs its previous source")
+  pattern=re.compile(r'  "'+re.escape(entry["id"])+r'": \{[\s\S]*?\n  \},')
+  hit=pattern.search(code)
+  if not hit:raise ValueError("Missing Legend credit "+entry["id"])
+  match=re.search(r'"tier": "(CULT|LEGEND|ICON|IMMORTAL)"',hit.group(0))
+  if not match:raise ValueError("Missing tier in source credit")
+  record=('"'+entry["id"]+'": {\n' +
+   '    "author": '+json.dumps(source["author"],ensure_ascii=False)+',\n' +
+   '    "license": '+json.dumps(source["license"],ensure_ascii=False)+',\n' +
+   '    "sourcePage": '+json.dumps(source["sourcePage"],ensure_ascii=False)+',\n' +
+   '    "tier": '+json.dumps(match.group(1))+'\n  },')
+  code=code[:hit.start()]+"  "+record+code[hit.end():]
+ if code!=destination.read_text():destination.write_text(code)
 
 def title_parts(title:str):
  if len(title)<=22:return [title]
@@ -194,6 +219,7 @@ def main():
   if result.get("artRevision",0)>0:revisions[result["id"]]=result["artRevision"]
  if any(result.get("artRevision",0)>0 for result in success):
   SOURCE_REVISIONS.write_text(json.dumps(revisions,indent=2,sort_keys=True)+"\n")
+ sync_card_credits(manifest,revisions)
  # The contact sheet and status report deliberately remain external review
  # artifacts. This script NEVER activates a collectible in the game.
  if success:

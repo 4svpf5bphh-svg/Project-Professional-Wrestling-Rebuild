@@ -54,9 +54,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "IMMORTAL"
   },
   "sabu": {
-    "author": "Robert Newsome",
-    "license": "CC BY-SA 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Sabu_in_ECW.jpg",
+    "author": "Chatsam",
+    "license": "CC BY-SA 3.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File%3ASabu_AWR_2009.JPG",
     "tier": "CULT"
   },
   "steve-corino": {
@@ -114,9 +114,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "LEGEND"
   },
   "william-regal": {
-    "author": "Adster95, cropped by CeltBrowne",
-    "license": "CC BY-SA 3.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Regal_in_Belfast_for_wrestlemania_revenge_tour_in_2008_(cropped).jpg",
+    "author": "Ed Webster",
+    "license": "CC BY 2.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File%3AWilliam_Regal_at_Smackdown_taping_in_Birmingham%2C_England_November_2012_(8622224149).jpg",
     "tier": "LEGEND"
   },
   "arn-anderson": {
@@ -258,9 +258,9 @@ export const LEGEND_CARD_PHOTO_CREDITS:Readonly<Record<string,LegendPhotoCredit>
     "tier": "ICON"
   },
   "taz": {
-    "author": "Jennifer",
-    "license": "CC BY-SA 2.0",
-    "sourcePage": "https://commons.wikimedia.org/wiki/File:Tazz.jpg",
+    "author": "KMcWrestling Photography",
+    "license": "CC BY-SA 4.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Taz_Hardcore_Hall_of_Fame.jpg",
     "tier": "CULT"
   },
   "d-lo-brown": {
