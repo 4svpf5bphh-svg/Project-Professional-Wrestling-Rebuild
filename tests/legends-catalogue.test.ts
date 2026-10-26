@@ -37,11 +37,15 @@ test("four curated tiers, real team and women's legends, authentic named cards n
  assert.equal(LIVE_LEGENDS.every(x=>x.clue!=="A chapter of wrestling history awaits its moment."),true);
  assert.ok(new Set(LIVE_LEGENDS.map(x=>x.metric)).size>=18);
  assert.equal(LEGENDS_CATALOGUE.filter(x=>x.status==="PLANNED").length,0);
- assert.equal(Object.keys(LEGEND_CARD_PHOTO_CREDITS).length,45);
+ assert.equal(Object.keys(LEGEND_CARD_PHOTO_CREDITS).length,48);
  assert.ok(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).every(x=>
   LEGEND_CARD_PHOTO_CREDITS[x.id]?.sourcePage.startsWith("https://commons.wikimedia.org/wiki/File:")));
  assert.ok(Object.values(LEGEND_CARD_PHOTO_CREDITS).every(x=>
-  /^(CC BY(?:-SA)? [234]\.0|CC0)$/.test(x.license)&&x.author.trim().length>2));
+  /^(CC BY(?:-SA)? [234]\.0|CC0|Unverified - hobby draft)$/.test(x.license)&&
+  x.author.trim().length>2&&x.sourcePage.startsWith("https://")));
+ for(const id of ["mr-perfect","road-warriors","el-santo"]){
+  assert.equal(LEGEND_CARD_PHOTO_CREDITS[id].license,"Unverified - hobby draft");
+  assert.equal(findLegend(id)?.cardAsset,null);\n }
  assert.ok(LEGEND_TIER_PRICES.IMMORTAL>LEGEND_TIER_PRICES.ICON);
  assert.ok(LEGEND_TIER_PRICES.CULT>500);
 });
