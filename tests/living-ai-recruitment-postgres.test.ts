@@ -64,7 +64,7 @@ test("distressed AI rescues its roster with two cheap deterministic prospects bu
   assert.equal(humanState[0]!.active,true);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_promotion_talent_trust",
+   for(const table of ["ppw_ledger_events","ppw_staff_employments","ppw_promotion_talent_trust",
     "ppw_promotion_survival","ppw_contracts","ppw_promotion_controls",
     "ppw_memberships","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
@@ -141,9 +141,25 @@ test("solvent AI may hire one affordable unattached prospect per quarter, never 
   const skip=await withWorldTransaction(db.pool,tx=>
    recruitStrategicAiRosters(tx,world,1,15));
   assert.deepEqual(skip,{eligible:0,signed:0});
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_staff_employments(
+     world_id,employment_id,staff_id,promotion_id,role,status,
+     weekly_salary,start_week_index,expires_week_index,term_weeks)
+    VALUES($1,'staff-ai-budget','staff-ai-budget-person','ai',
+     'ROAD_AGENT','ACTIVE',40000,0,51,52)`,[world]);
+  });
+  const overcommitted=await withWorldTransaction(db.pool,tx=>
+   recruitStrategicAiRosters(tx,world,1,27));
+  assert.deepEqual(overcommitted,{eligible:0,signed:0},
+   "Active staff salaries are contractual overhead, not invisible AI money");
+  const contractsAfter=await withWorldTransaction(db.pool,tx=>tx.query<{
+   n:number
+  }>(`SELECT count(*)::integer AS n FROM ppw_contracts
+     WHERE world_id=$1 AND promotion_id='ai'`,[world]));
+  assert.equal(contractsAfter[0]?.n,1);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_promotion_talent_trust",
+   for(const table of ["ppw_ledger_events","ppw_staff_employments","ppw_promotion_talent_trust",
     "ppw_promotion_survival","ppw_contracts","ppw_promotion_controls",
     "ppw_memberships","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
