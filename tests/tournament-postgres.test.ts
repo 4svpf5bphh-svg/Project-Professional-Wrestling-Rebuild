@@ -134,7 +134,12 @@ test("promotion-only 4-person bracket books two semis, advances from certified w
    requestId:"cancel-second",expectedRevision:toCancel.worldRevision,
    tournamentId:nextCup.result.tournamentId});
   assert.equal(cancelled.status,"APPLIED");
-  assert.equal((await readTournamentWorkspace(db.pool,scope)).tournaments[0]?.status,"CANCELLED");
+  const afterCancel=await readTournamentWorkspace(db.pool,scope);
+  assert.equal(afterCancel.tournaments.find(t=>
+   t.tournamentId===nextCup.result.tournamentId)?.status,"CANCELLED");
+  assert.equal(afterCancel.tournaments.find(t=>
+   t.tournamentId===tournamentId)?.status,"COMPLETE",
+   "Cancelling a later draw preserves the previous winner and bracket");
   assert.equal(completed.vacantTitles.length,1,
    "Bracket settlement itself must not secretly award the belt; canonical title settlement owns that");
  }finally{
