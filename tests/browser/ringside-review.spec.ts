@@ -130,3 +130,65 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test(`Post-show handoff ${width}px routes certified medical and title history without extra results reads`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let reads=0;
+  const receipt={...show,entries:[{
+   ...show.entries[0],
+   fallout:{...show.entries[0]!.fallout,
+    programmeSignal:"COOL_PROGRAMME",
+    injuries:[{personName:"Samoa Joe",severity:"MODERATE",weeksOut:3,
+     stoppage:false}],
+    title:{name:"World Title",winnerName:"Kenny Omega",
+     priorHolderName:"Samoa Joe",changed:true}}
+  },show.entries[1]]};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const method=r.request().postDataJSON().method;
+   if(method==="results")reads++;
+   return r.fulfill({json:method==="resultsArchive"?
+    {items:[{showId:"omega-night",year:1,week:4,
+      showName:"Dynamite",crowdResponse:84,matchCount:1,angleCount:1}],
+     nextCursor:null}:receipt});
+  });
+  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
+  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
+  await expect(page.getByRole("button",{name:"Check roster"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
+  await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
+  await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
+  expect(reads).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  await page.getByRole("button",{name:"Check roster"}).click();
+  await expect(page).toHaveURL(/#\\/roster$/);
+ });
+ test(`Post-show handoff ${width}px gives a useful route for a strong clean card`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  const one={...show,entries:[{...show.entries[0],
+   fallout:{...show.entries[0]!.fallout,programmeSignal:null}
+  },show.entries[1]]};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>r.fulfill({json:
+   r.request().postDataJSON().method==="resultsArchive"?
+   {items:[{showId:"omega-night",year:1,week:4,
+    showName:"Dynamite",crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:one}));
+  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
+  await page.getByRole("button",{name:"Plan a show"}).click();
+  await expect(page).toHaveURL(/#\\/planner$/);
+ });
+}
