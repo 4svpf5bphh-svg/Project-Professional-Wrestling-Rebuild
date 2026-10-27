@@ -112,6 +112,16 @@ After A's weak year it resumes growth when shows improve (adaptive 76.3 at end o
 
 Recruitment SQL calls are metered at the first quarter and required to stay constant as the number of promotions grows; query results and generated contracts must remain bounded. This is not a 12-player live stress test, proof of monthly Neon usage or a realistic attendance forecast. The test is added to the standard real PostgreSQL suite and must pass along with full browser/unit verification.
 
+### Phase 10 tournament bracket implementation — 27 October 2026 (development-only)
+
+**The next milestone:** first-class four-person singles tournaments under the controlled promotion's existing Championships hub, using current cards and the single World Lock. The manager seeds four signed wrestlers (1 v 4, 2 v 3), with matching gender division; one active tournament per promotion. A vacant active singles title may optionally be selected as the final's real prize. A non-title tournament creates a historic winner, not an invented championship. No crossover entrants, shared shows or wrestler loans.
+
+**Booking:** semifinals are booked on ordinary promotion shows via the new "Add tournament bout" action; no separate tournament show or deadline. A tournament bout stores an explicit round/fixture tag in the same validated match payload, reserves the fixture to one show, respects actual wrestler contract availability, and must match the two seeded entrants. Normal match finishes, scripted winner authority, creative consent and championship settlement remain intact. Brackets cannot progress by merely saving, previewing or editing a draft. The final opens only after *both certified semifinals* and uses their recorded actual winners; certification of the final finishes the tournament. Replay is covered by existing immutable completed-show World resolution. A card may be resaved without leaving orphaned fixture reservations.
+
+**User interface:** iPhone-first Championships → Tournaments, with a compact draw form, certified progression history and winner reveal; the Card Editor displays bookable bracket bouts but does not auto-book wrestlers behind the player's back. World rankings, secondary titles, tag-team tournaments, AI-generated tournaments and earned event traditions remain later extensions after the basic human four-person loop is verified. One active tournament at a time is a usability and query bound, not a permanent limitation.
+
+**Validation / release gate:** `tests/tournament-bracket.test.ts` (pure semantics) and `tests/tournament-postgres.test.ts` (real disposable PostgreSQL: manager authorization, 4 licensed entrants, fixture reservation, certified semifinal advancement, final and idempotent rebooking). Schema `0105_promotion_tournaments.sql` runs **only in disposable CI** while on PR #21. Complete TypeScript, unit, mobile browser, PostgreSQL and multi-manager World regression before release. Never apply to live Neon, merge, deploy, alter the deadline or activate a cron without explicit approval.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.

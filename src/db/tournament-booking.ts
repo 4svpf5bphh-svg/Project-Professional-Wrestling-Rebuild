@@ -74,7 +74,7 @@ export async function reserveBookedTournamentBouts(tx:SqlRows,scope:Scope,
     AND t.tournament_id=b.tournament_id
   WHERE b.world_id=$1 AND b.promotion_id=$2
    AND (b.show_id=$3 OR b.tournament_id=ANY($4::text[]))
-  ORDER BY b.tournament_id,b.bout_no FOR UPDATE OF b LIMIT 21`,
+  ORDER BY b.tournament_id,b.bout_no LIMIT 21 FOR UPDATE OF b`,
   [scope.worldId,scope.promotionId,scope.showId,tournamentIds]);
  if(rows.length>20)throw new Error("Tournament save exceeds safe fixture limit");
  const seen=new Set<string>();

@@ -461,6 +461,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0104_backstage_career_voice.sql
+      - name: Apply owner-only certified tournament bracket schema
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0105_promotion_tournaments.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
