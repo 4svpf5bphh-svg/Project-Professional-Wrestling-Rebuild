@@ -440,6 +440,16 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    for(const t of view.territories){
     const card=el("article","ppw-business-territory");
     card.append(el("h3","",t.name+(t.isHome?" · Home market":"")));
+    if(t.strongestRival&&t.rivalLiveStrength!==null){
+     const difference=Math.round(t.liveStrength-t.rivalLiveStrength);
+     card.append(el("p","ppw-business-muted",
+      "Strongest local rival: "+t.strongestRival+" · "+
+      (difference>0?"Your following leads by "+difference:
+       difference<0?"Their following leads by "+(-difference):
+       "Local support is level")+" strength point"+(Math.abs(difference)===1?"":"s")+
+      ". Completed shows here can change the balance."));
+    }else card.append(el("p","ppw-business-muted",
+     "No active rival currently records an audience in this territory."));
     for(const [label,n] of [
      ["Awareness",t.awareness],["Live strength",t.liveStrength],["Loyalty",t.loyalty]
     ] as const){
