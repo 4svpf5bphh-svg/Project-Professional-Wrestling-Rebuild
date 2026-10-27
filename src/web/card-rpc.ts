@@ -149,7 +149,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   worldId,promotionId,requestId,expectedRevision,tournamentId:id("tournamentId")});
  if(method==="createTournament"){
   if(typeof p.name!=="string"||!["MEN","WOMEN"].includes(String(p.division))||
-   !Array.isArray(p.entrants)||p.entrants.length!==4||
+   !Array.isArray(p.entrants)||![4,8].includes(p.entrants.length)||
    p.entrants.some(x=>typeof x!=="string"||!x||x.length>200)||
    !(p.championshipId===undefined||p.championshipId===null||
     typeof p.championshipId==="string"))

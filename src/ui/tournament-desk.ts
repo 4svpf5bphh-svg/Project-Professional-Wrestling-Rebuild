@@ -1,6 +1,7 @@
 /** Compact four-person single-elimination hub in the existing
  * Championships workspace. No new root navigation or client polling.
  */
+import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import type {readTournamentWorkspace,createTournament,cancelTournament}
  from "../db/tournament-workspace.js";
 type View=Awaited<ReturnType<typeof readTournamentWorkspace>>;
@@ -44,12 +45,11 @@ export async function mountTournamentDesk(root:HTMLElement,
    el("h2","",t.name),
    el("p","ppw-muted",t.division+" · "+(t.championshipName?
     "Prize: "+t.championshipName:"Tournament honours")));
-  for(const round of [1,2,3]){
+  for(const round of Array.from({length:t.entrantsCount-1},(_,i)=>i+1)){
    const bout=t.bouts.find(b=>b.boutNo===round);
    if(!bout)continue;
    const row=el("div","ppw-tournament-bout");
-   row.append(el("small","",round===1?"SEMI FINAL 1":
-    round===2?"SEMI FINAL 2":"THE FINAL"),
+   row.append(el("small","",tournamentBoutLabel(t.entrantsCount,round).toUpperCase()),
     el("strong","",(bout.nameA??"Awaiting first finalist")+" vs "+
      (bout.nameB??"Awaiting second finalist")),
     el("span","",bout.winnerName?"Winner: "+bout.winnerName:
@@ -78,12 +78,12 @@ export async function mountTournamentDesk(root:HTMLElement,
   root.append(card);
  }
  if(!view.tournaments.length)
-  root.append(el("p","ppw-muted","No tournament history yet. Start with four signed wrestlers."));
+  root.append(el("p","ppw-muted","No tournament history yet. Start with four or eight signed wrestlers."));
  if(!view.canEdit||view.tournaments.some(t=>t.status==="ACTIVE"))return;
  const roster=view.roster;
  const form=el("section","ppw-tournament-create");
- form.append(el("h2","","Create a four-person tournament"),
-  el("p","ppw-muted","Seed 1 faces Seed 4, and Seed 2 faces Seed 3. The final is decided after both semifinals. Only one active tournament per promotion."));
+ form.append(el("h2","","Create a singles tournament"),
+  el("p","ppw-muted","Choose a four- or eight-person seeded draw. The final opens only after certified wins in both semifinals. One active tournament per promotion."));
  const name=document.createElement("input");
  name.type="text";name.maxLength=64;name.placeholder="Tournament name";
  name.setAttribute("aria-label","Tournament name");
@@ -93,25 +93,31 @@ export async function mountTournamentDesk(root:HTMLElement,
   const o=document.createElement("option");o.value=d;o.textContent=d==="MEN"?"Men's singles":"Women's singles";
   division.append(o);
  }
- const seeds=Array.from({length:4},(_,i)=>{
-  const select=document.createElement("select");
-  select.setAttribute("aria-label","Seed "+(i+1));
-  return select;
- });
+ const sizeSelect=document.createElement("select");
+ sizeSelect.setAttribute("aria-label","Draw size");
+ sizeSelect.append(new Option("Four wrestlers · 3 matches","4"),
+  new Option("Eight wrestlers · 7 matches","8"));
+ const seedGrid=el("div","ppw-tournament-seeds");
+ let seeds:HTMLSelectElement[]=[];
  const belt=document.createElement("select");
  belt.setAttribute("aria-label","Vacant championship prize");
  belt.append(new Option("Tournament honours (non-title)",""));
  for(const b of view.vacantTitles)belt.append(new Option(b.name,b.championshipId));
  const fill=()=>{
+  const old=seeds.map(x=>x.value);
+  const n=Number(sizeSelect.value);
   const choices=roster.filter(p=>p.division===division.value);
-  for(let i=0;i<4;i++){
-   const old=seeds[i]!.value;
-   seeds[i]!.replaceChildren(new Option("Seed "+(i+1)+" · Choose wrestler",""));
-   for(const p of choices)seeds[i]!.append(new Option(p.name,p.personId));
-   seeds[i]!.value=choices.some(p=>p.personId===old)?old:"";
-  }
+  seeds=Array.from({length:n},(_,i)=>{
+   const select=document.createElement("select");
+   select.setAttribute("aria-label","Seed "+(i+1));
+   select.append(new Option("Seed "+(i+1)+" · Choose wrestler",""));
+   for(const p of choices)select.append(new Option(p.name,p.personId));
+   select.value=choices.some(p=>p.personId===old[i])?old[i]!:"";
+   return select;
+  });
+  seedGrid.replaceChildren(...seeds);
  };
- division.onchange=fill;fill();
+ division.onchange=fill;sizeSelect.onchange=fill;fill();
  const error=el("p","ppw-alert");
  const submit=button("Create tournament",()=>{void(async()=>{
   const entrants=seeds.map(x=>x.value);
@@ -130,6 +136,6 @@ export async function mountTournamentDesk(root:HTMLElement,
    submit.disabled=false;
   }
  })();});
- form.append(name,division,...seeds,belt,submit,error);
+ form.append(name,sizeSelect,division,seedGrid,belt,submit,error);
  root.append(form);
 }

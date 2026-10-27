@@ -18,6 +18,7 @@ import type {readShowCardEditor,readBookableCardTalent,
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
+import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {MATCH_STIPULATIONS,compatibleStipulations,
@@ -569,11 +570,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(tournamentFixtures.length&&mutable()){
    const tournament=el("section","ppw-card-continuity");
    tournament.append(el("strong","","TOURNAMENT BOOKING"),
-    el("p","ppw-muted","Place an available semifinal or final on this card. The result advances your bracket after the show."));
+    el("p","ppw-muted","Book the next available round on this card. Only certified match winners advance."));
    for(const bout of tournamentFixtures){
     const row=el("div","ppw-tournament-booking-row");
     row.append(el("span","",bout.tournamentName+" · "+
-     (bout.boutNo===3?"FINAL":"SEMI FINAL "+bout.boutNo)+
+     tournamentBoutLabel(bout.entrantsCount,bout.boutNo).toUpperCase()+
      " · "+bout.personA.name+" vs "+bout.personB.name),
      button("+ Add tournament bout",()=>{
       if([...matches.values()].some(m=>assignedIds(m).some(id=>
@@ -585,7 +586,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
         [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
        tournamentId:bout.tournamentId,
-       tournamentBoutNo:bout.boutNo as 1|2|3,
+       tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
        ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
       order.push(id);expanded=id;markDirty();render();
      }));
@@ -937,7 +938,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
      const tag=el("div","ppw-tournament-match-note");
      tag.append(el("strong","","Tournament · "+(bracket?.tournamentName??"Bracket")+
-      " · "+(m.tournamentBoutNo===3?"Final":"Semifinal "+m.tournamentBoutNo)),
+      " · "+tournamentBoutLabel(bracket?.entrantsCount??4,m.tournamentBoutNo??0)),
       el("small","","The wrestlers must match the bracket; the selected winner remains yours to script."));
      if(mutable())tag.append(button("Make this a regular match",()=>{
       edit(m,{tournamentId:undefined,tournamentBoutNo:undefined,
