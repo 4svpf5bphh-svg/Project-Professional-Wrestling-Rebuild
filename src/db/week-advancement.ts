@@ -6,7 +6,7 @@ import {settleCertifiedWorldLegends} from "./legends-settlement.js";
 import {publishYearEndHallOfFame} from "./world-honours.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
 import {settleLivingPromotionSurvival,settleAnnualPromotionScale,
- recruitDistressedAiRosters}
+ recruitDistressedAiRosters,recruitStrategicAiRosters}
  from "./living-world-promotions.js";
 import {settleMedicalAvailabilityForNewWeek,settleWeeklyFatigueRecovery} from "./medical-availability.js";
 import {applyWorldCommand} from "./world-commands.js";
@@ -284,6 +284,9 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // before contract expiry and next week's player planning rights.
       await settleLivingPromotionSurvival(tx,input.worldId,year,week);
       await recruitDistressedAiRosters(tx,input.worldId,year,week);
+      // Solvent AI promotions may make one affordable, free-agent signing
+      // per quarter when their actual contracted roster is understaffed.
+      await recruitStrategicAiRosters(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
       // The current roster settles first; legends enter NEXT week as ordinary free agents.
       await settleCertifiedWorldLegends(tx,input.worldId,year,week);
