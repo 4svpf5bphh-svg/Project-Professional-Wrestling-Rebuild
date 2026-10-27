@@ -22,6 +22,7 @@ interface Angle extends Broadcast{
 }
 interface TitleChange extends Broadcast{slot_id:string;title_name:string;}
 export interface TournamentFinal extends Broadcast {
+ [key:string]:unknown;
  tournament_id:string;tournament_name:string;division:"MEN"|"WOMEN";
  winner_name:string;winner_person_id:string;entrants_count:4|8;
  slot_id:string;final_rating_stars:number|string|null;
