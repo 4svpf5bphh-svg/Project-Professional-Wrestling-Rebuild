@@ -121,7 +121,7 @@ export async function mountTournamentDesk(root:HTMLElement,
  const error=el("p","ppw-alert");
  const submit=button("Create tournament",()=>{void(async()=>{
   const entrants=seeds.map(x=>x.value);
-  if(name.value.trim().length<3||new Set(entrants).size!==4||entrants.some(x=>!x)){
+  if(name.value.trim().length<3||new Set(entrants).size!==entrants.length||entrants.some(x=>!x)){
    error.textContent="Enter a name and choose four different signed wrestlers.";return;
   }
   submit.disabled=true;error.textContent="";
