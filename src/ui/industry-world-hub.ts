@@ -399,6 +399,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       metric.append(el("small","",label),el("strong","",note));stats.append(metric);
      }
      detail.append(stats);
+     if(p.publicIdentity)detail.append(el("p","ppw-industry-muted",
+      "Creative approach: "+p.publicIdentity+
+      ". Based on this rival's established booking preferences, not a prediction of future cards."));
      const appearances=view!.broadcasts.filter(show=>show.promotionId===p.promotionId).slice(0,3);
      if(appearances.length){
       detail.append(el("h3","","Recent published events"));
