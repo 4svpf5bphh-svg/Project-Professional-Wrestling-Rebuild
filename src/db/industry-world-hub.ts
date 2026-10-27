@@ -5,6 +5,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
+import {aiPromotionIdentity,AI_IDENTITY_LABELS} from "../domain/ai-promotion-strategy.js";
 export async function readIndustryWorldHub(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
@@ -36,7 +37,9 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const companies=await tx.query<{promotion_id:string;name:string;
    tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
-   completed_events:number;management_mode:string}>(`
+   completed_events:number;management_mode:string;
+   ai_risk_tolerance:number|null;ai_match_quality_preference:number|null;
+   ai_star_preference:number|null}>(`
    WITH recent AS (
      SELECT c.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
       avg(c.crowd_response)::numeric(6,1)::text AS recent_avg_crowd,
@@ -48,6 +51,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
      GROUP BY c.promotion_id
    )
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
+    p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
     p.management_mode,r.latest_show_week,
     r.recent_avg_crowd,coalesce(r.completed_events,0) AS completed_events
    FROM ppw_promotions p LEFT JOIN recent r ON r.promotion_id=p.promotion_id
@@ -106,6 +110,14 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     promotionId:p.promotion_id,name:p.name,tier:p.tier,
     rank:i+1,mediaReach:p.media_reach,
     managementMode:p.management_mode,
+    publicIdentity:p.management_mode==="AI"&&
+     p.ai_risk_tolerance!==null&&p.ai_match_quality_preference!==null&&
+     p.ai_star_preference!==null?
+     AI_IDENTITY_LABELS[aiPromotionIdentity({
+      riskTolerance:p.ai_risk_tolerance,
+      matchQualityPreference:p.ai_match_quality_preference,
+      starPreference:p.ai_star_preference
+     })]:null,
     latestCompletedWeekIndex:p.latest_show_week,
     recentAverageCrowd:p.recent_avg_crowd===null?null:Number(p.recent_avg_crowd),
     recentShowCount:p.completed_events,
