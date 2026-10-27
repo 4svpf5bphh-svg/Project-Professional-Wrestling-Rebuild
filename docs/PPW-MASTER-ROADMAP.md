@@ -12,6 +12,14 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 
 **Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
 
+### Phase 11 closing gameplay milestone — certified winners and credible breakout reception (staged; CI required)
+
+World News now identifies the genuine singles or team champion directly from already-settled championship contest receipts, including a vacant-title win, with the same named headline flowing into World Moments. It cannot infer an inaugural champion when the belt was merely vacant. An exceptional (4.5★+) certified match can spotlight an actual **PROSPECT** participant from the existing bounded person/name read; it never claims the prospect won or that the match rating measures personal skill. No new World Lock read count, scheduled task or private booking exposure is intended.
+
+The opt-in dossier's existing verified four-bout rating comparison now distinguishes a genuine **breakout stretch** (at least three rated bouts in each four-match window, 4.1★ recent mean, 3.5★ or lower previous mean, and at least 0.75★ rise). It remains a temporary description of real completed match reception, not a new statistic, rank, skill increase or award. It adds no request to the person-keyed Career Record. This is the intended final Phase 11 gameplay pass, conditional on complete mobile, type, unit, certified public news/World Moments PostgreSQL and query-budget regressions.
+
+No Legends additions, merge, Production change, autonomous World advance, deadline change or cron activation.
+
 ### Phase 11 — Certified career moments and title spotlights (verified, staged)
 
 Audited original living-career settlement, real career-stage and retirement ledger entries, official News, World Honours/Hall, on-demand dossier, title reigns and reputations. Existing systems remain authoritative. The existing four-read Industry projection now carries the recorded **from** career stage without an additional query; the current Official News desk displays consequential verified career chapters and retirements with meaningful copy and a direct dossier link. The earlier NOTABLE-only career-stage filter remains to prevent routine notifications.

@@ -314,13 +314,15 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    }
    if(form.ratingTrend){
     const trend=form.ratingTrend;
-    const direction=trend.direction==="HIGHER"?"Higher match ratings":
+    const direction=form.breakoutRun?"A breakout stretch in the ring":
+     trend.direction==="HIGHER"?"Higher match ratings":
      trend.direction==="LOWER"?"Lower match ratings":"Similar match ratings";
     const detail=trend.direction==="SIMILAR"?
      "The last four bouts drew similar ratings to the preceding four.":
      "The latest four matches averaged "+trend.recentAverage.toFixed(2)+
       "★ against "+trend.previousAverage.toFixed(2)+"★ in the prior four.";
-    const pulse=el("div","ppw-career-rating-trend");
+    const pulse=el("div","ppw-career-rating-trend"+
+     (form.breakoutRun?" ppw-career-rating-breakout":""));
     pulse.append(el("strong","",direction),el("p","",detail),
      el("small","ppw-profile-muted",
       "Rated matches: "+trend.recentRated+" recent, "+

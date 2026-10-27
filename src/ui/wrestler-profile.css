@@ -123,3 +123,9 @@
 .ppw-career-spotlight-item strong{display:block;color:#f5f4ff;font-size:14px}
 .ppw-career-spotlight-item p{margin:6px 0 0;color:#cadbe7;
  font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Strong recent four-bout reception, never a permanent ability upgrade. */
+.ppw-career-rating-breakout{border-top-color:#c5a36d;
+ background:linear-gradient(105deg,#453657,#1f3151);
+ border-radius:10px;padding:12px;margin:12px -3px 0}
+.ppw-career-rating-breakout strong{color:#ffdf9d}

@@ -10,6 +10,8 @@ export type VerifiedCareerFormMatch={
 export type CareerFormSnapshot={
  recentCount:number;wins:number;losses:number;
  sequence:readonly ("W"|"L")[];
+ /** Time-limited editorial classification from certified match reception. */
+ breakoutRun:boolean;
  currentRun:{result:"W"|"L";length:number}|null;
  ratingTrend:null|{
   recentAverage:number;previousAverage:number;delta:number;
@@ -63,6 +65,11 @@ export function verifiedCareerForm(
   latest.length<5?"Early form: only "+latest.length+" verified match"+
    (latest.length===1?" is":"es are")+" on record.":
   "These are completed match results, not a change in ability or a prediction.";
+ // A breakout *run of match reception* needs both four-match windows,
+ // not merely an isolated classic or presumed improvement in personal skill.
+ const breakoutRun=ratingTrend!==null&&ratingTrend.direction==="HIGHER"&&
+  ratingTrend.recentAverage>=4.1&&ratingTrend.previousAverage<=3.5&&
+  ratingTrend.delta>=.75;
  return {recentCount:lastFive.length,wins,losses:lastFive.length-wins,
-  sequence,currentRun,ratingTrend,note};
+  sequence,currentRun,ratingTrend,breakoutRun,note};
 }

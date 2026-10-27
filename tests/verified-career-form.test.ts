@@ -51,3 +51,19 @@ test("max twelve match evidence and stable chronology protect history",()=>{
   /newest-first/);
  assert.throws(()=>verifiedCareerForm([match(5,true,6)]),/verified match evidence/);
 });
+
+test("a breakout stretch needs two reliable rated windows, not one exceptional match",()=>{
+ const rows=[
+  match(12,true,4.5),match(11,false,4.3),match(10,true,4.4),
+  match(9,true,4.1),match(8,true,3.1),match(7,false,3.3),
+  match(6,false,3.2),match(5,false,3.0)
+ ];
+ const form=verifiedCareerForm(rows);
+ assert.equal(form.breakoutRun,true);
+ assert.equal(form.ratingTrend?.direction,"HIGHER");
+ assert.equal(verifiedCareerForm(rows.map((x,i)=>i===1||i===2?
+  {...x,stars:null}:x)).breakoutRun,false);
+ assert.equal(verifiedCareerForm(rows.map((x,i)=>i<4?
+  {...x,stars:3.8}:x)).breakoutRun,false);
+ assert.equal(verifiedCareerForm(rows.slice(0,7)).breakoutRun,false);
+});
