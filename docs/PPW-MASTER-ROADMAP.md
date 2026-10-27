@@ -112,6 +112,16 @@ After A's weak year it resumes growth when shows improve (adaptive 76.3 at end o
 
 Recruitment SQL calls are metered at the first quarter and required to stay constant as the number of promotions grows; query results and generated contracts must remain bounded. This is not a 12-player live stress test, proof of monthly Neon usage or a realistic attendance forecast. The test is added to the standard real PostgreSQL suite and must pass along with full browser/unit verification.
 
+### Phase 10 tournament expansion — four- and eight-person singles (development-only)
+
+**Current staged scope:** Extend the verified first-class four-person tournament to a selected eight-person seeded draw using **the same** Championships workspace, ordinary six-week show planner and certified World Lock. New schema `0106_eight_person_tournaments.sql` adds only an entrants-count column with a default of four and extends the existing bout number bound to seven, preserving past three-bout records without a backfill.
+
+- **Seed order:** 1 v 8, 4 v 5, 2 v 7, 3 v 6; quarterfinal winners 1+2 and 3+4 meet in semifinals, semifinal winners meet in the final. Both semifinal winners must be certified before the final unlocks; neither a drafted script nor unsaved edit advances the bracket.
+- **Player control:** Choose four or eight contracted, same-division wrestlers in Championships. All bouts go on normal player-authored cards and use the same match and championship settlement. Vacant singles belt is an optional final prize. **Non-title final booking remains legal** (fixed a legacy null-vs-undefined mismatch). No automatic appointment, alternative outcomes, extra World Lock, polling, additional deadlines, event restrictions, loans or interpromotional shows.
+- **Bounded storage/reads:** Seven fixture rows per eight-person tournament, the existing active-bracket cap, bounded 20-tournament history and one current-card read with at most four immediately eligible fixtures. No extra SQL on ordinary card opens/saves. Existing verified four-person behaviour must stay intact.
+- **Verification gate:** include pure seeded-draw tests, 320px/390px authenticated mobile booking tests and a real disposable PostgreSQL quarterfinal → semifinal → final sequence, including non-title awards and certified winner integrity. Full existing suite must pass before claiming verified. The feature is *not Production-authorized*.
+- **After this:** choose whether tag-team tournaments, AI-run competitions and the earned annual tournament/event tradition system materially improve play before expanding systems. Legends catalogue approval remains separately held by the owner.
+
 ### Phase 10 tournament bracket implementation — 27 October 2026 (development-only)
 
 **The next milestone:** first-class four-person singles tournaments under the controlled promotion's existing Championships hub, using current cards and the single World Lock. The manager seeds four signed wrestlers (1 v 4, 2 v 3), with matching gender division; one active tournament per promotion. A vacant active singles title may optionally be selected as the final's real prize. A non-title tournament creates a historic winner, not an invented championship. No crossover entrants, shared shows or wrestler loans.
