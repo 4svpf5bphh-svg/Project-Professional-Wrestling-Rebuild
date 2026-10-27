@@ -48,7 +48,7 @@ test("twelve-promotion World shares scarce talent fairly without runaway AI wage
     world_id,employment_id,staff_id,promotion_id,role,status,
     weekly_salary,start_week_index,expires_week_index,term_weeks)
     VALUES($1,'scaled-wages','scaled-senior-agent','ai-08','ROAD_AGENT',
-     'ACTIVE',40000,0,156,157)`,[world]);
+     'ACTIVE',40000,0,103,104)`,[world]);
    const people=Array.from({length:128},(_,i)=>({
     id:"free-"+String(i).padStart(3,"0"),
     ring:i%2===0?89:46,craft:i%2===0?91:48,
@@ -92,13 +92,26 @@ test("twelve-promotion World shares scarce talent fairly without runaway AI wage
   const signed=await withWorldTransaction(db.pool,tx=>tx.query<{
    contract_id:string;person_id:string;promotion_id:string;
    weekly_guarantee:string;status:string;family:string;
+   start_week_index:number;expires_week_index:number;
   }>(`SELECT contract_id,person_id,promotion_id,weekly_guarantee::text,
-    status,family FROM ppw_contracts WHERE world_id=$1
+    status,family,start_week_index,expires_week_index FROM ppw_contracts WHERE world_id=$1
     AND contract_id LIKE 'strategic:%' ORDER BY contract_id`,[world]));
   assert.equal(signed.length,25);
   assert.equal(new Set(signed.map(x=>x.contract_id)).size,signed.length);
-  assert.equal(new Set(signed.map(x=>x.person_id)).size,signed.length,
-   "Quarterly competitors may not secretly recruit the same free agent");
+  for(const quarter of [13,26,39]){
+   const wave=signed.filter(x=>x.contract_id.startsWith("strategic:"+quarter+":"));
+   assert.equal(new Set(wave.map(x=>x.person_id)).size,wave.length,
+    "Concurrent quarterly AI companies cannot take the same free agent");
+  }
+  // A worker can be signed again AFTER their earlier limited contract expires,
+  // but multiple rival contracts cannot overlap in active service dates.
+  for(let i=0;i<signed.length;i++)for(let j=i+1;j<signed.length;j++){
+   const a=signed[i]!,b=signed[j]!;
+   if(a.person_id===b.person_id)
+    assert.ok(a.expires_week_index<b.start_week_index||
+     b.expires_week_index<a.start_week_index,
+     "No two strategic recruitment deals can overlap for the same person");
+  }
   assert.ok(signed.every(x=>ai.includes(x.promotion_id)&&x.promotion_id!=="ai-09"));
   assert.equal(signed.filter(x=>x.promotion_id==="ai-08").length,1,
    "A financially overcommitted rival must only hire after staff costs decline");
