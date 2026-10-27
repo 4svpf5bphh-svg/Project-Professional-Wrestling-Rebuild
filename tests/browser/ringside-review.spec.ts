@@ -169,7 +169,7 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   await page.getByRole("button",{name:"Check roster"}).click();
-  await expect(page).toHaveURL(/#\\/roster$/);
+  await expect(page).toHaveURL(/#\/roster$/);
  });
  test(`Post-show handoff ${width}px gives a useful route for a strong clean card`,async({page})=>{
   await page.setViewportSize({width,height:844});
@@ -189,6 +189,6 @@ for(const width of [320,390]){
   await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
   await page.getByRole("button",{name:"Plan a show"}).click();
-  await expect(page).toHaveURL(/#\\/planner$/);
+  await expect(page).toHaveURL(/#\/planner$/);
  });
 }

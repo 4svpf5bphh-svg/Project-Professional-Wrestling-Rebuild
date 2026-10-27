@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {postShowHandoff} from "../src/domain/post-show-handoff.js";
 import type {CompletedShowView,ShowResultEntry} from "../src/db/show-results-view.js";
-const match=(id:string,signal:ShowResultEntry["fallout"] extends never?never:
- "COOL_PROGRAMME"|"HOT_PROGRAMME"|"PROGRAMME_REPETITION"|null=null,
+const match=(id:string,
+ signal:"COOL_PROGRAMME"|"HOT_PROGRAMME"|"PROGRAMME_REPETITION"|null=null,
  stars=3.2):ShowResultEntry=>({
  slotId:id,position:0,type:"MATCH",headline:"Omega versus Joe",summary:"Official result",
  crowdResponse:80,outcome:"CLEAN_PIN",actorIds:["omega","joe"],targetIds:[],
