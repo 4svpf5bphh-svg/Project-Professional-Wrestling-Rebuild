@@ -20,7 +20,10 @@ interface Angle extends Broadcast{
  slot_id:string;position:number;kind:string;authored_outcome:string;
  angle_crowd:string|number;story_json:unknown;
 }
-interface TitleChange extends Broadcast{slot_id:string;title_name:string;}
+interface TitleChange extends Broadcast{
+ slot_id:string;title_name:string;winner_name?:string|null;
+ prior_reign_id?:string|null;
+}
 export interface TournamentFinal extends Broadcast {
  [key:string]:unknown;
  tournament_id:string;tournament_name:string;division:"MEN"|"WOMEN";
@@ -133,7 +136,8 @@ export function chooseWeeklyAwards(bouts:readonly Bout[],angles:readonly Angle[]
 export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  shows:readonly Broadcast[],changes:readonly TitleChange[],
  names:ReadonlyMap<string,string>,
- tournamentFinals:readonly TournamentFinal[]=[]):WorldNewsStory[]{
+ tournamentFinals:readonly TournamentFinal[]=[],
+ careerStages:ReadonlyMap<string,string>=new Map()):WorldNewsStory[]{
  const official:WorldNewsStory[]=[],dirt:WorldNewsStory[]=[];
  const add=(desk:"OFFICIAL"|"DIRT",s:Broadcast,key:string,title:string,
   summary:string,sourceKind:WorldNewsStory["sourceKind"])=>{
@@ -150,10 +154,18 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    story.title,story.summary,"EVENT");
  }
  for(const c of [...changes].sort((a,b)=>byId(a,b))){
+  const champion=c.winner_name?.trim()||null;
+  // A vacant belt may have older reigns: never infer inaugural status.
   add("OFFICIAL",c,"title:"+c.show_id+":"+c.slot_id,
-   c.title_name+" changes hands at "+c.show_name,
-   "A new name enters the "+c.title_name+" lineage after "+c.show_name+
-   ". The result is in the books; the rest of the division now has its next chapter to write.",
+   champion?champion+" captures "+c.title_name+" at "+c.show_name:
+    c.title_name+" changes hands at "+c.show_name,
+   champion?champion+" is the new "+c.title_name+
+    " champion after a certified result at "+c.show_name+". "+
+    (c.prior_reign_id===null?"The title was vacant heading into the contest. ":
+     c.prior_reign_id?"A previous reign has ended. ":"")+
+    "The division has a new name at the top.":
+    "The "+c.title_name+" changed hands at "+c.show_name+
+    ". The result is certified; an unidentified winner is not guessed.",
    "TITLE");
  }
  const angleHeadlines:Record<string,(person:string,show:string)=>string>={
@@ -187,10 +199,19 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const cast=participants(s.payload).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
   const opposition=cast.length>=2?cast.join(" vs "):"A standout contest";
+  // A prospect appearing in an exceptional certified match is a factual
+  // spotlight, not evidence of an individual score, victory or skill change.
+  const emerging=Number(s.rating_stars)>=4.5?
+   participants(s.payload).find(id=>careerStages.get(id)==="PROSPECT"&&names.has(id)):undefined;
+  const prospect=emerging?names.get(emerging):undefined;
   add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,
-   opposition+" steals the show at "+s.show_name,
+   prospect?prospect+" in the spotlight at "+s.show_name:
+    opposition+" steals the show at "+s.show_name,
    s.show_name+" delivered a "+Number(s.rating_stars).toFixed(2)+
-   "-star match for "+s.promotion_name+". One for the replay queue; performances like that do the talking.",
+   "-star match for "+s.promotion_name+". "+
+   (prospect?"Prospect "+prospect+" was part of "+opposition+
+    ". A big stage for an emerging name; the stars belong to the match, not any one wrestler.":
+    "One for the replay queue; performances like that do the talking."),
    "MATCH");
  }
  for(const s of shows.filter(s=>s.booking_class==="PREMIUM")
@@ -277,13 +298,19 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
    JOIN ppw_completed_show_segments a ON a.world_id=c.world_id AND a.show_id=c.show_id
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY a.show_id,a.position LIMIT 3001`,[worldId,year,week]),
-  tx.query<{show_id:string;slot_id:string;title_name:string}>(`
-   SELECT x.show_id,x.slot_id,t.name AS title_name
+  tx.query<{show_id:string;slot_id:string;title_name:string;
+   winner_name:string|null;prior_reign_id:string|null}>(`
+   SELECT x.show_id,x.slot_id,t.name AS title_name,x.prior_reign_id,
+    coalesce(person.name,team.name) AS winner_name
    FROM ppw_completed_shows c
    JOIN ppw_championship_contests x ON x.world_id=c.world_id
     AND x.show_id=c.show_id AND x.promotion_id=c.promotion_id AND x.title_changed
    JOIN ppw_championships t ON t.world_id=x.world_id
     AND t.promotion_id=x.promotion_id AND t.championship_id=x.championship_id
+   LEFT JOIN ppw_people person ON person.world_id=x.world_id
+    AND person.person_id=x.winner_person_id
+   LEFT JOIN ppw_tag_teams team ON team.world_id=x.world_id
+    AND team.team_id=x.winner_team_id
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY x.show_id,x.slot_id LIMIT 501`,[worldId,year,week])
  ]);
@@ -340,12 +367,15 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  if(tournamentFinals.length>256)throw new Error("World news tournament limit exceeded");
  const ids=[...new Set([...bouts.flatMap(b=>participants(b.payload)),
   ...angles.flatMap(a=>storyPeople(a.story_json))])].slice(0,6000);
- const people=ids.length?await tx.query<{person_id:string;name:string}>(`
-  SELECT person_id,name FROM ppw_people WHERE world_id=$1
+ const people=ids.length?await tx.query<{
+  person_id:string;name:string;career_stage:string|null}>(`
+  SELECT person_id,name,career_stage FROM ppw_people WHERE world_id=$1
   AND person_id=ANY($2::text[])`,[worldId,ids]):[];
  const names=new Map(people.map(p=>[p.person_id,p.name]));
+ const stages=new Map(people.filter(p=>p.career_stage!==null)
+  .map(p=>[p.person_id,p.career_stage!]));
  const awards=chooseWeeklyAwards(bouts,angles,names);
- const stories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals);
+ const stories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals,stages);
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,

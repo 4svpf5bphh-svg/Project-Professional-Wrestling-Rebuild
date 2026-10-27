@@ -99,3 +99,35 @@ test("repeated cup in one year, gaps, cancellations or missing ratings never inv
  const rest=composeWorldNews([],[],[],[],names);
  assert.deepEqual(rest,[]);
 });
+
+test("certified title transfers announce the recorded winner, but not invented first champions",()=>{
+ const singles={...pub("s1","human"),slot_id:"m1",title_name:"World Crown",
+  winner_name:"Alice",prior_reign_id:"prior"};
+ const vacant={...pub("s2","ai"),slot_id:"m2",title_name:"Women's World",
+  winner_name:"Cara",prior_reign_id:null};
+ const teams={...pub("s2","ai"),slot_id:"m3",title_name:"Tag Gold",
+  winner_name:"The Wolves",prior_reign_id:"old"};
+ const stories=composeWorldNews([],[],[],[singles,vacant,teams],names)
+  .filter(s=>s.sourceKind==="TITLE");
+ assert.equal(stories.length,3);
+ assert.match(stories[0]!.title,/Alice captures World Crown/);
+ assert.match(stories[1]!.summary,/title was vacant/);
+ assert.match(stories[2]!.title,/The Wolves captures Tag Gold/);
+ assert.ok(stories.every(s=>s.certainty==="CONFIRMED"));
+ assert.ok(stories.every(s=>!/first champion|inaugural/i.test(s.summary)));
+ const unknown=composeWorldNews([],[],[],[
+  {...singles,winner_name:null}],names)[0]!;
+ assert.match(unknown.summary,/unidentified winner is not guessed/);
+});
+test("a certified exceptional bout spotlights a real prospect without claiming a solo victory",()=>{
+ const stages=new Map([["a","PROSPECT"],["c","VETERAN"]]);
+ const match={...b1,rating_stars:4.7};
+ const hit=composeWorldNews([match],[],[],[],names,[],stages)[0]!;
+ assert.match(hit.title,/Alice in the spotlight/);
+ assert.match(hit.summary,/Prospect Alice was part of Alice vs Bob/);
+ assert.match(hit.summary,/stars belong to the match/);
+ assert.doesNotMatch(hit.summary,/wins|won|signed|improved skills/i);
+ assert.doesNotMatch(composeWorldNews([{...match,rating_stars:4.0}],
+  [],[],[],names,[],stages)[0]!.title,/Alice in the spotlight/);
+ assert.doesNotMatch(composeWorldNews([match],[],[],[],names)[0]!.title,/Alice in the spotlight/);
+});

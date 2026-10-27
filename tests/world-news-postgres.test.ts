@@ -73,6 +73,18 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     [world,JSON.stringify({kind:"TURN",outcome:"HAPPENS",position:2,
      headline:"A change of allegiance",actorIds:[c],targetIds:[d],
      privateRumour:"HIDDEN CONTRACT TALKS"})]);
+   // An immutable settled title contest, not a drafted booking, identifies
+   // a new singles champion. The World history story reuses this proof.
+   await tx.query(`INSERT INTO ppw_championships(
+    world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
+    VALUES($1,'promotion-0','news-title','World Crown','SINGLES','ACTIVE',65,'news-reign')`,[world]);
+   await tx.query(`INSERT INTO ppw_championship_reigns(
+    world_id,promotion_id,championship_id,reign_id,holder_type,person_id,status,start_week_index)
+    VALUES($1,'promotion-0','news-title','news-reign','PERSON',$2,'ACTIVE',0)`,[world,a]);
+   await tx.query(`INSERT INTO ppw_championship_contests(
+    world_id,promotion_id,championship_id,show_id,slot_id,
+    prior_reign_id,winner_person_id,title_changed)
+    VALUES($1,'promotion-0','news-title','hshow','hmatch',NULL,$2,true)`,[world,a]);
    // Only the already certified human final can generate a tournament story;
    // the AI draft and an unfinished cup remain private.
    await tx.query(`INSERT INTO ppw_tournaments(world_id,promotion_id,
@@ -115,6 +127,14 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.equal(crown?.sourceKind,"EVENT");
   assert.match(crown?.title??"",/King's Crown/);
   assert.match(crown?.summary??"",/4\.00 verified stars/);
+  const champion=result.stories.find(x=>x.sourceKind==="TITLE");
+  assert.equal(champion?.title,roster[0]!.name+" captures World Crown at Human Fight Night");
+  assert.match(champion?.summary??"",/title was vacant heading into the contest/);
+  const moments=await withWorldTransaction(db.pool,tx=>
+   tx.query<{headline:string}>(`SELECT headline FROM ppw_world_moments
+    WHERE world_id=$1 AND year=1 AND week=1 AND kind='TITLE'`,[world]));
+  assert.ok(moments.some(m=>m.headline===champion?.title),
+   "Historical World Moment uses the same confirmed named champion");
   assert.ok(!JSON.stringify(result.stories).includes("Private Future Cup"),
    "An unfinished tournament and future draft must not leak into public news");
   const publicText=JSON.stringify(result);
@@ -144,7 +164,8 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     "ppw_world_news_items","ppw_world_news_awards",
     "ppw_world_news_weeks","ppw_completed_match_report_facts",
     "ppw_tournament_bouts","ppw_tournaments",
-    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_completed_show_segments","ppw_championship_contests",
+    "ppw_championship_reigns","ppw_completed_show_matches",
     "ppw_completed_shows","ppw_card_slots","ppw_booking_drafts",
     "ppw_week_resolution_seals","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
