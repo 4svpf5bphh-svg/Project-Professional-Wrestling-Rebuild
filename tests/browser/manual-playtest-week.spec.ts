@@ -36,7 +36,7 @@ test("only the designated operator can trigger the shared World week, after an e
  page.once("dialog",dialog=>dialog.accept());
  await page.getByRole("button",{name:"Advance Week"}).click();
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
- expect(requests).toEqual([{confirm:"ADVANCE_SHARED_WORLD",year:1,week:1}]);
+ await expect.poll(()=>requests).toEqual([{confirm:"ADVANCE_SHARED_WORLD",year:1,week:1}]);
 });
 test("other managers never see the control or trigger server-authoritative World resolution",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:{
