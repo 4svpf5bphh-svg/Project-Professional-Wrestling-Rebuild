@@ -106,6 +106,12 @@ After A's weak year it resumes growth when shows improve (adaptive 76.3 at end o
 
 **Next evidence gate:** run longer realistic certified-show mixes and validate income, promotion-tier dynamics and large-population AI staffing before making stronger market or financial changes. In particular, do not create additional income sinks just to punish successful bookers. No merge, Production deployment, live World advancement, deadline change or cron is authorised.
 
+### Phase 10 larger-World recruitment cost and authority gate — 27 October 2026
+
+**New test-only coverage, no new game feature or World mutation:** a 12-promotion disposable-PostgreSQL World with two real human controllers, ten AI companies, 128 varied unsigned prospects, healthy and cash-poor firms, plus an otherwise profitable firm burdened by an expensive Road Agent. Three sequential quarterly recruitment windows and an immediate duplicate replay exercise the **existing** bounded strategic hiring path, actual signed contracts, candidate exclusivity, authentic salaries, fair AI creative preferences and human-manager protection. The staff-heavy firm is unable to hire until a real salary reduction restores surplus. No speculative AI income, fake roster scores, second scheduler or override of Legend release priority.
+
+Recruitment SQL calls are metered at the first quarter and required to stay constant as the number of promotions grows; query results and generated contracts must remain bounded. This is not a 12-player live stress test, proof of monthly Neon usage or a realistic attendance forecast. The test is added to the standard real PostgreSQL suite and must pass along with full browser/unit verification.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
