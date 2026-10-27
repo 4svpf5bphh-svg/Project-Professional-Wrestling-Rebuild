@@ -243,6 +243,7 @@ function staffPort(root:HTMLElement,scope:Scope,
   }),
   openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
   openRoster:()=>{window.location.hash=hostSectionHash("roster");},
+  openMarket:()=>{window.location.hash=hostSectionHash("market");},
   openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)

@@ -66,7 +66,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByRole("heading",{name:"Around the table"})).toBeVisible();
 });
 
-test("320px iPhone Staff Market uses four readable rows of two departments",async({page})=>{
+test("320px iPhone Staff Market keeps nine readable department options",async({page})=>{
  await page.setViewportSize({width:320,height:720});
  const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
@@ -84,11 +84,11 @@ test("320px iPhone Staff Market uses four readable rows of two departments",asyn
  await page.goto("/#/staff");
  await page.getByRole("button",{name:"Staff Market"}).click();
  const tabs=page.locator(".ppw-staff-departments button");
- await expect(tabs).toHaveCount(8);
+ await expect(tabs).toHaveCount(9);
  const boxes=await tabs.evaluateAll(els=>els.map(el=>{
   const box=el.getBoundingClientRect();return {top:Math.round(box.top),height:box.height,width:box.width};
  }));
- expect(new Set(boxes.map(b=>b.top)).size).toBe(4);
+ expect(new Set(boxes.map(b=>b.top)).size).toBe(5);
  expect(boxes.every(b=>b.height>=44&&b.width>=110)).toBe(true);
  const readability=await tabs.evaluateAll(els=>els.map(el=>{
   const style=getComputedStyle(el);

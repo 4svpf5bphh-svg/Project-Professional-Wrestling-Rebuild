@@ -17,7 +17,8 @@ export interface StaffPort{
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  renew(input:{requestId:string;expectedRevision:number;employmentId:string;
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
- openContracts?():void;openProgrammes?():void;openRoster?():void;openGorilla?():void;back?():void;
+ openContracts?():void;openProgrammes?():void;openRoster?():void;
+ openMarket?():void;openGorilla?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -119,7 +120,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   if(port.back)header.append(button("← Back",()=>port.back?.()));
   header.append(el("span","ppw-staff-kicker","THE OFFICE / BACKSTAGE"),
    el("h1","","Staff Office"),el("p","ppw-staff-muted",
-    view?"Year "+view.year+" · Week "+view.week+" · Eight departments":
+    view?"Year "+view.year+" · Week "+view.week+" · Nine departments":
     "Build a team that shapes the wrestling World."));
   root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
@@ -130,7 +131,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const overview=el("section","ppw-staff-office-overview");
   const cards=el("div","ppw-staff-overview-grid");
   for(const [value,label] of [
-   [view.employees.length+"/8","DEPARTMENTS"],
+   [view.employees.length+"/"+STAFF_ROLES.length,"DEPARTMENTS"],
    [money(view.weeklyPayroll),"WEEKLY PAYROLL"],
    [money(view.promotionCash),"CASH AVAILABLE"]
   ] as const){
@@ -155,7 +156,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
-    "Eight departments. Each brief comes from your promotion's recorded business and completed shows; vacant departments have basic house cover."));
+    "Nine departments. Advice from verified shows and available talent; vacancies retain basic house cover."));
   const attendees=el("div","ppw-staff-meeting-grid");
   for(const brief of view.meetings??[]){
    const slot=el("details","ppw-staff-meeting-brief");
@@ -165,6 +166,15 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("strong","",brief.staffName??"Position vacant · house cover"));
    lead.append(caption);slot.append(lead);
    slot.append(el("p","ppw-staff-muted",brief.message));
+   if(brief.role==="SCOUT"&&view.scoutReport?.length){
+    for(const prospect of view.scoutReport){
+     const item=el("div","ppw-staff-scout-pick");
+     item.append(el("strong","",prospect.name),
+      el("small","",prospect.observation));
+     slot.append(item);
+    }
+    if(port.openMarket)slot.append(button("Browse Talent Market",()=>port.openMarket?.()));
+   }
    if(brief.staffName&&brief.personality)
     slot.append(el("small","ppw-staff-voice",
      brief.personality==="FRANK"?"A direct assessment from your department lead":
