@@ -290,3 +290,25 @@
  .ppw-result-competitor-name{font-size:11px}
  .ppw-post-show-brief{padding:14px 11px}
 }
+
+/* Certified post-show suggestions connect to existing workspaces, never a
+ * second dashboard, hidden auto-booking, or mandatory progression. */
+.ppw-post-show-guidance{font-size:12px;line-height:1.5;color:#adc7d4;margin:7px 0 13px}
+.ppw-next-show-actions{display:grid;gap:10px;min-width:0;margin:12px 0}
+.ppw-next-show-choice{box-sizing:border-box;min-width:0;
+ display:grid;grid-template-columns:minmax(0,1fr);gap:10px;
+ padding:13px;border:1px solid #3d6674;border-left:3px solid #e5ba78;
+ border-radius:12px;background:linear-gradient(125deg,#152b3a,#101f30 90%)}
+.ppw-next-show-copy{min-width:0}
+.ppw-next-show-choice h3{font-size:15px;line-height:1.3;color:#ffe5b0;
+ margin:4px 0 7px;overflow-wrap:anywhere}
+.ppw-next-show-choice p{font-size:13px;line-height:1.45;
+ margin:0;color:#c5d8de;overflow-wrap:anywhere}
+.ppw-next-show-route{min-height:44px;width:100%;border-radius:10px;
+ padding:9px 12px;border:1px solid #ddae67;
+ background:#483726;color:#fff3da;font-size:13px;font-weight:900;cursor:pointer}
+.ppw-next-show-route:focus-visible{outline:3px solid #f8d693;outline-offset:3px}
+@media(min-width:650px){
+ .ppw-next-show-choice{grid-template-columns:minmax(0,1fr) 180px;align-items:center}
+ .ppw-next-show-route{width:auto}
+}

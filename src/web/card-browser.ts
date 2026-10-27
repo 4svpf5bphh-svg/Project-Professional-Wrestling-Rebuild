@@ -379,6 +379,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  backLabel="programmes"){
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
+  openNext:destination=>{window.location.hash=hostSectionHash(destination);},
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",

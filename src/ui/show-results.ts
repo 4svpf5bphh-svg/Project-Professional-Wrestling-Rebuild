@@ -3,6 +3,7 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
@@ -102,12 +103,13 @@ function transitionFor(entries:ShowResultEntry[],index:number,showName:string):s
 export async function mountShowResults(root:HTMLElement,port:{
  load():Promise<CompletedShowView>;
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
+ openNext?:(section:NextStepDestination)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show);
+  renderBroadcast(root,show,port.openNext);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review)
@@ -117,7 +119,8 @@ export async function mountShowResults(root:HTMLElement,port:{
   else markRingsideFallback(root,show);
  }catch(e){showError(root,e);}
 }
-export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
+export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
+ openNext?:(section:NextStepDestination)=>void):void{
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
@@ -346,35 +349,27 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView):void{
  const management=node("section","ppw-post-show-brief");
  management.append(node("span","ppw-eyebrow","PPW / MANAGEMENT"),
   node("h2","","POST-SHOW MANAGEMENT BRIEF"));
- const priorities:{label:string;message:string}[]=[];
- const medical=show.entries.flatMap(entry=>entry.fallout?.injuries??[]);
- if(medical.length){
-  const names=[...new Set(medical.map(p=>p.personName))];
-  priorities.push({label:"MEDICAL",message:names.join(", ")+
-   (names.length===1?" needs":" need")+" clearance before being booked again."});
- }
- const titleChange=show.entries.find(entry=>entry.fallout?.title?.changed)?.fallout?.title;
- if(titleChange)priorities.push({label:"CHAMPIONSHIPS",message:
-  titleChange.winnerName+" is the new "+titleChange.name+" holder. Review the next defence."});
- const cooling=show.entries.find(entry=>entry.fallout?.programmeSignal===
-  "COOL_PROGRAMME"||entry.fallout?.programmeSignal==="PROGRAMME_REPETITION");
- if(cooling)priorities.push({label:"CREATIVE",message:
-  "A rivalry may need a different next chapter after "+cooling.headline+"."});
- if(show.gorillaLog?.incidents.length)priorities.push({label:"PRODUCTION",message:
-  show.gorillaLog.incidents.length+" curtain decision"+
-  (show.gorillaLog.incidents.length===1?"":"s")+
-  " recorded. Review the Gorilla log before the next event."});
- const highPriority=priorities.slice(0,3);
- if(highPriority.length){
-  const items=node("div","ppw-post-show-priorities");
-  for(const priority of highPriority){
-   const item=node("article","ppw-post-show-priority");
-   item.append(node("strong","",priority.label),node("p","",priority.message));
-   items.append(item);
+ // The historical show report does not claim these concerns are still live.
+ const handoff=postShowHandoff(show);
+ management.append(node("p","ppw-post-show-guidance",
+  "Your call. These observations are from this show; check the current World before acting."));
+ const choices=node("div","ppw-next-show-actions");
+ for(const task of handoff.actions){
+  const item=node("article","ppw-next-show-choice");
+  const copy=node("div","ppw-next-show-copy");
+  copy.append(node("span","ppw-eyebrow",task.eyebrow),
+   node("h3","",task.headline),
+   node("p","",task.detail));
+  item.append(copy);
+  if(openNext){
+   const control=node("button","ppw-next-show-route",task.action)
+    as HTMLButtonElement;
+   control.type="button";control.onclick=()=>openNext(task.destination);
+   item.append(control);
   }
-  management.append(items);
- }else management.append(node("p","ppw-muted",
-  "No urgent medical, title or production decisions were recorded."));
+  choices.append(item);
+ }
+ management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("h3","",report.reporter+" · Road Agent's Report"),
