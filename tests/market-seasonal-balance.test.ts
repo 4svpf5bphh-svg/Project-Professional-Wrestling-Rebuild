@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {originalMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
+import {originalMarketAfterEvent,balancedMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
 import {originalCompetitionFactor,originalExpectedDemand,
  originalShowSettlement,originalTicketYield,
  type LocalAudience,type EventType,type Competitor,type StarPull}
@@ -33,18 +33,19 @@ const slumpCrowdA=[43,50,49,58,42,54,55,48,46,57,51,44,53];
 const ratingB=[2.7,3.4,2.9,3.2,3.6,3.0,2.6,3.7,3.1,3.4,2.8,3.5,3.2];
 const crowdB=[53,69,59,65,73,60,51,76,63,71,55,70,67];
 type ScenarioMode="adaptive"|"fixed";
+type MarketRule="legacy"|"balanced";
 type Row={year:number;week:number;strength:number;awareness:number;
  loyalty:number;expectedDemand:number;attendance:number;capacity:number;
  profit:number;attendanceRatio:number};
 type Summary={
- mode:ScenarioMode;atYears:{year:number;A:LocalAudience;B:LocalAudience}[];
+ mode:ScenarioMode;rule:MarketRule;atYears:{year:number;A:LocalAudience;B:LocalAudience}[];
  firstA95:number|null;firstB95:number|null;
  firstA100:number|null;firstB100:number|null;
  totalShows:number;year2SlumpA:{growing:number;declining:number;flat:number};
  averageAttendanceRatio:number;totalShowProfit:number;
  lateSeasonCompetition:number;
 };
-function runScenario(mode:ScenarioMode):Summary{
+function runScenario(mode:ScenarioMode,rule:MarketRule="legacy"):Summary{
  let states:LocalAudience[]=initial.map(x=>({...x}));
  const rows:Row[][]=[[],[]];
  let firstA95:null|number=null,firstB95:null|number=null;
@@ -85,7 +86,7 @@ function runScenario(mode:ScenarioMode):Summary{
     (major?.17:0);
    const crowd=(duringSlump?slumpCrowdA:k===0?crowdA:crowdB)[mix]!+
     (major?5:0);
-   const after=originalMarketAfterEvent(before[k]!,{
+   const after=(rule==="balanced"?balancedMarketAfterEvent:originalMarketAfterEvent)(before[k]!,{
     eventType,isHomeMarket:true,
     expectedDemand:money.expectedDemand,attendance:money.attendance,
     capacity,averageMatchRating:rating,crowdResponse:crowd
@@ -114,7 +115,7 @@ function runScenario(mode:ScenarioMode):Summary{
   if(year===4)lateCompetition+=Math.abs(states[0]!.liveStrength-states[1]!.liveStrength);
  }
  const all=[...rows[0]!,...rows[1]!];
- return {mode,atYears,firstA95,firstB95,firstA100,firstB100,
+ return {mode,rule,atYears,firstA95,firstB95,firstA100,firstB100,
   totalShows:all.length,year2SlumpA:changes,
   averageAttendanceRatio:Math.round(
    all.reduce((sum,x)=>sum+x.attendanceRatio,0)/all.length*1000)/1000,
@@ -133,11 +134,30 @@ test("208 weeks of varied cards, competition and settlements quantify natural au
   for(const y of data.atYears)for(const p of [y.A,y.B])
    for(const value of [p.awareness,p.liveStrength,p.loyalty])
     assert.ok(value>=2&&value<=100);
-  assert.deepEqual(data,runScenario(data.mode),
+  assert.deepEqual(data,runScenario(data.mode,data.rule),
    "Four-year marketplace outcomes are deterministic across restarts");
  }
  // Do not bake in an arbitrary desirable popularity ceiling: this test is
  // evidence for game-design decisions, not an instruction to rewrite ratings.
  console.log("PPW varied four-year audience/venue balance "+
   JSON.stringify({adaptive,fixed}));
+});
+
+test("four-season quality-sensitive markets retain downturn and rebound under both venue policies",()=>{
+ for(const mode of ["adaptive","fixed"] as const){
+  const legacy=runScenario(mode),balanced=runScenario(mode,"balanced");
+  assert.equal(balanced.totalShows,416);
+  assert.ok(balanced.year2SlumpA.declining>legacy.year2SlumpA.declining,
+   "A sustained weaker season must lose more supporters than the original market");
+  assert.ok(balanced.atYears[1]!.A.liveStrength<legacy.atYears[1]!.A.liveStrength,
+   "By season two bad wrestling must leave a visible audience cost");
+  assert.ok(balanced.atYears[3]!.A.liveStrength>balanced.atYears[1]!.A.liveStrength,
+   "Two subsequent good seasons should restore some lost territory following");
+  assert.deepEqual(balanced,runScenario(mode,"balanced"));
+  console.log("PPW quality-sensitive four-year market "+JSON.stringify({mode,
+   legacy:legacy.atYears,balanced:balanced.atYears,
+   legacySlump:legacy.year2SlumpA,balancedSlump:balanced.year2SlumpA,
+   legacyLateGap:legacy.lateSeasonCompetition,
+   balancedLateGap:balanced.lateSeasonCompetition}));
+ }
 });

@@ -34,3 +34,25 @@ export function originalMarketAfterEvent(
   awareness:round(before.awareness+awarenessDelta),
   loyalty:round(before.loyalty+loyaltyDelta)};
 }
+
+// Long-run correction, kept separate from the exact original calculation above.
+// A successful gate is evidence of drawing power, not automatically of a good
+// show: below-par matches and crowd reception reduce its repeat-audience credit.
+// Established territories require consistently strong events to keep growing.
+// No new state, randomness, World reads or changes to awareness/loyalty.
+export function balancedMarketAfterEvent(
+ before:LocalAudience,r:OriginalMarketResult,
+):LocalAudience{
+ const legacy=originalMarketAfterEvent(before,r); // shared validation and parity
+ const ratio=r.attendance/r.expectedDemand;
+ const importance=r.eventType==="MAJOR"?1.35:1;
+ const attendanceCredit=ratio>=.95?1.1*importance:
+  ratio>=.72?.55*importance:ratio<.45?-.45:.1;
+ const qualityEffect=(r.averageMatchRating-2.75)*.18+(r.crowdResponse-60)/180;
+ const reception=Math.max(0,Math.min(1,
+  (r.averageMatchRating-2.5)*.65+(r.crowdResponse-50)/40));
+ const earnedCredit=attendanceCredit>0?attendanceCredit*reception:attendanceCredit;
+ const established=Math.max(0,Math.min(1,(before.liveStrength-75)/25));
+ const upkeep=1.15*established*established;
+ return {...legacy,liveStrength:round(before.liveStrength+earnedCredit+qualityEffect-upkeep)};
+}
