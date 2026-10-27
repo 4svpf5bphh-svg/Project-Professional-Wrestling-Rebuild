@@ -66,6 +66,13 @@ function finish(intent:AiCardMatch["intent"],roll:number):AiCardMatch["plannedFi
 }
 function style(input:AiCardInput,order:number,isMain:boolean):AiCardMatch["intent"]{
  if(isMain&&input.eventType==="MAJOR")return "EPIC";
+ // Keep a recognisable signature bout even if the seeded rolls differ;
+ // other contests still vary and major main events retain EPIC priority.
+ if(!isMain&&order===1&&input.strategy){
+  const signature={WORKRATE:"TECHNICAL",SPECTACLE:"HIGH_RISK",
+   STAR_POWER:"SHOWCASE",STORYTELLING:"STORY"} as const;
+  return signature[input.strategy.identity];
+ }
  const rng=new DeterministicRng(deterministicSeedFromText(
   `${input.worldSeed}:${input.showId}:intent:${order}`));
  if(input.strategy?.identity==="WORKRATE"&&rng.chance(.62))return "TECHNICAL";
