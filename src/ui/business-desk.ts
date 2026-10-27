@@ -163,6 +163,27 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      view.recurringMargin===null?"Not configured":money(view.recurringMargin)));
    flow.append(total);
    root.append(flow);
+   if(view.recurringMargin!==null){
+    const resilience=el("section","ppw-business-panel");
+    resilience.append(el("h2","","Trading position"),
+     el("p","ppw-business-muted",
+      "This compares verified recurring commitments with the cash added by completed shows. It is not a forecast."));
+    const sample=view.shows.slice(0,4);
+    const average=sample.length?Math.round(sample.reduce(
+     (sum,show)=>sum+show.incrementalCash,0)/sample.length):null;
+    const gap=Math.max(0,-view.recurringMargin);
+    const summary=gap>0?
+     "Recurring commitments exceed guaranteed weekly income by "+money(gap)+
+      ". Ticket sales and other show receipts must help cover that gap.":
+     "Guaranteed weekly income currently covers recurring commitments by "+
+      money(view.recurringMargin)+" before show costs and receipts.";
+    resilience.append(el("p","",summary));
+    if(average!==null)resilience.append(el("p","ppw-business-muted",
+     "Last "+sample.length+" completed show"+(sample.length===1?"":"s")+
+      ": average incremental cash contribution "+money(average)+
+      " per event. Results vary by card, venue, tickets and competition."));
+    root.append(resilience);
+   }
    if((view.financialDistress==="DISTRESSED"||
       view.financialDistress==="CRISIS")&&port.previewRestructure){
     const panel=el("section","ppw-business-panel");
@@ -213,6 +234,16 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    section.append(el("h2","","Company standing"),
     el("p","ppw-business-muted",
      "Your promotion's official standing in the wrestling industry. Ratings change at the annual review."));
+   if(view.creativeIdentity){
+    const identity=el("article","ppw-business-standing-card");
+    identity.append(el("span","","EARNED WRESTLING IDENTITY"),
+     el("h3","",view.creativeIdentity.title),
+     el("p","ppw-business-muted",view.creativeIdentity.description+
+      " Based on "+view.creativeIdentity.sampleMatches+
+      " matches across "+view.creativeIdentity.completedShows+" completed shows."));
+    section.append(identity);
+   }else section.append(el("p","ppw-business-muted",
+    "Your in-ring identity emerges from completed matches. Book your shows your way; there's no style selection or penalty."));
    if(!view.standing){
     section.append(el("p","ppw-business-muted",
      "No verified company standing is recorded for this world."));
