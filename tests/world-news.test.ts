@@ -110,9 +110,10 @@ test("certified title transfers announce the recorded winner, but not invented f
  const stories=composeWorldNews([],[],[],[singles,vacant,teams],names)
   .filter(s=>s.sourceKind==="TITLE");
  assert.equal(stories.length,3);
- assert.match(stories[0]!.title,/Alice captures World Crown/);
- assert.match(stories[1]!.summary,/title was vacant/);
- assert.match(stories[2]!.title,/The Wolves captures Tag Gold/);
+ assert.ok(stories.some(s=>/Alice captures World Crown/.test(s.title)));
+ assert.ok(stories.some(s=>/Cara captures Women's World/.test(s.title)&&
+  /title was vacant/.test(s.summary)));
+ assert.ok(stories.some(s=>/The Wolves captures Tag Gold/.test(s.title)));
  assert.ok(stories.every(s=>s.certainty==="CONFIRMED"));
  assert.ok(stories.every(s=>!/first champion|inaugural/i.test(s.summary)));
  const unknown=composeWorldNews([],[],[],[
