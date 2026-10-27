@@ -66,6 +66,8 @@ function finish(intent:AiCardMatch["intent"],roll:number):AiCardMatch["plannedFi
 }
 function style(input:AiCardInput,order:number,isMain:boolean):AiCardMatch["intent"]{
  if(isMain&&input.eventType==="MAJOR")return "EPIC";
+ if(isMain&&input.strategy?.focus==="PAY_OFF_RIVALRIES")return "STORY";
+ if(isMain&&input.strategy?.focus==="SHOWCASE_HEADLINERS")return "SHOWCASE";
  // Keep a recognisable signature bout even if the seeded rolls differ;
  // other contests still vary and major main events retain EPIC priority.
  if(!isMain&&order===1&&input.strategy){
