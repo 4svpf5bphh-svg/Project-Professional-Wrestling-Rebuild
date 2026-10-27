@@ -77,7 +77,11 @@ test("3 years: financially disciplined AI develops talent without poaching or ta
       SELECT promotion_id,
        CASE promotion_id
         WHEN 'ai-workrate' THEN 4000
-        WHEN 'ai-star' THEN 2500
+        -- A mid-game 27-week advertising slump stops solvent AI expansion
+        -- without arbitrarily confiscating cash, contracts or titles.
+        WHEN 'ai-star' THEN CASE
+         WHEN (($2-1)*52+$3-1) BETWEEN 52 AND 78 THEN -2200
+         ELSE 2500 END
         WHEN 'ai-crisis' THEN -2300
         WHEN 'human-a' THEN -1900
         ELSE 500 END AS net
@@ -130,7 +134,9 @@ test("3 years: financially disciplined AI develops talent without poaching or ta
      "Persistent negative cash flow must materially affect manager finances");
     const signed=await withWorldTransaction(db.pool,tx=>tx.query<{
      contract_id:string;person_id:string;promotion_id:string;weekly_guarantee:string;
-    }>(`SELECT contract_id,person_id,promotion_id,weekly_guarantee::text
+     role_expectation:string;
+    }>(`SELECT contract_id,person_id,promotion_id,weekly_guarantee::text,
+      role_expectation
       FROM ppw_contracts WHERE world_id=$1
        AND contract_id LIKE 'strategic:%' ORDER BY contract_id`,[world]));
     for(const x of signed){
@@ -139,6 +145,8 @@ test("3 years: financially disciplined AI develops talent without poaching or ta
      signingIds.add(x.contract_id);
      countByPromotion.set(x.promotion_id,(countByPromotion.get(x.promotion_id)??0)+1);
      assert.ok(Number(x.weekly_guarantee)>0);
+     assert.equal(x.role_expectation,"DEVELOPMENTAL",
+      "AI talent-building deals introduce genuine young workers, not fictional star scores");
     }
     snapshots.push({year,humanOwned:owners.length,aiSigned:signingIds.size,
      crisisStatus:state.find(x=>x.promotion_id==="ai-crisis")!.financial_distress,
@@ -149,6 +157,11 @@ test("3 years: financially disciplined AI develops talent without poaching or ta
   const measure=meter.assertBudget({maxQueries:6,maxResultBytes:90000});
   assert.ok(measure.queryCount>=4,"Real quarterly hire requires bounded SQL work");
   assert.ok(signingIds.size>=5,"The World should develop fresh contracted stars over years");
+  for(const i of [52,65,78])assert.ok(![...signingIds].some(id=>
+   id.startsWith("strategic:"+i+":ai-star:")),
+   "A rival with actual weekly losses must pause automatic free-agent recruitment");
+  assert.ok([...signingIds].some(id=>id.startsWith("strategic:91:ai-star:")),
+   "Profitable weeks can restore strategic recruitment without a separate recovery job");
   assert.ok(signingIds.size<=22,"Two AI rivals cannot sign more than one per quarter");
   assert.ok(countByPromotion.has("ai-workrate")&&countByPromotion.has("ai-star"));
   assert.equal(snapshots.length,3);
