@@ -1,10 +1,11 @@
-/** Compact four-person single-elimination hub in the existing
+/** Compact four/eight-person tournament archive in the existing
  * Championships workspace. No new root navigation or client polling.
  */
 import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import type {readTournamentWorkspace,createTournament,cancelTournament}
  from "../db/tournament-workspace.js";
 type View=Awaited<ReturnType<typeof readTournamentWorkspace>>;
+type Heritage=View["heritage"][number];
 type Result=Awaited<ReturnType<typeof createTournament>>;
 type CancelResult=Awaited<ReturnType<typeof cancelTournament>>;
 export interface TournamentPort{
@@ -37,14 +38,61 @@ export async function mountTournamentDesk(root:HTMLElement,
   el("h1","","The Road to the Final"),
   el("p","ppw-muted","Book the matches on your ordinary shows. Winners advance only after certified results."));
  root.replaceChildren(head);
+ const history=el("section","ppw-tournament-heritage");
+ history.append(el("h2","","The Tournament Record Book"),
+  el("p","ppw-muted","Traditions are earned through completed editions in different World seasons, not bought or awarded for simply creating a draw."));
+ if(view.historyTruncated)history.append(el("p","ppw-muted",
+  "Showing heritage from the latest 200 tournaments only — older results remain in the World but aren't included in these counts."));
+ const hasActive=view.tournaments.some(t=>t.status==="ACTIVE");
+ let prepareEdition:(heritage:Heritage)=>void=()=>{};
+ for(const heritage of (view.heritage??[]).slice(0,12)){
+  const item=el("article","ppw-tournament-legacy");
+  item.append(el("span","ppw-eyebrow",heritage.legacy),
+   el("h3","",heritage.name),
+   el("p","ppw-muted",heritage.division+" · "+heritage.completedEditions+
+    (heritage.completedEditions===1?" completed edition":" completed editions")+
+    " · "+heritage.seasons+(heritage.seasons===1?" season":" seasons")));
+  if(heritage.latestChampion){
+   item.append(el("p","ppw-tournament-legacy-winner",
+    "Defending tournament winner: "+heritage.latestChampion.name));
+   if(heritage.leaders.length){
+    const leaders=heritage.leaders.slice(0,3).map(x=>
+     x.name+" ("+x.wins+(x.wins===1?" win":" wins")+")");
+    item.append(el("p","ppw-muted","Record winners: "+leaders.join(" · ")));
+   }
+   if(heritage.lastFinalRatingStars!==null)
+    item.append(el("p","ppw-muted","Last final: "+
+     heritage.lastFinalRatingStars.toFixed(2)+" ★ (verified match rating)"));
+  }else item.append(el("p","ppw-muted","First champion still to be crowned."));
+  if(view.canEdit&&!hasActive&&heritage.completedEditions>0)
+   item.append(button("Plan another edition",()=>prepareEdition(heritage)));
+  history.append(item);
+ }
+ if((view.heritage??[]).length>12)history.append(el("p","ppw-muted",
+  "Showing 12 tournament series. Recent brackets are below."));
+ if(!view.heritage?.length)history.append(el("p","ppw-muted",
+  "Complete a tournament to begin your promotion's record book."));
+ root.append(history);
+ const archiveTitle=el("h2","ppw-tournament-archive-title","Recent Brackets");
+ root.append(archiveTitle);
  for(const t of view.tournaments){
   const card=el("article","ppw-tournament-card");
   card.append(el("span","ppw-eyebrow",
    t.status==="COMPLETE"?"TOURNAMENT COMPLETE":
     t.status==="CANCELLED"?"TOURNAMENT CANCELLED":"TOURNAMENT IN PROGRESS"),
    el("h2","",t.name),
-   el("p","ppw-muted",t.division+" · "+(t.championshipName?
-    "Prize: "+t.championshipName:"Tournament honours")));
+   el("p","ppw-muted","Year "+(Math.floor(t.createdWeekIndex/52)+1)+
+    " · "+t.entrantsCount+" wrestlers · "+t.division+
+    " · "+(t.championshipName?"Prize: "+t.championshipName:"Tournament honours")));
+  const progress=t.bouts.filter(b=>!!b.winnerPersonId).length;
+  card.append(el("p","ppw-muted",progress+" / "+t.bouts.length+
+   " certified tournament matches"));
+  const rounds=t.status==="ACTIVE"?card:
+   el("details","ppw-tournament-archived-rounds");
+  if(rounds!==card){
+   rounds.append(el("summary","","View recorded bracket ("+t.bouts.length+" matches)"));
+   card.append(rounds);
+  }
   for(const round of Array.from({length:t.entrantsCount-1},(_,i)=>i+1)){
    const bout=t.bouts.find(b=>b.boutNo===round);
    if(!bout)continue;
@@ -57,10 +105,16 @@ export async function mountTournamentDesk(root:HTMLElement,
     el("span","",bout.winnerName?"Winner: "+bout.winnerName:
      bout.showId?"Booked — awaiting certified show":
      bout.personA&&bout.personB?"Ready to book":"Waiting for the semifinals"));
-   card.append(row);
+   rounds.append(row);
   }
-  if(t.winnerName)card.append(el("p","ppw-tournament-winner",
-   "🏆 "+t.winnerName+" wins "+t.name));
+  if(t.winnerName){
+   const finish=t.finalResolvedWeekIndex;
+   card.append(el("p","ppw-tournament-winner",
+    "🏆 "+t.winnerName+" wins "+t.name+
+    (finish!==null?" · Year "+(Math.floor(finish/52)+1):"")));
+   if(t.finalRatingStars!==null)card.append(el("p","ppw-muted",
+    "Certified final rating: "+t.finalRatingStars.toFixed(2)+" ★"));
+  }
   if(t.status==="ACTIVE"&&view.canEdit){
    const cancel=button("Cancel tournament",()=>{void(async()=>{
     if(!window.confirm("Cancel this tournament? Certified results stay on record. First remove unfinished tournament matches from planned cards."))return;
@@ -80,7 +134,7 @@ export async function mountTournamentDesk(root:HTMLElement,
   root.append(card);
  }
  if(!view.tournaments.length)
-  root.append(el("p","ppw-muted","No tournament history yet. Start with four or eight signed wrestlers."));
+  root.append(el("p","ppw-muted","No tournament brackets yet. Start with four or eight signed wrestlers."));
  if(!view.canEdit||view.tournaments.some(t=>t.status==="ACTIVE"))return;
  const roster=view.roster;
  const form=el("section","ppw-tournament-create");
@@ -121,6 +175,20 @@ export async function mountTournamentDesk(root:HTMLElement,
  };
  division.onchange=fill;sizeSelect.onchange=fill;fill();
  const error=el("p","ppw-alert");
+ prepareEdition=(heritage)=>{
+  name.value=heritage.name;
+  division.value=heritage.division;
+  sizeSelect.value=String(heritage.latestEntrantsCount);
+  fill();
+  const returning=heritage.latestChampion&&roster.find(p=>
+   p.personId===heritage.latestChampion!.personId&&
+   p.division===heritage.division);
+  if(returning&&seeds[0])seeds[0].value=returning.personId;
+  error.textContent=returning?
+   "Returning winner selected as Seed 1. Choose the other wrestlers and confirm the new draw.":
+   "Previous champion is not currently eligible. Choose all the wrestlers for the new draw.";
+  form.scrollIntoView({block:"start",behavior:"smooth"});
+ };
  const submit=button("Create tournament",()=>{void(async()=>{
   const entrants=seeds.map(x=>x.value);
   if(name.value.trim().length<3||new Set(entrants).size!==entrants.length||entrants.some(x=>!x)){
