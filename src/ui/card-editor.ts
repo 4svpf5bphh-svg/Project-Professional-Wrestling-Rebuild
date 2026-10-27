@@ -767,19 +767,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
     body.append(el("p","ppw-booking-hint",readiness.hint));
-    if(m.tournamentId){
-     const bracket=view.tournamentBouts?.find(b=>
-      b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
-     const tag=el("div","ppw-tournament-match-note");
-     tag.append(el("strong","","Tournament · "+(bracket?.tournamentName??"Bracket")+
-      " · "+(m.tournamentBoutNo===3?"Final":"Semifinal "+m.tournamentBoutNo)),
-      el("small","","The wrestlers must match the bracket; the selected winner remains yours to script."));
-     if(mutable())tag.append(button("Make this a regular match",()=>{
-      edit(m,{tournamentId:undefined,tournamentBoutNo:undefined,
-       championshipId:undefined});
-     }));
-     body.append(tag);
-    }
     const controls=el("div","ppw-control-grid");
     const setAngle=(kind:EditorSegment["kind"])=>{
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
@@ -945,6 +932,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
+    if(m.tournamentId){
+     const bracket=view.tournamentBouts?.find(b=>
+      b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
+     const tag=el("div","ppw-tournament-match-note");
+     tag.append(el("strong","","Tournament · "+(bracket?.tournamentName??"Bracket")+
+      " · "+(m.tournamentBoutNo===3?"Final":"Semifinal "+m.tournamentBoutNo)),
+      el("small","","The wrestlers must match the bracket; the selected winner remains yours to script."));
+     if(mutable())tag.append(button("Make this a regular match",()=>{
+      edit(m,{tournamentId:undefined,tournamentBoutNo:undefined,
+       championshipId:undefined});
+     }));
+     body.append(tag);
+    }
     const matchConcerns=concerns.filter(x=>x.slotId===slotId);
     if(matchConcerns.length){
      const review=el("section","ppw-card-match-consents");
