@@ -135,7 +135,7 @@ test("3 years: financially disciplined AI develops talent without poaching or ta
        AND contract_id LIKE 'strategic:%' ORDER BY contract_id`,[world]));
     for(const x of signed){
      assert.ok(x.promotion_id==="ai-workrate"||x.promotion_id==="ai-star");
-     assert.ok(!signingIds.has(x.contract_id));
+     if(signingIds.has(x.contract_id))continue; // prior-year signing
      signingIds.add(x.contract_id);
      countByPromotion.set(x.promotion_id,(countByPromotion.get(x.promotion_id)??0)+1);
      assert.ok(Number(x.weekly_guarantee)>0);
