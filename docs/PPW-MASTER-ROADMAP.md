@@ -1,6 +1,6 @@
 # PPW Rebuild — Master Roadmap
 
-**Authoritative priority order agreed 24 October 2026. Phases 1–2 are in Production; Stages A–B and Phases 3–4 are verified on a staged release branch. User authorised a combined Production playtest release on 24 October; deployment status must be verified against GitHub main and Vercel.** Use this page, not an old parity checklist, to continue development in future conversations. Only edit the priority order with the owner's direction.
+**Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development is **Phase 9 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
 
 ## Contracts and primary references
 
@@ -17,6 +17,20 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 Owner-approved direction: compact text-first draggable Edit Card entries with no large match/angle graphics; Results instead present verified wrestler portraits, labels and match outcomes. Established signed tag teams can be selected atomically for 2v2 booking and scripted together for a Face/Heel/Tweener turn; retain individual choices and the existing authored finish authority. The Road Agent's verified assessment belongs inside one post-show Management Brief alongside grounded decisions, not on a separate screen. Remove duplicate Home news shortcuts; preserve the dedicated Official and Dirt Sheets news desks and weekly awards, plus iPhone-first five-root bottom navigation. World completed-show viewing for fellow human managers is **results only after completion**; no private cards, editorial, backstage, staff notes, loans or crossover events.
 
 **Implementation branch:** `phase9-booking-results-consolidation-2026-10-26`, draft PR #21. Gameplay changes, read-only rival completed-results view, revised tests and UI developed there. CI must be verified as a whole before any merge or Production release. No live World advance, reset, second deadline or World Lock cron. Legends roster remains subject to owner list approval; do not autonomously select or expand it.
+
+### Phase 9 implementation checkpoint — 27 October 2026
+
+**Implemented on the Phase 9 development branch (not Production):**
+- Atomic tag-team selection and collective turns, compact Edit Card tickets, photographs on Results, and Road Agent commentary included in the post-show Management Brief.
+- Injured participants retain human-readable Programme names; the Promotion drawer and angle authoring have been simplified; distinct World destinations and a dedicated two-desk News screen replaced duplicated Industry navigation.
+- Fellow human managers may read **only certified completed public results**, with no private cards, booking, staff, contracts or Backstage information. No live spectator subsystem.
+- Programme story progression from existing heat/results; nine employable departments including the owner-approved Talent Scout; bounded prospect recommendations; actionable, compact Staff Meeting agenda.
+- Career-stage-specific private Backstage voices, with the stage fixed to the wrestler's career state **at request creation** so archived dialogue never changes when careers evolve.
+- Existing saved World, user-authored results, two-manager privacy, manual World progression and deliberately extended test deadline are protected. One World Lock; automatic cron stays disabled.
+
+**Owner decisions:** No player loans/excursions, no shared or cross-promotion events, no live spectating. The Legends catalogue may grow substantially, but the owner must **approve the complete inclusion list before any new Legend is created** and will provide the approved photographs. Do not add new Legends autonomously, manufacture portraits, or infer a numerical quota. Do not modify the extended booking deadline: the owner uses manual Advance Week for testing.
+
+**Verification:** The previous Phase 9 checkpoint through `c9a4cbd` passed CI; later Career/Staff changes remain subject to fresh combined verification before any merge or deployment. Always review the latest actual CI status. The next high-value gameplay work is meaningful promotion identity, rival strategies, sustainable financial and regional competition, then tournament brackets, while avoiding redundant management or speculative micro-systems. Retain all previous implemented functionality.
 
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
