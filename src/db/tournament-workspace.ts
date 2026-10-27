@@ -6,6 +6,7 @@ import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {tournamentInitialBouts} from "../domain/tournament-bracket.js";
+import {tournamentHeritage,type TournamentHistoryRow} from "../domain/tournament-heritage.js";
 
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type CreateTournamentInput=Scope&{
@@ -37,22 +38,43 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
    tournament_id:string;name:string;division:"MEN"|"WOMEN";
    status:"ACTIVE"|"COMPLETE"|"CANCELLED";entrants_count:4|8;championship_id:string|null;
    championship_name:string|null;winner_person_id:string|null;
-   winner_name:string|null;
+   winner_name:string|null;created_week_index:number;
+   final_resolved_week_index:number|null;final_rating_stars:number|null;
   }>(`
    SELECT t.tournament_id,t.name,t.division,t.status,t.entrants_count,
     t.championship_id,c.name AS championship_name,
-    t.winner_person_id,p.name AS winner_name
+    t.winner_person_id,p.name AS winner_name,t.created_week_index,
+    last.resolved_week_index AS final_resolved_week_index,
+    fact.rating_stars::double precision AS final_rating_stars
    FROM ppw_tournaments t
+   LEFT JOIN ppw_tournament_bouts last ON last.world_id=t.world_id
+    AND last.promotion_id=t.promotion_id AND last.tournament_id=t.tournament_id
+    AND last.bout_no=t.entrants_count-1
+   LEFT JOIN ppw_completed_match_report_facts fact ON fact.world_id=last.world_id
+    AND fact.show_id=last.show_id AND fact.match_id=last.slot_id
    LEFT JOIN ppw_championships c ON c.world_id=t.world_id
     AND c.promotion_id=t.promotion_id AND c.championship_id=t.championship_id
    LEFT JOIN ppw_people p ON p.world_id=t.world_id
     AND p.person_id=t.winner_person_id
    WHERE t.world_id=$1 AND t.promotion_id=$2
    ORDER BY CASE WHEN t.status='ACTIVE' THEN 0 ELSE 1 END,
-    t.created_week_index DESC,t.tournament_id LIMIT 21`,
+    t.created_week_index DESC,t.tournament_id LIMIT 201`,
    [scope.worldId,scope.promotionId]);
-  if(tournaments.length>20)throw new Error("Tournament history exceeds page limit");
-  const ids=tournaments.map(t=>t.tournament_id);
+  // Show a compact, bounded page of 20 brackets while retaining the last
+  // 200 editions as heritage evidence. Never refuse to open old promotions.
+  // Truncation is explicit: earlier records must not be claimed as all-time.
+  const historyTruncated=tournaments.length>200;
+  const history=tournaments.slice(0,200);
+  const visible=history.slice(0,20);
+  const ids=visible.map(t=>t.tournament_id);
+  const heritage=tournamentHeritage(history.map((t):TournamentHistoryRow=>({
+   tournamentId:t.tournament_id,name:t.name,division:t.division,
+   status:t.status,entrantsCount:t.entrants_count,
+   createdWeekIndex:t.created_week_index,
+   winnerPersonId:t.winner_person_id,winnerName:t.winner_name,
+   finalResolvedWeekIndex:t.final_resolved_week_index,
+   finalRatingStars:t.final_rating_stars
+  })));
   const bouts=ids.length?await tx.query<{
    tournament_id:string;bout_no:number;person_a:string|null;
    person_b:string|null;name_a:string|null;name_b:string|null;
@@ -97,12 +119,16 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
   if(titles.length>20)throw new Error("Too many vacant singles titles");
   return {year:owner.year,week:owner.week,
    worldRevision:Number(owner.revision),canEdit:owner.can_edit,
+   heritage,historyTruncated,
    roster:roster.map(p=>({personId:p.person_id,name:p.name,
     division:p.division as "MEN"|"WOMEN"})),
    vacantTitles:titles.map(t=>({championshipId:t.championship_id,name:t.name})),
-   tournaments:tournaments.map(t=>({
+   tournaments:visible.map(t=>({
     tournamentId:t.tournament_id,name:t.name,status:t.status,division:t.division,
     entrantsCount:t.entrants_count,
+    createdWeekIndex:t.created_week_index,
+    finalResolvedWeekIndex:t.final_resolved_week_index,
+    finalRatingStars:t.final_rating_stars,
     championshipId:t.championship_id,championshipName:t.championship_name,
     winnerPersonId:t.winner_person_id,winnerName:t.winner_name,
     bouts:bouts.filter(b=>b.tournament_id===t.tournament_id).map(b=>({
