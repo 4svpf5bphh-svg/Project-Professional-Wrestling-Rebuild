@@ -142,6 +142,29 @@ test("promotion-only 4-person bracket books two semis, advances from certified w
    "Cancelling a later draw preserves the previous winner and bracket");
   assert.equal(completed.vacantTitles.length,1,
    "Bracket settlement itself must not secretly award the belt; canonical title settlement owns that");
+  const heritage=completed.heritage.find(s=>s.name==="Grand Slam");
+  assert.equal(heritage?.completedEditions,1);
+  assert.equal(heritage?.seasons,1);
+  assert.equal(heritage?.latestChampion?.personId,people[1]);
+  assert.equal(heritage?.legacy,"FIRST EDITION");
+  assert.equal(heritage?.lastFinalRatingStars,null,
+   "Do not fake a star rating when the verified match report is absent");
+  assert.equal(completed.historyTruncated,false);
+  await withWorldTransaction(db.pool,async tx=>{
+   // A long, synthetic CANCELLED archive is not certified and earns no cups.
+   // This stresses bounded history reads without simulating fake winners.
+   await tx.query(`INSERT INTO ppw_tournaments(world_id,promotion_id,
+    tournament_id,name,division,status,created_week_index,entrants_count)
+    SELECT $1,$2,'cancelled-history-'||n,'Old Test Cup','MEN','CANCELLED',
+     20+n,4 FROM generate_series(1,204) AS n`,[world,promotion]);
+  });
+  const large=await readTournamentWorkspace(db.pool,scope);
+  assert.equal(large.tournaments.length,20,
+   "More than twenty prior draws must not make Championships inaccessible");
+  assert.equal(large.historyTruncated,true,
+   "Capped 200-event evidence must never be described as full history");
+  assert.ok(large.heritage.every(s=>s.completedEditions===0),
+   "Cancelled synthetic records do not invent winners or prestige");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_tournament_bouts","ppw_tournaments",
