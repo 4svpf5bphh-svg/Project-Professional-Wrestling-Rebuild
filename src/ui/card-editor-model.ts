@@ -20,7 +20,7 @@ export interface EditorMatch{
  intent:string;plannedFinish:string;plannedLengthMinutes:number;
  elimination:boolean;eliminationOrder:number[];
  /** Existing optional booking metadata must survive an edit. */
- championshipId?:string;tournamentId?:string;tournamentBoutNo?:1|2|3;
+ championshipId?:string;tournamentId?:string;tournamentBoutNo?:1|2|3|4|5|6|7;
  interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
  stipulation?:MatchStipulation;
@@ -85,8 +85,8 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
    layout.sides.findIndex(s=>s.sideId===x)),
   ...(typeof raw.championshipId==="string"?{championshipId:raw.championshipId}:{}),
   ...(typeof raw.tournamentId==="string"&&
-   [1,2,3].includes(raw.tournamentBoutNo as number)?
-   {tournamentId:raw.tournamentId,tournamentBoutNo:raw.tournamentBoutNo as 1|2|3}:{}),
+   [1,2,3,4,5,6,7].includes(raw.tournamentBoutNo as number)?
+   {tournamentId:raw.tournamentId,tournamentBoutNo:raw.tournamentBoutNo as 1|2|3|4|5|6|7}:{}),
   ...(raw.interference===undefined?{}:{interference:readBookedInterference(raw)??undefined}),
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?

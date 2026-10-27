@@ -6,7 +6,7 @@ import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import type {BookableMatch} from "../domain/bookable-match.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
-import {verifiedTournamentWinner} from "../domain/tournament-bracket.js";
+import {verifiedTournamentWinner,tournamentFinalBoutNo} from "../domain/tournament-bracket.js";
 
 type Scope={worldId:string;promotionId:string;showId:string};
 type Match={slotId:string;payload:BookableMatch};
@@ -16,8 +16,9 @@ export async function readBookableTournamentBouts(tx:SqlRows,
   tournament_id:string;name:string;bout_no:number;
   person_a:string;person_b:string;name_a:string;name_b:string;
   contract_a:string;contract_b:string;championship_id:string|null;
+  entrants_count:4|8;
  }>(`
-  SELECT t.tournament_id,t.name,b.bout_no,b.person_a,b.person_b,
+  SELECT t.tournament_id,t.name,t.entrants_count,b.bout_no,b.person_a,b.person_b,
    a.name AS name_a,z.name AS name_b,ca.contract_id AS contract_a,
    cb.contract_id AS contract_b,t.championship_id
   FROM ppw_tournament_bouts b JOIN ppw_tournaments t
@@ -55,9 +56,10 @@ export async function readBookableTournamentBouts(tx:SqlRows,
      AND med.cleared_week_index>$4)
   ORDER BY t.created_week_index,b.bout_no LIMIT 5`,
   [scope.worldId,scope.promotionId,scope.showId,weekIndex]);
- if(rows.length>3)throw new Error("Tournament fixtures exceed safe booker limit");
+ if(rows.length>4)throw new Error("Tournament fixtures exceed safe booker limit");
  return rows.map(x=>({tournamentId:x.tournament_id,tournamentName:x.name,
-  boutNo:x.bout_no,championshipId:x.bout_no===3?x.championship_id:null,
+  boutNo:x.bout_no,entrantsCount:x.entrants_count,
+  championshipId:x.bout_no===tournamentFinalBoutNo(x.entrants_count)?x.championship_id:null,
   personA:{personId:x.person_a,name:x.name_a,contractId:x.contract_a},
   personB:{personId:x.person_b,name:x.name_b,contractId:x.contract_b}}));
 }
@@ -70,10 +72,10 @@ export async function reserveBookedTournamentBouts(tx:SqlRows,scope:Scope,
  const rows=await tx.query<{
   tournament_id:string;bout_no:number;person_a:string|null;person_b:string|null;
   show_id:string|null;slot_id:string|null;winner_person_id:string|null;
-  status:string;championship_id:string|null;
+  status:string;championship_id:string|null;entrants_count:4|8;
  }>(`
   SELECT b.tournament_id,b.bout_no,b.person_a,b.person_b,
-   b.show_id,b.slot_id,b.winner_person_id,t.status,t.championship_id
+   b.show_id,b.slot_id,b.winner_person_id,t.status,t.championship_id,t.entrants_count
   FROM ppw_tournament_bouts b JOIN ppw_tournaments t
    ON t.world_id=b.world_id AND t.promotion_id=b.promotion_id
     AND t.tournament_id=b.tournament_id
@@ -96,7 +98,8 @@ export async function reserveBookedTournamentBouts(tx:SqlRows,scope:Scope,
    layout.sides.some(s=>s.participants.length!==1)||
    ![found.person_a,found.person_b].every(id=>
     layout.participants.some(person=>person.personId===id))||
-   (p.tournamentBoutNo===3?p.championshipId!==found.championship_id:
+   (p.tournamentBoutNo===tournamentFinalBoutNo(found.entrants_count)?
+    p.championshipId!==(found.championship_id??undefined):
     p.championshipId!==undefined))
    throw new Error("Tournament booking must use its actual available pair and championship prize");
  }
@@ -129,9 +132,10 @@ export async function settleCertifiedTournamentBouts(tx:SqlRows,
  const rows=await tx.query<{
   tournament_id:string;bout_no:number;person_a:string;person_b:string;
   slot_id:string;payload:unknown;championship_id:string|null;
+  entrants_count:4|8;
  }>(`
   SELECT b.tournament_id,b.bout_no,b.person_a,b.person_b,
-   b.slot_id,s.payload,t.championship_id
+   b.slot_id,s.payload,t.championship_id,t.entrants_count
   FROM ppw_tournament_bouts b JOIN ppw_tournaments t
    ON t.world_id=b.world_id AND t.promotion_id=b.promotion_id
     AND t.tournament_id=b.tournament_id AND t.status='ACTIVE'
@@ -139,9 +143,9 @@ export async function settleCertifiedTournamentBouts(tx:SqlRows,
    AND s.draft_id=b.show_id AND s.slot_id=b.slot_id AND s.kind='MATCH'
   WHERE b.world_id=$1 AND b.promotion_id=$2 AND b.show_id=$3
     AND b.winner_person_id IS NULL
-  ORDER BY b.bout_no LIMIT 4`,
+  ORDER BY b.bout_no LIMIT 5`,
   [receipt.worldId,receipt.promotionId,receipt.showId]);
- if(rows.length>3)throw new Error("Too many certified tournament matches");
+ if(rows.length>4)throw new Error("Too many certified tournament matches");
  const week=(receipt.year-1)*52+receipt.week-1;
  for(const bout of rows){
   const result=receipt.matches.find(m=>m.matchId===bout.slot_id);
@@ -159,7 +163,7 @@ export async function settleCertifiedTournamentBouts(tx:SqlRows,
    receipt.worldId,receipt.promotionId,bout.tournament_id,bout.bout_no,
    outcome.winner,week]);
   if(updated.length!==1)throw new Error("Tournament match already certified");
-  if(bout.bout_no===3){
+  if(bout.bout_no===tournamentFinalBoutNo(bout.entrants_count)){
    const finished=await tx.query<{tournament_id:string}>(`
     UPDATE ppw_tournaments SET status='COMPLETE',winner_person_id=$4
     WHERE world_id=$1 AND promotion_id=$2 AND tournament_id=$3
@@ -169,20 +173,28 @@ export async function settleCertifiedTournamentBouts(tx:SqlRows,
    if(finished.length!==1)throw new Error("Tournament winner not recorded");
   }
  }
- // On first/second semifinal certification, make the final available only
- // when BOTH certified winners exist. Never decide the next winner here.
- if(rows.some(x=>x.bout_no<3)){
+ // A later round only unlocks after *both* predecessor bouts have
+ // certified actual winners. The eight-person route is QF 1+2 → SF 5,
+ // QF 3+4 → SF 6, then SF 5+6 → Final 7. Four-person history stays
+ // semifinal 1+2 → final 3. One bounded SQL update per settled show.
+ if(rows.some(x=>x.bout_no<tournamentFinalBoutNo(x.entrants_count))){
   await tx.query(`
-   UPDATE ppw_tournament_bouts final SET
+   UPDATE ppw_tournament_bouts next SET
     person_a=a.winner_person_id,person_b=b.winner_person_id
-   FROM ppw_tournament_bouts a,ppw_tournament_bouts b
-   WHERE final.world_id=$1 AND final.promotion_id=$2
-    AND final.bout_no=3 AND final.person_a IS NULL
-    AND a.world_id=final.world_id AND a.promotion_id=final.promotion_id
-    AND a.tournament_id=final.tournament_id AND a.bout_no=1
+   FROM ppw_tournaments t,
+    (VALUES (4,1,2,3),(8,1,2,5),(8,3,4,6),(8,5,6,7))
+     AS path(size,first_bout,second_bout,next_bout),
+    ppw_tournament_bouts a,ppw_tournament_bouts b
+   WHERE next.world_id=$1 AND next.promotion_id=$2
+    AND next.bout_no=path.next_bout AND next.person_a IS NULL
+    AND t.world_id=next.world_id AND t.promotion_id=next.promotion_id
+    AND t.tournament_id=next.tournament_id AND t.status='ACTIVE'
+    AND t.entrants_count=path.size
+    AND a.world_id=next.world_id AND a.promotion_id=next.promotion_id
+    AND a.tournament_id=next.tournament_id AND a.bout_no=path.first_bout
     AND a.winner_person_id IS NOT NULL
-    AND b.world_id=final.world_id AND b.promotion_id=final.promotion_id
-    AND b.tournament_id=final.tournament_id AND b.bout_no=2
+    AND b.world_id=next.world_id AND b.promotion_id=next.promotion_id
+    AND b.tournament_id=next.tournament_id AND b.bout_no=path.second_bout
     AND b.winner_person_id IS NOT NULL`,
    [receipt.worldId,receipt.promotionId]);
  }

@@ -26,7 +26,7 @@ export interface BookableMatch {
  intent:string;
  championshipId?:string;
  tournamentId?:string;
- tournamentBoutNo?:1|2|3;
+ tournamentBoutNo?:1|2|3|4|5|6|7;
  interference?:unknown;
  style?:unknown;
  cheatingWrestlerId?:string;
@@ -78,7 +78,7 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
  if(raw.tournamentId!==undefined&&(
   typeof raw.tournamentId!=="string"||!raw.tournamentId||
   raw.tournamentId.length>200||
-  ![1,2,3].includes(raw.tournamentBoutNo as number)||
+  ![1,2,3,4,5,6,7].includes(raw.tournamentBoutNo as number)||
   format!=="SINGLES"||layout.ruleset==="ELIMINATION"))
   throw new Error("Tournament bouts must be standard two-person singles matches");
  if(raw.interference!==undefined&&
@@ -103,7 +103,7 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
   ...(stipulation==="STANDARD"?{}:{stipulation}),
   ...(raw.championshipId===undefined?{}:{championshipId:raw.championshipId as string}),
   ...(raw.tournamentId===undefined?{}:{tournamentId:raw.tournamentId as string,
-   tournamentBoutNo:raw.tournamentBoutNo as 1|2|3}),
+   tournamentBoutNo:raw.tournamentBoutNo as 1|2|3|4|5|6|7}),
   ...(interference?{interference}:{}),
  };
  if(raw.style!==undefined)result.style=normalizeMatchStyle(raw.style as never);

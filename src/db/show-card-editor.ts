@@ -74,8 +74,9 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
     'tournamentId',bookable.tournament_id,
     'tournamentName',bookable.tournament_name,
     'boutNo',bookable.bout_no,
-    'championshipId',CASE WHEN bookable.bout_no=3
+    'championshipId',CASE WHEN bookable.bout_no=bookable.entrants_count-1
        THEN bookable.championship_id ELSE NULL END,
+    'entrantsCount',bookable.entrants_count,
     'personA',jsonb_build_object('personId',bookable.person_a,
       'name',bookable.name_a,'contractId',bookable.contract_a),
     'personB',jsonb_build_object('personId',bookable.person_b,
@@ -83,7 +84,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
    )), '[]'::jsonb)
    FROM (
     SELECT t.tournament_id,t.name AS tournament_name,b.bout_no,
-     t.championship_id,b.person_a,b.person_b,a.name AS name_a,
+     t.entrants_count,t.championship_id,b.person_a,b.person_b,a.name AS name_a,
      z.name AS name_b,ca.contract_id AS contract_a,cb.contract_id AS contract_b
     FROM ppw_tournament_bouts b
     JOIN ppw_tournaments t ON t.world_id=b.world_id
@@ -127,7 +128,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
        AND med.status='ACTIVE'
        AND med.injured_week_index<(d.year-1)*52+d.week-1
        AND med.cleared_week_index>(d.year-1)*52+d.week-1)
-    ORDER BY t.created_week_index,b.bout_no LIMIT 4
+    ORDER BY t.created_week_index,b.bout_no LIMIT 5
    ) bookable) AS tournament_bouts
 `]:[]),
   "FROM ppw_worlds w JOIN ppw_booking_drafts d",
@@ -267,7 +268,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
   const tournamentBouts=show.tournament_bouts??[];
-  if(!Array.isArray(tournamentBouts)||tournamentBouts.length>3)
+  if(!Array.isArray(tournamentBouts)||tournamentBouts.length>4)
    throw new Error("Card tournament selection exceeded safe bounds");
   return {tournamentBouts,creativeConcerns,bookableTeams:bookableTeams.map(t=>({
    teamId:t.team_id,name:t.name,members:t.members})),
