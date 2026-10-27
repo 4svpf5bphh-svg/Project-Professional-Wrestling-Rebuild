@@ -269,7 +269,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    careerBody.append(stats);
    // Spotlight recorded reigns and career stage without another API read.
    const highlights=recordedCareerHighlights({
-    status:view.status,careerStage:view.careerStage,
+    status:view!.status,careerStage:view!.careerStage,
     summary:career.summary,currentChampionships:career.currentChampionships??[],
     singlesTitles:career.singlesTitles
    });
