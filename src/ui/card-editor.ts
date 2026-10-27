@@ -184,6 +184,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       division:old?.division??null,available:true,reason:"AVAILABLE"});
     }
    }
+   for(const bout of view.tournamentBouts??[]){
+    for(const side of [bout.personA,bout.personB]){
+     const old=roster.get(side.personId);
+     roster.set(side.personId,{...old,personId:side.personId,
+      contractId:side.contractId,name:side.name,
+      division:old?.division??null,available:true,reason:"AVAILABLE"});
+    }
+   }
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
     roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
@@ -555,6 +563,36 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    segments.set(id,newEditorSegment(id,"TURN"));
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-add-turn"));
+  const tournamentFixtures=(view.tournamentBouts??[]).filter(b=>
+   ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
+    m.tournamentBoutNo===b.boutNo));
+  if(tournamentFixtures.length&&mutable()){
+   const tournament=el("section","ppw-card-continuity");
+   tournament.append(el("strong","","TOURNAMENT BOOKING"),
+    el("p","ppw-muted","Place an available semifinal or final on this card. The result advances your bracket after the show."));
+   for(const bout of tournamentFixtures){
+    const row=el("div","ppw-tournament-booking-row");
+    row.append(el("span","",bout.tournamentName+" · "+
+     (bout.boutNo===3?"FINAL":"SEMI FINAL "+bout.boutNo)+
+     " · "+bout.personA.name+" vs "+bout.personB.name),
+     button("+ Add tournament bout",()=>{
+      if([...matches.values()].some(m=>assignedIds(m).some(id=>
+       id===bout.personA.personId||id===bout.personB.personId))){
+       error="These tournament wrestlers are already booked on the card.";render();return;
+      }
+      const id="match-"+crypto.randomUUID();
+      matches.set(id,{...newEditorMatch(id,"SINGLES"),
+       teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
+        [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
+       tournamentId:bout.tournamentId,
+       tournamentBoutNo:bout.boutNo as 1|2|3,
+       ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
+      order.push(id);expanded=id;markDirty();render();
+     }));
+    tournament.append(row);
+   }
+   root.append(tournament);
+  }
   root.append(toolbar);
   const stories=view.programmes.filter(p=>p.latestFollowUp);
   if(stories.length){
@@ -729,6 +767,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
     body.append(el("p","ppw-booking-hint",readiness.hint));
+    if(m.tournamentId){
+     const bracket=view.tournamentBouts?.find(b=>
+      b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
+     const tag=el("div","ppw-tournament-match-note");
+     tag.append(el("strong","","Tournament · "+(bracket?.tournamentName??"Bracket")+
+      " · "+(m.tournamentBoutNo===3?"Final":"Semifinal "+m.tournamentBoutNo)),
+      el("small","","The wrestlers must match the bracket; the selected winner remains yours to script."));
+     if(mutable())tag.append(button("Make this a regular match",()=>{
+      edit(m,{tournamentId:undefined,tournamentBoutNo:undefined,
+       championshipId:undefined});
+     }));
+     body.append(tag);
+    }
     const controls=el("div","ppw-control-grid");
     const setAngle=(kind:EditorSegment["kind"])=>{
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))

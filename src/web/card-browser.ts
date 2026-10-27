@@ -171,6 +171,9 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
+  loadTournaments:()=>call("tournaments"),
+  createTournament:({requestId,expectedRevision,name,division,entrants,championshipId})=>
+   call("createTournament",{requestId,expectedRevision,name,division,entrants,championshipId}),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
    call("championshipHistory",{titlePromotionId,championshipId,cursor}),
   openWrestler:(id:string)=>{

@@ -5,9 +5,10 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {beltCategory} from "./championship-artwork.js";
+import {mountTournamentDesk,type TournamentPort} from "./tournament-desk.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
-export interface ChampionshipPort {
+export interface ChampionshipPort extends Partial<TournamentPort> {
  loadDirectory():Promise<ChampionshipDirectory>;
  loadHistory(promotionId:string,championshipId:string,cursor:ReignCursor|null):Promise<ChampionshipHistory>;
  openWrestler?(id:string):void;
@@ -34,6 +35,14 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    back.type="button";back.onclick=onBack;header.append(back);
   }
   header.append(eyebrow,heading,subtitle);
+  if(port.loadTournaments&&port.createTournament){
+   const tourney=element("button","ppw-title-back","🏆 Tournaments") as HTMLButtonElement;
+   tourney.type="button";
+   tourney.onclick=()=>void mountTournamentDesk(root,
+    {loadTournaments:port.loadTournaments!,createTournament:port.createTournament!},
+    ()=>void mountChampionshipDesk(root,port,onBack,initialScope));
+   header.append(tourney);
+  }
   const search=document.createElement("input");
   search.type="search";search.placeholder="Find a belt, promotion or champion";
   search.className="ppw-title-search";search.setAttribute("aria-label","Search championships");
