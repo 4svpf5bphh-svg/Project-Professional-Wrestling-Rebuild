@@ -458,7 +458,7 @@ export async function recruitStrategicAiRosters(
  const promotions=await tx.query<{
   promotion_id:string;tier:PromotionTier;cash:string;
   weekly_media_income:string;weekly_sponsor_income:string;
-  weekly_fixed_overhead:string;talent_guarantees:string;
+  weekly_fixed_overhead:string;talent_guarantees:string;staff_payroll:string;
   roster_size:number;ai_risk_tolerance:number;
   ai_match_quality_preference:number;ai_star_preference:number;
  }>(`
@@ -469,6 +469,10 @@ export async function recruitStrategicAiRosters(
    WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
     AND c.status='SIGNED' AND c.start_week_index<=$2+1
     AND c.expires_week_index>=$2+1),0)::text AS talent_guarantees,
+  coalesce((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
+   WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id
+    AND e.status='ACTIVE' AND e.start_week_index<=$2+1
+    AND e.expires_week_index>=$2+1),0)::text AS staff_payroll,
   p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
   (SELECT count(DISTINCT c.person_id)::integer FROM ppw_contracts c
    JOIN ppw_people person ON person.world_id=c.world_id
@@ -493,7 +497,8 @@ export async function recruitStrategicAiRosters(
  const under=promotions.filter(p=>{
   const target=ORIGINAL_ROSTER_TARGET[p.tier];
   const surplus=Number(p.weekly_media_income)+Number(p.weekly_sponsor_income)-
-   Number(p.weekly_fixed_overhead)-Number(p.talent_guarantees);
+   Number(p.weekly_fixed_overhead)-Number(p.talent_guarantees)-
+   Number(p.staff_payroll);
   return target!==undefined&&p.roster_size<Math.ceil(target*.75)&&
    surplus>1000&&Number(p.cash)>Number(p.weekly_fixed_overhead)*16;
  });
@@ -525,7 +530,8 @@ export async function recruitStrategicAiRosters(
    starPreference:promotion.ai_star_preference});
   const surplus=Number(promotion.weekly_media_income)+
    Number(promotion.weekly_sponsor_income)-
-   Number(promotion.weekly_fixed_overhead)-Number(promotion.talent_guarantees);
+   Number(promotion.weekly_fixed_overhead)-Number(promotion.talent_guarantees)-
+   Number(promotion.staff_payroll);
   const candidates=people.filter(p=>!used.has(p.person_id))
    .sort((a,b)=>strategicTalentFit(b,identity)-
     strategicTalentFit(a,identity)||
