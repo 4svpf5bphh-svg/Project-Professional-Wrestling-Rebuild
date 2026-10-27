@@ -362,8 +362,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","",task.detail));
   item.append(copy);
   if(openNext){
-   const control=node("button","ppw-next-show-route",task.action)
-    as HTMLButtonElement;
+   const control=node("button","ppw-next-show-route",task.action) as HTMLButtonElement;
    control.type="button";control.onclick=()=>openNext(task.destination);
    item.append(control);
   }
