@@ -46,7 +46,7 @@ test("promotion-only 4-person bracket books two semis, advances from certified w
     name,division,status,prestige)
     VALUES($1,$2,'vacant','Grand Championship','SINGLES','ACTIVE',55)`,
     [world,promotion]);
-   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name) VALUES($1,'market','Market')",[world]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'market','Market',65,70,90)",[world]);
    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Arena','market')",[world]);
    for(let i=0;i<4;i++){
     await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",
