@@ -47,7 +47,7 @@ jobs:
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: |
-          npx tsx --test tests/staff-office-postgres.test.ts tests/staff-workspace-postgres.test.ts tests/staff-auto-renewal-postgres.test.ts tests/business-workspace-postgres.test.ts tests/weekly-finance-budget-postgres.test.ts tests/show-economics-postgres.test.ts tests/world-resolution-journey-postgres.test.ts
+          npx tsx --test tests/staff-office-postgres.test.ts tests/talent-scout-postgres.test.ts tests/staff-workspace-postgres.test.ts tests/staff-auto-renewal-postgres.test.ts tests/business-workspace-postgres.test.ts tests/weekly-finance-budget-postgres.test.ts tests/show-economics-postgres.test.ts tests/world-resolution-journey-postgres.test.ts
       - name: Install Chromium browser only
         run: npx playwright install chromium
       - name: iPhone Staff Office employment journey
