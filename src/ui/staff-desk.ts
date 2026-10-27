@@ -28,7 +28,8 @@ const button=(text:string,action:()=>void,disabled=false)=>{
  b.type="button";b.onclick=action;b.disabled=disabled;return b;
 };
 const money=(amount:number)=>"$"+amount.toLocaleString("en-GB");
-const roles=(role:StaffRole)=>role.replaceAll("_"," ").toLowerCase()
+const roles=(role:StaffRole)=>role==="SCOUT"?"Talent Scout":
+ role.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
