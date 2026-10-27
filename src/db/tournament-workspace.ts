@@ -5,7 +5,7 @@ import {randomUUID} from "node:crypto";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
-import {seededSemifinals} from "../domain/tournament-bracket.js";
+import {tournamentInitialBouts} from "../domain/tournament-bracket.js";
 
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type CreateTournamentInput=Scope&{
@@ -35,11 +35,11 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
   const owner=owners[0]!,index=(owner.year-1)*52+owner.week-1;
   const tournaments=await tx.query<{
    tournament_id:string;name:string;division:"MEN"|"WOMEN";
-   status:"ACTIVE"|"COMPLETE"|"CANCELLED";championship_id:string|null;
+   status:"ACTIVE"|"COMPLETE"|"CANCELLED";entrants_count:4|8;championship_id:string|null;
    championship_name:string|null;winner_person_id:string|null;
    winner_name:string|null;
   }>(`
-   SELECT t.tournament_id,t.name,t.division,t.status,
+   SELECT t.tournament_id,t.name,t.division,t.status,t.entrants_count,
     t.championship_id,c.name AS championship_name,
     t.winner_person_id,p.name AS winner_name
    FROM ppw_tournaments t
@@ -69,9 +69,9 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
     AND w.person_id=b.winner_person_id
    WHERE b.world_id=$1 AND b.promotion_id=$2
     AND b.tournament_id=ANY($3::text[])
-   ORDER BY b.tournament_id,b.bout_no LIMIT 61`,
+   ORDER BY b.tournament_id,b.bout_no LIMIT 141`,
    [scope.worldId,scope.promotionId,ids]):[];
-  if(bouts.length>60)throw new Error("Tournament bracket exceeds safe limit");
+  if(bouts.length>140)throw new Error("Tournament bracket exceeds safe limit");
   const roster=await tx.query<{person_id:string;name:string;division:string}>(`
    SELECT DISTINCT ON (p.person_id) p.person_id,p.name,
     p.booking_division AS division
@@ -102,6 +102,7 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
    vacantTitles:titles.map(t=>({championshipId:t.championship_id,name:t.name})),
    tournaments:tournaments.map(t=>({
     tournamentId:t.tournament_id,name:t.name,status:t.status,division:t.division,
+    entrantsCount:t.entrants_count,
     championshipId:t.championship_id,championshipName:t.championship_name,
     winnerPersonId:t.winner_person_id,winnerName:t.winner_name,
     bouts:bouts.filter(b=>b.tournament_id===t.tournament_id).map(b=>({
@@ -120,7 +121,7 @@ export async function createTournament(pool:TransactionPool,input:CreateTourname
   !["MEN","WOMEN"].includes(input.division)||
   input.championshipId!=null&&!valid(input.championshipId))
   throw new Error("Invalid tournament details");
- const pairings=seededSemifinals(input.entrants);
+ const initialBouts=tournamentInitialBouts(input.entrants);
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
   expectedRevision:input.expectedRevision,requiresOpenWeek:true,
@@ -158,7 +159,7 @@ export async function createTournament(pool:TransactionPool,input:CreateTourname
        AND rival.promotion_id<>$2 AND rival.family='EXCLUSIVE'
        AND rival.status='SIGNED' AND rival.expires_week_index>=$5)`,
     [input.worldId,input.promotionId,input.entrants,input.division,idx]);
-   if(entries.length!==4)throw new Error("All four entrants need signed active rights in the same division");
+   if(entries.length!==input.entrants.length)throw new Error("All entrants need signed active rights in the same division");
    if(input.championshipId){
     const available=await tx.query<{championship_id:string}>(`
      SELECT championship_id FROM ppw_championships
@@ -170,21 +171,18 @@ export async function createTournament(pool:TransactionPool,input:CreateTourname
    const tournamentId=randomUUID();
    await tx.query(`INSERT INTO ppw_tournaments(
     world_id,promotion_id,tournament_id,name,division,status,
-    championship_id,created_week_index)
-    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7)`,[
+    championship_id,created_week_index,entrants_count)
+    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7,$8)`,[
     input.worldId,input.promotionId,tournamentId,input.name.trim(),
-    input.division,input.championshipId??null,idx]);
+    input.division,input.championshipId??null,idx,input.entrants.length]);
    const saved=await tx.query<{bout_no:number}>(`
     INSERT INTO ppw_tournament_bouts(world_id,promotion_id,tournament_id,
      bout_no,person_a,person_b)
     SELECT $1,$2,$3,x.n,x.a,x.b FROM jsonb_to_recordset($4::jsonb)
      AS x(n smallint,a text,b text) RETURNING bout_no`,[
-     input.worldId,input.promotionId,tournamentId,JSON.stringify([
-      {n:1,a:pairings[0][0],b:pairings[0][1]},
-      {n:2,a:pairings[1][0],b:pairings[1][1]},
-      {n:3,a:null,b:null}])
+     input.worldId,input.promotionId,tournamentId,JSON.stringify(initialBouts)
     ]);
-   if(saved.length!==3)throw new Error("Incomplete tournament bracket");
+   if(saved.length!==initialBouts.length)throw new Error("Incomplete tournament bracket");
    return {tournamentId,name:input.name.trim(),status:"ACTIVE" as const};
   }
  });
