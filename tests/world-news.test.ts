@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {chooseWeeklyAwards,composeWorldNews} from "../src/db/world-news.js";
+import {chooseWeeklyAwards,composeWorldNews,composeTournamentVictory,type TournamentFinal} from "../src/db/world-news.js";
 const names=new Map([["a","Alice"],["b","Bob"],["c","Cara"],["d","Drew"]]);
 const pub=(show_id:string,promotion_id:string,crowd_response=86)=>({
  show_id,promotion_id,promotion_name:promotion_id==="human"?"Human Pro":"AI Elite",
@@ -60,4 +60,42 @@ test("official stories describe events while dirt sheet claims remain explicitly
   "The newspaper should not sound like a dashboard or disclose sim scales");
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));
  assert.ok(!JSON.stringify(out).includes("REFUSED"));
+});
+
+const verifiedCup: TournamentFinal={
+ ...pub("s1","human",84),
+ tournament_id:"cup-2026",tournament_name:"King's Crown",
+ division:"MEN",winner_name:"Alice",winner_person_id:"a",entrants_count:8,
+ slot_id:"m1",final_rating_stars:4.6,series_years:[3,2,1],prior_editions:2
+};
+test("certified tournament victory is Official News and three earned years define annual tradition",()=>{
+ const proof=composeTournamentVictory(verifiedCup);
+ assert.match(proof.title,/Alice wins King's Crown at Fight Night/);
+ assert.match(proof.summary,/three consecutive World seasons/);
+ assert.match(proof.summary,/4\.60 verified stars/);
+ const news=composeWorldNews([],[],[pub("s1","human")],[],names,[verifiedCup]);
+ const trophy=news.find(n=>n.key==="tournament:cup-2026");
+ assert.equal(trophy?.sourceKind,"EVENT");
+ assert.equal(trophy?.desk,"OFFICIAL");
+ assert.equal(trophy?.certainty,"CONFIRMED");
+ assert.equal(news.filter(n=>n.sourceKind==="EVENT").length,1);
+ assert.equal(new Set(news.map(n=>n.key)).size,news.length);
+ assert.ok(!JSON.stringify(news).includes("NEVER LEAK"));
+});
+test("repeated cup in one year, gaps, cancellations or missing ratings never invent annual prestige",()=>{
+ const sameSeason=composeTournamentVictory({...verifiedCup,
+  series_years:[1,1,1],prior_editions:2,final_rating_stars:null});
+ assert.doesNotMatch(sameSeason.summary,/consecutive World seasons/);
+ assert.doesNotMatch(sameSeason.summary,/stars/);
+ const gaps=composeTournamentVictory({...verifiedCup,
+  series_years:[1,3,5],prior_editions:2});
+ assert.doesNotMatch(gaps.summary,/consecutive World seasons/);
+ const first=composeTournamentVictory({...verifiedCup,series_years:[1],
+  prior_editions:0,entrants_count:4,division:"WOMEN",
+  final_rating_stars:NaN});
+ assert.match(first.summary,/four-wrestler|4-wrestler/);
+ assert.match(first.summary,/women's bracket/);
+ assert.doesNotMatch(first.summary,/stars/);
+ const rest=composeWorldNews([],[],[],[],names);
+ assert.deepEqual(rest,[]);
 });
