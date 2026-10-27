@@ -41,7 +41,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean;within_window:boolean;
- tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;
+ tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string};
   personB:{personId:string;name:string;contractId:string}}[]};

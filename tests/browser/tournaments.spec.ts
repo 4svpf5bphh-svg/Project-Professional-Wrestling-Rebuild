@@ -60,7 +60,7 @@ for(const width of [320,390])for(const size of [4,8] as const){
   await expect(page.getByText("Wrestler "+(size===4?2:4)+" vs Wrestler "+(size===4?3:5))).toBeVisible();
   await expect(page.locator(".ppw-tournament-bout")).toHaveCount(size-1);
   await expect(page.getByText("Awaiting first finalist vs Awaiting second finalist")).toBeVisible();
-  expect(submitted?.entrants).toEqual(Array.from({length:size},(_,i)=>"p"+i));
+  expect((submitted as Record<string,unknown>|null)?.entrants).toEqual(Array.from({length:size},(_,i)=>"p"+i));
   expect(methods.filter(m=>m==="createTournament")).toHaveLength(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
