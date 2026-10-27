@@ -207,7 +207,10 @@ export function mountPersonaDesk(root:HTMLElement,
      " · Career check-in":"";
     const preview=incoming&&incoming.status==="PENDING"&&
      Object.hasOwn(BACKSTAGE_CHOICES,incoming.kind)?
-      backstageMessage(incoming.kind as keyof typeof BACKSTAGE_CHOICES,undefined,incoming.request_id):null;
+      backstageMessage(incoming.kind as keyof typeof BACKSTAGE_CHOICES,
+       {careerStage:incoming.career_stage_at_request as
+         "PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null},
+       incoming.request_id):null;
     const summary=preview??(incoming?" · "+(incoming.status==="PENDING"?"New message":
      incoming.status==="PROMISED"?"Awaiting your booking":
      incoming.status==="FULFILLED"?"Promise kept":
@@ -485,7 +488,9 @@ export function mountPersonaDesk(root:HTMLElement,
      workingTrustDelta:item.workingTrustDelta,
      observedAbsentWeeks:item.observedAbsentWeeks,
      observedLosses:item.observedLosses,
-     relevantTitle:item.relevantTitle},item.conversationId)));
+     relevantTitle:item.relevantTitle,
+     careerStage:item.careerStageAtRequest as
+      "PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null},item.conversationId)));
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?

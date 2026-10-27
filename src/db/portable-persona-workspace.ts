@@ -78,9 +78,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   const incoming=roster.length?await tx.query<{
    person_id:string;request_id:string;kind:string;status:string;
    read_week_index:number|null;created_week_index:number;
-   archived_through_week_index:number}>([
+   career_stage_at_request:string|null;archived_through_week_index:number}>([
    "SELECT DISTINCT ON (r.person_id) r.person_id,r.request_id,r.kind,r.status,",
-   "r.read_week_index,r.created_week_index,",
+   "r.read_week_index,r.created_week_index,r.career_stage_at_request,",
    "coalesce(a.archived_through_week_index,-1) AS archived_through_week_index",
    "FROM ppw_backstage_requests r LEFT JOIN ppw_backstage_thread_archives a",
    "ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id",
@@ -145,7 +145,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    rival_verified_matches:number|null;rival_professional_trust:number|string|null;
    follow_through_week_index:number|null;follow_through_kind:string|null;
    observed_absent_weeks:number|null;observed_losses:number|null;
-   relevant_title:string|null}>([
+   relevant_title:string|null;career_stage_at_request:string|null}>([
    "SELECT request_id,kind,related_person_id,status,decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
@@ -154,7 +154,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "team_verified_matches,observed_execution_quality,",
    "rival_verified_matches,rival_professional_trust,",
    "follow_through_week_index,follow_through_kind,",
-   "observed_absent_weeks,observed_losses,relevant_title",
+   "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request",
    "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected]);
@@ -192,6 +192,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     followThroughKind:x.follow_through_kind,
     observedAbsentWeeks:x.observed_absent_weeks,
     observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
+    careerStageAtRequest:x.career_stage_at_request,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

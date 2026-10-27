@@ -44,6 +44,22 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.match(backstageMessage("TEAM_MOMENT",{partnerName:"Partner"}),/Partner/);
 });
 
+test("career-sensitive wrestler ambitions are frozen to their original stage",()=>{
+ const message=(stage:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION")=>
+  backstageMessage("BOOKING_OMISSION",{careerStage:stage},"career-voice-1");
+ const young=message("PROSPECT"),veteran=message("VETERAN");
+ assert.notEqual(young,veteran);
+ assert.match(young,/learn|prove|young|spot|ring time/i);
+ assert.match(veteran,/been around|experience|veteran|spotlight|offer|place/i);
+ assert.equal(young,message("PROSPECT"));
+ assert.equal(veteran,message("VETERAN"));
+ const title=backstageMessage("TITLE_AMBITION",
+  {careerStage:"VETERAN",relevantTitle:"Intercontinental Title"},"career-title");
+ assert.match(title,/Intercontinental Title/);
+ assert.doesNotMatch(title,/\/100|booking score|simulat/i);
+ assert.match(backstageMessage("BOOKING_OMISSION",undefined,"old-request"),
+  /appeared|cards|booked|place/);
+});
 test("phase 3 private request voices are deterministic, factual and varied",()=>{
  const voices=new Set<string>();
  for(const kind of ["MEDICAL_SUPPORT","BOOKING_OMISSION","LOSS_STREAK",
