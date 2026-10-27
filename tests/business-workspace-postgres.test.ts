@@ -155,20 +155,20 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`INSERT INTO ppw_booking_drafts(
      world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
-    SELECT $1,'identity-'||x.i,'promotion-0',1,1,'SUBMITTED',x.i,
+    SELECT $1,'identity-'||x.i,'promotion-0',1,x.i+1,'SUBMITTED',x.i,
      'Wrestling Series '||x.i,'REGULAR'
     FROM generate_series(1,3) AS x(i)`,[world]);
    await tx.query(`INSERT INTO ppw_completed_shows(
      world_id,promotion_id,show_id,year,week,resolution_id,
      crowd_response,receipt_json,receipt_digest)
-    SELECT $1,'promotion-0','identity-'||x.i,1,1,'identity-res-'||x.i,
+    SELECT $1,'promotion-0','identity-'||x.i,1,x.i+1,'identity-res-'||x.i,
      79,'{}'::jsonb,repeat('c',64)
     FROM generate_series(1,3) AS x(i)`,[world]);
    await tx.query(`INSERT INTO ppw_show_economics(
      world_id,show_id,promotion_id,year,week,attendance,expected_demand,
      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
      total_cost,net_result,incremental_cash)
-    SELECT $1,'identity-'||x.i,'promotion-0',1,1,400,700,
+    SELECT $1,'identity-'||x.i,'promotion-0',1,x.i+1,400,700,
      45000,4000,6000,3000,1000,14000,31000,31000
     FROM generate_series(1,3) AS x(i)`,[world]);
    await tx.query(`INSERT INTO ppw_card_slots(
@@ -182,6 +182,7 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
     SELECT $1,'identity-'||sh.i,'bout-'||bout.i,bout.i,81,'CLEAN_PIN','A'
     FROM generate_series(1,3) AS sh(i)
     CROSS JOIN generate_series(1,2) AS bout(i)`,[world]);
+   await tx.query("UPDATE ppw_worlds SET week=4 WHERE world_id=$1",[world]);
   });
   const earned=await readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:owner});
