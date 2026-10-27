@@ -186,3 +186,17 @@ test("a 13-week talent-building phase provides credible fresh opportunities",()=
  assert.deepEqual(growing,chooseAiWorldCard({...base,roster:[...newRoster].reverse(),
   strategy:{identity:"STORYTELLING",focus:"BUILD_STARS"}}));
 });
+
+test("quarterly headline objectives change the story but never force a human card",()=>{
+ const focus=(focus:"BUILD_STARS"|"PAY_OFF_RIVALRIES"|"SHOWCASE_HEADLINERS",
+  eventType:"REGULAR"|"MAJOR"="REGULAR")=>chooseAiWorldCard({...base,eventType,
+   strategy:{identity:"WORKRATE",focus}});
+ const rivalry=focus("PAY_OFF_RIVALRIES"),stars=focus("SHOWCASE_HEADLINERS"),
+  ppv=focus("PAY_OFF_RIVALRIES","MAJOR");
+ for(const outcome of [rivalry,stars,ppv])assert.equal(outcome.status,"READY");
+ if(rivalry.status!=="READY"||stars.status!=="READY"||ppv.status!=="READY")return;
+ assert.equal(rivalry.matches.at(-1)?.intent,"STORY");
+ assert.equal(stars.matches.at(-1)?.intent,"SHOWCASE");
+ assert.equal(ppv.matches.at(-1)?.intent,"EPIC");
+ assert.equal(ppv.matches.at(-1)?.mainEvent,true);
+});
