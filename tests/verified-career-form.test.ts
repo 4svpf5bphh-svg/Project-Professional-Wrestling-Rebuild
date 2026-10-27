@@ -37,7 +37,7 @@ test("missing ratings, thin history and equal receptions never fabricate improve
  assert.deepEqual(thin.sequence,["W","L"]);
  assert.equal(verifiedCareerForm([]).currentRun,null);
  assert.equal(verifiedCareerForm([]).note,"No certified matches are recorded yet.");
- const missing=Array.from({length:8},(_,i)=>match(10-i,i<3,i===1||i===5?null:4));
+ const missing=Array.from({length:8},(_,i)=>match(10-i,i<3,i===1||i===2||i===5||i===6?null:4));
  assert.equal(verifiedCareerForm(missing).ratingTrend,null,
   "Both four-bout windows must contain at least three actual ratings");
  const same=Array.from({length:8},(_,i)=>match(10-i,true,i<4?3.9:4));
