@@ -32,6 +32,19 @@ Owner-approved direction: compact text-first draggable Edit Card entries with no
 
 **Verification:** The previous Phase 9 checkpoint through `c9a4cbd` passed CI; later Career/Staff changes remain subject to fresh combined verification before any merge or deployment. Always review the latest actual CI status. The next high-value gameplay work is meaningful promotion identity, rival strategies, sustainable financial and regional competition, then tournament brackets, while avoiding redundant management or speculative micro-systems. Retain all previous implemented functionality.
 
+### Phase 10 initial milestone — competitive booking and territories (27 October 2026)
+
+**Implemented on the existing staged branch, not merged or deployed:**
+- AI promotion identity is derived from its already-saved risk, match-quality and star preferences (workrate, spectacle, star power or story focus); player-controlled promotions have no enforced AI identity.
+- AI has a deterministic, promotion-specific **13-week creative objective**: build credible emerging talent, develop rivalry-driven shows or present star-led headline matches. The chosen objective and signature match style materially influence generated regular cards, while major-event EPIC, actual title holders, validated programmes, wrestler availability, contracts and scripted World outcomes remain authoritative.
+- The public Promotions directory describes the known AI creative tendency but never projects unreleased cards or exposes private negotiations.
+- The owner's existing Business → Territories screen shows the strongest active rival's **recorded live-audience strength** in each market, and the gap against the owner's own recorded following. This uses the existing bounded three-query Business read and the already implemented same-market ticket-demand competition and loyalty settlement. No arbitrary financial bonuses/penalties or speculative territory currency.
+- New domain, card-generator, public-directory and real PostgreSQL territory tests. The full rebuild workflow passed on commit `28144d8` (CI run 40497205612); no Production deployment.
+
+**Not yet claimed or implemented:** emergent long-run player promotion style determined from certified match composition; broader strategic AI recruitment and cash discipline beyond the existing systems; deeper financial balance testing over long saves. These are future work, not labels to reimplement the milestone above.
+
+**Owner boundaries remain unchanged:** no wrestler loans or excursions, no cross-promotion cards or agreements, no live spectator system; rival completed public Results only. Legends candidates require explicit owner approval and owner-supplied photographs. Booking deadline stays deliberately extended for manual playtest advancement. No cron, World mutation or Production deployment without instruction.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
