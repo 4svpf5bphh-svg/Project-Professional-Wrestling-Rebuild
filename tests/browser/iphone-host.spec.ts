@@ -1871,7 +1871,7 @@ for(const width of [320,390]){
   const modal=page.getByRole("dialog",{name:"Wrestler dossier"});
   await expect(modal).toBeVisible();
   expect(profileReads).toBe(1);
-  expect(careerReads).toBe(0,"Career should never preload on dossier entry");
+  expect(careerReads).toBe(0);
   await modal.locator("summary.ppw-profile-career-trigger").click();
   await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
   await expect(modal.locator(".ppw-career-form-chip")).toHaveText(["W","W","L","W","L"]);
@@ -1880,11 +1880,11 @@ for(const width of [320,390]){
   await expect(modal.getByText("Higher match ratings")).toBeVisible();
   await expect(modal.getByText(/latest four matches averaged 4.15★ against 3.45★/)).toBeVisible();
   await expect(modal.getByText(/Ratings describe bouts, not skill changes/)).toBeVisible();
-  expect(careerReads).toBe(1,"One opted-in career fetch for the entire view");
+  expect(careerReads).toBe(1);
   await modal.locator("summary.ppw-profile-career-trigger").click();
   await modal.locator("summary.ppw-profile-career-trigger").click();
   await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
-  expect(careerReads).toBe(1,"Reopening the career disclosure uses cached read");
+  expect(careerReads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
