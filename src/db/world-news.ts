@@ -21,6 +21,37 @@ interface Angle extends Broadcast{
  angle_crowd:string|number;story_json:unknown;
 }
 interface TitleChange extends Broadcast{slot_id:string;title_name:string;}
+export interface TournamentFinal extends Broadcast {
+ tournament_id:string;tournament_name:string;division:"MEN"|"WOMEN";
+ winner_name:string;winner_person_id:string;entrants_count:4|8;
+ slot_id:string;final_rating_stars:number|string|null;
+ series_years:number[];prior_editions:number|string;
+}
+/** Tournament winner headlines are based solely on certified completed facts.
+ * A yearly tradition requires completed editions in three consecutive seasons.
+ */
+export function composeTournamentVictory(final:TournamentFinal){
+ const years=[...new Set(final.series_years)].filter(y=>
+  Number.isSafeInteger(y)&&y>=1);
+ const latestYear=Math.max(0,...years);
+ const consecutive=[latestYear,latestYear-1,latestYear-2].every(y=>
+  y>0&&years.includes(y));
+ const editions=Number(final.prior_editions)+1;
+ const validRating=final.final_rating_stars!==null&&
+  Number.isFinite(Number(final.final_rating_stars))&&
+  Number(final.final_rating_stars)>=0&&Number(final.final_rating_stars)<=5;
+ return {
+  title:final.winner_name+" wins "+final.tournament_name+" at "+final.show_name,
+  summary:final.winner_name+" won "+final.tournament_name+" for "+
+   final.promotion_name+" in a certified "+final.entrants_count+"-wrestler "+
+   (final.division==="WOMEN"?"women's":"men's")+" bracket."+
+   " The final took place at "+final.show_name+"."+
+   (consecutive?" The tournament has now been contested in three consecutive World seasons.":
+    editions>1?" Another completed chapter in the tournament's history.":"")+
+   (validRating?" The final earned "+Number(final.final_rating_stars).toFixed(2)+
+    " verified stars.":"")
+ };
+}
 export interface WeeklyAward{
  kind:"MATCH"|"ANGLE";promotionId:string;promotionName:string;
  showId:string;showName:string;slotId:string;title:string;
@@ -100,7 +131,8 @@ export function chooseWeeklyAwards(bouts:readonly Bout[],angles:readonly Angle[]
  */
 export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  shows:readonly Broadcast[],changes:readonly TitleChange[],
- names:ReadonlyMap<string,string>):WorldNewsStory[]{
+ names:ReadonlyMap<string,string>,
+ tournamentFinals:readonly TournamentFinal[]=[]):WorldNewsStory[]{
  const official:WorldNewsStory[]=[],dirt:WorldNewsStory[]=[];
  const add=(desk:"OFFICIAL"|"DIRT",s:Broadcast,key:string,title:string,
   summary:string,sourceKind:WorldNewsStory["sourceKind"])=>{
@@ -109,6 +141,13 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    title:title.slice(0,240),summary:summary.slice(0,600),sourceKind};
   (desk==="OFFICIAL"?official:dirt).push(item);
  };
+ for(const final of [...tournamentFinals].sort((a,b)=>
+  a.promotion_id.localeCompare(b.promotion_id)||
+  a.tournament_id.localeCompare(b.tournament_id)).slice(0,4)){
+  const story=composeTournamentVictory(final);
+  add("OFFICIAL",final,"tournament:"+final.tournament_id,
+   story.title,story.summary,"EVENT");
+ }
  for(const c of [...changes].sort((a,b)=>byId(a,b))){
   add("OFFICIAL",c,"title:"+c.show_id+":"+c.slot_id,
    c.title_name+" changes hands at "+c.show_name,
@@ -252,6 +291,52 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  const join=<T extends {show_id:string}>(rows:readonly T[]):(T&Broadcast)[]=>
   rows.flatMap(row=>{const show=sources.get(row.show_id);return show?[{...show,...row}]:[];});
  const bouts=join(matches),angles=join(segments),titles=join(changes);
+ // Only completed finals certified this very week: never read private future
+ // fixtures or accept a drafted outcome as an actual winner.
+ const tournamentFinals=await tx.query<TournamentFinal>(`
+  SELECT t.tournament_id,t.name AS tournament_name,t.division,
+   t.entrants_count,t.winner_person_id,p.name AS winner_name,
+   c.show_id,c.promotion_id,company.name AS promotion_name,
+   COALESCE(d.show_name,'Completed show') AS show_name,
+   c.crowd_response,d.booking_class,b.slot_id,
+   facts.rating_stars::double precision AS final_rating_stars,
+   (SELECT count(*)::integer FROM ppw_tournaments prior
+    WHERE prior.world_id=t.world_id AND prior.promotion_id=t.promotion_id
+     AND prior.division=t.division AND prior.status='COMPLETE'
+     AND prior.tournament_id<>t.tournament_id
+     AND lower(regexp_replace(btrim(prior.name),'\\s+',' ','g'))=
+      lower(regexp_replace(btrim(t.name),'\\s+',' ','g'))) AS prior_editions,
+   ARRAY(SELECT DISTINCT (history.created_week_index/52+1)::integer
+    FROM ppw_tournaments history
+    WHERE history.world_id=t.world_id
+     AND history.promotion_id=t.promotion_id
+     AND history.division=t.division AND history.status='COMPLETE'
+     AND lower(regexp_replace(btrim(history.name),'\\s+',' ','g'))=
+      lower(regexp_replace(btrim(t.name),'\\s+',' ','g'))
+    ORDER BY 1 DESC LIMIT 30) AS series_years
+  FROM ppw_completed_shows c
+  JOIN ppw_booking_drafts d ON d.world_id=c.world_id
+   AND d.draft_id=c.show_id AND d.promotion_id=c.promotion_id
+   AND d.status='SUBMITTED'
+  JOIN ppw_tournament_bouts b ON b.world_id=c.world_id
+   AND b.promotion_id=c.promotion_id AND b.show_id=c.show_id
+  JOIN ppw_tournaments t ON t.world_id=b.world_id
+   AND t.promotion_id=b.promotion_id
+   AND t.tournament_id=b.tournament_id AND t.status='COMPLETE'
+   AND b.bout_no=t.entrants_count-1
+   AND b.winner_person_id=t.winner_person_id
+   AND b.resolved_week_index=($2::integer-1)*52+$3::integer-1
+  JOIN ppw_completed_show_matches m ON m.world_id=b.world_id
+   AND m.show_id=b.show_id AND m.match_id=b.slot_id
+  JOIN ppw_people p ON p.world_id=t.world_id
+   AND p.person_id=t.winner_person_id
+  JOIN ppw_promotions company ON company.world_id=c.world_id
+   AND company.promotion_id=c.promotion_id
+  LEFT JOIN ppw_completed_match_report_facts facts ON facts.world_id=b.world_id
+   AND facts.show_id=b.show_id AND facts.match_id=b.slot_id
+  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
+  ORDER BY c.show_id,t.tournament_id LIMIT 257`,[worldId,year,week]);
+ if(tournamentFinals.length>256)throw new Error("World news tournament limit exceeded");
  const ids=[...new Set([...bouts.flatMap(b=>participants(b.payload)),
   ...angles.flatMap(a=>storyPeople(a.story_json))])].slice(0,6000);
  const people=ids.length?await tx.query<{person_id:string;name:string}>(`
@@ -259,7 +344,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   AND person_id=ANY($2::text[])`,[worldId,ids]):[];
  const names=new Map(people.map(p=>[p.person_id,p.name]));
  const awards=chooseWeeklyAwards(bouts,angles,names);
- const stories=composeWorldNews(bouts,angles,shows,titles,names);
+ const stories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals);
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,
