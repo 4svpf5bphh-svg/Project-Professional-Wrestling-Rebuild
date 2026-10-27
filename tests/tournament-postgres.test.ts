@@ -4,7 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
-import {readTournamentWorkspace,createTournament} from "../src/db/tournament-workspace.js";
+import {readTournamentWorkspace,createTournament,cancelTournament} from "../src/db/tournament-workspace.js";
 import {settleCertifiedTournamentBouts} from "../src/db/tournament-booking.js";
 import {showCardEditorAsActor,saveCardEditorAsActor} from "../src/api/world-service.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
@@ -92,6 +92,10 @@ test("promotion-only 4-person bracket books two semis, advances from certified w
    requestId:"semifinals",expectedRevision:first.worldRevision,
    matches:semifinal,runningOrder:["sf-one","sf-two"]});
   assert.equal(save.status,"APPLIED");
+  const active=await readTournamentWorkspace(db.pool,scope);
+  await assert.rejects(cancelTournament(db.pool,{...scope,
+   requestId:"cancel-while-booked",expectedRevision:active.worldRevision,
+   tournamentId}),/Remove remaining tournament bouts/);
   const second=await showCardEditorAsActor(actor,world,promotion,show2);
   assert.equal(second.tournamentBouts.length,0,
    "Final cannot be booked before both certified semifinals");
@@ -120,6 +124,17 @@ test("promotion-only 4-person bracket books two semis, advances from certified w
   assert.equal(completed.tournaments[0]?.winnerPersonId,people[1]);
   assert.equal(completed.tournaments[0]?.bouts[2]?.winnerPersonId,people[1]);
   assert.equal(completed.tournaments[0]?.bouts[2]?.resolvedWeekIndex,1);
+  const nextCup=await createTournament(db.pool,{...scope,
+   requestId:"second",expectedRevision:completed.worldRevision,
+   name:"Another Trophy",division:"MEN",entrants:people});
+  assert.equal(nextCup.status,"APPLIED");
+  if(nextCup.status!=="APPLIED")throw new Error("Could not start next tournament");
+  const toCancel=await readTournamentWorkspace(db.pool,scope);
+  const cancelled=await cancelTournament(db.pool,{...scope,
+   requestId:"cancel-second",expectedRevision:toCancel.worldRevision,
+   tournamentId:nextCup.result.tournamentId});
+  assert.equal(cancelled.status,"APPLIED");
+  assert.equal((await readTournamentWorkspace(db.pool,scope)).tournaments[0]?.status,"CANCELLED");
   assert.equal(completed.vacantTitles.length,1,
    "Bracket settlement itself must not secretly award the belt; canonical title settlement owns that");
  }finally{

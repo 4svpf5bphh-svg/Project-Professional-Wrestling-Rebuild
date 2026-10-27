@@ -174,6 +174,8 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
   loadTournaments:()=>call("tournaments"),
   createTournament:({requestId,expectedRevision,name,division,entrants,championshipId})=>
    call("createTournament",{requestId,expectedRevision,name,division,entrants,championshipId}),
+  cancelTournament:({requestId,expectedRevision,tournamentId})=>
+   call("cancelTournament",{requestId,expectedRevision,tournamentId}),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
    call("championshipHistory",{titlePromotionId,championshipId,cursor}),
   openWrestler:(id:string)=>{

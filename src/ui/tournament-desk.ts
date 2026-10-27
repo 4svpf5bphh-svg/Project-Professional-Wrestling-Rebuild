@@ -1,15 +1,18 @@
 /** Compact four-person single-elimination hub in the existing
  * Championships workspace. No new root navigation or client polling.
  */
-import type {readTournamentWorkspace,createTournament}
+import type {readTournamentWorkspace,createTournament,cancelTournament}
  from "../db/tournament-workspace.js";
 type View=Awaited<ReturnType<typeof readTournamentWorkspace>>;
 type Result=Awaited<ReturnType<typeof createTournament>>;
+type CancelResult=Awaited<ReturnType<typeof cancelTournament>>;
 export interface TournamentPort{
  loadTournaments():Promise<View>;
  createTournament(input:{requestId:string;expectedRevision:number;
   name:string;division:"MEN"|"WOMEN";entrants:string[];
   championshipId:string|null}):Promise<Result>;
+ cancelTournament(input:{requestId:string;expectedRevision:number;
+  tournamentId:string}):Promise<CancelResult>;
 }
 const el=(tag:string,cls="",value="")=>{
  const node=document.createElement(tag);
@@ -36,7 +39,8 @@ export async function mountTournamentDesk(root:HTMLElement,
  for(const t of view.tournaments){
   const card=el("article","ppw-tournament-card");
   card.append(el("span","ppw-eyebrow",
-   t.status==="COMPLETE"?"TOURNAMENT COMPLETE":"TOURNAMENT IN PROGRESS"),
+   t.status==="COMPLETE"?"TOURNAMENT COMPLETE":
+    t.status==="CANCELLED"?"TOURNAMENT CANCELLED":"TOURNAMENT IN PROGRESS"),
    el("h2","",t.name),
    el("p","ppw-muted",t.division+" · "+(t.championshipName?
     "Prize: "+t.championshipName:"Tournament honours")));
@@ -55,6 +59,22 @@ export async function mountTournamentDesk(root:HTMLElement,
   }
   if(t.winnerName)card.append(el("p","ppw-tournament-winner",
    "🏆 "+t.winnerName+" wins "+t.name));
+  if(t.status==="ACTIVE"&&view.canEdit){
+   const cancel=button("Cancel tournament",()=>{void(async()=>{
+    if(!window.confirm("Cancel this tournament? Certified results stay on record. First remove unfinished tournament matches from planned cards."))return;
+    cancel.disabled=true;
+    try{
+     await port.cancelTournament({requestId:crypto.randomUUID(),
+      expectedRevision:view.worldRevision,tournamentId:t.tournamentId});
+     await mountTournamentDesk(root,port,onBack);
+    }catch(e){
+     cancel.disabled=false;
+     card.append(el("p","ppw-alert ppw-error",
+      e instanceof Error?e.message:"Unable to cancel this tournament"));
+    }
+   })();});
+   card.append(cancel);
+  }
   root.append(card);
  }
  if(!view.tournaments.length)
