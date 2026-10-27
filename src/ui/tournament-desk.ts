@@ -50,8 +50,10 @@ export async function mountTournamentDesk(root:HTMLElement,
    if(!bout)continue;
    const row=el("div","ppw-tournament-bout");
    row.append(el("small","",tournamentBoutLabel(t.entrantsCount,round).toUpperCase()),
-    el("strong","",(bout.nameA??"Awaiting first finalist")+" vs "+
-     (bout.nameB??"Awaiting second finalist")),
+    el("strong","",(bout.nameA??(t.entrantsCount===8&&round<7?
+      "Awaiting quarterfinal winner":"Awaiting first finalist"))+" vs "+
+     (bout.nameB??(t.entrantsCount===8&&round<7?
+      "Awaiting quarterfinal winner":"Awaiting second finalist"))),
     el("span","",bout.winnerName?"Winner: "+bout.winnerName:
      bout.showId?"Booked — awaiting certified show":
      bout.personA&&bout.personB?"Ready to book":"Waiting for the semifinals"));
@@ -122,7 +124,7 @@ export async function mountTournamentDesk(root:HTMLElement,
  const submit=button("Create tournament",()=>{void(async()=>{
   const entrants=seeds.map(x=>x.value);
   if(name.value.trim().length<3||new Set(entrants).size!==entrants.length||entrants.some(x=>!x)){
-   error.textContent="Enter a name and choose four different signed wrestlers.";return;
+   error.textContent="Enter a name and choose four or eight distinct signed wrestlers.";return;
   }
   submit.disabled=true;error.textContent="";
   try{
