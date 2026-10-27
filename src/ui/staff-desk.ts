@@ -153,6 +153,27 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    nav.append(tab);
   }
   root.append(nav);
+  // A manager sees up to three actual issues, not nine equally loud reports.
+  // The full meeting is retained below on demand; no additional server reads.
+  if(pane==="MEETINGS"&&(view.notices?.length??0)>0){
+   const agenda=el("section","ppw-staff-panel ppw-staff-agenda");
+   agenda.append(el("span","ppw-staff-kicker","NEEDS YOUR ATTENTION"),
+    el("h2","","Manager's priorities"));
+   for(const item of view.notices.slice(0,3)){
+    const line=el("article","ppw-staff-agenda-item");
+    line.append(el("strong","",item.department),el("p","",item.message));
+    if(item.target==="contracts"&&port.openContracts)
+     line.append(button("Review contracts →",()=>port.openContracts?.()));
+    if(item.target==="programmes"&&port.openProgrammes)
+     line.append(button("Review programmes →",()=>port.openProgrammes?.()));
+    if(item.target==="roster"&&port.openRoster)
+     line.append(button("Review roster →",()=>port.openRoster?.()));
+    if(item.target==="staff")
+     line.append(button("Review staff →",()=>{pane="TEAM";render();}));
+    agenda.append(line);
+   }
+   root.append(agenda);
+  }
   const meeting=el("section","ppw-staff-panel ppw-staff-meetings");
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
@@ -193,7 +214,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
    attendees.append(slot);
   }
-  meeting.append(attendees);if(pane==="MEETINGS")root.append(meeting);
+  const allDepartments=document.createElement("details");
+  allDepartments.className="ppw-staff-full-meeting";
+  const fullSummary=document.createElement("summary");
+  fullSummary.textContent="Full staff meeting · "+STAFF_ROLES.length+" departments";
+  allDepartments.append(fullSummary,attendees);
+  meeting.append(allDepartments);
+  if(pane==="MEETINGS")root.append(meeting);
   if(port.saveGorilla){
    const gorilla=el("section","ppw-staff-panel ppw-gorilla-policy");
    gorilla.append(el("span","ppw-staff-kicker","GORILLA POSITION"),

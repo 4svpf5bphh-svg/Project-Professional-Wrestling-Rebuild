@@ -176,6 +176,7 @@ test("Talent Scout presents bounded named prospects and opens the existing Talen
   return route.fulfill({json:overview});
  });
  await page.goto("/#/staff");
+ await page.getByText("Full staff meeting · 9 departments").click();
  const meeting=page.locator(".ppw-staff-meeting-brief").filter({hasText:"Talent Scout"});
  await expect(meeting).toBeVisible();
  await meeting.locator("summary").click();
