@@ -148,13 +148,54 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(settled.shows[0]!.totalCost,80000);
   assert.equal(settled.shows[0]!.netResult,70000);
   assert.equal(settled.cash,5_000_000,"Finance reporting does not settle money twice");
+  assert.equal(settled.creativeIdentity,null,
+   "One completed show cannot award a permanent wrestling identity");
+  // Three actual certified cards with six completed technical bouts produce a
+  // real in-ring identity. Draft-only creative is never included.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_booking_drafts(
+     world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
+    SELECT $1,'identity-'||x.i,'promotion-0',1,1,'SUBMITTED',x.i,
+     'Wrestling Series '||x.i,'REGULAR'
+    FROM generate_series(1,3) AS x(i)`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_shows(
+     world_id,promotion_id,show_id,year,week,resolution_id,
+     crowd_response,receipt_json,receipt_digest)
+    SELECT $1,'promotion-0','identity-'||x.i,1,1,'identity-res-'||x.i,
+     79,'{}'::jsonb,repeat('c',64)
+    FROM generate_series(1,3) AS x(i)`,[world]);
+   await tx.query(`INSERT INTO ppw_show_economics(
+     world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+     gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+     total_cost,net_result,incremental_cash)
+    SELECT $1,'identity-'||x.i,'promotion-0',1,1,400,700,
+     45000,4000,6000,3000,1000,14000,31000,31000
+    FROM generate_series(1,3) AS x(i)`,[world]);
+   await tx.query(`INSERT INTO ppw_card_slots(
+     world_id,draft_id,slot_id,position,kind,payload)
+    SELECT $1,'identity-'||sh.i,'bout-'||bout.i,bout.i,'MATCH',
+     jsonb_build_object('intent','TECHNICAL')
+    FROM generate_series(1,3) AS sh(i)
+    CROSS JOIN generate_series(1,2) AS bout(i)`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_show_matches(
+     world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
+    SELECT $1,'identity-'||sh.i,'bout-'||bout.i,bout.i,81,'CLEAN_PIN','A'
+    FROM generate_series(1,3) AS sh(i)
+    CROSS JOIN generate_series(1,2) AS bout(i)`,[world]);
+  });
+  const earned=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.equal(earned.creativeIdentity?.category,"WORKRATE");
+  assert.equal(earned.creativeIdentity?.sampleMatches,6);
+  assert.equal(earned.creativeIdentity?.completedShows,3);
   await assert.rejects(readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:"unauthorised"}),/access denied/);
   await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"unauthorised"}},
    "business",{worldId:world,promotionId:promotion,playerId:owner}),/access denied/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const name of ["ppw_show_economics","ppw_completed_shows",
+   for(const name of ["ppw_completed_show_matches","ppw_card_slots",
+    "ppw_show_economics","ppw_completed_shows",
     "ppw_booking_drafts","ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
