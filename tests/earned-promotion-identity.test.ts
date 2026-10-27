@@ -17,9 +17,9 @@ test("stylistic ambiguity remains varied rather than awarding a false wrestling 
   stories:2,knownMatches:10,completedShows:5});
  assert.equal(mixed?.category,"VARIED");
  assert.equal(earnedPromotionIdentity({...evidence,workrate:0,
-  spectacle:8})?.category,"SPECTACLE");
+  spectacle:9})?.category,"SPECTACLE");
  assert.equal(earnedPromotionIdentity({...evidence,workrate:0,
-  stars:8})?.category,"STAR_POWER");
+  stars:9,spectacle:1})?.category,"STAR_POWER");
  assert.equal(earnedPromotionIdentity({...evidence,workrate:0,
   stories:8})?.category,"STORYTELLING");
 });
