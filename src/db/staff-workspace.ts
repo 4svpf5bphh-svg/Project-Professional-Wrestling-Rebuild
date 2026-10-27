@@ -185,7 +185,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     craft:Number(p.match_craft??50),presentation:Number(p.presentation??50),
     popularity:Number(p.popularity??50)
    } satisfies ScoutProspect)),hiredScout):[];
-  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"}[]=[];
+  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"|"market"}[]=[];
   const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
   const voice=(role:StaffRole,fallback:string)=>{
    const member=officeRole(role);
@@ -205,6 +205,12 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     (current.medical_risks===1?" is":"s are")+
     " medically unavailable, including "+(current.medical_example??"one member of the roster")+
     ". Review availability before booking the next card."
+  });
+  if(hiredScout&&scoutReport.length)notices.push({
+   department:hiredScout.name+" · Talent Scout",target:"market",
+   message:"I've found "+scoutReport.length+" available young talent prospect"+
+    (scoutReport.length===1?"":"s")+", including "+scoutReport[0]!.name+
+    ". The full scouting report is available in our staff meeting."
   });
   for(const e of employees.filter(e=>e.morale<35))
    notices.push({department:e.name+" · Staff relations",target:"staff",

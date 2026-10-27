@@ -168,6 +168,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
      line.append(button("Review programmes →",()=>port.openProgrammes?.()));
     if(item.target==="roster"&&port.openRoster)
      line.append(button("Review roster →",()=>port.openRoster?.()));
+    if(item.target==="market"&&port.openMarket)
+     line.append(button("Browse Talent Market →",()=>port.openMarket?.()));
     if(item.target==="staff")
      line.append(button("Review staff →",()=>{pane="TEAM";render();}));
     agenda.append(line);

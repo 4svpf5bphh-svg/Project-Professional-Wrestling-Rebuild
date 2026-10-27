@@ -162,7 +162,10 @@ test("Talent Scout presents bounded named prospects and opens the existing Talen
    autoRenewSameTerms:false,permittedDays:[],permittedVenueIds:[],
    lockedLogisticsDelegated:false,talentManager:null,availableManagers:[],
    weeklyPayroll:950,promotionCash:200000,venues:[],employees:[scout],
-   market:[],employmentHistory:[],notices:[],meetings:[{
+   market:[],employmentHistory:[],notices:[{
+    department:"Scout Example · Talent Scout",target:"market",
+    message:"Two available young talent prospects deserve a closer look."
+   }],meetings:[{
     role:"SCOUT",staffName:scout.name,personality:"FRANK",target:"roster",
     message:"Two prospects deserve a closer look."
    }],scoutReport:[
@@ -176,6 +179,8 @@ test("Talent Scout presents bounded named prospects and opens the existing Talen
   return route.fulfill({json:overview});
  });
  await page.goto("/#/staff");
+ await expect(page.getByRole("heading",{name:"Manager's priorities"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Browse Talent Market →"})).toBeVisible();
  await page.getByText("Full staff meeting · 9 departments").click();
  const meeting=page.locator(".ppw-staff-meeting-brief").filter({hasText:"Talent Scout"});
  await expect(meeting).toBeVisible();

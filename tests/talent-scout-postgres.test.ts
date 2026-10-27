@@ -64,6 +64,7 @@ test("hired Scout recommends only unsigned prospects in a private bounded three-
   assert.ok(office.scoutReport.some(x=>x.personId==="young-character"));
   assert.ok(!office.scoutReport.some(x=>x.personId==="signed-prospect"||x.personId==="senior-star"));
   assert.ok(office.meetings.some(x=>x.role==="SCOUT"&&x.staffName===scout.name));
+  assert.ok(office.notices.some(n=>n.target==="market"&&n.message.includes("Rising Technician")));
   assert.ok(meter.assertBudget({maxQueries:3,maxResultBytes:10000}).queryCount<=3);
   await assert.rejects(readStaffWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:rival}),/access denied/);
