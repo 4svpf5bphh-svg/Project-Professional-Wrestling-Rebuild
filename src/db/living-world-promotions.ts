@@ -511,7 +511,7 @@ export async function recruitStrategicAiRosters(
     AND c.expires_week_index>=$2+1)
    AND NOT EXISTS (SELECT 1 FROM ppw_world_legend_unlocks legend
     WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
-    AND legend.ai_eligible_from_week_index>$2+1)
+    AND legend.ai_eligible_from_week_index>$2)
   ORDER BY p.popularity ASC,p.person_id LIMIT 256`,[worldId,index]);
  if(people.length>256)throw new Error("AI free agent scouting batch exceeded bounds");
  const used=new Set<string>(),signings:{
