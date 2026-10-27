@@ -470,3 +470,16 @@ body>.ppw-card-edit-shade .ppw-card-edit-close{
   to{opacity:1;transform:scale(1);filter:brightness(1)}
  }
 }
+
+/* Compact tournament casting stays within the normal match card. */
+.ppw-tournament-booking-row{display:flex;flex-wrap:wrap;gap:9px;
+ align-items:center;justify-content:space-between;
+ padding:10px 0;border-top:1px solid #7987b344;overflow-wrap:anywhere}
+.ppw-tournament-booking-row>span{min-width:0;flex:1 1 175px}
+.ppw-tournament-booking-row button{min-height:44px}
+.ppw-tournament-match-note{display:grid;gap:7px;padding:11px;
+ border-left:3px solid #eab976;border-radius:6px;
+ background:linear-gradient(90deg,#523f3a,#101f33)}
+.ppw-tournament-match-note strong{color:#ffe3a2}
+.ppw-tournament-match-note small{color:#ccdae9}
+.ppw-tournament-match-note button{min-height:44px}

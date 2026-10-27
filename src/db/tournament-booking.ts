@@ -43,6 +43,11 @@ export async function readBookableTournamentBouts(tx:SqlRows,
     c.contract_id LIMIT 1) cb ON TRUE
   WHERE b.world_id=$1 AND b.promotion_id=$2
    AND b.winner_person_id IS NULL
+   AND NOT EXISTS(SELECT 1 FROM ppw_contracts other
+    WHERE other.world_id=b.world_id AND other.status='SIGNED'
+     AND other.family='EXCLUSIVE' AND other.promotion_id<>b.promotion_id
+     AND other.person_id IN(b.person_a,b.person_b)
+     AND other.expires_week_index>=$4)
    AND (b.show_id IS NULL OR b.show_id=$3)
    AND NOT EXISTS(SELECT 1 FROM ppw_medical_absences med
     WHERE med.world_id=b.world_id AND med.person_id IN(b.person_a,b.person_b)
