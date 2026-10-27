@@ -92,6 +92,10 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByText("Earlier on-screen history is incomplete")).toBeVisible();
  await expect(dialog.getByText(/Video packages and unused bookings do not/)).toBeVisible();
  await expect(dialog.getByText("First verified: Y1 W1 · Latest verified: Y1 W52")).toBeVisible();
+ await expect(dialog.getByText("Chapters written in the ring")).toBeVisible();
+ await expect(dialog.getByText("Reigning singles champion")).toBeVisible();
+ await expect(dialog.getByText(/Women's World Title · AEW · Since Y1 W50 · 4 recorded defences/))
+  .toBeVisible();
  await expect(dialog.getByRole("heading",{name:"Current championships"})).toBeVisible();
  await expect(dialog.getByText("Women's World Title")).toBeVisible();
  await expect(dialog.getByText(/Tag champions · The Outlaws/)).toBeVisible();

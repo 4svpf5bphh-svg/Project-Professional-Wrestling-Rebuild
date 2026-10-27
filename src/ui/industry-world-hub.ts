@@ -5,6 +5,7 @@ import type {readIndustryWorldNews} from "../db/industry-news.js";
 import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-records.js";
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -713,10 +714,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      PROMOTION_RECOVERED_FROM_DISTRESS:s=>(s.promotionName??"A promotion")+" finds its feet again"
     };
     for(const story of view.headlines){
-     const item=el("article","ppw-news-story");
-     item.append(el("span","ppw-news-desk","CONFIRMED / INDUSTRY"),
-      el("strong","ppw-news-story-title",titles[story.kind]?.(story)??"Industry update"),
-      el("small","ppw-industry-muted","Year "+story.year+" · Week "+story.week));
+     const moment=certifiedCareerMoment(story);
+     const item=el("article","ppw-news-story"+(moment?" ppw-news-story-career":""));
+     item.append(el("span","ppw-news-desk",moment?
+      "CERTIFIED CAREER CHAPTER":"CONFIRMED / INDUSTRY"),
+      el("strong","ppw-news-story-title",moment?.title??
+       titles[story.kind]?.(story)??"Industry update"));
+     if(moment)item.append(el("p","",moment.detail));
+     item.append(el("small","ppw-industry-muted",
+      "Year "+story.year+" · Week "+story.week));
      if(story.personId&&port.openWrestler)
       item.append(btn("Open wrestler dossier →",()=>port.openWrestler?.(story.personId!)));
      section.append(item);

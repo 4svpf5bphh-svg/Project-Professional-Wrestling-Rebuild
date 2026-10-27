@@ -7,6 +7,7 @@ import type {readWrestlerProfile} from "../db/wrestler-profile.js";
 import type {editWrestlerRepertoire} from "../db/wrestler-profile.js";
 import type {CareerView} from "../db/wrestler-career.js";
 import {verifiedCareerForm} from "../domain/verified-career-form.js";
+import {recordedCareerHighlights} from "../domain/recorded-career-highlights.js";
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
@@ -266,6 +267,23 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     tile.append(el("small","",title),el("strong","",value));stats.append(tile);
    }
    careerBody.append(stats);
+   // Spotlight recorded reigns and career stage without another API read.
+   const highlights=recordedCareerHighlights({
+    status:view.status,careerStage:view.careerStage,
+    summary:career.summary,currentChampionships:career.currentChampionships??[],
+    singlesTitles:career.singlesTitles
+   });
+   if(highlights.length){
+    const spotlight=el("section","ppw-career-spotlight");
+    spotlight.append(el("span","ppw-profile-kicker","CAREER SPOTLIGHT"),
+     el("h3","","Chapters written in the ring"));
+    for(const highlight of highlights){
+     const item=el("article","ppw-career-spotlight-item");
+     item.append(el("strong","",highlight.headline),
+      el("p","",highlight.detail));spotlight.append(item);
+    }
+    careerBody.append(spotlight);
+   }
    const form=verifiedCareerForm(career.recent);
    const formSection=el("section","ppw-career-form");
    formSection.append(el("span","ppw-profile-kicker","RECENT FORM"),

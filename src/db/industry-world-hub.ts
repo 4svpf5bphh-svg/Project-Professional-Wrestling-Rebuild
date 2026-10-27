@@ -87,13 +87,13 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const stories=await tx.query<{event_id:string|number;year:number;week:number;
    event_type:string;person_id:string|null;person_name:string|null;
    promotion_id:string|null;promotion_name:string|null;from_tier:string|null;
-   to_tier:string|null;career_stage:string|null}>(`
+   to_tier:string|null;career_stage:string|null;from_stage:string|null}>(`
    SELECT e.event_id::text,e.year,e.week,e.event_type,
     e.payload->>'personId' AS person_id,
     coalesce(person.name,e.payload->>'name') AS person_name,
     e.payload->>'promotionId' AS promotion_id,promotion.name AS promotion_name,
     e.payload->>'fromTier' AS from_tier,e.payload->>'toTier' AS to_tier,
-    e.payload->>'to' AS career_stage
+    e.payload->>'to' AS career_stage,e.payload->>'from' AS from_stage
    FROM ppw_ledger_events e
    LEFT JOIN ppw_people person ON person.world_id=e.world_id
     AND person.person_id=e.payload->>'personId'
@@ -131,7 +131,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     id:String(s.event_id),kind:s.event_type,year:s.year,week:s.week,
     personId:s.person_id,personName:s.person_name,
     promotionId:s.promotion_id,promotionName:s.promotion_name,
-    fromTier:s.from_tier,toTier:s.to_tier,careerStage:s.career_stage
+    fromTier:s.from_tier,toTier:s.to_tier,careerStage:s.career_stage,
+    fromStage:s.from_stage
    })),
    broadcasts:broadcasts.map(s=>({
     showId:s.show_id,promotionId:s.promotion_id,

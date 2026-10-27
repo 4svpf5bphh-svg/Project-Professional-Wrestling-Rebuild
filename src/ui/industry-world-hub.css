@@ -217,3 +217,8 @@
 .ppw-public-result>strong{line-height:1.2;font-size:clamp(17px,4vw,21px)}
 .ppw-public-result>p{font-weight:800;color:#acebd7;font-size:13px;margin:0}
 .ppw-public-result>small{text-transform:capitalize}
+
+/* Important chapters are already certified ledger stories, not new alerts. */
+.ppw-news-story-career{border-color:#9471ca;
+ background:linear-gradient(120deg,#27224b,#142640)}
+.ppw-news-story-career .ppw-news-desk{color:#ffd29b}

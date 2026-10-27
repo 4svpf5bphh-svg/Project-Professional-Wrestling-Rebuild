@@ -114,3 +114,12 @@
  .ppw-career-form-rail{gap:5px}
  .ppw-career-form-chip{width:37px;height:37px}
 }
+
+/* Existing on-demand certified record only; no new meters or progression. */
+.ppw-career-spotlight{margin-top:18px;padding:13px;border:1px solid #9879b3;
+ border-radius:14px;background:linear-gradient(125deg,#30234e,#152643)}
+.ppw-career-spotlight h3{margin:6px 0 10px;font-size:16px;color:#ffe6b5}
+.ppw-career-spotlight-item{padding:10px 0;border-top:1px solid #6c557d;min-width:0}
+.ppw-career-spotlight-item strong{display:block;color:#f5f4ff;font-size:14px}
+.ppw-career-spotlight-item p{margin:6px 0 0;color:#cadbe7;
+ font-size:12px;line-height:1.5;overflow-wrap:anywhere}

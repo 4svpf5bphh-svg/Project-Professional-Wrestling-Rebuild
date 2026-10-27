@@ -37,6 +37,14 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
      ($1,'promotion-1','rival',1,1,'rival-resolution',84,'{}'::jsonb,repeat('b',64))
    `,[world]);
   });
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+   VALUES($1,1,1,'CAREER_STAGE_CHANGED',$2::jsonb),
+    ($1,1,1,'WRESTLER_RETIRED',$3::jsonb)`,[world,
+    JSON.stringify({personId:"somebody",from:"VETERAN",
+     to:"SPECIAL_ATTRACTION",significance:"NOTABLE"}),
+    JSON.stringify({personId:"somebody",name:"Retired Veteran",
+     significance:"NOTABLE"})]));
   const meter=new MeasuredQuerySession("industry-public-weekly");
   const measured:TransactionPool={async connect(){
    const client=await db.pool.connect();
@@ -61,6 +69,10 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
    "A human controller has creative freedom, even if an older AI profile survives");
   assert.ok(!JSON.stringify(hub).includes("weekly_guarantee"));
   assert.equal(hub.broadcasts.length,2);
+  assert.ok(hub.headlines.some(h=>h.kind==="CAREER_STAGE_CHANGED"&&
+   h.fromStage==="VETERAN"&&h.careerStage==="SPECIAL_ATTRACTION"));
+  assert.ok(hub.headlines.some(h=>h.kind==="WRESTLER_RETIRED"&&
+   h.personName==="Retired Veteran"));
   assert.deepEqual(hub.broadcasts.map(x=>x.showName).sort(),
    ["Own Weekly Show","Rival Crown Night"]);
   assert.ok(!JSON.stringify(hub).includes("PRIVATE FUTURE PLANS"));
