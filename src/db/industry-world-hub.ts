@@ -37,7 +37,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const companies=await tx.query<{promotion_id:string;name:string;
    tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
-   completed_events:number;management_mode:string;
+   completed_events:number;management_mode:string;human_managed:boolean;
    ai_risk_tolerance:number|null;ai_match_quality_preference:number|null;
    ai_star_preference:number|null}>(`
    WITH recent AS (
@@ -52,7 +52,11 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    )
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
     p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
-    p.management_mode,r.latest_show_week,
+    p.management_mode,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls owners
+     WHERE owners.world_id=p.world_id AND owners.promotion_id=p.promotion_id
+      AND owners.active) AS human_managed,
+    r.latest_show_week,
     r.recent_avg_crowd,coalesce(r.completed_events,0) AS completed_events
    FROM ppw_promotions p LEFT JOIN recent r ON r.promotion_id=p.promotion_id
    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
@@ -110,7 +114,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     promotionId:p.promotion_id,name:p.name,tier:p.tier,
     rank:i+1,mediaReach:p.media_reach,
     managementMode:p.management_mode,
-    publicIdentity:p.management_mode==="AI"&&
+    publicIdentity:!p.human_managed&&p.management_mode==="AI"&&
      p.ai_risk_tolerance!==null&&p.ai_match_quality_preference!==null&&
      p.ai_star_preference!==null?
      AI_IDENTITY_LABELS[aiPromotionIdentity({
