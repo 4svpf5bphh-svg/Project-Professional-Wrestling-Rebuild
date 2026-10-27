@@ -150,3 +150,39 @@ test("AI may defend a real tag championship on a major show",()=>{
  if(noDefender.status==="READY")
   assert.ok(noDefender.matches.every(m=>m.championshipId!=="tag-belt"));
 });
+
+test("AI signature matches reflect real creative identity and preserve scripted legality",()=>{
+ const technical=chooseAiWorldCard({...base,
+  strategy:{identity:"WORKRATE",focus:"PAY_OFF_RIVALRIES"}});
+ const daring=chooseAiWorldCard({...base,
+  strategy:{identity:"SPECTACLE",focus:"PAY_OFF_RIVALRIES"}});
+ assert.equal(technical.status,"READY");assert.equal(daring.status,"READY");
+ if(technical.status!=="READY"||daring.status!=="READY")return;
+ assert.equal(technical.matches[0]!.intent,"TECHNICAL");
+ assert.equal(daring.matches[0]!.intent,"HIGH_RISK");
+ for(const card of [technical,daring]){
+  const ids=card.matches.flatMap(m=>m.participants.map(p=>p.personId));
+  assert.equal(new Set(ids).size,ids.length);
+  assert.ok(card.matches.every(m=>m.participants.some(x=>x.personId===m.scriptedWinner)));
+  assert.equal(card.matches.filter(m=>m.mainEvent).length,1);
+ }
+ assert.deepEqual(technical,chooseAiWorldCard({...base,
+  strategy:{identity:"WORKRATE",focus:"PAY_OFF_RIVALRIES"},roster:[...roster].reverse()}));
+});
+test("a 13-week talent-building phase provides credible fresh opportunities",()=>{
+ const newRoster=roster.map((p,i)=>i===15?
+  {...p,popularity:55,recognition:75,momentum:80,matchCraft:80}:p);
+ const ordinary=chooseAiWorldCard({...base,roster:newRoster});
+ const growing=chooseAiWorldCard({...base,roster:newRoster,
+  strategy:{identity:"STORYTELLING",focus:"BUILD_STARS"}});
+ assert.equal(ordinary.status,"READY");assert.equal(growing.status,"READY");
+ if(ordinary.status!=="READY"||growing.status!=="READY")return;
+ const members=(card:typeof growing)=>card.status==="READY"?
+  card.matches.flatMap(m=>m.participants.map(p=>p.personId)):[];
+ assert.ok(members(growing).includes("talent-15"),
+  "a verifiably improving undercard name can feature on an AI card");
+ assert.ok(growing.matches.every(m=>m.participants.some(x=>x.personId===m.scriptedWinner)));
+ assert.equal(new Set(members(growing)).size,members(growing).length);
+ assert.deepEqual(growing,chooseAiWorldCard({...base,roster:[...newRoster].reverse(),
+  strategy:{identity:"STORYTELLING",focus:"BUILD_STARS"}}));
+});
