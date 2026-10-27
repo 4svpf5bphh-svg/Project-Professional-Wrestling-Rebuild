@@ -55,6 +55,11 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
   const rival=hub.promotions.find(x=>x.promotionId==="promotion-1")!;
   assert.equal(rival.recentShowCount,1);
   assert.equal(rival.recentAverageCrowd,84);
+  assert.equal(rival.publicIdentity,"Star-driven wrestling",
+   "Public rival identity is derived from its already persisted AI preferences");
+  assert.equal(hub.promotions.find(x=>x.isYours)?.publicIdentity,
+   "Star-driven wrestling","Taking control must not silently erase historic AI profile");
+  assert.ok(!JSON.stringify(hub).includes("weekly_guarantee"));
   assert.equal(hub.broadcasts.length,2);
   assert.deepEqual(hub.broadcasts.map(x=>x.showName).sort(),
    ["Own Weekly Show","Rival Crown Night"]);
