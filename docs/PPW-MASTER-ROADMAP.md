@@ -1,6 +1,6 @@
 # PPW Rebuild — Master Roadmap
 
-**Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development covers **Phases 9–10 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
+**Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development covers **Phases 9–11 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
 
 ## Contracts and primary references
 
@@ -12,11 +12,11 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 
 **Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
 
-### Phase 11 — Certified career moments and title spotlights (staged, verification pending)
+### Phase 11 — Certified career moments and title spotlights (verified, staged)
 
 Audited original living-career settlement, real career-stage and retirement ledger entries, official News, World Honours/Hall, on-demand dossier, title reigns and reputations. Existing systems remain authoritative. The existing four-read Industry projection now carries the recorded **from** career stage without an additional query; the current Official News desk displays consequential verified career chapters and retirements with meaningful copy and a direct dossier link. The earlier NOTABLE-only career-stage filter remains to prevent routine notifications.
 
-The optional wrestler Career Record now brings reigning title evidence, historic singles reigns with at least three recorded defences, and recorded retirement/special-attraction status forward, relying only on the already-fetched, person-keyed career data. No artificial progress statistics, first-title claims, gameplay restrictions, added inbox, SQL read, schema change, cron, World write, new legend or release. Pure test cases, 320/390px browser checks and a disposable PostgreSQL four-query budget assertion were extended. Verify latest combined CI before calling this complete.
+The optional wrestler Career Record now brings reigning title evidence, historic singles reigns with at least three recorded defences, and recorded retirement/special-attraction status forward, relying only on the already-fetched, person-keyed career data. No artificial progress statistics, first-title claims, gameplay restrictions, added inbox, SQL read, schema change, cron, World write, new legend or release. Pure test cases, 320/390px browser checks and a disposable PostgreSQL four-query budget assertion were extended. Verified on checkpoint `d2710ef630eb1ede7ea2f68a25b9a51041a38575`: [successful GitHub Actions 40588127264](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40588127264). TypeScript/PWA green; **138 authenticated mobile browser tests, 640 unit tests, 130 disposable PostgreSQL integration tests** passed. The existing 139 database-only unit-runner skips are expected, and booking-card stress reads remained **15 SQL queries** in both scenarios. The Industry budget remains at four indexed reads, including the new ledger field.
 
 ### Phase 11 second milestone — certified wrestler form in Career Record (verified, staged)
 
