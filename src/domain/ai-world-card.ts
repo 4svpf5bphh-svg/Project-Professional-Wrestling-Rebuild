@@ -8,6 +8,7 @@ import {DeterministicRng,deterministicSeedFromText} from "../simulation/legacy/r
 import {chooseStaffFallbackSchedule,type ExistingShowBooking} from "./staff-show-schedule.js";
 import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
+import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
 }
@@ -17,6 +18,7 @@ export interface AiCardInput{
  activeVenues:readonly string[];eventType:EventType;
  excludedDays?:readonly number[];
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
+ strategy?:AiPromotionStrategy;
  recentPairs?:readonly string[];
  establishedPartners?:readonly {aId:string;bId:string}[];
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
@@ -66,6 +68,10 @@ function style(input:AiCardInput,order:number,isMain:boolean):AiCardMatch["inten
  if(isMain&&input.eventType==="MAJOR")return "EPIC";
  const rng=new DeterministicRng(deterministicSeedFromText(
   `${input.worldSeed}:${input.showId}:intent:${order}`));
+ if(input.strategy?.identity==="WORKRATE"&&rng.chance(.62))return "TECHNICAL";
+ if(input.strategy?.identity==="SPECTACLE"&&rng.chance(.55))return "HIGH_RISK";
+ if(input.strategy?.identity==="STAR_POWER"&&rng.chance(.55))return "SHOWCASE";
+ if(input.strategy?.identity==="STORYTELLING"&&rng.chance(.6))return "STORY";
  if(input.riskTolerance>=72&&rng.chance(.18))return "HIGH_RISK";
  if(input.matchQualityPreference>=70&&rng.chance(.35))return "TECHNICAL";
  if(input.starPreference>=70&&rng.chance(.3))return "SHOWCASE";
@@ -97,7 +103,13 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   const prior=unique.get(p.personId);
   if(!prior||p.contractId<prior.contractId)unique.set(p.personId,p);
  }
- const eligible=[...unique.values()].sort(best);
+ // During a star-building quarter, worthy undercard wrestlers are given
+ // opportunities. This cannot override eligibility or a title/feud feature.
+ const opportunity=(p:AiRosterCandidate)=>input.strategy?.focus==="BUILD_STARS"&&
+  p.popularity<60&&p.momentum>=45&&p.matchCraft>=40?16:0;
+ const eligible=[...unique.values()].sort((a,b)=>
+  rank(b)+opportunity(b)-rank(a)-opportunity(a)||
+  a.personId.localeCompare(b.personId,"en"));
  if(!["MEN","WOMEN"].some(division=>eligible.filter(p=>p.bookingDivision===division).length>=2))
   return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
  const occupiedSameDay=(day:number,id:string)=>input.bookedShows.some(show=>
@@ -172,7 +184,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  }
  // If ten slots leave one wrestler unpaired, use eight rather than using
  // the same performer twice or mixing the divisions.
- const pool=[...chosen].sort(best);
+ const pool=[...chosen].sort((a,b)=>
+  rank(b)+opportunity(b)-rank(a)-opportunity(a)||
+  a.personId.localeCompare(b.personId,"en"));
  const recent=new Set(input.recentPairs??[]);
  const teammates=new Set((input.establishedPartners??[]).map(x=>{
   if(!x.aId||!x.bId||x.aId===x.bId)
@@ -253,7 +267,12 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    `${input.worldSeed}:${input.showId}:finish:${order}`));
   const winnerRng=new DeterministicRng(deterministicSeedFromText(
    `${input.worldSeed}:${input.showId}:winner:${order}`));
-  const fav=push(a)+winnerRng.float(-7,7)>=push(b)+winnerRng.float(-7,7)?a:b;
+  // Only AI undercard results may favour a credible rising worker.
+  // Main-event title and programme bookings keep their existing authority.
+  const development=(p:AiRosterCandidate)=>input.strategy?.focus==="BUILD_STARS"&&
+   !main&&p.popularity<60&&p.momentum>=45&&p.matchCraft>=40?13:0;
+  const fav=push(a)+development(a)+winnerRng.float(-7,7)>=
+   push(b)+development(b)+winnerRng.float(-7,7)?a:b;
   if(entry.tag){
    const [t1a,t1b,t2a,t2b]=entry.people;
    const scoreA=push(t1a!)+push(t1b!)+winnerRng.float(-7,7);
