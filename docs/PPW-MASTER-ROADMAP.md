@@ -2,6 +2,8 @@
 
 **Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development covers **Phases 9–11 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
 
+**Phase 11 status: GAMEPLAY COMPLETE, DEVELOPMENT ONLY.** The verified closing checkpoint is `bae6fca2236e661106f3ac5d2c9f01053794d1a8` (CI run 40590308009). The current branch is still draft PR #21; nothing has been merged, deployed or manually advanced in the saved World. Legends expansion remains owner-approval-only and outside this phase. Further gameplay or release changes belong to a separately agreed milestone.
+
 ## Contracts and primary references
 
 - [Original feature dependency audit, main](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling/blob/main/docs/PPW-FEATURE-DEPENDENCY-AUDIT.md) — §§9.1–9.12 describe the eventual living World.
@@ -12,11 +14,11 @@ TEW underneath, EWR on top; existing server-authoritative World state is the tru
 
 **Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
 
-### Phase 11 closing gameplay milestone — certified winners and credible breakout reception (staged; CI required)
+### Phase 11 closing gameplay milestone — certified winners and credible breakout reception (verified; development only)
 
 World News now identifies the genuine singles or team champion directly from already-settled championship contest receipts, including a vacant-title win, with the same named headline flowing into World Moments. It cannot infer an inaugural champion when the belt was merely vacant. An exceptional (4.5★+) certified match can spotlight an actual **PROSPECT** participant from the existing bounded person/name read; it never claims the prospect won or that the match rating measures personal skill. No new World Lock read count, scheduled task or private booking exposure is intended.
 
-The opt-in dossier's existing verified four-bout rating comparison now distinguishes a genuine **breakout stretch** (at least three rated bouts in each four-match window, 4.1★ recent mean, 3.5★ or lower previous mean, and at least 0.75★ rise). It remains a temporary description of real completed match reception, not a new statistic, rank, skill increase or award. It adds no request to the person-keyed Career Record. This is the intended final Phase 11 gameplay pass, conditional on complete mobile, type, unit, certified public news/World Moments PostgreSQL and query-budget regressions.
+The opt-in dossier's existing verified four-bout rating comparison now distinguishes a genuine **breakout stretch** (at least three rated bouts in each four-match window, 4.1★ recent mean, 3.5★ or lower previous mean, and at least 0.75★ rise). It remains a temporary description of real completed match reception, not a new statistic, rank, skill increase or award. It adds no request to the person-keyed Career Record. This is the final Phase 11 gameplay pass. **Verified on `bae6fca2236e661106f3ac5d2c9f01053794d1a8`: [successful GitHub Actions 40590308009](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40590308009)** — TypeScript/PWA green; **138/138 authenticated browser**, **643 unit passes**, **130/130 disposable PostgreSQL** including certified named championship winners feeding World Moments, replay protection, owner privacy and existing query budgets. The 139 database-only skips in the unit runner are expected; all 130 ran and passed against the disposable test database. Royal/teams edit-card budget remains **15 queries** each, Industry read remains **4**, and this pass introduces no new World News SQL request.
 
 No Legends additions, merge, Production change, autonomous World advance, deadline change or cron activation.
 
@@ -32,7 +34,7 @@ The optional wrestler Career Record now brings reigning title evidence, historic
 
 **Successful complete verification:** commit `91b1f333b197cab74021a1b4002cfebe779e37a9`, [GitHub Actions 40579549474](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40579549474). PWA/TypeScript green, **138 browser tests** (including new 320px/390px career form and one-fetch tests), **636 unit tests passing**, 139 expected database skips in the unit runner, and **130/130 disposable PostgreSQL integration tests**. Existing booking-card reads remain 15 queries under both stress scenarios. Verified pure tests guard incomplete history, chronologically reversed rows, missing ratings, and saturated twelve-bout streaks.
 
-**Next candidate:** Audit which wrestler milestones deserve more prominent, appropriately placed communication outside the dossier, particularly actual earned career-stage changes and consequential title victories. Respect the established World Honours, News, Hall of Fame and earned promotion creative identity; avoid redundant badges, unverifiable growth timelines and additional management overhead. Do not merge or deploy without owner authorization.
+**Historical candidate, now completed in the closing Phase 11 milestones:** Audit which wrestler milestones deserve more prominent, appropriately placed communication outside the dossier, particularly actual earned career-stage changes and consequential title victories. Respect the established World Honours, News, Hall of Fame and earned promotion creative identity; avoid redundant badges, unverifiable growth timelines and additional management overhead. Do not merge or deploy without owner authorization.
 
 ## Phase 11 — Weekly gameplay handoff and next-show continuity (verified, staged)
 
