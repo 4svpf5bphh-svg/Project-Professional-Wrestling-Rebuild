@@ -12,7 +12,9 @@
 
 TEW underneath, EWR on top; existing server-authoritative World state is the truth. One World Lock, no second clock, no attendance bonus for a human manager, no ownership or privacy bypass. Keep current gameplay and five-root bottom navigation. Neon usage must remain bounded: no speculative polling or full-World scans.
 
-**Production guard:** preserve both managers, live World, cards, outcomes, contracts and history. Never reset or advance the live World, activate automatic World Lock, or deploy to Production without express permission. Development happens on a branch until release authorization.
+**Test-save policy — owner clarification, 27 October 2026:** The current save is disposable test progress. If a **fresh authentic Genesis/reset is simpler or safer** than migrating existing Week 8 results, bookings and World history, a clean reset is preferred and loss of that test progress is explicitly acceptable. Preserve the software, authentic wrestler and promotion identities, verified systems, 48 current Legends and two-human server-authoritative gameplay — **not necessarily the old World records**. Rehearse fresh-world installation, complete roster import, manual World progression and two-person playability on isolated PostgreSQL first. Do not treat a difficult saved-World schema migration as a release blocker.
+
+**Production guard:** Development stays on the draft branch until release authorisation. No live World reset or week advancement **now**; any eventual reset belongs to a coordinated owner-approved release and should not accidentally alter an active production World. Do not deploy, enable World Lock cron, or change the deliberately extended testing deadline without owner instruction.
 
 ### Phase 11 closing gameplay milestone — certified winners and credible breakout reception (verified; development only)
 
