@@ -72,6 +72,23 @@ Owner-approved direction: compact text-first draggable Edit Card entries with no
 
 **Remaining balance work:** larger varied certified-card scenarios with realistic show economics and organic AI rivalry, review whether territory ratings plateau under normal bookings, and check AI's long-term market and staff wage load at larger player counts. Prefer evidence-driven tuning to additional management screens or arbitrary financial penalties. All owner exclusions and Legends approval requirements remain in force; the code is staged on PR #21 and is not approved for Production.
 
+### Phase 10 four-season territory-market diagnostic — 27 October 2026
+
+**Test-only checkpoint:** `d6369afdb51837ac8ea3610f3c7fcad1fb19c9d5`; the full [Verify rebuild workflow 40541866972](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40541866972) passed. New automated `tests/market-seasonal-balance.test.ts` runs through the normal unit suite. **No gameplay formula changed** and no live World was queried, settled, deployed or mutated.
+
+**Test method:** Four years (208 weekly shows **per promotion**) of varied match ratings, crowd reactions, regular/major shows, same-market rival schedules, actual original expected-demand calculation, same-market competition factor, original ticket prices, seeded deterministic original attendance/show settlement and original market drift. Promotion A has a lower-quality **entire second season**. Compare two venue choices: dynamically select the nearest adequate venue from a fixed 1,800–10,000-seat catalogue, versus a strict 3,500-seat maximum. This is a controlled modeled scenario, **not** imported actual certified cards and **not** a forecast or an assertion that all player bookings will behave this way.
+
+**Measured results (promotion A / promotion B, live audience strength 0–100):**
+
+| Venue policy | Year 1 | Year 2 | Year 4 | First reaches 100 |
+| --- | --- | --- | --- | --- |
+| Adaptively sized | 81.5 / 85.0 | 100 / 100 | 100 / 100 | Week 91 / 75 |
+| Fixed 3,500-seat venue | 79.1 / 82.6 | 84.6 / 97.1 | 99.8 / 99.7 | Week 171 / 122 |
+
+During promotion A's weaker Year 2, adaptive venues still yielded **39 rising, 0 falling and 13 flat weeks** of strength (compared with 25 rising, 12 falling and 15 flat under the seat limit). Adaptive scheduling produced effectively no Year-4 differentiation in `liveStrength`, even while awareness and loyalty remained distinct. Restricting capacity delays but does not eliminate upper-bound saturation. Year 4 adaptive average rivalry strength gap was 0.0 versus 0.4 under fixed capacity. These outcomes provide evidence that current reward for attendance is strong relative to negative creative response.
+
+**Design recommendation, not approval for a formula rewrite:** Evaluate a bounded, original-compatible change that keeps successful crowd-drawing valuable, but gives persistently weaker match quality and negative fan response meaningful downside and preserves differentiation between promotions over years. Before deploying any formula change, compare existing extreme-case tests, this varied four-season fixture, tier differences, attendance/venue choices, shared-World fairness and downstream business/territory regression metrics. Do not silently change the formula or force predetermined results. Existing owners' exclusions and long-run Neon limits remain.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
