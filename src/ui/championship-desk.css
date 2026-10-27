@@ -171,3 +171,36 @@
  background:linear-gradient(110deg,#f5ca71,#ef9b87);font-weight:850}
 .ppw-tournament-create .ppw-alert:empty{display:none}
 @media(max-width:390px){.ppw-tournament-card,.ppw-tournament-create{padding:12px}}
+
+/* The tournament record book shows actual champions, editions, years and
+ * verified final ratings. No invented prestige currency or recurring ticker. */
+.ppw-tournament-heritage{min-width:0;margin:18px 0 20px}
+.ppw-tournament-heritage h2,.ppw-tournament-archive-title{
+ font-size:clamp(18px,4.4vw,23px);color:#ffe1a1;margin:15px 0 5px}
+.ppw-tournament-heritage>p{font-size:12px;line-height:1.5}
+.ppw-tournament-legacy{min-width:0;padding:12px 14px;margin:10px 0;
+ border:1px solid #b28e685c;border-radius:13px;
+ background:linear-gradient(115deg,#2b2438,#16243e 77%);overflow-wrap:anywhere}
+.ppw-tournament-legacy h3{color:#ffe6b3;font-size:16px;
+ font-weight:900;line-height:1.25;margin:5px 0}
+.ppw-tournament-legacy p{font-size:12px;line-height:1.45;margin:6px 0}
+.ppw-tournament-legacy-winner{color:#ffdc8a;font-weight:850}
+.ppw-tournament-legacy button{display:block;min-height:44px;margin-top:8px;
+ width:100%;border-radius:11px;border:1px solid #d5ab74;
+ color:#fff3d6;background:#584328;font-weight:850}
+.ppw-tournament-legacy button:focus-visible,.ppw-tournament-archived-rounds summary:focus-visible{
+ outline:3px solid #ffda88;outline-offset:3px}
+.ppw-tournament-more{margin:8px 0}
+.ppw-tournament-more>summary,.ppw-tournament-archived-rounds>summary{
+ list-style:auto;cursor:pointer;font-weight:850;color:#e8d3fc;
+ min-height:44px;display:flex;align-items:center;padding:8px 10px;
+ border:1px solid #6e5a91;border-radius:10px}
+.ppw-tournament-more>summary{background:#201f39}
+.ppw-tournament-archived-rounds{margin-top:12px}
+.ppw-tournament-archive-title{margin-top:22px}
+.ppw-tournament-seeds{display:grid;gap:9px}
+.ppw-tournament-create{scroll-margin-top:22px}
+@media(max-width:390px){
+ .ppw-tournament-legacy{padding:11px}
+ .ppw-tournament-heritage h2{font-size:17px}
+}

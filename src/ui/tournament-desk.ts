@@ -45,7 +45,9 @@ export async function mountTournamentDesk(root:HTMLElement,
   "Showing heritage from the latest 200 tournaments only — older results remain in the World but aren't included in these counts."));
  const hasActive=view.tournaments.some(t=>t.status==="ACTIVE");
  let prepareEdition:(heritage:Heritage)=>void=()=>{};
- for(const heritage of (view.heritage??[]).slice(0,12)){
+ const older=el("details","ppw-tournament-more");
+ older.append(el("summary","","More tournament traditions"));
+ for(const [seriesIndex,heritage] of (view.heritage??[]).slice(0,12).entries()){
   const item=el("article","ppw-tournament-legacy");
   item.append(el("span","ppw-eyebrow",heritage.legacy),
    el("h3","",heritage.name),
@@ -66,10 +68,11 @@ export async function mountTournamentDesk(root:HTMLElement,
   }else item.append(el("p","ppw-muted","First champion still to be crowned."));
   if(view.canEdit&&!hasActive&&heritage.completedEditions>0)
    item.append(button("Plan another edition",()=>prepareEdition(heritage)));
-  history.append(item);
+  if(seriesIndex<3)history.append(item);else older.append(item);
  }
+ if(older.children.length>1)history.append(older);
  if((view.heritage??[]).length>12)history.append(el("p","ppw-muted",
-  "Showing 12 tournament series. Recent brackets are below."));
+  "Showing 12 tournament series from the recent history window."));
  if(!view.heritage?.length)history.append(el("p","ppw-muted",
   "Complete a tournament to begin your promotion's record book."));
  root.append(history);
@@ -104,7 +107,9 @@ export async function mountTournamentDesk(root:HTMLElement,
       "Awaiting quarterfinal winner":"Awaiting second finalist"))),
     el("span","",bout.winnerName?"Winner: "+bout.winnerName:
      bout.showId?"Booked — awaiting certified show":
-     bout.personA&&bout.personB?"Ready to book":"Waiting for the semifinals"));
+     bout.personA&&bout.personB?"Ready to book":
+     t.entrantsCount===8&&round<7?"Waiting for quarterfinal results":
+     "Waiting for the semifinals"));
    rounds.append(row);
   }
   if(t.winnerName){
