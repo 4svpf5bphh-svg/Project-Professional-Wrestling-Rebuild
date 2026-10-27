@@ -57,6 +57,21 @@ Owner-approved direction: compact text-first draggable Edit Card entries with no
 
 **Future high-value work:** evaluate multi-season difficulty and finances with both owners and generated talent, refine AI decisions only from actual recurring evidence, and develop tournaments when appropriate. Do not make the above milestone a new task list. No loans, crossover cards, cross-promotion events or live spectator mode. Human managers may read only fellow players' completed public Results. Legends roster candidates and artwork require the owner's separate approval.
 
+### Phase 10 long-run balance verification — 27 October 2026
+
+**Verified development-only checkpoint:** commit `dc3b290d82aa3854759d0a48c771084df743d979`, workflow [40527088825](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40527088825) successful. New `tests/multi-season-balance-postgres.test.ts` is included in the standard disposable PostgreSQL CI suite, **not** run against Neon Production or the saved World.
+
+**What the new controlled three-year stress test actually measures:**
+- 156 consecutive weekly finance and survival settlements with **two human-controlled promotions and three AI rivals**, feeding deliberately constructed profit/loss scenarios into canonical ledger and finance classification.
+- The solvent workrate and star-oriented AI rivals hire at most once every 13 weeks from legitimately unsigned candidates. A 27-week downturn blocks the star-oriented rival's recruiting, and subsequent profitable weeks permit it again; across all three years the fixture made 19 AI signings (11 workrate, 8 star-oriented). Signed people remain real `PROSPECT` workers with valid contracts, not invented potential scores.
+- The distressed AI remains in the canonical CRISIS/survival rules; neither human manager loses ownership or has an automatic signing. A recurring-cost reconciliation fix includes **active staff salaries**, plus wrestler guarantees and overhead, when AI assesses signing affordability; salary-heavy firms no longer qualify merely because their bank balance is positive.
+- At the measured quarterly recruitment checkpoint: **4 SQL queries, 78 result rows, 18,753 encoded result bytes**. This is a disposable-fixture query budget, **not** a claim about production monthly Neon transfer. No new scheduler, polling, materialised World blob, migration or cron.
+- Pure original-market drift was exercised over 156 weeks: permanently exceptional vs permanently poor ticket/show results produced the expected boundary saturation by Year 1. **Follow-up design observation:** do not extrapolate those deliberately extreme conditions to real manager play. The original market formula is unchanged; investigate varied multi-season completed-show mixes before considering any diminishing-returns revision.
+
+**Existing complementary coverage preserved, not rebuilt:** three-year genuine career retirement/prospect generation, 26 completed weeks of two human managers' authored winners, and 100-year indexed financial history checks. These independently test capabilities the new synthetic affordability fixture does not claim to replace.
+
+**Remaining balance work:** larger varied certified-card scenarios with realistic show economics and organic AI rivalry, review whether territory ratings plateau under normal bookings, and check AI's long-term market and staff wage load at larger player counts. Prefer evidence-driven tuning to additional management screens or arbitrary financial penalties. All owner exclusions and Legends approval requirements remain in force; the code is staged on PR #21 and is not approved for Production.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.
