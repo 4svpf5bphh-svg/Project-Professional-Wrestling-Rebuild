@@ -8,22 +8,22 @@ import {trainerFatigueBonus} from "../src/domain/staff-training.js";
 import {staffShowPresentationBonus} from "../src/domain/staff-show-presentation.js";
 test("Original Talent Managers survive world expansion without replacement",()=>{
  const old=worldTalentManagers(58),staff=worldStaff(58);
- assert.equal(staff.length,120);
+ assert.equal(staff.length,136);
  assert.deepEqual(STAFF_ROLES.map(role=>staff.filter(s=>s.role===role).length),
-  [8,16,16,16,16,16,16,16]);
+  [8,16,16,16,16,16,16,16,16]);
  for(const m of old)assert.deepEqual(
   (({staffId,name,insight,weeklySalary})=>({staffId,name,insight,weeklySalary}))(
    staff.find(s=>s.staffId===m.staffId)!),m);
- assert.equal(new Set(staff.map(s=>s.staffId)).size,120);
- assert.equal(new Set(staff.map(s=>s.name)).size,120);
+ assert.equal(new Set(staff.map(s=>s.staffId)).size,136);
+ assert.equal(new Set(staff.map(s=>s.name)).size,136);
  assert.deepEqual(staff,worldStaff("58"));
 });
 test("Diverse staff have stable identities and keep original employee names",()=>{
  for(const seed of [0,58,72,123456789]){
   const staff=worldStaff(seed);
   const market=staff.filter(s=>s.role!=="TALENT_MANAGER");
-  assert.equal(new Set(market.map(s=>s.name.split(" ")[0])).size,112);
-  assert.equal(new Set(staff.map(s=>s.name)).size,120);
+  assert.equal(new Set(market.map(s=>s.name.split(" ")[0])).size,128);
+  assert.equal(new Set(staff.map(s=>s.name)).size,136);
   const retained=worldStaff(seed,["staff-road-agent-001","staff-trainer-016"]);
   for(const [id,serial] of [["staff-road-agent-001",0],["staff-trainer-016",111]] as const){
    const old=retained.find(s=>s.staffId===id)!;
