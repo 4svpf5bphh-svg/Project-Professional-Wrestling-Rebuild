@@ -108,12 +108,23 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const territories=await tx.query<{
    market_id:string;name:string;
    awareness:number;live_strength:number;loyalty:number;is_home:boolean;
+   rival_name:string|null;rival_live_strength:number|null;
   }>(`
    SELECT s.market_id,m.name,s.awareness,s.live_strength,s.loyalty,
-    (p.home_market_id=s.market_id) AS is_home
+    (p.home_market_id=s.market_id) AS is_home,
+    opponent.name AS rival_name,opponent.live_strength AS rival_live_strength
    FROM ppw_promotion_market_states s
    JOIN ppw_markets m ON m.world_id=s.world_id AND m.market_id=s.market_id
    JOIN ppw_promotions p ON p.world_id=s.world_id AND p.promotion_id=s.promotion_id
+   LEFT JOIN LATERAL (
+    SELECT rival_p.name,rival_s.live_strength
+    FROM ppw_promotion_market_states rival_s
+    JOIN ppw_promotions rival_p ON rival_p.world_id=rival_s.world_id
+     AND rival_p.promotion_id=rival_s.promotion_id AND rival_p.lifecycle='ACTIVE'
+    WHERE rival_s.world_id=s.world_id AND rival_s.market_id=s.market_id
+     AND rival_s.promotion_id<>s.promotion_id
+    ORDER BY rival_s.live_strength DESC,rival_s.promotion_id LIMIT 1
+   ) opponent ON true
    WHERE s.world_id=$1 AND s.promotion_id=$2
    ORDER BY is_home DESC,s.live_strength DESC,s.market_id LIMIT 41`,
    [worldId,promotionId]);
@@ -169,7 +180,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    })),
    territories:territories.map(t=>({
     marketId:t.market_id,name:t.name,awareness:t.awareness,
-    liveStrength:t.live_strength,loyalty:t.loyalty,isHome:t.is_home
+    liveStrength:t.live_strength,loyalty:t.loyalty,isHome:t.is_home,
+    strongestRival:t.rival_name,rivalLiveStrength:t.rival_live_strength
    }))
   };
  });
