@@ -1,6 +1,6 @@
 # PPW Rebuild — Master Roadmap
 
-**Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development is **Phase 9 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
+**Authoritative roadmap, updated 27 October 2026.** Historical phase descriptions below document earlier work and are not a list of missing features. The currently active development covers **Phases 9–10 on branch `phase9-booking-results-consolidation-2026-10-26` (PR #21)**; it has **not been merged or deployed**. Verify the latest branch and checks before further work. Do not reimplement completed systems from earlier handovers. Only change priorities with the owner's direction.
 
 ## Contracts and primary references
 
@@ -44,6 +44,18 @@ Owner-approved direction: compact text-first draggable Edit Card entries with no
 **Not yet claimed or implemented:** emergent long-run player promotion style determined from certified match composition; broader strategic AI recruitment and cash discipline beyond the existing systems; deeper financial balance testing over long saves. These are future work, not labels to reimplement the milestone above.
 
 **Owner boundaries remain unchanged:** no wrestler loans or excursions, no cross-promotion cards or agreements, no live spectator system; rival completed public Results only. Legends candidates require explicit owner approval and owner-supplied photographs. Booking deadline stays deliberately extended for manual playtest advancement. No cron, World mutation or Production deployment without instruction.
+
+### Phase 10 second milestone — earned identity, sustainable AI recruitment and trading intelligence (27 October 2026)
+
+**Verified gameplay checkpoint:** `93a0065eb7c72439d72b2ae6dd4469dfa2da2e52`. Both complete **Verify rebuild** workflows passed, including real disposable PostgreSQL, iPhone browser, unit and World regression checks: [run 40500375510](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40500375510), [run 40500382313](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40500382313). All work remains in PR #21, **not merged/deployed**.
+
+- **Earned player promotion identity:** a factual, non-binding descriptor (workrate, spectacle, star showcases, storytelling or varied) inferred only from the existing last-twelve-show Business receipt query, matching completed/certified bouts to stored match intentions. A meaningful sample of **at least 6 classified completed matches across 3 completed shows** is required. No new SQL request, persisted identity currency, booking choice, restrictions, reputation bonuses or penalties. The result appears inside **Business → Standing**, not a new screen.
+- **Business trading position:** displays real recurring surplus/shortfall alongside the average incremental cash contribution from up to four latest completed show receipts. This is historical evidence **not a forecast**; no invented profitability thresholds, revenue manipulation or new data reads.
+- **Financially solvent AI roster development:** during the **existing World Lock only**, after the initial quarter and then at most once every 13 weeks, an AI promotion with genuine roster scarcity and adequate cash plus recurring surplus may sign **one** affordable unattached wrestler. Its persisted creative preference drives selection, with bounded candidates (256) and promotions (128). Contract IDs make same-week replays idempotent. Contracts are real eight-date, 26-week limited non-exclusive deals, so signed talent, finances and permissions remain canonical.
+- **Safety/compatibility:** distressed AI emergency signings are unchanged; player-controlled promotions never sign automatically; no wrestler poaching; Legends must retain their full **human-first free-agent window**, confirmed by corrected eligibility comparison. No new scheduler, cron, additional World Lock, data migration or realtime polling. The legal one-submitted-weekly-show constraint is preserved; an initial fixture violation was corrected, not bypassed.
+- **Testing:** new pure-domain identity and strategy tests, an expanded certified-three-show Business PostgreSQL test, and real healthy-AI hiring/replay/affordability tests. Existing mobile Business queries remain bounded to three reads.
+
+**Future high-value work:** evaluate multi-season difficulty and finances with both owners and generated talent, refine AI decisions only from actual recurring evidence, and develop tournaments when appropriate. Do not make the above milestone a new task list. No loans, crossover cards, cross-promotion events or live spectator mode. Human managers may read only fellow players' completed public Results. Legends roster candidates and artwork require the owner's separate approval.
 
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
