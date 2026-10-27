@@ -57,8 +57,8 @@ test("Industry publishes real rival broadcasts but not private unsubmitted cards
   assert.equal(rival.recentAverageCrowd,84);
   assert.equal(rival.publicIdentity,"Star-driven wrestling",
    "Public rival identity is derived from its already persisted AI preferences");
-  assert.equal(hub.promotions.find(x=>x.isYours)?.publicIdentity,
-   "Star-driven wrestling","Taking control must not silently erase historic AI profile");
+  assert.equal(hub.promotions.find(x=>x.isYours)?.publicIdentity,null,
+   "A human controller has creative freedom, even if an older AI profile survives");
   assert.ok(!JSON.stringify(hub).includes("weekly_guarantee"));
   assert.equal(hub.broadcasts.length,2);
   assert.deepEqual(hub.broadcasts.map(x=>x.showName).sort(),
