@@ -89,6 +89,23 @@ During promotion A's weaker Year 2, adaptive venues still yielded **39 rising, 0
 
 **Design recommendation, not approval for a formula rewrite:** Evaluate a bounded, original-compatible change that keeps successful crowd-drawing valuable, but gives persistently weaker match quality and negative fan response meaningful downside and preserves differentiation between promotions over years. Before deploying any formula change, compare existing extreme-case tests, this varied four-season fixture, tier differences, attendance/venue choices, shared-World fairness and downstream business/territory regression metrics. Do not silently change the formula or force predetermined results. Existing owners' exclusions and long-run Neon limits remain.
 
+### Phase 10 quality-sensitive territorial strength — staged, not Production (27 October 2026)
+
+**Reason for the change:** the original, preserved market function paid its full +1.1 strength attendance bonus for >=95% of expected demand, even when actual matches and crowd response were poor. The preceding 208-week controlled diagnostic demonstrated both rivals hitting 100 under adaptive venues and erasing useful long-run differentiation.
+
+**Staged branch implementation:** `balancedMarketAfterEvent` is called exclusively from the existing World Lock market settlement; `originalMarketAfterEvent` stays untouched and directly tested for source parity. Above-zero attendance credit is scaled by actual certified match quality and crowd response. Exceptional wrestling still receives the full original credit. At liveStrength above 75, a bounded quadratic retention challenge (maximum 1.15 points per completed show) prevents average shows from permanently compounding a top-market reputation; it **does not** impose a ceiling on exceptional shows. Negative attendance effects remain intact. Original awareness, loyalty, competition, ticket yield, attendance, revenue, financial ledger and booking snapshots are unchanged. Both human and AI companies use the same rules. No new SQL, persistence field, jobs, cron or World reads.
+
+**Modeled four-year comparison** (two competing companies, 208 weekly shows each; A has one weak season; seeded venue/ticket/competition and assorted quality):
+ 
+| Venue policy | Original Year 4 A / B | Revised Year 4 A / B | Original A declining weeks in weak Year 2 | Revised A declining weeks in weak Year 2 |
+| --- | --- | --- | --- | --- |
+| Adaptive capacity | 100 / 100 | 93.9 / 92.0 | 0 | 28 |
+| Fixed 3,500 seats | 99.8 / 99.7 | 85.3 / 83.5 | 12 | 28 |
+
+After A's weak year it resumes growth when shows improve (adaptive 76.3 at end of Year 2 to 93.9 at Year 4; fixed 73.1 to 85.3). This compares **the same controlled scenarios**, not saved certified cards or a production forecast. Exactly the same seeded demand/attendance function is used in both policies. The stronger market's advantage is earned, not guaranteed. Baseline and revised functions are regression-tested together; the full CI and disposable PostgreSQL check remain release gates.
+
+**Next evidence gate:** run longer realistic certified-show mixes and validate income, promotion-tier dynamics and large-population AI staffing before making stronger market or financial changes. In particular, do not create additional income sinks just to punish successful bookers. No merge, Production deployment, live World advancement, deadline change or cron is authorised.
+
 ## Phase 1 — Immediate UI and advance-booking polish (VERIFIED IN CI; COMBINED PLAYTEST RELEASE AUTHORISED)
 
 1. Match/angle graphics remain automatically visible; markedly compress the default iPhone ticket, centre branding/logos, retain wrestler portraits/event identity and offer larger artwork on demand.

@@ -147,12 +147,18 @@ test("four-season quality-sensitive markets retain downturn and rebound under bo
  for(const mode of ["adaptive","fixed"] as const){
   const legacy=runScenario(mode),balanced=runScenario(mode,"balanced");
   assert.equal(balanced.totalShows,416);
-  assert.ok(balanced.year2SlumpA.declining>legacy.year2SlumpA.declining,
+  assert.ok(balanced.year2SlumpA.declining>=26 &&
+   balanced.year2SlumpA.declining>legacy.year2SlumpA.declining,
    "A sustained weaker season must lose more supporters than the original market");
   assert.ok(balanced.atYears[1]!.A.liveStrength<legacy.atYears[1]!.A.liveStrength,
    "By season two bad wrestling must leave a visible audience cost");
   assert.ok(balanced.atYears[3]!.A.liveStrength>balanced.atYears[1]!.A.liveStrength,
    "Two subsequent good seasons should restore some lost territory following");
+  assert.ok(balanced.lateSeasonCompetition>legacy.lateSeasonCompetition,
+   "Sustained fan reception must preserve meaningful competitive differentiation");
+  assert.ok(balanced.atYears[3]!.A.liveStrength<99&&
+   balanced.atYears[3]!.B.liveStrength<99,
+   "Normal mixed booking should not automatically saturate the audience cap");
   assert.deepEqual(balanced,runScenario(mode,"balanced"));
   console.log("PPW quality-sensitive four-year market "+JSON.stringify({mode,
    legacy:legacy.atYears,balanced:balanced.atYears,
