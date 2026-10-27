@@ -685,7 +685,13 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      if(inserted.length!==links.length)throw new Error("Incomplete angle programme links");
     }
    }
-   await reserveBookedTournamentBouts(tx,input,matches);
+   // Ordinary cards keep their existing Neon query budget. Only a newly
+   // marked tournament match or a previously marked slot needs reservation SQL.
+   const hadTournament=current.some(s=>s.kind==="MATCH"&&s.payload&&
+    typeof s.payload==="object"&&!Array.isArray(s.payload)&&
+    typeof (s.payload as Record<string,unknown>).tournamentId==="string");
+   if(hadTournament||matches.some(m=>m.payload.tournamentId))
+    await reserveBookedTournamentBouts(tx,input,matches);
    // Original ready-to-run confirmation cannot survive changed booking.
    await tx.query([
     "UPDATE ppw_booking_drafts SET revision=revision+1,",
