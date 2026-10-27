@@ -3,7 +3,7 @@
  * Draws on the original PPW card's compact, expandable running-order design.
  */
 import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
- resizeMatch,moveElimination,buildBookedMatch,assignedIds,
+ resizeMatch,moveElimination,buildBookedMatch,assignedIds,assignBookedTeam,
  editorMatchStyle,changeMatchIntent,changeMatchStyle,changeMatchStipulation,editorStyleLoad,bookedMatchHeadline,
  bookedStyleReadiness,bookedConditionReport,type ConditionSnapshot,
  FORMATS,type EditorMatch,type Format,type PersonPick}
@@ -17,8 +17,8 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
-import {createMatchBroadcast,createAngleBroadcast} from "./match-broadcast.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
+import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {MATCH_STIPULATIONS,compatibleStipulations,
@@ -119,7 +119,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
- let managementOpen=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -127,6 +126,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const mutable=()=>view?.canEdit===true&&!saving;
  const errorText=(e:unknown)=>e instanceof Error?e.message:"Unable to load booking";
  const matchLabel=(m:EditorMatch)=>bookedMatchHeadline(m,selectedName);
+ const eligibleTeams=()=>view?.bookableTeams??[];
+ function selectTeamForMatch(match:EditorMatch,side:number,teamId:string){
+  const team=eligibleTeams().find(x=>x.teamId===teamId);
+  if(!team)return;
+  const otherMatches=[...matches.values()].filter(x=>x.slotId!==match.slotId);
+  const occupied=new Set(otherMatches.flatMap(assignedIds));
+  if(team.members.some(x=>occupied.has(x.personId))){
+   error="One or more team members already have a match on this card";render();return;
+  }
+  try{setMatch(match.slotId,assignBookedTeam(match,side,team.members));}
+  catch(e){error=errorText(e);render();}
+ }
+ function selectTeamForTurn(segment:EditorSegment,teamId:string){
+  const team=eligibleTeams().find(x=>x.teamId===teamId);
+  if(!team)return;
+  if(team.members.some(p=>segment.targets.some(t=>t.personId===p.personId))){
+   error="A turning wrestler cannot also be a target";render();return;
+  }
+  editSegment(segment,{actors:team.members.map(p=>({...p}))});
+ }
  const matchSubtitle=(m:EditorMatch)=>{
   const fmt=FORMATS.find(x=>x.value===m.format)?.label??"Match";
   return fmt+" · "+assignedIds(m).length+" / "+
@@ -155,6 +174,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ...restoreEditorSegment(slot.slotId,slot.payload),
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
     });
+   }
+   // Selecting an established team must show actual wrestler names without
+   // two extra talent queries; the canonical card continues storing IDs.
+   for(const team of view.bookableTeams??[]){
+    for(const member of team.members){
+     const old=roster.get(member.personId);
+     roster.set(member.personId,{...old,personId:member.personId,
+      contractId:member.contractId,name:member.name,
+      division:old?.division??null,available:true,reason:"AVAILABLE"});
+    }
+   }
+   for(const bout of view.tournamentBouts??[]){
+    for(const side of [bout.personA,bout.personB]){
+     const old=roster.get(side.personId);
+     roster.set(side.personId,{...old,personId:side.personId,
+      contractId:side.contractId,name:side.name,
+      division:old?.division??null,available:true,reason:"AVAILABLE"});
+    }
    }
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
@@ -527,39 +564,35 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    segments.set(id,newEditorSegment(id,"TURN"));
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-add-turn"));
-  const extras=el("div","ppw-management-links");
-  if(port.openPlanner)
-   extras.append(button("Show Planner",()=>port.openPlanner?.(),dirty||saving));
-  if(port.openChampionships)
-   extras.append(button("Championships",()=>port.openChampionships?.(),dirty||saving));
-  if(port.openProgrammes)
-   extras.append(button("Programmes",()=>port.openProgrammes?.(),dirty||saving));
-  if(port.openTagTeams)
-   extras.append(button("Tag teams",()=>port.openTagTeams?.(),dirty||saving));
-  if(port.openContracts)
-   extras.append(button("Contract Desk",()=>port.openContracts?.(),dirty||saving));
-  if(port.openRoster)
-   extras.append(button("My Roster",()=>port.openRoster?.(),dirty||saving));
-  if(port.openMarket)
-   extras.append(button("Talent Market",()=>port.openMarket?.(),dirty||saving));
-  if(port.openBusiness)
-   extras.append(button("Business",()=>port.openBusiness?.(),dirty||saving));
-  if(port.openStaff)
-   extras.append(button("Staff",()=>port.openStaff?.(),dirty||saving));
-  if(port.openIndustry)
-   extras.append(button("Industry",()=>port.openIndustry?.(),dirty||saving));
-  if(port.openStables)
-   extras.append(button("Stables",()=>port.openStables?.(),dirty||saving));
-  if(port.openWorkingConnections)
-   extras.append(button("Working connections",()=>port.openWorkingConnections?.(),dirty||saving));
-  if(port.openPersona)
-   extras.append(button("Wrestler identities",()=>port.openPersona?.(),dirty||saving));
-  if(extras.childElementCount){
-   const management=document.createElement("details");
-   management.className="ppw-management-menu";management.open=managementOpen;
-   management.ontoggle=()=>{managementOpen=management.open;};
-   management.append(el("summary","","Management tools · Titles, Contracts & Roster"),extras);
-   toolbar.append(management);
+  const tournamentFixtures=(view.tournamentBouts??[]).filter(b=>
+   ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
+    m.tournamentBoutNo===b.boutNo));
+  if(tournamentFixtures.length&&mutable()){
+   const tournament=el("section","ppw-card-continuity");
+   tournament.append(el("strong","","TOURNAMENT BOOKING"),
+    el("p","ppw-muted","Book the next available round on this card. Only certified match winners advance."));
+   for(const bout of tournamentFixtures){
+    const row=el("div","ppw-tournament-booking-row");
+    row.append(el("span","",bout.tournamentName+" · "+
+     tournamentBoutLabel(bout.entrantsCount,bout.boutNo).toUpperCase()+
+     " · "+bout.personA.name+" vs "+bout.personB.name),
+     button("+ Add tournament bout",()=>{
+      if([...matches.values()].some(m=>assignedIds(m).some(id=>
+       id===bout.personA.personId||id===bout.personB.personId))){
+       error="These tournament wrestlers are already booked on the card.";render();return;
+      }
+      const id="match-"+crypto.randomUUID();
+      matches.set(id,{...newEditorMatch(id,"SINGLES"),
+       teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
+        [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
+       tournamentId:bout.tournamentId,
+       tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
+       ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
+      order.push(id);expanded=id;markDirty();render();
+     }));
+    tournament.append(row);
+   }
+   root.append(tournament);
   }
   root.append(toolbar);
   const stories=view.programmes.filter(p=>p.latestFollowUp);
@@ -729,14 +762,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
    bar.append(arrows);card.append(bar);
-   const broadcastContext={
-    show:view.showName??(view.bookingClass==="PREMIUM"?"Premium event":"Weekly show"),
-    promotion:view.promotionName,premium:view.bookingClass==="PREMIUM"
-   };
-   if(m)card.append(createMatchBroadcast(m,p=>selectedName(p),view.championships,{
-    ...broadcastContext,mainEvent:card.classList.contains("ppw-main-event")
-   }));
-   else if(segment)card.append(createAngleBroadcast(segment,p=>selectedName(p),broadcastContext));
+   // The movable card remains text-only. Portraits are reserved for the
+   // completed Ringside results presentation.
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
@@ -747,15 +774,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       void loadStableChoices();
      editSegment(segment,{kind,
       creativeBeat:segment.kind===kind?segment.creativeBeat:
-       ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
-        initialCreativeBeat(kind):null,
+       initialCreativeBeat(kind),
       sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
       stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableDecision:null,
       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
-       kind==="RESCUE"?segment.actors.slice(0,2):segment.actors,
+       (kind==="RESCUE"||kind==="TURN")?segment.actors.slice(0,2):segment.actors,
       targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
        []:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
         segment.targets.slice(0,1):segment.targets});
@@ -774,24 +800,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
      [2,3,4,5,6,8,10,12,15,20,25,30].map(n=>[String(n),n+" min"]),
      value=>editSegment(segment,{durationMinutes:Number(value)}),!mutable())));
-     if(supportsCreativeBeat(segment.kind)){
-     if(!segment.creativeBeat){
-      controls.append(button("Script the exact angle",()=>{
-       editSegment(segment,{creativeBeat:initialCreativeBeat(segment.kind)});
-      },!mutable(),"ppw-creative-detail-toggle"));
-     }else{
-      const beat=segment.creativeBeat;
-      for(const option of creativeFields(segment.kind)){
-       const value=(beat as unknown as Record<string,string>)[option.name]??"";
-       controls.append(field(option.label,selector(value,
-        option.options.map(x=>[x.value,x.label]),
-        next=>editSegment(segment,{creativeBeat:{
-         ...beat,[option.name]:next
-        } as SegmentCreativeBeat}),!mutable())));
-      }
-      controls.append(button("Use a simple angle instead",()=>{
-       editSegment(segment,{creativeBeat:null});
-      },!mutable(),"ppw-creative-detail-toggle"));
+    if(supportsCreativeBeat(segment.kind)){
+     const beat=segment.creativeBeat??initialCreativeBeat(segment.kind)!;
+     for(const option of creativeFields(segment.kind)){
+      const value=(beat as unknown as Record<string,string>)[option.name]??"";
+      controls.append(field(option.label,selector(value,
+       option.options.map(x=>[x.value,x.label]),
+       next=>editSegment(segment,{creativeBeat:{
+        ...beat,[option.name]:next
+       } as SegmentCreativeBeat}),!mutable())));
      }
     }
     if(segment.kind==="POST_MATCH_ASSAULT"){
@@ -847,6 +864,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        ["REJECTED",segment.kind==="STABLE_INVITATION"?"Rejects invitation":"Rebuffs the offer"]],
       v=>editSegment(segment,{stableDecision:
        v?v as "ACCEPTED"|"REJECTED":null}),!mutable())));
+    if(segment.kind==="TURN"&&eligibleTeams().length){
+     const selectedTeam=eligibleTeams().find(t=>t.members.length===segment.actors.length&&
+      t.members.every(p=>segment.actors.some(a=>a.personId===p.personId)));
+     controls.append(field("Turn a complete tag team",selector(selectedTeam?.teamId??"",
+      [["","Choose an established team"],...eligibleTeams().map(t=>[t.teamId,t.name])],
+      id=>selectTeamForTurn(segment,id),!mutable())));
+    }
     if(segment.kind==="TURN")
      controls.append(field("New alignment",selector(segment.turnTargetAlignment??"",
       [["","No alignment change"],["FACE","Face"],["HEEL","Heel"],
@@ -909,6 +933,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
+    if(m.tournamentId){
+     const bracket=view.tournamentBouts?.find(b=>
+      b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
+     const tag=el("div","ppw-tournament-match-note");
+     tag.append(el("strong","","Tournament · "+(bracket?.tournamentName??"Bracket")+
+      " · "+tournamentBoutLabel(bracket?.entrantsCount??4,m.tournamentBoutNo??0)),
+      el("small","","The wrestlers must match the bracket; the selected winner remains yours to script."));
+     if(mutable())tag.append(button("Make this a regular match",()=>{
+      edit(m,{tournamentId:undefined,tournamentBoutNo:undefined,
+       championshipId:undefined});
+     }));
+     body.append(tag);
+    }
     const matchConcerns=concerns.filter(x=>x.slotId===slotId);
     if(matchConcerns.length){
      const review=el("section","ppw-card-match-consents");
@@ -1126,6 +1163,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const sideCard=el("div","ppw-side");
      sideCard.append(el("h3","",m.format==="BATTLE_ROYAL"?
       "Entrant "+(side+1):"Side "+sideLabel(side)));
+     if(m.teams[side]!.length===2&&eligibleTeams().length){
+      const booked=eligibleTeams().find(t=>t.members.length===2&&
+       t.members.every(p=>m.teams[side]!.some(chosen=>chosen?.personId===p.personId)));
+      sideCard.append(field("Choose tag team",selector(booked?.teamId??"",
+       [["","Select a complete team"],...eligibleTeams().map(t=>[t.teamId,t.name])],
+       id=>selectTeamForMatch(m,side,id),!mutable())));
+     }
      for(let member=0;member<m.teams[side]!.length;member++){
       const picked=m.teams[side]![member];
       sideCard.append(button(selectedName(picked),()=>{

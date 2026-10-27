@@ -32,11 +32,10 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
  "CONFRONTATION","CHALLENGE","ATTACK","INTERRUPTION","RESCUE","POST_MATCH_ASSAULT",
  "INTERFERENCE","STABLE_INVITATION","STABLE_RECONCILIATION"
 ]);
-export const LIMITED_ACTORS=new Set<SegmentKind>(["TURN","DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
+export const LIMITED_ACTORS=new Set<SegmentKind>(["DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  creativeBeat:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
-   initialCreativeBeat(kind):null,sourceMatchSlotId:null,
+  creativeBeat:initialCreativeBeat(kind),sourceMatchSlotId:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
@@ -83,7 +82,7 @@ export function addSegmentPerson(s:EditorSegment,role:"actors"|"targets",
  if(role==="actors"&&s.actors.length>=rules.maxActors)
   throw new Error("Angle performer capacity exceeded");
  const max=role==="actors"?
-  s.kind==="RESCUE"?2:["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)?1:20:
+  s.kind==="RESCUE"||s.kind==="TURN"?2:["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)?1:20:
   ["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)?1:20;
  if(s[role].length>=max)throw new Error("Angle role capacity exceeded");
  return {...s,[role]:[...s[role],{...person}]};

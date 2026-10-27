@@ -67,9 +67,8 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await expect(dialog.getByRole("button",{name:"Script the exact angle"})).toBeVisible();
- await dialog.getByRole("button",{name:"Script the exact angle"}).click();
- dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByLabel("The message")).toBeVisible();
+ // Direct authoring now needs no intermediate switch.
  await dialog.getByLabel("The message").selectOption("AIR_GRIEVANCE");
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Close card editor"}).click();

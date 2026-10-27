@@ -5,6 +5,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
+import {aiPromotionIdentity,AI_IDENTITY_LABELS} from "../domain/ai-promotion-strategy.js";
 export async function readIndustryWorldHub(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
@@ -36,7 +37,9 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const companies=await tx.query<{promotion_id:string;name:string;
    tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
-   completed_events:number;management_mode:string}>(`
+   completed_events:number;management_mode:string;human_managed:boolean;
+   ai_risk_tolerance:number|null;ai_match_quality_preference:number|null;
+   ai_star_preference:number|null}>(`
    WITH recent AS (
      SELECT c.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
       avg(c.crowd_response)::numeric(6,1)::text AS recent_avg_crowd,
@@ -48,7 +51,12 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
      GROUP BY c.promotion_id
    )
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
-    p.management_mode,r.latest_show_week,
+    p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
+    p.management_mode,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls owners
+     WHERE owners.world_id=p.world_id AND owners.promotion_id=p.promotion_id
+      AND owners.active) AS human_managed,
+    r.latest_show_week,
     r.recent_avg_crowd,coalesce(r.completed_events,0) AS completed_events
    FROM ppw_promotions p LEFT JOIN recent r ON r.promotion_id=p.promotion_id
    WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
@@ -58,10 +66,13 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const broadcasts=await tx.query<{show_id:string;promotion_id:string;
    promotion_name:string;show_name:string|null;booking_class:string;
    year:number;week:number;crowd_response:string|number;
-   show_day:number|null}>(`
+   show_day:number|null;human_managed:boolean}>(`
    SELECT c.show_id,c.promotion_id,p.name AS promotion_name,
     d.show_name,d.booking_class,c.year,c.week,
-    c.crowd_response,d.show_day
+    c.crowd_response,d.show_day,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls controller
+     WHERE controller.world_id=c.world_id AND controller.promotion_id=c.promotion_id
+     AND controller.active) AS human_managed
    FROM ppw_completed_shows c
    JOIN ppw_promotions p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id
@@ -76,13 +87,13 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const stories=await tx.query<{event_id:string|number;year:number;week:number;
    event_type:string;person_id:string|null;person_name:string|null;
    promotion_id:string|null;promotion_name:string|null;from_tier:string|null;
-   to_tier:string|null;career_stage:string|null}>(`
+   to_tier:string|null;career_stage:string|null;from_stage:string|null}>(`
    SELECT e.event_id::text,e.year,e.week,e.event_type,
     e.payload->>'personId' AS person_id,
     coalesce(person.name,e.payload->>'name') AS person_name,
     e.payload->>'promotionId' AS promotion_id,promotion.name AS promotion_name,
     e.payload->>'fromTier' AS from_tier,e.payload->>'toTier' AS to_tier,
-    e.payload->>'to' AS career_stage
+    e.payload->>'to' AS career_stage,e.payload->>'from' AS from_stage
    FROM ppw_ledger_events e
    LEFT JOIN ppw_people person ON person.world_id=e.world_id
     AND person.person_id=e.payload->>'personId'
@@ -103,6 +114,14 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     promotionId:p.promotion_id,name:p.name,tier:p.tier,
     rank:i+1,mediaReach:p.media_reach,
     managementMode:p.management_mode,
+    publicIdentity:!p.human_managed&&p.management_mode==="AI"&&
+     p.ai_risk_tolerance!==null&&p.ai_match_quality_preference!==null&&
+     p.ai_star_preference!==null?
+     AI_IDENTITY_LABELS[aiPromotionIdentity({
+      riskTolerance:p.ai_risk_tolerance,
+      matchQualityPreference:p.ai_match_quality_preference,
+      starPreference:p.ai_star_preference
+     })]:null,
     latestCompletedWeekIndex:p.latest_show_week,
     recentAverageCrowd:p.recent_avg_crowd===null?null:Number(p.recent_avg_crowd),
     recentShowCount:p.completed_events,
@@ -112,7 +131,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     id:String(s.event_id),kind:s.event_type,year:s.year,week:s.week,
     personId:s.person_id,personName:s.person_name,
     promotionId:s.promotion_id,promotionName:s.promotion_name,
-    fromTier:s.from_tier,toTier:s.to_tier,careerStage:s.career_stage
+    fromTier:s.from_tier,toTier:s.to_tier,careerStage:s.career_stage,
+    fromStage:s.from_stage
    })),
    broadcasts:broadcasts.map(s=>({
     showId:s.show_id,promotionId:s.promotion_id,
@@ -120,7 +140,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     showName:s.show_name??(s.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
     bookingClass:s.booking_class,year:s.year,week:s.week,
     day:s.show_day,crowdResponse:Number(s.crowd_response),
-    isYours:s.promotion_id===promotionId
+    isYours:s.promotion_id===promotionId,
+    humanManaged:s.human_managed
    }))
   };
  });

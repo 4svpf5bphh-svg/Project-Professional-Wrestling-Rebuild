@@ -6,6 +6,7 @@ import {withSqlClient} from "./postgres.js";
 import {STAFF_ROLES,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
 import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {GorillaPolicy} from "../domain/gorilla-position.js";
+import {selectScoutRecommendations,type ScoutProspect} from "../domain/talent-scout.js";
 
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
@@ -159,7 +160,32 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     weeksRemaining:Math.max(0,e.expiresWeekIndex-weekIndex+1),
     buyoutCost:staffBuyout(salary,e.expiresWeekIndex,weekIndex)};
   });
-  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"}[]=[];
+  // Only a hired Scout incurs one additional bounded, indexed candidate read.
+  // An unstaffed office keeps its original two-read budget.
+  const hiredScout=employees.find(e=>e.role==="SCOUT");
+  const candidateRows=hiredScout?await tx.query<{
+   person_id:string;name:string;booking_division:string|null;
+   development_aptitude:number|null;in_ring_quality:number|null;
+   match_craft:number|null;presentation:number|null;popularity:number|null;
+  }>(`
+   SELECT p.person_id,p.name,p.booking_division,p.development_aptitude,
+    p.in_ring_quality,p.match_craft,p.presentation,p.popularity
+   FROM ppw_people p WHERE p.world_id=$1 AND p.status='ACTIVE'
+    AND p.career_stage='PROSPECT'
+    AND NOT EXISTS(SELECT 1 FROM ppw_contracts c
+     WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+      AND c.status='SIGNED' AND c.expires_week_index>=$2)
+   ORDER BY p.development_aptitude DESC NULLS LAST,
+    p.in_ring_quality DESC NULLS LAST,p.person_id LIMIT 24
+  `,[worldId,weekIndex]):[];
+  const scoutReport=hiredScout?selectScoutRecommendations(
+   candidateRows.map(p=>({
+    personId:p.person_id,name:p.name,division:p.booking_division,
+    aptitude:Number(p.development_aptitude??50),ring:Number(p.in_ring_quality??50),
+    craft:Number(p.match_craft??50),presentation:Number(p.presentation??50),
+    popularity:Number(p.popularity??50)
+   } satisfies ScoutProspect)),hiredScout):[];
+  const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"|"market"}[]=[];
   const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
   const voice=(role:StaffRole,fallback:string)=>{
    const member=officeRole(role);
@@ -179,6 +205,12 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     (current.medical_risks===1?" is":"s are")+
     " medically unavailable, including "+(current.medical_example??"one member of the roster")+
     ". Review availability before booking the next card."
+  });
+  if(hiredScout&&scoutReport.length)notices.push({
+   department:hiredScout.name+" · Talent Scout",target:"market",
+   message:"I've found "+scoutReport.length+" available young talent prospect"+
+    (scoutReport.length===1?"":"s")+", including "+scoutReport[0]!.name+
+    ". The full scouting report is available in our staff meeting."
   });
   for(const e of employees.filter(e=>e.morale<35))
    notices.push({department:e.name+" · Staff relations",target:"staff",
@@ -217,6 +249,12 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     current.recent_shows+" shows completed in the last nine weeks. "+
      "Each has a recorded result; future venue plans remain yours to approve.":
     "No completed shows in the last nine weeks. The planner and venue approvals remain under your control."},
+   SCOUT:{target:"roster",message:hiredScout?
+    scoutReport.length?
+     "I've identified "+scoutReport.length+" unattached prospect"+
+      (scoutReport.length===1?"":"s")+" worth investigating. No signing guarantees.":
+     "No unattached young prospects appear in my current shortlist.":
+    "Hire a Talent Scout for reports on available young wrestlers."},
    TRAINER:{target:"roster",message:current.fatigue_concerns?
     current.fatigue_concerns+" roster members have high recorded fatigue. "+
      "A trainer's limited recovery support never bypasses medical clearance.":
@@ -245,7 +283,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    promotionCash:Number(current.promotion_cash),
    weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
    notices:notices.slice(0,8),
-   meetings,
+   meetings,scoutReport,
    employmentHistory:current.employment_history as {staffId:string;role:StaffRole;promotionName:string;startedWeekIndex:number;endedWeekIndex:number}[],
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],

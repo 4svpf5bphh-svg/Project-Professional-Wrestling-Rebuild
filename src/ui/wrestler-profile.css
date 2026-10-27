@@ -88,3 +88,44 @@
 .ppw-profile-move-group textarea,.ppw-profile-style select{
  background:linear-gradient(115deg,#232948,#1a304a)!important;
  border:1.5px solid #897bbe!important}
+
+/* Opt-in, certified career form. This is a history reader, not a new skill
+ * meter, progress bar or simulation-owned rating. */
+.ppw-career-form{margin-top:18px;padding:14px 13px;
+ border-radius:13px;border:1px solid #51709a;
+ background:linear-gradient(125deg,#202a51,#10263e)}
+.ppw-career-form h3{margin:6px 0 11px;font-size:16px;line-height:1.25;color:#f7e6ba}
+.ppw-career-form-rail{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+.ppw-career-form-chip{display:grid;place-items:center;
+ width:41px;min-width:0;height:39px;border:1px solid transparent;
+ border-radius:9px;font-size:15px;font-weight:900}
+.ppw-career-form-win{background:#145244;border-color:#3eab8f;color:#ccffe4}
+.ppw-career-form-loss{background:#5e303e;border-color:#be6071;color:#ffe1e7}
+.ppw-career-form-record,.ppw-career-form-run{font-size:13px;line-height:1.5;
+ color:#f5f5ff;margin:11px 0 2px;overflow-wrap:anywhere}
+.ppw-career-form-run{color:#f8d999;font-weight:800}
+.ppw-career-rating-trend{padding-top:11px;margin-top:12px;
+ border-top:1px solid #48617b}
+.ppw-career-rating-trend strong{font-size:14px;color:#ffe0a3}
+.ppw-career-rating-trend p{font-size:13px;line-height:1.5;margin:7px 0}
+.ppw-career-rating-trend small{font-size:11px;line-height:1.5;display:block}
+@media(max-width:360px){
+ .ppw-career-form{padding:12px 10px}
+ .ppw-career-form-rail{gap:5px}
+ .ppw-career-form-chip{width:37px;height:37px}
+}
+
+/* Existing on-demand certified record only; no new meters or progression. */
+.ppw-career-spotlight{margin-top:18px;padding:13px;border:1px solid #9879b3;
+ border-radius:14px;background:linear-gradient(125deg,#30234e,#152643)}
+.ppw-career-spotlight h3{margin:6px 0 10px;font-size:16px;color:#ffe6b5}
+.ppw-career-spotlight-item{padding:10px 0;border-top:1px solid #6c557d;min-width:0}
+.ppw-career-spotlight-item strong{display:block;color:#f5f4ff;font-size:14px}
+.ppw-career-spotlight-item p{margin:6px 0 0;color:#cadbe7;
+ font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Strong recent four-bout reception, never a permanent ability upgrade. */
+.ppw-career-rating-breakout{border-top-color:#c5a36d;
+ background:linear-gradient(105deg,#453657,#1f3151);
+ border-radius:10px;padding:12px;margin:12px -3px 0}
+.ppw-career-rating-breakout strong{color:#ffdf9d}

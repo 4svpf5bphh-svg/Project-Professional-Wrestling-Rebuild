@@ -15,9 +15,10 @@ test("contract signing needs two actors, not a victim",()=>{
  assert.throws(()=>normalizeBookedSegment(make("CONTRACT_SIGNING",["a","b"],["c"]),known));
  assert.equal(normalizeBookedSegment(make("CONTRACT_SIGNING",["a","b"],[]),known).kind,"CONTRACT_SIGNING");
 });
-test("debut and turn use one protagonist",()=>{
+test("debut remains solo while an authored tag-team turn includes both partners",()=>{
  assert.throws(()=>normalizeBookedSegment(make("DEBUT",["a","b"],[]),known));
- assert.throws(()=>normalizeBookedSegment(make("TURN",["a","b"],[]),known));
+ assert.deepEqual(normalizeBookedSegment(make("TURN",["a","b"],[]),known).actorIds,["a","b"]);
+ assert.throws(()=>normalizeBookedSegment(make("TURN",["a","b","c"],[]),known));
 });
 test("video subtype and stable reconciliation are explicit",()=>{
  assert.throws(()=>normalizeBookedSegment(make("VIDEO_PACKAGE",["a"],[]),known));

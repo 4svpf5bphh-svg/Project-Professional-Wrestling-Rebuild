@@ -13,6 +13,13 @@ export const HOST_SECTIONS=[
  {id:"staff",label:"Staff",glyph:"◉"},
  {id:"admin",label:"Admin",glyph:"⚙"},
  {id:"industry",label:"Industry",glyph:"◎"},
+ {id:"promotions",label:"Promotions",glyph:"◎"},
+ {id:"broadcasts",label:"Recent Broadcasts",glyph:"▣"},
+ {id:"records",label:"Record Book",glyph:"▤"},
+ {id:"legends",label:"Legends Vault",glyph:"★"},
+ {id:"hall-of-fame",label:"Hall of Fame",glyph:"♛"},
+ {id:"annual-awards",label:"Annual Awards",glyph:"◆"},
+ {id:"world-moments",label:"World Moments",glyph:"✦"},
  {id:"calendar",label:"Calendar",glyph:"▦"},
  {id:"results",label:"Results",glyph:"R"},
  {id:"programmes",label:"Programmes",glyph:"⚑"},
@@ -37,7 +44,7 @@ export function readContractFocus(hash:string):ContractFocus{
 }
 export function readHostSection(hash:string):HostSection{
  if(hash===plannerCardHash)return "planner";
- if(hash===legendsVaultHash)return "industry";
+ if(hash===legendsVaultHash)return "legends";
  if(hash===backstageUnreadHash)return "backstage";
  if(hash==="#/contracts/expiring"||hash==="#/contracts/pending")return "contracts";
  const match=/^#\/([a-z-]+)$/.exec(hash);
@@ -48,10 +55,16 @@ export const hostSectionHash=(section:HostSection)=>"#/"+section;
 /** Original PPW IA: the five roots open a client-only drawer, never query Neon. */
 export const HOST_DRAWER_ROOTS=[
  {key:"world",label:"World",glyph:"W",landing:"home",destinations:[
-  ["home","World dashboard","Deadline, next show and urgent decisions"]]},
+  ["home","World Dashboard","Your promotion and the shared week"],
+  ["promotions","Promotions","Companies and industry standings"],
+  ["broadcasts","Recent Broadcasts","Completed shows and public results"],
+  ["records","Record Book","Wrestler records and career search"],
+  ["legends","Legends Vault","Clues, reveals and collectibles"],
+  ["hall-of-fame","Hall of Fame","Careers that earned their place"],
+  ["annual-awards","Annual Awards","The finest of each completed year"],
+  ["world-moments","World Moments","Historic highlights worth remembering"]]},
  {key:"news",label:"News",glyph:"N",landing:"news",destinations:[
-  ["news","Official News","The latest verified headlines"],
-  ["industry","Industry & dirt sheets","Rivals, rumours, rankings and archives"]]},
+  ["news","PPW Wire","Official news, dirt sheets and weekly honours"]]},
  {key:"promotion",label:"Promotion",glyph:"P",landing:"roster",destinations:[
   ["roster","My Roster","Wrestlers, divisions and dossiers"],
   ["market","Talent Market","Recruitment and free agents"],
@@ -73,7 +86,9 @@ export const HOST_DRAWER_ROOTS=[
 ] as const;
 export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
 export function drawerRootForSection(section:HostSection):HostDrawerRoot{
- if(["news","industry"].includes(section))return "news";
+ if(section==="news")return "news";
+ if(["industry","promotions","broadcasts","records","legends","hall-of-fame",
+  "annual-awards","world-moments"].includes(section))return "world";
  if(["roster","market","results","championships","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";
  if(["business","staff","admin","kayfabe"].includes(section))return "business";

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {chooseWeeklyAwards,composeWorldNews} from "../src/db/world-news.js";
+import {chooseWeeklyAwards,composeWorldNews,composeTournamentVictory,type TournamentFinal} from "../src/db/world-news.js";
 const names=new Map([["a","Alice"],["b","Bob"],["c","Cara"],["d","Drew"]]);
 const pub=(show_id:string,promotion_id:string,crowd_response=86)=>({
  show_id,promotion_id,promotion_name:promotion_id==="human"?"Human Pro":"AI Elite",
@@ -55,6 +55,80 @@ test("official stories describe events while dirt sheet claims remain explicitly
   "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
  assert.ok(rumour.some(x=>/not a report from backstage/.test(x.summary)));
+ assert.ok(out.some(x=>/replay queue/.test(x.summary)));
+ assert.ok(out.every(x=>!x.summary.includes("/100")),
+  "The newspaper should not sound like a dashboard or disclose sim scales");
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));
  assert.ok(!JSON.stringify(out).includes("REFUSED"));
+});
+
+const verifiedCup: TournamentFinal={
+ ...pub("s1","human",84),
+ tournament_id:"cup-2026",tournament_name:"King's Crown",
+ division:"MEN",winner_name:"Alice",winner_person_id:"a",entrants_count:8,
+ slot_id:"m1",final_rating_stars:4.6,series_years:[3,2,1],prior_editions:2
+};
+test("certified tournament victory is Official News and three earned years define annual tradition",()=>{
+ const proof=composeTournamentVictory(verifiedCup);
+ assert.match(proof.title,/Alice wins King's Crown at Fight Night/);
+ assert.match(proof.summary,/three consecutive World seasons/);
+ assert.match(proof.summary,/4\.60 verified stars/);
+ const news=composeWorldNews([],[],[pub("s1","human")],[],names,[verifiedCup]);
+ const trophy=news.find(n=>n.key==="tournament:cup-2026");
+ assert.equal(trophy?.sourceKind,"EVENT");
+ assert.equal(trophy?.desk,"OFFICIAL");
+ assert.equal(trophy?.certainty,"CONFIRMED");
+ assert.equal(news.filter(n=>n.sourceKind==="EVENT").length,1);
+ assert.equal(new Set(news.map(n=>n.key)).size,news.length);
+ assert.ok(!JSON.stringify(news).includes("NEVER LEAK"));
+});
+test("repeated cup in one year, gaps, cancellations or missing ratings never invent annual prestige",()=>{
+ const sameSeason=composeTournamentVictory({...verifiedCup,
+  series_years:[1,1,1],prior_editions:2,final_rating_stars:null});
+ assert.doesNotMatch(sameSeason.summary,/consecutive World seasons/);
+ assert.doesNotMatch(sameSeason.summary,/stars/);
+ const gaps=composeTournamentVictory({...verifiedCup,
+  series_years:[1,3,5],prior_editions:2});
+ assert.doesNotMatch(gaps.summary,/consecutive World seasons/);
+ const first=composeTournamentVictory({...verifiedCup,series_years:[1],
+  prior_editions:0,entrants_count:4,division:"WOMEN",
+  final_rating_stars:NaN});
+ assert.match(first.summary,/four-wrestler|4-wrestler/);
+ assert.match(first.summary,/women's bracket/);
+ assert.doesNotMatch(first.summary,/stars/);
+ const rest=composeWorldNews([],[],[],[],names);
+ assert.deepEqual(rest,[]);
+});
+
+test("certified title transfers announce the recorded winner, but not invented first champions",()=>{
+ const singles={...pub("s1","human"),slot_id:"m1",title_name:"World Crown",
+  winner_name:"Alice",prior_reign_id:"prior"};
+ const vacant={...pub("s2","ai"),slot_id:"m2",title_name:"Women's World",
+  winner_name:"Cara",prior_reign_id:null};
+ const teams={...pub("s2","ai"),slot_id:"m3",title_name:"Tag Gold",
+  winner_name:"The Wolves",prior_reign_id:"old"};
+ const stories=composeWorldNews([],[],[],[singles,vacant,teams],names)
+  .filter(s=>s.sourceKind==="TITLE");
+ assert.equal(stories.length,3);
+ assert.ok(stories.some(s=>/Alice captures World Crown/.test(s.title)));
+ assert.ok(stories.some(s=>/Cara captures Women's World/.test(s.title)&&
+  /title was vacant/.test(s.summary)));
+ assert.ok(stories.some(s=>/The Wolves captures Tag Gold/.test(s.title)));
+ assert.ok(stories.every(s=>s.certainty==="CONFIRMED"));
+ assert.ok(stories.every(s=>!/first champion|inaugural/i.test(s.summary)));
+ const unknown=composeWorldNews([],[],[],[
+  {...singles,winner_name:null}],names)[0]!;
+ assert.match(unknown.summary,/unidentified winner is not guessed/);
+});
+test("a certified exceptional bout spotlights a real prospect without claiming a solo victory",()=>{
+ const stages=new Map([["a","PROSPECT"],["c","VETERAN"]]);
+ const match={...b1,rating_stars:4.7};
+ const hit=composeWorldNews([match],[],[],[],names,[],stages)[0]!;
+ assert.match(hit.title,/Alice in the spotlight/);
+ assert.match(hit.summary,/Prospect Alice was part of Alice vs Bob/);
+ assert.match(hit.summary,/stars belong to the match/);
+ assert.doesNotMatch(hit.summary,/wins|won|signed|improved skills/i);
+ assert.doesNotMatch(composeWorldNews([{...match,rating_stars:4.0}],
+  [],[],[],names,[],stages)[0]!.title,/Alice in the spotlight/);
+ assert.doesNotMatch(composeWorldNews([match],[],[],[],names)[0]!.title,/Alice in the spotlight/);
 });

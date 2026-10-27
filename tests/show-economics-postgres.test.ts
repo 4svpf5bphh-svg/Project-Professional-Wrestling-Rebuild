@@ -13,7 +13,7 @@ import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js
 import {settleCompletedShowEconomics} from "../src/db/show-economics.js";
 import {settleWeeklyPromotionHealth} from "../src/db/weekly-finance-health.js";
 import {settleWeekLocalMarkets} from "../src/db/market-response.js";
-import {originalMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
+import {balancedMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
 import {originalShowSettlement,originalExpectedDemand,originalCompetitionFactor,
  originalTicketYield} from "../src/domain/legacy-show-economics.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -154,7 +154,7 @@ test("PostgreSQL: original gate, rival pressure, venue costs and already-paid ap
   const state=await read<{awareness:number;live_strength:number;loyalty:number}>(`
    SELECT awareness,live_strength,loyalty FROM ppw_promotion_market_states
    WHERE world_id=$1 AND promotion_id=$2 AND market_id='metro'`,[world,promoter]);
-  const expectedMarket=originalMarketAfterEvent({awareness:70,liveStrength:60,loyalty:55},{
+  const expectedMarket=balancedMarketAfterEvent({awareness:70,liveStrength:60,loyalty:55},{
    eventType:"REGULAR",isHomeMarket:true,expectedDemand:result.expectedDemand,
    attendance:result.attendance,capacity:1000,averageMatchRating:3.5,crowdResponse:78});
   assert.deepEqual(state[0],{awareness:expectedMarket.awareness,

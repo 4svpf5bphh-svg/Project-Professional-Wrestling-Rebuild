@@ -96,3 +96,12 @@
 .ppw-programme-standing-field select:focus-visible,
 .ppw-programme-standing-field input:focus-visible{outline:2px solid #9de8fa;outline-offset:2px}
 .ppw-programme-standing-row button{min-height:44px}
+
+/* Lightweight story reading from existing certified evidence. */
+.ppw-programme-chapter{margin:10px 0;padding:11px 13px;border-radius:11px;
+ background:#10273b;border-left:3px solid #78cdeb}
+.ppw-programme-chapter[data-kind=payoff]{border-left-color:#f3b76f}
+.ppw-programme-chapter[data-kind=stale],
+.ppw-programme-chapter[data-kind=cooling]{border-left-color:#f0a6a2}
+.ppw-programme-chapter strong{display:block;font-size:13px;line-height:1.35;color:#eaf9ff}
+.ppw-programme-chapter p{margin:5px 0 0;color:#b8d4e5;font-size:12px;line-height:1.5}

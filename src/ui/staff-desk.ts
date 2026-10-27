@@ -17,7 +17,8 @@ export interface StaffPort{
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  renew(input:{requestId:string;expectedRevision:number;employmentId:string;
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
- openContracts?():void;openProgrammes?():void;openRoster?():void;openGorilla?():void;back?():void;
+ openContracts?():void;openProgrammes?():void;openRoster?():void;
+ openMarket?():void;openGorilla?():void;back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -27,7 +28,8 @@ const button=(text:string,action:()=>void,disabled=false)=>{
  b.type="button";b.onclick=action;b.disabled=disabled;return b;
 };
 const money=(amount:number)=>"$"+amount.toLocaleString("en-GB");
-const roles=(role:StaffRole)=>role.replaceAll("_"," ").toLowerCase()
+const roles=(role:StaffRole)=>role==="SCOUT"?"Talent Scout":
+ role.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 export function mountStaffDesk(root:HTMLElement,port:StaffPort){
@@ -119,7 +121,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   if(port.back)header.append(button("← Back",()=>port.back?.()));
   header.append(el("span","ppw-staff-kicker","THE OFFICE / BACKSTAGE"),
    el("h1","","Staff Office"),el("p","ppw-staff-muted",
-    view?"Year "+view.year+" · Week "+view.week+" · Eight departments":
+    view?"Year "+view.year+" · Week "+view.week+" · Nine departments":
     "Build a team that shapes the wrestling World."));
   root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
@@ -130,7 +132,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const overview=el("section","ppw-staff-office-overview");
   const cards=el("div","ppw-staff-overview-grid");
   for(const [value,label] of [
-   [view.employees.length+"/8","DEPARTMENTS"],
+   [view.employees.length+"/"+STAFF_ROLES.length,"DEPARTMENTS"],
    [money(view.weeklyPayroll),"WEEKLY PAYROLL"],
    [money(view.promotionCash),"CASH AVAILABLE"]
   ] as const){
@@ -151,11 +153,34 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    nav.append(tab);
   }
   root.append(nav);
+  // A manager sees up to three actual issues, not nine equally loud reports.
+  // The full meeting is retained below on demand; no additional server reads.
+  if(pane==="MEETINGS"&&(view.notices?.length??0)>0){
+   const agenda=el("section","ppw-staff-panel ppw-staff-agenda");
+   agenda.append(el("span","ppw-staff-kicker","NEEDS YOUR ATTENTION"),
+    el("h2","","Manager's priorities"));
+   for(const item of view.notices.slice(0,3)){
+    const line=el("article","ppw-staff-agenda-item");
+    line.append(el("strong","",item.department),el("p","",item.message));
+    if(item.target==="contracts"&&port.openContracts)
+     line.append(button("Review contracts →",()=>port.openContracts?.()));
+    if(item.target==="programmes"&&port.openProgrammes)
+     line.append(button("Review programmes →",()=>port.openProgrammes?.()));
+    if(item.target==="roster"&&port.openRoster)
+     line.append(button("Review roster →",()=>port.openRoster?.()));
+    if(item.target==="market"&&port.openMarket)
+     line.append(button("Browse Talent Market →",()=>port.openMarket?.()));
+    if(item.target==="staff")
+     line.append(button("Review staff →",()=>{pane="TEAM";render();}));
+    agenda.append(line);
+   }
+   root.append(agenda);
+  }
   const meeting=el("section","ppw-staff-panel ppw-staff-meetings");
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
-    "Eight departments. Each brief comes from your promotion's recorded business and completed shows; vacant departments have basic house cover."));
+    "Nine departments. Advice from verified shows and available talent; vacancies retain basic house cover."));
   const attendees=el("div","ppw-staff-meeting-grid");
   for(const brief of view.meetings??[]){
    const slot=el("details","ppw-staff-meeting-brief");
@@ -165,6 +190,15 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("strong","",brief.staffName??"Position vacant · house cover"));
    lead.append(caption);slot.append(lead);
    slot.append(el("p","ppw-staff-muted",brief.message));
+   if(brief.role==="SCOUT"&&view.scoutReport?.length){
+    for(const prospect of view.scoutReport){
+     const item=el("div","ppw-staff-scout-pick");
+     item.append(el("strong","",prospect.name),
+      el("small","",prospect.observation));
+     slot.append(item);
+    }
+    if(port.openMarket)slot.append(button("Browse Talent Market",()=>port.openMarket?.()));
+   }
    if(brief.staffName&&brief.personality)
     slot.append(el("small","ppw-staff-voice",
      brief.personality==="FRANK"?"A direct assessment from your department lead":
@@ -182,7 +216,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
    attendees.append(slot);
   }
-  meeting.append(attendees);if(pane==="MEETINGS")root.append(meeting);
+  const allDepartments=document.createElement("details");
+  allDepartments.className="ppw-staff-full-meeting";
+  const fullSummary=document.createElement("summary");
+  fullSummary.textContent="Full staff meeting · "+STAFF_ROLES.length+" departments";
+  allDepartments.append(fullSummary,attendees);
+  meeting.append(allDepartments);
+  if(pane==="MEETINGS")root.append(meeting);
   if(port.saveGorilla){
    const gorilla=el("section","ppw-staff-panel ppw-gorilla-policy");
    gorilla.append(el("span","ppw-staff-kicker","GORILLA POSITION"),

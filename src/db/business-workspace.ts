@@ -5,6 +5,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {commercialOffers} from "../domain/commercial-offers.js";
+import {earnedPromotionIdentity} from "../domain/earned-promotion-identity.js";
 import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
@@ -91,16 +92,36 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    gate_revenue:string;venue_cost:string;production_cost:string;
    travel_cost:string;appearance_fees:string;total_cost:string;
    net_result:string;incremental_cash:string;crowd_response:string|number;
+   creative_workrate:number;creative_spectacle:number;
+   creative_stars:number;creative_stories:number;
   }>(`
    SELECT e.show_id,e.year,e.week,d.show_name,d.booking_class,
     e.attendance,e.expected_demand,e.gate_revenue::text,
     e.venue_cost::text,e.production_cost::text,e.travel_cost::text,
     e.appearance_fees::text,e.total_cost::text,e.net_result::text,
-    e.incremental_cash::text,cs.crowd_response
+    e.incremental_cash::text,cs.crowd_response,
+    style.workrate AS creative_workrate,style.spectacle AS creative_spectacle,
+    style.stars AS creative_stars,style.stories AS creative_stories
    FROM ppw_show_economics e JOIN ppw_completed_shows cs
     ON cs.world_id=e.world_id AND cs.show_id=e.show_id
    JOIN ppw_booking_drafts d
     ON d.world_id=e.world_id AND d.draft_id=e.show_id
+   LEFT JOIN LATERAL (
+    SELECT
+     count(*) FILTER (WHERE slot.payload->>'intent'
+      IN ('TECHNICAL','COMPETITIVE'))::integer AS workrate,
+     count(*) FILTER (WHERE slot.payload->>'intent'
+      IN ('HIGH_RISK','EPIC'))::integer AS spectacle,
+     count(*) FILTER (WHERE slot.payload->>'intent'='SHOWCASE')::integer AS stars,
+     count(*) FILTER (WHERE slot.payload->>'intent'
+      IN ('STORY','PROTECTIVE'))::integer AS stories
+    FROM ppw_card_slots slot
+    JOIN ppw_completed_show_matches result
+     ON result.world_id=slot.world_id AND result.show_id=slot.draft_id
+     AND result.match_id=slot.slot_id
+    WHERE slot.world_id=e.world_id AND slot.draft_id=e.show_id
+     AND slot.kind='MATCH'
+   ) style ON true
    WHERE e.world_id=$1 AND e.promotion_id=$2
    ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 13`,
    [worldId,promotionId]);
@@ -108,12 +129,23 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const territories=await tx.query<{
    market_id:string;name:string;
    awareness:number;live_strength:number;loyalty:number;is_home:boolean;
+   rival_name:string|null;rival_live_strength:number|null;
   }>(`
    SELECT s.market_id,m.name,s.awareness,s.live_strength,s.loyalty,
-    (p.home_market_id=s.market_id) AS is_home
+    (p.home_market_id=s.market_id) AS is_home,
+    opponent.name AS rival_name,opponent.live_strength AS rival_live_strength
    FROM ppw_promotion_market_states s
    JOIN ppw_markets m ON m.world_id=s.world_id AND m.market_id=s.market_id
    JOIN ppw_promotions p ON p.world_id=s.world_id AND p.promotion_id=s.promotion_id
+   LEFT JOIN LATERAL (
+    SELECT rival_p.name,rival_s.live_strength
+    FROM ppw_promotion_market_states rival_s
+    JOIN ppw_promotions rival_p ON rival_p.world_id=rival_s.world_id
+     AND rival_p.promotion_id=rival_s.promotion_id AND rival_p.lifecycle='ACTIVE'
+    WHERE rival_s.world_id=s.world_id AND rival_s.market_id=s.market_id
+     AND rival_s.promotion_id<>s.promotion_id
+    ORDER BY rival_s.live_strength DESC,rival_s.promotion_id LIMIT 1
+   ) opponent ON true
    WHERE s.world_id=$1 AND s.promotion_id=$2
    ORDER BY is_home DESC,s.live_strength DESC,s.market_id LIMIT 41`,
    [worldId,promotionId]);
@@ -127,6 +159,18 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const certified=shows.filter(show=>
    (show.year-1)*52+show.week-1>=Math.max(0,now-25)&&
    (show.year-1)*52+show.week-1<=now).slice(0,12);
+  const creative=shows.slice(0,12).reduce((a,row)=>{
+   const counts=[row.creative_workrate,row.creative_spectacle,
+    row.creative_stars,row.creative_stories];
+   if(counts.some(n=>!Number.isSafeInteger(n)||n<0))
+    throw new Error("Invalid certified match style counts");
+   return {workrate:a.workrate+counts[0]!,spectacle:a.spectacle+counts[1]!,
+    stars:a.stars+counts[2]!,stories:a.stories+counts[3]!,
+    knownMatches:a.knownMatches+counts.reduce((x,y)=>x+y,0),
+    completedShows:a.completedShows+(counts.some(n=>n>0)?1:0)};
+  },{workrate:0,spectacle:0,stars:0,stories:0,
+   knownMatches:0,completedShows:0});
+  const creativeIdentity=earnedPromotionIdentity(creative);
   const earnedOffers=commercialOffers({
    tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
    weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
@@ -135,7 +179,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   }).filter(offer=>!w.commercial_deals.some(d=>d.kind===offer.kind));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
-   kpBrandStyle:w.kp_style,
+   kpBrandStyle:w.kp_style,creativeIdentity,
    worldRevision:Number(w.revision),
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,
    standing:w.standing_prestige===null||w.standing_fan===null
@@ -169,7 +213,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    })),
    territories:territories.map(t=>({
     marketId:t.market_id,name:t.name,awareness:t.awareness,
-    liveStrength:t.live_strength,loyalty:t.loyalty,isHome:t.is_home
+    liveStrength:t.live_strength,loyalty:t.loyalty,isHome:t.is_home,
+    strongestRival:t.rival_name,rivalLiveStrength:t.rival_live_strength
    }))
   };
  });

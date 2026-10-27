@@ -584,8 +584,10 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await expect(page).toHaveURL(/#\/(?:planner\/card|card)$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load"]);
- await page.locator("details.ppw-management-menu summary").click();
- await page.getByRole("button",{name:"Show Planner"}).click();
+ // Card editing stays task-focused; the existing contextual Planner return
+ // replaces the retired Management Tools accordion.
+ await expect(page.locator("details.ppw-management-menu")).toHaveCount(0);
+ await page.getByRole("button",{name:"← Planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await expect.poll(()=>methods).toEqual(["overview","planner","load","planner"]);
@@ -640,7 +642,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  await menu.click();
  await expect(nav).toBeVisible();
  await expect(nav.locator(".ppw-tab")).toHaveCount(0);
- await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(1);
+ await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(8);
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
  await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
@@ -652,9 +654,8 @@ test("small iPhones have only the five department drawers at the bottom without 
  await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
  await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News menu"}).click();
-  await nav.getByRole("button",{name:/Industry & dirt sheets/}).click();
- await expect(page).toHaveURL(/#\/industry$/);
+ await page.getByRole("button",{name:"Open News"}).click();
+ await expect(page).toHaveURL(/#\/news$/);
  await expect(nav).toBeHidden();
  expect(await overflow()).toBeLessThanOrEqual(1);
 });
@@ -725,12 +726,11 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await requested;
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News menu"}).click();
-  await nav.getByRole("button",{name:/Industry & dirt sheets/}).click();
- await expect(page).toHaveURL(/#\/industry$/);
+ await page.getByRole("button",{name:"Open News"}).click();
+ await expect(page).toHaveURL(/#\/news$/);
  releaseShow();
  await page.waitForTimeout(250);
- await expect(page).toHaveURL(/#\/industry$/);
+ await expect(page).toHaveURL(/#\/news$/);
  await expect(page.locator("#game > .ppw-workspace")).toHaveCount(1);
  await expect(page.locator("#game .ppw-archive-hero")).toHaveCount(0);
  expect(await page.evaluate(()=>
@@ -1394,7 +1394,6 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await dialog.getByRole("button",{name:"Script the exact angle"}).click();
  await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
  await dialog.getByLabel("The intention").selectOption("ESCALATE_RIVALRY");
  await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
@@ -1809,3 +1808,84 @@ test("both narrow iPhone widths keep genuine-photo failures and unknown talent i
   await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  }
 });
+
+for(const width of [320,390]){
+ test(`Wrestler's certified career form is opt-in, legible and read-once at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let profileReads=0,careerReads=0;
+  const story={
+   year:1,week:12,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"alice",name:"Alice"},
+    {kind:"PERSON",refId:"bob",name:"Bob"}],
+   teams:[],championships:[],
+   programmes:[{
+    programmeId:"feud-form",status:"ACTIVE",heat:61,repetition:0,
+    activityCount:1,matchCount:1,segmentCount:0,
+    sideAWins:1,sideBWins:0,draws:0,championshipId:null,
+    startedWeekIndex:2,endedWeekIndex:null,recentActivity:[],
+    sideA:[{kind:"PERSON",refId:"alice",name:"Alice"}],
+    sideB:[{kind:"PERSON",refId:"bob",name:"Bob"}]
+   }]
+  };
+  const dossier={
+   personId:"alice",name:"Alice",division:"WOMEN",status:"ACTIVE",
+   careerStage:"REGULAR",popularity:70,recognition:68,momentum:72,
+   morale:75,inRingQuality:80,matchCraft:82,presentation:70,
+   stamina:78,safety:80,fatigue:10,wear:12,alignment:"FACE",
+   canEdit:false,onYourRoster:true,sharedHuman:false,
+   currentWeekIndex:11,worldRevision:4,
+   persona:{personaName:"Alice",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
+    secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+   contracts:[],teams:[],stables:[],connections:[],history:[]
+  };
+  const scores=[4.5,4.3,4.0,3.8,4.2,3.2,3.0,3.4];
+  const results=[true,true,false,true,false,false,true,false];
+  const career={
+   personId:"alice",summary:{matches:8,wins:4,losses:4,
+    singles:8,tag:0,ratedMatches:8,averageStars:3.8,
+    bestStars:4.5,injuries:0},
+   recent:scores.map((stars,i)=>({
+    showId:"s"+i,matchId:"m"+i,showName:"Season Event "+(10-i),
+    promotion:"Crown Wrestling",year:1,week:10-i,
+    format:"SINGLES",won:results[i],stars,minutes:15,
+    finish:"CLEAN_PIN",injury:null,weeksOut:null,
+    partners:[],opponents:["Bob"]
+   })),
+   liveAppearances:[],singlesTitles:[],currentChampionships:[],
+   injuryHistory:[],reputations:[]
+  };
+  await page.route("**/api/session",route=>route.fulfill({json:current}));
+  await page.route("**/api/card",route=>{
+   const method=String(route.request().postDataJSON().method);
+   if(method==="wrestlerProfile")profileReads++;
+   if(method==="wrestlerCareer")careerReads++;
+   return route.fulfill({json:method==="programmes"?story:
+    method==="wrestlerProfile"?dossier:
+    method==="wrestlerCareer"?career:{}});
+  });
+  await page.goto("/#/programmes");
+  const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
+  await selectors.nth(0).selectOption("PERSON:alice");
+  await selectors.nth(1).selectOption("PERSON:bob");
+  await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();
+  const modal=page.getByRole("dialog",{name:"Wrestler dossier"});
+  await expect(modal).toBeVisible();
+  expect(profileReads).toBe(1);
+  expect(careerReads).toBe(0);
+  await modal.locator("summary.ppw-profile-career-trigger").click();
+  await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
+  await expect(modal.locator(".ppw-career-form-chip")).toHaveText(["W","W","L","W","L"]);
+  await expect(modal.getByText("3 wins · 2 losses in the last 5 completed matches")).toBeVisible();
+  await expect(modal.getByText("Won 2 consecutive verified matches")).toBeVisible();
+  await expect(modal.getByText("Higher match ratings")).toBeVisible();
+  await expect(modal.getByText(/latest four matches averaged 4.15★ against 3.45★/)).toBeVisible();
+  await expect(modal.getByText(/Ratings describe bouts, not skill changes/)).toBeVisible();
+  expect(careerReads).toBe(1);
+  await modal.locator("summary.ppw-profile-career-trigger").click();
+  await modal.locator("summary.ppw-profile-career-trigger").click();
+  await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
+  expect(careerReads).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

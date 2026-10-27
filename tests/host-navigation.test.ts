@@ -35,6 +35,19 @@ test("original five-root drawer maps gameplay desks without extra routes",async(
  }
 });
 
+test("World archives have their own private-data-free routes and only one News drawer destination",async()=>{
+ const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
+ const world=HOST_DRAWER_ROOTS.find(x=>x.key==="world")!;
+ const news=HOST_DRAWER_ROOTS.find(x=>x.key==="news")!;
+ assert.deepEqual(world.destinations.map(x=>x[0]),[
+  "home","promotions","broadcasts","records","legends","hall-of-fame",
+  "annual-awards","world-moments"]);
+ assert.deepEqual(news.destinations.map(x=>x[0]),["news"]);
+ for(const route of world.destinations.map(x=>x[0])){
+  assert.equal(drawerRootForSection(route as typeof HOST_SECTIONS[number]["id"]),"world");
+ }
+ assert.equal(readHostSection("#/industry/legends"),"legends");
+});
 test("Home alerts deep-link to the right contract queue without revealing wrestler IDs",()=>{
  assert.equal(contractAttentionHash("EXPIRING"),"#/contracts/expiring");
  assert.equal(contractAttentionHash("PENDING"),"#/contracts/pending");

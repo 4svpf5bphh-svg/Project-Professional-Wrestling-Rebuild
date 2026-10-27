@@ -20,7 +20,8 @@ export interface EditorMatch{
  intent:string;plannedFinish:string;plannedLengthMinutes:number;
  elimination:boolean;eliminationOrder:number[];
  /** Existing optional booking metadata must survive an edit. */
- championshipId?:string;interference?:BookedInterference;style?:unknown;
+ championshipId?:string;tournamentId?:string;tournamentBoutNo?:1|2|3|4|5|6|7;
+ interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
  stipulation?:MatchStipulation;
 }
@@ -83,6 +84,9 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
   eliminationOrder:layout.eliminationOrder.map(x=>
    layout.sides.findIndex(s=>s.sideId===x)),
   ...(typeof raw.championshipId==="string"?{championshipId:raw.championshipId}:{}),
+  ...(typeof raw.tournamentId==="string"&&
+   [1,2,3,4,5,6,7].includes(raw.tournamentBoutNo as number)?
+   {tournamentId:raw.tournamentId,tournamentBoutNo:raw.tournamentBoutNo as 1|2|3|4|5|6|7}:{}),
   ...(raw.interference===undefined?{}:{interference:readBookedInterference(raw)??undefined}),
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?
@@ -189,6 +193,26 @@ export function assignPerformer(match:EditorMatch,side:number,index:number,
   undefined:match.interference;
  return {...match,teams,interference,cheatingWrestlerId:undefined};
 }
+/** Fill a complete established team in one atomic authoring action. A team
+ * selection never overrides the match winner or an existing finish. */
+export function assignBookedTeam(match:EditorMatch,side:number,
+ members:readonly PersonPick[]):EditorMatch{
+ const existing=match.teams[side];
+ if(!existing||existing.length<2||members.length!==existing.length)
+  throw new Error("This team does not fit the chosen match side");
+ if(new Set(members.map(p=>p.personId)).size!==members.length||
+  members.some(p=>!p.personId||!p.contractId))
+  throw new Error("A team needs distinct contracted members");
+ const elsewhere=new Set(match.teams.flatMap((team,index)=>index===side?[]:
+  team.flatMap(p=>p?[p.personId]:[])));
+ if(members.some(p=>elsewhere.has(p.personId)))
+  throw new Error("A wrestler cannot compete on both sides");
+ const teams=match.teams.map((team,index)=>index===side?
+  members.map(p=>({...p})):team.map(p=>p?{...p}:null));
+ return {...match,teams,cheatingWrestlerId:undefined,
+  interference:match.interference&&members.some(p=>p.personId===match.interference!.personId)?
+   undefined:match.interference};
+}
 export function changeWinner(match:EditorMatch,side:number):EditorMatch{
  if(side<0||side>=match.teams.length)throw new Error("Invalid winning side");
  if(side===match.winnerSide)return match;
@@ -259,6 +283,8 @@ export function buildBookedMatch(match:EditorMatch):BookableMatch{
   plannedFinish:match.plannedFinish,
   plannedLengthMinutes:match.plannedLengthMinutes,intent:match.intent,
   ...(match.championshipId?{championshipId:match.championshipId}:{}),
+  ...(match.tournamentId&&match.tournamentBoutNo?
+   {tournamentId:match.tournamentId,tournamentBoutNo:match.tournamentBoutNo}:{}),
   ...(match.stipulation&&match.stipulation!=="STANDARD"?{stipulation:match.stipulation}:{}),
   ...(match.interference?{interference:match.interference}:{}),
   ...(match.style?{style:match.style}:{}),

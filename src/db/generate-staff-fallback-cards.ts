@@ -7,6 +7,7 @@ import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
 import {chooseAiWorldCard,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
+import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
 
 export interface GenerateStaffFallbackCardsInput{
   worldId:string;requestId:string;expectedRevision:number;
@@ -274,6 +275,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             eventType,riskTolerance:profile.ai_risk_tolerance,
             matchQualityPreference:profile.ai_match_quality_preference,
             starPreference:profile.ai_star_preference,
+            strategy:aiPromotionStrategy({
+            worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+            riskTolerance:profile.ai_risk_tolerance,
+            matchQualityPreference:profile.ai_match_quality_preference,
+            starPreference:profile.ai_star_preference
+          }),
             recentPairs:recent.get(promotionId)??[],
             featuredPairs:[...challengers,...rivals],
             establishedPartners,
@@ -366,6 +373,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           riskTolerance:profile.ai_risk_tolerance,
           matchQualityPreference:profile.ai_match_quality_preference,
           starPreference:profile.ai_star_preference,
+          strategy:aiPromotionStrategy({
+            worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+            riskTolerance:profile.ai_risk_tolerance,
+            matchQualityPreference:profile.ai_match_quality_preference,
+            starPreference:profile.ai_star_preference
+          }),
           recentPairs:recent.get(promotionId)??[],
           featuredPairs:[...titleChallenges,
            ...(context?.programmes.get(promotionId)??[])],

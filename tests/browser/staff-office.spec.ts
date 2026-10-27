@@ -66,7 +66,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByRole("heading",{name:"Around the table"})).toBeVisible();
 });
 
-test("320px iPhone Staff Market uses four readable rows of two departments",async({page})=>{
+test("320px iPhone Staff Market keeps nine readable department options",async({page})=>{
  await page.setViewportSize({width:320,height:720});
  const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
@@ -84,11 +84,11 @@ test("320px iPhone Staff Market uses four readable rows of two departments",asyn
  await page.goto("/#/staff");
  await page.getByRole("button",{name:"Staff Market"}).click();
  const tabs=page.locator(".ppw-staff-departments button");
- await expect(tabs).toHaveCount(8);
+ await expect(tabs).toHaveCount(9);
  const boxes=await tabs.evaluateAll(els=>els.map(el=>{
   const box=el.getBoundingClientRect();return {top:Math.round(box.top),height:box.height,width:box.width};
  }));
- expect(new Set(boxes.map(b=>b.top)).size).toBe(4);
+ expect(new Set(boxes.map(b=>b.top)).size).toBe(5);
  expect(boxes.every(b=>b.height>=44&&b.width>=110)).toBe(true);
  const readability=await tabs.evaluateAll(els=>els.map(el=>{
   const style=getComputedStyle(el);
@@ -138,4 +138,56 @@ test("Gorilla policy is saved with actor-scoped World revision on a 320px iPhone
  await expect(page.getByText(/Gorilla instructions saved before World Lock/)).toBeVisible();
  await expect(follow).toHaveAttribute("aria-pressed","true");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
+test("Talent Scout presents bounded named prospects and opens the existing Talent Market",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const overview={world:{revision:4,name:"Genesis",year:1,week:5,
+  phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+  membership:"ACTIVE",promotion:{id:"local",name:"Local Wrestling",
+   tier:"LOCAL",cash:200000,debt:0,lastWeeklyNet:null,financialDistress:"HEALTHY"}};
+ const scout={staffId:"staff-scout-001",name:"Scout Example",role:"SCOUT",
+  insight:76,craft:72,people:67,reliability:78,personality:"FRANK",
+  specialism:"technical upside",weeklySalary:950,employmentId:"staff-employment-scout",
+  startWeekIndex:1,expiresWeekIndex:52,weeksRemaining:48,termWeeks:52,
+  buyoutCost:45600,morale:80};
+ const called:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"genesis",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);called.push(method);
+  if(method==="staff")return route.fulfill({json:{
+   year:1,week:5,worldRevision:4,canEdit:true,
+   allowUnfinishedFallback:false,allowLogisticsFallback:false,
+   autoRenewSameTerms:false,permittedDays:[],permittedVenueIds:[],
+   lockedLogisticsDelegated:false,talentManager:null,availableManagers:[],
+   weeklyPayroll:950,promotionCash:200000,venues:[],employees:[scout],
+   market:[],employmentHistory:[],notices:[{
+    department:"Scout Example · Talent Scout",target:"market",
+    message:"Two available young talent prospects deserve a closer look."
+   }],meetings:[{
+    role:"SCOUT",staffName:scout.name,personality:"FRANK",target:"roster",
+    message:"Two prospects deserve a closer look."
+   }],scoutReport:[
+    {personId:"young-1",name:"A Young Technician",division:"MEN",
+     observation:"Strong fundamentals, but limited recognition. Potential, not a promise."},
+    {personId:"young-2",name:"A Young Prospect",division:"WOMEN",
+     observation:"Lots of personality. The audience still needs convincing."}]
+  }});
+  if(method==="wrestlerDirectory")return route.fulfill({json:{
+   year:1,week:5,canEdit:true,people:[],total:0,hasMore:false}});
+  return route.fulfill({json:overview});
+ });
+ await page.goto("/#/staff");
+ await expect(page.getByRole("heading",{name:"Manager's priorities"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Browse Talent Market →"})).toBeVisible();
+ await page.getByText("Full staff meeting · 9 departments").click();
+ const meeting=page.locator(".ppw-staff-meeting-brief").filter({hasText:"Talent Scout"});
+ await expect(meeting).toBeVisible();
+ await meeting.locator("summary").click();
+ await expect(meeting.getByText("A Young Technician")).toBeVisible();
+ await expect(meeting.getByText("A Young Prospect")).toBeVisible();
+ await meeting.getByRole("button",{name:"Browse Talent Market"}).click();
+ await expect(page).toHaveURL(/#\/market$/);
+ expect(called).toContain("staff");
 });

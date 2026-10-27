@@ -276,7 +276,7 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "SELECT DISTINCT ON (c.promotion_id,c.person_id)",
   "c.promotion_id,c.person_id,c.contract_id,c.role_expectation,",
   "c.start_week_index,",
-  "p.morale,p.momentum,p.recognition,c.expires_week_index,",
+  "p.morale,p.momentum,p.recognition,p.career_stage AS career_stage_at_request,c.expires_week_index,",
   "coalesce(ev.match_shows,0) AS observed_match_shows,",
   "coalesce(ev.average_response,100) AS average_response,",
   "CASE WHEN c.role_expectation='MAIN_EVENT' THEN",
@@ -405,7 +405,7 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "created_week_index,source_contract_id,promised_role,",
   "observed_match_shows,observed_featured_shows,",
   "observed_average_crowd,working_verified_shows,working_trust_delta,",
-  "observed_absent_weeks,observed_losses,relevant_title)",
+  "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request)",
   "SELECT $1,CASE WHEN kind='ROLE_USAGE' THEN",
   "'backstage:role:'||contract_id WHEN kind='GIMMICK_PITCH' THEN",
   "'backstage:gimmick:'||contract_id ELSE",
@@ -420,7 +420,8 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "CASE WHEN kind='PARTNERSHIP' THEN working_trust_delta ELSE NULL END,",
   "CASE WHEN kind='BOOKING_OMISSION' THEN promotion_shows ELSE NULL END,",
   "CASE WHEN kind='LOSS_STREAK' THEN recent_losses ELSE NULL END,",
-  "CASE WHEN kind='TITLE_AMBITION' THEN relevant_title ELSE NULL END",
+  "CASE WHEN kind='TITLE_AMBITION' THEN relevant_title ELSE NULL END,",
+  "career_stage_at_request",
   "FROM ranked WHERE rank=1",
   "ON CONFLICT DO NOTHING RETURNING request_id"
  ].join(" "),[worldId,weekIndex]);

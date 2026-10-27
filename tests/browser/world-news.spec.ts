@@ -15,7 +15,13 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
   if(method==="industry")return route.fulfill({json:{
    worldName:"PPW",year:2,week:7,phase:"OPEN",nextLockEpoch:Date.now()/1000+6000,
    ownPromotionId:"human",ownPromotionName:"Human Pro",
-   promotions:[],headlines:[],broadcasts:[]}});
+   promotions:[],headlines:[
+    {id:"stage-1",kind:"CAREER_STAGE_CHANGED",year:2,week:6,
+     personId:"a",personName:"Maya Storm",careerStage:"SPECIAL_ATTRACTION",
+     fromStage:"VETERAN",promotionName:null},
+    {id:"retire-1",kind:"WRESTLER_RETIRED",year:2,week:6,
+     personId:"b",personName:"Alex Rook",careerStage:null,fromStage:null,
+     promotionName:null}],broadcasts:[]}});
   if(method==="industryNews")return route.fulfill({json:{
    awards:[{year:2,week:6,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"s2",showName:"Final Clash",slotId:"m2",
@@ -36,17 +42,27 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
   }});
   return route.fulfill({json:method==="overview"?overview:{}});
  });
- await page.goto("/#/industry");
- await expect(page.getByRole("heading",{name:"Industry"})).toBeVisible();
- expect(calls).toEqual(["industry"]);
+ await page.goto("/#/news");
+ await expect(page.getByRole("heading",{name:"World News"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Promotions"})).toHaveCount(0);
+ // Opening the News root fetches the weekly public desk once.
  await page.getByRole("button",{name:"Official News"}).click();
  await expect(page.getByText("MATCH OF THE WEEK")).toBeVisible();
  await expect(page.getByText("ANGLE OF THE WEEK")).toBeVisible();
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.getByText("A certified classic")).toBeVisible();
- await expect(page.locator(".ppw-news-annual .ppw-news-desk").filter({hasText:"MATCH OF THE YEAR"})).toBeVisible();
- await expect(page.getByText("Great Match of the Year")).toBeVisible();
+ await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
+ await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
+ await expect(page.getByText(/Career stage: veteran → special attraction/)).toBeVisible();
+ for(const width of [390,320]){
+  await page.setViewportSize({width,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ }
+ await page.setViewportSize({width:390,height:844});
+ await expect(page.locator(".ppw-news-annual")).toHaveCount(0);
+ // The annual awards now have their own World destination.
  const poster=page.locator(".ppw-news-poster").first();
  const rect=await poster.boundingBox();
  expect(rect).not.toBeNull();

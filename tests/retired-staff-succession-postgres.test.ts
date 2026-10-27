@@ -77,8 +77,8 @@ test("certified retired wrestler becomes a single contested World staff identity
   });
   const a=await readStaffWorkspace(db.pool,scope(playerA,"human-a"));
   const b=await readStaffWorkspace(db.pool,scope(playerB,"human-b"));
-  assert.equal(a.meetings.length,8);
-  assert.equal(b.meetings.length,8);
+  assert.equal(a.meetings.length,9);
+  assert.equal(b.meetings.length,9);
   // Rankings moved from the expensive Staff Office load to the on-demand
   // Industry records endpoint; keep the same certified career assertions.
   const aRecords=await readPromotionRecordBook(db.pool,scope(playerA,"human-a"));

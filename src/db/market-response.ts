@@ -1,9 +1,9 @@
-/** Original market awareness, live strength and loyalty, after ALL
+/** Audience market awareness, strength and loyalty, after ALL
  * current-week show results are certified. Batched World-locked update.
  * Deterministic even when shows resolve in different asynchronous order.
  */
 import type {SqlRows} from "./world-operations.js";
-import {originalMarketAfterEvent} from "../domain/legacy-market-drift.js";
+import {balancedMarketAfterEvent} from "../domain/legacy-market-drift.js";
 import type {EventType,LocalAudience} from "../domain/legacy-show-economics.js";
 
 export async function settleWeekLocalMarkets(
@@ -50,7 +50,7 @@ export async function settleWeekLocalMarkets(
   const existing=map.get(key);
   const before=existing?.local??{awareness:show.awareness,
    liveStrength:show.live_strength,loyalty:show.loyalty};
-  const after=originalMarketAfterEvent(before,{
+  const after=balancedMarketAfterEvent(before,{
    eventType:show.event_type,isHomeMarket:show.market_id===show.home_market_id,
    expectedDemand:show.expected_demand,attendance:show.attendance,
    capacity:show.capacity,averageMatchRating:Number(show.average_match_rating),

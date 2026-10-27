@@ -583,3 +583,15 @@ body{padding-top:env(safe-area-inset-top)}
  #game .ppw-home-stat strong{font-size:clamp(10px,3.05vw,15px);
   letter-spacing:-.045em;overflow-wrap:normal;white-space:nowrap}
 }
+
+/* Phase 9: keep the full PROMOTION drawer heading alongside its close control
+ * on 320 / 375 / 390px iPhones instead of wrapping inside a narrow flex item. */
+.ppw-navigation .ppw-nav-drawer-heading{min-width:0;gap:8px}
+.ppw-navigation .ppw-nav-drawer-heading strong{
+ display:block;min-width:0;max-width:calc(100% - 56px);
+ font-size:clamp(19px,5.5vw,26px);letter-spacing:-.035em;
+ line-height:1.1;overflow-wrap:normal;word-break:keep-all;white-space:nowrap}
+.ppw-navigation .ppw-nav-drawer-close{margin-left:auto}
+@media(max-width:350px){
+ .ppw-navigation .ppw-nav-drawer-heading strong{font-size:19px}
+}

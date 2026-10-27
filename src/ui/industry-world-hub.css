@@ -205,3 +205,20 @@
  .ppw-heritage-inductee{gap:10px}
  .ppw-heritage-portrait{width:58px;flex-basis:58px;height:78px}
 }
+
+/* Rival managers' completed-only results: lightweight, no ring-side private copy. */
+.ppw-public-results{display:grid;gap:12px;max-width:790px;margin:auto}
+.ppw-public-results>button{justify-self:start}
+.ppw-public-results h2{font-size:clamp(24px,6vw,34px);margin:4px 0 0}
+.ppw-public-results>p{margin:0}
+.ppw-public-result{display:grid;gap:9px;padding:16px 14px;
+ border-radius:14px;border:1px solid #395b72;
+ background:linear-gradient(120deg,#1d3447,#102032)}
+.ppw-public-result>strong{line-height:1.2;font-size:clamp(17px,4vw,21px)}
+.ppw-public-result>p{font-weight:800;color:#acebd7;font-size:13px;margin:0}
+.ppw-public-result>small{text-transform:capitalize}
+
+/* Important chapters are already certified ledger stories, not new alerts. */
+.ppw-news-story-career{border-color:#9471ca;
+ background:linear-gradient(120deg,#27224b,#142640)}
+.ppw-news-story-career .ppw-news-desk{color:#ffd29b}

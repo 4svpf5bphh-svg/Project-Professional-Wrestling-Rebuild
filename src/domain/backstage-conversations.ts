@@ -49,6 +49,7 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  verifiedSinglesShows?:number|null;professionalTrust?:number|null;
  observedAbsentWeeks?:number|null;observedLosses?:number|null;
  relevantTitle?:string|null;
+ careerStage?:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null;
 },requestId=""){
  // Pure, deterministic conversational inflection; never generate a new
  // message just because a wrestler thread is reopened.
@@ -103,6 +104,60 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
    "You gave me your word and it fell through. Can I get a straight answer this time?",
    "It's hard to put that missed promise behind us. Can we clear the air?"]
  };
+ // Use the wrestler's career stage when THIS request was written, never
+ // their latest status. Their archived words must not change as they age.
+ const stage=evidence?.careerStage;
+ const title=evidence?.relevantTitle??"the championship";
+ const careerVoices:Partial<Record<BackstageKind,string[]>>=
+  stage==="PROSPECT"?{
+   BOOKING_OMISSION:[
+    "I'm still learning, but I can't grow sitting out every show. Can I get an opportunity?",
+    "I know I have to earn my spot. Give me the chance to show what I've got.",
+    "I'm not asking to headline. I need some ring time to prove myself."],
+   MOMENTUM:[
+    "I'm trying to build a name here, and the momentum has stalled. Can I get a match?",
+    "I feel like I'm losing the chance to break through. What's the next step?",
+    "Every young wrestler needs a run of chances. Mine seem to have dried up."],
+   CREATIVE:[
+    "I'm still finding my voice. Could I get a promo or angle to show some personality?",
+    "Give me a moment on the microphone. I want people to remember me.",
+    "There's more to me than what we've shown. Can we work on my character?"],
+   TITLE_AMBITION:[
+    "That chance at "+title+" showed me how far I've got to go. I want to earn another.",
+    "I'm still making a name for myself, but I haven't forgotten "+title+".",
+    "I got close to "+title+". Next time I want to be ready."]
+  }:stage==="VETERAN"||stage==="SPECIAL_ATTRACTION"?{
+   BOOKING_OMISSION:[
+    "I've been around long enough to know when I'm being left off the card. What's the plan?",
+    "I don't need every spotlight, but I still have something to offer out there.",
+    "If my experience matters here, let me put it to use. Is there a place for me?"],
+   MOMENTUM:[
+    "I've weathered cold stretches before. Give me something worth sinking my teeth into.",
+    "A veteran can still turn a crowd around. I just need the opportunity.",
+    "I know how fast people move on. I'd rather give them a reason to remember."],
+   CREATIVE:[
+    "I've got stories to tell and enough experience to make a promo matter. Can we use it?",
+    "I've worked too long to just make the entrance. Give me something to say.",
+    "There may be a younger name I can elevate. But give us a story worth telling."],
+   TITLE_AMBITION:[
+    "At this stage, chances at "+title+" mean something. I'd like another shot.",
+    "I remember coming close to "+title+". I'm not ready to close that chapter.",
+    "I've put years into this business. Another opportunity at "+title+" matters."]
+  }:stage==="PRIME"?{
+   BOOKING_OMISSION:[
+    "These are important years of my career. I need to be on the card.",
+    "I should be building something right now, not watching the show pass by.",
+    "I've put the work in to get here. What's our next move?"],
+   MOMENTUM:[
+    "I've got the tools right now, but we're losing momentum. Let's turn it around.",
+    "The crowd knows what I can do. I need a direction they can get behind.",
+    "I don't want this run to slip away while I'm in my prime."],
+   TITLE_AMBITION:[
+    "I should be right in the picture for "+title+". Can we talk about it?",
+    "That shot at "+title+" wasn't enough. I want to work my way back.",
+    "These are the years I need to make count. "+title+" is still on my mind."]
+  }:{};
+ if(careerVoices[kind])return careerVoices[kind]![voice]!;
  if(alternatives[kind])return alternatives[kind]![voice]!;
  switch(kind){
   case "CONTRACT":return "My deal is nearly up. Can we talk about what happens next?";

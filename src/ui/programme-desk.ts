@@ -2,6 +2,7 @@
  * No World-wide data, auto-submission, or mandatory flow.
  */
 import type {readProgrammeWorkspace,ProgrammeDirectionChoice} from "../db/programme-workspace.js";
+import {readProgrammeTrajectory} from "../domain/programme-trajectory.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
@@ -179,6 +180,16 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     record.append(tile);
    }
    panel.append(record);
+   const trajectory=readProgrammeTrajectory({
+    heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
+    matchCount:p.matchCount,segmentCount:p.segmentCount,
+    sideAWins:p.sideAWins,sideBWins:p.sideBWins
+   });
+   const chapter=element("section","ppw-programme-chapter");
+   chapter.dataset.kind=trajectory.kind.toLowerCase();
+   chapter.append(element("strong","",trajectory.title),
+    element("p","",trajectory.summary));
+   panel.append(chapter);
    const weekIndex=(view.year-1)*52+view.week-1;
    const age=p.startedWeekIndex===null?null:Math.max(0,weekIndex-p.startedWeekIndex);
    panel.append(element("p","ppw-programme-age",

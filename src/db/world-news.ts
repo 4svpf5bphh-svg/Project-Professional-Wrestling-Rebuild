@@ -20,7 +20,42 @@ interface Angle extends Broadcast{
  slot_id:string;position:number;kind:string;authored_outcome:string;
  angle_crowd:string|number;story_json:unknown;
 }
-interface TitleChange extends Broadcast{slot_id:string;title_name:string;}
+interface TitleChange extends Broadcast{
+ slot_id:string;title_name:string;winner_name?:string|null;
+ prior_reign_id?:string|null;
+}
+export interface TournamentFinal extends Broadcast {
+ [key:string]:unknown;
+ tournament_id:string;tournament_name:string;division:"MEN"|"WOMEN";
+ winner_name:string;winner_person_id:string;entrants_count:4|8;
+ slot_id:string;final_rating_stars:number|string|null;
+ series_years:number[];prior_editions:number|string;
+}
+/** Tournament winner headlines are based solely on certified completed facts.
+ * A yearly tradition requires completed editions in three consecutive seasons.
+ */
+export function composeTournamentVictory(final:TournamentFinal){
+ const years=[...new Set(final.series_years)].filter(y=>
+  Number.isSafeInteger(y)&&y>=1);
+ const latestYear=Math.max(0,...years);
+ const consecutive=[latestYear,latestYear-1,latestYear-2].every(y=>
+  y>0&&years.includes(y));
+ const editions=Number(final.prior_editions)+1;
+ const validRating=final.final_rating_stars!==null&&
+  Number.isFinite(Number(final.final_rating_stars))&&
+  Number(final.final_rating_stars)>=0&&Number(final.final_rating_stars)<=5;
+ return {
+  title:final.winner_name+" wins "+final.tournament_name+" at "+final.show_name,
+  summary:final.winner_name+" won "+final.tournament_name+" for "+
+   final.promotion_name+" in a certified "+final.entrants_count+"-wrestler "+
+   (final.division==="WOMEN"?"women's":"men's")+" bracket."+
+   " The final took place at "+final.show_name+"."+
+   (consecutive?" The tournament has now been contested in three consecutive World seasons.":
+    editions>1?" Another completed chapter in the tournament's history.":"")+
+   (validRating?" The final earned "+Number(final.final_rating_stars).toFixed(2)+
+    " verified stars.":"")
+ };
+}
 export interface WeeklyAward{
  kind:"MATCH"|"ANGLE";promotionId:string;promotionName:string;
  showId:string;showName:string;slotId:string;title:string;
@@ -94,9 +129,15 @@ export function chooseWeeklyAwards(bouts:readonly Bout[],angles:readonly Angle[]
  }
  return results;
 }
+/** Short, personality-led newsroom copy built only from certified public facts.
+ * Smark flavour is editorial; it never invents sources, backstage leaks,
+ * booking decisions or a result that the player did not author.
+ */
 export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  shows:readonly Broadcast[],changes:readonly TitleChange[],
- names:ReadonlyMap<string,string>):WorldNewsStory[]{
+ names:ReadonlyMap<string,string>,
+ tournamentFinals:readonly TournamentFinal[]=[],
+ careerStages:ReadonlyMap<string,string>=new Map()):WorldNewsStory[]{
  const official:WorldNewsStory[]=[],dirt:WorldNewsStory[]=[];
  const add=(desk:"OFFICIAL"|"DIRT",s:Broadcast,key:string,title:string,
   summary:string,sourceKind:WorldNewsStory["sourceKind"])=>{
@@ -105,59 +146,108 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    title:title.slice(0,240),summary:summary.slice(0,600),sourceKind};
   (desk==="OFFICIAL"?official:dirt).push(item);
  };
+ for(const final of [...tournamentFinals].sort((a,b)=>
+  a.promotion_id.localeCompare(b.promotion_id)||
+  a.tournament_id.localeCompare(b.tournament_id)).slice(0,4)){
+  const story=composeTournamentVictory(final);
+  add("OFFICIAL",final,"tournament:"+final.tournament_id,
+   story.title,story.summary,"EVENT");
+ }
  for(const c of [...changes].sort((a,b)=>byId(a,b))){
+  const champion=c.winner_name?.trim()||null;
+  // A vacant belt may have older reigns: never infer inaugural status.
   add("OFFICIAL",c,"title:"+c.show_id+":"+c.slot_id,
-   c.title_name+" changes hands at "+c.show_name,
-   "The title change was confirmed in the completed results.", "TITLE");
+   champion?champion+" captures "+c.title_name+" at "+c.show_name:
+    c.title_name+" changes hands at "+c.show_name,
+   champion?champion+" is the new "+c.title_name+
+    " champion after a certified result at "+c.show_name+". "+
+    (c.prior_reign_id===null?"The title was vacant heading into the contest. ":
+     c.prior_reign_id?"A previous reign has ended. ":"")+
+    "The division has a new name at the top.":
+    "The "+c.title_name+" changed hands at "+c.show_name+
+    ". The result is certified; an unidentified winner is not guessed.",
+   "TITLE");
  }
- for(const a of [...angles].filter(x=>x.authored_outcome==="HAPPENS"&&
-  significant.has(x.kind)).sort((a,b)=>{
-   return impact(a.kind)-impact(b.kind)||
-    Number(b.angle_crowd)-Number(a.angle_crowd)||byId(a,b);
-  }).slice(0,5)){
-  const cast=storyPeople(a.story_json).map(id=>names.get(id)).filter(
+ const angleHeadlines:Record<string,(person:string,show:string)=>string>={
+  TURN:(p,s)=>p+" changes course at "+s,
+  ATTACK:(p,s)=>p+" sparks trouble at "+s,
+  POST_MATCH_ASSAULT:(p,s)=>p+" makes a statement at "+s,
+  DEBUT:(p,s)=>p+" arrives at "+s,
+  STABLE_EXIT:(p,s)=>p+" parts company at "+s,
+  STABLE_INVITATION:(p,s)=>p+" gets a faction invitation at "+s,
+  RESCUE:(p,s)=>p+" makes the save at "+s,
+  CONFRONTATION:(p,s)=>p+" gets face to face at "+s,
+  CHALLENGE:(p,s)=>p+" issues a challenge at "+s
+ };
+ for(const s of [...angles].filter(x=>x.authored_outcome==="HAPPENS"&&
+  significant.has(x.kind)).sort((a,b)=>impact(a.kind)-impact(b.kind)||
+   Number(b.angle_crowd)-Number(a.angle_crowd)||byId(a,b)).slice(0,5)){
+  const cast=storyPeople(s.story_json).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
-  add("OFFICIAL",a,"angle:"+a.show_id+":"+a.slot_id,
-   (cast.length?cast.join(" and ")+": ":"")+name(a.kind)+" at "+a.show_name,
-   "The "+name(a.kind).toLowerCase()+" took place on the completed broadcast.", "ANGLE");
+  const lead=cast[0]??"A familiar face",reaction=Number(s.angle_crowd);
+  add("OFFICIAL",s,"angle:"+s.show_id+":"+s.slot_id,
+   (angleHeadlines[s.kind]??((p,t)=>p+" makes headlines at "+t))(lead,s.show_name),
+   "The "+name(s.kind).toLowerCase()+" happened on "+s.promotion_name+
+   "'s "+s.show_name+(cast.length>1?", with "+cast.slice(1).join(", ")+" also involved":"")+
+   ". "+(reaction>=80?"The crowd gave it plenty back. Now that's how you get people talking.":
+    "The bell may have moved on, but that on-screen moment is part of the story now."),
+   "ANGLE");
  }
- for(const b of [...bouts].filter(x=>x.rating_stars!==null&&
+ for(const s of [...bouts].filter(x=>x.rating_stars!==null&&
   Number(x.rating_stars)>=4).sort((a,b)=>Number(b.rating_stars)-
   Number(a.rating_stars)||byId(a,b)).slice(0,3)){
-  const cast=participants(b.payload).map(id=>names.get(id)).filter(
+  const cast=participants(s.payload).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
-  add("OFFICIAL",b,"match:"+b.show_id+":"+b.slot_id,
-   (cast.length?cast.join(" vs ")+" ":"")+"steals the show",
-   "Awarded "+Number(b.rating_stars).toFixed(2)+" stars in the official match report at "+
-    b.show_name+".","MATCH");
+  const opposition=cast.length>=2?cast.join(" vs "):"A standout contest";
+  // A prospect appearing in an exceptional certified match is a factual
+  // spotlight, not evidence of an individual score, victory or skill change.
+  const emerging=Number(s.rating_stars)>=4.5?
+   participants(s.payload).find(id=>careerStages.get(id)==="PROSPECT"&&names.has(id)):undefined;
+  const prospect=emerging?names.get(emerging):undefined;
+  add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,
+   prospect?prospect+" in the spotlight at "+s.show_name:
+    opposition+" steals the show at "+s.show_name,
+   s.show_name+" delivered a "+Number(s.rating_stars).toFixed(2)+
+   "-star match for "+s.promotion_name+". "+
+   (prospect?"Prospect "+prospect+" was part of "+opposition+
+    ". A big stage for an emerging name; the stars belong to the match, not any one wrestler.":
+    "One for the replay queue; performances like that do the talking."),
+   "MATCH");
  }
  for(const s of shows.filter(s=>s.booking_class==="PREMIUM")
   .sort((a,b)=>Number(b.crowd_response)-Number(a.crowd_response)||
    a.show_id.localeCompare(b.show_id)).slice(0,2)){
-  add("OFFICIAL",s,"event:"+s.show_id,s.show_name+" makes headlines",
-   s.promotion_name+" presented a major completed event to a crowd response of "+
-    Math.round(Number(s.crowd_response))+"/100.","EVENT");
+  add("OFFICIAL",s,"event:"+s.show_id,s.show_name+" takes centre stage",
+   s.promotion_name+" staged its premium event, "+s.show_name+
+   ". "+(Number(s.crowd_response)>=75?
+    "The audience responded to the occasion; big nights are supposed to feel like big nights.":
+    "The crowd response was more restrained than the billing, leaving plenty to prove next time."),
+   "EVENT");
  }
- // The rumour mill must be explicitly framed as public-result analysis,
- // NEVER as leaked information or a fabricated confidential conversation.
+ // The rumour mill analyses public outcomes. It has no inside sources,
+ // private contracts, manager conversations or knowledge of future cards.
  const rough=shows.filter(s=>Number(s.crowd_response)<50).sort((a,b)=>
   Number(a.crowd_response)-Number(b.crowd_response)||
   a.show_id.localeCompare(b.show_id))[0];
  if(rough)add("DIRT",rough,"crowd:"+rough.show_id,
-  "Questions for "+rough.promotion_name+" after a rough night",
-  rough.show_name+" drew a "+Math.round(Number(rough.crowd_response))+
-   "/100 crowd response. Is a creative shake-up coming? That's speculation, not a report from backstage. "+
-   "The rumour mill has seen less smoke from a barbecue.","CROWD");
- const hot=angles.filter(a=>a.authored_outcome==="HAPPENS"&&
-  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(a.kind)&&
-  Number(a.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
+  "A rough night puts "+rough.promotion_name+" under the microscope",
+  rough.show_name+" struggled to win over its audience. Will the promotion change direction?"+
+  " That's speculation, not a report from backstage. But the next card might tell us plenty.",
+  "CROWD");
+ const hot=angles.filter(s=>s.authored_outcome==="HAPPENS"&&
+  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(s.kind)&&
+  Number(s.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
   Number(a.angle_crowd)||byId(a,b))[0];
- if(hot)add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
-  "What follows "+name(hot.kind).toLowerCase()+" at "+hot.promotion_name+"?",
-  "The completed "+hot.show_name+" broadcast featured a "+name(hot.kind).toLowerCase()+
-   " with a "+Math.round(Number(hot.angle_crowd))+
-   "/100 reaction. Talk of the next big programme is speculation; nobody has confirmed any plans. "+
-   "But you can practically hear the fantasy bookers warming up.","ANGLE");
+ if(hot){
+  const cast=storyPeople(hot.story_json).map(id=>names.get(id)).filter(
+   (x):x is string=>!!x),star=cast[0]??"Someone";
+  add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
+   "The fallout from "+star+"'s "+name(hot.kind).toLowerCase(),
+   hot.promotion_name+" has given the fans something to chew over after "+
+   hot.show_name+". There could be a new rivalry in it, or it could go somewhere entirely different."+
+   " That's the fun of wrestling: the card is still the booker's to write.",
+   "ANGLE");
+ }
  return [...official.slice(0,8),...dirt.slice(0,2)];
 }
 export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:number,week:number){
@@ -208,13 +298,19 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
    JOIN ppw_completed_show_segments a ON a.world_id=c.world_id AND a.show_id=c.show_id
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY a.show_id,a.position LIMIT 3001`,[worldId,year,week]),
-  tx.query<{show_id:string;slot_id:string;title_name:string}>(`
-   SELECT x.show_id,x.slot_id,t.name AS title_name
+  tx.query<{show_id:string;slot_id:string;title_name:string;
+   winner_name:string|null;prior_reign_id:string|null}>(`
+   SELECT x.show_id,x.slot_id,t.name AS title_name,x.prior_reign_id,
+    coalesce(person.name,team.name) AS winner_name
    FROM ppw_completed_shows c
    JOIN ppw_championship_contests x ON x.world_id=c.world_id
     AND x.show_id=c.show_id AND x.promotion_id=c.promotion_id AND x.title_changed
    JOIN ppw_championships t ON t.world_id=x.world_id
     AND t.promotion_id=x.promotion_id AND t.championship_id=x.championship_id
+   LEFT JOIN ppw_people person ON person.world_id=x.world_id
+    AND person.person_id=x.winner_person_id
+   LEFT JOIN ppw_tag_teams team ON team.world_id=x.world_id
+    AND team.team_id=x.winner_team_id
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY x.show_id,x.slot_id LIMIT 501`,[worldId,year,week])
  ]);
@@ -223,14 +319,63 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  const join=<T extends {show_id:string}>(rows:readonly T[]):(T&Broadcast)[]=>
   rows.flatMap(row=>{const show=sources.get(row.show_id);return show?[{...show,...row}]:[];});
  const bouts=join(matches),angles=join(segments),titles=join(changes);
+ // Only completed finals certified this very week: never read private future
+ // fixtures or accept a drafted outcome as an actual winner.
+ const tournamentFinals=await tx.query<TournamentFinal>(`
+  SELECT t.tournament_id,t.name AS tournament_name,t.division,
+   t.entrants_count,t.winner_person_id,p.name AS winner_name,
+   c.show_id,c.promotion_id,company.name AS promotion_name,
+   COALESCE(d.show_name,'Completed show') AS show_name,
+   c.crowd_response,d.booking_class,b.slot_id,
+   facts.rating_stars::double precision AS final_rating_stars,
+   (SELECT count(*)::integer FROM ppw_tournaments prior
+    WHERE prior.world_id=t.world_id AND prior.promotion_id=t.promotion_id
+     AND prior.division=t.division AND prior.status='COMPLETE'
+     AND prior.tournament_id<>t.tournament_id
+     AND lower(regexp_replace(btrim(prior.name),'\\s+',' ','g'))=
+      lower(regexp_replace(btrim(t.name),'\\s+',' ','g'))) AS prior_editions,
+   ARRAY(SELECT DISTINCT (history.created_week_index/52+1)::integer
+    FROM ppw_tournaments history
+    WHERE history.world_id=t.world_id
+     AND history.promotion_id=t.promotion_id
+     AND history.division=t.division AND history.status='COMPLETE'
+     AND lower(regexp_replace(btrim(history.name),'\\s+',' ','g'))=
+      lower(regexp_replace(btrim(t.name),'\\s+',' ','g'))
+    ORDER BY 1 DESC LIMIT 30) AS series_years
+  FROM ppw_completed_shows c
+  JOIN ppw_booking_drafts d ON d.world_id=c.world_id
+   AND d.draft_id=c.show_id AND d.promotion_id=c.promotion_id
+   AND d.status='SUBMITTED'
+  JOIN ppw_tournament_bouts b ON b.world_id=c.world_id
+   AND b.promotion_id=c.promotion_id AND b.show_id=c.show_id
+  JOIN ppw_tournaments t ON t.world_id=b.world_id
+   AND t.promotion_id=b.promotion_id
+   AND t.tournament_id=b.tournament_id AND t.status='COMPLETE'
+   AND b.bout_no=t.entrants_count-1
+   AND b.winner_person_id=t.winner_person_id
+   AND b.resolved_week_index=($2::integer-1)*52+$3::integer-1
+  JOIN ppw_completed_show_matches m ON m.world_id=b.world_id
+   AND m.show_id=b.show_id AND m.match_id=b.slot_id
+  JOIN ppw_people p ON p.world_id=t.world_id
+   AND p.person_id=t.winner_person_id
+  JOIN ppw_promotions company ON company.world_id=c.world_id
+   AND company.promotion_id=c.promotion_id
+  LEFT JOIN ppw_completed_match_report_facts facts ON facts.world_id=b.world_id
+   AND facts.show_id=b.show_id AND facts.match_id=b.slot_id
+  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
+  ORDER BY c.show_id,t.tournament_id LIMIT 257`,[worldId,year,week]);
+ if(tournamentFinals.length>256)throw new Error("World news tournament limit exceeded");
  const ids=[...new Set([...bouts.flatMap(b=>participants(b.payload)),
   ...angles.flatMap(a=>storyPeople(a.story_json))])].slice(0,6000);
- const people=ids.length?await tx.query<{person_id:string;name:string}>(`
-  SELECT person_id,name FROM ppw_people WHERE world_id=$1
+ const people=ids.length?await tx.query<{
+  person_id:string;name:string;career_stage:string|null}>(`
+  SELECT person_id,name,career_stage FROM ppw_people WHERE world_id=$1
   AND person_id=ANY($2::text[])`,[worldId,ids]):[];
  const names=new Map(people.map(p=>[p.person_id,p.name]));
+ const stages=new Map(people.filter(p=>p.career_stage!==null)
+  .map(p=>[p.person_id,p.career_stage!]));
  const awards=chooseWeeklyAwards(bouts,angles,names);
- const stories=composeWorldNews(bouts,angles,shows,titles,names);
+ const stories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals,stages);
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,

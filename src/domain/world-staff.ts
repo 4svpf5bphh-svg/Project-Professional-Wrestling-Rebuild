@@ -3,7 +3,7 @@
  * rows or consuming the genesis RNG. An ID always identifies one person.
  */
 export const STAFF_ROLES=["TALENT_MANAGER","ROAD_AGENT","MEDICAL","CREATIVE",
- "COMMENTATOR","REFEREE","PRODUCTION","TRAINER"] as const;
+ "COMMENTATOR","REFEREE","PRODUCTION","TRAINER","SCOUT"] as const;
 export type StaffRole=typeof STAFF_ROLES[number];
 export interface WorldManager{
  staffId:string;name:string;insight:number;weeklySalary:number;
@@ -26,7 +26,7 @@ export function worldTalentManagers(seed:string|number|bigint):WorldManager[]{
    insight,weeklySalary:250+insight*9};
  });
 }
-// Each of the 112 new-market staff has a distinct given name.
+// Generated specialists have unique given names; original identities stay unchanged.
 const first=["Aisha","Mateo","Priya","Hugo","Keiko","Tariq","Beatrice","Sanjay","Freya","Diego","Amara","Rafael","Yuna","Idris","Lucia","Noah","Zara","Kenji","Sofia","Darius","Mei","Oliver","Fatima","Callum","Lena","Andres","Nadia","Emilio","Jasmine","Kazuo","Ruby","Hassan","Niamh","Luis","Imani","Felix","Anika","Aarav","Eloise","Micah","Sora","Dalia","Oscar","Zanele","Gianni","Cleo","Kaito","Simone","Malik","Helena","Vikram","Ada","Pavel","Isabel","Thea","Rohan","Estelle","Akira","Nabil","Georgia","Finn","Selina","Marco","Mina","Jonah","Yasmin","Niko","Camila","Reuben","Ayumi","Leila","Ezra","Carmen","Bryn","Naomi","Thiago","Ines","Amir","Elena","Dexter","Hana","Maya","Xavier","Kiran","Tessa","Omar","Celeste","Ethan","Laila","Bastien","Aria","Mariam","Isaac","Soraya","Theo","Valeria","Tobias","Farah","Riku","Bianca","Khalil","Maeve","Paolo","Sasha","Nina","Ravi","Evelyn","Jamal","Haruto","Greta","Adrian","Noor","Nerea","Benedict","Pooja","Selma","Yusuf","Iris","Gabe","Renata","Mira","Elias","Marta","Samira","Orla","Musa","Ingrid","Ansel","Rosa","Ilya","Eden","Marek","Anya","Renee","Tomas","Luca","Jude","Grace","Amina","Rhea","Bruno","Farid","Sana","Lorenzo","Olivia","Zain","Vivienne","Aksel","Hector","Daphne","Esme","Cyrus","Kaya","Hamza","Marina","Leon","Elif","Holly","Miles","Alina"] as const;
 const last=["Maddox","Hawthorne","Knox","Sterling","Quinn","Calloway","Brooks","Voss","Winters","Pike","Hale","Monroe","Reed","Sterling-Jones","Fox","Stone","Navarro","Basu","Tanaka","Okafor","Romero","Nguyen","Patel","Farouk","Rossi","Morales","Singh","Larsson","Ibrahim","Kowalski","Sato","Moretti","Mensah","Dubois","Ahmed","Costa","Clarke","Okada","Fernandez","Sharma","Ito","Silva","Haddad","Mercado","Khan","Alvarez","Park","Ali","Chambers","Gonzalez","Kim","Novak","Blake","Santos","Berg","Rahman","Chen","Osei","Mendoza","Kapoor","Lopez","Hughes","Takahashi","Bennani","Bello","Nakamura","Miller","Diaz","Doyle","Pearson","Watanabe","Haddock","Rao","Marquez","Muller","Desai"] as const;
 const legacyFirst=["Alex","Billie","Cameron","Devon","Ellis","Frankie","Gray","Harper",
@@ -42,6 +42,7 @@ const specialists:Record<StaffRole,readonly string[]>={
  REFEREE:["multi-person matches","discipline","safety","complex finishes"],
  PRODUCTION:["live broadcasts","small venues","lighting","efficient travel"],
  TRAINER:["new wrestlers","conditioning","ring psychology","fundamentals"],
+ SCOUT:["emerging prospects","technical upside","character potential","undiscovered value"],
 };
 const personalities=["FRANK","PATIENT","AMBITIOUS","LOYAL","ECCENTRIC"] as const;
 export function worldStaff(seed:string|number|bigint, legacyStaffIds:readonly string[]=[]):WorldStaffMember[]{

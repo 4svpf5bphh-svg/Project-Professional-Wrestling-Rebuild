@@ -28,6 +28,9 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",
     [worldId,playerId,promotionId]);
    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,popularity,recognition,morale,momentum) VALUES($1,$2,'First Worker','MEN',30,20,20,10),($1,$3,'Second Worker','MEN',30,20,20,10)",[worldId,one,two]);
+   // Stage at request time determines the voice; a later promotion must not
+   // rewrite an archived wrestler conversation.
+   await tx.query("UPDATE ppw_people SET career_stage=CASE WHEN person_id=$2 THEN 'PROSPECT' ELSE 'VETERAN' END WHERE world_id=$1 AND person_id IN ($2,$3)",[worldId,one,two]);
    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,52),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,52)",
     [worldId,contract1,one,promotionId,contract2,two]);
   });
@@ -41,6 +44,14 @@ test("Backstage: incoming privacy, reply, booker-authored promise and verified m
   const inbox=await readPortablePersonaWorkspace(db.pool,scope);
   assert.equal(inbox.roster.filter(p=>p.latestIncoming?.status==="PENDING").length,2);
   assert.equal(inbox.conversations.length,1);
+  assert.equal(inbox.conversations[0]!.careerStageAtRequest,"PROSPECT");
+  assert.equal(inbox.roster.find(x=>x.personId===one)?.latestIncoming?.
+   career_stage_at_request,"PROSPECT");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET career_stage='PRIME' WHERE world_id=$1 AND person_id=$2",
+   [worldId,one]));
+  const unchanged=await readPortablePersonaWorkspace(db.pool,{...scope,personId:one});
+  assert.equal(unchanged.conversations[0]?.careerStageAtRequest,"PROSPECT");
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{...scope,playerId:outsiderId}),/denied/);
   const context={pool:db.pool,actor:{playerId}};
   const outsiderRead=await dispatchCardRpc({pool:db.pool,actor:{playerId:outsiderId}},

@@ -32,7 +32,7 @@ test("World status confirmation updates the promotion banner without a duplicate
  expect(sessionReads).toBe(1);
 });
 
-test("card management links enter the correct shell desk and Back restores the premium show",async({page})=>{
+test("bottom Business navigation enters the correct desk and Back restores the premium show",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const shows=[{draftId:"weekly",showName:"Weekly Show",bookingClass:"REGULAR"},
   {draftId:"premium",showName:"The Big Event",bookingClass:"PREMIUM"}]
@@ -66,8 +66,10 @@ test("card management links enter the correct shell desk and Back restores the p
  await page.getByRole("button",{name:"Edit card"}).nth(1).click();
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByText("The Big Event")).toBeVisible();
- await page.locator(".ppw-management-menu summary").click();
- await page.locator(".ppw-management-menu").getByRole("button",{name:"Business",exact:true}).click();
+ await expect(page.locator(".ppw-management-menu")).toHaveCount(0);
+ await page.getByRole("button",{name:"Open Business menu"}).click();
+ await page.getByRole("navigation",{name:"Promotion navigation"})
+  .getByRole("button",{name:/Finances & deals/}).click();
  await expect(page).toHaveURL(/#\/business$/);
  await expect(page.locator("html")).toHaveAttribute("data-ppw-screen","business");
  await page.goBack();
@@ -169,8 +171,8 @@ test("iPhone standalone keeps one five-root drawer reachable from the bottom",as
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
  await expect(drawer.locator(".ppw-tab")).toHaveCount(0);
- await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(1);
- await expect(drawer.getByRole("button",{name:/World dashboard/})).toBeVisible();
+ await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(8);
+ await expect(drawer.getByRole("button",{name:/World Dashboard/})).toBeVisible();
  await page.getByRole("button",{name:"Open Business menu"}).click();
  await expect(drawer.getByRole("button",{name:/Staff/})).toBeVisible();
  await page.keyboard.press("Escape");

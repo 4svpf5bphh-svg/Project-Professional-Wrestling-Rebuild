@@ -68,7 +68,7 @@ export function validateAuthoredSegments(
    (s.kind!=="VIDEO_PACKAGE"&&s.actorIds.length===0)||
    (["ATTACK","CONFRONTATION","CHALLENGE"].includes(s.kind)&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="INTERFERENCE"&&(s.actorIds.length===0||s.targetIds.length===0))||
-   (s.kind==="TURN"&&s.actorIds.length!==1)||
+   (s.kind==="TURN"&&(s.actorIds.length<1||s.actorIds.length>2))||
    (s.kind==="DEBUT"&&s.actorIds.length!==1)||
    (["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&s.targetIds.length===0))
    throw new Error("Invalid authored segment");

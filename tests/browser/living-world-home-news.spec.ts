@@ -29,6 +29,6 @@ test("iPhone Home publishes recent verified world developments without leaking p
  await expect(page.getByRole("button",{name:/Alex Rook hangs up the boots/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Coastal Wrestling moves to RISING/})).toBeVisible();
  await expect(page.getByText("private rival problem")).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Read more industry stories/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Read World News/})).toBeVisible();
  expect(calls).toEqual(["overview"]);
 });

@@ -99,7 +99,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
-  industry:go("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
+  industry:go("promotions",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   news:go("news",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   calendar:go("calendar",()=>mountCalendarPage(root,scope,()=>mountWorldHomePage(root,scope))),
   championships:go("championships",()=>{void mountChampionshipsPage(root,scope,
@@ -171,6 +171,11 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
+  loadTournaments:()=>call("tournaments"),
+  createTournament:({requestId,expectedRevision,name,division,entrants,championshipId})=>
+   call("createTournament",{requestId,expectedRevision,name,division,entrants,championshipId}),
+  cancelTournament:({requestId,expectedRevision,tournamentId})=>
+   call("cancelTournament",{requestId,expectedRevision,tournamentId}),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
    call("championshipHistory",{titlePromotionId,championshipId,cursor}),
   openWrestler:(id:string)=>{
@@ -212,6 +217,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   careers:search=>call("worldCareerSearch",{search}),
   records:()=>call("promotionRecordBook"),
   featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
+  publicResults:(targetPromotionId,targetShowId)=>call("publicResults",{targetPromotionId,targetShowId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openMarket:()=>mountTalentMarketPage(root,scope),
@@ -220,7 +226,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   openOwnResults:showId=>{void mountResultsPage(root,{...scope,showId},
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");},
   back:scope.showId?()=>mountBookingPage(root,scope):
-   ()=>mountWorldHomePage(root,scope)
+   ()=>{window.location.hash=hostSectionHash("home");}
  };
 }
 export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView){
@@ -242,6 +248,7 @@ function staffPort(root:HTMLElement,scope:Scope,
   }),
   openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
   openRoster:()=>{window.location.hash=hostSectionHash("roster");},
+  openMarket:()=>{window.location.hash=hostSectionHash("market");},
   openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)
@@ -372,6 +379,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  backLabel="programmes"){
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
+  openNext:destination=>{window.location.hash=hostSectionHash(destination);},
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",

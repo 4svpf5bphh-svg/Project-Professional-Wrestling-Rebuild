@@ -34,3 +34,27 @@ test("refused and unspecified historical turns never change alignment",async()=>
  assert.deepEqual(await settleCanonicalAuthoredTurns(tx,input,[make("HAPPENS",undefined)]),
   {changed:0});
 });
+
+
+test("a scripted tag-team turn applies to both wrestlers in one world transaction",async()=>{
+ const sql:string[]=[];
+ const args:unknown[][]=[];
+ const tx:SqlRows={async query<T extends Record<string,unknown>>(statement:string,values:readonly unknown[]){
+  sql.push(statement);args.push([...values]);
+  if(statement.includes("SELECT person_id,default_alignment"))return [
+   {person_id:"a",default_alignment:"FACE"},
+   {person_id:"b",default_alignment:"TWEENER"}] as unknown as T[];
+  if(statement.includes("UPDATE ppw_people"))return [
+   {person_id:"a"},{person_id:"b"}] as unknown as T[];
+  if(statement.includes("INSERT INTO ppw_promotion_alignment_changes"))return [
+   {person_id:"a"},{person_id:"b"}] as unknown as T[];
+  throw Error("Unexpected SQL");
+ }};
+ const turn=make("HAPPENS","HEEL");
+ const team={...turn,segment:{...turn.segment,actorIds:["a","b"]}};
+ assert.deepEqual(await settleCanonicalAuthoredTurns(tx,input,[team]),{changed:2});
+ assert.equal(sql.length,3);
+ const changes=JSON.parse(args[1]![1] as string);
+ assert.deepEqual(changes.map((p:{person_id:string})=>p.person_id),["a","b"]);
+ assert.ok(changes.every((p:{next_alignment:string})=>p.next_alignment==="HEEL"));
+});

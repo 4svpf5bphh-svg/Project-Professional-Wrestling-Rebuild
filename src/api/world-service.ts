@@ -1,3 +1,5 @@
+import {readTournamentWorkspace,createTournament,cancelTournament,type CreateTournamentInput,type CancelTournamentInput}
+ from "../db/tournament-workspace.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
 import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
@@ -8,6 +10,7 @@ import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
+import {readPublicCompletedShow} from "../db/public-completed-show.js";
 import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-show-archive.js";
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
@@ -521,6 +524,25 @@ export async function requestMatchConsentAsActor(context:WorldApiContext,
 }
 /** Authenticated, read-only final show broadcast. */
 /** Title lineage is shared history, but access requires a verified manager. */
+export async function tournamentsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readTournamentWorkspace(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function cancelTournamentAsActor(context:WorldApiContext,
+ input:Omit<CancelTournamentInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.tournamentId,"tournament");
+ return cancelTournament(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function createTournamentAsActor(context:WorldApiContext,
+ input:Omit<CreateTournamentInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createTournament(context.pool,{...input,playerId:context.actor.playerId});
+}
 export async function championshipsAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
  return readChampionshipDirectory(context.pool,worldId,context.actor.playerId,promotionId);
@@ -537,6 +559,17 @@ export async function completedShowAsActor(context:WorldApiContext,
  validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
  return readCompletedShowView(context.pool,{worldId,promotionId,showId,
   playerId:context.actor.playerId});
+}
+
+/** The audience may only read finished shows of another HUMAN manager.
+ * No ownership bypass of private cards or editorial/staff datasets. */
+export async function publicCompletedShowAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,targetPromotionId:string,showId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");validate(targetPromotionId,"rival promotion");
+ validate(showId,"completed show");
+ return readPublicCompletedShow(context.pool,{worldId,playerId:context.actor.playerId,
+  viewerPromotionId:promotionId,targetPromotionId,showId});
 }
 
 /** Past shows are a bounded, indexed one-read archive for this controller. */

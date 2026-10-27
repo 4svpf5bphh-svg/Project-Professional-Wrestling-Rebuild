@@ -73,6 +73,32 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     [world,JSON.stringify({kind:"TURN",outcome:"HAPPENS",position:2,
      headline:"A change of allegiance",actorIds:[c],targetIds:[d],
      privateRumour:"HIDDEN CONTRACT TALKS"})]);
+   // An immutable settled title contest, not a drafted booking, identifies
+   // a new singles champion. The World history story reuses this proof.
+   await tx.query(`INSERT INTO ppw_championships(
+    world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
+    VALUES($1,'promotion-0','news-title','World Crown','SINGLES','ACTIVE',65,'news-reign')`,[world]);
+   await tx.query(`INSERT INTO ppw_championship_reigns(
+    world_id,promotion_id,championship_id,reign_id,holder_type,person_id,status,start_week_index)
+    VALUES($1,'promotion-0','news-title','news-reign','PERSON',$2,'ACTIVE',0)`,[world,a]);
+   await tx.query(`INSERT INTO ppw_championship_contests(
+    world_id,promotion_id,championship_id,show_id,slot_id,
+    prior_reign_id,winner_person_id,title_changed)
+    VALUES($1,'promotion-0','news-title','hshow','hmatch',NULL,$2,true)`,[world,a]);
+   // Only the already certified human final can generate a tournament story;
+   // the AI draft and an unfinished cup remain private.
+   await tx.query(`INSERT INTO ppw_tournaments(world_id,promotion_id,
+    tournament_id,name,division,status,entrants_count,created_week_index,
+    winner_person_id)
+    VALUES($1,'promotion-0','cup-final','King''s Crown','MEN','COMPLETE',4,0,$2),
+     ($1,'promotion-1','future-cup','Private Future Cup','MEN','ACTIVE',4,0,NULL)`,
+     [world,a]);
+   await tx.query(`INSERT INTO ppw_tournament_bouts(world_id,promotion_id,
+    tournament_id,bout_no,person_a,person_b,show_id,slot_id,
+    winner_person_id,resolved_week_index)
+    VALUES($1,'promotion-0','cup-final',3,$2,$3,'hshow','hmatch',$2,0),
+     ($1,'promotion-1','future-cup',1,$4,$5,NULL,NULL,NULL,NULL)`,
+     [world,a,b,c,d]);
    await tx.query(`UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1`,[world]);
   });
   await assert.rejects(withWorldTransaction(db.pool,tx=>
@@ -84,6 +110,7 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   const first=await withWorldTransaction(db.pool,tx=>publishCertifiedWorldNews(tx,world,1,1));
   assert.equal(first.published,true);
   assert.equal(first.awards,2);
+  assert.ok(first.stories>=1);
   const replay=await withWorldTransaction(db.pool,tx=>publishCertifiedWorldNews(tx,world,1,1));
   assert.equal(replay.published,false);
   const result=await readIndustryWorldNews(db.pool,{
@@ -94,6 +121,22 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.equal(result.awards[0]!.rating,4.75);
   assert.ok(result.awards.some(x=>x.kind==="ANGLE"&&x.rating===92));
   assert.ok(result.stories.some(x=>x.desk==="DIRT"&&x.certainty==="SPECULATION"));
+  const crown=result.stories.find(x=>x.id==="tournament:cup-final");
+  assert.equal(crown?.desk,"OFFICIAL");
+  assert.equal(crown?.certainty,"CONFIRMED");
+  assert.equal(crown?.sourceKind,"EVENT");
+  assert.match(crown?.title??"",/King's Crown/);
+  assert.match(crown?.summary??"",/4\.00 verified stars/);
+  const champion=result.stories.find(x=>x.sourceKind==="TITLE");
+  assert.equal(champion?.title,roster[0]!.name+" captures World Crown at Human Fight Night");
+  assert.match(champion?.summary??"",/title was vacant heading into the contest/);
+  const moments=await withWorldTransaction(db.pool,tx=>
+   tx.query<{headline:string}>(`SELECT headline FROM ppw_world_moments
+    WHERE world_id=$1 AND year=1 AND week=1 AND kind='TITLE'`,[world]));
+  assert.ok(moments.some(m=>m.headline===champion?.title),
+   "Historical World Moment uses the same confirmed named champion");
+  assert.ok(!JSON.stringify(result.stories).includes("Private Future Cup"),
+   "An unfinished tournament and future draft must not leak into public news");
   const publicText=JSON.stringify(result);
   assert.ok(!publicText.includes("PRIVATE FUTURE PLANS"));
   assert.ok(!publicText.includes("HIDDEN CONTRACT TALKS"));
@@ -117,9 +160,12 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_world_news_items","ppw_world_news_awards",
+   for(const table of ["ppw_world_moments",
+    "ppw_world_news_items","ppw_world_news_awards",
     "ppw_world_news_weeks","ppw_completed_match_report_facts",
-    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_tournament_bouts","ppw_tournaments",
+    "ppw_completed_show_segments","ppw_championship_contests",
+    "ppw_championship_reigns","ppw_completed_show_matches",
     "ppw_completed_shows","ppw_card_slots","ppw_booking_drafts",
     "ppw_week_resolution_seals","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",

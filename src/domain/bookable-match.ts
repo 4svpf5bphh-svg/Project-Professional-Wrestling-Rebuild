@@ -25,6 +25,8 @@ export interface BookableMatch {
  plannedLengthMinutes:number;
  intent:string;
  championshipId?:string;
+ tournamentId?:string;
+ tournamentBoutNo?:1|2|3|4|5|6|7;
  interference?:unknown;
  style?:unknown;
  cheatingWrestlerId?:string;
@@ -71,6 +73,14 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
    format==="BATTLE_ROYAL"||
    (format==="TAG"&&layout.sides[0]!.participants.length!==2)))
   throw new Error("Unsupported championship format");
+ if((raw.tournamentId===undefined)!==(raw.tournamentBoutNo===undefined))
+  throw new Error("Incomplete tournament match identity");
+ if(raw.tournamentId!==undefined&&(
+  typeof raw.tournamentId!=="string"||!raw.tournamentId||
+  raw.tournamentId.length>200||
+  ![1,2,3,4,5,6,7].includes(raw.tournamentBoutNo as number)||
+  format!=="SINGLES"||layout.ruleset==="ELIMINATION"))
+  throw new Error("Tournament bouts must be standard two-person singles matches");
  if(raw.interference!==undefined&&
   !["STANDARD","HARDCORE"].includes(stipulation))
   throw new Error("This stipulated match cannot contain an outside run-in");
@@ -92,6 +102,8 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
   plannedFinish:finish,plannedLengthMinutes:length,intent,
   ...(stipulation==="STANDARD"?{}:{stipulation}),
   ...(raw.championshipId===undefined?{}:{championshipId:raw.championshipId as string}),
+  ...(raw.tournamentId===undefined?{}:{tournamentId:raw.tournamentId as string,
+   tournamentBoutNo:raw.tournamentBoutNo as 1|2|3|4|5|6|7}),
   ...(interference?{interference}:{}),
  };
  if(raw.style!==undefined)result.style=normalizeMatchStyle(raw.style as never);

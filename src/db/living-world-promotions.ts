@@ -4,6 +4,7 @@
  * preserve that even when a company is financially distressed.
  */
 import type {SqlRows} from "./world-operations.js";
+import {aiPromotionIdentity,type AiPromotionIdentity} from "../domain/ai-promotion-strategy.js";
 import {originalSurvivalCounters,originalAnnualTier,
  originalPromotionScaleScore,ORIGINAL_ROSTER_TARGET,
  type PromotionTier} from "../domain/living-career.js";
@@ -428,5 +429,158 @@ export async function recruitDistressedAiRosters(
  FROM jsonb_to_recordset($2::jsonb) x(id text,promotion text,
   person text,guarantee bigint,appearance bigint)`,
  [worldId,JSON.stringify(signings),year,week]);
+ return {eligible:under.length,signed:signings.length};
+}
+
+/** One financially responsible recruitment opportunity per solvent AI company
+ * every 13 completed weeks. The distressed emergency recruitment above stays
+ * unchanged. No timer, polling, human booking or automatic legend privilege.
+ * Contract rights, available talent and the owner-private finances decide.
+ */
+export function strategicTalentFit(p:EmergencyCandidate,identity:AiPromotionIdentity){
+ const base=identity==="WORKRATE"?
+   p.in_ring_quality*.46+p.match_craft*.46+p.presentation*.08:
+  identity==="SPECTACLE"?
+   p.in_ring_quality*.35+p.match_craft*.20+p.presentation*.45:
+  identity==="STAR_POWER"?
+   p.popularity*.32+p.recognition*.27+p.presentation*.41:
+   p.match_craft*.36+p.presentation*.46+p.in_ring_quality*.18;
+ // Prefer authentic potential over simply bidding most for a famous veteran.
+ return base+(p.career_stage==="PROSPECT"?8:0);
+}
+export async function recruitStrategicAiRosters(
+ tx:SqlRows,worldId:string,year:number,week:number
+):Promise<{eligible:number;signed:number}>{
+ const index=(year-1)*52+week-1;
+ if(!worldId||!Number.isSafeInteger(index)||index<0||week<1||week>52)
+  throw new Error("Invalid strategic AI recruitment week");
+ if(index<13||index%13!==0)return {eligible:0,signed:0};
+ const promotions=await tx.query<{
+  promotion_id:string;tier:PromotionTier;cash:string;
+  weekly_media_income:string;weekly_sponsor_income:string;
+  weekly_fixed_overhead:string;talent_guarantees:string;staff_payroll:string;
+  roster_size:number;ai_risk_tolerance:number;
+  ai_match_quality_preference:number;ai_star_preference:number;
+ }>(`
+ SELECT p.promotion_id,p.tier,p.cash::text,
+  p.weekly_media_income::text,p.weekly_sponsor_income::text,
+  p.weekly_fixed_overhead::text,
+  coalesce((SELECT sum(c.weekly_guarantee) FROM ppw_contracts c
+   WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+    AND c.status='SIGNED' AND c.start_week_index<=$2+1
+    AND c.expires_week_index>=$2+1),0)::text AS talent_guarantees,
+  coalesce((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
+   WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id
+    AND e.status='ACTIVE' AND e.start_week_index<=$2+1
+    AND e.expires_week_index>=$2+1),0)::text AS staff_payroll,
+  p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
+  (SELECT count(DISTINCT c.person_id)::integer FROM ppw_contracts c
+   JOIN ppw_people person ON person.world_id=c.world_id
+    AND person.person_id=c.person_id AND person.status='ACTIVE'
+   WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+    AND c.status='SIGNED' AND c.start_week_index<=$2+1
+    AND c.expires_week_index>=$2+1) AS roster_size
+ FROM ppw_promotions p
+ WHERE p.world_id=$1 AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
+  AND p.financial_distress='HEALTHY' AND p.last_weekly_net>=0
+  AND p.weekly_media_income IS NOT NULL AND p.weekly_sponsor_income IS NOT NULL
+  AND p.weekly_fixed_overhead IS NOT NULL AND p.ai_risk_tolerance IS NOT NULL
+  AND p.ai_match_quality_preference IS NOT NULL AND p.ai_star_preference IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM ppw_promotion_controls control
+   WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
+    AND control.active)
+  AND NOT EXISTS (SELECT 1 FROM ppw_contracts c WHERE c.world_id=p.world_id
+   AND c.promotion_id=p.promotion_id
+   AND c.contract_id LIKE ('strategic:'||$2::text||':'||p.promotion_id||':%'))
+ ORDER BY p.promotion_id LIMIT 129`,[worldId,index]);
+ if(promotions.length>128)throw new Error("AI recruitment promotion bound exceeded");
+ const under=promotions.filter(p=>{
+  const target=ORIGINAL_ROSTER_TARGET[p.tier];
+  const surplus=Number(p.weekly_media_income)+Number(p.weekly_sponsor_income)-
+   Number(p.weekly_fixed_overhead)-Number(p.talent_guarantees)-
+   Number(p.staff_payroll);
+  return target!==undefined&&p.roster_size<Math.ceil(target*.75)&&
+   surplus>1000&&Number(p.cash)>Number(p.weekly_fixed_overhead)*16;
+ });
+ if(!under.length)return {eligible:0,signed:0};
+ const people=await tx.query<EmergencyCandidate>(`
+  SELECT p.person_id,p.career_stage,p.recognition,p.popularity,
+   p.in_ring_quality,p.match_craft,p.presentation,p.contract_priorities
+  FROM ppw_people p
+  WHERE p.world_id=$1 AND p.status='ACTIVE' AND p.career_stage IS NOT NULL
+   AND p.recognition IS NOT NULL AND p.popularity IS NOT NULL
+   AND p.in_ring_quality IS NOT NULL AND p.match_craft IS NOT NULL
+   AND p.presentation IS NOT NULL AND p.contract_priorities IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM ppw_contracts c WHERE c.world_id=p.world_id
+    AND c.person_id=p.person_id AND c.status='SIGNED'
+    AND c.expires_week_index>=$2+1)
+   AND NOT EXISTS (SELECT 1 FROM ppw_world_legend_unlocks legend
+    WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
+    AND legend.ai_eligible_from_week_index>$2)
+  ORDER BY p.popularity ASC,p.person_id LIMIT 256`,[worldId,index]);
+ if(people.length>256)throw new Error("AI free agent scouting batch exceeded bounds");
+ const used=new Set<string>(),signings:{
+  id:string;promotion:string;person:string;expiry:number;
+  guarantee:number;appearance:number;role:string;
+ }[]=[];
+ for(const promotion of under){
+  const identity=aiPromotionIdentity({
+   riskTolerance:promotion.ai_risk_tolerance,
+   matchQualityPreference:promotion.ai_match_quality_preference,
+   starPreference:promotion.ai_star_preference});
+  const surplus=Number(promotion.weekly_media_income)+
+   Number(promotion.weekly_sponsor_income)-
+   Number(promotion.weekly_fixed_overhead)-Number(promotion.talent_guarantees)-
+   Number(promotion.staff_payroll);
+  const candidates=people.filter(p=>!used.has(p.person_id))
+   .sort((a,b)=>strategicTalentFit(b,identity)-
+    strategicTalentFit(a,identity)||
+    originalMarketWeeklyValue(a)-originalMarketWeeklyValue(b)||
+    a.person_id.localeCompare(b.person_id));
+  for(const p of candidates){
+   if(!p.contract_priorities||!["money","role","prestige","schedule","loyalty","exposure"]
+     .every(k=>Number.isFinite(p.contract_priorities[k as keyof typeof p.contract_priorities])&&
+      p.contract_priorities[k as keyof typeof p.contract_priorities]>=0&&
+      p.contract_priorities[k as keyof typeof p.contract_priorities]<=100))continue;
+   const price=originalMarketWeeklyValue(p);
+   const guarantee=Math.round(price*.1),appearance=Math.round(price*.8);
+   // Cash reserves must cover roughly three potential appearances; ongoing
+   // guarantees may consume no more than 15% of actual recurring surplus.
+   if(guarantee>surplus*.15||Number(promotion.cash)<appearance*3)continue;
+   if(!originalEmergencyAcceptance(String(index),index,promotion.promotion_id,
+    p.person_id,p.contract_priorities))continue;
+   signings.push({id:"strategic:"+index+":"+promotion.promotion_id+":"+p.person_id,
+    promotion:promotion.promotion_id,person:p.person_id,expiry:index+26,
+    guarantee,appearance,
+    role:p.career_stage==="PROSPECT"?"DEVELOPMENTAL":"REGULAR"});
+   used.add(p.person_id);
+   break;
+  }
+ }
+ if(!signings.length)return {eligible:under.length,signed:0};
+ const recorded=await tx.query<{contract_id:string}>(`
+  INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+   family,status,remaining_dates,date_entitlement,start_week_index,
+   expires_week_index,weekly_guarantee,appearance_fee,signing_bonus,
+   role_expectation,creative_control)
+  SELECT $1,x.id,x.person,x.promotion,'LIMITED_NON_EXCLUSIVE',
+   'SIGNED',8,8,$3+1,x.expiry,x.guarantee,x.appearance,0,x.role,'NONE'
+  FROM jsonb_to_recordset($2::jsonb) x(id text,person text,
+   promotion text,expiry integer,guarantee bigint,appearance bigint,role text)
+  WHERE NOT EXISTS(SELECT 1 FROM ppw_contracts c
+   WHERE c.world_id=$1 AND c.person_id=x.person AND c.status='SIGNED'
+    AND c.expires_week_index>=$3+1)
+  RETURNING contract_id`,[worldId,JSON.stringify(signings),index]);
+ if(recorded.length!==signings.length)
+  throw new Error("AI free agent signing conflict; rolling back certified week");
+ await tx.query(`
+  INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+  SELECT $1,$3,$4,'AI_STRATEGIC_TALENT_SIGNED',
+   jsonb_build_object('promotionId',x.promotion,'personId',x.person,
+    'contractId',x.id,'weeklyGuarantee',x.guarantee,
+    'appearanceFee',x.appearance,'significance','ROUTINE')
+  FROM jsonb_to_recordset($2::jsonb) x(id text,promotion text,
+   person text,guarantee bigint,appearance bigint)`,
+  [worldId,JSON.stringify(signings),year,week]);
  return {eligible:under.length,signed:signings.length};
 }

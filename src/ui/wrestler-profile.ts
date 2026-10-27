@@ -6,6 +6,8 @@ import {portraitCredit} from "./wrestler-portrait.js";
 import type {readWrestlerProfile} from "../db/wrestler-profile.js";
 import type {editWrestlerRepertoire} from "../db/wrestler-profile.js";
 import type {CareerView} from "../db/wrestler-career.js";
+import {verifiedCareerForm} from "../domain/verified-career-form.js";
+import {recordedCareerHighlights} from "../domain/recorded-career-highlights.js";
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
@@ -265,6 +267,71 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     tile.append(el("small","",title),el("strong","",value));stats.append(tile);
    }
    careerBody.append(stats);
+   // Spotlight recorded reigns and career stage without another API read.
+   const highlights=recordedCareerHighlights({
+    status:view!.status,careerStage:view!.careerStage,
+    summary:career.summary,currentChampionships:career.currentChampionships??[],
+    singlesTitles:career.singlesTitles
+   });
+   if(highlights.length){
+    const spotlight=el("section","ppw-career-spotlight");
+    spotlight.append(el("span","ppw-profile-kicker","CAREER SPOTLIGHT"),
+     el("h3","","Chapters written in the ring"));
+    for(const highlight of highlights){
+     const item=el("article","ppw-career-spotlight-item");
+     item.append(el("strong","",highlight.headline),
+      el("p","",highlight.detail));spotlight.append(item);
+    }
+    careerBody.append(spotlight);
+   }
+   const form=verifiedCareerForm(career.recent);
+   const formSection=el("section","ppw-career-form");
+   formSection.append(el("span","ppw-profile-kicker","RECENT FORM"),
+    el("h3","","The last five matches"));
+   if(!form.sequence.length)formSection.append(
+    el("p","ppw-profile-muted",form.note));
+   else{
+    const rail=el("div","ppw-career-form-rail");
+    rail.setAttribute("aria-label","Recent results, newest first: "+
+     form.sequence.map(outcome=>outcome==="W"?"Win":"Loss").join(", "));
+    for(const [i,outcome] of form.sequence.entries()){
+     const chip=el("span","ppw-career-form-chip "+(outcome==="W"?
+      "ppw-career-form-win":"ppw-career-form-loss"),outcome);
+     chip.title="Match "+(i+1)+(i===0?" (most recent)":"")+
+      ": "+(outcome==="W"?"Win":"Loss");
+     rail.append(chip);
+    }
+    formSection.append(rail,
+     el("p","ppw-career-form-record",form.wins+" wins · "+
+      form.losses+" losses in the last "+form.recentCount+
+      " completed match"+(form.recentCount===1?"":"es")));
+    if(form.currentRun&&form.currentRun.length>=2){
+     formSection.append(el("p","ppw-career-form-run",
+      (form.currentRun.result==="W"?"Won ":"Lost ")+form.currentRun.length+
+      " consecutive verified matches"));
+    }
+    formSection.append(el("p","ppw-profile-muted",form.note));
+   }
+   if(form.ratingTrend){
+    const trend=form.ratingTrend;
+    const direction=form.breakoutRun?"A breakout stretch in the ring":
+     trend.direction==="HIGHER"?"Higher match ratings":
+     trend.direction==="LOWER"?"Lower match ratings":"Similar match ratings";
+    const detail=trend.direction==="SIMILAR"?
+     "The last four bouts drew similar ratings to the preceding four.":
+     "The latest four matches averaged "+trend.recentAverage.toFixed(2)+
+      "★ against "+trend.previousAverage.toFixed(2)+"★ in the prior four.";
+    const pulse=el("div","ppw-career-rating-trend"+
+     (form.breakoutRun?" ppw-career-rating-breakout":""));
+    pulse.append(el("strong","",direction),el("p","",detail),
+     el("small","ppw-profile-muted",
+      "Rated matches: "+trend.recentRated+" recent, "+
+      trend.previousRated+" earlier. Ratings describe bouts, not skill changes."));
+    formSection.append(pulse);
+   }else if(career.recent.length>=4)
+    formSection.append(el("p","ppw-profile-muted",
+     "A reliable match-rating comparison needs at least three rated bouts in each of two four-match windows."));
+   careerBody.append(formSection);
    const earned=el("section","ppw-profile-career-honors");
    earned.append(el("h3","","Earned reputations"),
     el("p","ppw-profile-muted","Verified matches and championship honours; current form can change."));

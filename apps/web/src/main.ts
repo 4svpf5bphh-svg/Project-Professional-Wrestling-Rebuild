@@ -152,6 +152,10 @@ function renderBottomNavigation(section:HostSection){
  const selected=drawerExpanded?drawerRoot:drawerRootForSection(section);
  for(const root of HOST_DRAWER_ROOTS){
   const tab=button("",()=>{
+   // News is a newsroom, not a one-entry drawer requiring a second tap.
+   if(root.key==="news"){
+    drawerExpanded=false;openSection("news");return;
+   }
    if(drawerExpanded&&drawerRoot===root.key)drawerExpanded=false;
    else{drawerRoot=root.key;drawerExpanded=true;}
    renderNavigation(readHostSection(location.hash));
@@ -159,7 +163,7 @@ function renderBottomNavigation(section:HostSection){
   });
   tab.className="ppw-bottom-tab ppw-bottom-root"+(selected===root.key?" ppw-bottom-tab-active":"");
   tab.dataset.root=root.key;
-  tab.setAttribute("aria-label","Open "+root.label+" menu");
+  tab.setAttribute("aria-label",root.key==="news"?"Open News":"Open "+root.label+" menu");
   tab.setAttribute("aria-controls","navigation");
   tab.setAttribute("aria-expanded",String(drawerExpanded&&drawerRoot===root.key));
   const art=el("span","ppw-bottom-tab-glyph");art.append(departmentIcon(root.key));
@@ -325,7 +329,15 @@ function renderSection(){
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken});break;
-  case "industry":mountIndustryPage(view,scope,pendingLegends??undefined);
+  case "industry":
+  case "promotions":
+  case "broadcasts":
+  case "records":
+  case "legends":
+  case "hall-of-fame":
+  case "annual-awards":
+  case "world-moments":
+   mountIndustryPage(view,scope,pendingLegends??undefined);
    pendingLegends=null;break;
   case "news":mountIndustryPage(view,scope);break;
   case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"));break;
