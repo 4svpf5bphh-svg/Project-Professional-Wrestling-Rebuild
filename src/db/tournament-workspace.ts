@@ -35,7 +35,7 @@ export async function readTournamentWorkspace(pool:TransactionPool,scope:Scope){
   const owner=owners[0]!,index=(owner.year-1)*52+owner.week-1;
   const tournaments=await tx.query<{
    tournament_id:string;name:string;division:"MEN"|"WOMEN";
-   status:"ACTIVE"|"COMPLETE";championship_id:string|null;
+   status:"ACTIVE"|"COMPLETE"|"CANCELLED";championship_id:string|null;
    championship_name:string|null;winner_person_id:string|null;
    winner_name:string|null;
   }>(`
@@ -186,6 +186,49 @@ export async function createTournament(pool:TransactionPool,input:CreateTourname
     ]);
    if(saved.length!==3)throw new Error("Incomplete tournament bracket");
    return {tournamentId,name:input.name.trim(),status:"ACTIVE" as const};
+  }
+ });
+}
+
+/** Cancel a stalled tournament without erasing any certified result.
+ * The manager must remove reserved fixtures from future cards first.
+ */
+export type CancelTournamentInput=Scope&{
+ requestId:string;expectedRevision:number;tournamentId:string;
+};
+export async function cancelTournament(pool:TransactionPool,input:CancelTournamentInput){
+ if(![input.worldId,input.promotionId,input.playerId,input.tournamentId].every(valid))
+  throw new Error("Invalid tournament cancellation");
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,requiresOpenWeek:true,
+  commandType:"CANCEL_PROMOTION_TOURNAMENT",
+  execute:async tx=>{
+   const owner=await tx.query<{promotion_id:string}>(`
+    SELECT c.promotion_id FROM ppw_promotion_controls c
+    JOIN ppw_memberships m ON m.world_id=c.world_id
+     AND m.player_id=c.player_id AND m.status='ACTIVE'
+    JOIN ppw_promotions p ON p.world_id=c.world_id
+     AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
+    WHERE c.world_id=$1 AND c.promotion_id=$2
+     AND c.player_id=$3 AND c.active`,
+    [input.worldId,input.promotionId,input.playerId]);
+   if(owner.length!==1)throw new Error("Tournament cancellation access denied");
+   const reserved=await tx.query<{bout_no:number}>(`
+    SELECT bout_no FROM ppw_tournament_bouts
+    WHERE world_id=$1 AND promotion_id=$2 AND tournament_id=$3
+     AND show_id IS NOT NULL AND winner_person_id IS NULL LIMIT 1`,
+    [input.worldId,input.promotionId,input.tournamentId]);
+   if(reserved.length)throw new Error(
+    "Remove remaining tournament bouts from planned show cards before cancelling");
+   const done=await tx.query<{tournament_id:string}>(`
+    UPDATE ppw_tournaments SET status='CANCELLED'
+    WHERE world_id=$1 AND promotion_id=$2 AND tournament_id=$3
+     AND status='ACTIVE' AND winner_person_id IS NULL
+    RETURNING tournament_id`,
+    [input.worldId,input.promotionId,input.tournamentId]);
+   if(done.length!==1)throw new Error("Only an active tournament can be cancelled");
+   return {tournamentId:input.tournamentId,status:"CANCELLED" as const};
   }
  });
 }

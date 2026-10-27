@@ -7,7 +7,7 @@ CREATE TABLE ppw_tournaments (
  tournament_id text NOT NULL,
  name text NOT NULL CHECK(length(name) BETWEEN 3 AND 64),
  division text NOT NULL CHECK(division IN ('MEN','WOMEN')),
- status text NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','COMPLETE')),
+ status text NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','COMPLETE','CANCELLED')),
  championship_id text,
  created_week_index integer NOT NULL CHECK(created_week_index>=0),
  winner_person_id text,
@@ -16,8 +16,7 @@ CREATE TABLE ppw_tournaments (
  FOREIGN KEY(world_id,promotion_id,championship_id)
   REFERENCES ppw_championships(world_id,promotion_id,championship_id),
  FOREIGN KEY(world_id,winner_person_id) REFERENCES ppw_people(world_id,person_id),
- CHECK((status='ACTIVE' AND winner_person_id IS NULL) OR
-       (status='COMPLETE' AND winner_person_id IS NOT NULL))
+ CHECK((status='COMPLETE')=(winner_person_id IS NOT NULL))
 );
 CREATE UNIQUE INDEX ppw_one_active_tournament_per_promotion
  ON ppw_tournaments(world_id,promotion_id) WHERE status='ACTIVE';
