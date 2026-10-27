@@ -8,6 +8,8 @@ import {withSqlClient} from "./postgres.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
+import {readBookableTournamentBouts,reserveBookedTournamentBouts}
+ from "./tournament-booking.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {inferProgrammeMatchLinks,validateProgrammeAngleLinks} from "../domain/programme-match-links.js";
@@ -198,7 +200,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    weekIndex:(show.year-1)*52+show.week-1,slots,
    checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
-  return {creativeConcerns,bookableTeams:bookableTeams.map(t=>({
+  const tournamentBouts=await readBookableTournamentBouts(tx,id,
+   (show.year-1)*52+show.week-1);
+  return {tournamentBouts,creativeConcerns,bookableTeams:bookableTeams.map(t=>({
    teamId:t.team_id,name:t.name,members:t.members})),
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
@@ -681,6 +685,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      if(inserted.length!==links.length)throw new Error("Incomplete angle programme links");
     }
    }
+   await reserveBookedTournamentBouts(tx,input,matches);
    // Original ready-to-run confirmation cannot survive changed booking.
    await tx.query([
     "UPDATE ppw_booking_drafts SET revision=revision+1,",

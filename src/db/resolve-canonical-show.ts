@@ -27,6 +27,7 @@ import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 import {deriveCompletedMatchReportFacts} from "./record-match-report-facts.js";
 import {recordRoadAgentReport} from "./road-agent-report.js";
+import {settleCertifiedTournamentBouts} from "./tournament-booking.js";
 import {calculateGorillaShow,recordGorillaShow} from "./gorilla-position.js";
 export interface ResolveCanonicalShowInput {
  worldId:string;promotionId:string;showId:string;
@@ -83,6 +84,7 @@ export async function resolveCanonicalShow(
     await settleCanonicalSinglesTitleContests(tx,receipt,projection.titleBookings);
    if(projection.tagTitleBookings.length)
     await settleCanonicalTagTitleContests(tx,receipt,projection.tagTitleBookings);
+   await settleCertifiedTournamentBouts(tx,receipt);
    await settleCanonicalTagCareerConsequences(tx,projection);
    await settleMultiIndividualCareerConsequences(tx,projection);
    await settleWorkingPartnerships(tx,{

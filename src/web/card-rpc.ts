@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
- completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+ completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,tournamentsAsActor,createTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -36,6 +36,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="planner")return plannerAsActor(context,worldId,promotionId);
  if(method==="calendar")return calendarAsActor(context,worldId,promotionId);
  if(method==="championships")return championshipsAsActor(context,worldId,promotionId);
+ if(method==="tournaments")return tournamentsAsActor(context,worldId,promotionId);
  if(method==="championshipHistory"){
   const cursor=p.cursor??null;
   if(cursor!==null&&(typeof cursor!=="object"||Array.isArray(cursor)||
@@ -144,6 +145,19 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  const requestId=id("requestId"),expectedRevision=p.expectedRevision;
  if(typeof expectedRevision!=="number"||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw new Error("Invalid revision");
+ if(method==="createTournament"){
+  if(typeof p.name!=="string"||!["MEN","WOMEN"].includes(String(p.division))||
+   !Array.isArray(p.entrants)||p.entrants.length!==4||
+   p.entrants.some(x=>typeof x!=="string"||!x||x.length>200)||
+   !(p.championshipId===undefined||p.championshipId===null||
+    typeof p.championshipId==="string"))
+   throw new Error("Invalid tournament draw");
+  return createTournamentAsActor(context,{
+   worldId,promotionId,requestId,expectedRevision,
+   name:p.name,division:p.division as "MEN"|"WOMEN",
+   entrants:p.entrants as string[],
+   championshipId:p.championshipId as string|null|undefined});
+ }
  if(method==="saveWrestlerRepertoire"){
   if(!Array.isArray(p.signatureMoves)||!Array.isArray(p.finishingMoves))
    throw new Error("Invalid wrestler move lists");

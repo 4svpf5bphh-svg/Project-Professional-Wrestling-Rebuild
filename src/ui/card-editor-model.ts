@@ -20,7 +20,8 @@ export interface EditorMatch{
  intent:string;plannedFinish:string;plannedLengthMinutes:number;
  elimination:boolean;eliminationOrder:number[];
  /** Existing optional booking metadata must survive an edit. */
- championshipId?:string;interference?:BookedInterference;style?:unknown;
+ championshipId?:string;tournamentId?:string;tournamentBoutNo?:1|2|3;
+ interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
  stipulation?:MatchStipulation;
 }
@@ -83,6 +84,9 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
   eliminationOrder:layout.eliminationOrder.map(x=>
    layout.sides.findIndex(s=>s.sideId===x)),
   ...(typeof raw.championshipId==="string"?{championshipId:raw.championshipId}:{}),
+  ...(typeof raw.tournamentId==="string"&&
+   [1,2,3].includes(raw.tournamentBoutNo as number)?
+   {tournamentId:raw.tournamentId,tournamentBoutNo:raw.tournamentBoutNo as 1|2|3}:{}),
   ...(raw.interference===undefined?{}:{interference:readBookedInterference(raw)??undefined}),
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?
@@ -279,6 +283,8 @@ export function buildBookedMatch(match:EditorMatch):BookableMatch{
   plannedFinish:match.plannedFinish,
   plannedLengthMinutes:match.plannedLengthMinutes,intent:match.intent,
   ...(match.championshipId?{championshipId:match.championshipId}:{}),
+  ...(match.tournamentId&&match.tournamentBoutNo?
+   {tournamentId:match.tournamentId,tournamentBoutNo:match.tournamentBoutNo}:{}),
   ...(match.stipulation&&match.stipulation!=="STANDARD"?{stipulation:match.stipulation}:{}),
   ...(match.interference?{interference:match.interference}:{}),
   ...(match.style?{style:match.style}:{}),

@@ -1,3 +1,5 @@
+import {readTournamentWorkspace,createTournament,type CreateTournamentInput}
+ from "../db/tournament-workspace.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
 import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
@@ -522,6 +524,19 @@ export async function requestMatchConsentAsActor(context:WorldApiContext,
 }
 /** Authenticated, read-only final show broadcast. */
 /** Title lineage is shared history, but access requires a verified manager. */
+export async function tournamentsAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return readTournamentWorkspace(context.pool,{
+  worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function createTournamentAsActor(context:WorldApiContext,
+ input:Omit<CreateTournamentInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createTournament(context.pool,{...input,playerId:context.actor.playerId});
+}
 export async function championshipsAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
  return readChampionshipDirectory(context.pool,worldId,context.actor.playerId,promotionId);
