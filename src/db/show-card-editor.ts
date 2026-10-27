@@ -8,7 +8,7 @@ import {withSqlClient} from "./postgres.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
-import {readBookableTournamentBouts,reserveBookedTournamentBouts}
+import {reserveBookedTournamentBouts}
  from "./tournament-booking.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
@@ -40,7 +40,11 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_day:number|null;venue_id:string|null;lock_ready_fingerprint:string|null;
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
- booking_open:boolean;within_window:boolean};
+ booking_open:boolean;within_window:boolean;
+ tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;
+  championshipId:string|null;
+  personA:{personId:string;name:string;contractId:string};
+  personB:{personId:string;name:string;contractId:string}}[]};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
@@ -54,7 +58,8 @@ type ContractRow={person_id:string;contract_id:string;name:string|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
  med:number|null;
  remaining_dates:number|null;exclusive_elsewhere:boolean};
-async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
+async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
+ includeTournament=false):Promise<ShowRow>{
  if(![id.worldId,id.playerId,id.promotionId,id.showId].every(validId))
   throw new Error("Invalid card editor identity");
  const rows=await tx.query<ShowRow>([
@@ -63,7 +68,68 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity):Promise<ShowRow>{
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
-   "AND (w.year-1)*52+w.week+5) AS within_window",
+   "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
+   ...(includeTournament?[`
+   (SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'tournamentId',bookable.tournament_id,
+    'tournamentName',bookable.tournament_name,
+    'boutNo',bookable.bout_no,
+    'championshipId',CASE WHEN bookable.bout_no=3
+       THEN bookable.championship_id ELSE NULL END,
+    'personA',jsonb_build_object('personId',bookable.person_a,
+      'name',bookable.name_a,'contractId',bookable.contract_a),
+    'personB',jsonb_build_object('personId',bookable.person_b,
+      'name',bookable.name_b,'contractId',bookable.contract_b)
+   )), '[]'::jsonb)
+   FROM (
+    SELECT t.tournament_id,t.name AS tournament_name,b.bout_no,
+     t.championship_id,b.person_a,b.person_b,a.name AS name_a,
+     z.name AS name_b,ca.contract_id AS contract_a,cb.contract_id AS contract_b
+    FROM ppw_tournament_bouts b
+    JOIN ppw_tournaments t ON t.world_id=b.world_id
+     AND t.promotion_id=b.promotion_id
+     AND t.tournament_id=b.tournament_id AND t.status='ACTIVE'
+    JOIN ppw_people a ON a.world_id=b.world_id
+     AND a.person_id=b.person_a AND a.status='ACTIVE'
+    JOIN ppw_people z ON z.world_id=b.world_id
+     AND z.person_id=b.person_b AND z.status='ACTIVE'
+    JOIN LATERAL (
+     SELECT c.contract_id FROM ppw_contracts c
+     WHERE c.world_id=b.world_id AND c.promotion_id=b.promotion_id
+      AND c.person_id=b.person_a AND c.status='SIGNED'
+      AND c.start_week_index<=(d.year-1)*52+d.week-1
+      AND c.expires_week_index>=(d.year-1)*52+d.week-1
+      AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
+     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+      c.contract_id LIMIT 1
+    ) ca ON TRUE
+    JOIN LATERAL (
+     SELECT c.contract_id FROM ppw_contracts c
+     WHERE c.world_id=b.world_id AND c.promotion_id=b.promotion_id
+      AND c.person_id=b.person_b AND c.status='SIGNED'
+      AND c.start_week_index<=(d.year-1)*52+d.week-1
+      AND c.expires_week_index>=(d.year-1)*52+d.week-1
+      AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
+     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+      c.contract_id LIMIT 1
+    ) cb ON TRUE
+    WHERE b.world_id=d.world_id AND b.promotion_id=d.promotion_id
+     AND b.winner_person_id IS NULL
+     AND (b.show_id IS NULL OR b.show_id=d.draft_id)
+     AND NOT EXISTS(SELECT 1 FROM ppw_contracts rival
+      WHERE rival.world_id=b.world_id AND rival.status='SIGNED'
+       AND rival.family='EXCLUSIVE' AND rival.promotion_id<>b.promotion_id
+       AND rival.person_id IN(b.person_a,b.person_b)
+       AND rival.expires_week_index>=(d.year-1)*52+d.week-1)
+     AND NOT EXISTS(SELECT 1 FROM ppw_medical_absences med
+      WHERE med.world_id=b.world_id
+       AND med.person_id IN(b.person_a,b.person_b)
+       AND med.status='ACTIVE'
+       AND med.injured_week_index<(d.year-1)*52+d.week-1
+       AND med.cleared_week_index>(d.year-1)*52+d.week-1)
+    ORDER BY t.created_week_index,b.bout_no LIMIT 4
+   ) bookable) AS tournament_bouts
+`]:[]),
   "FROM ppw_worlds w JOIN ppw_booking_drafts d",
   "ON d.world_id=w.world_id",
   "JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id",
@@ -88,7 +154,7 @@ function boundedSlots(slots:readonly SlotRow[]){
 }
 export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdentity){
  return withSqlClient(pool,async tx=>{
-  const show=await readShowScope(tx,id);
+  const show=await readShowScope(tx,id,true);
   const slots=boundedSlots(await tx.query<SlotRow>(
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
    " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
@@ -200,8 +266,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    weekIndex:(show.year-1)*52+show.week-1,slots,
    checkStanding:links.some(x=>x.kind==="MATCH")
   }]);
-  const tournamentBouts=await readBookableTournamentBouts(tx,id,
-   (show.year-1)*52+show.week-1);
+  const tournamentBouts=show.tournament_bouts??[];
+  if(!Array.isArray(tournamentBouts)||tournamentBouts.length>3)
+   throw new Error("Card tournament selection exceeded safe bounds");
   return {tournamentBouts,creativeConcerns,bookableTeams:bookableTeams.map(t=>({
    teamId:t.team_id,name:t.name,members:t.members})),
    selectedPeople:selectedPeople.map(p=>({
