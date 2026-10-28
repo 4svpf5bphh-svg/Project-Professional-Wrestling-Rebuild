@@ -46,6 +46,10 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await expect.poll(()=>acknowledged).toBe(true);
  await expect(page.getByRole("heading",{name:"Identity shrouded"})).toBeVisible();
  await expect(page.getByText("2 / 8 · 25%")).toBeVisible();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(3);
+ await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"Icons"}).click();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(0); 
+ await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"All pages"}).click();
  await page.getByRole("button",{name:"Discovered (1)"}).click();
  await expect(page.locator(".ppw-legend-tile:visible")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"Discovered (1)"})).toHaveAttribute("aria-pressed","true");
@@ -110,7 +114,12 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  const cabinet=page.locator(".ppw-legend-collection");
  await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
- await cabinet.getByRole("button",{name:"Enlarge card"}).click();
+ await expect(cabinet.getByRole("progressbar",{name:"Legend card collection progress"}))
+  .toHaveAttribute("aria-valuenow","1");
+ await expect(cabinet.locator(".ppw-album-slot")).toHaveCount(1);
+ await cabinet.getByRole("button",{name:"Collected"}).click();
+ await expect(cabinet.getByRole("button",{name:"Collected"})).toHaveAttribute("aria-pressed","true");
+ await cabinet.getByRole("button",{name:"View card"}).click();
  const expanded=page.getByRole("dialog",{name:"Collectible card: The Undertaker"});
  await expect(expanded.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
  await expect(expanded.locator("a[href*='commons.wikimedia.org']")).toBeVisible();
