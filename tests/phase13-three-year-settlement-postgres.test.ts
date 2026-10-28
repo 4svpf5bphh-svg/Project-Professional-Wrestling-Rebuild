@@ -37,7 +37,7 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
   {id:"reckless",mode:"HUMAN",cash:280000,wage:16000,fee:3500,overhead:30000,
    media:17000,sponsor:6000,venue:9000,hire:25000,ticket:"PRESTIGE",cadence:2,
    day:2,quality:2.15,crowd:43,risk:80,craft:45,star:95},
-  {id:"workrate-ai",mode:"AI",cash:80000,wage:850,fee:300,overhead:6000,
+  {id:"workrate-ai",mode:"AI",cash:180000,wage:850,fee:300,overhead:6000,
    media:3500,sponsor:2000,venue:2100,hire:2500,ticket:"ACCESSIBLE",cadence:3,
    day:4,quality:3.4,crowd:69,risk:35,craft:95,star:42},
   {id:"star-ai",mode:"AI",cash:160000,wage:2450,fee:700,overhead:15000,
@@ -74,7 +74,7 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
     await tx.query("INSERT INTO ppw_promotion_market_states(world_id,promotion_id,market_id,awareness,live_strength,loyalty) VALUES($1,$2,'metro',45,42,50)",[world,profile.id]);
     await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id,capacity,weekly_hire_cost,status) VALUES($1,$2,$2,'metro',$3,$4,'ACTIVE')",
      [world,"venue-"+profile.id,profile.venue,profile.hire]);
-    for(let i=0;i<12;i++)people.push({id:profile.id+"-"+i,promotion:profile.id,
+    for(let i=0;i<(profile.mode==="AI"?10:12);i++)people.push({id:profile.id+"-"+i,promotion:profile.id,
      division:i%4===0?"WOMEN":"MEN",quality:78-i*3,
      wage:profile.wage,fee:profile.fee,stage:"PRIME"});
    }
@@ -273,6 +273,7 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
   }>(["SELECT promotion_id,count(*)::integer AS count FROM ppw_contracts",
    "WHERE world_id=$1 AND contract_id LIKE 'strategic:%'",
    "GROUP BY promotion_id ORDER BY promotion_id"].join(" "),[world]));
+  assert.ok(signings.some(x=>x.count>0),"Solvent undersized AI should actually recruit talent");
   assert.ok(signings.every(x=>x.promotion_id.endsWith("-ai")),
    "Automated signings must never touch human-owned companies");
   console.log("Phase 13 three-year production SQL/recorded-show diagnostics:",
