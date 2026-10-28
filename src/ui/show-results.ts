@@ -3,6 +3,17 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
+type MediaScrumView={showId:string;showName?:string;questions:{
+ id:ScrumQuestionId;journalist:string;question:string;
+ answers:readonly [string,string,string];answerIndex:number|null
+}[]};
+type MediaScrumPort={
+ read():Promise<MediaScrumView>;
+ answer(questionId:ScrumQuestionId,answerIndex:number):Promise<{
+  questionId:ScrumQuestionId;answerIndex:number;answer:string;saved:boolean
+ }>;
+};
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
@@ -103,13 +114,14 @@ function transitionFor(entries:ShowResultEntry[],index:number,showName:string):s
 export async function mountShowResults(root:HTMLElement,port:{
  load():Promise<CompletedShowView>;
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
+ mediaScrum?:MediaScrumPort;
  openNext?:(section:NextStepDestination)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext);
+  renderBroadcast(root,show,port.openNext,port.mediaScrum);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review)
@@ -120,7 +132,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
- openNext?:(section:NextStepDestination)=>void):void{
+ openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
@@ -421,6 +433,64 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
   ...(reactions.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);
+ if(show.bookingClass==="PREMIUM"&&mediaScrum){
+  const press=node("section","ppw-media-scrum");
+  press.append(node("span","ppw-eyebrow","AFTER THE MAIN EVENT"),
+   node("h2","","The Media Scrum"),
+   node("p","ppw-muted",
+    "Answer the wrestling press in your own voice. The questions follow the certified show; your quotes are recorded once."));
+  const open=node("button","ppw-results-next","Meet the press") as HTMLButtonElement;
+  open.type="button";open.setAttribute("aria-expanded","false");
+  const content=node("div","ppw-media-scrum-content");
+  let loaded=false,working=false,view:MediaScrumView|null=null;
+  function draw(){
+   content.replaceChildren();
+   if(!view)return;
+   for(const q of view.questions){
+    const article=node("article","ppw-media-scrum-question");
+    article.append(node("span","ppw-eyebrow",q.journalist),
+     node("p","ppw-media-scrum-prompt",q.question));
+    if(q.answerIndex!==null){
+     article.append(node("p","ppw-media-scrum-quote",
+      "You: “"+q.answers[q.answerIndex]+"”"));
+    }else{
+     const choices=node("div","ppw-media-scrum-choices");
+     q.answers.forEach((answer,index)=>{
+      const selection=node("button","ppw-legend-button",answer) as HTMLButtonElement;
+      selection.type="button";selection.disabled=working;
+      selection.onclick=async()=>{
+       if(working||!view)return;working=true;
+       choices.querySelectorAll("button").forEach(b=>(b as HTMLButtonElement).disabled=true);
+       try{
+        const recorded=await mediaScrum.answer(q.id,index);
+        q.answerIndex=recorded.answerIndex;draw();
+       }catch(e){choices.append(node("p","ppw-alert ppw-error",
+         e instanceof Error?e.message:"Could not save the answer"));working=false;}
+       finally{working=false;}
+      };
+      choices.append(selection);
+     });
+     article.append(choices);
+    }
+    content.append(article);
+   }
+  }
+  open.onclick=async()=>{
+   if(working)return;
+   if(open.getAttribute("aria-expanded")==="true"){
+    open.setAttribute("aria-expanded","false");content.hidden=true;return;
+   }
+   open.setAttribute("aria-expanded","true");content.hidden=false;
+   if(loaded){draw();return;}
+   open.disabled=true;
+   content.replaceChildren(node("p","ppw-muted","The journalists are gathering…"));
+   try{view=await mediaScrum.read();loaded=true;draw();}
+   catch(e){content.replaceChildren(node("p","ppw-alert ppw-error",
+     e instanceof Error?e.message:"Press scrum unavailable"));}
+   finally{open.disabled=false;}
+  };
+  press.append(open,content);content.hidden=true;after.append(press);
+ }
  const steps=node("nav","ppw-results-steps");
  steps.setAttribute("aria-label","Results chapters");
  const pages=[headlines,full,after];
