@@ -31,8 +31,11 @@ test("all 129 cards and 142 worker portraits retain the original 48",()=>{
  const files=original.map(item=>
   "apps/web/public/assets/legends/"+item.id+"-"+item.tier.toLowerCase()+"-card.webp");
  assert.ok(files.every(file=>existsSync(file)),"all real-photo card drafts must exist");
- assert.equal(original.filter(x=>x.cardAsset!==null).length,1);
+ assert.equal(original.filter(x=>x.cardAsset!==null).length,48);
+ assert.ok(original.every(x=>x.cardAsset&&existsSync("apps/web/public"+x.cardAsset)),
+  "Every original collectible must point to a bundled card");
  assert.equal(LEGENDS_CATALOGUE.slice(48).filter(x=>x.cardAsset!==null).length,81);
+ assert.equal(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).length,129);
 });
 test("rejected sign and venue snapshots are replaced with individual source citations",()=>{
  const images=JSON.parse(readFileSync("data/legend-approved-photo-sources.json","utf8")).images;

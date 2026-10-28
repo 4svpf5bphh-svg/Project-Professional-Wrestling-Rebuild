@@ -266,8 +266,15 @@ const curated:LegendDefinition[]=[
  * and free-agent market receive all 129 definitions without a new code path.
  */
 export const LEGENDS_EXPANSION_RELEASED:boolean=true;
+// The original 48 cards were already bundled before the expanded 81.
+ // Map them to their existing, verified local file paths independently of
+ // when the World recorded a Legend unlock or a player saw its reveal.
+ // Photograph/likeness rights must still be reviewed before wider publication.
+const originalLegendsWithCards:readonly LegendDefinition[]=[...active,...curated].map(x=>({
+ ...x,cardAsset:x.cardAsset??"/assets/legends/"+x.id+"-"+x.tier.toLowerCase()+"-card.webp"
+}));
 export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze([
- ...active,...curated,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
+ ...originalLegendsWithCards,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
 ]);
 export const LIVE_LEGENDS=LEGENDS_CATALOGUE.filter(x=>x.status==="ACTIVE");
 export const LEGEND_TIER_PRICES:Readonly<Record<LegendTier,number>>={
