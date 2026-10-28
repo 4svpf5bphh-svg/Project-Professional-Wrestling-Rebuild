@@ -21,7 +21,16 @@ test("eight AI promotions complete thirteen real World weeks including premium e
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
-  await importOriginalGenesis(db.pool,originalGenesisFixture(world,160));
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  const population=await withWorldTransaction(db.pool,tx=>tx.query<{
+   talent:number;free_agents:number
+  }>(["SELECT count(*)::integer AS talent,",
+     "count(*) FILTER(WHERE NOT EXISTS(SELECT 1 FROM ppw_contracts c",
+     "WHERE c.world_id=p.world_id AND c.person_id=p.person_id",
+     "AND c.status='SIGNED'))::integer AS free_agents",
+     "FROM ppw_people p WHERE p.world_id=$1"].join(" "),[world]));
+  assert.deepEqual(population,[{talent:643,free_agents:243}],
+   "Real Genesis depth matters; an all-contracted synthetic market cannot recruit");
   // Use the real company identities; the named quarterly premium calendar
   // belongs to WWE and AEW, not to anonymous Genesis fixture labels.
   await withWorldTransaction(db.pool,async tx=>{
@@ -93,7 +102,8 @@ test("eight AI promotions complete thirteen real World weeks including premium e
    assert.equal(f.booked,8,"All autonomous companies need real submitted cards");
    assert.equal(f.certified,8,"All eight companies must be certified once");
    assert.equal(f.completed,f.shows,"Every submitted card must have real results");
-   assert.ok(f.matches>=8,"Genuine matches were simulated and persisted");
+   assert.ok(f.matches>=30,
+    "The authentic free-agent market should preserve credible AI card depth in Week "+week);
    assert.equal(f.weekly_ledger,1,"World should publish only once per week");
    assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
    snapshots.push({week,shows:f.shows,completed:f.completed,
