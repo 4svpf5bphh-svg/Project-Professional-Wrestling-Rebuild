@@ -26,7 +26,7 @@ import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
 import "../admin-centre.css";
 
 type SessionView={
- worldId:string;playerId:string;csrfToken:string;
+ worldId:string;playerId:string;ownerName?:string|null;csrfToken:string;
  overview:{
   world:{revision:number;name:string;year:number;week:number};
   membership:"ACTIVE"|"INACTIVE"|"NONE";
@@ -393,7 +393,8 @@ async function loadSession(){
   const logo=el("span","ppw-shell-logo","PPW");
   const brand=el("span","ppw-shell-brand");
   brand.append(el("strong","",session.overview.promotion?.name??"WORLD CONTROL"),
-   el("small","","Y"+session.overview.world.year+" W"+
+   el("small","",(session.ownerName?session.ownerName+" · ":"")+
+    "Y"+session.overview.world.year+" W"+
     session.overview.world.week+" · "+session.overview.world.name));
   identity.append(logo,brand);
   const actions=el("div","ppw-shell-actions");
@@ -407,6 +408,7 @@ async function loadSession(){
   actions.append(signout);
   banner.append(identity,actions);
   account.append(banner);
+  if(session.ownerName===null){showOwnerName();return;}
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
   renderSection();
@@ -470,6 +472,62 @@ function showLogin(){
  };
  card.append(form);game.append(card);
 }
+/** First-time identity is a display name, never a replacement for the signed-in player ID. */
+function showOwnerName(){
+ if(!session)return;
+ const card=el("section","ppw-access-panel");
+ card.append(el("span","ppw-access-kicker","PPW / NEW PROMOTER"),
+  el("h1","","What's your name?"),
+  el("p","ppw-access-muted",
+   "Journalists, staff and the wrestling World will address you by this name. Your private sign-in stays unchanged."));
+ const form=document.createElement("form");form.className="ppw-access-form";
+ const name=document.createElement("input");
+ name.type="text";name.required=true;name.maxLength=48;
+ name.autocomplete="name";name.placeholder="Josh Robinson";
+ name.setAttribute("aria-label","Your manager name");
+ const submit=document.createElement("button");submit.type="submit";
+ submit.className="ppw-access-button";submit.textContent="Enter the wrestling world";
+ form.append(name,submit);
+ form.onsubmit=async e=>{
+  e.preventDefault();submit.disabled=true;
+  try{
+   await command("/api/profile",{action:"SET_NAME",name:name.value},session!.csrfToken);
+   await loadSession();
+  }catch(error){showError(card,error instanceof Error?error.message:"Name could not be saved");}
+  finally{submit.disabled=false;}
+ };
+ card.append(form);game.replaceChildren(card);
+}
+/** Rebranding is optional and never alters the immutable promotion ID. */
+function showTakeoverBrand(promotionId:string,originalName:string){
+ if(!session)return;
+ const card=el("section","ppw-access-panel");
+ card.append(el("span","ppw-access-kicker","PPW / YOUR PROMOTION"),
+  el("h1","","Make it yours"),
+  el("p","ppw-access-muted",
+   "You're the owner of "+originalName+". Keep its famous name or rebrand it. Championships and history follow the same promotion."));
+ const form=document.createElement("form");form.className="ppw-access-form";
+ const name=document.createElement("input");name.type="text";name.maxLength=56;
+ name.required=true;name.value=originalName;
+ name.setAttribute("aria-label","Promotion name");
+ const submit=document.createElement("button");submit.type="submit";
+ submit.className="ppw-access-button";submit.textContent="Save promotion name";
+ const keep=button("Keep "+originalName,()=>void loadSession());
+ form.append(name,submit,keep);
+ form.onsubmit=async e=>{
+  e.preventDefault();submit.disabled=true;keep.disabled=true;
+  try{
+   await command("/api/promotion-identity",{
+    action:"RENAME",promotionId,name:name.value
+   },session!.csrfToken);
+   await loadSession();
+  }catch(error){
+   showError(card,error instanceof Error?error.message:"Promotion name not changed");
+   submit.disabled=false;keep.disabled=false;
+  }
+ };
+ card.append(form);game.replaceChildren(card);
+}
 function showJoin(){
  if(!session)return;
  const card=el("section","ppw-access-panel");
@@ -528,7 +586,7 @@ function showClaim(){
     const outcome=await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
      expectedRevision:session!.overview.world.revision},session!.csrfToken);
     requireSuccessfulPromotionClaim(outcome);
-    await loadSession();
+    showTakeoverBrand(p.id,p.name);
    }catch(e){
     choosing=false;
     card.querySelectorAll<HTMLButtonElement>("button").forEach(b=>{b.disabled=false;});
