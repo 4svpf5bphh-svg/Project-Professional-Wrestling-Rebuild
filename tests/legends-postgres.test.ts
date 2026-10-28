@@ -70,7 +70,8 @@ test("certified classics introduce Legends as competing free agents once; accoun
   const first=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,1));
   assert.equal(first.processed,true);
-  assert.deepEqual(first.unlocked.sort(),["jerry-lynn","mr-perfect"]);
+  assert.deepEqual(first.unlocked,["jerry-lynn"]);
+  // Mr Perfect met the same certified evidence, but must wait for his rarity gate.
   const replay=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,1));
   assert.deepEqual(replay,{processed:false,unlocked:[]});
@@ -84,7 +85,7 @@ test("certified classics introduce Legends as competing free agents once; accoun
    legend_id:string;person_ids:string[];ai_eligible_from_week_index:number}>(`
    SELECT legend_id,person_ids,ai_eligible_from_week_index
    FROM ppw_world_legend_unlocks WHERE world_id=$1 ORDER BY legend_id`,[world]));
-  assert.equal(arrivals.length,2);
+  assert.equal(arrivals.length,1);
   assert.ok(arrivals.every(x=>x.ai_eligible_from_week_index===1));
   const personIds=arrivals.flatMap(x=>x.person_ids);
   const contracts=await withWorldTransaction(db.pool,tx=>tx.query<{contract_id:string}>(`
@@ -123,6 +124,27 @@ test("certified classics introduce Legends as competing free agents once; accoun
    SELECT contract_id FROM ppw_contracts
    WHERE world_id=$1 AND person_id=ANY($2::text[])`,[world,personIds]))).length,0);
   await assert.rejects(readLegendsVault(db.pool,{...a,playerId:other}),/access denied/);
+  // Later certified World weeks continue to honour the queued cumulative
+  // achievement; nothing arrives just because a client opened the Vault.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=13 WHERE world_id=$1",[world]);
+   await tx.query(`
+    INSERT INTO ppw_week_resolution_seals(world_id,year,week,certified_promotions)
+    VALUES($1,1,13,3)`,[world]);
+   await tx.query(`
+    INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,13)`,[world]);
+  });
+  const later=await withWorldTransaction(db.pool,tx=>
+   settleCertifiedWorldLegends(tx,world,1,13));
+  assert.deepEqual(later.unlocked,["mr-perfect"]);
+  const laterRecord=await withWorldTransaction(db.pool,tx=>tx.query<{
+   legend_id:string;year:number;week:number}>(`
+   SELECT legend_id,year,week FROM ppw_world_legend_unlocks
+   WHERE world_id=$1 ORDER BY year,week`,[world]));
+  assert.deepEqual(laterRecord,[
+   {legend_id:"jerry-lynn",year:1,week:1},
+   {legend_id:"mr-perfect",year:1,week:13}
+  ]);
  }finally{
   // Disposable Postgres fixture; never connect this test to Production.
   await db.close();

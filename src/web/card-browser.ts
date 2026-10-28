@@ -270,6 +270,18 @@ function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
   load:()=>call("business"),
+  renamePromotion:async name=>{
+   const response=await fetch("/api/promotion-identity",{
+    method:"POST",credentials:"same-origin",
+    headers:{"content-type":"application/json","x-ppw-csrf":scope.csrfToken},
+    body:JSON.stringify({action:"RENAME",promotionId:scope.promotionId,name})
+   });
+   const body=await response.json().catch(()=>({error:"Promotion identity unavailable"})) as
+    {name?:string;changed?:boolean;error?:string};
+   if(!response.ok)throw new Error(body.error??"Could not rename promotion");
+   if(typeof body.name!=="string")throw new Error("Invalid promotion rename response");
+   return {name:body.name,changed:body.changed===true};
+  },
   signCommercial:input=>call("signCommercial",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
@@ -374,12 +386,30 @@ export async function mountResultsArchivePage(root:HTMLElement,scope:Scope,onBac
  });
 }
 
+/** One explicit media scrum request when a manager opens a premium report.
+ * Signed actor comes from the existing cookie, never browser-provided IDs.
+ */
+async function scrumRequest(scope:Scope,fields:Record<string,unknown>){
+ const response=await fetch("/api/media-scrum",{
+  method:"POST",credentials:"same-origin",
+  headers:{"content-type":"application/json","x-ppw-csrf":scope.csrfToken},
+  body:JSON.stringify({...fields,promotionId:scope.promotionId,showId:scope.showId})
+ });
+ const body=await response.json().catch(()=>({error:"Press conference unavailable"}));
+ if(!response.ok)throw new Error(body.error??"Press conference unavailable");
+ return body;
+}
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  backLabel="programmes"){
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
+  mediaScrum:{
+   read:()=>scrumRequest(scope,{action:"READ"}),
+   answer:(questionId,answerIndex)=>scrumRequest(scope,{
+    action:"ANSWER",questionId,answerIndex})
+  },
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",

@@ -27,7 +27,10 @@ test("Original ranked AI fills a real 2-5 match card with distinct contracted wr
  assert.equal(card.matches.slice(0,-1).every(m=>!m.mainEvent),true);
  const push=(id:string)=>{const p=roster.find(x=>x.personId===id)!;return p.momentum*.4+p.popularity*.3+p.recognition*.2+p.presentation*.1;};
  const powers=card.matches.map(m=>m.participants.reduce((s,p)=>s+push(p.personId),0)/2);
- assert.deepEqual(powers,[...powers].sort((a,b)=>a-b));
+ // A real card may elevate one of the three strongest bouts to headline;
+ // the rest of the original ring-strength ordering still holds.
+ assert.deepEqual(powers.slice(0,-1),[...powers.slice(0,-1)].sort((a,b)=>a-b));
+ assert.ok(powers.at(-1)! >= [...powers].sort((a,b)=>b-a)[Math.min(2,powers.length-1)]!);
  for(const m of card.matches){
   assert.equal(m.participants.length,2);
   assert.equal(m.participants.every(x=>roster.find(p=>p.personId===x.personId)?.bookingDivision===m.bookingDivision),true);

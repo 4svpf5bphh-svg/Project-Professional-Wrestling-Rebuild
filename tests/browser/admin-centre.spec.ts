@@ -9,19 +9,25 @@ const settings={model:"openai/gpt-oss-120b",voice:"MARTY",
 const adminData={plan:{year:1,week:2,action:"RESOLVE_DETAILED_SHOWS",blockers:[],
  ready:{phase:"RESOLVING",active:13,regularSubmitted:13,submitted:13,
  cleared:13,certified:null,legacyResolved:13,detailedResolved:8}},
- settings,groqConfigured:true,
+ settings,groqConfigured:true,testKp:{balance:100,granted:false,target:50000},
  shows:[{show_id:"old-show",show_name:"Friday Fire",year:1,week:1}]};
 test("owner Admin lives only under Business and exposes audited Groq controls",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:{
  worldId:"genesis",playerId:"operator",csrfToken:"csrf",overview,
  canManualAdvance:true,availablePromotions:[]}}));
  await page.route("**/api/card",route=>route.fulfill({json:overview}));
+ let grants=0;
  await page.route("**/api/admin",async route=>{
-  if(route.request().method()==="GET")return route.fulfill({json:adminData});
+  if(route.request().method()==="GET")return route.fulfill({json:{
+   ...adminData,testKp:{balance:grants?50000:100,granted:grants>0,target:50000}
+  }});
   const body=route.request().postDataJSON();
+  if(body.action==="GRANT_PLAYTEST_KP"){
+   grants++;expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf");
+   return route.fulfill({json:{balance:50000,credited:49900,alreadyGranted:false}});
+  }
   expect(body).toMatchObject({action:"SAVE_RINGSIDE",expectedVersion:0,
    settings:{model:"openai/gpt-oss-20b",voice:"SATIRE",detail:"LONG"}});
-  expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf");
   return route.fulfill({json:{settings:{...body.settings,version:1}}});
  });
  let previewCalls=0;
@@ -42,6 +48,11 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
  await expect(page.getByText(/Completed shows: 8\/13/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Advance Week"})).toBeVisible();
+ page.once("dialog",dialog=>void dialog.accept());
+ await page.getByRole("button",{name:"Credit 50,000 test KP"}).click();
+ await expect(page.getByText("Your balance: 50,000 KP")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Test credit already claimed"})).toBeDisabled();
+ expect(grants).toBe(1);
  await page.getByLabel("AI model").selectOption("openai/gpt-oss-20b");
  await page.getByLabel("Columnist style").selectOption("SATIRE");
  await page.getByLabel("Review length").selectOption("LONG");

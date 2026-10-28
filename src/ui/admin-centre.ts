@@ -9,6 +9,7 @@ type ActionPlan={
 type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
 type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null;
+ testKp?:{balance:number;granted:boolean;target:number};
  groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
@@ -49,9 +50,10 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
  const legendTrial=el("section","ppw-admin-panel");
+ const kpDesk=el("section","ppw-admin-panel");
  world.append(el("h2","","World Control"),el("p","ppw-admin-status","Loading verified World state…"));
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
- root.append(world,legendTrial,studio);
+ root.append(world,kpDesk,legendTrial,studio);
  let busy=false;
  let lastNotice="";let lastError=false;
  async function load(){
@@ -128,6 +130,31 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   actions.append(refresh);
   world.append(status,actions,info,
    el("p","ppw-admin-small","No automatic World advance or reset. Only your explicit Advance Week action moves the clock."));
+
+  kpDesk.replaceChildren(el("h2","","Kayfabe Points · Testing"),
+   el("p","ppw-admin-sub","Cosmetic purchases only. One authorised test top-up, not an unlimited currency generator."));
+  const wallet=data.testKp;
+  if(wallet){
+   kpDesk.append(el("strong","ppw-admin-status",
+    "Your balance: "+wallet.balance.toLocaleString("en-GB")+" KP"));
+   const grant=el("button","ppw-admin-primary","Credit 50,000 test KP") as HTMLButtonElement;
+   grant.type="button";grant.disabled=wallet.granted||busy;
+   if(wallet.granted)grant.textContent="Test credit already claimed";
+   const result=el("p","ppw-admin-message","");
+   grant.onclick=async()=>{
+    if(busy||wallet.granted||!window.confirm("Top your account up to 50,000 KP once for cosmetic testing? No other manager is affected."))return;
+    busy=true;grant.disabled=true;
+    try{
+     const response=await request("/api/admin","POST",ctx.csrfToken,{action:"GRANT_PLAYTEST_KP"}) as
+      {balance:number;credited:number;alreadyGranted:boolean};
+     lastNotice="KP test credit applied. Balance: "+response.balance.toLocaleString("en-GB")+" KP.";
+     lastError=false;await load();
+    }catch(e){message(result,e instanceof Error?e.message:"Test credit failed",true);}
+    finally{busy=false;grant.disabled=wallet.granted;}
+   };
+   kpDesk.append(grant,result,
+    el("p","ppw-admin-small","Once credited, you can purchase styles and collect eligible Legend cards normally. Purchases remain permanent."));
+  }else kpDesk.append(el("p","ppw-admin-small","Wallet unavailable. Refresh Admin diagnostics."));
 
   legendTrial.replaceChildren(el("h2","","Legend Reveal Playtest"),
    el("p","ppw-admin-sub","THE UNDERTAKER · IMMORTAL · one-time test"));
