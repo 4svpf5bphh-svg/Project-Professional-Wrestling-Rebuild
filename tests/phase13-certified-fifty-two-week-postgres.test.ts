@@ -13,11 +13,11 @@ const url=process.env.PPW_NEON_TEST_URL;
 // scenarios: real AI books every card, original result simulation scores
 // every match, and certification and rollover settle each company. No
 // fabricated result, receipt, direct payroll fixture or live scheduler.
-test("eight AI promotions complete thirty real World weeks through contract expiration",{
+test("eight AI promotions complete a real fifty-two-week World and annual recalibration",{
  skip:!url?"Disposable PostgreSQL required":false,timeout:420000,
 },async()=>{
  const world="phase13-real-world-"+randomUUID(),db=postgresPool(url!,4);
- const weeks=30;
+ const weeks=52;
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
@@ -117,17 +117,17 @@ test("eight AI promotions complete thirty real World weeks through contract expi
    const clock=await withWorldTransaction(db.pool,tx=>tx.query<{
     year:number;week:number;phase:string
    }>("SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[world]));
-   assert.deepEqual(clock,[{year:1,week:week+1,phase:"OPEN"}]);
+   assert.deepEqual(clock,[{year:week===52?2:1,week:week===52?1:week+1,phase:"OPEN"}]);
   }
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string|null
   }>(["SELECT promotion_id,show_name AS name FROM ppw_booking_drafts",
-     "WHERE world_id=$1 AND year=1 AND week<=30",
+     "WHERE world_id=$1 AND year=1 AND week<=52",
      "AND booking_class='PREMIUM' AND status='SUBMITTED'",
      "ORDER BY promotion_id,week"].join(" "),[world]));
-  for(const expected of ["Royal Rumble","Elimination Chamber","Revolution","WrestleMania","Backlash","Double or Nothing","Night of Champions","Forbidden Door"])
+  for(const expected of ["Royal Rumble","Elimination Chamber","Revolution","WrestleMania","Backlash","Double or Nothing","Night of Champions","Forbidden Door","SummerSlam","Money in the Bank","Survivor Series","All In","All Out","Full Gear","Worlds End"])
    assert.ok(ppvs.some(p=>p.name===expected),
     "Actual WWE/AEW named premium event missing from its scheduled week: "+expected);
   const usage=await withWorldTransaction(db.pool,tx=>tx.query<{
@@ -137,7 +137,7 @@ test("eight AI promotions complete thirty real World weeks through contract expi
      "ON d.world_id=slot.world_id AND d.draft_id=slot.draft_id",
      "CROSS JOIN LATERAL jsonb_array_elements(slot.payload->'participants') x(person)",
      "WHERE slot.world_id=$1 AND slot.kind='MATCH'",
-     "AND d.year=1 AND d.week<=30",
+     "AND d.year=1 AND d.week<=52",
      "GROUP BY d.promotion_id ORDER BY d.promotion_id"].join(" "),[world]));
   assert.equal(usage.length,8);
   assert.ok(usage.every(x=>x.unique_talent>=10),
@@ -151,7 +151,7 @@ test("eight AI promotions complete thirty real World weeks through contract expi
    "p.cash::text,p.debt::text,p.financial_distress,",
    "(SELECT count(*)::integer FROM ppw_contracts c WHERE c.world_id=p.world_id",
    "AND c.promotion_id=p.promotion_id AND c.status='SIGNED'",
-   "AND c.expires_week_index>=29) AS active_contracts,",
+   "AND c.expires_week_index>=51) AS active_contracts,",
    "(SELECT count(*)::integer FROM ppw_contracts c WHERE c.world_id=p.world_id",
    "AND c.promotion_id=p.promotion_id) AS total_contracts,",
    "(SELECT count(*)::integer FROM ppw_completed_shows x",
@@ -160,10 +160,10 @@ test("eight AI promotions complete thirty real World weeks through contract expi
    "FROM ppw_promotions p WHERE p.world_id=$1 ORDER BY p.promotion_id"
   ].join(" "),[world]));
   assert.equal(companies.length,8,"All AI companies must retain identity");
-  assert.ok(companies.every(p=>p.completed_shows>=30),
-   "Each rival must remain active for thirty complete World weeks");
-  console.log("Phase 13 thirty-week company survival:",JSON.stringify(companies));
-  console.log("Phase 13 authentic thirty-week World Lock diagnostics:",
+  assert.ok(companies.every(p=>p.completed_shows>=52),
+   "Each rival must remain active for the full first World year");
+  console.log("Phase 13 full-year company survival:",JSON.stringify(companies));
+  console.log("Phase 13 full-year World Lock diagnostics:",
    JSON.stringify(snapshots));
  }finally{
   // Topological world-scoped deletion keeps this disposable fixture isolated
