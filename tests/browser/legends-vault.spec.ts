@@ -171,6 +171,8 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  const cabinet=page.locator(".ppw-legend-collection");
  await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await cabinet.getByRole("button",{name:"Collected"}).click();
+ await expect(cabinet.getByRole("button",{name:"Collected"})).toHaveAttribute("aria-pressed","true");
  await cabinet.getByRole("button",{name:"View card"}).click();
  const expanded=page.getByRole("dialog",{name:"Collectible card: The Midnight Express"});
  await expect(expanded.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
