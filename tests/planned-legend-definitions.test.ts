@@ -46,6 +46,9 @@ test("81 new Legends have genuinely distinct prime-era roster definitions, no au
   assert.equal(def.hints?.length,2);
   assert.ok(def.hints?.every(s=>s.length>=20));
   assert.deepEqual(def.roster.map(x=>x.name),agreed.members??[agreed.name]);
+  if(agreed.members)
+   assert.equal(new Set(def.roster.map(x=>x.alignment)).size,1,
+    "Prime-era members of a classic team must share their face/heel alignment: "+def.name);
   for(const profile of def.roster){
    assert.ok(!people.has(profile.name),"Duplicated prime-era wrestler "+profile.name);
    people.add(profile.name);
