@@ -76,3 +76,60 @@ test("repeated invalid mobile sign-ins show one correction instead of stacking a
  await expect(page.getByRole("alert")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"Sign in"})).toBeEnabled();
 });
+
+test("first-time iPhone manager names their owner identity and may rebrand after claiming",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let actor=false,ownerName:string|null=null,joined=false,claimed=false;
+ let promotionName="Crown Wrestling",renames=0;
+ await page.route("**/api/auth",route=>{
+  actor=true;return route.fulfill({json:{ok:true}});
+ });
+ await page.route("**/api/session",route=>{
+  if(!actor)return route.fulfill({status:401,json:{error:"Sign in required"}});
+  return route.fulfill({json:{
+   worldId:"world-20261017",playerId:"owner",ownerName,csrfToken:"csrf-owner",
+   overview:{world,membership:joined?"ACTIVE":"NONE",
+    promotion:claimed?{id:"promotion-009",name:promotionName}:null},
+   availablePromotions:joined&&!claimed?[{id:"promotion-009",name:"Crown Wrestling",tier:"LOCAL"}]:[]
+  }});
+ });
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  world,membership:"ACTIVE",promotion:{id:"promotion-009",name:promotionName}
+ }}));
+ await page.route("**/api/profile",route=>{
+  const payload=route.request().postDataJSON();
+  expect(payload).toMatchObject({action:"SET_NAME",name:"Josh Robinson"});
+  expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf-owner");
+  ownerName=payload.name;
+  return route.fulfill({json:{displayName:ownerName}});
+ });
+ await page.route("**/api/join",route=>{
+  joined=true;return route.fulfill({json:{status:"APPLIED",result:{joined:true}}});
+ });
+ await page.route("**/api/claim",route=>{
+  claimed=true;return route.fulfill({json:{status:"APPLIED",result:{claimed:true}}});
+ });
+ await page.route("**/api/promotion-identity",route=>{
+  const payload=route.request().postDataJSON();
+  expect(payload).toMatchObject({action:"RENAME",promotionId:"promotion-009",name:"Kingdom Pro"});
+  renames++;promotionName=payload.name;
+  return route.fulfill({json:{name:promotionName,changed:true,previousName:"Crown Wrestling"}});
+ });
+ await page.goto("/#/home");
+ await page.getByRole("textbox",{name:"Player ID"}).fill("owner");
+ await page.getByRole("textbox",{name:"Private access code"}).fill("test-owner");
+ await page.getByRole("button",{name:"Sign in"}).click();
+ await expect(page.getByRole("heading",{name:"What's your name?"})).toBeVisible();
+ await page.getByRole("textbox",{name:"Your manager name"}).fill("Josh Robinson");
+ await page.getByRole("button",{name:"Enter the wrestling world"}).click();
+ await expect(page.getByRole("heading",{name:/Join /})).toBeVisible();
+ await page.getByRole("button",{name:"Join World"}).click();
+ await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
+ await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
+ await page.getByRole("textbox",{name:"Promotion name"}).fill("Kingdom Pro");
+ await page.getByRole("button",{name:"Save promotion name"}).click();
+ await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Kingdom Pro");
+ await expect(page.locator(".ppw-shell-brand small")).toContainText("Josh Robinson");
+ expect(renames).toBe(1);
+});
