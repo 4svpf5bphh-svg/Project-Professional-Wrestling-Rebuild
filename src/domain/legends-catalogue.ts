@@ -265,7 +265,7 @@ const curated:LegendDefinition[]=[
  * With this switch ON, the existing Vault, shared World Lock, KP collectibles
  * and free-agent market receive all 129 definitions without a new code path.
  */
-export const LEGENDS_EXPANSION_RELEASED:boolean=false;
+export const LEGENDS_EXPANSION_RELEASED:boolean=true;
 export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze([
  ...active,...curated,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
 ]);
