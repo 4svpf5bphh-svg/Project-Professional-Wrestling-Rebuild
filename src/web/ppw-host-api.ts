@@ -16,6 +16,8 @@ import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
+import {getOwnerDisplayName,saveOwnerDisplayName,renameOwnedPromotion}
+ from "../db/owner-identities.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -84,7 +86,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview","/api/profile","/api/promotion-identity"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -108,6 +110,27 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   return json(200,{ok:true},{"set-cookie":clearSessionCookie(cfg)});
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
+ if(path==="/api/profile"||path==="/api/promotion-identity"){
+  if(!post)return json(405,{error:"POST required"});
+  if(!csrf(req,user))return json(403,{error:"Invalid session"});
+  if(!allow("identity:"+user.playerId,12,60*60_000))
+   return json(429,{error:"Too many identity changes"});
+  const body=await limitedBody(req);
+  if(!body)return json(400,{error:"Invalid identity request"});
+  try{
+   if(path==="/api/profile"){
+    if(body.action!=="SET_NAME")return json(400,{error:"Invalid profile request"});
+    return json(200,await saveOwnerDisplayName(pool,user.playerId,body.name));
+   }
+   if(body.action!=="RENAME"||typeof body.promotionId!=="string")
+    return json(400,{error:"Invalid promotion request"});
+   return json(200,await renameOwnedPromotion(pool,{
+    worldId:cfg.worldId,playerId:user.playerId,
+    promotionId:body.promotionId,name:body.name
+   }));
+  }catch(e){return json(409,{error:e instanceof Error?e.message:"Identity update rejected"});}
+ }
+
  if(path==="/api/admin"||path==="/api/admin-preview"){
   if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
    return json(403,{error:"Admin access requires the designated World operator"});
@@ -276,12 +299,15 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(!allow("session:"+user.playerId,45,60_000))
    return json(429,{error:"Too many requests"});
   try{
-   const overview=await overviewAsActor(actor,cfg.worldId);
+   const [overview,ownerName]=await Promise.all([
+    overviewAsActor(actor,cfg.worldId),
+    getOwnerDisplayName(pool,user.playerId)
+   ]);
    if(!overview)return json(503,{error:"Configured World is unavailable"});
    const options=overview.membership==="ACTIVE"&&!overview.promotion?
     await availablePromotionsAsActor(actor,cfg.worldId,null,40):[];
    return json(200,{worldId:cfg.worldId,playerId:user.playerId,
-    csrfToken:user.csrfToken,overview,availablePromotions:options,
+    ownerName,csrfToken:user.csrfToken,overview,availablePromotions:options,
     canManualAdvance:manualPlaytestEnabled(process.env,cfg.worldId,user.playerId)});
   }catch{return json(503,{error:"World data unavailable"});}
  }
