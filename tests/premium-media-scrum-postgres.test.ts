@@ -76,7 +76,7 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
   assert.deepEqual(recorded,[{count:"1",answer_index:1}]);
   const immutable=await withWorldTransaction(db.pool,tx=>tx.query<{
    crowd_response:number;actual_finish:string}>(`
-   SELECT c.crowd_response,m.actual_finish FROM ppw_completed_shows c
+   SELECT c.crowd_response::double precision AS crowd_response,m.actual_finish FROM ppw_completed_shows c
    JOIN ppw_completed_show_matches m ON m.world_id=c.world_id AND m.show_id=c.show_id
    WHERE c.world_id=$1 AND c.show_id='ppv-one'`,[worldId]));
   assert.deepEqual(immutable,[{crowd_response:87,actual_finish:"CLEAN_PIN"}]);
