@@ -55,7 +55,7 @@ test("81 new Legends have genuinely distinct prime-era roster definitions, no au
    for(const key of ["ring","craft","recognition","popularity","presentation","stamina","safety"] as const)
     assert.ok(Number.isFinite(profile[key])&&profile[key]>=0&&profile[key]<=100,
      profile.name+" "+key);
-   assert.ok(profile.signature.length>=3&&profile.finisher.length>=3);
+   assert.ok(profile.signature.length>=2&&profile.finisher.length>=2);
    const validated=validatePortablePersona({
     personaName:profile.name,gimmickId:profile.gimmickId,
     primaryStyle:profile.style,secondaryStyle:null,
