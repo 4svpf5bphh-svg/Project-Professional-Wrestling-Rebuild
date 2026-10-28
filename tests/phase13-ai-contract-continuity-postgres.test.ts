@@ -45,7 +45,7 @@ test("AI renews a bounded mixed-division core at expiry without touching owner c
    remaining_dates:number;date_entitlement:number}>(
    "SELECT start_week_index,expires_week_index,remaining_dates,date_entitlement FROM ppw_contracts WHERE world_id=$1 AND status='SIGNED' LIMIT 1",[world]);
   assert.deepEqual(terms,[{start_week_index:26,expires_week_index:51,
-   remaining_dates:7,date_entitlement:7}]);
+   remaining_dates:32,date_entitlement:32}]);
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    expireAndRetainAiContracts(tx,world,1,26)),[],
    "Repeated expiry settlement must not renew the same people twice");

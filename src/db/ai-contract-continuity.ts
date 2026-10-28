@@ -1,6 +1,8 @@
 /** AI-only roster continuity at contract expiry; uses the same SQL
  * round-trip as the previous blanket expiration and leaves human decisions
  * and accepted proposals unchanged. One ledger summary per AI company.
+ * A 26-week AI renewal reserves 32 limited appearance dates: weekly TV plus
+ * several premium-event bookings. Fees are still charged for actual use.
  */
 import type {SqlRows} from "./world-operations.js";
 export async function expireAndRetainAiContracts(
@@ -45,10 +47,10 @@ export async function expireAndRetainAiContracts(
    start_week_index=CASE WHEN d.retain THEN $2+1 ELSE c.start_week_index END,
    expires_week_index=CASE WHEN d.retain THEN $2+26 ELSE c.expires_week_index END,
    remaining_dates=CASE WHEN d.retain AND c.family<>'EXCLUSIVE'
-    THEN LEAST(104,GREATEST(5,COALESCE(c.date_entitlement,c.remaining_dates,8)))
+    THEN LEAST(104,GREATEST(32,COALESCE(c.date_entitlement,c.remaining_dates,8)))
     ELSE c.remaining_dates END,
    date_entitlement=CASE WHEN d.retain AND c.family<>'EXCLUSIVE'
-    THEN LEAST(104,GREATEST(5,COALESCE(c.date_entitlement,c.remaining_dates,8)))
+    THEN LEAST(104,GREATEST(32,COALESCE(c.date_entitlement,c.remaining_dates,8)))
     ELSE c.date_entitlement END,
    revision=c.revision+1
   FROM decisions d
