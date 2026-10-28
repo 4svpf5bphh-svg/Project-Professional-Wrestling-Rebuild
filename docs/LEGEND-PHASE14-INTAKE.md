@@ -43,3 +43,32 @@ test the album and market/free-agent path, then obtain explicit release approval
 
 **No new cron, second World deadline, AI-generated lookalike, automatic contract
 grant, live World mutation or unsanctioned deployment.**
+
+## Visual consistency checkpoint — 28 October 2026
+
+**The original 48 delivered PPW Legends images are the design reference, not a new
+style direction.** The 81 source-photo card drafts have now been rebuilt with the
+original 960×1440 frame coordinates (dark triple border, separate header, photo
+window, rarity colours, serif wrestler nameplate) from the historic
+`scripts/build_curated_legend_cards.py` renderer.
+
+**Mandatory badge correction (owner-approved):** rarity labels MUST appear in
+a separate footer band immediately **below the photo and above the nameplate**,
+never at the top-right of the photograph and never over wrestlers' faces.
+The exact geometry and palette are recorded in
+`data/legend-card-layout-contract.json`, with a pure contract regression test.
+The private ZIP's `data/owner-legend-render-manifest.json` must declare
+`LEGACY_48_FRAME_SEPARATE_RARITY_BADGE_V1` and matching coordinates.
+`scripts/verify_owner_legend_pack.py` refuses older overlays or any pack with
+a badge overlapping the photograph. Team photos share the same protected image
+window, with individual team-member portraits still separate.
+
+The prior 81-card draft with badges inside the photo window is **superseded**;
+do not promote it or silently reuse it. The corrected artwork ZIP remains a
+private review artifact, NOT a GitHub binary upload nor a live asset deployment.
+Existing 48 in-game image files are unchanged; any exceptional art treatment
+such as The Undertaker pilot is preserved until a separately approved review.
+
+A mandatory final human review of source-to-name identity, small photo crops,
+portrait visibility, image ownership/licences, team composition, in-game
+mobile rendering, and all 129 unlock/reveal/album records still applies.
