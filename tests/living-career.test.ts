@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {originalCareerWeek,originalAnnualTier,originalMoraleEvidence,originalTrustYear}
+import {originalCareerWeek,originalAnnualTier,sustainableAnnualTier,originalMoraleEvidence,originalTrustYear}
  from "../src/domain/living-career.js";
 const prospect={biologicalAge:24.999,careerExperience:40,developmentAptitude:80,
  careerStage:"PROSPECT" as const,status:"ACTIVE" as const,wear:2,
@@ -37,4 +37,16 @@ test("annual trust penalises terminations and tier thresholds only move one rung
  assert.ok(originalTrustYear({current:50,appearances:13,terminations:1,dormant:false})<50);
  assert.equal(originalAnnualTier("LOCAL",95),"INDEPENDENT");
  assert.equal(originalAnnualTier("GLOBAL",0),"NATIONAL");
+});
+
+test("financially unstable companies cannot expand their tier, but can recover or decline",()=>{
+ for(const distress of ["WATCH","DISTRESSED","CRISIS"] as const){
+  assert.equal(sustainableAnnualTier("LOCAL",95,distress),"LOCAL");
+  assert.equal(sustainableAnnualTier("INDEPENDENT",95,distress),"INDEPENDENT");
+  assert.equal(sustainableAnnualTier("RISING",95,distress),"RISING");
+  assert.equal(sustainableAnnualTier("NATIONAL",0,distress),"RISING");
+ }
+ assert.equal(sustainableAnnualTier("LOCAL",95,"HEALTHY"),"INDEPENDENT");
+ assert.equal(sustainableAnnualTier("RISING",95,"HEALTHY"),"NATIONAL");
+ assert.equal(sustainableAnnualTier("LOCAL",0,"CRISIS"),"LOCAL");
 });

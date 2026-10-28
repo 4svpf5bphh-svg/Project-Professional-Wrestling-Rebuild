@@ -20,6 +20,16 @@
 
 ---
 
+## Phase 13 follow-through — financial health gates annual expansion (28 October 2026, UNRELEASED)
+
+The first **disposable PostgreSQL three-year integration** (156 weeks, five companies, two human owners) exercises the production weekly payroll SQL, recorded show-economics receipts, market response, AI commercial agreements, recruitment, financial distress and annual tiers. The strengthened CI run passed **134/134 PostgreSQL tests**, and recorded **11 real strategic contracts** for the financially capable workrate AI, without taking either human-owned promotion. This is a controlled scenario with supplied match outcomes, not a complete 156-week World Lock replay.
+
+The integration exposed a genuine tier-progression flaw: a reckless company more than **£15 million in debt by Year 3**, in CRISIS status throughout, advanced LOCAL → INDEPENDENT → RISING → NATIONAL because the legacy audience score alone exceeded growth thresholds. **Fix:** retain the existing audience/territory annual tier policy, but require HEALTHY finances for upward tier movement. WATCH, DISTRESSED and CRISIS can hold or lose tier as before; recovering to HEALTHY restores next-year eligibility. No extra SQL queries, game screens, timers, World mutations or background process. New pure unit and three-year PostgreSQL assertions require both blocked insolvency growth and continued healthy progression.
+
+**Verification gate:** repeat full GitHub CI and capture corrected Year 1–3 snapshots; no live World writes, merge, Vercel deployment or Legends artwork changes.
+
+---
+
 ## Release sequencing — owner decision, 28 October 2026
 
 **One consolidated artwork-complete playtest release. No intermediate Phase 12 deployment.**

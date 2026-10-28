@@ -270,6 +270,13 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
   }
   const row=(id:string,year:number)=>snapshots.find(x=>x.id===id&&x.year===year)!;
   assert.equal(snapshots.length,15);
+  for(const year of [1,2,3]){
+   assert.equal(row("reckless",year).distress,"CRISIS");
+   assert.equal(row("reckless",year).tier,"LOCAL",
+    "A company in sustained financial crisis cannot scale despite its market reach");
+  }
+  assert.notEqual(row("smart",3).tier,"LOCAL",
+   "Healthy sustainable growth retains access to higher promotion tiers");
   assert.ok(row("smart",3).cash>row("reckless",3).cash,
    "Excessive guaranteed wages must have consequences");
   assert.ok(row("workrate-ai",3).cash>0,

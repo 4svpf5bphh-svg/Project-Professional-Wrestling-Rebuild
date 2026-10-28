@@ -5,8 +5,8 @@
  */
 import type {SqlRows} from "./world-operations.js";
 import {aiPromotionIdentity,type AiPromotionIdentity} from "../domain/ai-promotion-strategy.js";
-import {originalSurvivalCounters,originalAnnualTier,
- originalPromotionScaleScore,ORIGINAL_ROSTER_TARGET,
+import {originalSurvivalCounters,
+ originalPromotionScaleScore,sustainableAnnualTier,ORIGINAL_ROSTER_TARGET,
  type PromotionTier} from "../domain/living-career.js";
 type Distress="HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS";
 type SurvivalRow={promotion_id:string;tier:PromotionTier;lifecycle:string;
@@ -258,7 +258,7 @@ export async function settleAnnualPromotionScale(
   const score=originalPromotionScaleScore({localMarkets:local,
    showPerformance:performance,mediaReach:x.media_reach,
    financialDistress:x.financial_distress});
-  const next=originalAnnualTier(x.tier,score);
+  const next=sustainableAnnualTier(x.tier,score,x.financial_distress);
   return [{promotion_id:x.promotion_id,from_tier:x.tier,to_tier:next,
    score,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
  });
