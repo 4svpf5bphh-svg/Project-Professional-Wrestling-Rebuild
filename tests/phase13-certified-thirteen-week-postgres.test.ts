@@ -22,8 +22,16 @@ test("eight AI promotions complete thirteen real World weeks including premium e
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
   await importOriginalGenesis(db.pool,originalGenesisFixture(world,160));
-  await withWorldTransaction(db.pool,tx=>tx.query(
-   "UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[world]));
+  // Use the real company identities; the named quarterly premium calendar
+  // belongs to WWE and AEW, not to anonymous Genesis fixture labels.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(["UPDATE ppw_promotions SET name=CASE",
+    "WHEN promotion_id='promotion-0' THEN 'WWE'",
+    "WHEN promotion_id='promotion-1' THEN 'AEW' ELSE name END",
+    "WHERE world_id=$1"].join(" "),[world]);
+   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",
+    [world]);
+  });
   for(let week=1;week<=weeks;week++){
    const state=await withWorldTransaction(db.pool,tx=>tx.query<{
     year:number;week:number;phase:string;revision:string
