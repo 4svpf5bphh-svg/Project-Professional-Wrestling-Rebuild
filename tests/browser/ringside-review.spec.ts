@@ -228,7 +228,7 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
  await expect(page.getByRole("heading",{name:"The Media Scrum"})).toBeVisible();
- expect(reads).toBe(0,"Opening the Results must not fetch press data automatically");
+ expect(reads).toBe(0); // Results must not fetch the press session until requested.
  await page.getByRole("button",{name:"Meet the press"}).click();
  await expect(page.getByText("What did you make of the main event?")).toBeVisible();
  await page.getByRole("button",{name:"There will be conversations backstage."}).click();
@@ -237,7 +237,7 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  await page.getByRole("button",{name:"Meet the press"}).click();
  await page.getByRole("button",{name:"Meet the press"}).click();
  await expect(page.locator(".ppw-media-scrum-quote")).toBeVisible();
- expect(reads).toBe(1,"Reopening the chapter must not query Postgres again");
+ expect(reads).toBe(1); // The open chapter is cached in the results view.
  expect(answers).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
