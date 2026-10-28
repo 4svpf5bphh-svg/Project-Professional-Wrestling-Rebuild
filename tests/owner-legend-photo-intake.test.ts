@@ -75,6 +75,6 @@ test("owner-declared late inserts and removed nominees cannot shift the 104 imag
   assert.ok(EXCLUDED_LEGENDS.includes(x));
  }
  // No PREVIEW or OWNER photo mapping silently activates a new wrestler.
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.ok(APPROVED_LEGEND_EXPANSION.every(x=>!LEGENDS_CATALOGUE.some(y=>y.name===x.name)));
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.ok(APPROVED_LEGEND_EXPANSION.every(x=>LEGENDS_CATALOGUE.slice(48).some(y=>y.name===x.name)));
 });

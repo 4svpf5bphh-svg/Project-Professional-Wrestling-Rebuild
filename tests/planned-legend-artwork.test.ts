@@ -8,7 +8,7 @@ import {findPlannedLegendArtwork,PLANNED_LEGEND_ARTWORK}
 
 test("planned art registry preserves one source-backed card across reveal and collectible album",()=>{
  const contract=JSON.parse(readFileSync(new URL("../data/legend-card-layout-contract.json",import.meta.url),"utf8"));
- assert.equal(LEGENDS_CATALOGUE.length,48);
+ assert.equal(LEGENDS_CATALOGUE.length,129);
  assert.equal(PLANNED_LEGEND_ARTWORK.length,81);
  assert.equal(new Set(PLANNED_LEGEND_ARTWORK.map(x=>x.id)).size,81);
  assert.deepEqual(PLANNED_LEGEND_ARTWORK.map(x=>x.name),

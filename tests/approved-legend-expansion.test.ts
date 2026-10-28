@@ -7,10 +7,11 @@ import {APPROVED_LEGEND_MILESTONES}
  from "../src/domain/approved-legend-milestones.js";
 const key=(v:string)=>v.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"");
 test("approved expansion has 81 genuinely new unlocks, the agreed tiers and no duplicate personalities",()=>{
- assert.equal(LEGENDS_CATALOGUE.length,48);
+ const original=LEGENDS_CATALOGUE.slice(0,48);
+ assert.equal(LEGENDS_CATALOGUE.length,129);
  assert.equal(APPROVED_LEGEND_EXPANSION.length,81);
  const tierCounts=Object.fromEntries(["CULT","LEGEND","ICON","IMMORTAL"].map(t=>
-  [t,LEGENDS_CATALOGUE.filter(x=>x.tier===t).length+
+  [t,original.filter(x=>x.tier===t).length+
    APPROVED_LEGEND_EXPANSION.filter(x=>x.tier===t).length]));
  assert.deepEqual(tierCounts,{CULT:20,LEGEND:57,ICON:34,IMMORTAL:18});
  const women=APPROVED_LEGEND_EXPANSION.filter(x=>x.division==="WOMEN");
@@ -18,7 +19,7 @@ test("approved expansion has 81 genuinely new unlocks, the agreed tiers and no d
  const teams=APPROVED_LEGEND_EXPANSION.filter(x=>x.members);
  assert.equal(teams.length,11);
  assert.ok(teams.every(t=>t.members!.length>=2&&t.members!.length<=3));
- const ids=new Set(LEGENDS_CATALOGUE.map(x=>key(x.name)));
+ const ids=new Set(original.map(x=>key(x.name)));
  const members=new Set<string>();
  for(const entry of APPROVED_LEGEND_EXPANSION){
   const name=key(entry.name);
@@ -48,9 +49,10 @@ test("all 81 new Legends have a single planning-only certified achievement with 
  assert.equal(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)).size,81);
  const actual=new Set(APPROVED_LEGEND_EXPANSION.map(x=>x.name));
  assert.deepEqual(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)),actual);
- const metrics=new Set(LEGENDS_CATALOGUE.map(x=>x.metric).filter(Boolean));
+ const original=LEGENDS_CATALOGUE.slice(0,48);
+ const metrics=new Set(original.map(x=>x.metric).filter(Boolean));
  const milestones=new Set(
-  LEGENDS_CATALOGUE.filter(x=>x.metric!==null&&x.target!==null)
+  original.filter(x=>x.metric!==null&&x.target!==null)
    .map(x=>x.metric+":"+x.target));
  for(const item of APPROVED_LEGEND_MILESTONES){
   assert.ok(metrics.has(item.metric),"Unsupported fact metric for "+item.name);
@@ -72,8 +74,8 @@ test("all 81 new Legends have a single planning-only certified achievement with 
   assert.ok(m.metric.startsWith("WOMENS_")||m.metric==="HOT_ANGLES",
    "Women's Legends require relevant wrestling or creative evidence");
  }
- // Planned artwork cannot accidentally activate the expansion.
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.ok(APPROVED_LEGEND_EXPANSION.every(x=>!LEGENDS_CATALOGUE.some(
+ // The reviewed additions are present once in the active catalogue.
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.ok(APPROVED_LEGEND_EXPANSION.every(x=>LEGENDS_CATALOGUE.slice(48).some(
   y=>key(x.name)===key(y.name))));
 });

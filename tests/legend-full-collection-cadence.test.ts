@@ -1,26 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {LEGENDS_CATALOGUE,type LegendDefinition,type LegendMetric} from "../src/domain/legends-catalogue.js";
-import {APPROVED_LEGEND_EXPANSION} from "../src/domain/approved-legend-expansion.js";
-import {APPROVED_LEGEND_MILESTONES} from "../src/domain/approved-legend-milestones.js";
+import {LEGENDS_CATALOGUE,type LegendMetric} from "../src/domain/legends-catalogue.js";
 import {LEGEND_RELEASE_INTERVAL_WEEKS,LEGEND_TIER_EARLIEST_WEEK,
  planCertifiedLegendReleases,type LegendArrivalRecord}
  from "../src/domain/legend-release-cadence.js";
-const slug=(s:string)=>s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 test("129 fully earned Legends cannot flood a two-player World: 260-week release rehearsal",()=>{
- const templates=new Map(APPROVED_LEGEND_MILESTONES.map(x=>[x.name,x]));
- const proposed:LegendDefinition[]=APPROVED_LEGEND_EXPANSION.map(x=>{
-  const m=templates.get(x.name);
-  assert.ok(m);
-  return {...LEGENDS_CATALOGUE[0]!,id:"new-"+slug(x.name),name:x.name,
-   tier:x.tier,division:x.division,
-   metric:m.metric as LegendMetric,target:m.target,
-   roster:(x.members??[x.name]).map(n=>({...LEGENDS_CATALOGUE[0]!.roster[0]!,
-    name:n,division:x.division})),
-   cardAsset:null,status:"PLANNED"};
- });
- const all=[...LEGENDS_CATALOGUE,...proposed];
+ const all=LEGENDS_CATALOGUE;
  assert.equal(all.length,129);
  assert.equal(new Set(all.map(x=>x.id)).size,129);
  const history:LegendArrivalRecord[]=[];

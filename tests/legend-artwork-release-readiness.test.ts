@@ -28,6 +28,6 @@ test("129-Legend release requires all 174 non-placeholder owner art files",()=>{
   assert.equal(bytes.toString("ascii",0,4),"RIFF",asset+" missing WebP RIFF header");
   assert.equal(bytes.toString("ascii",8,12),"WEBP",asset+" is not a WebP");
  }
- assert.equal(LEGENDS_EXPANSION_RELEASED,false,
-  "Staging the artwork must not activate new Legends in any deployed World");
+ assert.equal(LEGENDS_EXPANSION_RELEASED,true,
+  "The 174 verified assets must be present before the 129-Legend release");
 });

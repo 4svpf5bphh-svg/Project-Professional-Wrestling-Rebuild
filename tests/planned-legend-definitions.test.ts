@@ -18,13 +18,13 @@ const category=(style:string)=>
  style==="STRIKER"?"STRIKE":"OTHER";
 
 test("81 new Legends have genuinely distinct prime-era roster definitions, no auto-activation",()=>{
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.equal(LIVE_LEGENDS.length,48);
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.equal(LIVE_LEGENDS.length,129);
  assert.equal(PLANNED_LEGEND_DEFINITIONS.length,81);
  assert.equal(APPROVED_LEGEND_PRIME_PROFILES.size,93);
  assert.deepEqual(PLANNED_LEGEND_DEFINITIONS.map(x=>x.name),
   APPROVED_LEGEND_EXPANSION.map(x=>x.name));
- const original=new Set(LEGENDS_CATALOGUE.map(x=>x.id));
+ const original=new Set(LEGENDS_CATALOGUE.slice(0,48).map(x=>x.id));
  const clues=new Set<string>(),people=new Set<string>();
  const moves=new Set<string>();
  for(const [i,def] of PLANNED_LEGEND_DEFINITIONS.entries()){

@@ -12,18 +12,19 @@ import {planCertifiedLegendReleases}
  from "../src/domain/legend-release-cadence.js";
 
 test("all 81 new cards and 93 portraits are wired for release without exposing missing art",()=>{
- assert.equal(LEGENDS_EXPANSION_RELEASED,false,"Never expose uncommitted image assets");
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.equal(LIVE_LEGENDS.length,48);
- assert.equal(Object.keys(LEGEND_PORTRAIT_ASSETS).length,49);
- assert.equal(legendPortraitSource("legend:the-midnight-express:0"),null);
+ assert.equal(LEGENDS_EXPANSION_RELEASED,true,"Verified 174-asset release is now active");
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.equal(LIVE_LEGENDS.length,129);
+ assert.equal(Object.keys(LEGEND_PORTRAIT_ASSETS).length,142);
+ assert.equal(legendPortraitSource("legend:the-midnight-express:0"),"/assets/legends/bobby-eaton-portrait.webp");
  const expansion=reviewedLegendExpansion();
  assert.equal(expansion.length,81);
  assert.equal(expansion.filter(x=>x.roster.length>1).length,11);
  assert.ok(expansion.every(x=>x.status==="ACTIVE"&&x.cardAsset));
- const all=[...LEGENDS_CATALOGUE,...expansion];
+ const all=LEGENDS_CATALOGUE;
  assert.equal(all.length,129);
  assert.equal(new Set(all.map(x=>x.id)).size,129);
+ assert.ok(expansion.every(x=>all.some(y=>y.id===x.id&&y.cardAsset===x.cardAsset)));
  const paths=reviewedLegendPortraits();
  assert.equal(Object.keys(paths).length,93);
  assert.equal(new Set(Object.keys(paths)).size,93);

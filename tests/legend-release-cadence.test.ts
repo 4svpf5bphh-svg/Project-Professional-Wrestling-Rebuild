@@ -4,10 +4,7 @@ import {
  LEGEND_RELEASE_INTERVAL_WEEKS,LEGEND_TIER_EARLIEST_WEEK,
  planCertifiedLegendReleases
 } from "../src/domain/legend-release-cadence.js";
-import {findLegend,LEGENDS_CATALOGUE,type LegendDefinition,
- type LegendMetric} from "../src/domain/legends-catalogue.js";
-import {APPROVED_LEGEND_EXPANSION}
- from "../src/domain/approved-legend-expansion.js";
+import {findLegend,LEGENDS_CATALOGUE,type LegendMetric} from "../src/domain/legends-catalogue.js";
 const take=(id:string)=>{const d=findLegend(id);assert.ok(d);return d;};
 const week=(i:number)=>({year:Math.floor(i/52)+1,week:i%52+1});
 test("one authentic certified challenge can only release one Legend per three World weeks",()=>{
@@ -57,11 +54,7 @@ test("operator-only Undertaker pilot consumes its week but can bypass ordinary r
   .selected[0]?.id,"jerry-lynn");
 });
 test("129 approved collectible unlocks never cause a mass reveal in a certified week",()=>{
- const mock=APPROVED_LEGEND_EXPANSION.map((d,i)=>({
-  id:"future-"+i,name:d.name,tier:d.tier,division:d.division,
-  metric:"CLASSICS" as LegendMetric,target:1,status:"ACTIVE",roster:[]
- }) as unknown as LegendDefinition);
- const all=[...LEGENDS_CATALOGUE,...mock];
+ const all=LEGENDS_CATALOGUE;
  assert.equal(all.length,129);
  const totals:Partial<Record<LegendMetric,number>>=Object.fromEntries(
   LEGENDS_CATALOGUE.filter(d=>d.metric!==null).map(d=>[d.metric!,100000])) as

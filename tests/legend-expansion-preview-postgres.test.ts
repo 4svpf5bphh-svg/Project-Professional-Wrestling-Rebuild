@@ -13,8 +13,8 @@ const url=process.env.PPW_NEON_TEST_URL;
 test("draft-only three-person Freebirds Legend arrives once as a free-agent team after certified achievement",{
  skip:!url?"Disposable PostgreSQL required":false,
 },async()=>{
- assert.equal(LEGENDS_EXPANSION_RELEASED,false,
-  "Preview tests must never enable the release gate");
+ assert.equal(LEGENDS_EXPANSION_RELEASED,true,
+  "Release candidate tests require the expanded catalogue");
  const id=randomUUID(),world="legends-preview-"+id,db=postgresPool(url!,3);
  const team=reviewedLegendExpansion().find(x=>x.name==="The Fabulous Freebirds");
  assert.ok(team);
@@ -73,7 +73,7 @@ test("draft-only three-person Freebirds Legend arrives once as a free-agent team
    [world,result[0]!.person_ids]));
   assert.equal(contracts[0]?.count,0,
    "A Legend must enter the common free-agent market, never auto-sign");
-  assert.equal(LIVE_LEGENDS.length,48,
-   "Draft proof may never activate the unreleased 81 globally");
+  assert.equal(LIVE_LEGENDS.length,129,
+   "The expansion is enabled without auto-granting any contracts");
  }finally{await db.close();}
 });
