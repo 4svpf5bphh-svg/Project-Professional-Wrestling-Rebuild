@@ -5,7 +5,7 @@
 import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {validatePortablePersona} from "../domain/portable-persona.js";
-import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend}
+import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend,type LegendDefinition}
  from "../domain/legends-catalogue.js";
 import {planCertifiedLegendReleases} from "../domain/legend-release-cadence.js";
 
@@ -75,6 +75,8 @@ function moves(p:PrimeLegend){
 const priorities={money:65,role:75,prestige:70,schedule:50,loyalty:55,exposure:60};
 export async function settleCertifiedWorldLegends(
  tx:SqlRows,worldId:string,year:number,week:number,
+ /** Trusted integration-test override only: Production always uses LIVE_LEGENDS. */
+ eligibleCatalogue:readonly LegendDefinition[]=LIVE_LEGENDS,
 ){
  if(!worldId||!Number.isSafeInteger(year)||year<1||
   !Number.isSafeInteger(week)||week<1||week>52)
@@ -169,9 +171,9 @@ export async function settleCertifiedWorldLegends(
    ) FOR UPDATE OF p
  `,[worldId,year,week]);
  const pilotReady=pilots.length===1;
- const winners=[...LIVE_LEGENDS.filter(x=>legendUnlockEligible(x,total))];
+ const winners=[...eligibleCatalogue.filter(x=>legendUnlockEligible(x,total))];
  if(pilotReady&&!winners.some(x=>x.id==="undertaker")){
-  const testLegend=LIVE_LEGENDS.find(x=>x.id==="undertaker");
+  const testLegend=eligibleCatalogue.find(x=>x.id==="undertaker");
   if(testLegend)winners.push(testLegend);
  }
  if(!winners.length)return {processed:true,unlocked:[] as string[]};

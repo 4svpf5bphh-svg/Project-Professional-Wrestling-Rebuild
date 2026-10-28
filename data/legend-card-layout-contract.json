@@ -1,0 +1,51 @@
+{
+  "version": "LEGACY_48_FRAME_SEPARATE_RARITY_BADGE_V1",
+  "reference": "scripts/build_curated_legend_cards.py",
+  "referenceExistingCardCount": 48,
+  "width": 960,
+  "height": 1440,
+  "photo": [
+    53,
+    162,
+    907,
+    1063
+  ],
+  "header": [
+    54,
+    46,
+    906,
+    143
+  ],
+  "footer": [
+    53,
+    1081,
+    907,
+    1370
+  ],
+  "badge": [
+    348,
+    1090,
+    612,
+    1142
+  ],
+  "nameplate": [
+    75,
+    1157,
+    885,
+    1285
+  ],
+  "sharedCardAcross": [
+    "unlockReveal",
+    "vault",
+    "collectedAlbum"
+  ],
+  "sourcePolicy": "OWNER_PHOTOS_ONLY_NO_SYNTHETIC_LIKENESS",
+  "tierPalette": {
+    "CULT": "#7CA6CA",
+    "LEGEND": "#F1BB5A",
+    "ICON": "#58D3F6",
+    "IMMORTAL": "#CF94FA"
+  },
+  "badgePlacement": "IN_FOOTER_BELOW_PHOTO_ABOVE_NAMEPLATE",
+  "activation": "BLOCKED_PENDING_PHOTO_AND_ARTWORK_REVIEW"
+}

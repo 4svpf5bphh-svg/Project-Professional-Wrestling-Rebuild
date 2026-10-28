@@ -1,0 +1,89 @@
+name: Import reviewed Legends draft artwork
+
+# A one-off intake route for the owner-supplied ZIP. Never deploys or enables Legends.
+on:
+  push:
+    branches:
+      - phase14-legends-photo-audit-and-artwork-2026-10-28
+    paths:
+      - data/owner-legend-artwork.zip
+      - .github/workflows/import-owner-legend-pack.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: legend-owner-artwork-intake
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check that the pending ZIP is present
+        id: intake
+        shell: bash
+        run: |
+          if test -f data/owner-legend-artwork.zip; then
+            echo 'present=yes' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=no' >> "$GITHUB_OUTPUT"
+            echo 'No pending ZIP: nothing to import.'
+          fi
+
+      - name: Install image verifier dependency
+        if: steps.intake.outputs.present == 'yes'
+        run: python3 -m pip install --user 'Pillow>=10,<12'
+
+      - name: Check exact owner archive and protect the original collection
+        if: steps.intake.outputs.present == 'yes'
+        shell: bash
+        run: |
+          echo '4628f04cdb9acf5546178e892f4209d8d918752f9430a79664e6f8d601ea9c8a  data/owner-legend-artwork.zip' | sha256sum --check
+          python3 - <<'PY'
+          import subprocess, zipfile
+          from pathlib import Path
+          root = 'apps/web/public/assets/legends/'
+          with zipfile.ZipFile('data/owner-legend-artwork.zip') as z:
+              names = {n for n in z.namelist() if n.startswith(root) and n.endswith('.webp')}
+          assert len(names) == 174, f'Expected 174 new WebP images, got {len(names)}'
+          previous = set(subprocess.check_output(['git', 'ls-files', root], text=True).splitlines())
+          collisions = sorted(names & previous)
+          assert not collisions, f'Would overwrite existing artwork: {collisions[:10]}'
+          PY
+          grep -Eq 'LEGENDS_EXPANSION_RELEASED[^=]*=[[:space:]]*false' src/domain/legends-catalogue.ts
+
+      - name: Verify all 174 files against the approved layout and install
+        if: steps.intake.outputs.present == 'yes'
+        run: python3 scripts/verify_owner_legend_pack.py data/owner-legend-artwork.zip --install
+
+      - uses: actions/setup-node@v4
+        if: steps.intake.outputs.present == 'yes'
+        with:
+          node-version: '22'
+
+      - name: Verify TypeScript, unit suite and iPhone web build before accepting assets
+        if: steps.intake.outputs.present == 'yes'
+        shell: bash
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test
+          npm run web:build
+
+      - name: Commit assets to development branch only and remove transport ZIP
+        if: steps.intake.outputs.present == 'yes'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/public/assets/legends
+          git rm -- data/owner-legend-artwork.zip
+          git diff --cached --stat
+          git commit -m 'art(legends): import 81 cards and 93 portraits (unreleased)'
+          git push origin "HEAD:$GITHUB_REF_NAME"
+          echo 'Draft artwork imported. LEGENDS_EXPANSION_RELEASED remains false; no deployment or World advancement.'

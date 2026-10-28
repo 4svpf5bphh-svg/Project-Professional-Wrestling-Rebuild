@@ -126,3 +126,57 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await expanded.getByRole("button",{name:"Close card"}).click();
  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+
+test("new Phase 14 Midnight Express card remains the same image in reveal, Vault, paid album and full viewer",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const card="/assets/legends/the-midnight-express-legend-card.webp";
+ let seen=false,collected=false,collects=0;
+ const persons=["legend:the-midnight-express:0","legend:the-midnight-express:1"];
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  if(method==="industry")return route.fulfill({json:{
+   worldName:"PPW",year:3,week:4,phase:"OPEN",nextLockEpoch:Date.now()/1000+6000,
+   ownPromotionId:"human",ownPromotionName:"Human Pro",
+   promotions:[],headlines:[],broadcasts:[]}});
+  if(method==="legendsVault")return route.fulfill({json:{
+   worldYear:3,worldWeek:4,balance:5000,curated:129,entries:[{
+    id:"the-midnight-express",name:"The Midnight Express",tier:"LEGEND",division:"MEN",
+    tradition:"American tag wrestling",visibility:"CLUED",
+    clue:"Two wrestlers, one unforgettable team",
+    achievement:"Certified outstanding tag wrestling",
+    progress:100,exactProgress:30,target:30,unlocked:true,year:3,week:3,
+    personIds:persons,revealSeen:seen,collected,
+    collectibleReady:true,cardAsset:card,price:1400
+   }]}});
+  if(method==="legendSeen"){seen=true;return route.fulfill({json:{seen:true}});}
+  if(method==="kpAction"){collects++;collected=true;return route.fulfill({json:{ok:true}});}
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/industry/legends");
+ const reveal=page.getByRole("dialog",{name:"Legend unlocked: The Midnight Express"});
+ await expect(reveal).toBeVisible();
+ const revealImage=reveal.locator("img.ppw-legend-card-art");
+ await expect(revealImage).toHaveAttribute("src",card);
+ await expect(revealImage).toHaveJSProperty("naturalWidth",960);
+ await expect(revealImage).toHaveJSProperty("naturalHeight",1440);
+ await expect(reveal.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
+ await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
+ await expect.poll(()=>seen).toBe(true);
+ const tile=page.locator('.ppw-legend-tile[data-tier="LEGEND"]');
+ await expect(tile.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
+ await tile.getByRole("button",{name:/Collect card/}).click();
+ await expect.poll(()=>collects).toBe(1);
+ const cabinet=page.locator(".ppw-legend-collection");
+ await expect(cabinet.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
+ await cabinet.getByRole("button",{name:"Collected"}).click();
+ await expect(cabinet.getByRole("button",{name:"Collected"})).toHaveAttribute("aria-pressed","true");
+ await cabinet.getByRole("button",{name:"View card"}).click();
+ const expanded=page.getByRole("dialog",{name:"Collectible card: The Midnight Express"});
+ await expect(expanded.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
+ await expect(expanded.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
+ await expanded.getByRole("button",{name:"Close card"}).click();
+ await expect(page.getByRole("dialog")).toHaveCount(0);
+});
