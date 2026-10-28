@@ -6,17 +6,17 @@ import {withWorldTransaction,type TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 export function normaliseOwnerName(raw:unknown):string{
  if(typeof raw!=="string")throw new Error("Enter your manager name");
- const name=raw.trim().replace(/\\s+/g," ");
+ const name=raw.trim().replace(/\s+/g," ");
  if(name.length<3||name.length>48||
-  !/^[\\p{L}\\p{M}][\\p{L}\\p{M} .'-]*$/u.test(name))
+  !/^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u.test(name))
   throw new Error("Manager name must be 3–48 letters with ordinary punctuation");
  return name;
 }
 export function normalisePromotionName(raw:unknown):string{
  if(typeof raw!=="string")throw new Error("Enter a promotion name");
- const name=raw.trim().replace(/\\s+/g," ");
+ const name=raw.trim().replace(/\s+/g," ");
  if(name.length<3||name.length>56||
-  !/^[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N} &'.,!\\-]*$/u.test(name))
+  !/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} &'.,!\-]*$/u.test(name))
   throw new Error("Promotion name must be 3–56 characters");
  return name;
 }
