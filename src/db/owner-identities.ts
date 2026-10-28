@@ -48,6 +48,12 @@ export async function renameOwnedPromotion(pool:TransactionPool,scope:{
     !promotionId||promotionId.length>200)throw new Error("Invalid promotion identity");
  const name=normalisePromotionName(scope.name);
  return withWorldTransaction(pool,async tx=>{
+  // Rebrand under the same World lock order as other authoritative writes.
+  // Separate owners cannot both concurrently adopt one public name.
+  // This never advances the week or increments the World revision.
+  const world=await tx.query<{world_id:string}>(`
+   SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE`,[worldId]);
+  if(world.length!==1)throw new Error("World identity unavailable");
   const owners=await tx.query<{name:string;year:number;week:number}>(`
    SELECT p.name,w.year,w.week FROM ppw_promotion_controls c
    JOIN ppw_memberships m ON m.world_id=c.world_id
