@@ -623,6 +623,7 @@ async function signOut(){
   if(control?.isConnected)control.disabled=false;
  }
 }
+window.addEventListener("ppw:promotion-renamed",()=>void loadSession());
 void loadSession();
 if("serviceWorker" in navigator){
  window.addEventListener("load",()=>{void navigator.serviceWorker.register("/sw.js")
