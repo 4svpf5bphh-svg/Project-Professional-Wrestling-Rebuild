@@ -81,11 +81,13 @@ test("first-time iPhone manager names their owner identity and may rebrand after
  await page.setViewportSize({width:390,height:844});
  let actor=false,ownerName:string|null=null,joined=false,claimed=false;
  let promotionName="Crown Wrestling",renames=0;
+ const ownerSnapshots:string[]=[];
  await page.route("**/api/auth",route=>{
   actor=true;return route.fulfill({json:{ok:true}});
  });
  await page.route("**/api/session",route=>{
   if(!actor)return route.fulfill({status:401,json:{error:"Sign in required"}});
+  ownerSnapshots.push(String(ownerName)+" | "+promotionName);
   return route.fulfill({json:{
    worldId:"world-20261017",playerId:"owner",ownerName,csrfToken:"csrf-owner",
    overview:{world,membership:joined?"ACTIVE":"NONE",
@@ -129,9 +131,10 @@ test("first-time iPhone manager names their owner identity and may rebrand after
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
+ await expect(page.locator(".ppw-shell-brand small")).toContainText("Josh Robinson");
  await page.getByRole("textbox",{name:"Promotion name"}).fill("Kingdom Pro");
  await page.getByRole("button",{name:"Save promotion name"}).click();
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Kingdom Pro");
- await expect(page.locator(".ppw-shell-brand small")).toContainText("Josh Robinson");
+ await expect(page.locator(".ppw-shell-brand small"),ownerSnapshots.join(" :: ")).toContainText("Josh Robinson");
  expect(renames).toBe(1);
 });
