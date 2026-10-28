@@ -21,6 +21,8 @@ export interface PlannedLegendArtwork {
  readonly cardAsset:string;
  readonly revealAsset:string;
  readonly albumAsset:string;
+ /** Previous 48-card geometry and below-photo rarity badge design. */
+ readonly cardLayoutVersion:"LEGACY_48_FRAME_SEPARATE_RARITY_BADGE_V1";
  readonly members:readonly PlannedLegendMemberArt[];
  /** Draft materials must not silently become available in World markets. */
  readonly activation:"BLOCKED_PENDING_PHOTO_AND_ARTWORK_REVIEW";
@@ -37,6 +39,7 @@ export const PLANNED_LEGEND_ARTWORK:readonly PlannedLegendArtwork[]=
   return Object.freeze({
    id,name:approved.name,tier:approved.tier,team:Boolean(approved.members),
    cardAsset:path,revealAsset:path,albumAsset:path,
+   cardLayoutVersion:"LEGACY_48_FRAME_SEPARATE_RARITY_BADGE_V1" as const,
    members:Object.freeze(members),
    activation:"BLOCKED_PENDING_PHOTO_AND_ARTWORK_REVIEW" as const
   });
