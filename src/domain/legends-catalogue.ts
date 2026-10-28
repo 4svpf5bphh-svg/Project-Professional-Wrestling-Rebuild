@@ -1,3 +1,4 @@
+import {reviewedLegendExpansion} from "./reviewed-legend-expansion.js";
 /** Historic Legends: certified World unlocks and hand-curated prime-era identities.
  * Artwork rights remain unverified in this hobby build; missing/review-pending card files are never purchasable.
  */
@@ -258,7 +259,16 @@ const curated:LegendDefinition[]=[
   hints:["Champions are measured by the calendar.","One uninterrupted reign, not several combined, must reach the goal."],metric:"LONGEST_REIGN",target:230,status:"ACTIVE",cardAsset:null,
   roster:[roster("El Santo","MEN",34,"LUCHA","HERO","FACE","Plancha","La de a Caballo",100,100,95,98,100)]},
 ];
-export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze([...active,...curated]);
+/** Release gate deliberately remains OFF until every user-supplied card and
+ * team portrait is present, visually reviewed and approved for this build.
+ * No dynamic environment switch: accidental deployment cannot activate it.
+ * With this switch ON, the existing Vault, shared World Lock, KP collectibles
+ * and free-agent market receive all 129 definitions without a new code path.
+ */
+export const LEGENDS_EXPANSION_RELEASED:boolean=false;
+export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze([
+ ...active,...curated,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
+]);
 export const LIVE_LEGENDS=LEGENDS_CATALOGUE.filter(x=>x.status==="ACTIVE");
 export const LEGEND_TIER_PRICES:Readonly<Record<LegendTier,number>>={
  CULT:750,LEGEND:1400,ICON:2200,IMMORTAL:4000
