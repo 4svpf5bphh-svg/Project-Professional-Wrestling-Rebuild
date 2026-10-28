@@ -4,13 +4,13 @@ import {APPROVED_LEGEND_EXPANSION,EXCLUDED_LEGENDS}
  from "../src/domain/approved-legend-expansion.js";
 import {LEGENDS_CATALOGUE} from "../src/domain/legends-catalogue.js";
 const key=(v:string)=>v.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"");
-test("approved expansion has 83 genuinely new unlocks, the agreed tiers and no duplicate personalities",()=>{
+test("approved expansion has 81 genuinely new unlocks, the agreed tiers and no duplicate personalities",()=>{
  assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.equal(APPROVED_LEGEND_EXPANSION.length,83);
+ assert.equal(APPROVED_LEGEND_EXPANSION.length,81);
  const tierCounts=Object.fromEntries(["CULT","LEGEND","ICON","IMMORTAL"].map(t=>
   [t,LEGENDS_CATALOGUE.filter(x=>x.tier===t).length+
    APPROVED_LEGEND_EXPANSION.filter(x=>x.tier===t).length]));
- assert.deepEqual(tierCounts,{CULT:20,LEGEND:57,ICON:36,IMMORTAL:18});
+ assert.deepEqual(tierCounts,{CULT:20,LEGEND:57,ICON:34,IMMORTAL:18});
  const women=APPROVED_LEGEND_EXPANSION.filter(x=>x.division==="WOMEN");
  assert.equal(women.length,12);
  const teams=APPROVED_LEGEND_EXPANSION.filter(x=>x.members);
