@@ -1,4 +1,4 @@
-/** Owner-approved Phase 12 roster, 28 October 2026.
+/** Owner-approved Phase 12 roster, updated 28 October 2026.
  * A planning catalogue only: never imported into active LEGENDS_CATALOGUE until
  * owner-supplied photography, unlock evidence and gameplay integration are done.
  * One team counts as one unlock; no wrestler appears twice.
@@ -27,7 +27,7 @@ export const APPROVED_LEGEND_EXPANSION:readonly ApprovedLegend[]=Object.freeze([
   "Triple H","Batista","Roddy Piper","Goldberg","Yokozuna",
   "Hiroshi Tanahashi","Kane","AJ Styles","Daniel Bryan",
   "Jerry Lawler","The Ultimate Warrior","Brock Lesnar",
-  "Bruiser Brody","Superstar Billy Graham","Tiger Mask I","Big Daddy"
+  "Bruiser Brody","Superstar Billy Graham"
  ]),
  ...group("IMMORTAL",[
   "John Cena","Harley Race","Terry Funk","Lou Thesz","Verne Gagne"
@@ -56,5 +56,6 @@ export const EXCLUDED_LEGENDS=Object.freeze([
  "Blue Demon","Mil Máscaras","Umaga","Bob Backlund","Fit Finlay",
  "Pedro Morales","Masahiro Chono","Minoru Suzuki","Kendo Nagasaki",
  "Giant Haystacks","Johnny Saint","Chris Candido","Stevie Richards",
- "The Hurricane","Gangrel","Billy Kidman","Paul London"
+ "The Hurricane","Gangrel","Billy Kidman","Paul London",
+ "Tiger Mask I","Big Daddy"
 ]);
