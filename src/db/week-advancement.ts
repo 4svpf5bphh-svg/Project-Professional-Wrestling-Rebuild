@@ -15,6 +15,7 @@ import {trainerFatigueBonus} from "../domain/staff-training.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleRecurringWorldFinances} from "./weekly-recurring-finances.js";
+import {expireAndRetainAiContracts} from "./ai-contract-continuity.js";
 import {settleCommercialWorldWeek} from "./weekly-commercial-settlement.js";
 import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
@@ -276,11 +277,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         FROM ppw_contracts c WHERE r.world_id=$1 AND r.status='ACCEPTED'
         AND c.world_id=r.world_id AND c.contract_id=r.contract_id
         AND c.start_week_index=$2+1`,[input.worldId,weekIndex]);
-      await tx.query(`UPDATE ppw_contracts c SET status='EXPIRED',revision=revision+1
-        WHERE c.world_id=$1 AND c.status='SIGNED' AND c.expires_week_index=$2
-        AND NOT EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals r
-          WHERE r.world_id=c.world_id AND r.contract_id=c.contract_id
-          AND r.status='ACCEPTED')`,[input.worldId,weekIndex]);
+      await expireAndRetainAiContracts(tx,input.worldId,year,week);
       await tx.query(`UPDATE ppw_contract_renewal_proposals r SET status='REJECTED'
         FROM ppw_contracts c WHERE r.world_id=$1 AND r.status='PENDING'
         AND c.world_id=r.world_id AND c.contract_id=r.contract_id
