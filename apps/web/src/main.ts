@@ -268,8 +268,8 @@ function renderSection(){
     session.worldId!==scope.worldId||session.overview.promotion.id!==scope.promotionId)return;
    session.overview.world=updated.world;
    const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
-   if(line)line.textContent="Y"+updated.world.year+" W"+updated.world.week+
-    " · "+updated.world.name;
+   if(line)line.textContent=(session.ownerName?session.ownerName+" · ":"")+
+    "Y"+updated.world.year+" W"+updated.world.week+" · "+updated.world.name;
   },
    session.canManualAdvance?async(year,week)=>{
     for(let batch=0;batch<24;batch++){
