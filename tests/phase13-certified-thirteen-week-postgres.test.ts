@@ -114,10 +114,12 @@ test("eight AI promotions complete thirteen real World weeks including premium e
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string|null
   }>(["SELECT promotion_id,show_name AS name FROM ppw_booking_drafts",
-     "WHERE world_id=$1 AND year=1 AND week=13",
+     "WHERE world_id=$1 AND year=1 AND week<=13",
      "AND booking_class='PREMIUM' AND status='SUBMITTED'",
-     "ORDER BY promotion_id"].join(" "),[world]));
-  assert.ok(ppvs.length>=2,"Real quarterly premium events must be booked");
+     "ORDER BY promotion_id,week"].join(" "),[world]));
+  for(const expected of ["Royal Rumble","Elimination Chamber","Revolution"])
+   assert.ok(ppvs.some(p=>p.name===expected),
+    "Actual WWE/AEW named premium event missing from its scheduled week: "+expected);
   const usage=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;unique_talent:number
   }>(["SELECT d.promotion_id,count(DISTINCT x.person->>'personId')::integer AS unique_talent",
