@@ -34,7 +34,7 @@ test("operator test credit grants precisely 50k once, atomically, and does not c
   assert.deepEqual(await readPlaytestKp(db.pool,worldId,guest),{balance:0,granted:false,target:50000});
   const paid=await applyKayfabeAction(db.pool,{worldId,playerId:admin,promotionId:"crown"},
    {kind:"BUY",sku:"BRAND_CHROME",requestId:"kp-operator-buy"});
-  assert.equal(paid.balance,49800);
+  assert.equal("balance" in paid?paid.balance:null,49800);
   const retry=await grantPlaytestKp(db.pool,worldId,admin);
   assert.equal(retry.credited,0);
   assert.equal(retry.balance,49800,"second press never refills spent KP");
