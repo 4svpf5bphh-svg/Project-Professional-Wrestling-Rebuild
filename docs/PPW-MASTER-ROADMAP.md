@@ -4,6 +4,19 @@
 
 **Phase 11 status: RELEASED TO PRODUCTION, AWAITING OWNER PLAYTEST.** The verified closing gameplay checkpoint was `bae6fca2236e661106f3ac5d2c9f01053794d1a8`; latest release branch CI [40592418995](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40592418995) and post-merge CI [40593101568](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/40593101568) passed. Vercel deployment `dpl_AyKTQLpafgfWNeTBYGSTUxv9mefx` is READY for merge `78f4a1b`. Migrations 0103–0106 were rehearsed atomically on an isolated Neon fork and then applied atomically to the main rebuild database; unchanged World records confirmed (645 wrestlers, 91 drafts, 90 completed shows, 483 contracts, 26 titles). The existing save remains in OPEN Week 8. Automatic World Lock remains disabled and time was not advanced. Legends expansion remains separate and owner-approval-only.
 
+## Release sequencing — owner decision, 28 October 2026
+
+**One consolidated artwork-complete playtest release. No intermediate Phase 12 deployment.**
+The owner requested this exact order:
+1. Rehearse schema migrations in an isolated clone of the authentic saved World.
+2. Owner submits photographs for the 83 additional Legend unlocks; use [the 106-source image checklist](legend-photo-checklist.csv) and [delivery instructions](LEGEND-ARTWORK-DELIVERY.md).
+3. Integrate ALL approved Legends with tier-specific reveals, reusable album cards and correctly mapped wrestler/market portraits, including each tag member, validate card badges/cropping, unlock challenges and World-free-agent identities.
+4. Re-run complete regression, validate on the cloned World, then perform ONE coordinated Production release for the next owner playtest, only after explicit release instruction.
+
+**Rehearsal passed:** Isolated Neon fork `br-dawn-mud-zaw9aquy` (`ppw-phase12-legends-release-rehearsal-20261028`) was created from Production main `br-wispy-block-zagss9wk`. On the fork alone, SQL migrations 0107–0109 ran atomically; all four new tables exist. Before/after confirmed Year 1 Week 10 OPEN, revision 296, 647 wrestlers, 13 promotions, 486 contracts, 116 booked drafts, 116 completed shows, 26 titles; Production has the same rows and no Phase 12 tables. No World advancement or reset. Note this is the **schema** rehearsal; after adding imagery, replay the full feature release checks on a fresh/updated fork before Production.
+
+**Artwork-blocker remediation:** The prior package/ZIP never reached deployable GitHub binary assets. The binary `create_blob` pathway has been tested, and the documented asset process uses Git blob/tree/commit for final WebPs (or a direct user GitHub branch upload for large batches). Real photo subject review required. Already live: 48 cards and 49 portraits; pending: 83 new cards and 95 new portraits, requiring 106 separate suggested source-photo slots if each group member supplies a separate image. Existing six photo revisions and team member order must be checked. **Do not call the artwork phase blocked simply because the UTF-8 file API can't push WebP.**
+
 ## Phase 12 — Owner identities, card album, cosmetic testing & premium-event press (28 October 2026)
 
 **In development on `phase12-owners-kp-album-media-2026-10-28`, draft PR #22. NOT merged or deployed.** Phase 11 gameplay remains live and untouched. Do not reset, advance the World, change deadline, enable cron, or apply migrations to Neon main until a separately approved coordinated release.
