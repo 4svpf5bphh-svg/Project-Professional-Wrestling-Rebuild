@@ -8,5 +8,19 @@
       "**": false,
       "main": true
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/profile",
+      "destination": "/api/identity?route=profile"
+    },
+    {
+      "source": "/api/promotion-identity",
+      "destination": "/api/identity?route=promotion-identity"
+    },
+    {
+      "source": "/api/media-scrum",
+      "destination": "/api/identity?route=media-scrum"
+    }
+  ]
 }

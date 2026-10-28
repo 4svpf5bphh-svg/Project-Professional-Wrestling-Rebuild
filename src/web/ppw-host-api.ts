@@ -85,7 +85,15 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  let cfg:InviteConfig,pool:TransactionPool;
  try{({cfg,pool}=runtime());}
  catch{return json(503,{error:"Game host not configured"});}
- const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
+ // Vercel Hobby permits at most twelve function entrypoints.
+ // Three protected identity/media routes share one serverless function;
+ // its fixed rewrite marker preserves the authoritative original route.
+ const routeUrl=new URL(req.url,"https://"+(req.headers.get("host")??"localhost"));
+ const sharedRoute=routeUrl.searchParams.get("route");
+ const path=routeUrl.pathname==="/api/identity"&&
+  (sharedRoute==="profile"||sharedRoute==="promotion-identity"||
+   sharedRoute==="media-scrum")
+  ?"/api/"+sharedRoute:routeUrl.pathname;
  const get=req.method==="GET",post=req.method==="POST";
  if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview","/api/profile","/api/promotion-identity","/api/media-scrum"].includes(path))
   return json(404,{error:"Unknown game route"});
