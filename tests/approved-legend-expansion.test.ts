@@ -55,10 +55,10 @@ test("all 81 new Legends have a single planning-only certified achievement with 
  for(const item of APPROVED_LEGEND_MILESTONES){
   assert.ok(metrics.has(item.metric),"Unsupported fact metric for "+item.name);
   assert.ok(Number.isSafeInteger(item.target)&&item.target>=1&&item.target<=500);
-  const key=item.metric+":"+item.target;
-  assert.ok(!milestones.has(key),
-   "Shared threshold would bundle new Legends: "+item.name+" "+key);
-  milestones.add(key);
+  const milestoneKey=item.metric+":"+item.target;
+  assert.ok(!milestones.has(milestoneKey),
+   "Shared threshold would bundle new Legends: "+item.name+" "+milestoneKey);
+  milestones.add(milestoneKey);
  }
  const teams=APPROVED_LEGEND_EXPANSION.filter(x=>x.members);
  for(const team of teams){
