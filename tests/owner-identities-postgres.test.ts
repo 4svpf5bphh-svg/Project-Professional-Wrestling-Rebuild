@@ -61,5 +61,22 @@ test("two signed promotion owners can name themselves and rebrand only their own
   assert.equal(after[0]?.previous_name,"Crown Wrestling");
   assert.equal(after[0]?.new_name,"Kingdom Pro");
   assert.equal(after.length,1,"repeated identical rename cannot add duplicate history");
+  // Same World, separate authorised owners: no duplicate display names even
+  // when both write on distinct promotion rows simultaneously.
+  const race=await Promise.allSettled([
+   renameOwnedPromotion(db.pool,{worldId,playerId:a,promotionId:"crown",name:"Premier Wrestling"}),
+   renameOwnedPromotion(db.pool,{worldId,playerId:b,promotionId:"rival",name:"Premier Wrestling"})
+  ]);
+  assert.equal(race.filter(x=>x.status==="fulfilled").length,1);
+  assert.equal(race.filter(x=>x.status==="rejected").length,1);
+  const duplicateCheck=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(`
+   SELECT name AS n FROM ppw_promotions WHERE world_id=$1
+    AND lower(name)=lower('Premier Wrestling')`,[worldId]));
+  assert.equal(duplicateCheck.length,1);
+  const finalWorld=await withWorldTransaction(db.pool,tx=>tx.query<{revision:number}>(`
+   SELECT revision FROM ppw_worlds WHERE world_id=$1`,[worldId]));
+  assert.equal(finalWorld[0]?.revision,before[0]?.revision,
+   "rebrands cannot accidentally advance or invalidate the World week");
+
  }finally{await db.close();}
 });
