@@ -7,6 +7,7 @@ on:
       - phase14-legends-photo-audit-and-artwork-2026-10-28
     paths:
       - data/owner-legend-artwork.zip
+      - .github/workflows/import-owner-legend-pack.yml
 
 permissions:
   contents: write
@@ -64,13 +65,12 @@ jobs:
         if: steps.intake.outputs.present == 'yes'
         with:
           node-version: '22'
-          cache: npm
 
       - name: Verify TypeScript, unit suite and iPhone web build before accepting assets
         if: steps.intake.outputs.present == 'yes'
         shell: bash
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run typecheck
           npm test
           npm run web:build
