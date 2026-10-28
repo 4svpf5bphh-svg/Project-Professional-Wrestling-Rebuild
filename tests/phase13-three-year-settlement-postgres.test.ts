@@ -38,7 +38,7 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
    media:17000,sponsor:6000,venue:9000,hire:25000,ticket:"PRESTIGE",cadence:2,
    day:2,quality:2.15,crowd:43,risk:80,craft:45,star:95},
   {id:"workrate-ai",mode:"AI",cash:180000,wage:850,fee:300,overhead:6000,
-   media:3500,sponsor:2000,venue:2100,hire:2500,ticket:"ACCESSIBLE",cadence:3,
+   media:14000,sponsor:3000,venue:2100,hire:2500,ticket:"ACCESSIBLE",cadence:3,
    day:4,quality:3.4,crowd:69,risk:35,craft:95,star:42},
   {id:"star-ai",mode:"AI",cash:160000,wage:2450,fee:700,overhead:15000,
    media:15000,sponsor:4000,venue:4200,hire:6500,ticket:"STANDARD",cadence:3,
@@ -120,7 +120,16 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
     "AND p.status='ACTIVE' AND c.start_week_index<=$2 AND c.expires_week_index>=$2",
     "AND p.booking_division IS NOT NULL ORDER BY c.promotion_id,c.person_id"].join(" "),
     [world,index]));
-   for(const p of profiles.filter(p=>index%p.cadence===0)){
+   // AI companies honour their real World cadence as tier changes and
+   // financial restructuring adjust the frequency of their shows.
+   const currentCadence=await withWorldTransaction(db.pool,tx=>tx.query<{
+    promotion_id:string;event_cadence_weeks:number
+   }>("SELECT promotion_id,event_cadence_weeks FROM ppw_promotions WHERE world_id=$1",
+    [world]));
+   const cadenceById=new Map(currentCadence.map(x=>[x.promotion_id,x.event_cadence_weeks]));
+   const due=profiles.filter(p=>index%(p.mode==="AI"?
+    cadenceById.get(p.id)??p.cadence:p.cadence)===0);
+   for(const p of due){
     const owned=roster.filter(x=>x.promotion_id===p.id);
     const candidates:AiRosterCandidate[]=owned.map(x=>({
      personId:x.person_id,contractId:x.contract_id,bookingDivision:x.booking_division,
