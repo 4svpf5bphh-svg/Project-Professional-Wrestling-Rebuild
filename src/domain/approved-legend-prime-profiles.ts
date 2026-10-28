@@ -2,6 +2,8 @@
  * Distinct moves, presentation and ability scores for all 93 people; unlike
  * generic wrestler templates this is reviewed as individual gameplay content.
  * Every entry is DRAFT and does not add a wrestler to the World automatically.
+ * Obscure moves were checked against documented career references: WWE
+ * profiles for Mildred Burke and Wendi Richter; Cagematch for Devil Masami.
  */
 import type {PrimeLegend} from "./legends-catalogue.js";
 import type {LegendDivision} from "./legends-catalogue.js";
@@ -76,12 +78,12 @@ const DATA:readonly IdentityRow[]=[
  ["Awesome Kong",34,"POWERHOUSE","BULLY","HEEL","Implant Buster","Awesome Bomb",88,93,85,91,97],
  ["Sensational Sherri",31,"BRAWLER","VILLAIN","HEEL","Top Rope Splash","Roundhouse Kick",87,92,73,96,100],
  ["Luna Vachon",32,"BRAWLER","ANTI_HERO","TWEENER","Diving Splash","Luna Bomb",82,87,82,90,97],
- ["Devil Masami",32,"POWERHOUSE","VILLAIN","HEEL","Running Lariat","Powerbomb",87,88,93,97,94],
- ["Wendi Richter",30,"ALL_ROUNDER","HERO","FACE","Flying Crossbody","Sit-Out Powerbomb",83,91,76,83,97],
+ ["Devil Masami",32,"TECHNICAL","VILLAIN","HEEL","Fire Valley","Fire Thunder Bomb",87,88,93,97,94],
+ ["Wendi Richter",30,"ALL_ROUNDER","HERO","FACE","Swinging Arm Wrench","Sitout DDT",83,91,76,83,97],
  ["Akira Hokuto",30,"STRONG_STYLE","HERO","FACE","Diving Senton","Northern Lights Bomb",93,96,100,100,97],
  ["Meiko Satomura",31,"STRONG_STYLE","HERO","FACE","Cartwheel Knee Drop","Scorpion Rising",89,91,100,99,94],
  ["Madusa",32,"ALL_ROUNDER","ANTI_HERO","FACE","German Suplex","Bridging German Suplex",90,92,92,93,97],
- ["Mildred Burke",33,"TECHNICAL","HERO","FACE","Flying Mare","Headlock Takedown",96,96,97,99,98],
+ ["Mildred Burke",33,"TECHNICAL","HERO","FACE","Flying Mare","Alligator Clutch",96,96,97,99,98],
  ["Bubba Ray Dudley",32,"BRAWLER","BULLY","HEEL","Bubba Bomb","3D",87,91,82,90,98],
  ["D-Von Dudley",30,"BRAWLER","BULLY","HEEL","Diving Headbutt","3D",84,88,83,87,94],
  ["Rick Steiner",32,"POWERHOUSE","BULLY","FACE","Steinerline","Steiner Bulldog",85,88,84,89,88],
