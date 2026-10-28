@@ -229,7 +229,8 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  await expect(reveal.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
   "/assets/legends/trish-stratus-legend-card.webp");
  await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
- await expect.poll(()=>seen).toBe(1);
+ // Replaying an already-seen reveal must not create a second acknowledgement.
+ expect(seen).toBe(0);
  await trish.getByRole("button",{name:/Collect card/}).click();
  await expect.poll(()=>charged).toBe(1);
  const album=page.locator(".ppw-legend-collection");
