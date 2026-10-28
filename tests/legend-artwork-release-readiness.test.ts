@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {existsSync,statSync} from "node:fs";
+import {existsSync,readFileSync,statSync} from "node:fs";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {LEGENDS_EXPANSION_RELEASED} from "../src/domain/legends-catalogue.js";
@@ -20,9 +20,14 @@ test("129-Legend release requires all 174 non-placeholder owner art files",()=>{
   const full=join(root,asset.split("/").at(-1)!);
   return !existsSync(full)||statSync(full).size<4096;
  });
- if(LEGENDS_EXPANSION_RELEASED)
-  assert.deepEqual(unavailable,[],
-   "Cannot activate new Legends while artwork files are missing or placeholders");
- else
-  assert.equal(LEGENDS_EXPANSION_RELEASED,false);
+ assert.deepEqual(unavailable,[],
+  "All 174 verified assets must remain bundled after the owner ZIP import");
+ for(const asset of all){
+  const full=join(root,asset.split("/").at(-1)!);
+  const bytes=readFileSync(full);
+  assert.equal(bytes.toString("ascii",0,4),"RIFF",asset+" missing WebP RIFF header");
+  assert.equal(bytes.toString("ascii",8,12),"WEBP",asset+" is not a WebP");
+ }
+ assert.equal(LEGENDS_EXPANSION_RELEASED,false,
+  "Staging the artwork must not activate new Legends in any deployed World");
 });
