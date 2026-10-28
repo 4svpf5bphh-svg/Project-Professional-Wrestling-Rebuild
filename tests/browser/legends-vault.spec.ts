@@ -180,3 +180,64 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expanded.getByRole("button",{name:"Close card"}).click();
  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("historically unlocked Trish, Taz and Jerry Lynn show the original collectible artwork without a new unlock",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const items=[
+  {id:"trish-stratus",name:"Trish Stratus",tier:"LEGEND",division:"WOMEN",
+   card:"/assets/legends/trish-stratus-legend-card.webp",person:"legend:trish-stratus:0",price:1400},
+  {id:"taz",name:"Taz",tier:"CULT",division:"MEN",
+   card:"/assets/legends/taz-cult-card.webp",person:"legend:taz:0",price:750},
+  {id:"jerry-lynn",name:"Jerry Lynn",tier:"CULT",division:"MEN",
+   card:"/assets/legends/jerry-lynn-cult-card.webp",person:"legend:jerry-lynn:0",price:750}
+ ];
+ let collected=false,charged=0,seen=0;
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  if(method==="industry")return route.fulfill({json:{
+   worldName:"PPW",year:2,week:1,phase:"OPEN",nextLockEpoch:Date.now()/1000+6000,
+   ownPromotionId:"human",ownPromotionName:"Human Pro",
+   promotions:[],headlines:[],broadcasts:[]}});
+  if(method==="legendsVault")return route.fulfill({json:{
+   worldYear:2,worldWeek:1,balance:5000,curated:129,
+   entries:items.map(x=>({
+    id:x.id,name:x.name,tier:x.tier,division:x.division,
+    visibility:"KNOWN",tradition:"Classic wrestling",
+    clue:"Previously unlocked",achievement:"Previously certified World milestone",
+    progress:100,exactProgress:10,target:10,unlocked:true,
+    year:1,week:1,personIds:[x.person],revealSeen:true,
+    collected:x.id==="trish-stratus"&&collected,
+    collectibleReady:true,cardAsset:x.card,price:x.price
+   }))}});
+  if(method==="legendSeen"){seen++;return route.fulfill({json:{seen:true}});}
+  if(method==="kpAction"){charged++;collected=true;return route.fulfill({json:{ok:true}});}
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/industry/legends");
+ for(const entry of items){
+  const tile=page.locator('.ppw-legend-tile[data-legend-id="'+entry.id+'"]');
+  await expect(tile.locator("img.ppw-legend-card-art")).toHaveAttribute("src",entry.card);
+  await expect(tile.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
+  await expect(tile.getByRole("button",{name:/Collect card/})).toBeEnabled();
+ }
+ await expect(page.getByRole("button",{name:"Card artwork not yet available"})).toHaveCount(0);
+ const trish=page.locator('.ppw-legend-tile[data-legend-id="trish-stratus"]');
+ await trish.getByRole("button",{name:"Replay the reveal"}).click();
+ const reveal=page.getByRole("dialog",{name:"Legend unlocked: Trish Stratus"});
+ await expect(reveal.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
+  "/assets/legends/trish-stratus-legend-card.webp");
+ await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
+ await expect.poll(()=>seen).toBe(1);
+ await trish.getByRole("button",{name:/Collect card/}).click();
+ await expect.poll(()=>charged).toBe(1);
+ const album=page.locator(".ppw-legend-collection");
+ await album.getByRole("button",{name:"Collected"}).click();
+ await expect(album.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
+  "/assets/legends/trish-stratus-legend-card.webp");
+ await album.getByRole("button",{name:"View card"}).click();
+ const viewer=page.getByRole("dialog",{name:"Collectible card: Trish Stratus"});
+ await expect(viewer.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalHeight",1440);
+ await viewer.getByRole("button",{name:"Close card"}).click();
+});

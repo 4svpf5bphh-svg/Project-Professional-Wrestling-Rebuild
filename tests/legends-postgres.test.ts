@@ -99,19 +99,28 @@ test("certified classics introduce Legends as competing free agents once; accoun
   await markLegendRevealSeen(db.pool,a,"jerry-lynn");
   const after=await readLegendsVault(db.pool,a);
   assert.equal(after.entries.find(x=>x.id==="jerry-lynn")?.revealSeen,true);
+  assert.equal(after.entries.find(x=>x.id==="jerry-lynn")?.collectibleReady,true);
+  assert.equal(after.entries.find(x=>x.id==="jerry-lynn")?.cardAsset,
+   "/assets/legends/jerry-lynn-cult-card.webp");
   assert.equal((await readLegendsVault(db.pool,b)).entries.find(
    x=>x.id==="jerry-lynn")?.revealSeen,false);
   await withWorldTransaction(db.pool,tx=>tx.query(`
    INSERT INTO ppw_kp_wallets(player_id,balance,lifetime_earned)
    VALUES($1,10000,10000)`,[owner]));
-  await assert.rejects(applyKayfabeAction(db.pool,a,{
-   kind:"COLLECT_LEGEND",legendId:"jerry-lynn",requestId:"collect"}
-  ),/artwork must be cleared/);
+  await applyKayfabeAction(db.pool,a,{
+   kind:"COLLECT_LEGEND",legendId:"jerry-lynn",requestId:"collect"
+  });
+  const afterCollection=await readLegendsVault(db.pool,a);
+  assert.equal(afterCollection.entries.find(x=>x.id==="jerry-lynn")?.collected,true);
+  assert.equal(afterCollection.entries.find(x=>x.id==="jerry-lynn")?.revealSeen,true,
+   "Old unlock/reveal records survive artwork activation");
+  assert.equal((await readLegendsVault(db.pool,b)).entries.find(
+   x=>x.id==="jerry-lynn")?.collected,false);
   const wallet=await withWorldTransaction(db.pool,tx=>tx.query<{balance:string}>(`
    SELECT balance::text FROM ppw_kp_wallets WHERE player_id=$1`,[owner]));
-  assert.equal(Number(wallet[0]!.balance),10000);
+  assert.equal(Number(wallet[0]!.balance),9250);
   assert.equal(await withWorldTransaction(db.pool,tx=>tx.query(`
-   SELECT legend_id FROM ppw_kp_legend_cards WHERE player_id=$1`,[owner])).then(x=>x.length),0);
+   SELECT legend_id FROM ppw_kp_legend_cards WHERE player_id=$1`,[owner])).then(x=>x.length),1);
   // Even emergency AI roster rebuilding may not circumvent the human opportunity window.
   await withWorldTransaction(db.pool,tx=>tx.query(`
    UPDATE ppw_promotions SET management_mode='AI',financial_distress='CRISIS'

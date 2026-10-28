@@ -33,21 +33,27 @@ test("four curated tiers, real team and women's legends, authentic named cards n
  assert.equal(LIVE_LEGENDS.every(x=>x.metric&&x.target&&x.roster.length),true);
  assert.equal(findLegend("undertaker")?.cardAsset,
   "/assets/legends/undertaker-immortal-card.webp");
- assert.equal(original.filter(x=>x.id!=="undertaker").every(x=>x.cardAsset===null),true);
+ assert.equal(original.filter(x=>x.cardAsset!==null).length,48);
+ assert.ok(original.every(x=>x.cardAsset===
+  "/assets/legends/"+x.id+"-"+x.tier.toLowerCase()+"-card.webp"));
+ for(const [id,tier] of [["jerry-lynn","cult"],["taz","cult"],
+  ["trish-stratus","legend"],["undertaker","immortal"]] as const)
+  assert.equal(findLegend(id)?.cardAsset,"/assets/legends/"+id+"-"+tier+"-card.webp");
  assert.equal(LIVE_LEGENDS.every(x=>x.roster.length>=1&&x.roster.length<=4),true);
  assert.equal(LIVE_LEGENDS.every(x=>x.clue!=="A chapter of wrestling history awaits its moment."),true);
  assert.ok(new Set(LIVE_LEGENDS.map(x=>x.metric)).size>=18);
  assert.equal(LEGENDS_CATALOGUE.filter(x=>x.status==="PLANNED").length,0);
  assert.equal(Object.keys(LEGEND_CARD_PHOTO_CREDITS).length,48);
- assert.equal(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).length,82);
- assert.ok(original.filter(x=>x.cardAsset!==null).every(x=>
-  LEGEND_CARD_PHOTO_CREDITS[x.id]?.sourcePage.startsWith("https://commons.wikimedia.org/wiki/File:")));
+ assert.equal(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).length,129);
+ assert.ok(original.every(x=>LEGEND_CARD_PHOTO_CREDITS[x.id]?.sourcePage.startsWith("https://")),
+  "Original cards retain photographer and licensing-status metadata");
  assert.ok(Object.values(LEGEND_CARD_PHOTO_CREDITS).every(x=>
   /^(CC BY(?:-SA)? [234]\.0|CC0|Unverified - hobby draft)$/.test(x.license)&&
   x.author.trim().length>2&&x.sourcePage.startsWith("https://")));
  for(const id of ["mr-perfect","road-warriors","el-santo"]){
   assert.equal(LEGEND_CARD_PHOTO_CREDITS[id].license,"Unverified - hobby draft");
-  assert.equal(findLegend(id)?.cardAsset,null);
+  assert.ok(findLegend(id)?.cardAsset?.endsWith("-card.webp"),
+   "Displaying an existing draft must not falsely mark its image rights as cleared");
  }
  assert.ok(LEGEND_TIER_PRICES.IMMORTAL>LEGEND_TIER_PRICES.ICON);
  assert.ok(LEGEND_TIER_PRICES.CULT>500);
