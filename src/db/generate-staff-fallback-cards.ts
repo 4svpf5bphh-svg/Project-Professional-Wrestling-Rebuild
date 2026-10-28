@@ -6,7 +6,7 @@ import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
-import {chooseAiWorldCard,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
+import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
 
 export interface GenerateStaffFallbackCardsInput{
@@ -256,11 +256,11 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const challengers=titles.flatMap(t=>{
             const champ=byId.get(t.holderId);
             if(!champ)return [];
-            const candidate=roster.filter(x=>x.personId!==t.holderId&&
-              x.bookingDivision===champ.bookingDivision)
-              .sort((a,b)=>(b.popularity+b.momentum+b.recognition)-
-                (a.popularity+a.momentum+a.recognition)||
-                a.personId.localeCompare(b.personId,"en"))[0];
+            const candidate=chooseAiTitleChallenger({
+              roster,holderId:t.holderId,championshipId:t.championshipId,
+              worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+              recentPairs:recent.get(promotionId)??[],
+            });
             return candidate?[{kind:"SINGLES_TITLE" as const,
               aId:t.holderId,bId:candidate.personId,holderId:t.holderId,
               championshipId:t.championshipId,heat:t.heat}]:[];

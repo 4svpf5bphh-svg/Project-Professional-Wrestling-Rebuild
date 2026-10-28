@@ -7,7 +7,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {settleWeeklyPromotionHealth} from "../src/db/weekly-finance-health.js";
 import {recruitStrategicAiRosters,recruitDistressedAiRosters,
  settleLivingPromotionSurvival} from "../src/db/living-world-promotions.js";
-import {originalMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
+import {balancedMarketAfterEvent} from "../src/domain/legacy-market-drift.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -189,11 +189,11 @@ test("three-year rivalry markets change in opposite directions from actual quali
  const checkpoints:{week:number;leader:number;struggling:number}[]=[];
  for(let i=0;i<156;i++){
   const quarterMajor=i%13===12;
-  crowdLeader=originalMarketAfterEvent(crowdLeader,{
+  crowdLeader=balancedMarketAfterEvent(crowdLeader,{
    eventType:quarterMajor?"MAJOR":"REGULAR",isHomeMarket:true,
    expectedDemand:1000,attendance:1050,capacity:1100,
    averageMatchRating:4.2,crowdResponse:85});
-  struggling=originalMarketAfterEvent(struggling,{
+  struggling=balancedMarketAfterEvent(struggling,{
    eventType:quarterMajor?"MAJOR":"REGULAR",isHomeMarket:true,
    expectedDemand:1000,attendance:270,capacity:1100,
    averageMatchRating:1.8,crowdResponse:35});
