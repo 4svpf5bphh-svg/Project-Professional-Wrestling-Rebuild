@@ -254,6 +254,28 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   b.people.reduce((sum,p)=>sum+push(p),0)/b.people.length||
   a.people.map(x=>x.personId).join(":").localeCompare(
    b.people.map(x=>x.personId).join(":"),"en"));
+ // On ordinary AI cards without canonical title or rivalry obligations,
+ // stop running the exact same strongest pair as the headliner forever.
+ // Rotate between a few credible top-card matches using only this week's
+ // World-seeded draw and the already loaded bounded recent-pair history.
+ // This adds no queries and never changes authored winners or human cards.
+ if(!reserve&&!tagChoice?.titleId&&cardEntries.length>1){
+  const avg=(c:typeof cardEntries[number])=>
+   c.people.reduce((sum,p)=>sum+push(p),0)/c.people.length;
+  const best=Math.max(...cardEntries.map(avg));
+  const recentSet=new Set(input.recentPairs??[]);
+  const scored=cardEntries.map((c,i)=>{
+   const headKey=c.people.map(p=>p.personId).sort().join(":");
+   const noise=parseInt(hash(["ppw-ai-headliner-v2",input.worldSeed,
+    input.worldId,input.promotionId,input.year,input.week,headKey]).slice(0,4),16)/65535;
+   return {index:i,quality:avg(c),recentlyBooked:
+    c.people.length===2&&recentSet.has(headKey),noise};
+  }).filter(c=>best-c.quality<=12)
+   .sort((a,b)=>(b.quality-(b.recentlyBooked?8:0)+b.noise*9)-
+    (a.quality-(a.recentlyBooked?8:0)+a.noise*9)||a.index-b.index);
+  const selection=scored[0]?.index;
+  if(selection!==undefined)cardEntries.push(cardEntries.splice(selection,1)[0]!);
+ }
  // The most important canonical title gets the main event. An existing
  // singles rivalry still closes when no title defense takes priority.
  if(reserve){
