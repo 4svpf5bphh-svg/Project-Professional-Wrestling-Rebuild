@@ -270,6 +270,18 @@ function businessPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):BusinessPort{
  return {
   load:()=>call("business"),
+  renamePromotion:async name=>{
+   const response=await fetch("/api/promotion-identity",{
+    method:"POST",credentials:"same-origin",
+    headers:{"content-type":"application/json","x-ppw-csrf":scope.csrfToken},
+    body:JSON.stringify({action:"RENAME",promotionId:scope.promotionId,name})
+   });
+   const body=await response.json().catch(()=>({error:"Promotion identity unavailable"})) as
+    {name?:string;changed?:boolean;error?:string};
+   if(!response.ok)throw new Error(body.error??"Could not rename promotion");
+   if(typeof body.name!=="string")throw new Error("Invalid promotion rename response");
+   return {name:body.name,changed:body.changed===true};
+  },
   signCommercial:input=>call("signCommercial",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
