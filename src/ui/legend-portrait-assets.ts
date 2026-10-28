@@ -1,3 +1,5 @@
+import {LEGENDS_EXPANSION_RELEASED} from "../domain/legends-catalogue.js";
+import {reviewedLegendPortraits} from "../domain/reviewed-legend-expansion.js";
 /** Generated from actual static source-backed Legend portraits.
  * Person IDs survive changes of employer, roster and ring name. */
 export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.freeze({
@@ -50,6 +52,7 @@ export const LEGEND_PORTRAIT_ASSETS: Readonly<Record<string,string>> = Object.fr
   "legend:undertaker:0": "/assets/legends/undertaker-0-portrait.webp",
   "legend:vader:0": "/assets/legends/vader-0-portrait.webp",
   "legend:william-regal:0": "/assets/legends/william-regal-0-portrait.webp",
+  ...(LEGENDS_EXPANSION_RELEASED?reviewedLegendPortraits():{}),
 });
 export function legendPortraitSource(personId?:string|null):string|null {
   return personId ? LEGEND_PORTRAIT_ASSETS[personId] ?? null : null;

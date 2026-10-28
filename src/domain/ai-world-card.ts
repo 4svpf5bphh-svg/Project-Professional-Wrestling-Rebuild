@@ -86,6 +86,35 @@ function style(input:AiCardInput,order:number,isMain:boolean):AiCardMatch["inten
  if(input.starPreference>=70&&rng.chance(.3))return "SHOWCASE";
  return rng.pick(["COMPETITIVE","STORY","PROTECTIVE"] as const);
 }
+/** AI-only: rotate credible title opponents without extra reads or saved state. */
+export function chooseAiTitleChallenger(input:{
+ roster:readonly AiRosterCandidate[];holderId:string;championshipId:string;
+ worldSeed:string;promotionId:string;year:number;week:number;
+ recentPairs?:readonly string[];
+}):AiRosterCandidate|null{
+ if(!input.holderId||!input.championshipId||!input.worldSeed||!input.promotionId||
+  !Number.isSafeInteger(input.year)||input.year<1||
+  !Number.isInteger(input.week)||input.week<1||input.week>52)
+  throw new Error("Invalid AI championship challenger context");
+ const champion=input.roster.find(p=>p.personId===input.holderId);
+ if(!champion)return null;
+ const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
+ const candidates=input.roster.filter(p=>p.personId!==input.holderId&&
+  p.bookingDivision===champion.bookingDivision)
+  .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
+ if(!candidates.length)return null;
+ const peak=strength(candidates[0]!);
+ const shortlist=candidates.filter(p=>peak-strength(p)<=24).slice(0,4);
+ const offset=parseInt(hash(["ppw-ai-title-v1",input.worldSeed,input.promotionId,
+  input.championshipId]).slice(0,8),16)%shortlist.length;
+ const starting=(offset+Math.floor(((input.year-1)*52+input.week-1)/4))%shortlist.length;
+ const recent=new Set(input.recentPairs??[]);
+ for(let i=0;i<shortlist.length;i++){
+  const candidate=shortlist[(starting+i)%shortlist.length]!;
+  if(!recent.has(key(input.holderId,candidate.personId)))return candidate;
+ }
+ return shortlist[starting]!;
+}
 export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  if(!input.worldId||!input.showId||!input.promotionId||!input.worldSeed||
   !Number.isSafeInteger(input.year)||input.year<1||
@@ -179,24 +208,60 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   titleId:eligibleTagTitle?.championshipId??null}:null;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
+ // Keep recognisable headliners, but rotate credible undercard opportunities.
+ // The old same top-ten selection excluded 18 of 28 eligible wrestlers forever.
+ const recent=new Set(input.recentPairs??[]);
+ const rotationScore=(p:AiRosterCandidate)=>{
+  const draw=parseInt(hash(["ppw-ai-depth-v1",input.worldSeed,input.promotionId,
+   input.year,input.week,p.personId]).slice(0,8),16)/0xffffffff;
+  return rank(p)+opportunity(p)+draw*85;
+ };
+ const nextDivision=(division:AiRosterCandidate[])=>{
+  const leader=[...division].sort(best)[0];
+  if(!leader)return [];
+  const other=division.filter(p=>p.personId!==leader.personId)
+   .sort((a,b)=>
+    Number(recent.has(key(leader.personId,a.personId)))-
+    Number(recent.has(key(leader.personId,b.personId)))||
+    rotationScore(b)-rotationScore(a)||best(a,b))[0];
+  return other?[leader,other]:[leader];
+ };
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
  if(men.length>=2&&women.length>=2&&available.length>=4){
-  for(const p of [...men.slice(0,2),...women.slice(0,2)]){
+  for(const p of [...nextDivision(men),...nextDivision(women)]){
    if(chosen.length<10&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
   }
  }
- for(const p of available){
-  if(chosen.length>=10)break;
-  if(!chosen.some(x=>x.personId===p.personId))chosen.push(p);
+ // A developmental appearance needs a legal opponent. Fill remaining
+ // undercard slots in division-matched pairs, not odd single inclusions.
+ const rotationOrder=[...available].sort((a,b)=>
+  rotationScore(b)-rotationScore(a)||best(a,b));
+ const reservePair=(p:AiRosterCandidate)=>{
+  if(chosen.length>8||chosen.some(x=>x.personId===p.personId))return false;
+  const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
+   x.bookingDivision===p.bookingDivision&&
+   !chosen.some(c=>c.personId===x.personId));
+  if(!opponent)return false;
+  chosen.push(p,opponent);
+  return true;
+ };
+ if(input.strategy?.focus==="BUILD_STARS"){
+  const developing=available.filter(p=>p.popularity<60&&p.momentum>=45&&
+   p.matchCraft>=40&&!chosen.some(x=>x.personId===p.personId))
+   .sort(best)[0];
+  if(developing)reservePair(developing);
+ }
+ for(const p of rotationOrder){
+  if(chosen.length>8)break;
+  reservePair(p);
  }
  // If ten slots leave one wrestler unpaired, use eight rather than using
  // the same performer twice or mixing the divisions.
  const pool=[...chosen].sort((a,b)=>
   rank(b)+opportunity(b)-rank(a)-opportunity(a)||
   a.personId.localeCompare(b.personId,"en"));
- const recent=new Set(input.recentPairs??[]);
  const teammates=new Set((input.establishedPartners??[]).map(x=>{
   if(!x.aId||!x.bId||x.aId===x.bId)
    throw new Error("Invalid established tag identity");
@@ -254,6 +319,28 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   b.people.reduce((sum,p)=>sum+push(p),0)/b.people.length||
   a.people.map(x=>x.personId).join(":").localeCompare(
    b.people.map(x=>x.personId).join(":"),"en"));
+ // On ordinary AI cards without canonical title or rivalry obligations,
+ // stop running the exact same strongest pair as the headliner forever.
+ // Rotate between a few credible top-card matches using only this week's
+ // World-seeded draw and the already loaded bounded recent-pair history.
+ // This adds no queries and never changes authored winners or human cards.
+ if(!reserve&&!tagChoice?.titleId&&cardEntries.length>1){
+  const avg=(c:typeof cardEntries[number])=>
+   c.people.reduce((sum,p)=>sum+push(p),0)/c.people.length;
+  const best=Math.max(...cardEntries.map(avg));
+  const recentSet=new Set(input.recentPairs??[]);
+  const scored=cardEntries.map((c,i)=>{
+   const headKey=c.people.map(p=>p.personId).sort().join(":");
+   const noise=parseInt(hash(["ppw-ai-headliner-v2",input.worldSeed,
+    input.worldId,input.promotionId,input.year,input.week,headKey]).slice(0,4),16)/65535;
+   return {index:i,quality:avg(c),recentlyBooked:
+    c.people.length===2&&recentSet.has(headKey),noise};
+  }).filter(c=>best-c.quality<=12)
+   .sort((a,b)=>(b.quality-(b.recentlyBooked?8:0)+b.noise*9)-
+    (a.quality-(a.recentlyBooked?8:0)+a.noise*9)||a.index-b.index);
+  const selection=scored[0]?.index;
+  if(selection!==undefined)cardEntries.push(cardEntries.splice(selection,1)[0]!);
+ }
  // The most important canonical title gets the main event. An existing
  // singles rivalry still closes when no title defense takes priority.
  if(reserve){

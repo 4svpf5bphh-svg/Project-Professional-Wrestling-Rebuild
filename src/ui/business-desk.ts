@@ -5,6 +5,7 @@ export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
  load():Promise<BusinessView>;
+ renamePromotion?(name:string):Promise<{name:string;changed:boolean}>;
  signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
  openKayfabe?():void;
@@ -31,7 +32,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
-  commercialBusy=false,commercialNotice="";
+  commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false;
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
@@ -108,7 +109,41 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    head.append(crest);
   }
   if(port.openKayfabe)head.append(button("★ Kayfabe Points",()=>port.openKayfabe?.()));
+  if(port.renamePromotion&&view){
+   head.append(button("Rename promotion",()=>{renaming=!renaming;draw();}));
+  }
   root.append(head);
+  if(renaming&&view&&port.renamePromotion){
+   const panel=el("section","ppw-business-panel");
+   panel.append(el("h2","","Promotion identity"),
+    el("p","ppw-business-muted",
+     "Choose a new name. Titles, contracts, booked events and certified history remain attached to the same promotion."));
+   const form=document.createElement("form");
+   form.className="ppw-business-rename";
+   const input=document.createElement("input");input.type="text";input.value=view.name;
+   input.maxLength=56;input.minLength=3;input.required=true;
+   input.setAttribute("aria-label","New promotion name");
+   const save=document.createElement("button");save.type="submit";
+   save.className="ppw-business-action";save.textContent="Save new name";
+   const cancel=button("Cancel",()=>{renaming=false;draw();});
+   form.append(input,save,cancel);
+   form.onsubmit=async event=>{
+    event.preventDefault();
+    if(renameBusy||!port.renamePromotion)return;
+    renameBusy=true;save.disabled=true;
+    try{
+     const changed=await port.renamePromotion(input.value);
+     renaming=false;
+     await refresh();
+     commercialNotice=changed.changed?
+      "Promotion renamed. Existing title and show history are preserved.":
+      "Promotion name unchanged.";
+     window.dispatchEvent(new Event("ppw:promotion-renamed"));
+    }catch(e){error=e instanceof Error?e.message:"Could not rename promotion";draw();}
+    finally{renameBusy=false;save.disabled=false;}
+   };
+   panel.append(form);root.append(panel);
+  }
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(commercialNotice)root.append(el("p","ppw-alert ppw-success",commercialNotice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "stage": "PRIVATE_REVIEW_DRAFT_NOT_PRODUCTION",
+  "archiveFilename": "PPW_Legends_81_Cards_93_Portraits_Legacy_Frame_Badge_Below_Photo_DRAFT.zip",
+  "archiveSha256": "4628f04cdb9acf5546178e892f4209d8d918752f9430a79664e6f8d601ea9c8a",
+  "archiveBytes": 9646608,
+  "verifiedImageCount": 174,
+  "cardCount": 81,
+  "portraitCount": 93,
+  "layouts": {
+    "card": [
+      960,
+      1440
+    ],
+    "portrait": [
+      480,
+      624
+    ],
+    "photoBottom": 1063,
+    "badgeTop": 1090,
+    "nameplateTop": 1157
+  },
+  "status": "ALL_WEBP_DECODED_AND_DIMENSIONS_VERIFIED_ON_2026_10_28",
+  "reuseRights": "NOT_CLEARED",
+  "subjectMatch": "POSITIONALLY_MAPPED_PHOTO_OWNER_REVIEW_PENDING",
+  "importCommand": "python3 scripts/verify_owner_legend_pack.py /path/to/PPW_Legends_81_Cards_93_Portraits_Legacy_Frame_Badge_Below_Photo_DRAFT.zip --install",
+  "releaseSwitch": "src/domain/legends-catalogue.ts : LEGENDS_EXPANSION_RELEASED=false",
+  "originalCardsUnchanged": 48,
+  "desiredCatalogueAfterOwnerRelease": 129,
+  "note": "Do not change the review sheet. Bobby Eaton/Stan Lane/Ron Simmons are individual portraits; their cards are Midnight Express and APA."
+}

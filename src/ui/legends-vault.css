@@ -170,3 +170,29 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){
  .ppw-legend-reveal .ppw-legend-card-art{animation:none!important}}
+
+
+/* An actual iPhone-friendly card binder, not a second card entitlement store. */
+.ppw-album{padding:1.05rem .85rem 1.25rem}
+.ppw-album-headline{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;margin:1rem 0 .45rem}
+.ppw-album-count{font-size:.9rem;letter-spacing:.07em;color:#f7d08a}
+.ppw-album-progress-text{font-size:.72rem;color:#c7c5d1}
+.ppw-album-progress{height:7px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.12);margin-bottom:1rem}
+.ppw-album-progress-ink{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f5b44f,#b791ff)}
+.ppw-album-pages{display:flex;gap:.45rem;overflow-x:auto;overscroll-behavior-x:contain;padding:0 0 .75rem;margin-bottom:.3rem;scrollbar-width:thin}
+.ppw-album-page-button{white-space:nowrap;flex:none;padding:.58rem .75rem;min-height:42px;font-size:.78rem}
+.ppw-album-page-button[aria-pressed="true"]{background:#7256a8;color:white;border-color:#bfa6f1}
+.ppw-album-book{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,128px),1fr));gap:.65rem}
+.ppw-album-slot{--album-ink:#a9bdca;background:linear-gradient(155deg,rgba(35,37,55,.95),rgba(14,16,25,.96));border:1px solid color-mix(in srgb,var(--album-ink),transparent 55%);border-radius:12px;padding:.65rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;min-width:0;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18)}
+.ppw-album-slot[data-tier="LEGEND"]{--album-ink:#ddae61}
+.ppw-album-slot[data-tier="ICON"]{--album-ink:#78bce8}
+.ppw-album-slot[data-tier="IMMORTAL"]{--album-ink:#d5a8f6}
+.ppw-album-slot[data-collected="true"]{background:linear-gradient(140deg,color-mix(in srgb,var(--album-ink),transparent 80%),rgba(18,22,35,.95))}
+.ppw-album-slot-number{align-self:flex-start;font-weight:800;font-size:.61rem;letter-spacing:.07em;color:var(--album-ink);line-height:1.4}
+.ppw-album-silhouette{display:grid;place-items:center;width:100%;min-height:145px;background:radial-gradient(ellipse,rgba(255,255,255,.045),rgba(0,0,0,.3));border:1px dashed rgba(255,255,255,.12);border-radius:7px;font-size:3.2rem;color:rgba(255,255,255,.19)}
+.ppw-album-slot[data-collected="false"]{opacity:.84}
+.ppw-album-slot-name{font-size:.76rem;line-height:1.3;overflow-wrap:anywhere}
+.ppw-album-slot-status{font-size:.58rem;letter-spacing:.03em;opacity:.7}
+.ppw-album-slot .ppw-legend-card-art{width:100%;max-height:176px;object-fit:contain}
+.ppw-album-slot .ppw-legend-button{margin-top:auto;min-height:40px;width:100%;padding:.5rem;font-size:.68rem}
+@media(max-width:380px){.ppw-album-book{grid-template-columns:repeat(2,minmax(0,1fr))}}

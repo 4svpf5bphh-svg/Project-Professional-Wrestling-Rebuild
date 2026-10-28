@@ -86,28 +86,81 @@ export function drawLegendsVault(
   el("p","ppw-legend-context",
    view.entries.filter(x=>x.unlocked).length+" discovered · "+
    view.entries.filter(x=>x.collected).length+" cards collected · "+
-   view.curated+" historic legends catalogued"));
+   view.curated+" historic legends catalogued"),
+  el("p","ppw-legend-context",
+   "At most one ordinary Legend enters the World every three certified weeks. Higher tiers take longer to emerge, even once a milestone is earned."));
  target.append(mast);
  const owned=view.entries.filter(item=>item.collected);
- const cabinet=el("section","ppw-legend-collection");
- cabinet.append(el("span","ppw-legend-kicker","PERSONAL COLLECTION"),
-  el("h3","","My legend cards"),
+ const cabinet=el("section","ppw-legend-collection ppw-album");
+ cabinet.append(el("span","ppw-legend-kicker","PERSONAL COLLECTIBLE ALBUM"),
+  el("h3","","My Legend Cards"),
   el("p","ppw-industry-muted",
-   "Your account's permanent collection. Card ownership does not give you the wrestler, contract priority or extra abilities."));
- if(!owned.length)cabinet.append(el("p","ppw-legend-collection-empty",
-  "No cards collected yet. After a legend arrives in this World, approved artwork can be added to your personal cabinet with KP."));
- else{
-  const shelf=el("div","ppw-legend-collection-shelf");
-  for(const item of owned){
-   const frame=el("div","ppw-legend-collection-card");
-   const art=cardGraphic(item);
-   if(art)frame.append(art);
-   frame.append(el("strong","",item.name??"Legend"),
-    button("Enlarge card",()=>actions.showCard(item.id),!item.cardAsset));
-   shelf.append(frame);
-  }
-  cabinet.append(shelf);
+   "One permanent card per Legend. Collecting artwork never signs the wrestler or changes their abilities."));
+ const headline=el("div","ppw-album-headline");
+ headline.append(el("strong","ppw-album-count",
+   owned.length+" / "+view.entries.length+" COLLECTED"),
+  el("span","ppw-album-progress-text",
+   Math.round(owned.length/Math.max(1,view.entries.length)*100)+"% complete"));
+ cabinet.append(headline);
+ const meter=el("div","ppw-album-progress");
+ meter.setAttribute("role","progressbar");
+ meter.setAttribute("aria-label","Legend card collection progress");
+ meter.setAttribute("aria-valuenow",String(owned.length));
+ meter.setAttribute("aria-valuemax",String(view.entries.length));
+ meter.setAttribute("aria-valuemin","0");
+ const ink=el("span","ppw-album-progress-ink");
+ ink.style.width=(owned.length/Math.max(1,view.entries.length)*100)+"%";meter.append(ink);
+ cabinet.append(meter);
+ const pages=el("nav","ppw-album-pages");
+ pages.setAttribute("aria-label","Card album pages");
+ const book=el("div","ppw-album-book");
+ let albumPage=target.dataset.legendAlbumPage??"ALL";
+ const pageLabels:readonly [string,string][]=[
+  ["ALL","All pages"],["CULT","Cult"],["LEGEND","Legends"],
+  ["ICON","Icons"],["IMMORTAL","Immortals"],["OWNED","Collected"]];
+ const pageButtons=new Map<string,HTMLButtonElement>();
+ for(const [tier,label] of pageLabels){
+  const tab=button(label,()=>{albumPage=tier;target.dataset.legendAlbumPage=tier;renderAlbum();});
+  tab.classList.add("ppw-album-page-button");
+  pages.append(tab);pageButtons.set(tier,tab);
  }
+ function renderAlbum(){
+  book.replaceChildren();
+  for(const [name,tab] of pageButtons)
+   tab.setAttribute("aria-pressed",String(name===albumPage));
+  const entries=view.entries.filter(entry=>albumPage==="ALL"||
+   albumPage==="OWNED"&&entry.collected||entry.tier===albumPage);
+  if(!entries.length){
+   book.append(el("p","ppw-legend-collection-empty",
+    "Your album is empty on this page. Collect an unlocked Legend with KP to fill a slot."));
+   return;
+  }
+  // A single stable index for the whole collection; rarity pages reuse it.
+  for(const item of entries){
+   const slot=el("article","ppw-album-slot");
+   slot.dataset.tier=item.tier;
+   slot.dataset.collected=String(item.collected);
+   const ordinal=view.entries.indexOf(item)+1;
+   slot.append(el("span","ppw-album-slot-number",
+    "NO. "+String(ordinal).padStart(3,"0")+" · "+item.tier));
+   if(item.collected){
+    const art=cardGraphic(item);
+    if(art)slot.append(art);
+    else slot.append(el("div","ppw-album-silhouette","★"));
+    slot.append(el("strong","ppw-album-slot-name",item.name??"Collected Legend"));
+    slot.append(button("View card",()=>actions.showCard(item.id),!item.cardAsset));
+   }else{
+    slot.append(el("div","ppw-album-silhouette","?"));
+    slot.append(el("strong","ppw-album-slot-name",
+     item.unlocked?item.name??"Legend awaiting collection":"Undiscovered"));
+    slot.append(el("small","ppw-album-slot-status",
+     item.unlocked?"UNLOCKED · CARD NOT COLLECTED":"MYSTERY CARD"));
+   }
+   book.append(slot);
+  }
+ }
+ if(!pageButtons.has(albumPage))albumPage="ALL";
+ cabinet.append(pages,book);renderAlbum();
  target.append(cabinet);
  // Large rosters must be scannable on iPhone without losing mystery or tier context.
  // Filter state survives a redraw, but remains local to this Vault, not in Neon.
@@ -211,6 +264,8 @@ export function drawLegendsVault(
      item.exactProgress!==null&&item.target!==null?
       item.exactProgress+" / "+item.target+" · "+item.progress+"%":
       item.progress+"% of the hidden milestone"));
+    if(item.challengeReady)n.append(el("p","ppw-legend-pending",
+     "Milestone complete — awaiting the next eligible World reveal. No contract has been granted."));
    }
    grid.append(n);
   }

@@ -37,7 +37,7 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
     FROM ppw_world_legend_unlocks u
     LEFT JOIN ppw_legend_reveals_seen s ON s.world_id=u.world_id
      AND s.legend_id=u.legend_id AND s.player_id=$2
-    WHERE u.world_id=$1 ORDER BY u.year DESC,u.week DESC,u.legend_id LIMIT 64
+    WHERE u.world_id=$1 ORDER BY u.year DESC,u.week DESC,u.legend_id LIMIT 256
    `,[scope.worldId,scope.playerId]),
    tx.query<{legend_id:string}>(`
     SELECT legend_id FROM ppw_kp_legend_cards WHERE player_id=$1
@@ -69,6 +69,7 @@ export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultSco
       "The lights went out after your latest weekly show. The Deadman has entered the World.":
       isUnlocked||d.visibility==="KNOWN"?d.achievement:null,
      progress:isUnlocked?100:target?Math.round(Math.min(100,actual/target*100)):0,
+     challengeReady:!isUnlocked&&d.metric!==null&&d.target!==null&&actual>=target,
      exactProgress:d.visibility==="KNOWN"||isUnlocked?Math.min(actual,target):null,
      target:d.visibility==="KNOWN"||isUnlocked?target:null,
      unlocked:isUnlocked,year:record?.year??null,week:record?.week??null,

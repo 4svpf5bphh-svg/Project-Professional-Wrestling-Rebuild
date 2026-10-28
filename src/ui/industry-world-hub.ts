@@ -400,6 +400,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       metric.append(el("small","",label),el("strong","",note));stats.append(metric);
      }
      detail.append(stats);
+     detail.append(el("p","ppw-industry-muted","Owner: "+p.ownerName));
      if(p.publicIdentity)detail.append(el("p","ppw-industry-muted",
       "Creative approach: "+p.publicIdentity+
       ". Based on this rival's established booking preferences, not a prediction of future cards."));

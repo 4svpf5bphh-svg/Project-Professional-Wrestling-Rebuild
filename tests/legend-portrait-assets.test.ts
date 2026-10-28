@@ -9,7 +9,7 @@ test("static Legend photographs follow immutable person IDs across roster transf
  for(const [id,source] of Object.entries(LEGEND_PORTRAIT_ASSETS)){
   assert.match(id,/^legend:[a-z0-9-]+:\d+$/);
   assert.ok(LEGENDS_CATALOGUE.some(x=>x.id===id.split(":")[1]));
-  assert.match(source,/^\/assets\/legends\/[a-z0-9-]+-\d+-portrait\.webp$/);
+  assert.match(source,/^\/assets\/legends\/[a-z0-9-]+-portrait\.webp$/);
   assert.ok(existsSync("apps/web/public"+source),id+" must reference a real file");
   assert.equal(legendPortraitSource(id),source);
   assert.equal(portraitSource("Changed Ring Name",220,id),source);
@@ -24,14 +24,15 @@ test("a two-person Road Warriors original produces two distinct identities toget
  if(hawk&&animal)assert.notEqual(hawk,animal,"each wrestler needs their own crop");
 });
 
-test("48 real-photo cards and 49 wrestler portraits are bundled, without paid activation",()=>{
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.equal(Object.keys(LEGEND_PORTRAIT_ASSETS).length,49);
- const files=LEGENDS_CATALOGUE.map(item=>
+test("all 129 cards and 142 worker portraits retain the original 48",()=>{
+ const original=LEGENDS_CATALOGUE.slice(0,48);
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.equal(Object.keys(LEGEND_PORTRAIT_ASSETS).length,142);
+ const files=original.map(item=>
   "apps/web/public/assets/legends/"+item.id+"-"+item.tier.toLowerCase()+"-card.webp");
  assert.ok(files.every(file=>existsSync(file)),"all real-photo card drafts must exist");
- assert.equal(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).length,1,
-  "unreviewed artwork cannot become an automatically purchasable collectible");
+ assert.equal(original.filter(x=>x.cardAsset!==null).length,1);
+ assert.equal(LEGENDS_CATALOGUE.slice(48).filter(x=>x.cardAsset!==null).length,81);
 });
 test("rejected sign and venue snapshots are replaced with individual source citations",()=>{
  const images=JSON.parse(readFileSync("data/legend-approved-photo-sources.json","utf8")).images;

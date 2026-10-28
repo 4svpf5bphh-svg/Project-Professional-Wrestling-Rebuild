@@ -5,8 +5,9 @@
 import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {validatePortablePersona} from "../domain/portable-persona.js";
-import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend}
+import {LIVE_LEGENDS,legendUnlockEligible,type LegendMetric,type PrimeLegend,type LegendDefinition}
  from "../domain/legends-catalogue.js";
+import {planCertifiedLegendReleases} from "../domain/legend-release-cadence.js";
 
 interface MatchRow extends Record<string,unknown> {
  match_id:string;position:number;last_position:number;
@@ -74,6 +75,8 @@ function moves(p:PrimeLegend){
 const priorities={money:65,role:75,prestige:70,schedule:50,loyalty:55,exposure:60};
 export async function settleCertifiedWorldLegends(
  tx:SqlRows,worldId:string,year:number,week:number,
+ /** Trusted integration-test override only: Production always uses LIVE_LEGENDS. */
+ eligibleCatalogue:readonly LegendDefinition[]=LIVE_LEGENDS,
 ){
  if(!worldId||!Number.isSafeInteger(year)||year<1||
   !Number.isSafeInteger(week)||week<1||week>52)
@@ -168,14 +171,14 @@ export async function settleCertifiedWorldLegends(
    ) FOR UPDATE OF p
  `,[worldId,year,week]);
  const pilotReady=pilots.length===1;
- const winners=[...LIVE_LEGENDS.filter(x=>legendUnlockEligible(x,total))];
+ const winners=[...eligibleCatalogue.filter(x=>legendUnlockEligible(x,total))];
  if(pilotReady&&!winners.some(x=>x.id==="undertaker")){
-  const testLegend=LIVE_LEGENDS.find(x=>x.id==="undertaker");
+  const testLegend=eligibleCatalogue.find(x=>x.id==="undertaker");
   if(testLegend)winners.push(testLegend);
  }
  if(!winners.length)return {processed:true,unlocked:[] as string[]};
- const old=await tx.query<{legend_id:string}>(`
-  SELECT legend_id FROM ppw_world_legend_unlocks WHERE world_id=$1
+ const old=await tx.query<{legend_id:string;year:number;week:number}>(`
+  SELECT legend_id,year,week FROM ppw_world_legend_unlocks WHERE world_id=$1
   `,[worldId]);
  const done=new Set(old.map(x=>x.legend_id));
  const candidate=winners.filter(x=>!done.has(x.id));
@@ -185,7 +188,13 @@ export async function settleCertifiedWorldLegends(
   SELECT name FROM ppw_people WHERE world_id=$1 AND lower(name)=ANY($2::text[])
  `,[worldId,nameKeys]);
  const reserved=new Set(duplicates.map(x=>x.name.toLowerCase()));
- const accepted=candidate.filter(x=>x.roster.every(p=>!reserved.has(p.name.toLowerCase())));
+ const possible=candidate.filter(x=>x.roster.every(p=>!reserved.has(p.name.toLowerCase())));
+ // Earned milestones may queue; one ordinary reveal/market arrival per three
+ // certified World weeks. An explicitly armed test pilot consumes its own week.
+ const plan=planCertifiedLegendReleases(possible,old.map(r=>({
+  id:r.legend_id,year:r.year,week:r.week
+ })),year,week,total,pilotReady?"undertaker":null);
+ const accepted=plan.selected;
  const arrived:string[]=[];
  for(const legend of accepted){
   // Keep the same stable identifiers on replay and across all promotions.

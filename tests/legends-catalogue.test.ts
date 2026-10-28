@@ -19,26 +19,28 @@ const match=(match_id:string,stars:number|null,cast:string[],overrides:{
  evidence_json:{booking:{family:overrides.family??"INDIVIDUAL"}}
 });
 test("four curated tiers, real team and women's legends, authentic named cards not fabricated",()=>{
- assert.equal(LEGENDS_CATALOGUE.length,48);
- assert.deepEqual(new Set(LEGENDS_CATALOGUE.map(x=>x.id)).size,48);
- assert.deepEqual(new Set(LEGENDS_CATALOGUE.map(x=>x.name.toLowerCase())).size,48);
+ const original=LEGENDS_CATALOGUE.slice(0,48);
+ assert.equal(LEGENDS_CATALOGUE.length,129);
+ assert.deepEqual(new Set(LEGENDS_CATALOGUE.map(x=>x.id)).size,129);
+ assert.deepEqual(new Set(LEGENDS_CATALOGUE.map(x=>x.name.toLowerCase())).size,129);
  assert.deepEqual([...new Set(LEGENDS_CATALOGUE.map(x=>x.tier))].sort(),
   ["CULT","ICON","IMMORTAL","LEGEND"]);
  assert.ok(LEGENDS_CATALOGUE.filter(x=>x.division==="WOMEN").length>=5);
- assert.equal(LIVE_LEGENDS.length,48);
+ assert.equal(LIVE_LEGENDS.length,129);
  assert.equal(LIVE_LEGENDS.every(x=>x.hints?.length===2),true);
  assert.equal(findLegend("road-warriors")?.roster.length,2);
  assert.equal(findLegend("road-warriors")?.roster[0]?.name,"Road Warrior Hawk");
  assert.equal(LIVE_LEGENDS.every(x=>x.metric&&x.target&&x.roster.length),true);
  assert.equal(findLegend("undertaker")?.cardAsset,
   "/assets/legends/undertaker-immortal-card.webp");
- assert.equal(LIVE_LEGENDS.filter(x=>x.id!=="undertaker").every(x=>x.cardAsset===null),true);
+ assert.equal(original.filter(x=>x.id!=="undertaker").every(x=>x.cardAsset===null),true);
  assert.equal(LIVE_LEGENDS.every(x=>x.roster.length>=1&&x.roster.length<=4),true);
  assert.equal(LIVE_LEGENDS.every(x=>x.clue!=="A chapter of wrestling history awaits its moment."),true);
  assert.ok(new Set(LIVE_LEGENDS.map(x=>x.metric)).size>=18);
  assert.equal(LEGENDS_CATALOGUE.filter(x=>x.status==="PLANNED").length,0);
  assert.equal(Object.keys(LEGEND_CARD_PHOTO_CREDITS).length,48);
- assert.ok(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).every(x=>
+ assert.equal(LEGENDS_CATALOGUE.filter(x=>x.cardAsset!==null).length,82);
+ assert.ok(original.filter(x=>x.cardAsset!==null).every(x=>
   LEGEND_CARD_PHOTO_CREDITS[x.id]?.sourcePage.startsWith("https://commons.wikimedia.org/wiki/File:")));
  assert.ok(Object.values(LEGEND_CARD_PHOTO_CREDITS).every(x=>
   /^(CC BY(?:-SA)? [234]\.0|CC0|Unverified - hobby draft)$/.test(x.license)&&

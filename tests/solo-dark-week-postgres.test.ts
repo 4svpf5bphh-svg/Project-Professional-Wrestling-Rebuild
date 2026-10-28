@@ -96,7 +96,8 @@ test("solo dark week advances with AI results, without fabricating the owner's s
   await assert.rejects(advancePlaytestWeek(db.pool,worldId,1,1),/already progressed/);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_completed_match_evidence","ppw_completed_show_segments",
+   // Remove medical records before deleting their referenced completed show.
+   for(const table of ["ppw_medical_absences","ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",

@@ -110,6 +110,22 @@ export function originalAnnualTier(tier:PromotionTier,score:number):PromotionTie
  return tier;
 }
 
+/** Financially unsafe companies cannot increase their operating tier.
+ * Preserve the authentic audience score and downward movement unchanged.
+ * Recovering to HEALTHY restores promotion eligibility at the next year end.
+ */
+export function sustainableAnnualTier(
+ tier:PromotionTier,score:number,
+ distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS",
+ completedShows:number,
+):PromotionTier{
+ if(!Number.isSafeInteger(completedShows)||completedShows<0)
+  throw new Error("Invalid annual certified show count");
+ const proposed=originalAnnualTier(tier,score);
+ return ORDER.indexOf(proposed)>ORDER.indexOf(tier)&&
+  (distress!=="HEALTHY"||completedShows===0)?tier:proposed;
+}
+
 /** Original processWrestlerMoraleForWeek, averaging every relevant contract.
  * Unknown show-appearance proof is not evidence that somebody was benched. */
 export function originalWeeklyMorale(input:{
