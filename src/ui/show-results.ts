@@ -434,6 +434,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   ...(reactions.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);
  if(show.bookingClass==="PREMIUM"&&mediaScrum){
+  const scrumPort=mediaScrum;
   const press=node("section","ppw-media-scrum");
   press.append(node("span","ppw-eyebrow","AFTER THE MAIN EVENT"),
    node("h2","","The Media Scrum"),
@@ -462,7 +463,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
        if(working||!view)return;working=true;
        choices.querySelectorAll("button").forEach(b=>(b as HTMLButtonElement).disabled=true);
        try{
-        const recorded=await mediaScrum.answer(q.id,index);
+        const recorded=await scrumPort.answer(q.id,index);
         q.answerIndex=recorded.answerIndex;draw();
        }catch(e){choices.append(node("p","ppw-alert ppw-error",
          e instanceof Error?e.message:"Could not save the answer"));working=false;}
@@ -484,7 +485,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    if(loaded){draw();return;}
    open.disabled=true;
    content.replaceChildren(node("p","ppw-muted","The journalists are gathering…"));
-   try{view=await mediaScrum.read();loaded=true;draw();}
+   try{view=await scrumPort.read();loaded=true;draw();}
    catch(e){content.replaceChildren(node("p","ppw-alert ppw-error",
      e instanceof Error?e.message:"Press scrum unavailable"));}
    finally{open.disabled=false;}
