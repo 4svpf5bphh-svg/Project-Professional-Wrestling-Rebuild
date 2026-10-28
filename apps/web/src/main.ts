@@ -41,6 +41,7 @@ const account=document.querySelector<HTMLElement>("#account")!;
 const navigation=document.querySelector<HTMLElement>("#navigation")!;
 let session:SessionView|null=null;
 let pendingLegends:LegendsVaultView|null=null;
+let confirmedOwnerName:{playerId:string;displayName:string}|null=null;
 // Latest session wins when overlapping requests complete out of order.
 let sessionReadSequence=0;
 let drawerExpanded=false;
@@ -381,10 +382,15 @@ async function loadSession(){
   const r=await fetch("/api/session",{credentials:"same-origin",
    cache:"no-store"});
   if(sequence!==sessionReadSequence)return;
-  if(r.status===401){session=null;showLogin();return;}
+  if(r.status===401){session=null;confirmedOwnerName=null;showLogin();return;}
   if(!r.ok)throw new Error("Your promotion is unavailable. Check your connection.");
   const incoming=await r.json() as SessionView;
   if(sequence!==sessionReadSequence)return;
+  if(incoming.ownerName==null&&confirmedOwnerName?.playerId===incoming.playerId)
+   incoming.ownerName=confirmedOwnerName.displayName;
+  if(incoming.ownerName)confirmedOwnerName={
+   playerId:incoming.playerId,displayName:incoming.ownerName
+  };
   session=incoming;
   if(!session||!session.csrfToken||!session.worldId||!session.overview)
    throw new Error("Incomplete game session");
@@ -491,7 +497,9 @@ function showOwnerName(){
  form.onsubmit=async e=>{
   e.preventDefault();submit.disabled=true;
   try{
-   await command("/api/profile",{action:"SET_NAME",name:name.value},session!.csrfToken);
+   const saved=await command("/api/profile",{action:"SET_NAME",name:name.value},
+    session!.csrfToken) as {displayName:string};
+   confirmedOwnerName={playerId:session!.playerId,displayName:saved.displayName};
    await loadSession();
   }catch(error){showError(card,error instanceof Error?error.message:"Name could not be saved");}
   finally{submit.disabled=false;}
