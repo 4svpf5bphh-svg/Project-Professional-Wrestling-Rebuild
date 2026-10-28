@@ -54,7 +54,7 @@ jobs:
           collisions = sorted(names & previous)
           assert not collisions, f'Would overwrite existing artwork: {collisions[:10]}'
           PY
-          grep -Eq 'LEGENDS_EXPANSION_RELEASED[[:space:]]*=[[:space:]]*false' src/domain/legends-catalogue.ts
+          grep -Eq 'LEGENDS_EXPANSION_RELEASED[^=]*=[[:space:]]*false' src/domain/legends-catalogue.ts
 
       - name: Verify all 174 files against the approved layout and install
         if: steps.intake.outputs.present == 'yes'
