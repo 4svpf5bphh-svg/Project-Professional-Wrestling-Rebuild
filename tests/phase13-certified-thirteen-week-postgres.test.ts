@@ -13,11 +13,11 @@ const url=process.env.PPW_NEON_TEST_URL;
 // scenarios: real AI books every card, original result simulation scores
 // every match, and certification and rollover settle each company. No
 // fabricated result, receipt, direct payroll fixture or live scheduler.
-test("eight AI promotions complete six genuine certified World Lock weeks",{
+test("eight AI promotions complete thirteen real World weeks including premium events",{
  skip:!url?"Disposable PostgreSQL required":false,timeout:240000,
 },async()=>{
  const world="phase13-real-world-"+randomUUID(),db=postgresPool(url!,4);
- const weeks=6;
+ const weeks=13;
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
@@ -103,7 +103,26 @@ test("eight AI promotions complete six genuine certified World Lock weeks",{
   }
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
-  console.log("Phase 13 authentic six-week World Lock diagnostics:",
+  const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;name:string|null
+  }>(["SELECT promotion_id,show_name AS name FROM ppw_booking_drafts",
+     "WHERE world_id=$1 AND year=1 AND week=13",
+     "AND booking_class='PREMIUM' AND status='SUBMITTED'",
+     "ORDER BY promotion_id"].join(" "),[world]));
+  assert.ok(ppvs.length>=2,"Real quarterly premium events must be booked");
+  const usage=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;unique_talent:number
+  }>(["SELECT d.promotion_id,count(DISTINCT x.person->>'personId')::integer AS unique_talent",
+     "FROM ppw_card_slots slot JOIN ppw_booking_drafts d",
+     "ON d.world_id=slot.world_id AND d.draft_id=slot.draft_id",
+     "CROSS JOIN LATERAL jsonb_array_elements(slot.payload->'participants') x(person)",
+     "WHERE slot.world_id=$1 AND slot.kind='MATCH'",
+     "AND d.year=1 AND d.week<=13",
+     "GROUP BY d.promotion_id ORDER BY d.promotion_id"].join(" "),[world]));
+  assert.equal(usage.length,8);
+  assert.ok(usage.every(x=>x.unique_talent>=10),
+   "Every AI company must involve real roster depth across the quarter");
+  console.log("Phase 13 authentic thirteen-week World Lock diagnostics:",
    JSON.stringify(snapshots));
  }finally{
   // Topological world-scoped deletion keeps this disposable fixture isolated
