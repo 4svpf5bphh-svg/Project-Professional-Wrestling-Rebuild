@@ -1,3 +1,4 @@
+import {fictionalPromotionOwner} from "./owner-identities.js";
 /** The public Industry sheet: one World clock, standings and only finished
  * broadcasts. Unsubmitted rival card details, finances and negotiations stay
  * private. All three reads are bounded; no giant WorldState or background poll.
@@ -38,6 +39,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    tier:string;media_reach:number|null;
    latest_show_week:number|null;recent_avg_crowd:string|null;
    completed_events:number;management_mode:string;human_managed:boolean;
+   human_owner_name:string|null;
    ai_risk_tolerance:number|null;ai_match_quality_preference:number|null;
    ai_star_preference:number|null}>(`
    WITH recent AS (
@@ -53,6 +55,10 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    SELECT p.promotion_id,p.name,p.tier,p.media_reach,
     p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
     p.management_mode,
+    (SELECT profile.display_name FROM ppw_promotion_controls human
+     JOIN ppw_player_profiles profile ON profile.player_id=human.player_id
+     WHERE human.world_id=p.world_id AND human.promotion_id=p.promotion_id
+      AND human.active LIMIT 1) AS human_owner_name,
     EXISTS(SELECT 1 FROM ppw_promotion_controls owners
      WHERE owners.world_id=p.world_id AND owners.promotion_id=p.promotion_id
       AND owners.active) AS human_managed,
@@ -112,6 +118,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
    ownPromotionId:promotionId,ownPromotionName:clock.own_name,
    promotions:companies.map((p,i)=>({
     promotionId:p.promotion_id,name:p.name,tier:p.tier,
+    ownerName:p.human_managed?p.human_owner_name??"Promotion owner":
+      fictionalPromotionOwner(p.promotion_id),
     rank:i+1,mediaReach:p.media_reach,
     managementMode:p.management_mode,
     publicIdentity:!p.human_managed&&p.management_mode==="AI"&&
