@@ -311,3 +311,38 @@ test("156 weeks of verified show receipts, recurring payroll and evolving AI riv
  }
 });
 
+
+test("healthy, high-reach company cannot scale without certified shows",{
+ skip:!url?"Disposable PostgreSQL required":false,
+},async()=>{
+ const world="phase13-idle-scale-"+randomUUID(),db=postgresPool(url!,2);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Annual zero-show evidence",seed:304,
+    rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:"inactive-booking",name:"Idle",tier:"LOCAL"});
+   await tx.query(["INSERT INTO ppw_markets(world_id,market_id,name,",
+    "audience_potential,wrestling_interest,spending_index)",
+    "VALUES($1,'home','Home',90,80,100)"].join(" "),[world]);
+   await tx.query(["INSERT INTO ppw_promotion_market_states(",
+    "world_id,promotion_id,market_id,awareness,live_strength,loyalty)",
+    "VALUES($1,'inactive-booking','home',96,98,97)"].join(" "),[world]);
+   await tx.query(["UPDATE ppw_promotions SET financial_distress='HEALTHY',",
+    "media_reach=95,home_market_id='home'",
+    "WHERE world_id=$1 AND promotion_id='inactive-booking'"].join(" "),[world]);
+   const result=await settleAnnualPromotionScale(tx,world,1,52);
+   assert.deepEqual(result,{evaluated:1,changed:0});
+   const rows=await tx.query<{tier:string}>(
+    "SELECT tier FROM ppw_promotions WHERE world_id=$1 AND promotion_id='inactive-booking'",
+    [world]);
+   assert.equal(rows[0]?.tier,"LOCAL");
+  });
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_ledger_events","ppw_promotion_survival",
+    "ppw_promotion_market_states","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

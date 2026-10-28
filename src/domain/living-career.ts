@@ -117,10 +117,13 @@ export function originalAnnualTier(tier:PromotionTier,score:number):PromotionTie
 export function sustainableAnnualTier(
  tier:PromotionTier,score:number,
  distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS",
+ completedShows:number,
 ):PromotionTier{
+ if(!Number.isSafeInteger(completedShows)||completedShows<0)
+  throw new Error("Invalid annual certified show count");
  const proposed=originalAnnualTier(tier,score);
- return ORDER.indexOf(proposed)>ORDER.indexOf(tier)&&distress!=="HEALTHY"?
-  tier:proposed;
+ return ORDER.indexOf(proposed)>ORDER.indexOf(tier)&&
+  (distress!=="HEALTHY"||completedShows===0)?tier:proposed;
 }
 
 /** Original processWrestlerMoraleForWeek, averaging every relevant contract.

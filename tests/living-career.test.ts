@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {originalCareerWeek,originalAnnualTier,sustainableAnnualTier,originalMoraleEvidence,originalTrustYear}
+import {originalCareerWeek,originalAnnualTier,sustainableAnnualTier,originalPromotionScaleScore,originalMoraleEvidence,originalTrustYear}
  from "../src/domain/living-career.js";
 const prospect={biologicalAge:24.999,careerExperience:40,developmentAptitude:80,
  careerStage:"PROSPECT" as const,status:"ACTIVE" as const,wear:2,
@@ -41,12 +41,24 @@ test("annual trust penalises terminations and tier thresholds only move one rung
 
 test("financially unstable companies cannot expand their tier, but can recover or decline",()=>{
  for(const distress of ["WATCH","DISTRESSED","CRISIS"] as const){
-  assert.equal(sustainableAnnualTier("LOCAL",95,distress),"LOCAL");
-  assert.equal(sustainableAnnualTier("INDEPENDENT",95,distress),"INDEPENDENT");
-  assert.equal(sustainableAnnualTier("RISING",95,distress),"RISING");
-  assert.equal(sustainableAnnualTier("NATIONAL",0,distress),"RISING");
+  assert.equal(sustainableAnnualTier("LOCAL",95,distress,12),"LOCAL");
+  assert.equal(sustainableAnnualTier("INDEPENDENT",95,distress,12),"INDEPENDENT");
+  assert.equal(sustainableAnnualTier("RISING",95,distress,12),"RISING");
+  assert.equal(sustainableAnnualTier("NATIONAL",0,distress,12),"RISING");
  }
- assert.equal(sustainableAnnualTier("LOCAL",95,"HEALTHY"),"INDEPENDENT");
- assert.equal(sustainableAnnualTier("RISING",95,"HEALTHY"),"NATIONAL");
- assert.equal(sustainableAnnualTier("LOCAL",0,"CRISIS"),"LOCAL");
+ assert.equal(sustainableAnnualTier("LOCAL",95,"HEALTHY",12),"INDEPENDENT");
+ assert.equal(sustainableAnnualTier("RISING",95,"HEALTHY",12),"NATIONAL");
+ assert.equal(sustainableAnnualTier("LOCAL",0,"CRISIS",12),"LOCAL");
+});
+
+test("a strong legacy audience alone cannot promote a company without certified shows",()=>{
+ const score=originalPromotionScaleScore({
+  localMarkets:[{liveStrength:98,awareness:96,loyalty:97}],
+  mediaReach:95,showPerformance:45,financialDistress:"HEALTHY",
+ });
+ assert.ok(score>30,"Previously this would promote a company that ran no shows");
+ assert.equal(sustainableAnnualTier("LOCAL",score,"HEALTHY",0),"LOCAL");
+ assert.equal(sustainableAnnualTier("LOCAL",score,"HEALTHY",1),"INDEPENDENT");
+ assert.throws(()=>sustainableAnnualTier("LOCAL",score,"HEALTHY",-1),
+  /Invalid annual certified show count/);
 });

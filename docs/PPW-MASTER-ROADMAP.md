@@ -26,7 +26,9 @@ The first **disposable PostgreSQL three-year integration** (156 weeks, five comp
 
 The integration exposed a genuine tier-progression flaw: a reckless company more than **£15 million in debt by Year 3**, in CRISIS status throughout, advanced LOCAL → INDEPENDENT → RISING → NATIONAL because the legacy audience score alone exceeded growth thresholds. **Fix:** retain the existing audience/territory annual tier policy, but require HEALTHY finances for upward tier movement. WATCH, DISTRESSED and CRISIS can hold or lose tier as before; recovering to HEALTHY restores next-year eligibility. No extra SQL queries, game screens, timers, World mutations or background process. New pure unit and three-year PostgreSQL assertions require both blocked insolvency growth and continued healthy progression.
 
-**Verification gate:** repeat full GitHub CI and capture corrected Year 1–3 snapshots; no live World writes, merge, Vercel deployment or Legends artwork changes.
+**Verified financial-tier evidence:** The first full corrected run passed **134/134 disposable PostgreSQL tests**, with 655 local unit tests passed. The reckless company remained LOCAL in all three certified-financial scenario years (Year 3 debt approximately **£13.7 million**) instead of climbing to NATIONAL, while the financially healthy competitor reached NATIONAL. An additional directly evidenced edge case was closed: a company with an inherited strong local audience and broadcast reach but **zero completed shows** previously had enough score to rise anyway. Require at least one genuine certified show for annual *upward* movement. The existing annual query already carries the completed-show count; this adds no SQL reads or scheduling. Dedicated pure and PostgreSQL regression tests added; final combined CI for these tests remains pending.
+
+**Verification gate:** repeat full GitHub CI and capture the zero-show fixture result; no live World writes, merge, Vercel deployment or Legends artwork changes.
 
 ---
 

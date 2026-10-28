@@ -258,7 +258,7 @@ export async function settleAnnualPromotionScale(
   const score=originalPromotionScaleScore({localMarkets:local,
    showPerformance:performance,mediaReach:x.media_reach,
    financialDistress:x.financial_distress});
-  const next=sustainableAnnualTier(x.tier,score,x.financial_distress);
+  const next=sustainableAnnualTier(x.tier,score,x.financial_distress,x.completed);
   return [{promotion_id:x.promotion_id,from_tier:x.tier,to_tier:next,
    score,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
  });
