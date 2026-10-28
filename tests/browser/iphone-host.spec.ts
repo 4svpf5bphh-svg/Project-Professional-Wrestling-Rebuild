@@ -694,6 +694,8 @@ test("verified player can join, claim and reach World without bypassing session 
  await expect(page.getByText("Home territory · Chicago")).toBeVisible();
  await expect(page.getByText("43 signed wrestlers")).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
+ await page.getByRole("button",{name:"Keep AEW"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Open World menu"})).toBeVisible();
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
@@ -1530,6 +1532,8 @@ test("two-manager claim race keeps the losing iPhone out of private desks",async
  await page.getByRole("button",{name:"Refresh available promotions"}).click();
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
  await page.getByRole("button",{name:"Run this promotion"}).click();
+ await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
+ await page.getByRole("button",{name:"Keep Takeover Company"}).click();
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  expect(attempts).toBe(2);
 });
