@@ -1,0 +1,123 @@
+/** Hand-curated prime-era identities for the 81 approved, still-INACTIVE Legends.
+ * Distinct moves, presentation and ability scores for all 93 people; unlike
+ * generic wrestler templates this is reviewed as individual gameplay content.
+ * Every entry is DRAFT and does not add a wrestler to the World automatically.
+ */
+import type {PrimeLegend} from "./legends-catalogue.js";
+import type {LegendDivision} from "./legends-catalogue.js";
+
+type IdentityRow=readonly [
+ string,number,PrimeLegend["style"],PrimeLegend["gimmickId"],
+ PrimeLegend["alignment"],string,string,
+ number,number,number,number,number
+];
+const DATA:readonly IdentityRow[]=[
+ ["Shane Douglas","33","TECHNICAL","VILLAIN","HEEL","Belly-to-Belly Suplex","Franchiser",77,81,85,88,85],
+ ["Tommy Dreamer","31","BRAWLER","ANTI_HERO","FACE","Dreamer Driver","Dreamer DDT",77,84,75,84,89],
+ ["The Sandman","34","BRAWLER","ANTI_HERO","FACE","Russian Legsweep","White Russian Legsweep",75,87,64,77,91],
+ ["Lance Storm","31","TECHNICAL","AUTHENTIC","HEEL","Springboard Dropkick","Canadian Maple Leaf",78,74,94,93,70],
+ ["Mike Awesome","34","POWERHOUSE","BULLY","HEEL","Awesome Splash","Awesome Bomb",79,81,84,85,83],
+ ["Haku","35","STRIKER","BULLY","HEEL","Superkick","Tongan Death Grip",78,81,80,83,86],
+ ["Doink the Clown","30","ALL_ROUNDER","VILLAIN","HEEL","Whoopee Cushion","Stump Puller",78,83,79,83,91],
+ ["Owen Hart","31","TECHNICAL","OPPORTUNIST","HEEL","Enzuigiri","Sharpshooter",88,87,97,96,89],
+ ["Rick Rude","31","ALL_ROUNDER","VILLAIN","HEEL","Diving Knee Drop","Rude Awakening",89,91,89,89,97],
+ ["Bam Bam Bigelow","32","POWERHOUSE","ANTI_HERO","TWEENER","Cartwheel Kick","Greetings from Asbury Park",85,86,85,88,91],
+ ["Brian Pillman","32","HIGH_FLYER","OPPORTUNIST","HEEL","Air Pillman","Flying Crossbody",83,87,91,94,92],
+ ["Jake Roberts","34","BRAWLER","VILLAIN","HEEL","Short Arm Clothesline","DDT",88,91,74,98,99],
+ ["Diamond Dallas Page","39","ALL_ROUNDER","HERO","FACE","Discus Clothesline","Diamond Cutter",90,95,86,88,95],
+ ["Big Show","30","POWERHOUSE","BULLY","HEEL","Chokeslam","Knockout Punch",93,92,75,86,93],
+ ["Rob Van Dam","31","HIGH_FLYER","ANTI_HERO","FACE","Rolling Thunder","Five Star Frog Splash",87,93,97,93,92],
+ ["Lex Luger","31","POWERHOUSE","HERO","FACE","Running Forearm","Torture Rack",89,93,70,81,96],
+ ["Ted DiBiase","33","TECHNICAL","VILLAIN","HEEL","Fist Drop","Million Dollar Dream",88,90,88,97,98],
+ ["Sgt. Slaughter","33","BRAWLER","VILLAIN","HEEL","Slaughter Cannon","Cobra Clutch",84,87,76,87,94],
+ ["Sid Vicious","31","POWERHOUSE","BULLY","HEEL","Chokeslam","Powerbomb",86,91,70,78,93],
+ ["Mark Henry","34","POWERHOUSE","BULLY","HEEL","Gorilla Press","World's Strongest Slam",88,90,73,82,92],
+ ["Big Boss Man","30","POWERHOUSE","VILLAIN","HEEL","Sidewalk Slam","Boss Man Slam",82,85,78,86,89],
+ ["Nick Bockwinkel","38","TECHNICAL","VILLAIN","HEEL","Piledriver","Sleeper Hold",86,86,94,98,93],
+ ["Barry Windham","30","ALL_ROUNDER","HERO","FACE","Superplex","Lariat",82,84,92,93,87],
+ ["Tully Blanchard","32","TECHNICAL","OPPORTUNIST","HEEL","Brainbuster","Slingshot Suplex",84,87,91,94,93],
+ ["Kerry Von Erich","28","POWERHOUSE","HERO","FACE","Discus Punch","Iron Claw",87,93,84,87,95],
+ ["Rick Martel","32","TECHNICAL","VILLAIN","HEEL","Dropkick","Boston Crab",82,85,88,89,93],
+ ["Paul Orndorff","33","POWERHOUSE","VILLAIN","HEEL","Forearm Smash","Piledriver",86,89,81,87,94],
+ ["The Iron Sheik","37","TECHNICAL","VILLAIN","HEEL","Gutwrench Suplex","Camel Clutch",85,90,85,88,95],
+ ["Ken Shamrock","34","SUBMISSION","ANTI_HERO","FACE","Belly-to-Belly Suplex","Ankle Lock",86,90,84,84,91],
+ ["Bray Wyatt","32","BRAWLER","VILLAIN","HEEL","Uranage","Sister Abigail",93,95,81,95,99],
+ ["Brodie Lee","34","POWERHOUSE","BULLY","HEEL","Discus Lariat","Brodie Bomb",81,86,86,89,89],
+ ["PAC","31","HIGH_FLYER","ANTI_HERO","HEEL","Black Arrow","Brutalizer",85,86,98,95,91],
+ ["Rikishi","34","POWERHOUSE","FAN_FAVOURITE","FACE","Stink Face","Banzai Drop",84,88,71,85,93],
+ ["X-Pac","28","HIGH_FLYER","ANTI_HERO","FACE","Spinning Heel Kick","X-Factor",85,85,89,87,90],
+ ["The Honky Tonk Man","35","BRAWLER","COWARDLY_HEEL","HEEL","Shake Rattle and Roll","Swinging Neckbreaker",84,88,68,87,97],
+ ["Rhyno","29","POWERHOUSE","BULLY","HEEL","Powerslam","Gore",78,85,86,83,89],
+ ["Abyss","32","POWERHOUSE","BULLY","HEEL","Shock Treatment","Black Hole Slam",79,87,82,87,92],
+ ["Jay Briscoe","30","BRAWLER","ANTI_HERO","FACE","Froggy Bow","Jay Driller",82,86,94,93,89],
+ ["Hayabusa","29","HIGH_FLYER","HERO","FACE","Phoenix Splash","Falcon Arrow",83,89,97,92,92],
+ ["Triple H","33","ALL_ROUNDER","VILLAIN","HEEL","Spinebuster","Pedigree",99,97,90,96,99],
+ ["Batista","36","POWERHOUSE","HERO","FACE","Spinebuster","Batista Bomb",98,97,83,90,99],
+ ["Roddy Piper","32","BRAWLER","ANTI_HERO","FACE","Eye Poke","Sleeper Hold",98,97,82,99,100],
+ ["Goldberg","32","POWERHOUSE","HERO","FACE","Spear","Jackhammer",98,98,77,80,100],
+ ["Yokozuna","28","POWERHOUSE","BULLY","HEEL","Leg Drop","Banzai Drop",97,96,76,87,100],
+ ["Hiroshi Tanahashi","34","ALL_ROUNDER","HERO","FACE","Sling Blade","High Fly Flow",97,97,99,99,99],
+ ["Kane","32","POWERHOUSE","VILLAIN","HEEL","Sidewalk Slam","Chokeslam",97,96,78,88,98],
+ ["AJ Styles","34","HIGH_FLYER","HERO","FACE","Phenomenal Forearm","Styles Clash",98,96,100,98,98],
+ ["Daniel Bryan","32","SUBMISSION","UNDERDOG","FACE","Yes Lock","Running Knee",96,97,100,99,96],
+ ["Jerry Lawler","35","BRAWLER","FAN_FAVOURITE","FACE","Diving Fist Drop","Piledriver",93,94,85,98,99],
+ ["The Ultimate Warrior","31","POWERHOUSE","HERO","FACE","Gorilla Press Slam","Warrior Splash",98,100,68,73,100],
+ ["Brock Lesnar","34","POWERHOUSE","BULLY","HEEL","German Suplex","F-5",100,99,93,98,100],
+ ["Bruiser Brody","35","BRAWLER","BULLY","HEEL","Big Boot","King Kong Knee Drop",92,95,78,87,100],
+ ["Superstar Billy Graham","35","POWERHOUSE","VILLAIN","HEEL","Gorilla Press","Full Nelson",93,94,77,86,100],
+ ["John Cena","34","ALL_ROUNDER","HERO","FACE","Five Knuckle Shuffle","Attitude Adjustment",100,100,91,97,100],
+ ["Harley Race","35","TECHNICAL","VILLAIN","HEEL","High Knee","Piledriver",98,98,98,100,97],
+ ["Terry Funk","40","BRAWLER","ANTI_HERO","FACE","Spinning Toe Hold","Texas Piledriver",98,98,90,100,100],
+ ["Lou Thesz","35","TECHNICAL","HERO","FACE","Thesz Press","STF",99,97,100,100,99],
+ ["Verne Gagne","35","TECHNICAL","HERO","FACE","Flying Dropkick","Gagne Sleeper",98,95,99,99,95],
+ ["Molly Holly","29","ALL_ROUNDER","HERO","FACE","Molly-Go-Round","Molly Holly DDT",80,84,88,91,88],
+ ["Gail Kim","29","TECHNICAL","HERO","FACE","Hurricanrana","Eat Defeat",85,88,97,94,90],
+ ["Victoria","33","POWERHOUSE","VILLAIN","HEEL","Standing Moonsault","Widow's Peak",84,89,89,93,94],
+ ["Awesome Kong","34","POWERHOUSE","BULLY","HEEL","Implant Buster","Awesome Bomb",88,93,85,91,97],
+ ["Sensational Sherri","31","BRAWLER","VILLAIN","HEEL","Top Rope Splash","Roundhouse Kick",87,92,73,96,100],
+ ["Luna Vachon","32","BRAWLER","ANTI_HERO","TWEENER","Diving Splash","Luna Bomb",82,87,82,90,97],
+ ["Devil Masami","32","POWERHOUSE","VILLAIN","HEEL","Running Lariat","Powerbomb",87,88,93,97,94],
+ ["Wendi Richter","30","ALL_ROUNDER","HERO","FACE","Flying Crossbody","Sit-Out Powerbomb",83,91,76,83,97],
+ ["Akira Hokuto","30","STRONG_STYLE","HERO","FACE","Diving Senton","Northern Lights Bomb",93,96,100,100,97],
+ ["Meiko Satomura","31","STRONG_STYLE","HERO","FACE","Cartwheel Knee Drop","Scorpion Rising",89,91,100,99,94],
+ ["Madusa","32","ALL_ROUNDER","ANTI_HERO","FACE","German Suplex","Bridging German Suplex",90,92,92,93,97],
+ ["Mildred Burke","33","TECHNICAL","HERO","FACE","Flying Mare","Headlock Takedown",96,96,97,99,98],
+ ["Bubba Ray Dudley","32","BRAWLER","BULLY","HEEL","Bubba Bomb","3D",87,91,82,90,98],
+ ["D-Von Dudley","30","BRAWLER","BULLY","HEEL","Diving Headbutt","3D",84,88,83,87,94],
+ ["Rick Steiner","32","POWERHOUSE","BULLY","FACE","Steinerline","Steiner Bulldog",85,88,84,89,88],
+ ["Scott Steiner","30","POWERHOUSE","VILLAIN","HEEL","Frankensteiner","Steiner Recliner",93,95,90,92,99],
+ ["Ax","36","POWERHOUSE","VILLAIN","HEEL","Decapitation","Demolition Decapitation",87,88,76,83,94],
+ ["Smash","33","POWERHOUSE","VILLAIN","HEEL","Clothesline","Demolition Decapitation",86,88,77,82,93],
+ ["Bobby Eaton","31","ALL_ROUNDER","OPPORTUNIST","HEEL","Alabama Jam","Rocket Launcher",86,88,97,98,85],
+ ["Stan Lane","34","STRIKER","OPPORTUNIST","HEEL","Superkick","Rocket Launcher",82,86,91,94,89],
+ ["Davey Boy Smith","31","POWERHOUSE","HERO","FACE","Delayed Vertical Suplex","Running Powerslam",93,94,87,92,95],
+ ["Dynamite Kid","28","HIGH_FLYER","HERO","FACE","Snap Suplex","Diving Headbutt",88,89,98,97,87],
+ ["Scott Hall","35","ALL_ROUNDER","OPPORTUNIST","HEEL","Fallaway Slam","Razor's Edge",96,96,87,95,99],
+ ["Kevin Nash","37","POWERHOUSE","BULLY","HEEL","Sidewalk Slam","Jackknife Powerbomb",98,98,72,88,100],
+ ["Afa","35","POWERHOUSE","VILLAIN","HEEL","Headbutt","Samoan Drop",86,87,73,85,90],
+ ["Sika","34","POWERHOUSE","VILLAIN","HEEL","Samoan Drop","Diving Headbutt",85,87,73,84,90],
+ ["Bradshaw","34","BRAWLER","BULLY","FACE","Fallaway Slam","Clothesline from Hell",87,92,81,88,92],
+ ["Ron Simmons","34","POWERHOUSE","HERO","FACE","Spinebuster","Dominator",91,93,80,87,95],
+ ["Michael Hayes","32","BRAWLER","OPPORTUNIST","HEEL","DDT","Diving Elbow Drop",87,89,80,92,98],
+ ["Terry Gordy","30","POWERHOUSE","VILLAIN","HEEL","Powerbomb","Oriental Spike",86,88,88,92,92],
+ ["Buddy Roberts","32","BRAWLER","OPPORTUNIST","HEEL","Piledriver","Flying Elbow Drop",81,84,80,87,88],
+ ["Bobby Roode","32","ALL_ROUNDER","OPPORTUNIST","HEEL","Spinebuster","Pay Off",85,90,89,94,95],
+ ["James Storm","32","BRAWLER","ANTI_HERO","FACE","Eye of the Storm","Last Call",84,89,88,91,93],
+ ["Earthquake","34","POWERHOUSE","BULLY","HEEL","Avalanche","Earthquake Splash",87,91,77,84,94],
+ ["Typhoon","35","POWERHOUSE","BULLY","HEEL","Tidal Wave","Avalanche",82,87,72,80,90],
+];
+const byName=new Map<string,Omit<PrimeLegend,"division">>(
+ DATA.map(row=>[row[0],{
+ name:row[0],age:row[1],style:row[2],gimmickId:row[3],
+ alignment:row[4],signature:row[5],finisher:row[6],
+ recognition:row[7],popularity:row[8],ring:row[9],
+ craft:row[10],presentation:row[11],
+ stamina:row[2]==="POWERHOUSE"?78:row[2]==="HIGH_FLYER"?92:85,
+ safety:row[2]==="BRAWLER"?75:row[2]==="HIGH_FLYER"?82:88
+ }]));
+export const APPROVED_LEGEND_PRIME_PROFILES:ReadonlyMap<string,Omit<PrimeLegend,"division">>=byName;
+export function approvedPrimeLegend(name:string,division:LegendDivision):PrimeLegend {
+ const p=byName.get(name);
+ if(!p)throw new Error("No reviewed prime-era profile for "+name);
+ return {...p,division};
+}
