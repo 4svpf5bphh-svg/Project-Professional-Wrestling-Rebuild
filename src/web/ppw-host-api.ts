@@ -18,6 +18,7 @@ import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-rev
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
 import {getOwnerDisplayName,saveOwnerDisplayName,renameOwnedPromotion}
  from "../db/owner-identities.js";
+import {readPremiumScrum,answerPremiumScrum} from "../db/premium-media-scrum.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -86,7 +87,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  catch{return json(503,{error:"Game host not configured"});}
  const path=new URL(req.url,"https://"+(req.headers.get("host")??"localhost")).pathname;
  const get=req.method==="GET",post=req.method==="POST";
- if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview","/api/profile","/api/promotion-identity"].includes(path))
+ if(!["/api/auth","/api/session","/api/join","/api/claim","/api/card","/api/playtest-week","/api/playtest-booking","/api/results-commentary","/api/admin","/api/admin-preview","/api/profile","/api/promotion-identity","/api/media-scrum"].includes(path))
   return json(404,{error:"Unknown game route"});
  if(!get&&!post&&!(path==="/api/auth"&&req.method==="DELETE"))
   return json(405,{error:"Method not allowed"});
@@ -110,6 +111,26 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   return json(200,{ok:true},{"set-cookie":clearSessionCookie(cfg)});
  }
  const actor:WorldApiContext={pool,actor:{playerId:user.playerId}};
+ if(path==="/api/media-scrum"){
+  if(!post)return json(405,{error:"POST required"});
+  if(!csrf(req,user))return json(403,{error:"Invalid session"});
+  if(!allow("media:"+user.playerId,30,60*60_000))
+   return json(429,{error:"Press scrum request limit reached"});
+  const b=await limitedBody(req);
+  if(!b||typeof b.showId!=="string"||typeof b.promotionId!=="string"||
+   !b.showId||!b.promotionId||b.showId.length>200||b.promotionId.length>200)
+   return json(400,{error:"Invalid premium show"});
+  const scope={worldId:cfg.worldId,playerId:user.playerId,
+   promotionId:b.promotionId,showId:b.showId};
+  try{
+   if(b.action==="READ")return json(200,await readPremiumScrum(pool,scope));
+   if(b.action==="ANSWER"&&typeof b.questionId==="string"&&
+    Number.isInteger(b.answerIndex))
+    return json(200,await answerPremiumScrum(pool,scope,
+     b.questionId,b.answerIndex as number));
+   return json(400,{error:"Invalid media scrum request"});
+  }catch(e){return json(409,{error:e instanceof Error?e.message:"Media session unavailable"});}
+ }
  if(path==="/api/profile"||path==="/api/promotion-identity"){
   if(!post)return json(405,{error:"POST required"});
   if(!csrf(req,user))return json(403,{error:"Invalid session"});
