@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {APPROVED_LEGEND_EXPANSION,EXCLUDED_LEGENDS}
  from "../src/domain/approved-legend-expansion.js";
 import {LEGENDS_CATALOGUE} from "../src/domain/legends-catalogue.js";
+import {APPROVED_LEGEND_MILESTONES}
+ from "../src/domain/approved-legend-milestones.js";
 const key=(v:string)=>v.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"");
 test("approved expansion has 81 genuinely new unlocks, the agreed tiers and no duplicate personalities",()=>{
  assert.equal(LEGENDS_CATALOGUE.length,48);
@@ -39,4 +41,39 @@ test("approved expansion has 81 genuinely new unlocks, the agreed tiers and no d
  assert.ok(APPROVED_LEGEND_EXPANSION.some(x=>x.name==="Doink the Clown"&&x.tier==="CULT"));
  assert.ok(APPROVED_LEGEND_EXPANSION.some(x=>x.name==="Brodie Lee"));
  assert.ok(APPROVED_LEGEND_EXPANSION.some(x=>x.name==="PAC"));
+});
+
+test("all 81 new Legends have a single planning-only certified achievement with staggered thresholds",()=>{
+ assert.equal(APPROVED_LEGEND_MILESTONES.length,81);
+ assert.equal(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)).size,81);
+ const actual=new Set(APPROVED_LEGEND_EXPANSION.map(x=>x.name));
+ assert.deepEqual(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)),actual);
+ const metrics=new Set(LEGENDS_CATALOGUE.map(x=>x.metric).filter(Boolean));
+ const milestones=new Set(
+  LEGENDS_CATALOGUE.filter(x=>x.metric!==null&&x.target!==null)
+   .map(x=>x.metric+":"+x.target));
+ for(const item of APPROVED_LEGEND_MILESTONES){
+  assert.ok(metrics.has(item.metric),"Unsupported fact metric for "+item.name);
+  assert.ok(Number.isSafeInteger(item.target)&&item.target>=1&&item.target<=500);
+  const key=item.metric+":"+item.target;
+  assert.ok(!milestones.has(key),
+   "Shared threshold would bundle new Legends: "+item.name+" "+key);
+  milestones.add(key);
+ }
+ const teams=APPROVED_LEGEND_EXPANSION.filter(x=>x.members);
+ for(const team of teams){
+  const m=APPROVED_LEGEND_MILESTONES.find(x=>x.name===team.name)!;
+  assert.ok(["TAG_CLASSICS","TAG_MASTERPIECES"].includes(m.metric),
+   "A team must be revealed by certified team evidence: "+team.name);
+ }
+ const women=APPROVED_LEGEND_EXPANSION.filter(x=>x.division==="WOMEN");
+ for(const wrestler of women){
+  const m=APPROVED_LEGEND_MILESTONES.find(x=>x.name===wrestler.name)!;
+  assert.ok(m.metric.startsWith("WOMENS_")||m.metric==="HOT_ANGLES",
+   "Women's Legends require relevant wrestling or creative evidence");
+ }
+ // Planned artwork cannot accidentally activate the expansion.
+ assert.equal(LEGENDS_CATALOGUE.length,48);
+ assert.ok(APPROVED_LEGEND_EXPANSION.every(x=>!LEGENDS_CATALOGUE.some(
+  y=>key(x.name)===key(y.name))));
 });
