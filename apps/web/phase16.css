@@ -178,15 +178,15 @@ html[data-ppw-screen=backstage] #game :is(.ppw-persona-button,
 
 /* An authored show is a single ringside feature, with official facts accessible
    but not repeated verbatim after the columnist has already described a finish. */
-#game.ppw-editorial-ready .ppw-results-page[data-page="full"] .ppw-result-timeline{gap:0}
-#game.ppw-editorial-ready .ppw-result-entry{margin:0 0 13px!important;
+#game .ppw-editorial-ready .ppw-results-page[data-page="full"] .ppw-result-timeline{gap:0}
+#game .ppw-editorial-ready .ppw-result-entry{margin:0 0 13px!important;
  border:0;border-radius:0;border-bottom:1px solid #79627c;
  box-shadow:none!important;background:transparent!important}
-#game.ppw-editorial-ready .ppw-result-entry summary{padding:18px 4px 13px;gap:10px}
-#game.ppw-editorial-ready .ppw-result-story{border-top:0;padding:4px 5px 21px;
+#game .ppw-editorial-ready .ppw-result-entry summary{padding:18px 4px 13px;gap:10px}
+#game .ppw-editorial-ready .ppw-result-story{border-top:0;padding:4px 5px 21px;
  background:transparent;gap:13px}
-#game.ppw-editorial-ready .ppw-result-meter{display:none}
-#game.ppw-editorial-ready .ppw-result-headline{font-size:clamp(17px,4.2vw,22px)}
+#game .ppw-editorial-ready .ppw-result-meter{display:none}
+#game .ppw-editorial-ready .ppw-result-headline{font-size:clamp(17px,4.2vw,22px)}
 #game .ppw-ringside-slot-headline{font-size:clamp(17px,4.6vw,22px);
  color:#ffe0a8;line-height:1.2;margin:4px 0 10px}
 #game .ppw-ringside-slot-paragraph{font-size:clamp(14px,3.8vw,16px);
@@ -204,8 +204,8 @@ html[data-ppw-screen=backstage] #game :is(.ppw-persona-button,
 #game .ppw-ringside-conclusion p{font-size:17px;line-height:1.7;
  color:#ffe7c1;margin:10px 0 0;font-style:italic;max-width:72ch}
 @media(max-width:390px){
- #game.ppw-editorial-ready .ppw-result-entry summary{padding:14px 1px 11px}
- #game.ppw-editorial-ready .ppw-result-story{padding:4px 2px 17px}
+ #game .ppw-editorial-ready .ppw-result-entry summary{padding:14px 1px 11px}
+ #game .ppw-editorial-ready .ppw-result-story{padding:4px 2px 17px}
  #game .ppw-ringside-conclusion{padding:17px 14px}
 }
 

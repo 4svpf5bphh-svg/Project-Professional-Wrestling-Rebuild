@@ -62,6 +62,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
+  await expect(page.locator(".ppw-results")).toHaveClass(/ppw-editorial-ready/);
+  await expect(page.locator(".ppw-result-meter").first()).toHaveCSS("display","none");
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.getByRole("heading",{name:"Omega takes the win"})).toBeVisible();
   await expect(page.locator(".ppw-ringside-conclusion")).toContainText("The main event delivered");
@@ -102,6 +104,8 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.getByRole("button",{name:"Read the Full Show"}).click();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
  await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+ await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
+ await expect(page.locator(".ppw-result-meter").first()).not.toHaveCSS("display","none");
  await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
  await expect(page.locator(".ppw-ringside-conclusion")).toHaveCount(0);
  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);

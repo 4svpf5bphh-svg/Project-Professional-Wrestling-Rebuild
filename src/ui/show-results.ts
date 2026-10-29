@@ -133,6 +133,7 @@ export async function mountShowResults(root:HTMLElement,port:{
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
+ root.classList.remove("ppw-editorial-ready");
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
