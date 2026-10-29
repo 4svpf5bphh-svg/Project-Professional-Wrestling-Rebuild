@@ -3,6 +3,7 @@
 -- (+ The Gunns, whose exact wrestlers are in its original mixed roster).
 -- Neither a second World Lock nor fabricated match evidence is introduced.
 -- Worlds without these exact, uniquely identified people are unchanged.
+BEGIN;
 CREATE TEMP TABLE ppw_reviewed_tag_heritage (
  name text NOT NULL, first_name text NOT NULL, second_name text NOT NULL,
  family boolean NOT NULL
@@ -101,3 +102,5 @@ WHERE EXISTS (
  WHERE t.world_id=pair.world_id AND t.status='ACTIVE' AND t.name=pair.name
 )
 ON CONFLICT(world_id,context,person_a_id,person_b_id) DO NOTHING;
+
+COMMIT;
