@@ -140,3 +140,37 @@ html[data-ppw-screen=backstage] #game :is(.ppw-persona-button,
 @media(prefers-reduced-motion:reduce){
  #game .ppw-honours-trophy-cup{animation:none}
 }
+
+/* The existing, authenticated creative workspace delivers contextual notes
+   without simulating a staff member, AI request or extra database query. */
+#game .ppw-programme-staff{border-top:1px solid #7b658e;margin-top:13px;
+ padding-top:12px}
+#game .ppw-programme-staff>.ppw-programme-action{border:1px solid #e4b76e;
+ background:#322b4e;color:#ffeab6;font-weight:850;min-height:46px}
+#game .ppw-programme-staff-note{margin-top:12px;padding:17px 15px;
+ border-radius:9px;border-left:4px solid #f0bb68;
+ background:linear-gradient(115deg,#3a2b42,#1d2840)}
+#game .ppw-programme-staff-note h3{margin:8px 0 10px;font-size:19px;
+ color:#ffe4aa}
+#game .ppw-programme-staff-note p{line-height:1.6;margin:8px 0}
+#game .ppw-programme-staff-suggestion{color:#e4effb}
+#game .ppw-connection-status{display:block;font-size:10px;
+ font-weight:950;letter-spacing:.12em;color:#8ee7d8;margin-bottom:8px}
+#game .ppw-connection-card[data-connection=recent] .ppw-connection-status{color:#bfc9e5}
+#game .ppw-connection-card[data-connection=established]{border-left:4px solid #54cfbc}
+#game .ppw-connection-verdict{padding:10px 12px;border-left:2px solid #d4b06f;
+ background:#cba65a12;font-size:13px;line-height:1.6}
+#game .ppw-planner-booking-state{display:inline-block;border:1px solid #9c809c;
+ background:#2f2545;color:#ffead8;padding:5px 10px;border-radius:5px;
+ font-size:10px;letter-spacing:.1em;font-weight:900;margin-bottom:8px}
+#game .ppw-planner-week[data-booking-state=ready] .ppw-planner-booking-state{
+ border-color:#7bddb5;background:#174d43;color:#d1ffed}
+#game .ppw-planner-week[data-booking-state=attention] .ppw-planner-booking-state{
+ border-color:#eac27b;background:#4b343a;color:#ffe4ac}
+#game .ppw-industry-record-row.ppw-record-leader{border-left:5px solid #ffce6f;
+ background:linear-gradient(100deg,#473648,#212139)}
+#game .ppw-industry-record-row.ppw-record-leader>strong{color:#ffe6a0}
+@media(max-width:390px){
+ #game .ppw-programme-staff-note{padding:13px}
+ #game .ppw-planner-booking-state{max-width:100%}
+}

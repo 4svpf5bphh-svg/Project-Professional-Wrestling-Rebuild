@@ -5,6 +5,7 @@ import type {readProgrammeWorkspace,ProgrammeDirectionChoice} from "../db/progra
 import {readProgrammeTrajectory} from "../domain/programme-trajectory.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
+import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
  load():Promise<ProgrammeView>;
@@ -33,6 +34,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
+ const adviceOpen=new Set<string>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}>();
  function rosterOptions(){
@@ -216,6 +218,33 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }
     panel.append(history);
    }
+   // Optional creative guidance from the already-loaded immutable rivalry
+   // record. Nothing is auto-booked or requested from the model.
+   const advice=element("section","ppw-programme-staff");
+   const ask=button(adviceOpen.has(p.programmeId)?"Hide creative notes":"Ask Creative · what next?",()=>{
+    if(adviceOpen.has(p.programmeId))adviceOpen.delete(p.programmeId);
+    else adviceOpen.add(p.programmeId);
+    render();
+   });
+   ask.setAttribute("aria-expanded",String(adviceOpen.has(p.programmeId)));
+   advice.append(ask);
+   if(adviceOpen.has(p.programmeId)){
+    const latest=[...p.recentActivity].sort((a,b)=>
+     b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId))[0];
+    const note=suggestProgrammeAdvice({heat:p.heat,repetition:p.repetition,
+     activityCount:p.activityCount,matchCount:p.matchCount,
+     segmentCount:p.segmentCount,sideAWins:p.sideAWins,
+     sideBWins:p.sideBWins,championshipId:p.championshipId,
+     recentKind:latest?.kind??null});
+    const sheet=element("div","ppw-programme-staff-note");
+    sheet.append(element("span","ppw-programme-eyebrow","CREATIVE DESK · OPTIONAL"),
+     element("h3","",note.headline),
+     element("p","",note.observation),
+     element("p","ppw-programme-staff-suggestion",note.suggestion),
+     element("small","ppw-muted","From this rivalry's existing verified record. You control the booking."));
+    advice.append(sheet);
+   }
+   panel.append(advice);
    const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
     b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
     b.slotId.localeCompare(a.slotId))[0];

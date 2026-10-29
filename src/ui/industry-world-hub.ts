@@ -564,6 +564,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      "No certified match records for the current roster yet."));
     for(const [i,w] of (records?.leaders??[]).entries()){
      const item=el("article","ppw-industry-record-row");
+     if(i===0)item.classList.add("ppw-record-leader");
      item.append(el("strong","",String(i+1)),el("span","",w.name),
       el("small","",w.wins+" wins / "+w.matches+" matches"+
        (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★")));

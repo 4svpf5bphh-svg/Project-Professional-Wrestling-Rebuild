@@ -255,6 +255,15 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   }
   for(const week of data.weeks){
    const card=node("section","","ppw-planner-week");
+   const hasDraft=week.shows.some(show=>show.status==="DRAFT"&&!show.ready);
+   const allReady=week.shows.length>0&&week.shows.every(show=>
+    show.ready||show.status==="SUBMITTED");
+   const status=allReady?"READY FOR SHOWTIME":
+    hasDraft?"FINISH YOUR CARD":week.shows.length?"BOOKING IN PROGRESS":
+    week.required?"SHOW NEEDS PLANNING":"NO SHOW PLANNED";
+   card.dataset.bookingState=allReady?"ready":hasDraft?"attention":
+    week.shows.length?"booked":"empty";
+   card.append(node("span",status,"ppw-planner-booking-state"));
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
    if(week.scheduled?.length)card.append(node("p",
