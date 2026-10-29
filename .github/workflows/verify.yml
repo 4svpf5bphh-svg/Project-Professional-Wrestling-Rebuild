@@ -5,7 +5,8 @@ on:
 # A branch's CI can be expensive; obsolete 100+ browser and database suites
 # must not pile up while newer, integrated commits are ready to verify.
 concurrency:
-  group: rebuild-verify-${{ github.ref }}
+  # Deduplicate heavy disposable-DB verification across push and PR events.
+  group: rebuild-verify-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   test:
