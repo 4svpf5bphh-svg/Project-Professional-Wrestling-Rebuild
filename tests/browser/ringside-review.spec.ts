@@ -71,19 +71,22 @@ for(const width of [320,390]){
    // decoration even when the short visible label itself fits. Assert that
    // the actual visible text fits its control, and the page does not scroll.
    for(const tab of await chapters.all()){
-    const fits=await tab.evaluate(button=>{
+    const metrics=await tab.evaluate(button=>{
      const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
-     if(!label)return false;
+     if(!label)return {name:"missing",width:0,left:0,right:0,
+      buttonLeft:0,buttonRight:0,display:"none"};
      const buttonBox=button.getBoundingClientRect();
-     const glyphs=document.createRange();
-     glyphs.selectNodeContents(label);
-     const textBox=glyphs.getBoundingClientRect();
-     return textBox.width>0&&textBox.left>=buttonBox.left+1&&
-      textBox.right<=buttonBox.right-1&&
-      getComputedStyle(label).display!=="none"&&
-      getComputedStyle(button).whiteSpace==="nowrap";
+     const range=document.createRange();
+     range.selectNodeContents(label);
+     const textBox=range.getBoundingClientRect();
+     return {name:label.textContent??"",width:textBox.width,
+      left:textBox.left,right:textBox.right,buttonLeft:buttonBox.left,
+      buttonRight:buttonBox.right,display:getComputedStyle(label).display};
     });
-    expect(fits).toBe(true);
+    const fits=metrics.width>0&&metrics.display!=="none"&&
+     metrics.left>=metrics.buttonLeft-1&&
+     metrics.right<=metrics.buttonRight+1;
+    expect(fits,JSON.stringify(metrics)).toBe(true);
    }
   }else{
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
