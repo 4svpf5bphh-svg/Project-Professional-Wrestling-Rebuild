@@ -1047,6 +1047,7 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
   await route.fulfill({json:method==="calendar"?view:{status:"APPLIED"}});
  });
  await page.goto("/#/calendar");
+ await page.getByText("Manage recurring events",{exact:true}).click();
  await page.getByRole("button",{name:"+ Add event"}).click();
  await page.getByRole("textbox",{name:"Event name"}).fill("Summer Clash");
  const frequency=page.getByRole("combobox",{name:"Repeat frequency"});
