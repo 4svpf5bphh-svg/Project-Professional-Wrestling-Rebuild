@@ -40,6 +40,17 @@ test("a full card can attract five distinct fictional voices, with no new events
  assert.deepEqual(result.map(x=>x.slotId),events.map(x=>x.slotId));
  assert.deepEqual(showReactionWire(show(events)),result);
 });
+test("five hot match posts use distinct speaker personalities, not identical relabelled sentences",()=>{
+ const hot=Array.from({length:5},(_,i)=>match("hot-persona-"+i,95));
+ const wire=showReactionWire(show(hot));
+ assert.equal(new Set(wire.map(p=>p.voice)).size,5);
+ assert.equal(new Set(wire.map(p=>p.text)).size,5);
+ const voices=new Map(wire.map(p=>[p.voice,p.text]));
+ assert.match(voices.get("THE TAPE TRADER")??"",/watching|tape|match again/);
+ assert.match(voices.get("THE DIEHARD")??"",/love wrestling|every week|wrestling/);
+ assert.ok(wire.every(p=>p.slotId.startsWith("hot-persona-")));
+ assert.deepEqual(showReactionWire(show(hot)),wire);
+});
 test("critic and audience contradiction drives different safe reactions",()=>{
  const good=match("good",38),pop=match("popular",89);
  good.fallout!.ratingStars=4.5;pop.fallout!.ratingStars=1.75;
