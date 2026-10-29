@@ -41,8 +41,25 @@ function cardGraphic(item:LegendsVaultEntry){
  art.alt="Definitive collectible card of "+(item.name??"the legend");
  art.loading="lazy";return art;
 }
+// Source credits for the 47 owner-supplied originals supersede the earlier
+// Commons draft. This list mirrors the pinned archive manifest; missing ZIP,
+// unexpected portraits and changed source digests fail the production build.
+const OWNER_ORIGINAL_LEGENDS=new Set([
+ "jerry-lynn","raven","eddie-guerrero","mr-perfect","trish-stratus","road-warriors",
+ "sting","bruno-sammartino","sabu","steve-corino","taz","d-lo-brown",
+ "dean-malenko","abdullah-butcher","new-jack","super-crazy","ultimo-dragon",
+ "tajiri","konnan","ricky-steamboat","william-regal","arn-anderson",
+ "dusty-rhodes","lita","bull-nakano","aja-kong","stan-hansen","bret-hart",
+ "mick-foley","randy-savage","kurt-angle","booker-t","great-muta","chyna",
+ "jushin-liger","vader","manami-toyota","shawn-michaels","steve-austin",
+ "hulk-hogan","the-rock","ric-flair","andre-giant","antonio-inoki",
+ "mitsuharu-misawa","kenta-kobashi","el-santo"
+]);
 function photoCredit(item:LegendsVaultEntry){
  if(!item.cardAsset)return null;
+ if(OWNER_ORIGINAL_LEGENDS.has(item.id))
+  return el("p","ppw-legend-photo-credit",
+   "Photo: owner-supplied original · usage rights unverified");
  const credit=LEGEND_CARD_PHOTO_CREDITS[item.id];
  if(!credit)return null;
  const caption=el("p","ppw-legend-photo-credit","Photo: "+credit.author+" · ");
