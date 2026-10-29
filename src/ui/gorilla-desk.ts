@@ -35,7 +35,7 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
  const edits=new Map<string,Map<string,GorillaMatchInstruction>>();
  const baselines=new Map<string,string>();
  let choices=new Map<string,GorillaMatchInstruction>();
- let pendingSave:{fingerprint:string;requestId:string}|null=null;
+ const pendingSaves=new Map<string,{fingerprint:string;requestId:string}>();
  const snapshot=(values:Map<string,GorillaMatchInstruction>)=>
   JSON.stringify([...values.values()].sort((a,b)=>a.matchId.localeCompare(b.matchId)));
  const loadChoices=(id:string)=>{
@@ -54,19 +54,33 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
   if(anyDirty()&&!window.confirm("Leave Gorilla Position? Your unsaved show instructions will be lost."))return;
   port.back();
  };
- async function reload(selected=""){
+ async function reload(selected="",preserveOther=false):Promise<boolean>{
+  const prior=preserveOther?[...edits.entries()].filter(([id])=>id!==selected&&isDirty(id)):[] as
+   [string,Map<string,GorillaMatchInstruction>][];
   busy=true;draw();
   try{
-   view=await port.load();error="";
+   const fresh=await port.load();view=fresh;error="";
    edits.clear();baselines.clear();
-   showId=view.shows.some(s=>s.showId===selected)?selected:view.shows[0]?.showId??"";
+   for(const [id,values] of prior){
+    const next=fresh.shows.find(s=>s.showId===id);
+    if(!next||next.matches.length!==values.size||
+     next.matches.some(m=>!values.has(m.matchId)))continue;
+    // Rebase only valid saved-slot IDs on the newly received World revision.
+    // Never carry options onto a different match or an unavailable show.
+    loadChoices(id);
+    edits.set(id,values);
+   }
+   showId=fresh.shows.some(s=>s.showId===selected)?selected:fresh.shows[0]?.showId??"";
    loadChoices(showId);
-  }catch(e){error=e instanceof Error?e.message:"Gorilla clipboard could not load";}
-  finally{busy=false;draw();}
+   return true;
+  }catch(e){
+   error=e instanceof Error?e.message:"Gorilla clipboard could not load";
+   return false;
+  }finally{busy=false;draw();}
  }
  const edit=(id:string,values:Partial<GorillaMatchInstruction>)=>{
   const existing=choices.get(id);if(existing){
-   choices.set(id,{...existing,...values});pendingSave=null;notice="";
+   choices.set(id,{...existing,...values});pendingSaves.delete(showId);notice="";
   }
   draw();
  };
@@ -75,23 +89,26 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
   const revision=view.worldRevision,target=showId;
   const matches=[...choices.values()].sort((a,b)=>a.matchId.localeCompare(b.matchId));
   const fingerprint=JSON.stringify({revision,target,matches});
-  if(!pendingSave||pendingSave.fingerprint!==fingerprint)
-   pendingSave={fingerprint,requestId:crypto.randomUUID()};
-  const requestId=pendingSave.requestId;
+  const previous=pendingSaves.get(target);
+  if(!previous||previous.fingerprint!==fingerprint)
+   pendingSaves.set(target,{fingerprint,requestId:crypto.randomUUID()});
+  const requestId=pendingSaves.get(target)!.requestId;
   busy=true;error="";notice="";draw();
   try{
    const outcome=await port.save({requestId,expectedRevision:revision,
     showId:target,matches}) as {status?:string};
    if(outcome.status==="STALE"){
-    pendingSave=null;
-    throw Error("The World changed. Reload the clipboard and review your instructions before saving again.");
+    pendingSaves.delete(target);
+    throw Error("The World changed. Refresh the clipboard and review your instructions before saving again.");
    }
    if(outcome.status!=="APPLIED"&&outcome.status!=="REPLAYED")
     throw Error("The save is not confirmed. Retry without changing these instructions.");
    // After a confirmed receipt, reload authoritative data. If that read
    // fails, the same request ID is retained for safe replay.
-   await reload(target);
-   pendingSave=null;notice="Gorilla contingencies saved before World Lock.";
+   if(!await reload(target,true))
+    throw Error("Save confirmed but the refreshed clipboard was unavailable. Retry the same request to recover its receipt.");
+   pendingSaves.delete(target);
+   notice="Gorilla contingencies saved before World Lock.";
   }catch(e){error=e instanceof Error?e.message:"Gorilla instructions were not saved";}
   finally{busy=false;draw();}
  }
@@ -112,6 +129,11 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
    " · Standing policy: "+view.policy.replaceAll("_"," ")));
   if(anyDirty())root.append(el("p","ppw-gorilla-unsaved",
    "Unsaved production notes. Changes take effect only after you save them before World Lock."));
+  const refresh=btn("Refresh clipboard",()=>{
+   if(anyDirty()&&!window.confirm("Discard unsaved Gorilla changes and reload the World clipboard?"))return;
+   pendingSaves.clear();void reload(showId);
+  },busy);
+  refresh.classList.add("ppw-gorilla-refresh");root.append(refresh);
   if(!view.canEdit)root.append(el("p","ppw-staff-lock",
    "The World is locked; these instructions can only be changed during an open week."));
   if(!view.shows.length){root.append(el("p","ppw-staff-panel",
@@ -121,7 +143,7 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
   for(const show of view.shows){
    const tab=btn("Y"+show.year+" W"+show.week+" · "+show.name+
     (isDirty(show.showId)?" · UNSAVED":""),()=>{
-    showId=show.showId;loadChoices(showId);notice="";error="";pendingSave=null;draw();},busy);
+    showId=show.showId;loadChoices(showId);notice="";error="";draw();},busy);
    tab.setAttribute("aria-pressed",String(showId===show.showId));
    tabs.append(tab);
   }
@@ -177,7 +199,7 @@ export function mountGorillaDesk(root:HTMLElement,port:GorillaDeskPort){
   if(isDirty(showId))actions.append(btn("Discard changes",()=>{
    if(!view)return;
    edits.delete(showId);baselines.delete(showId);loadChoices(showId);
-   pendingSave=null;error="";notice="";draw();
+   pendingSaves.delete(showId);error="";notice="";draw();
   },disabled));
   block.append(actions);root.append(block);
  }
