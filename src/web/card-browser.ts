@@ -24,7 +24,7 @@ import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
 import "../ui/industry-world-hub.css";
 import "../ui/legends-vault.css";
-import type {LegendsVaultView} from "../ui/legends-vault.js";
+import {drawLegendAlbum,clearLegendRevealPortal,type LegendsVaultView} from "../ui/legends-vault.js";
 import "../ui/staff-desk.css";
 import "../ui/gorilla-desk.css";
 import "../ui/business-desk.css";
@@ -232,6 +232,38 @@ function industryPort(root:HTMLElement,scope:Scope,
 export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView){
  const call=createCardClient(scope);
  return mountIndustryWorldHub(root,industryPort(root,scope,call),initialLegends);
+}
+/** Account-only card binder: one lazy Vault query, no extra World scan. */
+export function mountCollectionPage(root:HTMLElement,scope:Scope){
+ const call=createCardClient(scope);
+ let view:LegendsVaultView|null=null,expanded:string|null=null;
+ let page="ALL",error="",busy=true;
+ const render=()=>{
+  clearLegendRevealPortal();
+  root.classList.add("ppw-editor","ppw-industry","ppw-collection-screen");
+  root.replaceChildren();
+  if(error){
+   const notice=document.createElement("p");notice.className="ppw-alert ppw-error";
+   notice.textContent=error;root.append(notice);
+  }
+  if(!view){
+   const note=document.createElement("p");note.className="ppw-industry-muted";
+   note.textContent=busy?"Opening your personal card album…":"Collection unavailable";
+   root.append(note);return;
+  }
+  const content=document.createElement("section");
+  content.className="ppw-industry-list ppw-collection";
+  content.dataset.legendAlbumPage=page;
+  drawLegendAlbum(content,view,{
+   showCard:id=>{expanded=id;render();},
+   closeCard:()=>{expanded=null;render();}
+  },expanded,next=>{page=next;});
+  root.append(content);
+ };
+ render();
+ void call("legendsVault").then(data=>{view=data as LegendsVaultView;error="";})
+  .catch(e=>{error=e instanceof Error?e.message:"Collection unavailable";})
+  .finally(()=>{busy=false;if(root.isConnected)render();});
 }
 function staffPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):StaffPort{

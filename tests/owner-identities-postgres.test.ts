@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
+import {readFileSync} from "node:fs";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
@@ -23,6 +24,22 @@ test("two signed promotion owners can name themselves and rebrand only their own
    await createWorld(tx,{id:worldId,name:"Owners",seed:27,rulesetVersion:"test"});
    await addPromotion(tx,worldId,{id:"crown",name:"Crown Wrestling",tier:"LOCAL"});
    await addPromotion(tx,worldId,{id:"rival",name:"Rival Wrestling",tier:"LOCAL"});
+   await tx.query(`
+    INSERT INTO ppw_championships(world_id,promotion_id,championship_id,name,
+     division,status,prestige)
+    VALUES
+     ($1,'crown','founding:singles','Crown Wrestling World Championship','SINGLES','ACTIVE',50),
+     ($1,'crown','founding:tag','Crown Wrestling Tag Team Championship','TAG','ACTIVE',40),
+     ($1,'crown','special','The Heritage Championship','SINGLES','ACTIVE',30),
+     ($1,'rival','founding:singles','Rival Wrestling World Championship','SINGLES','ACTIVE',50)`,[worldId]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,'champ','Champion')",[worldId]);
+   await tx.query(`
+    INSERT INTO ppw_championship_reigns(world_id,promotion_id,championship_id,
+     reign_id,holder_type,person_id,status,start_week_index,defenses)
+    VALUES($1,'crown','founding:singles','reign-1','PERSON','champ','ACTIVE',1,4)`,[worldId]);
+   await tx.query(`
+    UPDATE ppw_championships SET current_reign_id='reign-1'
+    WHERE world_id=$1 AND promotion_id='crown' AND championship_id='founding:singles'`,[worldId]);
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[a,b]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",
     [worldId,a,b]);
@@ -61,6 +78,44 @@ test("two signed promotion owners can name themselves and rebrand only their own
   assert.equal(after[0]?.previous_name,"Crown Wrestling");
   assert.equal(after[0]?.new_name,"Kingdom Pro");
   assert.equal(after.length,1,"repeated identical rename cannot add duplicate history");
+  const titles=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;championship_id:string;name:string;
+   current_reign_id:string|null;defenses:number|null}>(`
+   SELECT c.promotion_id,c.championship_id,c.name,c.current_reign_id,r.defenses
+   FROM ppw_championships c
+   LEFT JOIN ppw_championship_reigns r ON r.world_id=c.world_id
+    AND r.promotion_id=c.promotion_id AND r.championship_id=c.championship_id
+    AND r.reign_id=c.current_reign_id
+   WHERE c.world_id=$1 ORDER BY c.promotion_id,c.championship_id`,[worldId]));
+  assert.deepEqual(titles.map(t=>t.name),[
+   "Kingdom Pro World Championship","Kingdom Pro Tag Team Championship",
+   "The Heritage Championship","Rival Wrestling World Championship"
+  ]);
+  assert.deepEqual(Object.fromEntries(titles.map(t=>[t.promotion_id+":"+t.championship_id,t.name])),{
+   "crown:founding:singles":"Kingdom Pro World Championship",
+   "crown:founding:tag":"Kingdom Pro Tag Team Championship",
+   "crown:special":"The Heritage Championship",
+   "rival:founding:singles":"Rival Wrestling World Championship"
+  });
+  assert.equal(titles.find(t=>t.championship_id==="founding:singles"&&
+   t.promotion_id==="crown")?.current_reign_id,"reign-1");
+  assert.equal(titles.find(t=>t.championship_id==="founding:singles"&&
+   t.promotion_id==="crown")?.defenses,4);
+  // Simulate a title left behind by an earlier rebrand and verify that the
+  // one-time 0110 migration repairs the label without touching World history.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_championships(
+    world_id,promotion_id,championship_id,name,division,status,prestige)
+    VALUES($1,'crown','legacy','Crown Wrestling Women's Championship','SINGLES','ACTIVE',20)`,
+    [worldId]);
+   const migration=readFileSync("db/migrations/0110_rebrand_championship_labels.sql","utf8");
+   await tx.query(migration,[]);
+   await tx.query(migration,[]); // idempotent
+  });
+  const repaired=await withWorldTransaction(db.pool,tx=>tx.query<{name:string}>(`
+   SELECT name FROM ppw_championships
+   WHERE world_id=$1 AND promotion_id='crown' AND championship_id='legacy'`,[worldId]));
+  assert.equal(repaired[0]?.name,"Kingdom Pro Women's Championship");
   // Same World, separate authorised owners: no duplicate display names even
   // when both write on distinct promotion rows simultaneously.
   const race=await Promise.allSettled([
