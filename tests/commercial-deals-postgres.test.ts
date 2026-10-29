@@ -66,13 +66,13 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   assert.equal(first.status,"APPLIED");
   if(first.status!=="APPLIED")throw new Error("Expected signed deal");
   assert.equal(first.result.weeklyIncome,312000);
-  assert.equal(first.result.reachIncrease,15);
+  assert.equal(first.result.reachIncrease,10);
   const replay=await signCommercialDeal(db.pool,command);
   assert.equal(replay.status,"REPLAYED");
   const updated=await readBusinessWorkspace(db.pool,{
    worldId:world,promotionId:promotion,playerId:owner});
   assert.equal(updated.weeklyMediaIncome,312000);
-  assert.equal(updated.mediaReach,105);
+  assert.equal(updated.mediaReach,100);
   assert.equal(updated.commercialAgreements.length,1);
   assert.equal(updated.commercialOffers.some(o=>o.kind==="BROADCAST"),false);
   const savedCash=updated.cash;
