@@ -53,7 +53,7 @@ test("320px Backstage: actual SMS choices retry the same World command after a l
  await page.goto("/#/backstage");
  await page.getByRole("button",{name:/Ada Stone/}).click();
  await expect(page.getByLabel("Conversation with Ada Stone")).toBeVisible();
- const sentence="You've got my attention. Tell me what you've got in mind.";
+ const sentence="Let's talk about your deal and what you'd want next. Nothing is signed yet.";
  const send=page.getByRole("button",{name:sentence});
  await expect(send).toContainText("Hear them out");
  await send.click();

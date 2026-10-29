@@ -532,7 +532,7 @@ export function mountPersonaDesk(root:HTMLElement,
      item.observedFeaturedShows+" featured"));
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
-     backstageManagerReply(item.decision)));
+     backstageManagerReply(item.decision,item.kind)));
     if(item.respondedWeekIndex!==null)
      chat.append(el("small","ppw-backstage-sent-stamp","Sent · Y"+
       (Math.floor(item.respondedWeekIndex/52)+1)+" W"+
@@ -574,8 +574,8 @@ export function mountPersonaDesk(root:HTMLElement,
      const reply=button("",()=>void decide(item.conversationId,decision),loading);
      reply.classList.add("ppw-backstage-reply-choice");
      reply.append(el("small","ppw-backstage-reply-intent",BACKSTAGE_LABELS[decision]),
-      el("span","ppw-backstage-reply-statement",backstageManagerReply(decision)));
-     reply.setAttribute("aria-label",backstageManagerReply(decision));
+      el("span","ppw-backstage-reply-statement",backstageManagerReply(decision,item.kind)));
+     reply.setAttribute("aria-label",backstageManagerReply(decision,item.kind));
      actions.append(reply);
     }
     chat.append(actions);
