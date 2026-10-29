@@ -198,12 +198,14 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    if(!choice)continue;
    const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
    if(baseline===null)continue;
-   const originalReach=kind==="BROADCAST"?p.mediaReach:null;
+   const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
+    Math.min(100,p.mediaReach):null;
    proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
     promotion_id:p.promotion_id,kind,offer_code:choice.code,
     baseline_income:baseline,agreed_income:choice.weeklyIncome,
     baseline_reach:originalReach,
-    agreed_reach:originalReach===null?null:originalReach+choice.reachIncrease,
+    agreed_reach:originalReach===null?null:
+     Math.min(100,originalReach+choice.reachIncrease),
     start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI"});
   }
  }
