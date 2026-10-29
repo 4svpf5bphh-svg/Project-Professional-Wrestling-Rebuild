@@ -32,7 +32,7 @@ const label=(role:ShowRole)=>role==="FLAGSHIP"?"A show · Flagship":
 export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>void){
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
  let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
- let mode:"mine"|"world"="mine",ppvOnly=false;
+ let mode:"mine"|"world"="mine",ppvOnly=false,manageExpanded=false;
  let pendingChange:{fingerprint:string;requestId:string}|null=null;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
@@ -272,14 +272,32 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    manage.append(line);
   }
   if(editing)manage.append(form());
-  root.append(manage);
-  const upcoming=node("section","","ppw-calendar-panel");
-  upcoming.append(node("h2","Upcoming weeks"));
-  upcoming.append(button("My shows",()=>{mode="mine";render();},mode==="mine"),
-   button("Across the World",()=>{mode="world";render();},mode==="world"));
+  const management=document.createElement("details");
+  management.className="ppw-calendar-management";
+  management.open=manageExpanded||!!editing||!data.series.length;
+  const manageSummary=node("summary","","ppw-calendar-management-toggle");
+  manageSummary.append(node("strong","Manage recurring events"),
+   node("span",data.series.length+" established series · Edit weekly shows and PPVs"));
+  management.append(manageSummary,manage);
+  management.addEventListener("toggle",()=>{manageExpanded=management.open;});
+  const upcoming=node("section","","ppw-calendar-panel ppw-calendar-schedule");
+  upcoming.append(node("span","ON THE BOOKING SHEET","ppw-calendar-schedule-kicker"),
+   node("h2","Upcoming weeks"));
+  const tabs=node("div","","ppw-calendar-view-tabs");
+  tabs.setAttribute("role","group");tabs.setAttribute("aria-label","Calendar view");
+  for(const [value,title] of [["mine","My shows"],["world","Across the World"]] as const){
+   const option=button(title,()=>{mode=value;render();});
+   option.setAttribute("aria-pressed",String(mode===value));tabs.append(option);
+  }
+  upcoming.append(tabs);
   if(mode==="mine"){
-   upcoming.append(button("All events",()=>{ppvOnly=false;render();},!ppvOnly),
-    button("PPVs & specials",()=>{ppvOnly=true;render();},ppvOnly));
+   const filters=node("div","","ppw-calendar-type-tabs");
+   for(const [selected,title] of [[false,"All events"],[true,"PPVs & specials"]] as const){
+    const option=button(title,()=>{ppvOnly=selected;render();});
+    option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
+   }
+   upcoming.append(filters);
+   let rendered=0;
    for(const w of (ppvOnly?data.weeks:data.weeks.slice(0,expanded?52:12))){
     const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
     if(!shows.length)continue;
@@ -290,15 +308,24 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      ...(w.offset===0?[node("span","THIS WEEK","ppw-calendar-now")]:[]));
     article.append(heading);
     for(const s of shows)article.append(ownTile(s,w.year,w.week,w.shows));
-    upcoming.append(article);
+    upcoming.append(article);rendered++;
    }
+   if(!rendered)upcoming.append(node("p",ppvOnly?
+    "No premium events or specials are announced in the current calendar year.":
+    "No upcoming events are scheduled. Manage recurring events to add a show.",
+    "ppw-calendar-empty"));
    if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
     expanded=!expanded;render();
    }));
   }else{
-   upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."),
-    button("All events",()=>{ppvOnly=false;render();},!ppvOnly),
-    button("PPVs & specials",()=>{ppvOnly=true;render();},ppvOnly));
+   upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."));
+   const filters=node("div","","ppw-calendar-type-tabs");
+   for(const [selected,title] of [[false,"All events"],[true,"PPVs & specials"]] as const){
+    const option=button(title,()=>{ppvOnly=selected;render();});
+    option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
+   }
+   upcoming.append(filters);
+   let rendered=0;
    for(const w of data.worldWeeks??[]){
     const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;
     if(!visible.length)continue;
@@ -314,10 +341,14 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
       article.append(ownTile(mySeries,w.year,w.week,myShows,e.promotionName));
      else article.append(eventTile(e.name,e.role,e.eventType,e.promotionName));
     }
-    upcoming.append(article);
+    upcoming.append(article);rendered++;
    }
+   if(!rendered)upcoming.append(node("p",ppvOnly?
+    "No rival premium events or specials have been announced in this window.":
+    "The World has no public event announcements in this window.",
+    "ppw-calendar-empty"));
   }
-  root.append(upcoming);
+  root.append(upcoming,management);
  }
  void load();
 }
