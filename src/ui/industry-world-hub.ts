@@ -464,10 +464,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      WRESTLER_WOMEN:"WOMEN'S WRESTLER OF THE YEAR",
      PROMOTION:"PROMOTION OF THE YEAR"
     };
-    if(heritage&&!heritage.honours.length)section.append(el("p","ppw-industry-empty",
-     "No full World year has been certified since the honours archive began."));
+    const trophy=el("div","ppw-honours-trophy");
+    trophy.setAttribute("aria-hidden","true");
+    trophy.append(el("span","ppw-honours-trophy-cup","★"));
+    section.append(trophy);
+    if(heritage&&!heritage.honours.length)section.append(el("div","ppw-heritage-empty-spotlight",
+     "The stage is set. The first trophies will be presented once a full year of verified wrestling has been certified."));
     for(const award of heritage?.honours??[]){
      const card=el("article","ppw-heritage-honour");
+     card.dataset.award=award.category.toLowerCase();
      card.append(el("span","ppw-news-desk","YEAR "+award.year+" · "+
        (labels[award.category]??award.category)),
       el("strong","ppw-heritage-honour-name",award.name));
@@ -482,10 +487,16 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       "A permanent honour for retired wrestlers with exceptional, documented " +
       "careers. Inductions take place at completed year-end ceremonies. " +
       "This does not unlock playable legends or award points."));
-    if(heritage&&!heritage.hall.length)section.append(el("p","ppw-industry-empty",
-     "The Hall is waiting for its first deserving class. Nobody is inducted just for being famous."));
+    if(heritage&&!heritage.hall.length){
+     const wall=el("div","ppw-hall-empty-wall");
+     wall.append(el("span","ppw-hall-emblem","✦"),
+      el("strong","","THE FIRST CLASS AWAITS"),
+      el("p","","Greatness earns a place here. Once eligible retired careers have been certified at year-end, their names become part of this World's history."));
+     section.append(wall);
+    }
     for(const member of heritage?.hall??[]){
      const card=el("article","ppw-heritage-inductee");
+     card.append(el("span","ppw-hall-induction-mark","✦"));
      const portrait=createWrestlerPortrait(member.name,96);
      if(portrait){
       portrait.alt="Portrait of "+member.name;portrait.loading="lazy";
@@ -530,7 +541,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    const section=el("section","ppw-industry-list ppw-industry-record-book");
    section.append(el("h2","","The Record Books"),
     el("p","ppw-industry-muted",
-     "Explore your roster, compare wrestlers across the World or look up an individual career."));
+     "The official record: confirmed matches, career milestones and wrestlers who made their mark."));
    const choice=el("div","ppw-industry-nav");
    for(const [key,label] of [["MY","My Promotion"],["WORLD","World Rankings"],
     ["SEARCH","Find a Career"]] as const){
@@ -690,8 +701,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
      "Nothing worth printing in the rumour mill. No fabricated backstage sources here."));
-   for(const story of published){
+   for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
+    if(index===0)item.classList.add("ppw-news-lead");
     item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
      "SPECULATION / NOT CONFIRMED"),
      el("strong","ppw-news-story-title",story.title),

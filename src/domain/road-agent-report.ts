@@ -74,12 +74,12 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   ranLong?
    "We had a match run noticeably longer than planned. Protect the rest of the card's breathing room.":
   weakest&&weakest.f.executionQuality<55?
-   "The weakest bout asked more of the wrestlers than the execution delivered. I'd simplify the layout before booking that combination again.":
+   "The weakest bout never found a comfortable rhythm. If we're putting that pairing together again, give them a simpler job and let them get the basics right.":
   lowChem?
    "That pairing never quite settled together. No need to blame anyone, but I wouldn't immediately ask them to go longer.":
   linked===0&&matches.length>1?
    "The wrestling had moments, but the card could use a stronger thread between the matches.":
-   "I haven't got a major in-ring warning from the completed show.";
+   "Nobody gave me a major in-ring concern tonight. Let's keep that standard.";
  const recommendation=injuries>0?
   "Medical clearance first. Rebuild the next card around the people who can actually wrestle.":
   linked===0&&matches.length?
@@ -88,7 +88,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "Those wrestlers worked well together. Revisit the pairing, but give them a new reason to meet.":
   receipt.segments.length===0?
    "Put a short confrontation between the matches. Let the audience know why the next fight matters.":
-   "Keep the strongest story moving, trim the less convincing parts and set one unmistakable hook for next week.";
+   "Pick the story the crowd cared about most and give them a reason to tune in next week. We don't need five hooks when one good one will do.";
  const parting=voice==="FRANK"?" No need to dress it up.":
   voice==="PATIENT"?" Small improvements next week will add up.":
   voice==="ECCENTRIC"?" And give them one moment they'll argue about on the way out.":

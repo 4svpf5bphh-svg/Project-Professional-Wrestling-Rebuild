@@ -383,9 +383,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
-  office.append(node("h3","",report.reporter+" · Road Agent's Report"),
-   node("strong","",report.headline),node("p","",report.praise),
-   node("p","",report.concern),node("p","",report.recommendation));
+  office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
+   node("h3","",report.reporter+" · Road Agent"),
+   node("strong","",report.headline),
+   node("p","ppw-road-agent-voice",report.praise),
+   node("p","ppw-road-agent-voice",report.concern),
+   node("p","ppw-road-agent-next",report.recommendation));
   const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
   if(strongest)office.append(node("small","ppw-muted",
    "Standout: "+strongest.headline));
@@ -400,7 +403,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     gorilla.policy.replaceAll("_"," ").toLowerCase()),
    node("p","","The crew's account of what happened between the curtain and the ring."));
   if(!gorilla.incidents.length)position.append(node("p","",
-   "No exceptional production incident required a change of plan."));
+   "The crew kept the show on course. No production intervention was needed."));
   for(const incident of gorilla.incidents.slice(0,12)){
    const line=node("article","ppw-gorilla-incident");
    const source=show.entries.find(entry=>entry.position===incident.position);
@@ -529,6 +532,9 @@ function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:Ri
   !copy.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))return;
  region.querySelector(".ppw-ringside-await")?.remove();
  region.dataset.aiStatus="ready";
+ // Verified editorial joins these scenes; mechanical interstitials belong
+ // only to the offline fallback, which has no authored transitions.
+ for(const bridge of root.querySelectorAll(".ppw-show-transition"))bridge.remove();
  const status=region.querySelector(".ppw-ringside-ai-status");
  if(status)status.textContent="GROQ ARTICLE · VERIFIED RECORD";
  const headline=region.querySelector(".ppw-final-bell-headline");

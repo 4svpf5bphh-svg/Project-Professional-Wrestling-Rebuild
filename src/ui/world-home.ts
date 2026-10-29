@@ -215,16 +215,19 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const dashboard=el("section","ppw-home-dashboard");
    dashboard.setAttribute("aria-label","Your promotion at a glance");
    const next=promotion.nextShow;
-   dashboard.append(control(next?"NEXT SHOW · "+next.showName:"NEXT SHOW · Not yet planned",
+   const nextAction=control(next?"NEXT SHOW · "+next.showName:"BOOK YOUR NEXT SHOW",
     next?"Year "+next.year+" · Week "+next.week+" · "+
-     (next.ready?"Card is prepared":"Booking needs attention"):
-     "Put your next show in the calendar, then write the card.",
-    port.planner,"▣"));
+     (next.ready?"Card ready for showtime":"Finish preparing the card"):
+     "Set an event date and start booking your card.",port.planner,"▣");
+   nextAction.classList.add("ppw-home-next-action");
+   if(next?.ready)nextAction.dataset.ready="true";
+   dashboard.append(nextAction);
    const last=promotion.latestShow;
-   dashboard.append(control(last?"LATEST SHOW · "+last.showName:"LATEST SHOW · Results archive",
-    last?"Year "+last.year+" · Week "+last.week+" · Audience response "+
-     Math.round(last.crowdResponse)+"/100":
-     "See your completed events and verified finishes.",port.results,"★"));
+   const resultsAction=control(last?"LATEST RESULT · "+last.showName:"RESULTS ARCHIVE",
+    last?"Year "+last.year+" · Week "+last.week+" · Read the broadcast recap":
+     "Your certified show history, title changes and match finishes.",port.results,"★");
+   resultsAction.classList.add("ppw-home-result-action");
+   dashboard.append(resultsAction);
    const standing=promotion.standing;
    dashboard.append(control(standing?"WORLD RANK · #"+standing.position+" / "+standing.total:
     "WORLD RANK · Standings",
@@ -370,11 +373,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
        .finally(()=>{claimingKP=false;draw();});
      },icon:"★",level:"priority"});
    }
-  if(bookingOpen&&(world.year>1||world.week>1)){
-   if(!progressedFrom)items.push({title:"Last week's results",detail:
-    "The previous week's shows have been completed. Read your latest broadcasts.",
-    action:port.results,icon:"★",level:"normal"});
-  }
   if(bookingOpen&&attention?.plannedShows===0)
    items.push({title:"Plan this week's show",detail:
     "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
@@ -442,7 +440,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    entry.classList.add("ppw-home-action-"+item.level);
    brief.append(entry);
   }
-  root.insertBefore(brief,stats);
+  // Immediate decisions are above passive links; no additional reads.
+  root.insertBefore(brief,root.querySelector(".ppw-home-dashboard")??stats);
   const results=attention?.offerResults??[];
   if(results.length){
    const wire=el("section","ppw-home-wire");

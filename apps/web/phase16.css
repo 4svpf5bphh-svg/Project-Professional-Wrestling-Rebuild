@@ -1,0 +1,142 @@
+/* Phase 16: distinct wrestling surfaces, built on the current DOM and immutable views.
+   No external images/fonts, background requests, vibration or audio. */
+#game .ppw-home-hero{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+#game .ppw-home-promotion-mark{display:grid;place-items:center;position:relative;
+ width:clamp(92px,24vw,154px);min-height:78px;max-width:100%;margin:7px 0 2px;
+ overflow:visible;font-size:clamp(22px,6vw,32px);line-height:1;text-align:center}
+#game .ppw-home-promotion-mark img{width:100%;height:auto;max-height:122px;
+ object-fit:contain;object-position:center;filter:drop-shadow(0 5px 8px #0007)}
+#game .ppw-home-promotion-mark[data-logo-ready=true]{font-size:0}
+#game .ppw-home-hero h2{margin:8px 0 4px;max-width:100%;overflow-wrap:anywhere}
+#game .ppw-home-brief{margin:12px 0 13px;padding:14px}
+#game .ppw-home-dashboard{display:grid;gap:9px;margin:4px 0 16px}
+#game .ppw-home-dashboard .ppw-home-tile{min-height:74px}
+#game .ppw-home-next-action{border-left:4px solid #ffbe64!important;
+ background:linear-gradient(116deg,#383044,#252346)!important}
+#game .ppw-home-next-action[data-ready=true]{border-left-color:#76edc3!important}
+#game .ppw-home-result-action{border-left:3px solid #60d4ed!important}
+#game .ppw-home-brief-title{align-items:center;flex-wrap:wrap}
+#game .ppw-home-brief>.ppw-home-tile{min-height:68px;padding:11px 12px}
+#game .ppw-staff-contract-ledger .ppw-staff-role-row{align-items:flex-start;gap:9px;
+ border-left:3px solid #edbd77;padding:12px}
+#game .ppw-staff-contract-ledger .ppw-staff-role-info{flex:1 1 170px}
+#game .ppw-staff-contract-total{padding:11px 13px;margin:10px 0;
+ border-radius:8px;background:#222b45;color:#ffe4a8;font-weight:850;font-size:13px}
+#game .ppw-staff-contract-ledger .ppw-staff-actions{width:100%;justify-content:flex-start}
+#game .ppw-staff-meetings .ppw-staff-full-meeting{margin-top:12px}
+#game .ppw-staff-meeting-brief{border-left:3px solid #69cbea}
+#game .ppw-staff-meeting-brief summary{min-height:48px}
+#game .ppw-post-show-road-agent{position:relative;margin:12px 0;padding:17px 16px;
+ border:1px solid #b4a76b;border-left:4px solid #f1bd5d;
+ background:linear-gradient(120deg,#302c3f,#161f32);border-radius:8px}
+#game .ppw-post-show-road-agent h3{color:#ffe29b;font-size:17px;margin:5px 0}
+#game .ppw-post-show-road-agent>strong{display:block;font-size:16px;margin:3px 0 12px}
+#game .ppw-post-show-road-agent .ppw-road-agent-voice{margin:0 0 11px;
+ max-width:70ch;line-height:1.65}
+#game .ppw-post-show-road-agent .ppw-road-agent-next{margin-top:13px;
+ padding-top:12px;border-top:1px solid #e5c67c45;color:#ffebbb}
+#game .ppw-results-page[data-page=full] .ppw-result-lineup{
+ max-width:100%;padding:8px 5px;gap:7px}
+#game .ppw-result-competitor-name{font-size:11px;line-height:1.25}
+#game .ppw-show-transition{max-width:68ch;font-size:13px;line-height:1.6}
+#game .ppw-news-story.ppw-news-lead{padding:18px 16px;border:1px solid #deb763;
+ border-left:5px solid #ffc967;background:linear-gradient(130deg,#332d40,#1b203a)}
+#game .ppw-news-lead .ppw-news-story-title{font-size:clamp(19px,5vw,27px);
+ line-height:1.18;letter-spacing:-.02em}
+#game .ppw-news-story .ppw-news-desk{font-size:10px;letter-spacing:.11em}
+#game .ppw-industry-record-book{counter-reset:record}
+#game .ppw-industry-record-row{min-width:0;border-left:3px solid #68cbe8;
+ padding:13px;margin-bottom:8px}
+#game .ppw-industry-world-rank{border-left-color:#f1c06b}
+#game .ppw-honours-trophy{height:152px;display:grid;place-items:center;
+ background:radial-gradient(ellipse at center,#b28b3d35,transparent 67%);
+ margin:2px auto 4px;position:relative}
+#game .ppw-honours-trophy-cup{display:grid;place-items:center;
+ width:88px;height:92px;font-size:36px;color:#4d2e16;
+ border:7px double #fff0b3;border-radius:18px 18px 34px 34px;
+ background:radial-gradient(circle at 25% 15%,#fff0a6,#c88b35 65%,#6e401e);
+ box-shadow:0 12px 0 -2px #b78b42,0 20px 0 -5px #f1cc70,0 27px 25px #0009}
+#game .ppw-honours-trophy:before,#game .ppw-honours-trophy:after{content:"";
+ width:26px;height:49px;position:absolute;top:34px;border:8px solid #bf9345;
+ border-radius:50%;z-index:-1}
+#game .ppw-honours-trophy:before{transform:translateX(-49px)}
+#game .ppw-honours-trophy:after{transform:translateX(49px)}
+#game .ppw-heritage-empty-spotlight{text-align:center;padding:16px;margin:12px 0 20px;
+ border-top:1px solid #cfae6a;border-bottom:1px solid #cfae6a;
+ font-size:14px;line-height:1.65;color:#f4dab0}
+#game .ppw-heritage-honour{position:relative;padding:17px 14px 17px 48px;
+ border-left:3px solid #e2b764;background:linear-gradient(120deg,#393043,#1e2035)}
+#game .ppw-heritage-honour:before{content:"✦";position:absolute;left:14px;top:18px;
+ font-size:19px;color:#f3cb70}
+#game .ppw-heritage-honour-name{font-size:clamp(18px,4vw,25px);color:#ffedc0}
+#game .ppw-hall-empty-wall{display:flex;flex-direction:column;align-items:center;
+ text-align:center;gap:14px;padding:34px 18px;
+ border:1px solid #b89b65;border-radius:8px;
+ background:repeating-linear-gradient(135deg,#291f35,#291f35 20px,#30263b 21px,#30263b 24px)}
+#game .ppw-hall-emblem{width:90px;height:90px;display:grid;place-items:center;
+ border:3px double #e0b870;border-radius:50%;font-size:46px;color:#f1cb83;
+ box-shadow:0 0 0 7px #e0b87016}
+#game .ppw-hall-empty-wall strong{font-size:clamp(21px,6vw,31px);
+ color:#ffe4a0;letter-spacing:.03em}
+#game .ppw-hall-empty-wall p{max-width:44ch;line-height:1.7;margin:0}
+#game .ppw-heritage-inductee{position:relative;padding-left:40px;
+ background:linear-gradient(110deg,#3b2d3f,#1c253c);border:1px solid #ac9167}
+#game .ppw-hall-induction-mark{position:absolute;left:12px;top:15px;
+ font-size:18px;color:#ffe4a0}
+#game .ppw-belt-insignia{align-self:center}
+#game .ppw-championship-desk .ppw-belt-card[open]{border-color:#f2ca76;
+ box-shadow:0 7px 28px #0008}
+#game .ppw-championship-desk .ppw-belt-crowned .ppw-belt-current{
+ color:#ffe4a0;font-size:clamp(16px,4vw,22px)}
+#game .ppw-championship-desk .ppw-belt-primary{border-left:5px solid #dcb05a}
+#game .ppw-championship-desk .ppw-belt-secondary{border-left:4px solid #75b5d8}
+/* Backstage is intentionally a separate iPhone Messages-like LIGHT surface. */
+html[data-ppw-screen=backstage] #game .ppw-messenger{max-width:780px;
+ padding-bottom:calc(100px + env(safe-area-inset-bottom));overflow-x:hidden}
+html[data-ppw-screen=backstage] #game .ppw-backstage-inbox{box-shadow:none!important;
+ border:1px solid #dbe2ed!important}
+html[data-ppw-screen=backstage] #game :is(.ppw-backstage-contact,
+ .ppw-backstage-inbox-search,.ppw-backstage-filters button,
+ .ppw-persona-button,.ppw-backstage-phone-back,.ppw-backstage-archive){
+ box-shadow:none!important;text-shadow:none!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact{
+ border-color:#e3e8f0!important;border-radius:0!important;
+ min-height:66px!important;padding:11px 13px!important;background:#fff!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact:active{background:#eef4ff!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact.ppw-backstage-unread{
+ background:#f0f6ff!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-inbox-search{
+ background:#fff!important;color:#25354d!important;
+ border:1px solid #c9d4e2!important;border-radius:12px!important}
+html[data-ppw-screen=backstage] #game .ppw-persona-chat{max-width:100%;
+ overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+html[data-ppw-screen=backstage] #game .ppw-persona-bubble{
+ max-width:min(82%,430px);padding:11px 14px!important;
+ border:0!important;border-radius:17px;line-height:1.5;overflow-wrap:anywhere}
+html[data-ppw-screen=backstage] #game .ppw-persona-in{border-bottom-left-radius:5px}
+html[data-ppw-screen=backstage] #game .ppw-persona-out{border-bottom-right-radius:5px}
+html[data-ppw-screen=backstage] #game .ppw-backstage-composer{
+ border-radius:14px!important;box-shadow:none!important}
+html[data-ppw-screen=backstage] #game .ppw-persona-button{border-radius:11px!important;
+ min-height:44px;box-shadow:none!important}
+html[data-ppw-screen=backstage] #game :is(.ppw-persona-button,
+ .ppw-backstage-phone-back,.ppw-backstage-contact):focus-visible{
+ outline:3px solid #3479dc!important;outline-offset:2px!important}
+@media(max-width:420px){
+ #game .ppw-home-hero{min-height:0}
+ #game .ppw-home-promotion-mark{min-height:70px}
+ #game .ppw-staff-contract-ledger .ppw-staff-role-row{padding:10px}
+ #game .ppw-honours-trophy{height:135px}
+ html[data-ppw-screen=backstage] #game .ppw-messenger{padding-left:8px;padding-right:8px}
+ html[data-ppw-screen=backstage] #game .ppw-persona-bubble{max-width:86%}
+}
+@media(prefers-reduced-motion:no-preference){
+ #game .ppw-home-next-action,#game .ppw-home-result-action,
+ #game .ppw-news-story{transition:border-color .17s ease,background .17s ease}
+ #game .ppw-honours-trophy-cup{animation:ppw-award-arrive .4s ease-out both}
+ @keyframes ppw-award-arrive{from{opacity:.3;transform:translateY(6px)}
+ to{opacity:1;transform:none}}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-honours-trophy-cup{animation:none}
+}

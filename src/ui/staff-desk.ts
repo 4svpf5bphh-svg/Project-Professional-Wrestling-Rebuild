@@ -180,7 +180,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
-    "Nine departments. Advice from verified shows and available talent; vacancies retain basic house cover."));
+    "Your people, their opinions and the decisions that matter. Open a department for its full report."));
   const attendees=el("div","ppw-staff-meeting-grid");
   for(const brief of view.meetings??[]){
    const slot=el("details","ppw-staff-meeting-brief");
@@ -267,10 +267,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("span","",member?
      member.personality+" · "+member.specialism+" · "+money(member.weeklySalary)+"/wk":
      "Basic cover · no weekly staff wage"));
-   if(member)detail.append(el("span","",
+   if(member&&pane!=="CONTRACTS")detail.append(el("span","",
     "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
     "  ·  RELIABILITY "+member.reliability+
     "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
+   if(member&&pane==="CONTRACTS")detail.append(el("span","",
+    member.weeksRemaining+" weeks remaining · "+
+    money(member.weeklySalary)+" per week · "+
+    money(member.buyoutCost)+" buyout"));
    item.append(detail);
    if(member){
     if(pane==="CONTRACTS"){
@@ -302,8 +306,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   }
   team.append(teamRows);
   if(pane==="CONTRACTS"){
-   team.querySelector("h2")!.textContent="Staff contracts";
-   team.querySelector(".ppw-staff-muted")!.textContent="Renew approaching terms or buy out an existing agreement. Staff wages are paid weekly.";
+   team.classList.add("ppw-staff-contract-ledger");
+   team.querySelector("h2")!.textContent="Contract decisions";
+   team.querySelector(".ppw-staff-muted")!.textContent=
+    "Employed staff only. Renewals and buyouts have real weekly payroll consequences; vacancies are managed under My Staff.";
+   team.insertBefore(el("p","ppw-staff-contract-total",
+    view.employees.length+" active agreements · "+money(view.weeklyPayroll)+"/week committed"),
+    teamRows);
   }
   if(pane==="TEAM"||pane==="CONTRACTS")root.append(team);
   const market=el("section","ppw-staff-panel ppw-staff-market");
