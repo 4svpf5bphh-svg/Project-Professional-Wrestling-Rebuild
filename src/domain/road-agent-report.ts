@@ -23,11 +23,18 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  });
  const best=[...matches].sort((a,b)=>
   b.f.ratingStars-a.f.ratingStars||b.m.crowdResponse-a.m.crowdResponse)[0];
- const weakest=[...matches].sort((a,b)=>a.f.ratingStars-b.f.ratingStars)[0];
+ // Review the actual production problem, not simply the lowest star rating.
+ // A crowd-pleasing contest can still have poor execution, and the first
+ // overrun on the card is not necessarily the most disruptive.
+ const poorExecution=[...matches].sort((a,b)=>
+  a.f.executionQuality-b.f.executionQuality||a.m.position-b.m.position)
+  .find(x=>x.f.executionQuality<55);
  const injuries=matches.reduce((sum,x)=>sum+x.f.injuries.length,0);
  const linked=matches.filter(x=>(x.f.linkedProgrammes??0)>0).length;
  const highChem=matches.find(x=>x.f.chemistryModifier>=3);
- const lowChem=matches.find(x=>x.f.chemistryModifier<=-3);
+ const lowChem=[...matches].sort((a,b)=>
+  a.f.chemistryModifier-b.f.chemistryModifier||a.m.position-b.m.position)
+  .find(x=>x.f.chemistryModifier<=-3);
  const reporter=agent?.name??"PPW House Road Agent";
  const voice=agent?.personality??"BALANCED";
  const bestCrowd=best?.m.crowdResponse??0;
@@ -65,11 +72,15 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "I'd build on "+place+". It "+mood+
     "; "+(finishPoint||"the audience had a reason to pay attention.")
  ):"We didn't have a contest to judge. I'd like a proper bell-to-bell bout on the next show.";
- const ranLong=matches.find(x=>x.f.plannedMinutes!==undefined&&
-  x.f.actualMinutes-x.f.plannedMinutes>=5);
+ const ranLong=[...matches].filter(x=>x.f.plannedMinutes!==undefined)
+  .sort((a,b)=>
+   (b.f.actualMinutes-b.f.plannedMinutes!)-
+    (a.f.actualMinutes-a.f.plannedMinutes!)||
+    a.m.position-b.m.position)
+  .find(x=>x.f.actualMinutes-x.f.plannedMinutes!>=5);
  const boutName=(position:number)=>position===opener?"the opener":
   position===finalMatch?"the closing match":"the match at slot "+(position+1);
- const worstLabel=weakest?boutName(weakest.m.position):"the match";
+ const worstLabel=poorExecution?boutName(poorExecution.m.position):"the match";
  const concern=injuries>0?
   (voice==="FRANK"?"First priority: we've got an injury to deal with. ":
    "We need to check on the injured talent. ")+
@@ -79,7 +90,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
     (ranLong.f.actualMinutes-ranLong.f.plannedMinutes!)+
     " minutes longer than planned. That put the rest of the running order under pressure. "+
     "We can protect the booked match and still keep a better eye on the clock.":
-  weakest&&weakest.f.executionQuality<55?
+  poorExecution?
    "I'd look again at "+worstLabel+". The work never found a comfortable rhythm. "+
     "If you use that pairing again, give them a simpler match to settle into.":
   lowChem?
@@ -93,7 +104,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   ranLong?
    "Before the next show, review the timing of "+boutName(ranLong.m.position)+
    ". Give a longer bout the time it needs on the running sheet and tighten only unbooked transitions; don't sacrifice another scripted scene.":
-  weakest&&weakest.f.executionQuality<55?
+  poorExecution?
    "If you revisit "+worstLabel+", give the wrestlers a cleaner, shorter structure. Let them build confidence before adding extra spots.":
   lowChem?
    "Give the wrestlers from "+boutName(lowChem.m.position)+
