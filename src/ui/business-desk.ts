@@ -157,6 +157,31 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
+   // Context from the existing workspace, never a projection of future
+   // bookings, ticket sales or the next World settlement.
+   const overview=el("section","ppw-business-pulse");
+   const risk=view.financialDistress,margin=view.recurringMargin;
+   overview.dataset.health=risk==="DISTRESSED"||risk==="CRISIS"?"warning":
+    risk==="WATCH"?"watch":"normal";
+   overview.append(el("span","ppw-business-kicker","THE COMPANY / THIS WEEK"),
+    el("h2","","Your trading position"));
+   const headline=margin===null?
+    "Recurring operating margin is not configured yet.":
+    margin>=0?
+     "Recurring income covers regular commitments by "+money(margin)+" per week.":
+     "Regular commitments exceed recurring income by "+money(-margin)+" per week.";
+   overview.append(el("strong","ppw-business-pulse-headline",headline));
+   const context=risk==="CRISIS"||risk==="DISTRESSED"?
+    "The company is under sustained financial pressure. Review spending and show returns before committing to new costs.":
+    risk==="WATCH"?
+    "Your financial position needs monitoring. A strong event can help, but its takings are not guaranteed.":
+    "This is a baseline before event takings, venue costs and irregular contract settlements — not a profit forecast.";
+   overview.append(el("p","ppw-business-muted",context));
+   if(view.runwayWeeks!==null&&view.runwayWeeks<10)
+    overview.append(el("p","ppw-business-runway-warning",
+     "Current cash-runway estimate: "+view.runwayWeeks.toFixed(1)+
+      " weeks at the recently observed rate. This is not a deadline or a Game Over."));
+   root.append(overview);
    const cards=el("section","ppw-business-grid");
    cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated",
      "The market where your promotion is based"),

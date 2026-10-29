@@ -208,3 +208,41 @@ html[data-ppw-screen=backstage] #game :is(.ppw-persona-button,
  #game.ppw-editorial-ready .ppw-result-story{padding:4px 2px 17px}
  #game .ppw-ringside-conclusion{padding:17px 14px}
 }
+
+
+/* The front office answers how the company is trading before the ledger.
+   The source is the existing authenticated business workspace. */
+#game .ppw-business-pulse{padding:17px 15px;margin:10px 0 16px;
+ background:linear-gradient(116deg,#1c3045,#142032);
+ border-top:2px solid #6fcee3;border-bottom:1px solid #496b82}
+#game .ppw-business-pulse h2{font-size:clamp(19px,4.4vw,25px);
+ margin:8px 0;color:#f2f6fd}
+#game .ppw-business-pulse-headline{display:block;font-size:clamp(18px,4.7vw,26px);
+ line-height:1.3;letter-spacing:-.025em;color:#a8ffdc;margin:12px 0 7px}
+#game .ppw-business-pulse[data-health=watch]{border-top-color:#d9b06a}
+#game .ppw-business-pulse[data-health=warning]{border-top-color:#ff8f85;
+ background:linear-gradient(115deg,#382b3d,#1d2738)}
+#game .ppw-business-pulse[data-health=warning] .ppw-business-pulse-headline{color:#ffcfb3}
+#game .ppw-business-runway-warning{padding:10px 12px;
+ border-left:3px solid #ffc36e;background:#ffe5a914;
+ font-size:13px;line-height:1.55;color:#ffe8bf}
+#game .ppw-business-nav .ppw-business-action{min-height:44px}
+/* Backstage belongs to the Messages app, not underneath the normal promo
+   dashboard: a visible in-screen back button returns to regular navigation. */
+html[data-ppw-screen=backstage],html[data-ppw-screen=backstage] body{background:#eef2f7!important}
+html[data-ppw-screen=backstage] #account{display:none!important}
+html[data-ppw-screen=backstage] body{padding-bottom:env(safe-area-inset-bottom)!important}
+html[data-ppw-screen=backstage] #game{padding-top:max(0px,env(safe-area-inset-top))}
+html[data-ppw-screen=backstage] #game .ppw-messenger{
+ border-radius:0!important;border:0!important;min-height:100dvh}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact-preview{
+ color:#54647a!important;font-size:13px;line-height:1.35}
+html[data-ppw-screen=backstage] #game .ppw-backstage-contact-stamp{color:#63768a!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-filters button{
+ border:1px solid #ccd6e3!important;color:#3b536b!important;background:#fff!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-filters .ppw-persona-selected{
+ background:#dceaff!important;color:#1c4a82!important;border-color:#9fbbe1!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger-inbox-label{color:#527391!important}
+html[data-ppw-screen=backstage] #game .ppw-messenger-inbox-count{color:#3c5e7d!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-unread-dot{background:#2779ee;box-shadow:none!important}
+html[data-ppw-screen=backstage] #game .ppw-backstage-phone-header{top:max(0px,env(safe-area-inset-top))}

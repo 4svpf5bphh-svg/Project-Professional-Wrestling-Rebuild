@@ -764,6 +764,9 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  await page.goto("/#/backstage");
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-messenger.ppw-messenger-inbox")).toHaveCount(1);
+ await expect(page.locator("#account")).toBeHidden();
+ await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
+ await expect(page.getByRole("button",{name:"Leave Backstage"})).toBeVisible();
  await expect(page.getByRole("navigation",{name:"Backstage messages and contacts"})).toBeVisible();
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 chats");
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("1 unread");

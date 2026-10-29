@@ -52,6 +52,9 @@ test("iPhone: voluntary restructuring previews exact cuts and requires explicit 
  });
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Financial recovery"})).toBeVisible();
+ await expect(page.locator(".ppw-business-pulse")).toHaveAttribute("data-health","warning");
+ await expect(page.locator(".ppw-business-pulse-headline")).toContainText("US$19,600");
+ await expect(page.locator(".ppw-business-runway-warning")).toContainText("3.8 weeks");
  await expect(page.getByRole("button",{name:"Review restructuring options"})).toBeVisible();
  expect(methods).toEqual(["business"]);
  await page.getByRole("button",{name:"Review restructuring options"}).click();
