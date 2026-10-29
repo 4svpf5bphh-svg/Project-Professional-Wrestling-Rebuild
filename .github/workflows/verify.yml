@@ -490,3 +490,7 @@ jobs:
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:postgres
+      - name: Verify 52-week AI World with isolated database load
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: npm run test:world-year
