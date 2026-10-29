@@ -62,18 +62,22 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    await withWorldTransaction(db.pool,tx=>tx.query(
     "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
     [world]));
+   diagnostic("lock-request",{week});
    const locked=await lockWorldWeek(db.pool,{
     worldId:world,requestId:"phase13-lock-"+week,
     expectedRevision:Number(state[0]!.revision)});
    assert.equal(locked.status,"APPLIED","Week "+week+" must lock authoritatively");
+   diagnostic("lock-applied",{week});
    const trace:string[]=[];
    let published=false;
    for(let attempt=0;attempt<4;attempt++){
+    diagnostic("resolution-request",{week,attempt});
     const run=await driveWorldResolution(db.pool,{
      worldId:world,resolutionId:"phase13-resolution",maxStages:16,
      manualRecovery:true,
     });
     trace.push(...run.steps.map(s=>s.action));
+    diagnostic("resolution-status",{week,status:run.status});
     if(run.status==="PUBLISHED"){published=true;break;}
     assert.equal(run.status,"LIMIT_REACHED",
      "Unexpected blocker in real Week "+week+": "+JSON.stringify(run));
