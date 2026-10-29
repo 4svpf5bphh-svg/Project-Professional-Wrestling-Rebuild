@@ -64,6 +64,10 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_wrestler_relationships WHERE world_id=$1",[worldId]))[0]!.n,"0");
   assert.deepEqual(await addShow(2,85),{appearances:2,developments:2});
+  // Read a Week 2 completed match from the Week 2 World clock, rather than
+  // asking for "recent" appearances while the fixture is still on Week 1.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
   const rel=await read<{professional_trust:number;familiarity:number;
    affinity:number;rivalry_heat:number}>([
    "SELECT professional_trust,familiarity,affinity,rivalry_heat",
