@@ -124,7 +124,10 @@ export async function mountShowResults(root:HTMLElement,port:{
   renderBroadcast(root,show,port.openNext,port.mediaScrum);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
-   if(result.status==="ready"&&result.review)
+   if(result.status==="ready"&&result.review&&
+    Array.isArray(result.review.slots)&&
+    result.review.slots.length===show.entries.length&&
+    result.review.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))
     insertRingsideEditorial(root,show,result.review);
    else markRingsideFallback(root,show);
   }).catch(()=>markRingsideFallback(root,show));
@@ -536,6 +539,7 @@ function metric(value:string,caption:string){
 function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:RingsideCopy){
  const region=root.querySelector<HTMLElement>(".ppw-ringside-dispatch");
  if(!region||region.dataset.showId!==show.showId||
+  copy.slots.length!==show.entries.length||
   !copy.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))return;
  region.querySelector(".ppw-ringside-await")?.remove();
  region.dataset.aiStatus="ready";

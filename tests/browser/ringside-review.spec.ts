@@ -255,3 +255,30 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("Ringside: partial cached article falls back to canonical results",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let reads=0,commentary=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  if(r.request().postDataJSON().method==="results")reads++;
+  return r.fulfill({json:r.request().postDataJSON().method==="resultsArchive"?{
+   items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+    crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:show});
+ });
+ await page.route("**/api/results-commentary",r=>{
+  commentary++;
+  return r.fulfill({json:{status:"ready",review:{
+   ...review,slots:[review.slots[0]]
+  }}});
+ });
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await expect(page.locator(".ppw-ringside-dispatch")).toHaveAttribute("data-ai-status","fallback");
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+ await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+ await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+ await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
+ await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
+ expect(reads).toBe(1);expect(commentary).toBe(1);
+});
