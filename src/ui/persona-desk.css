@@ -287,7 +287,10 @@
 .ppw-messenger-inbox .ppw-backstage-contact-stamp{color:#868a9a!important}
 .ppw-messenger-inbox .ppw-backstage-contact.ppw-backstage-unread{background:#e7f1ff!important}
 .ppw-messenger-inbox .ppw-backstage-avatar{background:linear-gradient(140deg,#41a0ef,#5566d5)!important}
-.ppw-messenger-inbox .ppw-messenger-awaiting{color:#165ad0!important}
+.ppw-messenger-inbox .ppw-messenger-awaiting{
+ background:#175dcc!important;color:#fff!important;
+ border-radius:7px!important;padding:5px 9px!important;
+ font-size:10px;font-weight:850;letter-spacing:.03em}
 .ppw-messenger-inbox .ppw-muted{color:#767a89!important}
 .ppw-messenger .ppw-gimmick-choice{display:grid;gap:4px;text-align:left;
  background:linear-gradient(120deg,#1e3156,#27304b)!important;
