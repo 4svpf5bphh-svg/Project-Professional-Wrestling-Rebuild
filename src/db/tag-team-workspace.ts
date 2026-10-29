@@ -68,7 +68,7 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
    "FROM ppw_trios t JOIN ppw_trio_members m",
    "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
    "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
-   "GROUP BY t.trio_id,t.name,t.formed_week_index,t.naming_promotion_id",
+   "GROUP BY t.world_id,t.trio_id,t.name,t.formed_week_index,t.naming_promotion_id",
    "HAVING count(*)=3 AND count(*)=(SELECT count(*) FROM ppw_trio_members",
    "other WHERE other.world_id=t.world_id AND other.trio_id=t.trio_id",
    "AND other.active) ORDER BY t.name,t.trio_id LIMIT 101"
