@@ -73,6 +73,14 @@ test("Gorilla retains edits across show tabs and replays a lost save receipt wit
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>{
   const req=route.request().postDataJSON() as Record<string,unknown>;
+  if(req.method==="staff")return route.fulfill({json:{
+   year:1,week:8,worldRevision:revision,canEdit:true,
+   gorillaPolicy:"FOLLOW_THE_CROWD",allowUnfinishedFallback:false,
+   allowLogisticsFallback:false,autoRenewSameTerms:false,permittedDays:[],
+   permittedVenueIds:[],lockedLogisticsDelegated:false,talentManager:null,
+   availableManagers:[],weeklyPayroll:0,promotionCash:300000,
+   employees:[],market:[],employmentHistory:[],venues:[],notices:[]
+  }});
   if(req.method==="gorillaWorkspace"){
    reads++;
    return route.fulfill({json:{year:1,week:8,worldRevision:revision,canEdit:true,
@@ -108,6 +116,9 @@ test("Gorilla retains edits across show tabs and replays a lost save receipt wit
  await page.getByRole("button",{name:/Bravo/}).click();
  await page.getByRole("combobox",{name:"Exceptional crowd response"})
   .selectOption("RESET_COMMENTARY");
+ page.once("dialog",d=>void d.dismiss());
+ await page.getByRole("button",{name:"← Staff Office"}).click();
+ await expect(page.getByRole("heading",{name:"At the curtain"})).toBeVisible();
  await expect(page.getByRole("button",{name:/Alpha/})).toContainText("UNSAVED");
  await page.getByRole("button",{name:/Alpha/}).click();
  await expect(page.getByRole("combobox",{name:"Exceptional crowd response"}))
