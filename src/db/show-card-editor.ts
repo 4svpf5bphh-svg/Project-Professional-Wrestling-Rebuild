@@ -262,6 +262,40 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "ORDER BY t.name,t.team_id LIMIT 101"
   ].join(" "),[id.worldId,id.promotionId,(show.year-1)*52+show.week-1]);
   if(bookableTeams.length>100)throw new Error("Too many eligible teams");
+  // An official 3v3 shortcut requires all THREE partners available for this
+  // exact show; it never grants a title or bypasses normal card validation.
+  const bookableTrios=await tx.query<{trio_id:string;name:string;
+   members:{personId:string;contractId:string;name:string}[]}>([
+   "SELECT t.trio_id,t.name,jsonb_agg(jsonb_build_object(",
+   "'personId',m.person_id,'contractId',rights.contract_id,",
+   "'name',person.name) ORDER BY m.person_id) AS members",
+   "FROM ppw_trios t JOIN ppw_trio_members m",
+   "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
+   "JOIN ppw_people person ON person.world_id=m.world_id",
+   "AND person.person_id=m.person_id AND person.status='ACTIVE'",
+   "JOIN LATERAL (SELECT c.contract_id FROM ppw_contracts c",
+   "WHERE c.world_id=t.world_id AND c.person_id=m.person_id",
+   "AND c.promotion_id=$2 AND c.status='SIGNED'",
+   "AND c.start_week_index<=$3 AND c.expires_week_index>=$3",
+   "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+   "AND NOT EXISTS(SELECT 1 FROM ppw_contracts other",
+   "WHERE other.world_id=c.world_id AND other.person_id=c.person_id",
+   "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
+   "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
+   "ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "c.contract_id LIMIT 1) rights ON TRUE",
+   "WHERE t.world_id=$1 AND t.status='ACTIVE'",
+   "AND NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
+   "WHERE absence.world_id=m.world_id AND absence.person_id=m.person_id",
+   "AND absence.status='ACTIVE' AND absence.injured_week_index<$3",
+   "AND absence.cleared_week_index>$3)",
+   "GROUP BY t.world_id,t.trio_id,t.name HAVING count(*)=3",
+   "AND count(*)=(SELECT count(*) FROM ppw_trio_members all_members",
+   "WHERE all_members.world_id=t.world_id AND all_members.trio_id=t.trio_id",
+   "AND all_members.active)",
+   "ORDER BY t.name,t.trio_id LIMIT 101"
+  ].join(" "),[id.worldId,id.promotionId,(show.year-1)*52+show.week-1]);
+  if(bookableTrios.length>100)throw new Error("Too many eligible trios");
   const creativeConcerns=await creativeReviewsInTransaction(tx,id.worldId,[{
    showId:id.showId,promotionId:id.promotionId,
    weekIndex:(show.year-1)*52+show.week-1,slots,
@@ -272,6 +306,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    throw new Error("Card tournament selection exceeded safe bounds");
   return {tournamentBouts,creativeConcerns,bookableTeams:bookableTeams.map(t=>({
    teamId:t.team_id,name:t.name,members:t.members})),
+   bookableTrios:bookableTrios.map(t=>({
+    trioId:t.trio_id,name:t.name,members:t.members})),
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
