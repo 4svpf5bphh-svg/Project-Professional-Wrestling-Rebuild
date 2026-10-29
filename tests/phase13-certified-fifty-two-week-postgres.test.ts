@@ -18,10 +18,18 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
 },async()=>{
  const world="phase13-real-world-"+randomUUID(),db=postgresPool(url!,4);
  const weeks=52,started=Date.now();
+ // Diagnostic markers reveal whether a slow CI run is seeding, resolving,
+ // certifying or cleaning its disposable World. No production access.
+ const progress=(phase:string,week=0)=>
+  process.stderr.write("[year-world] "+JSON.stringify({
+   phase,week,seconds:Math.round((Date.now()-started)/1000)
+  })+"\n");
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
+  progress("genesis-start");
   await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  progress("genesis-seeded");
   const population=await withWorldTransaction(db.pool,tx=>tx.query<{
    talent:number;free_agents:number
   }>(["SELECT count(*)::integer AS talent,",
@@ -43,6 +51,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
   });
   for(let week=1;week<=weeks;week++){
    const weekStart=Date.now();
+   if(week===1||week%8===0)progress("lock-start",week);
    const state=await withWorldTransaction(db.pool,tx=>tx.query<{
     year:number;week:number;phase:string;revision:string
    }>("SELECT year,week,phase,revision::text FROM ppw_worlds WHERE world_id=$1",[world]));
@@ -107,6 +116,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
     "The authentic free-agent market should preserve credible AI card depth in Week "+week);
    assert.equal(f.weekly_ledger,1,"World should publish only once per week");
    assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
+   if(week===1||week%8===0)progress("certified",week);
    snapshots.push({week,shows:f.shows,completed:f.completed,
     certified:f.certified,matches:f.matches,cash:f.cash,
     weeklyLedger:f.weekly_ledger});
@@ -126,6 +136,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
    }>("SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[world]));
    assert.deepEqual(clock,[{year:week===52?2:1,week:week===52?1:week+1,phase:"OPEN"}]);
   }
+  progress("year-complete",weeks);
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
@@ -173,6 +184,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
   console.log("Phase 13 full-year World Lock diagnostics:",
    JSON.stringify(snapshots));
  }finally{
+  progress("cleanup-start");
   // Topological world-scoped deletion keeps this disposable fixture isolated
   // from other test Worlds, even as new World-bound PPW tables are introduced.
   try{
@@ -204,7 +216,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
     for(const name of order.reverse())await tx.query(
      "DELETE FROM "+name+" WHERE world_id=$1",[world]);
    });
-  }finally{await db.close();}
+  }finally{await db.close();progress("cleanup-complete");}
  }
 });
 
