@@ -22,3 +22,15 @@ test("creative advice is contextual and cannot select a booked winner",()=>{
   assert.doesNotMatch(JSON.stringify(note),/\b(?:100|grade|booked winner|auto-book)\b/i);
  }
 });
+
+test("creative notes address the actual trailing wrestlers rather than imaginary sides",()=>{
+ const note=suggestProgrammeAdvice({...base,sideAWins:4,sideBWins:1,
+  sideAName:"Samoa Joe",sideBName:"Matt Riddle"});
+ assert.match(note.observation,/Samoa Joe/);
+ assert.match(note.suggestion,/Matt Riddle/);
+ assert.doesNotMatch(note.suggestion,/side [AB]/i);
+ const reversed=suggestProgrammeAdvice({...base,sideAWins:0,sideBWins:3,
+  sideAName:"The Lucha Brothers",sideBName:"FTR"});
+ assert.match(reversed.observation,/FTR/);
+ assert.match(reversed.suggestion,/The Lucha Brothers/);
+});
