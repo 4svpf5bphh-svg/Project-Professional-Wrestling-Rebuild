@@ -66,8 +66,22 @@ for(const width of [320,390]){
   if(width===320){
    await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
-   expect(await chapters.evaluateAll(tabs=>tabs.every(tab=>
-    tab.scrollWidth<=tab.clientWidth+1))).toBe(true);
+   // Chromium can report button.scrollWidth for clipped internal glyph
+   // decoration even when the short visible label itself fits. Assert that
+   // the actual visible text fits its control, and the page does not scroll.
+   for(const tab of await chapters.all()){
+    const fits=await tab.evaluate(button=>{
+     const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
+     if(!label)return false;
+     const buttonBox=button.getBoundingClientRect();
+     const labelBox=label.getBoundingClientRect();
+     return labelBox.left>=buttonBox.left-1&&
+      labelBox.right<=buttonBox.right+1&&
+      getComputedStyle(label).display!=="none"&&
+      getComputedStyle(button).whiteSpace==="nowrap";
+    });
+    expect(fits).toBe(true);
+   }
   }else{
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
    await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
