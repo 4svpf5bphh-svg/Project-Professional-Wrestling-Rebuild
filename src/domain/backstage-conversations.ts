@@ -246,10 +246,48 @@ export function backstageManagerReply(decision:BackstageDecision,kind?:Backstage
   case "NOT_NOW":return "Not right now. Keep at it and we'll revisit the idea.";
  }
 }
-export function backstageReply(decision:BackstageDecision,status:string){
+const topicWrestlerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"DECLINE",string>>>>={
+ CONTRACT:{
+  TALK:"Good. I want to know where I stand before this deal runs out.",
+  DECLINE:"That's disappointing, but at least I know where you stand."},
+ MORALE:{
+  TALK:"Thanks. I needed to know you were listening.",
+  DECLINE:"That's hard to hear. I'll have to think about my next move."},
+ MOMENTUM:{
+  TALK:"All right. I don't want this cold run to become the whole story.",
+  DECLINE:"I was hoping for an opportunity to turn things around."},
+ CREATIVE:{
+  TALK:"I've got an idea in mind. I'll make the case for it when we talk.",
+  DECLINE:"I still think I've got more to offer than we're showing."},
+ PARTNERSHIP:{
+  TALK:"I appreciate it. I don't want this team falling apart.",
+  DECLINE:"We're still going to have to work out our problems somehow."},
+ ROLE_USAGE:{
+  TALK:"Good. I want to feel that the deal we agreed actually means something.",
+  DECLINE:"I signed up for a featured role. I'm not going to forget this."},
+ MEDICAL_SUPPORT:{
+  TALK:"Thanks. I'll focus on getting healthy before anything else.",
+  DECLINE:"I understand. Recovery still has to come first."},
+ BOOKING_OMISSION:{
+  TALK:"That's all I'm asking. I just want a chance to be part of the show.",
+  DECLINE:"I can't build a career sitting in the back every week."},
+ LOSS_STREAK:{
+  TALK:"I can handle the losses if there's an actual direction behind them.",
+  DECLINE:"I can put people over, but I need to know where that leaves me."},
+ TITLE_AMBITION:{
+  TALK:"Fair enough. I'll keep trying to earn that opportunity.",
+  DECLINE:"I won't stop chasing that championship."},
+ TRUST_CHECK_IN:{
+  TALK:"I want to believe that. I'll be watching what happens next.",
+  DECLINE:"That doesn't rebuild the trust we lost."}
+};
+export function backstageReply(decision:BackstageDecision,status:string,kind?:BackstageKind){
  if(status==="FULFILLED")return "You kept your word. That match meant a lot to me.";
  if(status==="BROKEN")return "You made me a booking promise and didn't deliver. I won't forget.";
  if(status==="EXCUSED")return "The circumstances changed. We couldn't reasonably follow through this time.";
+ const specific=(decision==="TALK"||decision==="DECLINE")&&kind?
+  topicWrestlerReplies[kind]?.[decision]:undefined;
+ if(specific)return specific;
  switch(decision){
   case "TALK":return "Thanks for hearing me out. It helps.";
   case "DECLINE":return "That's disappointing. I thought we could work something out.";

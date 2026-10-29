@@ -57,6 +57,12 @@ test("manager SMS reflects the subject but never grants a new gameplay promise",
  assert.match(backstageManagerReply("DECLINE","TITLE_AMBITION"),/title shot/);
  assert.match(backstageManagerReply("PROMISE_APPEARANCE","BOOKING_OMISSION"),/two weeks/);
  assert.match(backstageManagerReply("TALK"),/got my attention/);
+ assert.match(backstageReply("TALK","ANSWERED","CONTRACT"),/deal/);
+ assert.match(backstageReply("TALK","ANSWERED","MEDICAL_SUPPORT"),/healthy/);
+ assert.match(backstageReply("DECLINE","DECLINED","TITLE_AMBITION"),/championship/);
+ assert.notEqual(backstageReply("TALK","ANSWERED","CONTRACT"),
+  backstageReply("TALK","ANSWERED","LOSS_STREAK"));
+ assert.match(backstageReply("PROMISE_APPEARANCE","BROKEN","MORALE"),/didn't deliver/);
  assert.deepEqual(backstageDecisionEffect("CONTRACT","TALK"),{
   moraleDelta:0,promise:false,status:"ANSWERED"});
 });

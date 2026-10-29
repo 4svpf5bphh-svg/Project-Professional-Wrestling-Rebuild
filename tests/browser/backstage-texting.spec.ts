@@ -61,6 +61,8 @@ test("320px Backstage: actual SMS choices retry the same World command after a l
  await page.getByRole("button",{name:sentence}).click();
  await expect(page.locator(".ppw-persona-bubble.ppw-persona-out")).toContainText([sentence]);
  await expect(page.locator(".ppw-backstage-reply-choice")).toHaveCount(0);
+ await expect(page.locator(".ppw-persona-bubble.ppw-persona-in").last())
+  .toContainText("before this deal runs out");
  expect(commands).toHaveLength(2);
  expect(commands[0]).toBe(commands[1]);
  expect(writes).toBe(1);

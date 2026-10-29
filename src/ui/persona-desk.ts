@@ -538,7 +538,7 @@ export function mountPersonaDesk(root:HTMLElement,
       (Math.floor(item.respondedWeekIndex/52)+1)+" W"+
       (item.respondedWeekIndex%52+1)));
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
-     backstageReply(item.decision,item.status)));
+     backstageReply(item.decision,item.status,item.kind)));
     if(item.kind==="PARTNERSHIP"&&item.decision==="MEDIATE"&&
      item.followThroughWeekIndex===null)
      chat.append(el("small","ppw-backstage-promise",
