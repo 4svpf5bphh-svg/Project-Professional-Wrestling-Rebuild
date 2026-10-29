@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {randomUUID} from "node:crypto";
-import {postgresPool} from "../src/db/postgres.js";
+import {postgresPool,withSqlClient} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 
@@ -23,8 +23,8 @@ test("original reviewed tag teams seed once with real familiarity but zero fabri
     [worldId,"member-"+i,names[i]]);
   });
   const migration=readFileSync("db/migrations/0111_reviewed_world_tag_heritage.sql","utf8");
-  await db.pool.query(migration);
-  await db.pool.query(migration); // A deployment retry must not re-form a pair.
+  await withSqlClient(db.pool,tx=>tx.query(migration,[]));
+  await withSqlClient(db.pool,tx=>tx.query(migration,[])); // A deployment retry must not re-form a pair.
   await withWorldTransaction(db.pool,async tx=>{
    const formed=await tx.query<{name:string;members:string[]}>([
     "SELECT t.name,array_agg(p.name ORDER BY p.name) AS members",
