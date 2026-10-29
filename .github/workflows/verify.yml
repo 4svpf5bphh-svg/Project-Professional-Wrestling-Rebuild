@@ -2,6 +2,7 @@ name: Verify rebuild
 on:
   push:
   pull_request:
+  workflow_dispatch:
 # A branch's CI can be expensive; obsolete 100+ browser and database suites
 # must not pile up while newer, integrated commits are ready to verify.
 concurrency:
@@ -494,7 +495,10 @@ jobs:
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:world-year
+      # An authentic 156-week World resolution is expensive; keep it as a
+      # deliberate full-run readiness gate, not on every small PR edit.
       - name: Verify three years of real AI-controlled World Lock without production access
+        if: github.event_name == 'workflow_dispatch'
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:world-three-years
