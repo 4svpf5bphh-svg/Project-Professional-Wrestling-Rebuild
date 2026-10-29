@@ -55,3 +55,46 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test(`iPhone ${width}px: form a named trio without losing independent tag teams`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  const roster=[...wrestlers,{
+   personId:"gamma",name:"Gamma",division:"MEN",popularity:60,recognition:62,
+   momentum:60,inRingQuality:69,matchCraft:71,presentation:70
+  }];
+  let revision=4,trioCreated=false,requests=0;
+  await page.route("**/api/session",route=>route.fulfill({json:session}));
+  await page.route("**/api/card",route=>{
+   const req=route.request().postDataJSON();
+   if(req.method==="createTrio"){
+    expect(req).toMatchObject({name:"The Lightning Three",
+     expectedRevision:4,personIds:["alpha","beta","gamma"]});
+    requests++;trioCreated=true;revision=5;
+    return route.fulfill({json:{status:"APPLIED",revision:5}});
+   }
+   if(req.method==="tagTeams")return route.fulfill({json:{
+    worldRevision:revision,year:1,week:5,canEdit:true,roster,teams:[],
+    trios:trioCreated?[{trioId:"three",name:"The Lightning Three",formedWeekIndex:4,
+     members:roster.map(p=>({personId:p.personId,name:p.name,division:p.division}))}]:[]
+   }});
+   return route.fulfill({json:{}});
+  });
+  await page.goto("/#/teams");
+  await expect(page.getByRole("heading",{name:"Named Trios"})).toBeVisible();
+  const submit=page.getByRole("button",{name:/Form this trio/});
+  await expect(submit).toBeDisabled();
+  await page.getByRole("textbox",{name:"New trio name"}).fill("The Lightning Three");
+  await page.getByRole("combobox",{name:"Trio partner 1"}).selectOption("alpha");
+  await page.getByRole("combobox",{name:"Trio partner 2"}).selectOption("beta");
+  await page.getByRole("combobox",{name:"Trio partner 3"}).selectOption("gamma");
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
+  expect(requests).toBe(1);
+  await page.reload();
+  await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
