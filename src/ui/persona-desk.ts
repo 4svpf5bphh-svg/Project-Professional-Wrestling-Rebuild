@@ -32,6 +32,9 @@ export function mountPersonaDesk(root:HTMLElement,
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
+ let scrollToLatest=false;
+ let pendingDecision:{conversationId:string;decision:BackstageDecision;revision:number;requestId:string}|null=null;
+ let pendingPitch:{personId:string;gimmickId:string;revision:number;requestId:string}|null=null;
  // Private read/archive receipts change presentation, not the wrestler's
  // simulation. Keep the current bounded inbox rather than loading it twice.
  function updateIncoming(person:string,
@@ -50,6 +53,8 @@ export function mountPersonaDesk(root:HTMLElement,
  };
  async function load(id?:string){
   personId=id;loading=true;render();
+  if(pendingDecision&&id!==view?.personId)pendingDecision=null;
+  if(pendingPitch&&id!==view?.personId)pendingPitch=null;
   try{
    view=await port.load(id);
    // An inaccessible or retired target resolves to the normal inbox.
@@ -88,28 +93,42 @@ export function mountPersonaDesk(root:HTMLElement,
  async function decide(conversationId:string,decision:BackstageDecision){
   if(loading||!view?.personId||!view.canEdit)return;
   const selected=view.personId,revision=view.worldRevision;
+  if(!pendingDecision||pendingDecision.conversationId!==conversationId||
+   pendingDecision.decision!==decision||pendingDecision.revision!==revision)
+   pendingDecision={conversationId,decision,revision,requestId:crypto.randomUUID()};
+  const requestId=pendingDecision.requestId;
   loading=true;error="";answer=null;render();
   try{
-   const result=await port.decide({conversationId,decision,
-    requestId:crypto.randomUUID(),expectedRevision:revision});
-   if(!result||typeof result!=="object"||!("status" in result)||
-     (result as {status:string}).status==="STALE")
-    throw new Error("Backstage has changed. Reload the conversation.");
+   const response=await port.decide({conversationId,decision,requestId,
+    expectedRevision:revision}) as {status?:string};
+   if(response?.status==="STALE"){pendingDecision=null;
+    throw Error("The World changed. Refresh the conversation before replying.");
+   }
+   if(response?.status!=="APPLIED"&&response?.status!=="REPLAYED")
+    throw Error("Reply not confirmed. Retrying will reuse your original message.");
    view=await port.load(selected);
-   answer=null;
+   pendingDecision=null;scrollToLatest=true;answer=null;
   }catch(e){error=e instanceof Error?e.message:"Unable to send reply";}
   finally{loading=false;render();}
  }
  async function request(){
   if(loading||!view?.personId||!chosen||view.worldRevision===null)return;
-  const name=view.personId,gimmick=chosen;loading=true;error="";answer=null;render();
+  const name=view.personId,gimmick=chosen,revision=view.worldRevision;
+  if(!pendingPitch||pendingPitch.personId!==name||pendingPitch.gimmickId!==gimmick||
+   pendingPitch.revision!==revision)
+   pendingPitch={personId:name,gimmickId:gimmick,revision,requestId:crypto.randomUUID()};
+  loading=true;error="";answer=null;render();
   try{
    const outcome=await port.request({personId:name,gimmickId:gimmick,
-    requestId:crypto.randomUUID(),expectedRevision:view.worldRevision});
-   if(!outcome||typeof outcome!=="object"||!("result" in outcome))
-    throw new Error("Wrestler did not respond");
-   const result=(outcome as {result:{accepted:boolean;reason:string}}).result;
-   view=await port.load(name);chosen=null;
+    requestId:pendingPitch.requestId,expectedRevision:revision}) as {
+     status?:string;result?:{accepted:boolean;reason:string}};
+   if(outcome?.status==="STALE"){pendingPitch=null;
+    throw Error("The World changed. Refresh the character before pitching again.");
+   }
+   if((outcome?.status!=="APPLIED"&&outcome?.status!=="REPLAYED")||!outcome.result)
+    throw Error("Pitch not confirmed. Retry without changing your choice.");
+   const result=outcome.result;
+   view=await port.load(name);chosen=null;pendingPitch=null;scrollToLatest=true;
    answer=result.accepted?
     "Agreed. This is my character now — you'll see it wherever I work.":
     result.reason==="ICONIC_PERSONA_PROTECTED"?
@@ -544,10 +563,14 @@ export function mountPersonaDesk(root:HTMLElement,
      "This conversation has closed because the wrestler is no longer available under this contract."));
    }else if(view.canEdit&&wrestler?.isCurrent!==false){
     const actions=el("div","ppw-backstage-replies ppw-backstage-composer");
-    actions.append(el("span","ppw-backstage-composer-caption","CHOOSE A REPLY"));
+    actions.append(el("span","ppw-backstage-composer-caption","YOUR REPLY · TAP A MESSAGE TO SEND"));
     for(const decision of BACKSTAGE_CHOICES[item.kind]){
-     actions.append(button(BACKSTAGE_LABELS[decision],()=>{
-      void decide(item.conversationId,decision);},loading));
+     const reply=button("",()=>void decide(item.conversationId,decision),loading);
+     reply.classList.add("ppw-backstage-reply-choice");
+     reply.append(el("small","ppw-backstage-reply-intent",BACKSTAGE_LABELS[decision]),
+      el("span","ppw-backstage-reply-statement",backstageManagerReply(decision)));
+     reply.setAttribute("aria-label",backstageManagerReply(decision));
+     actions.append(reply);
     }
     chat.append(actions);
    }else{
@@ -573,7 +596,10 @@ export function mountPersonaDesk(root:HTMLElement,
    reply.setAttribute("role","status");chat.append(reply);}
   root.append(chat);
   requestAnimationFrame(()=>{
-   if(root.contains(chat))chat.scrollTop=previousScroll??chat.scrollHeight;
+   if(root.contains(chat)){
+    chat.scrollTop=scrollToLatest?chat.scrollHeight:previousScroll??chat.scrollHeight;
+    scrollToLatest=false;
+   }
   });
  }
  void load(initialPersonId);
