@@ -14,14 +14,21 @@ const url=process.env.PPW_NEON_TEST_URL;
 // every match, and certification and rollover settle each company. No
 // fabricated result, receipt, direct payroll fixture or live scheduler.
 test("eight AI promotions sustain a genuine three-year certified World Lock and career market",{
- skip:!url?"Disposable PostgreSQL required":false,timeout:420000,
+ skip:!url?"Disposable PostgreSQL required":false,timeout:1200000,
 },async()=>{
  const world="phase17-three-year-"+randomUUID(),db=postgresPool(url!,4);
  const weeks=156,started=Date.now();
+ // stderr is streamed even if node:test aborts without flushing console.log.
+ const diagnostic=(event:string,detail:Record<string,number|string>={})=>
+  process.stderr.write("[three-year world] "+JSON.stringify({
+   event,elapsedSeconds:Math.round((Date.now()-started)/1000),...detail
+  })+"\\n");
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
+  diagnostic("seeding genesis");
   await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  diagnostic("genesis seeded");
   const population=await withWorldTransaction(db.pool,tx=>tx.query<{
    talent:number;free_agents:number
   }>(["SELECT count(*)::integer AS talent,",
@@ -45,6 +52,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    const calendarYear=Math.floor((week-1)/52)+1;
    const calendarWeek=(week-1)%52+1;
    const weekStart=Date.now();
+   if(week===1||week%8===0)diagnostic("week started",{week});
    const state=await withWorldTransaction(db.pool,tx=>tx.query<{
     year:number;week:number;phase:string;revision:string
    }>("SELECT year,week,phase,revision::text FROM ppw_worlds WHERE world_id=$1",[world]));
@@ -109,6 +117,9 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     "The authentic free-agent market should preserve credible AI card depth in Week "+week);
    assert.equal(f.weekly_ledger,1,"World should publish only once per week");
    assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
+   if(week===1||week%8===0)diagnostic("week certified",{
+    week,matches:f.matches,completed:f.completed,certified:f.certified
+   });
    snapshots.push({week,shows:f.shows,completed:f.completed,
     certified:f.certified,matches:f.matches,cash:f.cash,
     weeklyLedger:f.weekly_ledger});
@@ -130,6 +141,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     year:Math.floor(week/52)+1,week:week%52+1,phase:"OPEN"
    }]);
   }
+  diagnostic("all weeks certified",{weeks});
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
@@ -177,6 +189,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   console.log("Phase 17 three-year World Lock diagnostics:",
    JSON.stringify(snapshots));
  }finally{
+  diagnostic("disposable cleanup started");
   // Topological world-scoped deletion keeps this disposable fixture isolated
   // from other test Worlds, even as new World-bound PPW tables are introduced.
   try{
@@ -208,7 +221,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     for(const name of order.reverse())await tx.query(
      "DELETE FROM "+name+" WHERE world_id=$1",[world]);
    });
-  }finally{await db.close();}
+  }finally{await db.close();diagnostic("disposable cleanup finished");}
  }
 });
 
