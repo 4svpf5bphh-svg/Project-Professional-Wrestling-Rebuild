@@ -4,7 +4,8 @@ import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
 import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
  from "../db/planner-workspace.js";
-import {readTagTeamWorkspace,createTagTeam,nameTagTeam,type CreateTagTeam,type NameTagTeam}
+import {readTagTeamWorkspace,createTagTeam,nameTagTeam,createTrio,
+ type CreateTagTeam,type NameTagTeam,type CreateTrio}
  from "../db/tag-team-workspace.js";
 import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
@@ -630,6 +631,12 @@ export async function createTagTeamAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return createTagTeam(context.pool,{...input,playerId:context.actor.playerId});
+}
+export async function createTrioAsActor(context:WorldApiContext,
+ input:Omit<CreateTrio,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createTrio(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function nameTagTeamAsActor(context:WorldApiContext,
  input:Omit<NameTagTeam,"playerId">){
