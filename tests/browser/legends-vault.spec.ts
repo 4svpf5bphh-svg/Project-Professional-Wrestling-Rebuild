@@ -46,8 +46,7 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await expect.poll(()=>acknowledged).toBe(true);
  await expect(page.getByRole("heading",{name:"Identity shrouded"})).toBeVisible();
  await expect(page.getByText("2 / 8 · 25%")).toBeVisible();
- await expect(page.locator(".ppw-album-slot")).toHaveCount(0,
-  "The Legends Vault should no longer include the personal card album");
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(0);
  await page.getByRole("button",{name:"Discovered (1)"}).click();
  await expect(page.locator(".ppw-legend-tile:visible")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"Discovered (1)"})).toHaveAttribute("aria-pressed","true");
@@ -73,8 +72,7 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await expect(page.locator(".ppw-album-slot")).toHaveCount(0);
  await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"All pages"}).click();
  await expect(page.locator(".ppw-album-slot")).toHaveCount(3);
- await expect(called.filter(x=>x==="industry")).toHaveLength(1,
-  "Opening My Collection must not refetch the World Industry directory");
+ expect(called.filter(x=>x==="industry")).toHaveLength(1);
 });
 
 test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault, paid cabinet and full viewer",async({page})=>{
