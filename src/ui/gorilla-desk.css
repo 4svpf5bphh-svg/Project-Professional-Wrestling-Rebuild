@@ -12,3 +12,17 @@
 .ppw-gorilla-protect input{width:23px;height:23px;flex:none;accent-color:#89e6ff}
 @media(max-width:345px){.ppw-gorilla-shows{grid-template-columns:minmax(0,1fr)}}
 @media(min-width:720px){.ppw-gorilla-shows{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Production clipboard: show changes without allowing an accidental discard. */
+.ppw-gorilla-unsaved{margin:10px 0;padding:11px 13px;border-left:3px solid #ffd385;
+ background:#d6a55c23;color:#ffebc9;font-weight:750;font-size:13px;line-height:1.5}
+.ppw-gorilla-eyebrow,.ppw-gorilla-match-number{font-size:10px;letter-spacing:.13em;
+ font-weight:900;color:#9adddc}
+.ppw-gorilla-match-number{color:#ecc68c}
+.ppw-gorilla-locked-note{font-size:12px;color:#bfd2e6;line-height:1.55;
+ background:#22425b;border-left:3px solid #a7c8e8;padding:9px 11px}
+.ppw-gorilla-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.ppw-gorilla-actions .ppw-staff-button{min-height:44px;flex:1 1 160px}
+.ppw-gorilla-actions button:disabled{cursor:not-allowed;opacity:.55}
+.ppw-gorilla-shows button:focus-visible,.ppw-gorilla-actions button:focus-visible,
+.ppw-gorilla-protect input:focus-visible{outline:3px solid #e9c785;outline-offset:3px}
