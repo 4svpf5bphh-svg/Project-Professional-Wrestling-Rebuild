@@ -50,3 +50,18 @@ test("staff reports cannot treat missing or duplicated match evidence as complet
  assert.throws(()=>deriveRoadAgentReport(receipt,facts.slice(0,1),null),/complete/);
  assert.throws(()=>deriveRoadAgentReport(receipt,[facts[0]!,facts[0]!],null),/complete/);
 });
+
+test("Road Agent gives location-specific, fixable notes for real timing and execution issues",()=>{
+ const report=deriveRoadAgentReport(receipt,facts,{
+  name:"Morgan Stone",staffId:"staff-road",personality:"FRANK"
+ } as WorldStaffMember);
+ assert.match(report.concern,/closing match run 10 minutes longer/);
+ assert.match(report.recommendation,/timing of the closing match/);
+ assert.match(report.recommendation,/unbooked transitions/);
+ const unpaced=deriveRoadAgentReport(receipt,facts.map(f=>({
+  ...f,actualMinutes:f.plannedMinutes!
+ })),null);
+ assert.match(unpaced.concern,/closing match/);
+ assert.match(unpaced.recommendation,/shorter structure/);
+ assert.doesNotMatch(report.recommendation,/\b[0-9]+\/100|execution score|match quality meter/i);
+});
