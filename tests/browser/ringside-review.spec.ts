@@ -65,6 +65,7 @@ for(const width of [320,390]){
   await expect(chapters.nth(2)).toHaveAccessibleName("Post-show Brief");
   if(width===320){
    await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toHaveText("Ringside");
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
    // Chromium can report button.scrollWidth for clipped internal glyph
    // decoration even when the short visible label itself fits. Assert that
