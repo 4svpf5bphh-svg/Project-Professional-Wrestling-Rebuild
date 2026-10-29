@@ -106,8 +106,8 @@ test("two signed promotion owners can name themselves and rebrand only their own
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`INSERT INTO ppw_championships(
     world_id,promotion_id,championship_id,name,division,status,prestige)
-    VALUES($1,'crown','legacy','Crown Wrestling Women's Championship','SINGLES','ACTIVE',20)`,
-    [worldId]);
+    VALUES($1,'crown','legacy',$2,'SINGLES','ACTIVE',20)`,
+    [worldId,"Crown Wrestling Women's Championship"]);
    const migration=readFileSync("db/migrations/0110_rebrand_championship_labels.sql","utf8");
    await tx.query(migration,[]);
    await tx.query(migration,[]); // idempotent
