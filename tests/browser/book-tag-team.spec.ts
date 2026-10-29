@@ -132,7 +132,7 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
  await page.reload();
- await expect(page.locator(".ppw-card-lineup")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-card-lineup")).toContainText("6 / 6 booked");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
