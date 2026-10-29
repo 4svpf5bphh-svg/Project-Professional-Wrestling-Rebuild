@@ -516,7 +516,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  };
  for(const [index,label] of labels.entries()){
   const button=goButton(label,index as 0|1|2);
-  button.className="ppw-results-step";tabButtons.push(button);steps.append(button);
+  button.className="ppw-results-step";
+  // Short, readable labels at 320px; keep the complete chapter title for
+  // accessible controls and normal-width screens without breaking words.
+  button.setAttribute("aria-label",label);
+  button.replaceChildren(
+   node("span","ppw-results-step-full",label),
+   node("span","ppw-results-step-short",["Headlines","Full show","Brief"][index]!)
+  );
+  tabButtons.push(button);steps.append(button);
  }
  headlines.append(goButton("Read the Full Show",1));
  full.append(goButton("Read Post-show Brief",2));
