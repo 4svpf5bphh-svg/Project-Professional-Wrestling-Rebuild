@@ -612,6 +612,11 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  const worker=await request.get("/sw.js");
  expect(worker.ok()).toBeTruthy();
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
+ // A refreshed shell must evict the old cache-first portrait entries; the
+ // original 48 Legends retain their URL paths across this release.
+ expect(await worker.text()).toContain('ppw-static-shell-v3');
+ expect(await worker.text()).toContain('key!==CACHE');
+ expect(await worker.text()).toContain('caches.delete(key)');
  const offline=await request.get("/offline.html");
  expect(offline.ok()).toBeTruthy();
  expect(await offline.text()).toContain("Bookings, results and contracts are not available offline");
