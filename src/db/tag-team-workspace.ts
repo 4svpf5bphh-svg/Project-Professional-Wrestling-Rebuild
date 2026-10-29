@@ -46,34 +46,40 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
    "ORDER BY p.name,p.person_id,p.booking_division LIMIT 501"
   ].join(" "),[who.worldId,who.promotionId,auth.weekIndex]);
   if(roster.length>500)throw new Error("Tag team roster too large");
-  const teams=roster.length?await tx.query<{team_id:string;name:string;
-   members:string[];naming_promotion_id:string|null;
-   formed_week_index:number|null}>([
-   "SELECT t.team_id,t.name,t.naming_promotion_id,t.formed_week_index,",
+  // The roster is read once for both portable identities, preserving the
+  // three-query empty-team budget on iPhone. A team only appears when *all*
+  // its active members are on the current promotion's signed roster.
+  const units=roster.length?await tx.query<{
+   kind:"TAG"|"TRIO";unit_id:string;name:string;formed_week_index:number|null;
+   naming_promotion_id:string|null;members:string[]}>([
+   "SELECT 'TAG'::text AS kind,t.team_id AS unit_id,t.name,",
+   "t.formed_week_index,t.naming_promotion_id,",
    "array_agg(m.person_id ORDER BY m.person_id) AS members",
    "FROM ppw_tag_teams t JOIN ppw_tag_team_members m",
    "ON m.world_id=t.world_id AND m.team_id=t.team_id AND m.active",
    "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
-   "GROUP BY t.team_id,t.name,t.naming_promotion_id,t.formed_week_index",
-   "HAVING count(*)=2",
-   "ORDER BY t.name,t.team_id LIMIT 201"
-  ].join(" "),[who.worldId,roster.map(x=>x.person_id)]):[];
-  if(teams.length>200)throw new Error("Too many active roster teams");
-  // An official trio requires all three partners on the current signed roster.
-  // Do not present partial groups from another promotion as bookable.
-  const trios=roster.length?await tx.query<{trio_id:string;name:string;
-   formed_week_index:number;naming_promotion_id:string|null;members:string[]}>([
-   "SELECT t.trio_id,t.name,t.formed_week_index,t.naming_promotion_id,",
+   "GROUP BY t.world_id,t.team_id,t.name,t.formed_week_index,t.naming_promotion_id",
+   "HAVING count(*)=2 AND count(*)=(SELECT count(*) FROM ppw_tag_team_members",
+   "allm WHERE allm.world_id=t.world_id AND allm.team_id=t.team_id",
+   "AND allm.active)",
+   "UNION ALL",
+   "SELECT 'TRIO'::text AS kind,t.trio_id AS unit_id,t.name,",
+   "t.formed_week_index,t.naming_promotion_id,",
    "array_agg(m.person_id ORDER BY m.person_id) AS members",
    "FROM ppw_trios t JOIN ppw_trio_members m",
    "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
    "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
    "GROUP BY t.world_id,t.trio_id,t.name,t.formed_week_index,t.naming_promotion_id",
    "HAVING count(*)=3 AND count(*)=(SELECT count(*) FROM ppw_trio_members",
-   "other WHERE other.world_id=t.world_id AND other.trio_id=t.trio_id",
-   "AND other.active) ORDER BY t.name,t.trio_id LIMIT 101"
+   "allm WHERE allm.world_id=t.world_id AND allm.trio_id=t.trio_id",
+   "AND allm.active)",
+   "ORDER BY kind,name,unit_id LIMIT 301"
   ].join(" "),[who.worldId,roster.map(x=>x.person_id)]):[];
-  if(trios.length>100)throw new Error("Too many active roster trios");
+  if(units.length>300)throw new Error("Too many roster teams and trios");
+  const teams=units.filter(t=>t.kind==="TAG").map(t=>({...t,team_id:t.unit_id}));
+  const trios=units.filter(t=>t.kind==="TRIO").map(t=>({...t,trio_id:t.unit_id}));
+  if(teams.length>200||trios.length>100)
+   throw new Error("Too many active roster teams or trios");
   // History is restricted to named teams on this promotion's CURRENT roster.
   const chemistry=teams.length?await tx.query<{
    person_a_id:string;person_b_id:string;matches_together:number;familiarity:number
