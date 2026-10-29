@@ -162,6 +162,21 @@ for(const width of [320,390]){
 
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
+  const logo=page.locator(".ppw-home-promotion-mark[data-logo-ready=true] > .ppw-authentic-promotion-logo");
+  if(await logo.count()){
+   const bounds=await logo.evaluate(el=>{
+    const image=el.getBoundingClientRect();
+    const hero=el.closest(".ppw-home-hero")!.getBoundingClientRect();
+    const container=el.parentElement!.getBoundingClientRect();
+    return {left:image.left,right:image.right,top:image.top,bottom:image.bottom,
+     heroLeft:hero.left,heroRight:hero.right,heroTop:hero.top,heroBottom:hero.bottom,
+     containerLeft:container.left,containerRight:container.right};
+   });
+   expect(bounds.left).toBeGreaterThanOrEqual(bounds.heroLeft-1);
+   expect(bounds.right).toBeLessThanOrEqual(bounds.heroRight+1);
+   expect(bounds.left).toBeGreaterThanOrEqual(bounds.containerLeft-1);
+   expect(bounds.right).toBeLessThanOrEqual(bounds.containerRight+1);
+  }
   await page.screenshot({path:images+"/home-"+width+".png",fullPage:true});
  });
 }

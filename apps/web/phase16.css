@@ -311,3 +311,15 @@ html[data-ppw-screen=backstage] #game .ppw-backstage-phone-header{top:max(0px,en
  #game .ppw-championship-desk .ppw-title-typographic-name{font-size:19px;
   padding:7px 5px}
 }
+
+/* 320px screenshot QA: authentic logos must fit their own hero mark's
+   measured bounds. The fallback text badge is unchanged when no SVG loads. */
+#game .ppw-home-hero .ppw-home-promotion-mark[data-logo-ready="true"]{
+ width:min(100%,190px);min-height:0;max-width:100%;overflow:hidden;
+ padding:0;margin-left:0;transform:none;justify-content:start}
+#game .ppw-home-hero .ppw-home-promotion-mark[data-logo-ready="true"]>
+ .ppw-authentic-promotion-logo{
+ display:block;position:static!important;transform:none!important;
+ width:100%!important;max-width:100%!important;
+ height:auto!important;max-height:90px!important;
+ object-fit:contain;object-position:left center}
