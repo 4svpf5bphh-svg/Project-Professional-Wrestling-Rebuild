@@ -189,7 +189,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    // Selecting an established team must show actual wrestler names without
    // two extra talent queries; the canonical card continues storing IDs.
-   for(const team of view.bookableTeams??[]){
+   for(const team of [...(view.bookableTeams??[]),...(view.bookableTrios??[])]){
     for(const member of team.members){
      const old=roster.get(member.personId);
      roster.set(member.personId,{...old,personId:member.personId,
