@@ -123,10 +123,14 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
  if(entry.outcome!=="HAPPENS")return null;
  if(entry.intent==="TURN_OCCURRED")
   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:108,
-   text:"That turn! "+entry.headline+". I saw the warning signs and still got caught out."};
+   text:"That turn! "+entry.headline+". I saw the warning signs and still got caught out.",
+   reply:{voice:"THE HEEL DEFENDER",
+    text:"Call it betrayal if you want. I want to see what they do now the mask is off."}};
  if(entry.intent==="DEBUT_OCCURRED")
   return {...base,voice:"THE DIEHARD",mood:"BUZZ",source:"ANGLE",priority:104,
-   text:"A debut worth getting out of your seat for. "+entry.headline+". Now give them something worth doing."};
+   text:"A debut worth getting out of your seat for. "+entry.headline+". Now give them something worth doing.",
+   reply:{voice:"THE SKEPTICAL SMARK",
+    text:"A grand entrance is one night. I'm more interested in the first real rivalry."}};
  if(entry.crowdResponse>=84)
   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:76,
    text:"That "+(entry.segmentKind??"segment").toLowerCase().replaceAll("_"," ")+" really landed. The reactions were half the show."};
@@ -149,7 +153,20 @@ export function showReactionWire(
   const story=candidate(entry,show.showId);
   return story?[story]:[];
  });
- return candidates.sort((a,b)=>b.priority-a.priority||a.position-b.position||
-  a.slotId.localeCompare(b.slotId)).slice(0,limit)
-  .map(({priority:_priority,position:_position,...reaction})=>reaction);
+ const selected=candidates.sort((a,b)=>b.priority-a.priority||a.position-b.position||
+  a.slotId.localeCompare(b.slotId)).slice(0,limit);
+ // Diverse fictional perspectives, still sourced from the same certified slots.
+ const used=new Set<ReactionVoice>();
+ const voices:readonly ReactionVoice[]=["THE BACK ROW","THE DIEHARD","THE TAPE TRADER",
+  "THE SKEPTICAL SMARK","THE FRONT ROW","THE RIVALRY ADDICT",
+  "THE HEEL DEFENDER","THE CONCERNED FAN"];
+ return selected.map(({priority:_priority,position:_position,...reaction})=>{
+  if(used.has(reaction.voice)){
+   const replacement=voices.find(v=>!used.has(v)&&v!==reaction.reply?.voice&&
+    (reaction.mood!=="CONCERN"||v==="THE CONCERNED FAN"));
+   if(replacement)reaction.voice=replacement;
+  }
+  used.add(reaction.voice);
+  return reaction;
+ });
 }

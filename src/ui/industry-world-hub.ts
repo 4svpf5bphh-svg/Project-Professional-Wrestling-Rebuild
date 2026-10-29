@@ -111,6 +111,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
  }
  let records:PromotionRecordView|null=null,recordsBusy=false,recordsError="";
  let recordsTab:"MY"|"WORLD"|"SEARCH"="MY",division:"MEN"|"WOMEN"="MEN";
+ let recordOrder:"WINS"|"MATCHES"|"RATING"="WINS";
  let rankings:WorldRankingsView|null=null,rankingBusy=false,rankingError="";
  let careerSearch="",careerResults:WorldCareersView|null=null,
   careerBusy=false,careerError="";
@@ -556,18 +557,34 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    section.append(choice);
    if(recordsTab==="MY"){
     section.append(el("p","ppw-industry-muted",
-     "Your active roster's verified matches, wins and average star ratings."));
+     "Eight leading active roster wrestlers by certified wins in this promotion. Sort these eight by match appearances or average ratings; the list is not a ranking of the entire talent market."));
+    const sort=el("div","ppw-record-sort");
+    sort.setAttribute("role","group");sort.setAttribute("aria-label","Sort promotion records");
+    for(const [order,label] of [["WINS","Most wins"],["MATCHES","Most matches"],["RATING","Top average rating"]] as const){
+     const control=btn(label,()=>{recordOrder=order;render();});
+     control.setAttribute("aria-pressed",String(recordOrder===order));sort.append(control);
+    }
+    section.append(sort);
     if(recordsError)section.append(el("p","ppw-alert ppw-error",recordsError),
      btn("Try again",()=>void loadRecords()));
     if(recordsBusy)section.append(el("p","ppw-industry-muted","Checking promotion records…"));
     if(records&&!records.leaders.length)section.append(el("p","ppw-industry-muted",
      "No certified match records for the current roster yet."));
-    for(const [i,w] of (records?.leaders??[]).entries()){
-     const item=el("article","ppw-industry-record-row");
+    const ordered=[...(records?.leaders??[])].sort((a,b)=>{
+     const main=recordOrder==="WINS"?b.wins-a.wins:recordOrder==="MATCHES"?
+      b.matches-a.matches:(b.averageStars??-1)-(a.averageStars??-1);
+     return main||b.wins-a.wins||b.matches-a.matches||
+      a.name.localeCompare(b.name)||a.personId.localeCompare(b.personId);
+    });
+    for(const [i,w] of ordered.entries()){
+     const item=el("article","ppw-industry-record-row ppw-promotion-record-row");
      if(i===0)item.classList.add("ppw-record-leader");
-     item.append(el("strong","",String(i+1)),el("span","",w.name),
-      el("small","",w.wins+" wins / "+w.matches+" matches"+
-       (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★")));
+     const identity=el("div","ppw-record-identity");
+     identity.append(el("strong","",w.name),
+      el("small","",w.wins+" wins in "+w.matches+" completed matches"+
+       (w.averageStars===null?"":" · "+w.averageStars.toFixed(2)+"★ average")));
+     item.append(el("strong","ppw-record-position",String(i+1)),identity);
+     if(port.openWrestler)item.append(btn("Dossier →",()=>port.openWrestler?.(w.personId)));
      section.append(item);
     }
    }else if(recordsTab==="WORLD"){

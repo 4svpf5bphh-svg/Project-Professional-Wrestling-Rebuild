@@ -49,3 +49,35 @@ test("World record book shows earned men/women rankings and searchable wrestler 
  expect(await page.evaluate(()=>document.documentElement.scrollWidth))
   .toBeLessThanOrEqual(391);
 });
+
+test("promotion record ordering is client-only and respects the bounded top-eight source",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const calls:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]
+ }}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method as string;calls.push(method);
+  if(method==="industry")return r.fulfill({json:{
+   worldName:"PPW",year:2,week:6,phase:"OPEN",ownPromotionId:"promotion-0",
+   ownPromotionName:"Human Pro",promotions:[],headlines:[],broadcasts:[]}});
+  if(method==="promotionRecordBook")return r.fulfill({json:{leaders:[
+   {personId:"a",name:"Alice",matches:9,wins:6,averageStars:3.3},
+   {personId:"b",name:"Bob",matches:12,wins:5,averageStars:4.4},
+   {personId:"c",name:"Cara",matches:5,wins:4,averageStars:2.9}
+  ]}});
+  return r.fulfill({json:{}});
+ });
+ await page.goto("/#/records");
+ const names=page.locator(".ppw-promotion-record-row .ppw-record-identity>strong");
+ await expect(names).toHaveText(["Alice","Bob","Cara"]);
+ await page.getByRole("button",{name:"Top average rating"}).click();
+ await expect(names).toHaveText(["Bob","Alice","Cara"]);
+ await page.getByRole("button",{name:"Most matches"}).click();
+ await expect(names).toHaveText(["Bob","Alice","Cara"]);
+ await page.getByRole("button",{name:"Most wins"}).click();
+ await expect(names).toHaveText(["Alice","Bob","Cara"]);
+ expect(calls.filter(x=>x==="promotionRecordBook")).toHaveLength(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

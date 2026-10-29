@@ -246,3 +246,16 @@ html[data-ppw-screen=backstage] #game .ppw-messenger-inbox-label{color:#527391!i
 html[data-ppw-screen=backstage] #game .ppw-messenger-inbox-count{color:#3c5e7d!important}
 html[data-ppw-screen=backstage] #game .ppw-backstage-unread-dot{background:#2779ee;box-shadow:none!important}
 html[data-ppw-screen=backstage] #game .ppw-backstage-phone-header{top:max(0px,env(safe-area-inset-top))}
+
+/* Certified top-eight promotion leaders can be reordered without another read. */
+#game .ppw-record-sort{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}
+#game .ppw-record-sort button{min-height:44px;padding:9px 12px;border-radius:8px;
+ background:#1e2e46;color:#dbeaf6;border:1px solid #6c80a0;font-weight:750}
+#game .ppw-record-sort button[aria-pressed=true]{
+ background:#c8eaf9;color:#16263a;border-color:#e2faff}
+#game .ppw-record-sort button:focus-visible{outline:3px solid #fbd18c;outline-offset:2px}
+#game .ppw-promotion-record-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#game .ppw-record-identity{display:grid;gap:6px;flex:1 1 130px;min-width:0}
+#game .ppw-record-identity>strong{font-size:17px;color:#f4f7ff;overflow-wrap:anywhere}
+#game .ppw-record-identity>small{font-size:12px;line-height:1.4;color:#a9c4d7}
+#game .ppw-promotion-record-row>.ppw-industry-button{min-height:44px}
