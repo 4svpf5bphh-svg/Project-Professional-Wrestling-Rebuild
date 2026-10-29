@@ -61,7 +61,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
-  await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+  await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
@@ -72,7 +72,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
-  await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent's Report"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).not.toHaveAttribute("open");
@@ -95,6 +95,7 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+ await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);
  await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
