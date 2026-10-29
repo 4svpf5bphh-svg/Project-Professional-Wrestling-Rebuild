@@ -22,7 +22,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
  const diagnostic=(event:string,detail:Record<string,number|string>={})=>
   process.stderr.write("[three-year world] "+JSON.stringify({
    event,elapsedSeconds:Math.round((Date.now()-started)/1000),...detail
-  })+"\\n");
+  })+"\n");
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
