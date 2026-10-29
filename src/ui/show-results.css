@@ -224,7 +224,8 @@
 .ppw-results-page[hidden]{display:none!important}
 .ppw-results-page{min-width:0}
 .ppw-results-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:5px 0 17px}
-.ppw-results-step{min-height:47px;padding:10px 5px;border-radius:10px;
+.ppw-results-step{box-sizing:border-box;width:100%;min-width:0;overflow:hidden;
+ text-overflow:ellipsis;min-height:47px;padding:10px 5px;border-radius:10px;
  border:1px solid #35516a;background:#11243b;color:#a6bbd2;
  font:inherit;font-weight:800;font-size:clamp(10px,2.8vw,13px);line-height:1.25}
 .ppw-results-step[aria-current="step"]{color:#fff3d4;border-color:#e8b46e;
