@@ -398,6 +398,8 @@ function tagTeamPort(call:ReturnType<typeof createCardClient>,
  return {load:()=>call("tagTeams"),
   create:({requestId,expectedRevision,name,personIds})=>
    call("createTagTeam",{requestId,expectedRevision,name,personIds}),
+  createTrio:({requestId,expectedRevision,name,personIds})=>
+   call("createTrio",{requestId,expectedRevision,name,personIds}),
   rename:({requestId,expectedRevision,name,teamId})=>
    call("renameTagTeam",{requestId,expectedRevision,name,teamId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
