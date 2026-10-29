@@ -4,6 +4,7 @@
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
+import {staffMeetingDialogue} from "./staff-meeting-voice.js";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
@@ -189,7 +190,9 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    caption.append(el("span","ppw-staff-kicker",roles(brief.role)),
     el("strong","",brief.staffName??"Position vacant · house cover"));
    lead.append(caption);slot.append(lead);
-   slot.append(el("p","ppw-staff-muted",brief.message));
+   slot.append(el("p","ppw-staff-dialogue",
+    staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
+     personality:brief.personality,message:brief.message})));
    if(brief.role==="SCOUT"&&view.scoutReport?.length){
     for(const prospect of view.scoutReport){
      const item=el("div","ppw-staff-scout-pick");
@@ -199,13 +202,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     }
     if(port.openMarket)slot.append(button("Browse Talent Market",()=>port.openMarket?.()));
    }
-   if(brief.staffName&&brief.personality)
-    slot.append(el("small","ppw-staff-voice",
-     brief.personality==="FRANK"?"A direct assessment from your department lead":
-     brief.personality==="PATIENT"?"Measured advice from your department lead":
-     brief.personality==="ECCENTRIC"?"An unconventional take from your department lead":
-     brief.personality==="LOYAL"?"Advice grounded in team continuity":
-     "An ambitious eye on the next opportunity"));
+   if(brief.staffName)slot.append(el("small","ppw-staff-voice",
+    "— "+brief.staffName+" · "+roles(brief.role)));
    if(brief.target==="contracts"&&port.openContracts)
     slot.append(button("Review contracts",()=>port.openContracts?.()));
    if(brief.target==="roster"&&port.openRoster)

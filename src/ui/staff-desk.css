@@ -192,3 +192,10 @@
 .ppw-staff-full-meeting>summary{min-height:44px;cursor:pointer;
  display:flex;align-items:center;color:#c4eafb;font-size:13px;font-weight:750}
 .ppw-staff-full-meeting .ppw-staff-meeting-grid{padding-top:9px}
+
+.ppw-staff-meeting-brief .ppw-staff-dialogue{background:#0b2335;
+ border-left:3px solid #8dd8e7;border-radius:0 10px 10px 0;
+ padding:13px 15px;line-height:1.7;font-size:14px;color:#e5f4fb;
+ margin:12px 0 6px;overflow-wrap:anywhere}
+.ppw-staff-meeting-brief .ppw-staff-voice{display:block;text-align:right;
+ font-size:12px;font-weight:750;color:#c1d5e0;margin:0 0 11px}
