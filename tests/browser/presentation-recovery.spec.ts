@@ -121,6 +121,10 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  expect(overflow,"Every Backstage inbox filter must be visible without horizontal clipping").toBeLessThanOrEqual(1);
  await expect(page.getByRole("button",{name:"Unread",exact:true})).toHaveClass(/ppw-persona-selected/);
  await page.getByRole("button",{name:"All",exact:true}).click();
+ const replyStatus=page.locator(".ppw-messenger-inbox .ppw-messenger-awaiting").first();
+ await expect(replyStatus).toBeVisible();
+ await expect(replyStatus).toHaveCSS("color","rgb(255, 255, 255)");
+ await expect(replyStatus).toHaveCSS("background-color","rgb(23, 93, 204)");
  await page.locator(".ppw-backstage-contact").first().click();
  await expect(page.getByLabel("Conversation with Ada Stone")).toBeVisible();
  await expect(menu).toBeHidden();
