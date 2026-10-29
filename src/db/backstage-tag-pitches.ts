@@ -19,7 +19,7 @@ export async function publishBackstageTagPitches(tx:SqlRows,
   "JOIN ppw_memberships member ON member.world_id=owner.world_id",
   "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
   "WHERE owner.world_id=$1 AND owner.active",
-  "), eligible AS (
+  "), eligible AS (",
   "SELECT sh.promotion_id,a.person_a_id,a.person_b_id,",
   "count(DISTINCT a.show_id)::integer AS shared_shows,",
   "round(avg(a.execution_quality)::numeric,1) AS avg_quality",
