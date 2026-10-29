@@ -20,16 +20,21 @@ export async function settleWorkingPartnerships(tx:SqlRows,input:WorkingPartners
   !Number.isSafeInteger(weekIndex)||weekIndex<0||input.week<1||input.week>52)
   throw new Error("Invalid settled team show");
  const appearances=input.matches.flatMap(m=>{
+  const members=[...m.sideA,...m.sideB];
   if(!m.matchId||!Number.isFinite(m.executionQuality)||
    m.executionQuality<0||m.executionQuality>100||
-   m.sideA.length!==2||m.sideB.length!==2||
-   new Set([...m.sideA,...m.sideB]).size!==4||
-   [...m.sideA,...m.sideB].some(p=>typeof p!=="string"||!p||p.length>200))
-   throw new Error("Only verified 2v2 completed tag matches may develop working trust");
-  return [m.sideA,m.sideB].map(ids=>({
-   ...pair(ids[0]!,ids[1]!),show_id:input.showId,match_id:m.matchId,
-   week_index:weekIndex,execution_quality:m.executionQuality,
-  }));
+   ![2,3].includes(m.sideA.length)||m.sideB.length!==m.sideA.length||
+   new Set(members).size!==members.length||
+   members.some(p=>typeof p!=="string"||!p||p.length>200))
+   throw new Error("Only verified 2v2 or 3v3 completed matches develop working trust");
+  // A certified trios bout establishes evidence for each of the three
+  // teammate pairs. It does NOT fabricate previous weeks or reward a
+  // trio simply because its name was entered in the management screen.
+  return [m.sideA,m.sideB].flatMap(ids=>ids.flatMap((left,i)=>
+   ids.slice(i+1).map(right=>({
+    ...pair(left,right),show_id:input.showId,match_id:m.matchId,
+    week_index:weekIndex,execution_quality:m.executionQuality,
+   }))));
  });
  if(appearances.length>100||new Set(appearances.map(a=>
   a.person_a_id+"|"+a.person_b_id)).size!==appearances.length)
