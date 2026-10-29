@@ -11,6 +11,7 @@ export interface ProgrammeAdviceEvidence{
  sideBWins:number;
  championshipId:string|null;
  recentKind:"MATCH"|"SEGMENT"|null;
+ sideAName?:string;sideBName?:string;
 }
 export interface ProgrammeAdvice{
  headline:string;
@@ -19,7 +20,8 @@ export interface ProgrammeAdvice{
 }
 export function suggestProgrammeAdvice(p:ProgrammeAdviceEvidence):ProgrammeAdvice{
  const gap=Math.abs(p.sideAWins-p.sideBWins);
- const leading=p.sideAWins>p.sideBWins?"side A":p.sideBWins>p.sideAWins?"side B":null;
+ const leading=p.sideAWins>p.sideBWins?(p.sideAName??"side A"):
+  p.sideBWins>p.sideAWins?(p.sideBName??"side B"):null;
  if(p.activityCount===0)
   return {headline:"Give them a reason to clash",
    observation:"This issue has no recorded on-air chapter yet.",
@@ -34,8 +36,10 @@ export function suggestProgrammeAdvice(p:ProgrammeAdviceEvidence):ProgrammeAdvic
    suggestion:"A short challenge, confrontation or character beat could give their next meeting more purpose."};
  if(gap>=2&&leading)
   return {headline:"The result needs a response",
-   observation:leading+" has more certified wins in this rivalry. The other side has work to do.",
-   suggestion:"Consider a response from the trailing side: a challenge, an argument or an earned opportunity. You remain in charge of the outcome."};
+   observation:leading+" has taken the upper hand in their certified meetings.",
+   suggestion:"Give "+(p.sideAWins>p.sideBWins?p.sideBName??"the trailing side":
+    p.sideAName??"the trailing side")+
+    " a credible answer: a confrontation, a challenge or an earned opportunity. You still choose the winner."};
  if((p.heat??0)>=75&&p.matchCount>=1)
   return {headline:p.championshipId?"The title stakes are working":"There is a real audience to reward",
    observation:"This rivalry has earned strong attention from the audience.",

@@ -173,7 +173,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     header,pulse);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
-    ["SIDE A WINS",p.sideAWins],["SIDE B WINS",p.sideBWins],
+    [p.sideA.map(x=>x.name).join(" & ")+" WINS",p.sideAWins],
+    [p.sideB.map(x=>x.name).join(" & ")+" WINS",p.sideBWins],
     ["MATCHES",p.matchCount],["ANGLES",p.segmentCount],
     ["DRAWS",p.draws],["BEATS",p.activityCount]
    ] as const){
@@ -235,6 +236,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      activityCount:p.activityCount,matchCount:p.matchCount,
      segmentCount:p.segmentCount,sideAWins:p.sideAWins,
      sideBWins:p.sideBWins,championshipId:p.championshipId,
+     sideAName:p.sideA.map(x=>x.name).join(" & "),
+     sideBName:p.sideB.map(x=>x.name).join(" & "),
      recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null});
     const sheet=element("div","ppw-programme-staff-note");
     sheet.append(element("span","ppw-programme-eyebrow","CREATIVE DESK · OPTIONAL"),
