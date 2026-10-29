@@ -72,7 +72,9 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "We need to check on the injured talent. ")+
    "Let Medical decide who is cleared before we make next week's promises.":
   ranLong?
-   "We had a match run noticeably longer than planned. Protect the rest of the card's breathing room.":
+   "We had a match run "+(ranLong.f.actualMinutes-ranLong.f.plannedMinutes!)+
+    " minutes longer than planned. That's airtime the rest of the show couldn't use. "+
+    "Let's keep an eye on the clock before putting that pairing together again.":
   weakest&&weakest.f.executionQuality<55?
    "The weakest bout never found a comfortable rhythm. If we're putting that pairing together again, give them a simpler job and let them get the basics right.":
   lowChem?

@@ -31,6 +31,7 @@ test("the Road Agent's opinions refer to the actual card and practical issues",(
  assert.equal(report.reviewedMatches,2);
  assert.match(report.praise,/opener/);
  assert.match(report.concern,/longer than planned/);
+ assert.match(report.concern,/10 minutes/);
  assert.ok(report.recommendation.length>30);
  assert.doesNotMatch(JSON.stringify(report),/executionQuality|ratingStars|simulator/i);
 });

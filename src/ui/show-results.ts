@@ -396,8 +396,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","ppw-road-agent-voice",report.concern),
    node("p","ppw-road-agent-next",report.recommendation));
   const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
-  if(strongest)office.append(node("small","ppw-muted",
-   "Standout: "+strongest.headline));
+  if(strongest)office.append(node("p","ppw-road-agent-standout",
+   "If I were showing the locker room one match from tonight, it'd be "+
+    strongest.headline+"."));
   management.append(office);
  }
  const gorilla=show.gorillaLog;

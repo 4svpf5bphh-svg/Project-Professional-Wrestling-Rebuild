@@ -259,3 +259,55 @@ html[data-ppw-screen=backstage] #game .ppw-backstage-phone-header{top:max(0px,en
 #game .ppw-record-identity>strong{font-size:17px;color:#f4f7ff;overflow-wrap:anywhere}
 #game .ppw-record-identity>small{font-size:12px;line-height:1.4;color:#a9c4d7}
 #game .ppw-promotion-record-row>.ppw-industry-button{min-height:44px}
+
+/* Hand-crafted championship belt silhouette using CSS only: the live title
+   name remains the readable engraving, with no PNG, SVG request or Neon read. */
+#game .ppw-championship-desk .ppw-belt-plate{position:relative;isolation:isolate;
+ overflow:hidden;min-height:144px;padding:18px clamp(13px,5vw,30px);
+ background:radial-gradient(ellipse at 50% 50%,#45526a,#141d34 78%)!important;
+ border:0!important;border-radius:11px!important;box-shadow:
+ inset 0 0 0 1px #e3bb7377,0 7px 20px #0005}
+#game .ppw-championship-desk .ppw-belt-plate:before{
+ content:"";display:block;position:absolute;z-index:0;pointer-events:none;
+ inset:18px 1px 14px;background:linear-gradient(180deg,#593e25,#15111a 28%,
+  #3b2b28 54%,#090c18 78%,#493521);
+ clip-path:polygon(0 35%,10% 14%,29% 22%,36% 0,64% 0,71% 22%,
+ 90% 14%,100% 35%,100% 68%,90% 89%,71% 78%,64% 100%,
+ 36% 100%,29% 78%,10% 89%,0 68%);
+ box-shadow:inset 0 0 11px #000a}
+#game .ppw-championship-desk .ppw-belt-plate:after{
+ content:"";display:block;position:absolute;z-index:1;pointer-events:none;
+ inset:4px 17%;border-radius:26px 26px 32px 32px;border:4px double #f9e6a9;
+ background:radial-gradient(ellipse at 29% 13%,#fce6a0,#bd8742 57%,#6d4829 96%);
+ box-shadow:0 0 0 2px #87602b,0 0 16px #000b,inset 0 0 0 6px #6e4a2a,
+ inset 0 0 0 8px #d0a157}
+#game .ppw-championship-desk .ppw-belt-plate>*{z-index:2;position:relative;
+ max-width:100%;text-align:center}
+#game .ppw-championship-desk .ppw-title-typographic-name{
+ display:block;align-self:center;max-width:100%;
+ color:#fff6d8!important;font-family:Impact,"Arial Black",system-ui,sans-serif;
+ font-size:clamp(18px,5.2vw,31px);line-height:1.06;letter-spacing:.015em;
+ text-shadow:1px 2px 3px #000f,0 0 10px #000d;
+ background:#121a29bc;padding:8px 9px;border-radius:7px}
+#game .ppw-championship-desk .ppw-title-typographic-kicker,
+#game .ppw-championship-desk .ppw-title-typographic-rule{
+ color:#fff0c1!important;text-shadow:1px 2px 2px #000e;
+ background:#172131a6;padding:4px 7px;border-radius:5px;align-self:center}
+#game .ppw-belt-card[data-title-family=tag] .ppw-belt-plate:after{
+ border-color:#d0e7ff;background:radial-gradient(ellipse at 25% 15%,
+ #d0ecff,#6c91c0 58%,#284969)}
+#game .ppw-belt-card[data-title-family=women] .ppw-belt-plate:after{
+ border-color:#ffe5f4;background:radial-gradient(ellipse at 25% 15%,
+ #ffe0ee,#b87ea3 59%,#5a385c)}
+#game .ppw-belt-card[data-title-family=secondary] .ppw-belt-plate:after{
+ border-color:#d7f7de;background:radial-gradient(ellipse at 25% 15%,
+ #e7ffed,#7db99f 59%,#32574f)}
+#game .ppw-road-agent-standout{margin-top:9px;padding:9px 12px;
+ border-left:3px solid #f4d08c;background:#ffe5a910;
+ font-size:13px;line-height:1.65;color:#fff2d0}
+@media(max-width:360px){
+ #game .ppw-championship-desk .ppw-belt-plate{padding:14px 7px;min-height:135px}
+ #game .ppw-championship-desk .ppw-belt-plate:after{inset:4px 9%}
+ #game .ppw-championship-desk .ppw-title-typographic-name{font-size:19px;
+  padding:7px 5px}
+}
