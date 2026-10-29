@@ -9,8 +9,14 @@ export async function publishBackstageRivalryPitches(
 ){
  if(!worldId||!Number.isSafeInteger(weekIndex)||weekIndex<0)
   throw new Error("Invalid Backstage rivalry week");
+ // A rivalry pitch requires two *previously* certified singles shows.
+ // At the very first World week the evidence window is mathematically empty.
+ if(weekIndex===0)return {newPitches:0};
  const rows=await tx.query<{request_id:string}>([
-  "WITH completed AS (",
+  // Materialise only recent *human-controlled* broadcasts first; otherwise
+  // PostgreSQL can build a huge relationships/contracts join for an AI-only
+  // World in which no Backstage pitch can ever be delivered.
+  "WITH completed AS MATERIALIZED (",
   "SELECT sh.promotion_id,sh.show_id,played.crowd_response,",
   "least(s.payload->'participants'->0->>'personId',",
   "s.payload->'participants'->1->>'personId') AS person_a_id,",
@@ -25,6 +31,11 @@ export async function publishBackstageRivalryPitches(
   "JOIN ppw_card_slots s ON s.world_id=played.world_id",
   "AND s.draft_id=played.show_id AND s.slot_id=played.match_id",
   "WHERE sh.world_id=$1 AND s.kind='MATCH'",
+  "AND EXISTS(SELECT 1 FROM ppw_promotion_controls owner",
+  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
+  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
+  "WHERE owner.world_id=sh.world_id AND owner.promotion_id=sh.promotion_id",
+  "AND owner.active)",
   "AND (sh.year-1)*52+sh.week-1 BETWEEN greatest(0,$2-12) AND $2-1",
   "AND jsonb_typeof(s.payload->'participants')='array'",
   "AND jsonb_array_length(s.payload->'participants')=2",
@@ -53,11 +64,7 @@ export async function publishBackstageRivalryPitches(
   "AND pa.status='ACTIVE'",
   "JOIN ppw_people pb ON pb.world_id=$1 AND pb.person_id=c.person_b_id",
   "AND pb.status='ACTIVE'",
-  "JOIN ppw_promotion_controls owner ON owner.world_id=$1",
-  "AND owner.promotion_id=c.promotion_id AND owner.active",
-  "JOIN ppw_memberships member ON member.world_id=$1",
-  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
-  "WHERE c.person_a_id<>c.person_b_id",
+   "WHERE c.person_a_id<>c.person_b_id",
   "AND NOT EXISTS(SELECT 1 FROM ppw_programmes programme",
   "JOIN ppw_programme_participants pa ON pa.world_id=programme.world_id",
   "AND pa.promotion_id=programme.promotion_id",
