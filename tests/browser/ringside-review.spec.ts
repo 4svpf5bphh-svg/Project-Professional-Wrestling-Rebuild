@@ -74,9 +74,11 @@ for(const width of [320,390]){
      const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
      if(!label)return false;
      const buttonBox=button.getBoundingClientRect();
-     const labelBox=label.getBoundingClientRect();
-     return labelBox.left>=buttonBox.left-1&&
-      labelBox.right<=buttonBox.right+1&&
+     const glyphs=document.createRange();
+     glyphs.selectNodeContents(label);
+     const textBox=glyphs.getBoundingClientRect();
+     return textBox.width>0&&textBox.left>=buttonBox.left+1&&
+      textBox.right<=buttonBox.right-1&&
       getComputedStyle(label).display!=="none"&&
       getComputedStyle(button).whiteSpace==="nowrap";
     });
