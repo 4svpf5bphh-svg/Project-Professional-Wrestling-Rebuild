@@ -225,30 +225,41 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      " coming due; "+renewals[0]!.personName+" is first on my list.":
     "No signed wrestler contracts are due within the next twelve weeks."},
    ROAD_AGENT:{target:"gorilla",message:current.recent_matches?
-    "We certified "+current.recent_matches+" matches over the last nine World weeks. "+
-     "The standing Gorilla instructions still govern any authorised on-show adjustment.":
-    "No completed matches in the last nine World weeks. Review Gorilla instructions before the next card."},
+    "We've worked "+current.recent_matches+" matches on recent shows. "+
+     "Give the next card a clear opening, a middle that builds, and a main event worth waiting for. "+
+     "If something goes sideways, your Gorilla instructions still decide what I can change.":
+    "We haven't put a match in the books recently. Bring me a card with a clear finish, "+
+     "and make sure the Gorilla instructions reflect how you want me to handle surprises."},
    MEDICAL:{target:"roster",message:current.medical_risks?
     current.medical_risks+" contracted wrestlers are unavailable. "+
      "Check their clearance dates rather than assuming they can work.":
     "No contracted wrestlers currently have an active medical restriction on record."},
    CREATIVE:{target:"programmes",message:current.repeated_programmes?
-    current.repeated_programmes+" ongoing programme"+(current.repeated_programmes===1?" is":"s are")+
-     " repeating beats. Review the direction before your next show.":
-    current.active_programmes+" active programmes on the books. No repetition warning is currently triggered."},
+    "We've got "+current.repeated_programmes+" stor"+(current.repeated_programmes===1?"y":"ies")+
+     " circling the same ground. Give the people involved a different kind of encounter, "+
+     "or a reason to want the next match before we book it.":
+    current.active_programmes?
+     "There are "+current.active_programmes+" active rivalries to work with. "+
+      "I'd rather give one of them a memorable next chapter than cram in five half-finished stories.":
+     "Nothing is running as an active rivalry yet. Pick two people with a reason to clash, "+
+      "and build something the audience can follow from one show to the next."},
    COMMENTATOR:{target:"programmes",message:current.active_programmes?
-    current.active_programmes+" current programmes give us real storylines to call. "+
-     "Keep the commentary tied to what actually happened.":
-    "No active programmes to follow on commentary right now; new match history will build the story."},
+    "We have "+current.active_programmes+" active stories to explain. "+
+     "Give us one real development to talk about on the next broadcast; "+
+     "the audience remembers facts better than a string of empty promises.":
+    "We're short on ongoing stories to call. A clear challenge or a meaningful result "+
+     "gives commentary something to carry into the next show."},
    REFEREE:{target:"staff",message:current.recent_disqualifications?
     current.recent_disqualifications+" certified disqualification finishes in the last nine weeks. "+
      "Make the next scripted finish unmistakable to the referee.":
     "No certified disqualification finishes in the last nine weeks. "+
      "Our referees will stick to the authorised card."},
    PRODUCTION:{target:"staff",message:current.recent_shows?
-    current.recent_shows+" shows completed in the last nine weeks. "+
-     "Each has a recorded result; future venue plans remain yours to approve.":
-    "No completed shows in the last nine weeks. The planner and venue approvals remain under your control."},
+    "We've delivered "+current.recent_shows+" recent shows. "+
+     "Keep your event layout clear and make sure the next venue and date are confirmed early. "+
+     "Nothing about the future card is being changed for you.":
+    "We have no recent finished broadcasts to review. Start with a confirmed date and venue; "+
+     "the rest of the production schedule can follow your booking."},
    SCOUT:{target:"roster",message:hiredScout?
     scoutReport.length?
      "I've identified "+scoutReport.length+" unattached prospect"+

@@ -100,6 +100,19 @@ test("repeated cup in one year, gaps, cancellations or missing ratings never inv
  assert.deepEqual(rest,[]);
 });
 
+test("prospect dirt-sheet speculation is grounded in a completed standout match, never a confidential push",()=>{
+ const stages=new Map([["a","PROSPECT"]]);
+ const stories=composeWorldNews([{...b1,rating_stars:4.8}],[],[],[],names,[],stages);
+ const rumour=stories.find(s=>s.key.startsWith("rumour:breakout:"));
+ assert.equal(rumour?.desk,"DIRT");
+ assert.equal(rumour?.certainty,"SPECULATION");
+ assert.match(rumour?.title??"",/Alice/);
+ assert.match(rumour?.summary??"",/question, not an announced plan/);
+ assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
+ assert.ok(!JSON.stringify(stories).includes("private"));
+ const cold=composeWorldNews([{...b1,rating_stars:3.0}],[],[],[],names,[],stages);
+ assert.equal(cold.filter(s=>s.desk==="DIRT").length,0);
+});
 test("certified title transfers announce the recorded winner, but not invented first champions",()=>{
  const singles={...pub("s1","human"),slot_id:"m1",title_name:"World Crown",
   winner_name:"Alice",prior_reign_id:"prior"};
