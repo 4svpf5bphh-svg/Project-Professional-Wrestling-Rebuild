@@ -58,6 +58,20 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"TONIGHT'S HEADLINES"})).toBeVisible();
+  const chapters=page.locator(".ppw-results-steps .ppw-results-step");
+  await expect(chapters).toHaveCount(3);
+  await expect(chapters.nth(0)).toHaveAccessibleName("Headlines & Ringside");
+  await expect(chapters.nth(1)).toHaveAccessibleName("The Full Show");
+  await expect(chapters.nth(2)).toHaveAccessibleName("Post-show Brief");
+  if(width===320){
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
+   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
+   expect(await chapters.evaluateAll(tabs=>tabs.every(tab=>
+    tab.scrollWidth<=tab.clientWidth+1))).toBe(true);
+  }else{
+   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
+  }
   await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
