@@ -522,7 +522,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   button.setAttribute("aria-label",label);
   button.replaceChildren(
    node("span","ppw-results-step-full",label),
-   node("span","ppw-results-step-short",["Headlines","Full show","Brief"][index]!)
+   node("span","ppw-results-step-short",["Ringside","Full show","Brief"][index]!)
   );
   tabButtons.push(button);steps.append(button);
  }
