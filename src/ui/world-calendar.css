@@ -144,3 +144,9 @@
  box-shadow:none;padding:14px}
 .ppw-calendar-management-toggle:focus-visible{outline:3px solid #f4ca82;
  outline-offset:-3px}
+
+.ppw-calendar-header>.ppw-calendar-button:last-child{
+ min-height:44px;margin:11px 0 0;border:1px solid #b5d4eb;
+ background:#193e56;color:#eaf7ff;font-weight:800}
+.ppw-calendar-header>.ppw-calendar-button:last-child:focus-visible{
+ outline:3px solid #f4c781;outline-offset:2px}

@@ -125,6 +125,7 @@ test("Calendar prioritises announced fixtures, and empty premium view explains i
  });
  await page.goto("/#/calendar");
  await expect(page.getByRole("heading",{name:"Upcoming weeks"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Edit recurring schedule"})).toBeVisible();
  await expect(page.locator(".ppw-calendar-management")).not.toHaveAttribute("open");
  await expect(page.getByText("Indie Weekly").first()).toBeVisible();
  await page.getByRole("button",{name:"PPVs & specials"}).click();

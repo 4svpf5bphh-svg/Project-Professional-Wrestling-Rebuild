@@ -245,6 +245,15 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const head=node("header","","ppw-calendar-header");
   head.append(button("← Planner",back),node("h1","Show Calendar"),
    node("p","Your weekly broadcasts, major events and special attractions."));
+  head.append(button("Edit recurring schedule",()=>{
+   manageExpanded=true;
+   const section=root.querySelector<HTMLDetailsElement>(".ppw-calendar-management");
+   if(section){
+    section.open=true;
+    section.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?
+     "auto":"smooth",block:"start"});
+   }
+  },busy));
   root.append(head);
   if(error)root.append(node("p",error,"ppw-calendar-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void load(),busy));return;}
