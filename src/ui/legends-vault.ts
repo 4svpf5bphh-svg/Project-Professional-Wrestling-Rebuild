@@ -46,6 +46,13 @@ function photoCredit(item:LegendsVaultEntry){
  const credit=LEGEND_CARD_PHOTO_CREDITS[item.id];
  if(!credit)return null;
  const caption=el("p","ppw-legend-photo-credit","Photo: "+credit.author+" · ");
+ // User-provided private draft photos may have no verified public source URL.
+ // Do not render an empty, misleading attribution link; never claim a
+ // Creative Commons licence for a different photograph.
+ if(!credit.sourcePage){
+  caption.append(el("span","",credit.license+" · user-supplied draft"));
+  return caption;
+ }
  const source=document.createElement("a");
  source.href=credit.sourcePage;
  source.target="_blank";source.rel="noopener noreferrer";
