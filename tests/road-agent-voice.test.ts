@@ -65,3 +65,38 @@ test("Road Agent gives location-specific, fixable notes for real timing and exec
  assert.match(unpaced.recommendation,/shorter structure/);
  assert.doesNotMatch(report.recommendation,/\b[0-9]+\/100|execution score|match quality meter/i);
 });
+
+test("Road Agent chooses the largest certified timing overrun, not the first one",()=>{
+ const overloaded=facts.map((fact,i)=>({
+  ...fact,plannedMinutes:10,actualMinutes:i===0?16:22,
+  executionQuality:80,chemistryModifier:0
+ }));
+ const report=deriveRoadAgentReport(receipt,overloaded,null);
+ assert.match(report.concern,/closing match run 12 minutes longer/);
+ assert.match(report.recommendation,/timing of the closing match/);
+ assert.doesNotMatch(report.concern,/opener run/);
+});
+
+test("Road Agent diagnoses poor execution, not merely the lowest critic rating",()=>{
+ const uneven=facts.map((fact,i)=>({
+  ...fact,ratingStars:i===0?1.5:4.5,
+  executionQuality:i===0?80:35,
+  plannedMinutes:18,actualMinutes:18,chemistryModifier:0
+ }));
+ const report=deriveRoadAgentReport(receipt,uneven,null);
+ assert.match(report.concern,/closing match/);
+ assert.match(report.concern,/comfortable rhythm/);
+ assert.match(report.recommendation,/cleaner, shorter structure/);
+ assert.doesNotMatch(report.concern,/opener/);
+});
+
+test("Road Agent identifies the worst negative working chemistry when timings are sound",()=>{
+ const awkward=facts.map((fact,i)=>({
+  ...fact,executionQuality:78,plannedMinutes:18,actualMinutes:18,
+  chemistryModifier:i===0?-3:-8
+ }));
+ const report=deriveRoadAgentReport(receipt,awkward,null);
+ assert.match(report.concern,/chemistry in the closing match/);
+ assert.match(report.recommendation,/different opponents/);
+ assert.equal(report.strongestMatchId,"opener");
+});
