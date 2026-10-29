@@ -320,9 +320,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(finish){
    const replay=node("section","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
    replay.setAttribute("aria-label","Finish replay");
-   append(replay,node("span","ppw-finish-eyebrow","◉ FINISH REPLAY"),
-    node("strong","ppw-finish-title",finish.title),
+   append(replay,node("span","ppw-finish-eyebrow","◉ OFFICIAL FINISH"),
+    node("strong","ppw-finish-title",finish.title));
+   const finishNotes=document.createElement("details");
+   finishNotes.className="ppw-verified-finish-details";
+   finishNotes.open=true; // Readable when AI editorial is unavailable.
+   finishNotes.append(node("summary","","Read the certified finish"),
     node("p","ppw-finish-description",finish.description));
+   replay.append(finishNotes);
    if(finish.winnerLabel)
     append(replay,node("p","ppw-finish-winner","WINNER: "+finish.winnerLabel));
    append(body,replay);
@@ -535,16 +540,32 @@ function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:Ri
  // Verified editorial joins these scenes; mechanical interstitials belong
  // only to the offline fallback, which has no authored transitions.
  for(const bridge of root.querySelectorAll(".ppw-show-transition"))bridge.remove();
+ for(const finish of root.querySelectorAll<HTMLDetailsElement>(".ppw-verified-finish-details"))
+  finish.open=false; // The columnist tells the story; the source decision remains one tap away.
+ root.classList.add("ppw-editorial-ready");
  const status=region.querySelector(".ppw-ringside-ai-status");
  if(status)status.textContent="GROQ ARTICLE · VERIFIED RECORD";
  const headline=region.querySelector(".ppw-final-bell-headline");
  if(headline)headline.textContent=copy.showHeadline;
- region.append(node("p","ppw-final-bell-paragraph",copy.opening),
-  node("p","ppw-final-bell-paragraph",copy.closing));
+ region.append(node("p","ppw-final-bell-paragraph",copy.opening));
+ const full=root.querySelector<HTMLElement>('.ppw-results-page[data-page="full"]');
+ if(full){
+  const conclusion=node("section","ppw-ringside-conclusion");
+  conclusion.append(node("span","ppw-eyebrow","FINAL WORD"),
+   node("p","",copy.closing));
+  full.insertBefore(conclusion,full.querySelector(".ppw-results-next"));
+ }
  for(const slot of copy.slots){
   const report=Array.from(root.querySelectorAll<HTMLElement>(".ppw-ringside-slot"))
    .find(el=>el.dataset.slotId===slot.slotId);
-  if(report){report.textContent=slot.recap;report.hidden=false;}
+  if(report){
+   // The Groq passage is a part of one chronological article. Keep its own
+   // heading and paragraphs, while the immutable match receipt stays separate.
+   const paragraphs=slot.recap.split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
+   report.replaceChildren(node("h3","ppw-ringside-slot-headline",slot.headline),
+    ...paragraphs.map(p=>node("p","ppw-ringside-slot-paragraph",p)));
+   report.hidden=false;
+  }
  }
 }
 function markRingsideFallback(root:HTMLElement,show:CompletedShowView){
