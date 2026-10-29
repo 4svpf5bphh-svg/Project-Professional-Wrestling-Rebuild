@@ -100,7 +100,8 @@ test("Gorilla retains edits across show tabs and replays a lost save receipt wit
   }
   return route.fulfill({json:{}});
  });
- await page.goto("/#/gorilla");
+ await page.goto("/#/staff");
+ await page.getByRole("button",{name:/Prepare individual match contingencies/}).click();
  await expect(page.getByRole("heading",{name:"At the curtain"})).toBeVisible();
  await page.getByRole("combobox",{name:"Exceptional crowd response"})
   .selectOption("LET_CROWD_BREATHE");
