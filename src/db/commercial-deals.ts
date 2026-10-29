@@ -63,9 +63,10 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
     throw new Error("A current agreement must expire before new terms are available");
    const baselineIncome=valid.kind==="BROADCAST"?
     p.weeklyMediaIncome!:p.weeklySponsorIncome!;
-   const baselineReach=valid.kind==="BROADCAST"?p.mediaReach:null;
+   const baselineReach=valid.kind==="BROADCAST"?
+    Math.min(100,p.mediaReach!):null;
    const agreedReach=valid.kind==="BROADCAST"?
-    p.mediaReach!+valid.reachIncrease:null;
+    Math.min(100,baselineReach!+valid.reachIncrease):null;
    const dealId="commercial-"+randomUUID();
    await tx.query(`
     INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
