@@ -235,7 +235,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      activityCount:p.activityCount,matchCount:p.matchCount,
      segmentCount:p.segmentCount,sideAWins:p.sideAWins,
      sideBWins:p.sideBWins,championshipId:p.championshipId,
-     recentKind:latest?.kind??null});
+     recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null});
     const sheet=element("div","ppw-programme-staff-note");
     sheet.append(element("span","ppw-programme-eyebrow","CREATIVE DESK · OPTIONAL"),
      element("h3","",note.headline),
