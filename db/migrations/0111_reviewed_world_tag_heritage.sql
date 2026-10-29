@@ -21,7 +21,19 @@ INSERT INTO ppw_reviewed_tag_heritage VALUES
  ('ZaRuca','Sol Ruca','Zaria',false),
  ('FWC','Hazuki','Koguma',false),
  ('The Bella Twins','Brie Bella','Nikki Bella',true),
- ('The Gunns','Austin Gunn','Colten Gunn',true);
+ ('The Gunns','Austin Gunn','Colten Gunn',true),
+ -- Additional existing roster pairs, externally reviewed for late 2026.
+ ('Motor City Machine Guns','Alex Shelley','Chris Sabin',false),
+ ('Gates of Agony','Bishop Kaun','Toa Liona',false),
+ ('Grizzled Young Veterans','James Drake','Zack Gibson',false),
+ ('Private Party','Isiah Kassidy','Marq Quen',false),
+ ('Top Flight','Dante Martin','Darius Martin',true),
+ ('Brodido','Bandido','Brody King',false),
+ ('Murder Machines','Brian Cage','Lance Archer',false),
+ ('The Usos','Jey Uso','Jimmy Uso',true),
+ ('The War Raiders','Erik','Ivar',false),
+ ('Aussie Open','Kyle Fletcher','Mark Davis',false),
+ ('Dark Order: Silver & Reynolds','Alex Reynolds','John Silver',false);
 
 -- Materialise only exact two-person, same-division pair identities. Repeated
 -- wrestler names are ambiguous and intentionally skipped (not guessed).
