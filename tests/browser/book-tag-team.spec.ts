@@ -96,7 +96,7 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  const booked=[{trioId:"first",name:"The Lightning Trio",members:six.slice(0,3)},
   {trioId:"second",name:"The Steel Trio",members:six.slice(3)}];
  let revision=4,saves=0;
- let slots:[{slotId:string;kind:"MATCH";position:number;payload:unknown}]|any[]=[];
+ let slots:{slotId:string;kind:"MATCH";position:number;payload:unknown}[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>{
   const req=route.request().postDataJSON(),method=req.method;
