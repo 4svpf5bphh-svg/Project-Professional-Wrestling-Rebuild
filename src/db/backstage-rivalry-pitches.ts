@@ -10,13 +10,24 @@ export async function publishBackstageRivalryPitches(
  if(!worldId||!Number.isSafeInteger(weekIndex)||weekIndex<0)
   throw new Error("Invalid Backstage rivalry week");
  // A rivalry pitch requires two *previously* certified singles shows.
- // At the very first World week the evidence window is mathematically empty.
+ // At the first World week the evidence window is empty.
  if(weekIndex===0)return {newPitches:0};
+ // Use the existing (world_id,year,week,promotion_id) index. Applying
+ // arithmetic to sh.year/sh.week instead would require scanning historical
+ // broadcasts in every subsequent World year.
+ const first=Math.max(0,weekIndex-12),last=weekIndex-1;
+ const firstYear=Math.floor(first/52)+1,firstWeek=first%52+1;
+ const lastYear=Math.floor(last/52)+1,lastWeek=last%52+1;
  const rows=await tx.query<{request_id:string}>([
-  // Materialise only recent *human-controlled* broadcasts first; otherwise
-  // PostgreSQL can build a huge relationships/contracts join for an AI-only
-  // World in which no Backstage pitch can ever be delivered.
-  "WITH completed AS MATERIALIZED (",
+  // Do not even enter the AI-only companies' completed match records. The
+  // active human-owned promotion set is generally tiny (or empty in a solo
+  // offline simulation), and DISTINCT avoids multiplying match evidence.
+  "WITH human_promotions AS MATERIALIZED (",
+  "SELECT DISTINCT owner.promotion_id FROM ppw_promotion_controls owner",
+  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
+  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
+  "WHERE owner.world_id=$1 AND owner.active",
+  "), completed AS MATERIALIZED (",
   "SELECT sh.promotion_id,sh.show_id,played.crowd_response,",
   "least(s.payload->'participants'->0->>'personId',",
   "s.payload->'participants'->1->>'personId') AS person_a_id,",
@@ -26,17 +37,16 @@ export async function publishBackstageRivalryPitches(
   "s.payload->'participants'->1->>'contractId' AS second_contract,",
   "s.payload->'participants'->0->>'personId' AS first_person,",
   "s.payload->'participants'->1->>'personId' AS second_person",
-  "FROM ppw_completed_shows sh JOIN ppw_completed_show_matches played",
+  "FROM human_promotions human",
+  "JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
+  "JOIN ppw_completed_show_matches played",
   "ON played.world_id=sh.world_id AND played.show_id=sh.show_id",
   "JOIN ppw_card_slots s ON s.world_id=played.world_id",
   "AND s.draft_id=played.show_id AND s.slot_id=played.match_id",
   "WHERE sh.world_id=$1 AND s.kind='MATCH'",
-  "AND EXISTS(SELECT 1 FROM ppw_promotion_controls owner",
-  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
-  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
-  "WHERE owner.world_id=sh.world_id AND owner.promotion_id=sh.promotion_id",
-  "AND owner.active)",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN greatest(0,$2-12) AND $2-1",
+  "AND (sh.year,sh.week) BETWEEN ($3::integer,$4::integer)",
+  "AND ($5::integer,$6::integer)",
   "AND jsonb_typeof(s.payload->'participants')='array'",
   "AND jsonb_array_length(s.payload->'participants')=2",
   "AND (s.payload->>'matchType' IS NULL OR s.payload->>'matchType'='SINGLES')",
@@ -107,7 +117,7 @@ export async function publishBackstageRivalryPitches(
   "promotion_id,person_a_id,person_b_id,'RIVALRY_PITCH',$2,",
   "shared_shows,average_crowd,professional_trust",
   "FROM ranked WHERE rank=1 ON CONFLICT DO NOTHING RETURNING request_id"
- ].join(" "),[worldId,weekIndex]);
+ ].join(" "),[worldId,weekIndex,firstYear,firstWeek,lastYear,lastWeek]);
  if(rows.length>128)throw new Error("Backstage rivalry pitches exceed World cap");
  return {newPitches:rows.length};
 }
