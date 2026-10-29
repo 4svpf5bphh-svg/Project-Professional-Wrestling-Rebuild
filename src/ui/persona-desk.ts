@@ -108,7 +108,10 @@ export function mountPersonaDesk(root:HTMLElement,
     throw Error("Reply not confirmed. Retrying will reuse your original message.");
    view=await port.load(selected);
    pendingDecision=null;scrollToLatest=true;answer=null;
-  }catch(e){error=e instanceof Error?e.message:"Unable to send reply";}
+  }catch(e){
+   const reason=e instanceof Error?e.message:"Unable to send reply";
+   error=(pendingDecision?"Your reply was not confirmed. Retrying sends the same message. ":"")+reason;
+  }
   finally{loading=false;render();}
  }
  async function request(){
@@ -136,7 +139,10 @@ export function mountPersonaDesk(root:HTMLElement,
     result.reason==="CREATIVE_APPROVAL_WITHHELD"?
      "You need my approval for that, and I'm not giving it.":
      "I hear the pitch, but I'm staying with the character I've built.";
-  }catch(e){error=e instanceof Error?e.message:"Proposal could not be reviewed";}
+  }catch(e){
+   const reason=e instanceof Error?e.message:"Proposal could not be reviewed";
+   error=(pendingPitch?"Character pitch not confirmed. Retrying sends the same proposal. ":"")+reason;
+  }
   finally{loading=false;render();}
  }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;

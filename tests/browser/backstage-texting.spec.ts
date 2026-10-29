@@ -57,7 +57,7 @@ test("320px Backstage: actual SMS choices retry the same World command after a l
  const send=page.getByRole("button",{name:sentence});
  await expect(send).toContainText("Hear them out");
  await send.click();
- await expect(page.getByText(/Mobile connection dropped/)).toBeVisible();
+ await expect(page.getByText(/Your reply was not confirmed\. Retrying sends the same message/)).toBeVisible();
  await page.getByRole("button",{name:sentence}).click();
  await expect(page.locator(".ppw-persona-bubble.ppw-persona-out")).toContainText([sentence]);
  await expect(page.locator(".ppw-backstage-reply-choice")).toHaveCount(0);
