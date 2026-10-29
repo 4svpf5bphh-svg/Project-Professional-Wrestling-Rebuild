@@ -5,7 +5,7 @@ on:
 # A branch's CI can be expensive; obsolete 100+ browser and database suites
 # must not pile up while newer, integrated commits are ready to verify.
 concurrency:
-  # Deduplicate heavy disposable-DB verification across push and PR events.
+  # A PR and its push must not run the 52-week disposable DB check twice.
   group: rebuild-verify-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
@@ -490,3 +490,7 @@ jobs:
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:postgres
+      - name: Verify 52-week AI World with isolated database load
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: npm run test:world-year

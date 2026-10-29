@@ -17,7 +17,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
  skip:!url?"Disposable PostgreSQL required":false,timeout:420000,
 },async()=>{
  const world="phase13-real-world-"+randomUUID(),db=postgresPool(url!,4);
- const weeks=52;
+ const weeks=52,started=Date.now();
  const snapshots:Array<{week:number;shows:number;completed:number;
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
@@ -42,6 +42,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
     [world]);
   });
   for(let week=1;week<=weeks;week++){
+   const weekStart=Date.now();
    const state=await withWorldTransaction(db.pool,tx=>tx.query<{
     year:number;week:number;phase:string;revision:string
    }>("SELECT year,week,phase,revision::text FROM ppw_worlds WHERE world_id=$1",[world]));
@@ -109,6 +110,12 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
    snapshots.push({week,shows:f.shows,completed:f.completed,
     certified:f.certified,matches:f.matches,cash:f.cash,
     weeklyLedger:f.weekly_ledger});
+   if(week===1||week%4===0||week===weeks)
+    console.log("World-year verification progress",JSON.stringify({
+     week,of:weeks,elapsedSeconds:Math.round((Date.now()-started)/1000),
+     lastWeekSeconds:Math.round((Date.now()-weekStart)/1000),
+     bookedShows:f.shows,certifiedPromotions:f.certified,matches:f.matches
+    }));
    const retry=await driveWorldResolution(db.pool,{
     worldId:world,resolutionId:"phase13-resolution",maxStages:2,
     manualRecovery:true,
