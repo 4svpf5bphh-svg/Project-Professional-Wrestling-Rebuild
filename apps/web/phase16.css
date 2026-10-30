@@ -323,3 +323,21 @@ html[data-ppw-screen=backstage] #game .ppw-backstage-phone-header{top:max(0px,en
  width:100%!important;max-width:100%!important;
  height:auto!important;max-height:90px!important;
  object-fit:contain;object-position:left center}
+
+/* POP! is NOT a cream Crowd Noise card: override global arena rules. */
+#game .ppw-pop-social .ppw-pop-post{background:linear-gradient(145deg,#302646,#1c2742);
+ color:#fff3ee;border:1px solid #9576b4;box-shadow:0 5px 15px #05081960;border-radius:13px}
+#game .ppw-pop-social .ppw-pop-post :is(.ppw-pop-copy,.ppw-pop-display-name){color:#fff4f2}
+#game .ppw-pop-social .ppw-pop-post .ppw-pop-handle{color:#e5cafa}
+#game .ppw-pop-social .ppw-pop-post .ppw-pop-reply{background:#182343;color:#f5efff;
+ border:1px solid #797bad;border-left:3px solid #a7c7ff;border-radius:10px}
+#game .ppw-pop-social .ppw-pop-post .ppw-pop-reply :is(span,strong){color:#f5efff}
+#game .ppw-pop-social .ppw-pop-post .ppw-pop-reply .ppw-crowd-noise-reply-voice{color:#cfbaff}
+#game .ppw-pop-social .ppw-pop-post .ppw-pop-metrics{color:#d8c6ee;border-top-color:#78678a}
+#game .ppw-pop-social .ppw-pop-post .ppw-crowd-noise-read{color:#e3baff}
+/* A single compact expandable certified finish. */
+#game .ppw-verified-finish-details{padding:6px 10px;margin:6px 0;
+ background:#16243b;border:1px solid #526886;border-radius:9px}
+#game .ppw-verified-finish-details summary{display:list-item;min-height:34px;
+ padding:7px 4px;color:#bddff5;font-size:12px;line-height:1.4;font-weight:800}
+#game .ppw-verified-finish-details>p{font-size:13px;line-height:1.5;color:#d5e5f3;margin:7px 4px}

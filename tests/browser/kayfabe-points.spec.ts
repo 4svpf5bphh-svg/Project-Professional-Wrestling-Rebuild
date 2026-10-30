@@ -54,7 +54,7 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
  expect(calls).toEqual(["business"]);
- await page.getByRole("button",{name:/Kayfabe Points/}).click();
+ await page.getByRole("button",{name:"Open your KP wallet"}).click();
  await expect(page.getByRole("heading",{name:"Kayfabe Points"})).toBeVisible();
  await expect(page.getByText("5,000 KP",{exact:true})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Create a Wrestler"})).toBeVisible();

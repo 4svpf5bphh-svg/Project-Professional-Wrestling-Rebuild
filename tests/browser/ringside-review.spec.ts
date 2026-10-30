@@ -105,7 +105,7 @@ for(const width of [320,390]){
   await page.locator(".ppw-verified-finish-details").first().locator("summary").click();
   await expect(page.locator(".ppw-verified-finish-details").first()).toHaveAttribute("open");
   await expect(page.locator(".ppw-final-bell")).not.toContainText("The main event delivered");
-  await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
+  await expect(page.locator(".ppw-result-verdict").first()).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);

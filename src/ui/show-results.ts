@@ -333,23 +333,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   const narrative=node("div","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
-  // The columnist's account precedes the permanently visible verified finish.
-  // Staff will eventually deliver analysis; no simulated Booker Breakdown.
+  // Official finish remains verifiable without repeating the result in a huge box.
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
-   const replay=node("section","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
-   replay.setAttribute("aria-label","Finish replay");
-   append(replay,node("span","ppw-finish-eyebrow","◉ OFFICIAL FINISH"),
-    node("strong","ppw-finish-title",finish.title));
    const finishNotes=document.createElement("details");
-   finishNotes.className="ppw-verified-finish-details";
-   finishNotes.open=true; // Readable when AI editorial is unavailable.
-   finishNotes.append(node("summary","","Read the certified finish"),
+   finishNotes.className="ppw-verified-finish-details ppw-finish-"+finish.tone.toLowerCase();
+   finishNotes.open=true; // Offline fallback if the editorial isn't ready.
+   finishNotes.append(node("summary","","Official finish · "+finish.title),
     node("p","ppw-finish-description",finish.description));
-   replay.append(finishNotes);
-   if(finish.winnerLabel)
-    append(replay,node("p","ppw-finish-winner","WINNER: "+finish.winnerLabel));
-   append(body,replay);
+   body.append(finishNotes);
   }
   if(review.bulletins.length){
    append(body,node("h3","ppw-result-fallout-title","CONFIRMED FALLOUT"));
@@ -361,17 +353,6 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.type==="MATCH"&&entry.matchContext?.winnerNames.length)
    append(body,node("p","ppw-result-verdict",
     "WINNER  ·  "+entry.matchContext.winnerNames.join(" & ")));
-  if(entry.performerIdentities?.length){
-   const profiles=node("div","ppw-result-personas");
-   for(const person of entry.performerIdentities){
-    const tag=node("div","ppw-result-persona");
-    append(tag,node("strong","",person.ringName),
-     node("span","",label(person.character)));
-    if(person.style)append(tag,node("small","",label(person.style)));
-    append(profiles,tag);
-   }
-   append(body,profiles);
-  }
   const chapters=entry.programmeChapters??[];
   if(chapters.length){
    const context=node("section","ppw-rivalry-at-ringside");
