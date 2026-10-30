@@ -17,6 +17,7 @@ test("a wrestler remembers completed bouts as wins, losses or undecided matches"
 test("the staff talk about a real named match and an unfulfilled rematch without booking one",()=>{
  const s={sideA:"Samoa Joe",sideB:"Matt Riddle",heat:70,
   lastKind:"MATCH" as const,lastWeekIndex:8,lastWinnerSide:"B" as const,
+  lastMatchWinnerSide:"B" as const,lastMatchWeekIndex:8,
   directionChoice:"PURSUE_REMATCH" as const,directionWeekIndex:8,
   laterMatch:false,laterAngle:true};
  const advice=deriveStaffRivalryObservations(s);
@@ -31,11 +32,13 @@ test("the staff talk about a real named match and an unfulfilled rematch without
 });
 test("a different subsequent bout cannot count as an authored retaliation scene",()=>{
  const s={sideA:"FTR",sideB:"Young Bucks",heat:81,lastKind:"SEGMENT" as const,
-  lastWeekIndex:50,lastWinnerSide:null,directionChoice:"PLAN_RETALIATION" as const,
+  lastWeekIndex:50,lastWinnerSide:null,
+  lastMatchWinnerSide:"A" as const,lastMatchWeekIndex:49,
+  directionChoice:"PLAN_RETALIATION" as const,
   directionWeekIndex:49,laterMatch:true,laterAngle:false};
  const notes=deriveStaffRivalryObservations(s);
  assert.match(notes.creative??"",/no later rivalry angle has been completed/);
- assert.doesNotMatch(notes.commentary??"",/won by/);
+ assert.match(notes.commentary??"",/previous recorded match went to FTR/);
  const done=deriveStaffRivalryObservations({...s,laterAngle:true});
  assert.equal(done.priority,null);
  const blank=deriveStaffRivalryObservations(null);
