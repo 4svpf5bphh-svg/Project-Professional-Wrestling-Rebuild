@@ -32,7 +32,13 @@ for(const width of [320,390]){
      ]
     }});
    }
-   if(payload.method==="kpWorkspace")return r.fulfill({json:{}});
+   if(payload.method==="kpWorkspace")return r.fulfill({json:{
+    balance:0,lifetimeEarned:0,lifetimeSpent:0,worldYear:1,week:8,
+    promotionName:"Chaotic Wrestling Alliance",weeklyAward:100,claim:null,
+    entitlements:[],activeBrand:null,activeBadge:null,staff:[],createdTalent:[],
+    achievements:[],catalogue:[],staffAliasPrice:350,createTalentPrice:3000,
+    createOptions:{alignments:[],styles:[],gimmicks:[]}
+   }});
    return r.fulfill({json:{}});
   });
   await page.goto("/#/achievements");
