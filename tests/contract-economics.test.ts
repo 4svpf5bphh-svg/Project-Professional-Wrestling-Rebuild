@@ -21,7 +21,7 @@ test("future non-exclusive service capacity accounts for unused dates not histor
  const blocked=[{...contracts[0]!,family:"EXCLUSIVE" as const,remainingDates:null}];
  assert.match(canAcceptTerms(person,limited,blocked,0)??"",/exclusive/);
  assert.equal(canAddDates(person,contracts[0]!,3,[],0),null);
- assert.match(canAddDates(person,{...contracts[0]!,remainingDates:12},104,[],12)??"",/capacity/);
+ assert.match(canAddDates(person,{...contracts[0]!,remainingDates:12},104,[],12)??"",/contract weeks/);
 });
 test("original deterministic wrestler utility and creative bargaining floor",()=>{
  const context={tier:"NATIONAL",mediaReach:60,hasPriorRelationship:false,trust:50,
@@ -39,4 +39,13 @@ test("date addenda price only the newly purchased dates, not a fresh term",async
  const higher=addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:10000},2,4000,13,ctx);
  assert.ok(higher>low);
  assert.equal(higher,addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:10000},2,4000,13,ctx));
+});
+
+test("limited deals and addenda never sell more dates than calendar weeks",()=>{
+ assert.throws(()=>canAcceptTerms(person,{...limited,termWeeks:5,dateEntitlement:6},[],0),
+  /cannot exceed contract weeks/);
+ const contract={contractId:"existing",family:"LIMITED_NON_EXCLUSIVE" as const,
+  status:"SIGNED",remainingDates:3,startWeekIndex:0,expiresWeekIndex:5};
+ assert.equal(canAddDates(person,contract,1,[],2),null);
+ assert.match(canAddDates(person,contract,2,[],2)??"",/contract weeks/);
 });
