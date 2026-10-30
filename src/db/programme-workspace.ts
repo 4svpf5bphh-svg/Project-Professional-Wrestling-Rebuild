@@ -42,22 +42,36 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    championship_id:string|null;started_week_index:number|null;
    ended_week_index:number|null;direction_choice:ProgrammeDirectionChoice|null;
    direction_show_id:string|null;direction_slot_id:string|null;
-   direction_week_index:number|null}>([
+   direction_week_index:number|null;
+   next_match_week_index:number|null;next_angle_week_index:number|null}>([
    "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
    "started_week_index,ended_week_index,activity_count,match_count,",
    "segment_count,side_a_wins,side_b_wins,draws,",
    "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
-   "direction.slot_id AS direction_slot_id,direction.chosen_week_index AS direction_week_index",
+   "direction.slot_id AS direction_slot_id,direction.chosen_week_index AS direction_week_index,",
+   "follow_up.match_week AS next_match_week_index,",
+   "follow_up.angle_week AS next_angle_week_index",
    "FROM ppw_programmes programme",
    "LEFT JOIN LATERAL (SELECT d.choice,d.show_id,d.slot_id,d.chosen_week_index",
    "FROM ppw_programme_postshow_directions d",
    "WHERE d.world_id=programme.world_id AND d.promotion_id=programme.promotion_id",
    "AND d.programme_id=programme.programme_id",
    "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) direction ON TRUE",
+   // Only independently certified programme beats, not planned show cards,
+   // can fulfil a manager's creative direction. One indexed per-programme
+   // range, computed in the already existing workspace query.
+   "LEFT JOIN LATERAL (SELECT",
+   "min(a.week_index) FILTER(WHERE a.kind='MATCH') AS match_week,",
+   "min(a.week_index) FILTER(WHERE a.kind='SEGMENT') AS angle_week",
+   "FROM ppw_programme_resolved_activities a",
+   "WHERE a.world_id=programme.world_id AND a.promotion_id=programme.promotion_id",
+   "AND a.programme_id=programme.programme_id",
+   "AND a.week_index>direction.chosen_week_index AND a.week_index<=$3",
+   ") follow_up ON direction.choice IS NOT NULL",
    "WHERE programme.world_id=$1 AND programme.promotion_id=$2",
    "ORDER BY CASE WHEN programme.status='ACTIVE' THEN 0 ELSE 1 END,",
    "programme.started_week_index DESC NULLS LAST,programme.programme_id LIMIT 101"
-  ].join(" "),[scope.worldId,scope.promotionId]);
+  ].join(" "),[scope.worldId,scope.promotionId,currentWeek]);
   if(rows.length>100)throw new Error("Programme capacity exceeded");
   const programmes=rows.map(p=>p.programme_id);
   const refs=programmes.length?await tx.query<{programme_id:string;side:"A"|"B";
@@ -117,7 +131,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   // Both the completed beats and standing terms ride ONE existing bounded
   // workspace statement. No extra SQL read when opening a Programme.
   type Recent={programme_id:string;show_id:string;slot_id:string;
-   kind:string;week_index:number;crowd_response:number};
+   kind:string;week_index:number;crowd_response:number;
+   winner_side:"A"|"B"|null};
   type Agreement={programme_id:string;person_id:string;approved:boolean;
    score:number;decided_week_index:number;expires_week_index:number;
    match_type:string;permitted_outcome:string};
@@ -125,10 +140,14 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    source:"ACTIVITY"|"AGREEMENT";details:Recent|Agreement
   }>([
    "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
-   "SELECT programme_id,show_id,slot_id,kind,week_index,crowd_response",
+   "SELECT programme_id,show_id,slot_id,kind,week_index,crowd_response,winner_side",
+   "FROM (SELECT programme_id,show_id,slot_id,kind,week_index,crowd_response,",
+   "winner_side,row_number() OVER (PARTITION BY programme_id",
+   "ORDER BY week_index DESC,show_id DESC,slot_id DESC) AS rn",
    "FROM ppw_programme_resolved_activities",
-   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY week_index DESC,show_id,slot_id LIMIT 151) activity",
+   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])) ranked",
+   "WHERE rn<=5 ORDER BY programme_id,week_index DESC,show_id DESC,slot_id DESC",
+   "LIMIT 501) activity",
    "UNION ALL",
    "SELECT 'AGREEMENT'::text AS source,to_jsonb(term) AS details FROM (",
    "SELECT programme_id,person_id,approved,score,decided_week_index,",
@@ -141,7 +160,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    .map(x=>x.details as Recent);
   const agreements=combined.filter(x=>x.source==="AGREEMENT")
    .map(x=>x.details as Agreement);
-  if(recent.length>150)throw new Error("Programme history view limit exceeded");
+  if(recent.length>500)throw new Error("Programme history view limit exceeded");
   if(agreements.length>300)throw new Error("Too many rivalry agreements");
   // Roster projection includes the strongest active signed approval right,
   // so a second contract lookup is neither necessary nor permitted here.
@@ -161,11 +180,16 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     latestFollowUp:p.direction_choice===null?null:{
      choice:p.direction_choice,showId:p.direction_show_id!,
-     slotId:p.direction_slot_id!,weekIndex:p.direction_week_index!
+     slotId:p.direction_slot_id!,weekIndex:p.direction_week_index!,
+     // These are verified later chapters, never a booking made on behalf
+     // of the player. A match and an angle are tracked independently.
+     nextMatchWeekIndex:p.next_match_week_index,
+     nextAngleWeekIndex:p.next_angle_week_index
     },
     recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
-      kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response})),
+      kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response,
+      winnerSide:x.winner_side??null})),
     sideA:side("A"),sideB:side("B"),
     eligibleCreativePeople:[...new Set(own.flatMap(x=>
      x.ref_kind==="PERSON"?[x.ref_id]:
