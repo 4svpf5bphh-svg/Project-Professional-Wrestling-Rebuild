@@ -94,5 +94,5 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
  expect(calls).toEqual(["business","kpWorkspace","kpAction","kpWorkspace",
    "kpAction","kpWorkspace","kpAction","kpWorkspace",
-   "kpAction","kpWorkspace"]);
+   "kpAction","kpWorkspace","kpAction","kpWorkspace"]);
 });
