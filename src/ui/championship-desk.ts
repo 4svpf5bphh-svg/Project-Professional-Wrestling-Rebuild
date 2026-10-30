@@ -101,18 +101,17 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    details.dataset.reign=title.currentReignId??"VACANT";
    if(title.holderId&&title.status==="ACTIVE")details.classList.add("ppw-belt-crowned");
    const head=document.createElement("summary");head.className="ppw-belt-summary";
-   const belt=element("span","ppw-belt-insignia");
-   const plate=element("span","ppw-belt-plate");
-   plate.setAttribute("aria-hidden","true");
-     const family=beltCategory(title.name,title.division);
-     details.dataset.titleFamily=family;
-     details.dataset.promotionBrand=promotionBrand(title.promotionName).key;
-     plate.append(element("span","ppw-title-typographic-kicker",
-      family==="tag"?"TAG TEAM":family==="women"?"WOMEN'S DIVISION":family==="world"?"THE WORLD TITLE":"CHAMPIONSHIP"),
-      element("strong","ppw-title-typographic-name",title.name),
-      element("span","ppw-title-typographic-rule",title.promotionName.toUpperCase()));
-   belt.append(plate);
+   // Championship presentation is deliberately typographic: 26 existing
+   // World titles cannot credibly use one generic illustrated belt template.
+   const family=beltCategory(title.name,title.division);
+   details.dataset.titleFamily=family;
+   details.dataset.promotionBrand=promotionBrand(title.promotionName).key;
    const identity=element("span","ppw-belt-identity");
+   identity.append(element("small","ppw-belt-title-kicker",
+    family==="tag"?"TAG TEAM CHAMPIONSHIP":
+    family==="women"?"WOMEN'S CHAMPIONSHIP":
+    family==="world"?"WORLD CHAMPIONSHIP":"CHAMPIONSHIP"));
+   identity.append(element("strong","ppw-belt-name",title.name));
    const promo=element("span","ppw-belt-promotion",
     title.promotionName+" / "+(title.division==="TAG"?"TAG TEAM":"SINGLES")+
     " · "+(title.titleRole==="SECONDARY"?"SECONDARY TITLE":"PRIMARY TITLE"));
@@ -140,7 +139,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    more.append(element("strong","",Math.round(title.prestige)+""),
     element("small","","EARNED PRESTIGE"),
     element("small","",title.defenses+" "+(title.defenses===1?"defense":"defenses")));
-   head.append(belt,identity,more);
+   head.append(identity,more);
    if(title.lastPrestigeChange!==undefined&&title.lastPrestigeChange!==0)
     more.append(element("small","ppw-belt-prestige-change",
      (title.lastPrestigeChange>0?"+":"")+title.lastPrestigeChange.toFixed(2)+" this week"));
