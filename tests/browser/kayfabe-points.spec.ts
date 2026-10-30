@@ -146,3 +146,60 @@ test("Territory TV skin can be purchased once and switched off/on without a seco
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("iPhone KP shop switches two independently purchased results skins, without extra charges",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let balance=4000,activeResultsSkin:string|null=null;
+ const entitlements:string[]=[],charges:number[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"secret",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>{
+  const input=route.request().postDataJSON() as {method:string;kind?:string;sku?:string};
+  if(input.method==="kpWorkspace")return route.fulfill({json:{
+   balance,lifetimeEarned:4000,lifetimeSpent:4000-balance,worldYear:1,week:5,
+   promotionName:"Home",weeklyAward:100,claim:null,entitlements,
+   activeBrand:null,activeBadge:null,activeResultsSkin,staff:[],achievements:[],
+   createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
+    styles:[],gimmicks:[]},staffAliasPrice:350,createTalentPrice:3000,
+   catalogue:[{sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",
+    price:750,kind:"RESULTS_SKIN"},
+    {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",
+     price:750,kind:"RESULTS_SKIN"}]
+  }});
+  if(input.method==="kpAction"){
+   if(input.kind==="BUY"){
+    expect(entitlements).not.toContain(input.sku);
+    entitlements.push(input.sku!);charges.push(750);balance-=750;
+    activeResultsSkin=input.sku==="RESULTS_FIGHT_NIGHT"?"FIGHT_NIGHT":"TERRITORY_TV";
+   }
+   if(input.kind==="APPLY_RESULTS_SKIN"){
+    expect(entitlements).toContain(input.sku);
+    activeResultsSkin=input.sku==="RESULTS_FIGHT_NIGHT"?"FIGHT_NIGHT":"TERRITORY_TV";
+   }
+   if(input.kind==="CLEAR_RESULTS_SKIN")activeResultsSkin=null;
+   return route.fulfill({json:{balance}});
+  }
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/kayfabe");
+ const skins=page.locator(".ppw-kp-results-skins");
+ await expect(skins.locator(".ppw-kp-fight-preview")).toBeVisible();
+ await expect(skins.locator(".ppw-kp-territory-preview")).toBeVisible();
+ const territory=skins.locator(".ppw-kp-results-skin-row").filter({hasText:"Territory TV"});
+ const fight=skins.locator(".ppw-kp-results-skin-row").filter({hasText:"Fight Night"});
+ await territory.getByRole("button",{name:"Unlock"}).click();
+ await expect(territory.getByRole("button",{name:"Applied"})).toBeVisible();
+ await fight.getByRole("button",{name:"Unlock"}).click();
+ await expect(fight.getByRole("button",{name:"Applied"})).toBeVisible();
+ await territory.getByRole("button",{name:"Apply"}).click();
+ await expect(territory.getByRole("button",{name:"Applied"})).toBeVisible();
+ await fight.getByRole("button",{name:"Apply"}).click();
+ await expect(fight.getByRole("button",{name:"Applied"})).toBeVisible();
+ await skins.getByRole("button",{name:"Use original PPW results"}).click();
+ await expect(fight.getByRole("button",{name:"Apply"})).toBeVisible();
+ await expect(territory.getByRole("button",{name:"Apply"})).toBeVisible();
+ expect(charges).toEqual([750,750]);
+ expect(balance).toBe(2500);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
