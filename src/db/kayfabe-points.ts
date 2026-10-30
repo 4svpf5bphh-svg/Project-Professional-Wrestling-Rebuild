@@ -173,8 +173,6 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
   const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
    AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
-  const badge=await tx.query<{style:string}>(
-   "SELECT style FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
   const staff=await tx.query<{staff_id:string;alias:string|null}>(`
    SELECT e.staff_id,a.alias FROM ppw_staff_employments e
    LEFT JOIN ppw_kp_staff_aliases a ON a.world_id=e.world_id
@@ -208,7 +206,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     eligible:last.played&&!last.claimed&&!last.daily_claimed,
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
-   activeBadge:badge[0]?.style??null,
+   activeBadge:achievementData.activeBadge,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:derivePromoterAchievements(achievementData.stats).achievements,
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
