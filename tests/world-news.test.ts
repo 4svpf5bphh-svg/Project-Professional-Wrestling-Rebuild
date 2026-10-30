@@ -78,7 +78,8 @@ test("certified tournament victory is Official News and three earned years defin
  assert.equal(trophy?.sourceKind,"EVENT");
  assert.equal(trophy?.desk,"OFFICIAL");
  assert.equal(trophy?.certainty,"CONFIRMED");
- assert.equal(news.filter(n=>n.sourceKind==="EVENT").length,1);
+ assert.equal(news.filter(n=>n.sourceKind==="EVENT"&&n.desk==="OFFICIAL").length,1,
+  "Official tournament history must not treat online gossip as certified");
  assert.equal(new Set(news.map(n=>n.key)).size,news.length);
  assert.ok(!JSON.stringify(news).includes("NEVER LEAK"));
 });
@@ -144,4 +145,28 @@ test("a certified exceptional bout spotlights a real prospect without claiming a
  assert.doesNotMatch(composeWorldNews([{...match,rating_stars:4.0}],
   [],[],[],names,[],stages)[0]!.title,/Alice in the spotlight/);
  assert.doesNotMatch(composeWorldNews([match],[],[],[],names)[0]!.title,/Alice in the spotlight/);
+});
+
+test("one completely invented and explicitly unverified rumour complements a real week, never becoming World truth",()=>{
+ const verified=[pub("s1","human",80),pub("s2","ai",90)];
+ const stories=composeWorldNews([b1,b2],angles,verified,[],names);
+ const wild=stories.find(x=>x.key.startsWith("wild:"));
+ assert.equal(wild?.certainty,"SPECULATION");
+ assert.equal(wild?.desk,"DIRT");
+ assert.ok(wild?.title);
+ assert.match(wild?.summary??"",
+  /no evidence|no one has established|no backstage incident|not backstage reporting|not one detail has been corroborated|no verification|There is zero evidence/i);
+ assert.equal(stories.filter(x=>x.desk==="DIRT").length,2,
+  "Only one grounded rumour plus one knowingly wild fantasy per World week");
+ assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
+ assert.ok(!JSON.stringify(stories).includes("privatePromise"));
+ assert.deepEqual(composeWorldNews([b2,b1],angles.slice().reverse(),
+  verified.slice().reverse(),[],names),stories,
+  "Story selection and identity are independent of SQL row ordering");
+ const empty=composeWorldNews([],[],[],[],names);
+ assert.deepEqual(empty,[],"No show means no invented actual event or gossip");
+ const only=composeWorldNews([],[],[pub("s1","human",80)],[],names);
+ assert.equal(only.filter(x=>x.desk==="DIRT").length,1,
+  "Entirely speculative gossip is available even without backstage incidents");
+ assert.ok(only.every(x=>x.certainty!=="CONFIRMED"||x.desk==="OFFICIAL"));
 });
