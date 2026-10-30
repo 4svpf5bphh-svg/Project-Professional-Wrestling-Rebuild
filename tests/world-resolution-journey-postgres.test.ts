@@ -324,6 +324,9 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships","ppw_completed_match_evidence",
     "ppw_completed_show_segments","ppw_completed_show_matches",
+    // Real match medical absences reference completed shows: delete these
+    // within the disposable World before removing their parent receipts.
+    "ppw_medical_absences",
     "ppw_gorilla_show_logs","ppw_completed_shows","ppw_gorilla_policies","ppw_show_resolutions","ppw_week_resolution_seals",
     "ppw_week_resource_clearances","ppw_week_prepared_finalizations",
     "ppw_week_continuity_assessments","ppw_ledger_events","ppw_command_receipts",

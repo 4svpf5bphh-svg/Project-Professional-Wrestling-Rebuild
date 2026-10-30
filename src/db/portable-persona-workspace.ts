@@ -161,17 +161,66 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   // Only the selected wrestler thread reads memory. Never inflate inbox
   // reads or pull rival-promoter conversations into this person's history.
   const memories=await tx.query<{kind:string;source_id:string;
-   occurred_week_index:number;importance:number}>([
-   "SELECT kind,source_id,occurred_week_index,importance",
+   occurred_week_index:number;importance:number;
+   related_name:string|null;own_side:"A"|"B"|null;
+   winner_side:"A"|"B"|null}>([
+   // One existing selected-contact read carries both private conversation
+   // memories and up to four certified feud chapters. This never runs for
+   // the inbox and never opens a second promotion's history.
+   "SELECT old.kind,old.source_id,old.occurred_week_index,old.importance,",
+   "NULL::text AS related_name,NULL::text AS own_side,",
+   "NULL::text AS winner_side FROM (",
+   "SELECT kind,source_id,occurred_week_index,importance,memory_id",
    "FROM ppw_backstage_memories WHERE world_id=$1 AND promotion_id=$2",
    "AND person_id=$3 AND occurred_week_index>=greatest(0,$4-104)",
-   "ORDER BY importance DESC,occurred_week_index DESC,memory_id DESC LIMIT 9"
+   "ORDER BY importance DESC,occurred_week_index DESC,memory_id DESC LIMIT 9",
+   ") old",
+   "UNION ALL",
+   "SELECT recent.kind,recent.source_id,recent.occurred_week_index,",
+   "recent.importance,recent.related_name,recent.own_side,recent.winner_side",
+   "FROM (SELECT CASE WHEN beat.kind='MATCH' THEN 'RIVALRY_MATCH'",
+   "ELSE 'RIVALRY_ANGLE' END AS kind,",
+   "beat.programme_id||':'||beat.show_id||':'||beat.slot_id AS source_id,",
+   "beat.week_index AS occurred_week_index,2 AS importance,",
+   "coalesce(opposition.names,'their rivals') AS related_name,",
+   "member.side AS own_side,beat.winner_side",
+   "FROM ppw_programme_participants member",
+   "JOIN ppw_programme_resolved_activities beat",
+   "ON beat.world_id=member.world_id",
+   "AND beat.promotion_id=member.promotion_id",
+   "AND beat.programme_id=member.programme_id",
+   // A wrestler can belong to a multi-person feud without participating in
+   // every chapter. Only their actual card appearances become their memories.
+   "JOIN ppw_card_slots card ON card.world_id=beat.world_id",
+   "AND card.draft_id=beat.show_id AND card.slot_id=beat.slot_id",
+   "AND card.kind=beat.kind",
+   "LEFT JOIN LATERAL (SELECT string_agg(",
+   "coalesce(p.name,t.name,ref.ref_id),' & ' ORDER BY ref.position) AS names",
+   "FROM ppw_programme_side_refs ref",
+   "LEFT JOIN ppw_people p ON p.world_id=ref.world_id",
+   "AND ref.ref_kind='PERSON' AND p.person_id=ref.ref_id",
+   "LEFT JOIN ppw_tag_teams t ON t.world_id=ref.world_id",
+   "AND ref.ref_kind='TEAM' AND t.team_id=ref.ref_id",
+   "WHERE ref.world_id=beat.world_id",
+   "AND ref.promotion_id=beat.promotion_id",
+   "AND ref.programme_id=beat.programme_id",
+   "AND ref.side<>member.side) opposition ON TRUE",
+   "WHERE member.world_id=$1 AND member.promotion_id=$2",
+   "AND member.person_id=$3",
+   "AND EXISTS (SELECT 1 FROM jsonb_array_elements(",
+   "CASE WHEN jsonb_typeof(card.payload->'participants')='array'",
+   "THEN card.payload->'participants' ELSE '[]'::jsonb END) cast_member",
+   "WHERE cast_member.value->>'personId'=$3)",
+   "AND beat.week_index BETWEEN greatest(0,$4-12) AND $4-1",
+   "ORDER BY beat.week_index DESC,beat.show_id DESC,beat.slot_id DESC LIMIT 4",
+   ") recent ORDER BY occurred_week_index DESC,source_id DESC LIMIT 13"
   ].join(" "),[s.worldId,s.promotionId,selected,now]);
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
    memories:memories.map(m=>({kind:m.kind,sourceId:m.source_id,
-    weekIndex:m.occurred_week_index,importance:m.importance})),
+    weekIndex:m.occurred_week_index,importance:m.importance,
+    relatedName:m.related_name,ownSide:m.own_side,winnerSide:m.winner_side})),
    conversations:[...conversations].reverse().map(x=>({
     conversationId:x.request_id,kind:x.kind,relatedPersonId:x.related_person_id,
     status:x.status,decision:x.decision,createdWeekIndex:x.created_week_index,
