@@ -94,7 +94,8 @@ test("World-resolution integration: pending offer blocks publication, is settled
   const after=await planNextWorldResolutionAction(db.pool,world);
   assert.equal(after.action,"PUBLISH_WEEK");
   const res=await advanceResolvedWorldWeek(db.pool,{
-   worldId:world,requestId:"rollover-"+uuid,expectedRevision:1});
+   // The offer and renewal each posted a durable command receipt.
+   worldId:world,requestId:"rollover-"+uuid,expectedRevision:2});
   assert.equal(res.status,"APPLIED");
   const rows=await withWorldTransaction(db.pool,async tx=>{
    const c=await tx.query<{start_week_index:number;expires_week_index:number;
