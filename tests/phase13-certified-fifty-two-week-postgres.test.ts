@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
@@ -18,6 +18,20 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
 },async()=>{
  const world="phase13-real-world-"+randomUUID(),db=postgresPool(url!,4);
  const weeks=52,started=Date.now();
+ // The real AI-only World must never execute human-private pitch generation.
+ // Guard at the SQL boundary, rather than only checking that no rows landed:
+ // even a zero-result scan of 52 weeks of AI cards wastes Neon resources.
+ const aiOnlyPool:TransactionPool={
+  async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     assert.doesNotMatch(sql,/WITH human_promotions AS MATERIALIZED|INSERT INTO ppw_backstage_requests/,
+      "AI-only World must skip private Backstage pitch/notification generation");
+     return client.query<T>(sql,params);
+    }};
+  },
+ };
  // Diagnostic markers reveal whether a slow CI run is seeding, resolving,
  // certifying or cleaning its disposable World. No production access.
  const progress=(phase:string,week=0)=>
@@ -71,7 +85,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
    let published=false;
    for(let attempt=0;attempt<4;attempt++){
     progress("resolution-request-"+attempt,week);
-    const run=await driveWorldResolution(db.pool,{
+    const run=await driveWorldResolution(aiOnlyPool,{
      worldId:world,resolutionId:"phase13-resolution",maxStages:16,
      manualRecovery:true,
     });
@@ -130,7 +144,7 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
      lastWeekSeconds:Math.round((Date.now()-weekStart)/1000),
      bookedShows:f.shows,certifiedPromotions:f.certified,matches:f.matches
     }));
-   const retry=await driveWorldResolution(db.pool,{
+   const retry=await driveWorldResolution(aiOnlyPool,{
     worldId:world,resolutionId:"phase13-resolution",maxStages:2,
     manualRecovery:true,
    });
