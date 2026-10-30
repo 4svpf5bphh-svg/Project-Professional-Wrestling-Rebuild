@@ -106,7 +106,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-verified-finish-details").first()).toHaveAttribute("open");
   await expect(page.locator(".ppw-final-bell")).not.toContainText("The main event delivered");
   await expect(page.locator(".ppw-result-verdict").first()).toContainText("Kenny Omega");
-  await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
+  await expect(page.locator(".ppw-verified-finish-details")).toBeVisible();
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
@@ -116,6 +116,9 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
   await expect(page.locator(".ppw-pop-post .ppw-pop-handle").first()).toContainText("@");
   await expect(page.locator(".ppw-pop-social")).toContainText("Fictional in-game wrestling social media.");
+   await expect(page.locator(".ppw-pop-reply").first()).toHaveCSS("background-color","rgb(24, 35, 67)");
+   await expect(page.locator(".ppw-pop-reply .ppw-crowd-noise-reply-text").first())
+    .toHaveCSS("color","rgb(245, 239, 255)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
@@ -147,7 +150,7 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
  await expect(page.locator(".ppw-ringside-conclusion")).toHaveCount(0);
  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);
- await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
+ await expect(page.locator(".ppw-verified-finish-details")).toBeVisible();
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
 });
 
@@ -177,7 +180,7 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
  await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");
- await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
+ await expect(page.locator(".ppw-verified-finish-details")).toBeVisible();
  expect(resultsReads).toBe(1);expect(providerReads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
