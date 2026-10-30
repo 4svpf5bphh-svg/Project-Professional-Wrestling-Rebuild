@@ -135,7 +135,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Required schema slot keys map to these immutable recorded entries:\n"+keys.join("\n")+
        "\nDo not invent or swap performers, winners, title changes, injuries or finishes.\n"+
        "Each required card entry must contain a vivid headline and recap.\n"+
-       "Each card's optional storyThread is its ONLY verified historical callback. "+
+       "VERIFIED HISTORY is scoped to each card's optional storyThread; it is the ONLY historical callback. "+
        "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
