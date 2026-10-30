@@ -194,7 +194,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "JOIN ppw_card_slots card ON card.world_id=beat.world_id",
    "AND card.draft_id=beat.show_id AND card.slot_id=beat.slot_id",
    "AND card.kind=beat.kind",
-   "LEFT JOIN LATERAL (SELECT string_agg("
+   "LEFT JOIN LATERAL (SELECT string_agg(",
    "coalesce(p.name,t.name,ref.ref_id),' & ' ORDER BY ref.position) AS names",
    "FROM ppw_programme_side_refs ref",
    "LEFT JOIN ppw_people p ON p.world_id=ref.world_id",
