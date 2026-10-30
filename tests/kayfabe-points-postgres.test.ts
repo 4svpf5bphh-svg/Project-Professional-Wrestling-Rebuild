@@ -7,7 +7,7 @@ import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
-import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction}
+import {readKayfabeWorkspace,readPromoterAchievementWorkspace,claimKayfabeWeek,applyKayfabeAction}
  from "../src/db/kayfabe-points.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
 import {readStaffWorkspace} from "../src/db/staff-workspace.js";
@@ -113,7 +113,13 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(wallet.balance,1450);
   assert.equal(wallet.activeBrand,"CHROME");
   assert.equal(wallet.createdTalent.length,1);
-  assert.equal(wallet.achievements.length,13);
+  assert.equal(wallet.achievements.length,47);
+  const dedicated=await readPromoterAchievementWorkspace(db.pool,aa);
+  assert.equal(dedicated.total,47);
+  assert.equal(dedicated.achievements.find(a=>a.key==="FIRST_BELL")?.earned,true);
+  assert.equal(dedicated.achievements.find(a=>a.key==="PREMIUM_PROFIT")?.earned,false);
+  await assert.rejects(readPromoterAchievementWorkspace(db.pool,{...aa,playerId:b}),
+   /active promotion/);
   assert.equal(wallet.achievements.find(a=>a.key==="FIRST_BELL")?.earned,true);
   assert.equal(wallet.achievements.find(a=>a.key==="FIRST_PROFIT")?.unit,"profitable shows");
   assert.equal(wallet.achievements.find(a=>a.key==="FIRST_CLASSIC")?.unit,"4★ matches");
