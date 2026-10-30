@@ -40,7 +40,7 @@ test("World archives have their own private-data-free routes and only one News d
  const world=HOST_DRAWER_ROOTS.find(x=>x.key==="world")!;
  const news=HOST_DRAWER_ROOTS.find(x=>x.key==="news")!;
  assert.deepEqual(world.destinations.map(x=>x[0]),[
-  "home","promotions","broadcasts","records","legends","collection","hall-of-fame",
+  "home","promotions","broadcasts","records","legends","collection","achievements","hall-of-fame",
   "annual-awards","world-moments"]);
  assert.deepEqual(news.destinations.map(x=>x[0]),["news"]);
  for(const route of world.destinations.map(x=>x[0])){

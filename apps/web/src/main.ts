@@ -1,6 +1,6 @@
 import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
- mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,
+ mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,mountAchievementsPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost}
@@ -341,9 +341,10 @@ function renderSection(){
   case "world-moments":
    mountIndustryPage(view,scope,pendingLegends??undefined);
    pendingLegends=null;break;
-  case "collection":mountCollectionPage(view,scope);break;
+   case "collection":mountCollectionPage(view,scope);break;
+   case "achievements":mountAchievementsPage(view,scope,()=>openSection("home"),()=>openSection("kayfabe"));break;
    case "news":mountIndustryPage(view,scope);break;
-  case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"));break;
+  case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"),()=>openSection("achievements"));break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;
   case "programmes":mountProgrammePage(view,scope);break;
