@@ -122,6 +122,11 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
    [world,source]));
   assert.equal(row[0]!.remaining_dates,2);
   assert.equal(row[0]!.date_entitlement,7);
+  await assert.rejects(requestAdditionalDates(db.pool,{
+   worldId:world,playerId:playerA,promotionId:pA,contractId:source,
+   requestId:"overcapacity-"+id,expectedRevision:9,
+   additionalDates:12,additionalPayment:0}),/extra appearances fit/);
+
   const renewalTerms:OfferTerms={...limited,startWeekIndex:13,termWeeks:13,
    weeklyGuarantee:12000,appearanceFee:5000,signingBonus:2000};
   const renew="renegotiate-"+id;
