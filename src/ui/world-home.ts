@@ -12,7 +12,7 @@ export interface WorldHomePort{
  extendBooking?:(year:number,week:number)=>Promise<{status:string}>;
  onWeekPublished?():Promise<void>;
  claimWeeklyKP?():Promise<{awarded:number;reason?:string}>;
- openLegends?():void;openKayfabe?():void;
+ openLegends?():void;openKayfabe?():void;openAchievements?():void;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
@@ -178,10 +178,10 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
    identity,
-   ...(promotion?.milestoneFrame&&port.openKayfabe?[
+   ...(promotion?.milestoneFrame&&port.openAchievements?[
     (()=>{const medal=el("button","ppw-home-promoter-medal",
-     "★ "+promotion.milestoneFrame+" SHOWCASE · VIEW TROPHY CABINET") as HTMLButtonElement;
-     medal.type="button";medal.onclick=()=>port.openKayfabe?.();
+     "★ "+promotion.milestoneFrame+" SHOWCASE · VIEW ACHIEVEMENTS") as HTMLButtonElement;
+     medal.type="button";medal.onclick=()=>port.openAchievements?.();
      medal.setAttribute("aria-label","Open your "+promotion.milestoneFrame.toLowerCase()+" milestone cabinet");
      medal.dataset.finish=promotion.milestoneFrame.toLowerCase();return medal;})()
    ]:[]),

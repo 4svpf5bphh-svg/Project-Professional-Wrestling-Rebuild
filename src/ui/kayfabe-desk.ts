@@ -10,6 +10,7 @@ export interface KayfabePort{
  claim():Promise<unknown>;
  apply(action:KpAction):Promise<unknown>;
  back():void;backLabel?:string;
+ openAchievements?:()=>void;
 }
 const el=(tag:string,cls="",content="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=content;return n;
@@ -116,7 +117,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   }else achievements.append(el("p","ppw-kp-muted",
    "Standard milestone frame active. Apply a purchased showcase finish below whenever you like."));
   const badgeList=el("div","ppw-kp-achievements");
-  for(const a of view.achievements){
+  for(const a of [...view.achievements.filter(a=>a.earned),
+   ...view.achievements.filter(a=>!a.earned)].slice(0,3)){
    const article=el("article","ppw-kp-badge"+(a.earned?" ppw-kp-earned":"")+
     (a.earned&&view.activeBadge?" ppw-kp-achievement-"+view.activeBadge.toLowerCase():""));
    article.append(el("span","ppw-kp-badge-icon",a.earned?"★":"◇"),
@@ -124,7 +126,10 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     el("small","",a.earned?"Unlocked":a.progress+" / "+a.target+" "+(a.unit??"shows")));
    badgeList.append(article);
   }
-  achievements.append(badgeList);root.append(achievements);
+  achievements.append(badgeList);
+  if(port.openAchievements)achievements.append(btn(
+   "Open Trophy Room · "+view.achievements.length+" achievements →",port.openAchievements));
+  root.append(achievements);
   const shop=el("section","ppw-kp-section");
   shop.append(el("span","ppw-kp-kicker","PERSONALISE YOUR LEGACY"),
    el("h2","","Promotion style & prestige"),
