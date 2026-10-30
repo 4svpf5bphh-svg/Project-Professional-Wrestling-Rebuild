@@ -571,11 +571,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    segments.set(id,newEditorSegment(id));
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-add-angle"));
-  toolbar.append(button("↪ Book a turn",()=>{
-   const id="angle-"+crypto.randomUUID();
-   segments.set(id,newEditorSegment(id,"TURN"));
-   order.push(id);expanded=id;markDirty();render();
-  },!mutable(),"ppw-add-turn"));
   const tournamentFixtures=(view.tournamentBouts??[]).filter(b=>
    ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
     m.tournamentBoutNo===b.boutNo));
@@ -684,7 +679,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    earlier.title="Move earlier";later.title="Move later";
    // Touch/Pen/Mouse drag handle, while labelled arrows remain the accessible
    // keyboard alternative. No item moves or saves until pointer release.
-   const grip=el("span","ppw-card-grip","⠿");
+   const grip=el("span","ppw-card-grip","");
    grip.title="Drag to change running order. Keyboard: focus handle then use Up or Down.";
    grip.setAttribute("role","button");
    grip.setAttribute("tabindex","0");
