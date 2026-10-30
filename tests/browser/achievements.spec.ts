@@ -38,7 +38,7 @@ for(const width of [320,390]){
   await page.goto("/#/achievements");
   await expect(page.getByRole("heading",{name:"TROPHY ROOM"})).toBeVisible();
   await expect(page.getByText("RISING STAR")).toBeVisible();
-  await expect(page.getByText("2 / 4",{exact:false}).first()).toBeVisible().catch(()=>{});
+  await expect(page.locator(".ppw-trophy-count").first()).toContainText("2");
   await expect(page.getByText("The Regular").first()).toBeVisible();
   await expect(page.locator(".ppw-trophy-tile").filter({hasText:"First Bell"})).toHaveCount(1);
   await page.getByRole("button",{name:"Earned",exact:true}).click();
