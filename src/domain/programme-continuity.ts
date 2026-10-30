@@ -19,7 +19,7 @@ export interface ProgrammeContinuity{
  lastBell:string|null;
  latestChapter:string|null;
  directionKind:"UNSET"|"PENDING_REMATCH"|"BUILDING_REMATCH"|
-  "REMATCH_HELD"|"PENDING_RETALIATION"|"RETALIATION_SHOWN"|
+  "REMATCH_HELD"|"PENDING_RETALIATION"|"ANGLE_AFTER_RETALIATION"|
   "RESULT_STANDS"|"STORY_RESUMED";
  directionHeadline:string|null;
  directionSummary:string|null;
@@ -66,10 +66,10 @@ export function readProgrammeContinuity(input:ProgrammeContinuityEvidence):Progr
    suggestion:"If the timing feels right, put a return match on a future card. Nothing has been booked automatically."};
  }
  if(d.choice==="PLAN_RETALIATION"){
-  if(angle)return {...base,directionKind:"RETALIATION_SHOWN" as const,
-   directionHeadline:"The story answered back",
+  if(angle)return {...base,directionKind:"ANGLE_AFTER_RETALIATION" as const,
+   directionHeadline:"An angle followed your direction",
    directionSummary:"An on-screen angle took place in "+when(d.nextAngleWeekIndex!)+
-    " after your retaliation direction. Only the completed scene is confirmed, not its meaning.",
+    " after your retaliation direction. That alone does not confirm that the scene delivered retaliation.",
    suggestion:"Use the recorded angle as your next starting point. A confrontation or a match could carry the issue forward."};
   return {...base,directionKind:"PENDING_RETALIATION" as const,
    directionHeadline:"An answer is still due",
