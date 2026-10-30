@@ -42,26 +42,16 @@ test("Ringside history is a few certified earlier, owner-scoped facts",async()=>
     return [{person_id:"omega",name:"Kenny Omega"},
      {person_id:"opponent",name:"Rival"}] as unknown as readonly T[];
    }
-   if(sql.includes("ppw_programmes p")){
-    assert.match(sql,/p.started_week_index<\$4/);
-    assert.match(sql,/JOIN ppw_memberships member/);
-    assert.match(sql,/pc.player_id=\$5/);
-    assert.match(sql,/ended_week_index IS NULL OR/);
-    assert.deepEqual(params,["w","player-promo",["omega"],2,"controller"]);
-    return [{started_week_index:0,participants:["Kenny Omega","Rival"],
-     beats:"1",last_kind:"MATCH"}] as unknown as readonly T[];
-   }
    throw Error("Unexpected query");
   }
  };}};
  const result=await readRingsideMemory(pool,scope,show);
- assert.equal(queries.length,3);
+ assert.equal(queries.length,2,"Programme context is already in the completed show; no extra history query");
  assert.deepEqual(result.priorMatches,[{
   when:"Y1 W1",wrestlers:["Kenny Omega","Rival"],winners:["Rival"],
   finish:"FLASH_PIN"
  }]);
- assert.equal(result.programmes[0]?.beats,1);
- assert.equal(result.programmes[0]?.latest,"MATCH");
+ assert.deepEqual(result.programmes,[]);
 });
 test("Ringside never queries history for a show with no identified talent",async()=>{
  let queries=0;
@@ -95,15 +85,10 @@ test("Ringside discards future and another promotion's receipts even if an unexp
        {personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}}
     ] as unknown as readonly T[];
    }
-   if(sql.includes("ppw_programmes p")){
-    assert.match(sql,/p.started_week_index<\$4/);
-    assert.match(sql,/activity.week_index<\$4/);
-    return [] as readonly T[];
-   }
    throw Error("Unexpected leakage-prone query: "+sql);
   }
  };}};
  const history=await readRingsideMemory(pool,scope,show);
- assert.equal(seen,2);
+ assert.equal(seen,1,"No extra programme or name lookup for unsafe historical rows");
  assert.deepEqual(history,{priorMatches:[],programmes:[]});
 });
