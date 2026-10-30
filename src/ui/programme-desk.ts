@@ -273,8 +273,6 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      ideas.append(item);
     }
     sheet.append(element("span","ppw-programme-eyebrow","THREE NEXT-CARD OPTIONS"),ideas);
-    if(p.latestFollowUp&&continuity.suggestion)
-     sheet.append(element("p","ppw-programme-staff-suggestion","Your standing direction: "+continuity.suggestion));
     if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
     advice.append(sheet);
    }
@@ -335,6 +333,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }else if(latestMatch&&!view.canEdit)
      direction.append(element("p","ppw-programme-direction-note",
       "The card deadline has passed. Creative decisions reopen next week."));
+    direction.append(element("small","ppw-muted",
+     "No bout or angle is booked for you. Choose and save the actual card separately."));
     if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
     panel.append(direction);
    }

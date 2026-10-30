@@ -116,9 +116,9 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
   await expect(page.locator(".ppw-pop-post .ppw-pop-handle").first()).toContainText("@");
   await expect(page.locator(".ppw-pop-social")).toContainText("Fictional in-game wrestling social media.");
-   await expect(page.locator(".ppw-pop-reply").first()).toHaveCSS("background-color","rgb(24, 35, 67)");
-   await expect(page.locator(".ppw-pop-reply .ppw-crowd-noise-reply-text").first())
-    .toHaveCSS("color","rgb(245, 239, 255)");
+   await expect(page.locator(".ppw-pop-post").first()).toHaveCSS("color","rgb(255, 243, 238)");
+   await expect(page.locator(".ppw-pop-post .ppw-pop-copy").first())
+    .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
