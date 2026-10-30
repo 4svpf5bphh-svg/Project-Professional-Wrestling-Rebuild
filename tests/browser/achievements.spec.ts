@@ -62,3 +62,40 @@ for(const width of [320,390]){
   expect(calls).toEqual(["achievements","kpWorkspace"]);
  });
 }
+
+test("Option A Home crest uses real prestige from the existing overview call, no bonus lookup",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ const calls:string[]=[];
+ const overview={...session.overview,
+  world:{...session.overview.world,id:"world",day:1},
+  promotion:{...session.overview.promotion,homeMarketName:"River Market",
+   cash:128000,debt:0,lastWeeklyNet:0,milestoneFrame:"GOLD",
+   promoterPrestige:{rank:"RISING STAR",earnedCount:12,total:47,prestigeScore:18},
+   attention:{plannedShows:1,unpreparedShow:false,pendingBackstage:false,
+    expiringTalent:false,pendingContractOffers:false,kpClaimAvailable:false,
+    unseenLegends:0}}};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  calls.push(method);
+  if(method==="overview")return r.fulfill({json:overview});
+  if(method==="achievements")return r.fulfill({json:{
+   promotionName:"Chaotic Wrestling Alliance",worldYear:1,week:8,
+   activeBadge:"GOLD",rank:"RISING STAR",prestigeScore:18,
+   earnedCount:12,total:47,achievements:[]
+  }});
+  return r.fulfill({json:{}});
+ });
+ await page.goto("/#/home");
+ const crest=page.locator("button.ppw-promoter-prestige-crest");
+ await expect(crest).toBeVisible();
+ await expect(crest.locator(".ppw-prestige-crest-rank")).toHaveText("RISING STAR");
+ await expect(crest).toContainText("12 / 47 achievements earned");
+ await expect(crest).toHaveAttribute("data-finish","gold");
+ expect(calls).toEqual(["overview"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ await crest.click();
+ await expect(page.getByRole("heading",{name:"TROPHY ROOM"})).toBeVisible();
+ await expect(page.locator(".ppw-trophy-prestige-crest .ppw-prestige-crest-rank")).toHaveText("RISING STAR");
+ expect(calls).toEqual(["overview","achievements"]);
+});
