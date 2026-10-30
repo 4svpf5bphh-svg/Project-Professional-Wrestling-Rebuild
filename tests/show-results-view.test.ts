@@ -9,13 +9,15 @@ const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
  resolutionId:"res",crowdResponse:77,
  matches:[{matchId:"m",position:0,crowdResponse:85,actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],
  segments:[{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",crowdResponse:64}]};
-function fake(authorized=true,canonical=false,historicPersona=false){
+function fake(authorized=true,canonical=false,historicPersona=false,withProgrammes=false){
  let calls=0;
  const pool:TransactionPool={async connect(){return {release(){},
   async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[]){
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    calls++;
-   if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:receipt}]:[]) as unknown as T[];
+   if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:withProgrammes?
+    {...receipt,year:2,week:3,
+     segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]}:receipt}]:[]) as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [
     {slot_id:"m",kind:"MATCH",position:0,payload:canonical?{
      matchType:"SINGLES",family:"INDIVIDUAL",
@@ -46,11 +48,28 @@ function fake(authorized=true,canonical=false,historicPersona=false){
     match_id:"m",evidence_json:null,championship_name:null,title_changed:null,
     title_winner_name:null,title_prior_holder_name:null,injuries:[],
    }] as unknown as T[];
-   if(sql.includes("FROM ppw_completed_show_segments"))return [{
-    slot_id:"a",story_json:{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",
-     headline:"In-ring promo",summary:"The wrestler refuses the promo.",
-     actorIds:["a"],targetIds:[],intent:null},
-   }] as unknown as T[];
+   if(sql.includes("FROM ppw_completed_show_segments")){
+    assert.match(sql,/UNION ALL/);
+    assert.match(sql,/prior\.week_index BETWEEN greatest\(0,activity\.week_index-12\)/);
+    assert.match(sql,/AND activity\.week_index-1/);
+    assert.deepEqual(params,["world","show","prom"]);
+    const history=withProgrammes?[{
+     source:"PROGRAMME",slot_id:"m",story_json:null,
+     programme_context:{programmeId:"joe-riddle",sideA:"Star",sideB:"Rival",
+      precedingMatches:2,precedingAngles:1,previousWinner:"B",
+      previousMatchWeek:52,currentWinner:"A"}
+    },{
+     source:"PROGRAMME",slot_id:"a",story_json:null,
+     programme_context:{programmeId:"joe-riddle",sideA:"Star",sideB:"Rival",
+      precedingMatches:2,precedingAngles:1,previousWinner:"B",
+      previousMatchWeek:52,currentWinner:null}}
+    ]:[];
+    return [{source:"STORY",slot_id:"a",story_json:{slotId:"a",position:1,
+      kind:"PROMO",outcome:withProgrammes?"HAPPENS":"REFUSED",headline:"In-ring promo",
+      summary:withProgrammes?"The wrestler spoke on screen.":"The wrestler refuses the promo.",
+      actorIds:["a"],targetIds:[],intent:null},
+      programme_context:null},...history] as unknown as T[];
+   }
    throw new Error("Unexpected SQL: "+sql);
   }};}};
  return {pool,calls:()=>calls};
@@ -126,4 +145,21 @@ test("historic show preserves as-of-show wrestler moveset and excludes the follo
  assert.equal(view.entries[0]!.performerIdentities?.[0]?.ringName,"Original Star");
  assert.deepEqual(view.entries[0]!.performerIdentities?.[0]?.finishingMoves,["The Original Finish"]);
  assert.equal(view.entries[1]!.performerIdentities?.[0]?.ringName,"Original Star");
+});
+
+test("certified rivalry history reaches matches and angles in the existing five-read broadcast",async()=>{
+ const {pool,calls}=fake(true,true,false,true);
+ const result=await readCompletedShowView(pool,scope);
+ assert.equal(calls(),5,"Rivalry context must not add a sixth database round trip");
+ const match=result.entries[0]!;
+ const angle=result.entries[1]!;
+ assert.deepEqual(match.programmeChapters,[{
+  programmeId:"joe-riddle",sideA:"Star",sideB:"Rival",
+  precedingMatches:2,precedingAngles:1,previousWinner:"B",
+  previousMatchWeek:52,currentWinner:"A"
+ }]);
+ assert.equal(angle.programmeChapters?.[0]?.previousWinner,"B");
+ assert.equal(angle.programmeChapters?.[0]?.currentWinner,null);
+ assert.equal(angle.outcome,"HAPPENS",
+  "Only a completed on-screen segment may be a certified rivalry chapter");
 });

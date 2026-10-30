@@ -330,3 +330,19 @@
 .ppw-media-scrum-choices button{text-align:left;white-space:normal;min-height:44px;line-height:1.4}
 .ppw-media-scrum-quote{border-left:3px solid #d9aa66;padding:.8rem;background:rgba(217,170,102,.1);font-size:.94rem;line-height:1.5}
 @media(max-width:390px){.ppw-media-scrum{padding:.8rem}.ppw-media-scrum-question{padding:.7rem}}
+
+/* Certified story history anchors a match in an evolving rivalry, while the
+   Ringside editorial remains free to write its own commentary. */
+.ppw-rivalry-at-ringside{margin:14px 0;padding:13px 14px;border-radius:13px;
+ background:linear-gradient(135deg,#153449,#172238);border:1px solid #4d7188}
+.ppw-rivalry-at-ringside .ppw-eyebrow{color:#a9e7ff;letter-spacing:.1em}
+.ppw-ringside-rivalry-chapter{padding:9px 0}
+.ppw-ringside-rivalry-chapter+.ppw-ringside-rivalry-chapter{
+ border-top:1px solid #41637a}
+.ppw-ringside-rivalry-chapter strong{color:#ffdf9b;font-weight:850;
+ font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.ppw-ringside-rivalry-chapter p{margin:7px 0 0;font-size:13px;
+ line-height:1.55;color:#d5e7f3}
+.ppw-road-agent-continuity{padding:12px 14px;margin:13px 0;
+ background:#142f3c;border-left:3px solid #8ad4ba;
+ border-radius:0 9px 9px 0;color:#d6f1e8;line-height:1.55;font-size:13px}

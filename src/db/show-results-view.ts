@@ -15,6 +15,8 @@ import {describeMatchFinish} from "../domain/show-match-story.js";
 import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+import {parseVerifiedProgrammeBroadcast,type VerifiedProgrammeBroadcast}
+ from "../domain/verified-programme-broadcast.js";
 import {projectVerifiedBroadcastFallout,type BroadcastFallout,
  type RecordedMatchFalloutRow} from "../domain/verified-broadcast-fallout.js";
 export interface CompletedMatchBroadcastContext{
@@ -39,6 +41,8 @@ export interface ShowResultEntry{
  segmentKind?:string;
  segmentContext?:CompletedAngleContext;
  performerIdentities?:BroadcastIdentity[];
+ /** Programme history as it stood when this broadcast occurred. */
+ programmeChapters?:VerifiedProgrammeBroadcast[];
 }
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
@@ -180,11 +184,69 @@ export async function readCompletedShowView(
   if(byFallout.size!==falloutRows.length||
    falloutRows.length!==receipt.matches.length)
    throw new Error("Completed match evidence disagrees with results ledger");
-  const stories=receipt.segments.length?await tx.query<{slot_id:string;story_json:unknown}>(`
-   SELECT slot_id,story_json FROM ppw_completed_show_segments
-   WHERE world_id=$1 AND show_id=$2 ORDER BY position LIMIT 101`,
-   [input.worldId,input.showId]):[];
-  const byStory=new Map(stories.map(s=>[s.slot_id,s.story_json as CompletedSegmentStory|null]));
+  // One existing fifth bounded read carries both certified angle stories
+  // and completed programme links. Prior context is twelve weeks *before*
+  // this show's week, with no later results, and is indexed per programme.
+  // We never fetch the entire World or make per-match network requests.
+  const stories=await tx.query<{source:"STORY"|"PROGRAMME";
+   slot_id:string;story_json:unknown;programme_context:unknown}>([
+   "SELECT 'STORY'::text AS source,slot_id,story_json,",
+   "NULL::jsonb AS programme_context FROM ppw_completed_show_segments",
+   "WHERE world_id=$1 AND show_id=$2",
+   "UNION ALL",
+   "SELECT 'PROGRAMME'::text AS source,activity.slot_id,",
+   "NULL::jsonb AS story_json,jsonb_build_object(",
+   "'programmeId',activity.programme_id,",
+   "'sideA',coalesce(sides.side_a,'Side A'),",
+   "'sideB',coalesce(sides.side_b,'Side B'),",
+   "'precedingMatches',past.matches,",
+   "'precedingAngles',past.angles,",
+   "'previousWinner',past.last_winner,",
+   "'previousMatchWeek',past.last_match_week,",
+   "'currentWinner',activity.winner_side) AS programme_context",
+   "FROM ppw_programme_resolved_activities activity",
+   "JOIN ppw_programmes programme ON programme.world_id=activity.world_id",
+   "AND programme.promotion_id=activity.promotion_id",
+   "AND programme.programme_id=activity.programme_id",
+   "LEFT JOIN LATERAL (SELECT",
+   "string_agg(coalesce(person.name,team.name,ref.ref_id),' & '",
+   "ORDER BY ref.position) FILTER (WHERE ref.side='A') AS side_a,",
+   "string_agg(coalesce(person.name,team.name,ref.ref_id),' & '",
+   "ORDER BY ref.position) FILTER (WHERE ref.side='B') AS side_b",
+   "FROM ppw_programme_side_refs ref",
+   "LEFT JOIN ppw_people person ON person.world_id=ref.world_id",
+   "AND ref.ref_kind='PERSON' AND person.person_id=ref.ref_id",
+   "LEFT JOIN ppw_tag_teams team ON team.world_id=ref.world_id",
+   "AND ref.ref_kind='TEAM' AND team.team_id=ref.ref_id",
+   "WHERE ref.world_id=activity.world_id AND ref.promotion_id=activity.promotion_id",
+   "AND ref.programme_id=activity.programme_id) sides ON TRUE",
+   "LEFT JOIN LATERAL (SELECT",
+   "count(*) FILTER (WHERE prior.kind='MATCH')::integer AS matches,",
+   "count(*) FILTER (WHERE prior.kind='SEGMENT')::integer AS angles,",
+   "max(prior.week_index) FILTER (WHERE prior.kind='MATCH') AS last_match_week,",
+   "(array_agg(prior.winner_side ORDER BY prior.week_index DESC,",
+   "prior.show_id DESC,prior.slot_id DESC)",
+   "FILTER (WHERE prior.kind='MATCH'))[1] AS last_winner",
+   "FROM ppw_programme_resolved_activities prior",
+   "WHERE prior.world_id=activity.world_id",
+   "AND prior.promotion_id=activity.promotion_id",
+   "AND prior.programme_id=activity.programme_id",
+   "AND prior.week_index BETWEEN greatest(0,activity.week_index-12)",
+   "AND activity.week_index-1) past ON TRUE",
+   "WHERE activity.world_id=$1 AND activity.show_id=$2",
+   "AND activity.promotion_id=$3",
+   "ORDER BY source,slot_id LIMIT 401"
+  ].join(" "),[input.worldId,input.showId,input.promotionId]);
+  if(stories.length>400)throw new Error("Completed show story context exceeds capacity");
+  const byStory=new Map(stories.filter(s=>s.source==="STORY").map(s=>[
+   s.slot_id,s.story_json as CompletedSegmentStory|null]));
+  const programmesBySlot=new Map<string,VerifiedProgrammeBroadcast[]>();
+  for(const record of stories.filter(s=>s.source==="PROGRAMME")){
+   const chapter=parseVerifiedProgrammeBroadcast(record.programme_context);
+   const own=programmesBySlot.get(record.slot_id)??[];
+   if(own.length>=8)throw new Error("Excess programme links for one settled slot");
+   own.push(chapter);programmesBySlot.set(record.slot_id,own);
+  }
   const bySlot=new Map(slots.map(s=>[s.slot_id,s]));
   if(slots.length!==receipt.matches.length+receipt.segments.length)
    throw new Error("Completed show card changed since resolution");
@@ -236,6 +298,7 @@ export async function readCompletedShowView(
     headline,summary,crowdResponse:match.crowdResponse,
     outcome:match.actualFinish,actorIds:participants,targetIds:[],
     performerIdentities:personaFor(participants),
+    programmeChapters:programmesBySlot.get(match.matchId)??[],
     ...(matchContext?{matchContext}:{}),
     fallout:projectVerifiedBroadcastFallout(byFallout.get(match.matchId),
      receipt,match,name,new Map(matchContext?.sides.map((side,i)=>[
@@ -269,6 +332,7 @@ export async function readCompletedShowView(
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
     intent:story?.intent??null,segmentKind:segment.kind,segmentContext,
+    programmeChapters:programmesBySlot.get(segment.slotId)??[],
     performerIdentities:personaFor(story?[
      ...story.actorIds,...story.targetIds]:readCardParticipants(slot.payload)
       .map(x=>x.personId))});
