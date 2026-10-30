@@ -42,8 +42,8 @@ test("an actual subsequent angle fulfils retaliation; another match alone does n
  assert.match(waiting.directionSummary??"",/match has taken place instead/);
  const shown=readProgrammeContinuity({...names,recentActivity:[match],
   latestFollowUp:{...retaliation,nextMatchWeekIndex:null,nextAngleWeekIndex:12}});
- assert.equal(shown.directionKind,"RETALIATION_SHOWN");
- assert.match(shown.directionSummary??"",/Only the completed scene is confirmed/);
+ assert.equal(shown.directionKind,"ANGLE_AFTER_RETALIATION");
+ assert.match(shown.directionSummary??"",/does not confirm that the scene delivered retaliation/);
 });
 test("letting a finish stand remains a valid player direction until a new actual beat",()=>{
  const stand={...choice,choice:"LET_STAND" as const};
