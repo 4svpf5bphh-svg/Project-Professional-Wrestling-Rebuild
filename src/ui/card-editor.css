@@ -483,3 +483,27 @@ body>.ppw-card-edit-shade .ppw-card-edit-close{
 .ppw-tournament-match-note strong{color:#ffe3a2}
 .ppw-tournament-match-note small{color:#ccdae9}
 .ppw-tournament-match-note button{min-height:44px}
+
+
+/* iPhone show-writing controls: less empty surface, without shrinking taps. */
+body>.ppw-card-edit-shade .ppw-card-body{padding:12px!important}
+body>.ppw-card-edit-shade .ppw-field select,
+body>.ppw-card-edit-shade .ppw-field input{min-height:44px!important;
+ padding:8px 10px!important}
+body>.ppw-card-edit-shade .ppw-side{padding:10px!important;margin:9px 0!important}
+body>.ppw-card-edit-shade .ppw-match-style{padding:10px;margin:9px 0}
+body>.ppw-card-edit-shade .ppw-match-style-fineprint{font-size:11px;
+ margin:5px 0 7px;line-height:1.35}
+body>.ppw-card-edit-shade .ppw-match-style-fitness-row{
+ grid-template-columns:minmax(0,1fr);gap:3px;min-width:0;
+ padding:8px 11px;margin:5px 0;line-height:1.35}
+body>.ppw-card-edit-shade .ppw-match-style-fitness-row>strong{
+ display:block;overflow-wrap:break-word;word-break:normal;min-width:0}
+body>.ppw-card-edit-shade .ppw-match-style-fitness-row>span{
+ text-align:left;white-space:normal;overflow-wrap:break-word;min-width:0;
+ font-size:12px;font-weight:650}
+/* Six-dot reorder handle drawn geometrically to avoid misaligned font glyphs. */
+.ppw-editor .ppw-card-grip{font-size:0!important}
+.ppw-editor .ppw-card-grip::before{content:"";display:block;width:20px;
+ height:26px;background-image:radial-gradient(circle,#f8d7a0 2px,transparent 2.5px);
+ background-size:10px 9px;background-position:center;pointer-events:none}
