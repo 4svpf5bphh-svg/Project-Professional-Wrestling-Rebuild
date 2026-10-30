@@ -1,0 +1,270 @@
+/* FIGHT NIGHT / OFFICIAL RECORD — approved results-only presentation.
+ * Entirely CSS/semantic existing results. No new image resources, telemetry,
+ * theme store, global nav/dashboard selectors or changed certified outcomes.
+ */
+#game .ppw-results[data-results-skin="fight-night"]{
+ --fn-paper:#fff;--fn-ink:#1a1e25;--fn-red:#c52a3b;
+ --fn-red-dark:#a71e30;--fn-line:#ccd1d7;--fn-muted:#515b68;
+ --fn-cool:#eef0f3;--fn-dark:#191d25;
+ --ring-ink:var(--fn-ink);--ring-line:var(--fn-line);
+ color:var(--fn-ink);min-width:0;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-steps{
+ padding:5px;border-radius:5px;background:#1c222e;gap:5px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-step{
+ color:#e8eaf1;background:#252d3a;border:1px solid #77808d;border-radius:4px;
+ font-weight:900;letter-spacing:.015em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-step[aria-current="step"]{
+ color:#fff;background:var(--fn-red);border-color:#ed8e98;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page{
+ min-width:0;
+}
+/* Headlines: sober newspaper-masthead, not vintage television. */
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero.ppw-tone-flat,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero.ppw-tone-red_hot{
+ background:var(--fn-paper);color:var(--fn-ink);
+ border:1px solid #bbc2c9;border-top:5px solid var(--fn-red);
+ border-bottom:3px solid var(--fn-red);border-radius:3px;
+ padding:0 0 17px;margin-top:8px;box-shadow:0 8px 18px #0003;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-fight-station{
+ padding:12px 13px;background:var(--fn-dark);color:#f4f6fa;
+ font:900 10px/1.35 system-ui;letter-spacing:.1em;text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero-main{
+ margin:23px 16px 0;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-title-wrap h1{
+ color:var(--fn-ink);font:1000 italic clamp(35px,10vw,56px)/.96 system-ui;
+ letter-spacing:-.07em;text-shadow:none;overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-title-wrap .ppw-eyebrow{
+ color:var(--fn-red-dark);font-weight:900;letter-spacing:.12em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-edition{
+ color:var(--fn-muted);font-weight:800;font-size:11px;letter-spacing:.06em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-lead{
+ color:var(--fn-ink);font:800 clamp(15px,4.3vw,21px)/1.35 system-ui;
+ margin:8px 16px 0;text-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell{
+ background:var(--fn-paper);color:var(--fn-ink);border:1px solid var(--fn-line);
+ border-left:4px solid var(--fn-red);border-radius:3px;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell :is(
+ .ppw-eyebrow,.ppw-ringside-ai-status){color:var(--fn-red-dark);font-weight:900}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell-headline{
+ color:var(--fn-ink);font:950 clamp(23px,6vw,30px)/1.15 system-ui;letter-spacing:-.04em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell :is(
+ .ppw-final-bell-paragraph,.ppw-ringside-await){
+ font:400 14px/1.74 Georgia,serif;color:#313741;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-broadcast-section-title{
+ color:#f9fafc;background:var(--fn-dark);border-left:5px solid var(--fn-red);
+ border-radius:2px;padding:11px 13px;letter-spacing:.1em;font-weight:950;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-broadcast-headline{
+ color:var(--fn-ink);background:#f1f2f4;border:1px solid var(--fn-line);
+ border-left:4px solid var(--fn-red);border-radius:3px;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-broadcast-headline :is(
+ strong,p){color:var(--fn-ink)}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-broadcast-headline :is(
+ .ppw-eyebrow,.ppw-result-read){color:var(--fn-red-dark);font-weight:900}
+/* Full Card on WHITE (not cream) paper with black wrestler names. */
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="full"],
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"]{
+ background:var(--fn-paper);border:1px solid #b9c1ca;
+ border-radius:3px;overflow:hidden;box-shadow:0 8px 20px #0003;margin-bottom:15px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-fight-chapter-head{
+ background:#fff;color:var(--fn-ink);padding:23px 16px 20px;
+ border-bottom:5px solid var(--fn-red);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-fight-eyebrow{
+ color:var(--fn-red-dark);font:900 10px/1.4 system-ui;letter-spacing:.13em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-fight-chapter-head h2{
+ color:var(--fn-ink);font:1000 italic clamp(30px,8vw,42px)/1 system-ui;
+ letter-spacing:-.065em;margin:10px 0 6px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-fight-chapter-head p{
+ color:var(--fn-muted);font:800 11px/1.5 system-ui;letter-spacing:.055em;margin:0;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-timeline{
+ background:var(--fn-paper);display:grid;gap:8px;padding:15px 13px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-filters{margin:0 0 6px}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-filter{
+ color:#343b47;background:#f0f2f4;border:1px solid var(--fn-line);border-radius:3px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-filter[aria-pressed="true"]{
+ color:#fff;background:var(--fn-red);border-color:var(--fn-red-dark);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry.ppw-tone-red_hot{
+ color:var(--fn-ink);background:var(--fn-paper);border:1px solid var(--fn-line);
+ border-top:2px solid var(--fn-red);border-left:1px solid var(--fn-line);
+ border-radius:2px;box-shadow:none;margin-bottom:12px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry.ppw-result-angle{
+ background:var(--fn-cool);border-left:4px solid var(--fn-red);border-top:1px solid var(--fn-line);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry summary{
+ background:var(--fn-paper);color:var(--fn-ink);padding:14px 11px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry.ppw-result-angle summary{
+ background:var(--fn-cool);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry :is(
+ .ppw-result-headline,.ppw-result-competitor,.ppw-result-competitor-name,
+ .ppw-result-team,.ppw-result-meter,.ppw-result-minutes,.ppw-result-trail,
+ .ppw-result-main-event,.ppw-result-rating,.ppw-result-programme){
+ color:var(--fn-ink)!important;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-headline{
+ font:950 clamp(20px,5.7vw,26px)/1.12 system-ui;letter-spacing:-.04em;
+ text-transform:uppercase;overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-category{
+ color:var(--fn-red-dark)!important;font-weight:900;letter-spacing:.09em;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-vs{
+ color:var(--fn-red-dark)!important;font-weight:950;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-lineup{
+ border:1px solid var(--fn-line);border-radius:2px;
+ border-top:2px solid var(--fn-red);background:#eef0f3;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-competitor-name{
+ color:var(--fn-ink)!important;font-size:12px;font-weight:950;text-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-photo{
+ background:#d4d8dd;border:1px solid #a4adb8;border-bottom:4px solid var(--fn-red);
+ border-radius:2px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-photo-fallback{
+ color:#3a4654;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry summary::after{
+ color:var(--fn-red-dark);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-story{
+ background:#fff;color:var(--fn-ink);border-top:1px solid var(--fn-line);
+ padding:16px 13px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-story :is(
+ p,h3,strong,.ppw-ringside-slot-headline,.ppw-ringside-slot-paragraph,
+ .ppw-result-recap,.ppw-result-reaction){
+ color:#252b34;font-family:Georgia,serif;line-height:1.68;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-ringside-slot-headline{
+ font-family:system-ui;color:var(--fn-ink);font-size:17px;font-weight:950;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-story .ppw-result-verdict{
+ color:var(--fn-ink);background:#fff;border-left:0;
+ border-top:2px solid var(--fn-red);border-bottom:1px solid var(--fn-line);
+ border-radius:0;font:900 13px/1.5 system-ui;padding:12px 0;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-story .ppw-verified-finish-details{
+ color:#353b44;background:#f2f3f5;border:1px solid var(--fn-line);
+ border-radius:2px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-verified-finish-details :is(summary,p){
+ color:#303741;font-family:system-ui;
+}
+#game .ppw-results[data-results-skin="fight-night"] :is(
+ .ppw-show-transition,.ppw-ringside-conclusion){
+ color:#303741;background:#f0f2f4;border-left:4px solid var(--fn-red);
+ font-family:Georgia,serif;padding:12px 13px;border-radius:0;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-ringside-conclusion :is(p,span){
+ color:#2b3038;
+}
+/* POP remains a social network; restyle its frame but keep DARK cards / bright copy. */
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"]{
+ color:var(--fn-ink);padding-bottom:12px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"]>.ppw-broadcast-section-title{
+ margin:14px 14px 9px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social{
+ margin:12px 13px 19px;background:#eceef1;border:1px solid var(--fn-line);
+ border-radius:4px;padding:12px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social :is(
+ .ppw-pop-kicker,.ppw-crowd-noise-disclaimer){
+ color:#343e4b;font-weight:850;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social .ppw-pop-title{
+ color:var(--fn-ink);font:950 italic 33px/1 system-ui;letter-spacing:-.05em;text-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social .ppw-pop-post{
+ color:#fff3ee;background:#293247;border:1px solid #65738c;
+ border-radius:9px;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social .ppw-pop-post :is(
+ .ppw-pop-display-name,.ppw-pop-copy,.ppw-pop-reply,.ppw-pop-reply span){
+ color:#fff3ee;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social .ppw-pop-handle{
+ color:#d0d8e7;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social .ppw-pop-reply{
+ color:#f8e9df;background:#1b2539;border:1px solid #66748c;
+ border-left:3px solid #d96070;border-radius:3px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-pop-social :is(
+ .ppw-pop-metrics,.ppw-crowd-noise-read){color:#d8e0ee}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-post-show-brief{
+ color:var(--fn-ink);background:var(--fn-paper);
+ border:1px solid var(--fn-line);border-top:5px solid var(--fn-red);
+ margin:14px 13px 20px;border-radius:2px;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-post-show-brief :is(
+ h2,h3,strong,p,.ppw-post-show-guidance,.ppw-road-agent-voice,.ppw-road-agent-next,
+ .ppw-road-agent-standout,.ppw-road-agent-continuity){
+ color:#222832;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-post-show-brief .ppw-eyebrow,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-post-show-road-agent h3{
+ color:var(--fn-red-dark);
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-next-show-choice{
+ color:var(--fn-ink);background:#f0f1f3;border:1px solid var(--fn-line);
+ border-left:4px solid var(--fn-red);border-radius:2px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-next-show-choice :is(
+ h3,strong,p){color:#252b34}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-next-show-route,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-next{
+ background:var(--fn-red);color:#fff;border:1px solid var(--fn-red-dark);
+ border-radius:3px;font-weight:900;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum){
+ background:#f0f1f3;color:var(--fn-ink);border:1px solid var(--fn-line);
+ border-radius:2px;margin:12px 13px;
+}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum) :is(
+ h2,h3,p,strong,summary){color:var(--fn-ink)}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="full"]>.ppw-results-next,
+#game .ppw-results[data-results-skin="fight-night"] .ppw-results-page[data-page="after"]>.ppw-results-next{
+ width:calc(100% - 26px);margin:17px 13px;
+}
+@media(max-width:390px){
+ #game .ppw-results[data-results-skin="fight-night"] .ppw-fight-chapter-head{padding:19px 12px 17px}
+ #game .ppw-results[data-results-skin="fight-night"] .ppw-result-timeline{padding:12px 9px}
+ #game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry summary{padding:11px 9px}
+ #game .ppw-results[data-results-skin="fight-night"] .ppw-result-story{padding:12px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-results[data-results-skin="fight-night"] *{transition:none!important;animation:none!important}
+}
