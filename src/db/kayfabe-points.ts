@@ -87,9 +87,10 @@ async function lockWallet(tx:SqlRows,id:string){
 /** One request over certified records, shared by the KP preview and full
  *  Trophy Room. Indexes remain World/promotion scoped; no per-card queries. */
 async function queryPromoterCounters(tx:SqlRows,s:KpScope){
- const result=await tx.query<Record<AchievementMetric,string>&{badge_style:string|null}>(`
- promoterAchievementCountersSql("$1","$2",
-  "(SELECT style FROM ppw_kp_badge_styles WHERE player_id=$3) AS badge_style"),,[s.worldId,s.promotionId,s.playerId]);
+ const result=await tx.query<Record<AchievementMetric,string>&{badge_style:string|null}>(
+  promoterAchievementCountersSql("$1","$2",
+   "(SELECT style FROM ppw_kp_badge_styles WHERE player_id=$3) AS badge_style"),
+  [s.worldId,s.promotionId,s.playerId]);
  const stats={...EMPTY_PROMOTER_COUNTERS};
  const row=result[0];
  for(const key of Object.keys(stats) as AchievementMetric[]){
