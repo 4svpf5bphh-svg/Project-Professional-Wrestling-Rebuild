@@ -1,3 +1,4 @@
+import {dispatchCardRpc} from "../src/web/card-rpc.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {randomUUID} from "node:crypto";
@@ -124,9 +125,14 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   const renewalTerms:OfferTerms={...limited,startWeekIndex:13,termWeeks:13,
    weeklyGuarantee:12000,appearanceFee:5000,signingBonus:2000};
   const renew="renegotiate-"+id;
-  assert.equal((await submitManualContractOffer(db.pool,{worldId:world,playerId:playerA,promotionId:pA,
-   personId:addendumPerson,sourceContractId:source,requestId:renew,
-   expectedRevision:9,terms:renewalTerms})).status,"APPLIED");
+  // Exercise the authenticated HTTP routing layer as well as contract SQL:
+  // a missing sourceContractId used to turn this valid renewal into a
+  // rejected new recruitment offer.
+  const routed=await dispatchCardRpc({pool:db.pool,actor:{playerId:playerA}},
+   "submitContractOffer",{worldId:world,promotionId:pA,showId:"",
+    personId:addendumPerson,sourceContractId:source,requestId:renew,
+    expectedRevision:9,terms:renewalTerms}) as {status:string};
+  assert.equal(routed.status,"APPLIED");
   const renewed=await resolvePersonContractOffers(db.pool,{worldId:world,personId:addendumPerson,
    requestId:"renegotiate-resolve-"+id,expectedRevision:10},system);
   assert.equal(renewed.status,"APPLIED");
