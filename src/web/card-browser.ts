@@ -481,6 +481,7 @@ function openWrestlerDossier(root:HTMLElement,scope:Scope,
  overlay.setAttribute("aria-modal","true");
  overlay.setAttribute("aria-label","Wrestler dossier");
  overlay.tabIndex=-1;
+ overlay.scrollTop=0;
  const close=()=>{
   overlay.remove();
   if(previouslyFocused?.isConnected)previouslyFocused.focus();
@@ -491,7 +492,8 @@ function openWrestlerDossier(root:HTMLElement,scope:Scope,
  root.append(overlay);
  mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
   personId,close);
- overlay.focus();
+ overlay.focus({preventScroll:true});
+ overlay.scrollTop=0;
 }
 
 function programmePort(call:ReturnType<typeof createCardClient>,
