@@ -218,7 +218,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      el("span","",title(c.family)+" · "+
       (c.remainingDates===null?"Unlimited":c.remainingDates+" dates")+" · "+
       c.weeksRemaining+" weeks left"));
-    if(c.pendingNegotiation||c.pendingRenewal)
+    if(c.renewalArranged)
+     chips.append(el("small","ppw-contract-pending-label","NEXT TERM AGREED"));
+    else if(c.pendingNegotiation||c.pendingRenewal)
      chips.append(el("small","ppw-contract-pending-label","NEGOTIATING"));
     else if(c.reason==="NO_DATES")
      chips.append(el("small","ppw-contract-danger","NO DATES"));
@@ -272,8 +274,10 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       el("label","","Extra payment ($)"),pay,submit);
      body.append(section);
     }
-    const negotiatedPending=view!.offers.some(o=>o.source_contract_id===c.contractId)||
+    const negotiatedPending=c.renewalArranged||view!.offers.some(o=>o.source_contract_id===c.contractId)||
      view!.renewals.some(r=>r.contract_id===c.contractId);
+    if(c.renewalArranged)body.append(el("p","ppw-contract-renew-hint",
+     "A renewal has already been accepted. Its new terms begin after this agreement expires; no second offer is needed."));
     if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit&&!negotiatedPending){
      body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
