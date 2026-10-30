@@ -22,6 +22,7 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
+import {projectPopFeed} from "../domain/pop-social.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -206,36 +207,48 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("span","ppw-ringside-ai-status","AI dispatch · checking"),
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
- const reactions=showReactionWire(show);
- const noise=node("section","ppw-crowd-noise");
+ const reactions=projectPopFeed(show,showReactionWire(show));
+ const noise=node("section","ppw-crowd-noise ppw-pop-social");
  if(reactions.length){
-  append(noise,node("span","ppw-eyebrow","PPW / FICTIONAL FAN REACTIONS"),
-   node("h2","ppw-crowd-noise-title","THE NOISE AFTER THE BELL"),
+  append(noise,
+   node("span","ppw-pop-kicker","THE WRESTLING INTERNET, UNFORTUNATELY"),
+   node("h2","ppw-crowd-noise-title ppw-pop-title","POP!"),
    node("p","ppw-crowd-noise-disclaimer",
-    "Fictional in-World fan chatter inspired by the completed show. Not real posts or accounts."));
-  const wall=node("div","ppw-crowd-noise-wall");
+    "Fictional in-game wrestling social media. Posts, profiles and engagement are simulated; results link to certified matches and angles."));
+  const wall=node("div","ppw-crowd-noise-wall ppw-pop-timeline");
+  wall.setAttribute("aria-label","POP! fictional social timeline");
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
-   card.className="ppw-crowd-noise-card ppw-reaction-"+reaction.mood.toLowerCase();
-   card.setAttribute("aria-label","Open source result for "+reaction.voice+": "+reaction.text);
-   append(card,node("span","ppw-crowd-noise-voice",reaction.voice),
-    node("span","ppw-crowd-noise-quote",reaction.text));
-   if(reaction.reply){
-    const reply=node("span","ppw-crowd-noise-reply");
-    append(reply,node("span","ppw-crowd-noise-reply-voice",reaction.reply.voice),
+   card.className="ppw-crowd-noise-card ppw-pop-post ppw-reaction-"+reaction.mood.toLowerCase();
+   card.setAttribute("aria-label","Open source result for "+reaction.identity.handle+": "+reaction.text);
+   const head=node("span","ppw-pop-post-head");
+   head.append(node("span","ppw-pop-avatar",reaction.identity.avatar));
+   const who=node("span","ppw-pop-who");
+   who.append(node("strong","ppw-pop-display-name",reaction.identity.displayName),
+    node("small","ppw-pop-handle",reaction.identity.handle+" · After the bell"));
+   head.append(who,node("span","ppw-pop-mood",reaction.emoji));
+   card.append(head,node("span","ppw-crowd-noise-quote ppw-pop-copy",reaction.text));
+   if(reaction.reply&&reaction.replyIdentity){
+    const reply=node("span","ppw-crowd-noise-reply ppw-pop-reply");
+    append(reply,node("span","ppw-crowd-noise-reply-voice",
+     reaction.replyIdentity.avatar+" "+reaction.replyIdentity.handle),
      node("span","ppw-crowd-noise-reply-text",reaction.reply.text));
     card.append(reply);
    }
-   card.append(node("span","ppw-crowd-noise-read","VIEW RECORDED MOMENT ↗"));
+   const metrics=node("span","ppw-pop-metrics");
+   metrics.append(node("span","",reaction.emoji+" "+reaction.likes.toLocaleString("en-GB")),
+    node("span","","💬 "+reaction.comments.toLocaleString("en-GB")),
+    node("span","","🔁 "+reaction.reposts.toLocaleString("en-GB")));
+   card.append(metrics,node("span","ppw-crowd-noise-read","OPEN THE RECORDED MOMENT ↗"));
    card.onclick=()=>{
     changePage(1);setFilter("ALL");
     const target=storyLinks.get(reaction.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
    };
-   append(wall,card);
+   wall.append(card);
   }
-  append(noise,wall);
+  noise.append(wall);
  }
  const highlights=node("section","ppw-broadcast-highlights");
  const featured=showBroadcastHighlights(show.entries);
