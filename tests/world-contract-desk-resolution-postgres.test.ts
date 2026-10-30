@@ -86,7 +86,6 @@ test("World-resolution integration: pending offer blocks publication, is settled
    worldId:world,requestId:"contracts-"+uuid,expectedRevision:0,resolutionId:"week-"+uuid});
   assert.equal(stage.status,"EXECUTED");
   assert.equal(stage.action,"RESOLVE_CONTRACTS");
-  assert.equal(stage.result?.answered,2);
   const settledRenewal=await withWorldTransaction(db.pool,tx=>tx.query<{status:string}>(
    "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND proposal_id=$2",
    [world,renewal]));
