@@ -40,3 +40,16 @@ button.ppw-promoter-prestige-crest{cursor:pointer;font-family:inherit}
  .ppw-prestige-crest-rank{font-size:19px}
  .ppw-prestige-crest-progress{font-size:11px}
 }
+
+/* Win over global #game typography rules without changing other components. */
+#game .ppw-promoter-prestige-crest{background:linear-gradient(120deg,#26223f,#1d2a42);
+ color:#fff6e0;border-color:#8f72c6}
+#game .ppw-promoter-prestige-crest[data-finish=gold]{background:linear-gradient(115deg,#483532,#22263f);
+ border-color:#e8c976}
+#game .ppw-promoter-prestige-crest[data-finish=platinum]{background:linear-gradient(115deg,#293e56,#252343);
+ border-color:#b0ddea}
+#game .ppw-promoter-prestige-crest .ppw-prestige-crest-rank{color:#ffe1a2}
+#game .ppw-promoter-prestige-crest[data-finish=platinum] .ppw-prestige-crest-rank{color:#e9f9ff}
+#game .ppw-promoter-prestige-crest .ppw-prestige-crest-eyebrow{color:#94e4f1}
+#game .ppw-promoter-prestige-crest .ppw-prestige-crest-progress{color:#d8d0e6}
+#game .ppw-promoter-prestige-crest .ppw-prestige-crest-symbol{color:#ffe7a1}
