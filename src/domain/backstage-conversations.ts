@@ -57,6 +57,20 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  for(const ch of requestId)hash=(Math.imul(hash,31)+ch.charCodeAt(0))|0;
  const voice=requestId?Math.abs(hash%3):0;
  const partner=evidence?.partnerName??"that wrestler";
+ // Rivalry pitches are preserved at their original request, but the
+ // wrestler can speak about the *certified number of shared shows* that
+ // actually justified that message. Never borrow future matches or current
+ // heat when re-opening an archived conversation.
+ if(kind==="RIVALRY_PITCH"&&evidence?.partnerName&&
+  Number.isSafeInteger(evidence.verifiedSinglesShows)&&
+  evidence.verifiedSinglesShows!>=2&&evidence.verifiedSinglesShows!<=52){
+  const count=evidence.verifiedSinglesShows!;
+  return [
+   "I've wrestled "+partner+" on "+count+" different shows. People have been paying attention. Can we build a proper rivalry?",
+   partner+" and I have met on "+count+" shows now. There's a story in that history, if you let us tell it. How about a rivalry?",
+   "The audience has seen me against "+partner+" across "+count+" shows. I'd rather give them a reason for the next meeting. Let's build a rivalry?"
+  ][voice]!;
+ }
  const alternatives:Partial<Record<BackstageKind,string[]>>={
   CONTRACT:["My deal is nearly up. Can we talk about what happens next?",
    "My contract's coming up. I need to know where I stand with you.",

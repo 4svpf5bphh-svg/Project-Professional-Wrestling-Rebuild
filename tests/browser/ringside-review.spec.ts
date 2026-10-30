@@ -92,7 +92,7 @@ for(const width of [320,390]){
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
    await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
   }
-  await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeHidden();
+  await expect(page.getByRole("heading",{name:"POP!"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
@@ -110,8 +110,12 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"POP!"})).toBeVisible();
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
+  await expect(page.locator(".ppw-pop-post .ppw-pop-avatar")).toHaveCount(2);
+  await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
+  await expect(page.locator(".ppw-pop-post .ppw-pop-handle").first()).toContainText("@");
+  await expect(page.locator(".ppw-pop-social")).toContainText("Fictional in-game wrestling social media.");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();

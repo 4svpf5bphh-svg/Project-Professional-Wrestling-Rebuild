@@ -330,3 +330,59 @@
 .ppw-media-scrum-choices button{text-align:left;white-space:normal;min-height:44px;line-height:1.4}
 .ppw-media-scrum-quote{border-left:3px solid #d9aa66;padding:.8rem;background:rgba(217,170,102,.1);font-size:.94rem;line-height:1.5}
 @media(max-width:390px){.ppw-media-scrum{padding:.8rem}.ppw-media-scrum-question{padding:.7rem}}
+
+/* Certified story history anchors a match in an evolving rivalry, while the
+   Ringside editorial remains free to write its own commentary. */
+.ppw-rivalry-at-ringside{margin:14px 0;padding:13px 14px;border-radius:13px;
+ background:linear-gradient(135deg,#153449,#172238);border:1px solid #4d7188}
+.ppw-rivalry-at-ringside .ppw-eyebrow{color:#a9e7ff;letter-spacing:.1em}
+.ppw-ringside-rivalry-chapter{padding:9px 0}
+.ppw-ringside-rivalry-chapter+.ppw-ringside-rivalry-chapter{
+ border-top:1px solid #41637a}
+.ppw-ringside-rivalry-chapter strong{color:#ffdf9b;font-weight:850;
+ font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.ppw-ringside-rivalry-chapter p{margin:7px 0 0;font-size:13px;
+ line-height:1.55;color:#d5e7f3}
+.ppw-road-agent-continuity{padding:12px 14px;margin:13px 0;
+ background:#142f3c;border-left:3px solid #8ad4ba;
+ border-radius:0 9px 9px 0;color:#d6f1e8;line-height:1.55;font-size:13px}
+
+/* POP! uses the completed-show fan wire, never an account service or poller.
+ * One readable iPhone feed; genuine reactions are linked to certified slots. */
+.ppw-pop-social{padding:17px 14px;border-radius:20px;
+ background:radial-gradient(ellipse at 100% 0%,#3c2058aa,transparent 57%),
+ linear-gradient(155deg,#131d36,#0c1324);border:1px solid #6d568f}
+.ppw-pop-kicker{color:#ceadff;font-size:10px;font-weight:900;
+ letter-spacing:.12em}
+.ppw-pop-social .ppw-pop-title{margin:-6px 0 0;
+ font-size:clamp(35px,8vw,49px);letter-spacing:-.07em;
+ line-height:1.1;color:#f7f2ff;text-shadow:0 2px 20px #ad6bff66}
+.ppw-pop-social .ppw-crowd-noise-disclaimer{margin:0 0 8px;max-width:680px}
+.ppw-pop-timeline{display:grid;grid-template-columns:1fr;gap:10px}
+.ppw-pop-social .ppw-pop-post{display:grid;text-align:left;min-width:0;
+ gap:10px;min-height:0;padding:14px;
+ background:linear-gradient(140deg,#20233e,#151e34);
+ border:1px solid #494969;border-top:1px solid #7774a6;
+ border-radius:15px;box-shadow:0 6px 20px #04081450}
+.ppw-pop-post-head{display:flex;align-items:center;gap:10px;min-width:0}
+.ppw-pop-avatar{display:grid;place-items:center;flex:none;
+ width:40px;height:40px;border:1px solid #886bb4;border-radius:50%;
+ background:linear-gradient(135deg,#51266b,#1c4566);font-size:19px}
+.ppw-pop-who{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+.ppw-pop-display-name{font-size:14px;font-weight:850;line-height:1.2;
+ color:#f4edff;overflow-wrap:anywhere}
+.ppw-pop-handle{font-size:11px;line-height:1.3;color:#b8acce;
+ overflow-wrap:anywhere}
+.ppw-pop-mood{font-size:20px;flex:none}
+.ppw-pop-copy{font-size:14px;line-height:1.55;white-space:normal;
+ overflow-wrap:anywhere}
+.ppw-pop-reply{padding:9px 11px;border:1px solid #514567;border-radius:11px;
+ background:#10192f;border-top-color:#514567}
+.ppw-pop-metrics{display:flex;gap:15px;flex-wrap:wrap;padding-top:8px;
+ border-top:1px solid #474366;color:#bbb1d5;font-size:12px;font-weight:750}
+.ppw-pop-social .ppw-crowd-noise-read{color:#d5b2ff}
+.ppw-pop-post:hover,.ppw-pop-post:focus-visible{border-color:#be9bf8}
+@media(min-width:690px){.ppw-pop-timeline{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:360px){.ppw-pop-social{padding:13px 10px}
+ .ppw-pop-social .ppw-pop-post{padding:11px}
+ .ppw-pop-avatar{width:36px;height:36px}}

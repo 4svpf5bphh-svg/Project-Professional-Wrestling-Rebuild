@@ -119,7 +119,11 @@ test("verified history is optional, private, and does not change recorded card f
    slots:{card_0:{headline:"Omega gets the win",recap:"Omega connected with the One Winged Angel and took the clean pin."}}
   })}}]}));
  };
- const result=await generateGroqReview(show,"fixture",transport,undefined,memory);
+ const encounter={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:12,
+   sides:[["Kenny Omega"],["Opponent"]],winnerNames:["Kenny Omega"],
+   championshipContested:false}}]};
+ const result=await generateGroqReview(encounter,"fixture",transport,undefined,memory);
  assert.equal(result.slots[0]?.slotId,"m");
 });
 

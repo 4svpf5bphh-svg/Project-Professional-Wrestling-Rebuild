@@ -222,3 +222,21 @@
 .ppw-news-story-career{border-color:#9471ca;
  background:linear-gradient(120deg,#27224b,#142640)}
 .ppw-news-story-career .ppw-news-desk{color:#ffd29b}
+
+
+/* Editorial awards banner rather than a cup-shaped generic trophy. */
+.ppw-honours-emblem{display:flex;align-items:center;justify-content:center;
+ flex-direction:column;gap:4px;margin:22px auto 12px;
+ padding:20px 12px;width:min(100%,460px);box-sizing:border-box;
+ border-top:2px solid #ffd992;border-bottom:2px solid #ffd992;
+ background:radial-gradient(ellipse at center,#8d673032,transparent 75%);}
+.ppw-honours-emblem>span{font-size:54px;line-height:1;color:#ffe3a3;
+ text-shadow:0 0 20px #d89958aa}
+.ppw-honours-emblem>strong{letter-spacing:.16em;font-size:clamp(13px,3vw,18px);
+ font-weight:900;color:#ffe5aa;text-align:center}
+
+/* Clearly fictional tabloid threads sit apart from actual event reporting. */
+.ppw-news-wild-theory{background:radial-gradient(ellipse at 100% 0%,#59316b77,transparent 66%),
+ linear-gradient(120deg,#291e39,#161d32);border-color:#8d6ab0}
+.ppw-news-wild-theory .ppw-news-desk{color:#e3b7ff}
+.ppw-news-wild-theory .ppw-news-story-title{color:#fff0fc}

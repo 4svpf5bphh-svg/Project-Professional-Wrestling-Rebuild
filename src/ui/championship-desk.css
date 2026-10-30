@@ -204,3 +204,22 @@
  .ppw-tournament-legacy{padding:11px}
  .ppw-tournament-heritage h2{font-size:17px}
 }
+
+
+/* Historic championship directory: a title is a named honour, not clip art. */
+#game .ppw-championship-desk .ppw-belt-summary{display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;gap:10px!important;
+ padding:17px!important;min-height:0!important}
+#game .ppw-championship-desk .ppw-belt-identity{grid-column:1/-1;gap:8px}
+#game .ppw-championship-desk .ppw-belt-title-kicker{display:block;
+ font-size:11px;letter-spacing:.16em;color:#e6c48d;font-weight:900}
+#game .ppw-championship-desk .ppw-belt-name{display:block;
+ font-size:clamp(20px,5.3vw,28px);line-height:1.12;letter-spacing:-.045em;
+ font-weight:950;text-transform:uppercase;text-wrap:balance;
+ overflow-wrap:break-word;color:#fff0cf}
+#game .ppw-championship-desk .ppw-belt-tag .ppw-belt-name{color:#d9f2ff}
+#game .ppw-championship-desk .ppw-belt-meta{grid-column:1/-1;
+ border-top:1px solid #ffffff30;padding-top:9px;display:flex}
+#game .ppw-championship-desk .ppw-belt-card{border-left:4px solid #e7c17d;
+ background:linear-gradient(135deg,#29293f,#121d30)}
+#game .ppw-championship-desk .ppw-belt-tag{border-left-color:#8ed0f3}

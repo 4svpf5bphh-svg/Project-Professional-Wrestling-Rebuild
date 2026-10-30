@@ -15,8 +15,6 @@ export const EMPTY_RINGSIDE_MEMORY:RingsideMemory={priorMatches:[],programmes:[]
 type Scope={worldId:string;promotionId:string;showId:string;playerId:string};
 type HistoricRow={promotion_id:string;year:number;week:number;actual_finish:string;
  actual_winner_side:string;payload:unknown};
-type ProgrammeRow={started_week_index:number;participants:string[];
- beats:string|number;last_kind:string|null};
 const valid=(s:string)=>typeof s==="string"&&!!s&&s.length<=200;
 
 export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
@@ -81,47 +79,10 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
    if(winners.length!==row.winners.length||wrestlers.length!==row.people.length)return [];
    return [{when:"Y"+row.year+" W"+row.week,wrestlers,winners,finish:row.finish}];
   }).slice(0,5);
-  // Reconstruct programme status AS OF the show, never use today's heat,
-  // side win totals or future outcomes for an old show preview.
-  const programmes=await db.query<ProgrammeRow>(`
-   SELECT p.started_week_index,
-    array_agg(people.name ORDER BY participant.side,people.name) AS participants,
-    (SELECT count(*) FROM ppw_programme_resolved_activities activity
-      WHERE activity.world_id=p.world_id
-       AND activity.promotion_id=p.promotion_id
-       AND activity.programme_id=p.programme_id
-       AND activity.week_index<$4) AS beats,
-    (SELECT activity.kind FROM ppw_programme_resolved_activities activity
-      WHERE activity.world_id=p.world_id
-       AND activity.promotion_id=p.promotion_id
-       AND activity.programme_id=p.programme_id
-       AND activity.week_index<$4
-      ORDER BY activity.week_index DESC LIMIT 1) AS last_kind
-   FROM ppw_programmes p
-   JOIN ppw_programme_participants participant
-    ON participant.world_id=p.world_id AND participant.promotion_id=p.promotion_id
-     AND participant.programme_id=p.programme_id
-   JOIN ppw_people people ON people.world_id=participant.world_id
-    AND people.person_id=participant.person_id
-   WHERE p.world_id=$1 AND p.promotion_id=$2
-     AND EXISTS (SELECT 1 FROM ppw_promotion_controls pc
-      JOIN ppw_memberships member ON member.world_id=pc.world_id
-       AND member.player_id=pc.player_id AND member.status='ACTIVE'
-      WHERE pc.world_id=p.world_id AND pc.promotion_id=p.promotion_id
-       AND pc.player_id=$5 AND pc.active)
-     AND p.started_week_index<$4
-     AND (p.ended_week_index IS NULL OR p.ended_week_index>=$4)
-     AND EXISTS (SELECT 1 FROM ppw_programme_participants involved
-      WHERE involved.world_id=p.world_id AND involved.promotion_id=p.promotion_id
-       AND involved.programme_id=p.programme_id
-       AND involved.person_id=ANY($3::text[]))
-   GROUP BY p.world_id,p.promotion_id,p.programme_id,p.started_week_index
-   ORDER BY p.started_week_index DESC LIMIT 5`,
-   [scope.worldId,scope.promotionId,ids,weekIndex,scope.playerId]);
-  return {priorMatches,programmes:programmes.slice(0,4).map(p=>({
-   wrestlers:p.participants.slice(0,8),
-   began:"week index "+p.started_week_index,
-   beats:Number(p.beats),latest:p.last_kind
-  }))};
+  // Settled, promotion-owned programme chapters already arrive with each
+  // completed show slot in readCompletedShowView. Re-querying every active
+  // programme here used another Neon round trip and provided less reliable
+  // relevance than the exact linked slot. Keep only last shared matches.
+  return {priorMatches,programmes:[]};
  });
 }

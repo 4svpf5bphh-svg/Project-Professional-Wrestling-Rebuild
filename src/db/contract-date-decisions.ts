@@ -41,7 +41,9 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
    if(contract.status!=="SIGNED"||contract.family!=="LIMITED_NON_EXCLUSIVE"
      ||contract.remaining_dates===null||contract.expires_week_index<current
      ||contract.start_week_index>current
-     ||(contract.date_entitlement??contract.remaining_dates??0)+r.additional_dates>104)
+     ||(contract.date_entitlement??contract.remaining_dates??0)+r.additional_dates>104
+     ||(contract.remaining_dates??0)+r.additional_dates>
+       contract.expires_week_index-current+1)
      decision="REJECTED";
    if(decision==="ACCEPTED"){
     const persons=await tx.query<{career_stage:PersonEconomics["careerStage"];morale:number;
@@ -96,6 +98,7 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      AND family='LIMITED_NON_EXCLUSIVE' AND status='SIGNED'
      AND remaining_dates IS NOT NULL AND remaining_dates<=$5
      AND COALESCE(date_entitlement,remaining_dates)+$4<=104
+     AND remaining_dates+$4<=expires_week_index-$6+1
      AND expires_week_index>=$6 RETURNING contract_id`,
      [input.worldId,input.promotionId,r.contract_id,r.additional_dates,
       2147483647-r.additional_dates,current]);

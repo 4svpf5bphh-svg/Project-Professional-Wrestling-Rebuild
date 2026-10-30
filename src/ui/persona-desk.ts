@@ -4,6 +4,7 @@
 import type {readPortablePersonaWorkspace}
  from "../db/portable-persona-workspace.js";
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
+import {describeWrestlerRivalryMemory} from "../domain/verified-wrestler-rivalry-memory.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
@@ -479,8 +480,12 @@ export function mountPersonaDesk(root:HTMLElement,
     CHARACTER_DECLINED:"A proposed character change was rejected"
    };
    for(const m of wrestlerMemories){
+    const rivalry=(m.kind==="RIVALRY_MATCH"||m.kind==="RIVALRY_ANGLE")&&
+     m.relatedName&&m.ownSide?
+     describeWrestlerRivalryMemory({kind:m.kind,relatedName:m.relatedName,
+      ownSide:m.ownSide,winnerSide:m.winnerSide,weekIndex:m.weekIndex}):null;
     remembered.append(el("p","ppw-backstage-memory",
-     (descriptions[m.kind]??"A remembered career event")+
+     (rivalry??descriptions[m.kind]??"A remembered career event")+
      " · Y"+(Math.floor(m.weekIndex/52)+1)+" W"+(m.weekIndex%52+1)));
    }
    chat.append(remembered);

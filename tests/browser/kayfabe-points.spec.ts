@@ -14,7 +14,7 @@ const business={name:"Home",tier:"LOCAL",year:1,week:5,phase:"OPEN",
 test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and fair Create-a-Wrestler",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
- let balance=5000,brand:null|string=null,entitlements:string[]=[],alias:null|string=null;
+ let balance=5000,brand:null|string=null,entitlements:string[]=["BADGE_GOLD"],alias:null|string=null;
  await page.route("**/api/session",route=>route.fulfill({json:{
   worldId:"world",playerId:"owner",csrfToken:"secret",overview,availablePromotions:[]}}));
  await page.route("**/api/card",route=>{
@@ -25,7 +25,7 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
    balance,lifetimeEarned:balance+100,lifetimeSpent:5100-balance,worldYear:1,
    week:5,promotionName:"Home",weeklyAward:100,
    claim:{year:1,week:4,played:true,eligible:false,alreadyClaimed:true,dailyCapReached:true},
-   entitlements,activeBrand:brand,
+   entitlements,activeBrand:brand,activeBadge:"GOLD",
    staff:[{staffId:"staff-road-agent-001",alias}],
    achievements:[{key:"FIRST_BELL",label:"First Bell",earned:true,progress:1,target:1},
     {key:"TEN_SHOWS",label:"The Regular",earned:false,progress:3,target:10},
@@ -60,6 +60,8 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  await expect(page.getByRole("heading",{name:"Create a Wrestler"})).toBeVisible();
  await expect(page.getByText("free-agent market",{exact:false}).first()).toBeVisible();
  await expect(page.getByText("First Bell")).toBeVisible();
+ await expect(page.getByText("Active gold milestone frame")).toBeVisible();
+ await expect(page.locator(".ppw-kp-active-preview.ppw-kp-achievement-gold")).toBeVisible();
  await page.locator(".ppw-kp-item").filter({hasText:"Chrome promotion crest"})
   .getByRole("button",{name:"Unlock"}).click();
  await expect(page.locator(".ppw-kp-symbol[data-style='CHROME']")).toBeVisible();

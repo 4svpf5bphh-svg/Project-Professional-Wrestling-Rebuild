@@ -45,8 +45,8 @@ export function validateOfferTerms(t:OfferTerms,currentWeek:number):void {
   throw new Error("One-off agreements are one purchased appearance without weekly guarantee");
  if(t.family==="EXCLUSIVE"&&(t.appearanceFee!==0||t.dateEntitlement!==t.termWeeks))
   throw new Error("Exclusive employment has unlimited appearances and no appearance fee");
- if(t.family!=="EXCLUSIVE"&&t.dateEntitlement>t.termWeeks*2)
-  throw new Error("Purchased dates exceed the contract term capacity");
+ if(t.family!=="EXCLUSIVE"&&t.dateEntitlement>t.termWeeks)
+  throw new Error("Purchased appearances cannot exceed contract weeks");
 }
 export function marketWeeklyValue(p:PersonEconomics):number {
  requireEconomics(p);
@@ -84,6 +84,10 @@ export function canAddDates(p:PersonEconomics,source:ExistingCommitment,extra:nu
  ||source.expiresWeekIndex<currentWeek||source.startWeekIndex>currentWeek
  ||!Number.isSafeInteger(extra)||extra<1||extra>104) return "invalid date addendum";
  const weeks=Math.max(1,source.expiresWeekIndex-currentWeek+1);
+ // Only one contracted date can be used per calendar week, including when
+ // a weekly broadcast and premium event share a week.
+ if(Math.max(0,source.remainingDates??0)+extra>weeks)
+  return "additional dates exceed remaining contract weeks";
  if(others.some(c=>c.status==="SIGNED"&&c.family==="EXCLUSIVE"
  &&c.startWeekIndex<=source.expiresWeekIndex&&c.expiresWeekIndex>=currentWeek))
   return "exclusive agreement blocks additional dates";

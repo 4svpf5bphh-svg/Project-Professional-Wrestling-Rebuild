@@ -176,9 +176,14 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
    "ORDER BY r.position),'Side B') AS label,",
    "(SELECT jsonb_build_object('choice',d.choice,'weekIndex',d.chosen_week_index,",
-   "'laterBeatRecorded',EXISTS (SELECT 1 FROM ppw_programme_resolved_activities a",
+   "'laterMatchRecorded',EXISTS (SELECT 1 FROM ppw_programme_resolved_activities a",
    "WHERE a.world_id=$1 AND a.promotion_id=$2",
-   "AND a.programme_id=p.programme_id AND a.week_index>d.chosen_week_index))",
+   "AND a.programme_id=p.programme_id AND a.week_index>d.chosen_week_index",
+   "AND a.kind='MATCH'),",
+   "'laterAngleRecorded',EXISTS (SELECT 1 FROM ppw_programme_resolved_activities a",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2",
+   "AND a.programme_id=p.programme_id AND a.week_index>d.chosen_week_index",
+   "AND a.kind='SEGMENT'))",
    "FROM ppw_programme_postshow_directions d",
    "WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.programme_id=p.programme_id",
    "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) AS follow_up",
@@ -309,10 +314,14 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     const latestFollowUp=
      (choice==="PURSUE_REMATCH"||choice==="PLAN_RETALIATION"||choice==="LET_STAND")&&
       Number.isSafeInteger(direction?.weekIndex)&&
-      typeof direction?.laterBeatRecorded==="boolean"?{
+      typeof direction?.laterMatchRecorded==="boolean"&&
+      typeof direction?.laterAngleRecorded==="boolean"?{
        choice:choice as "PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND",
        weekIndex:direction.weekIndex as number,
-       laterBeatRecorded:direction.laterBeatRecorded as boolean
+       laterMatchRecorded:direction.laterMatchRecorded as boolean,
+       laterAngleRecorded:direction.laterAngleRecorded as boolean,
+       laterBeatRecorded:direction.laterMatchRecorded===true||
+        direction.laterAngleRecorded===true
       }:null;
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,
      repetition:p.repetition,latestFollowUp};

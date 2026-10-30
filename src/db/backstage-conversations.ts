@@ -201,20 +201,40 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
  * Scan one bounded 12-week show window, never the entire World or N+1 history.
  */
 export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekIndex:number){
+ if(!worldId||!Number.isSafeInteger(weekIndex)||weekIndex<0)
+  throw new Error("Invalid Backstage request week");
+ // Keep all evidence restricted to active human-managed companies before
+ // expanding match participants. Index-compatible year/week bounds avoid
+ // rescanning years of AI broadcasts on each World Lock.
+ const first=Math.max(0,weekIndex-12),firstEight=Math.max(0,weekIndex-8);
+ const last=weekIndex-1;
+ const firstYear=Math.floor(first/52)+1,firstWeek=first%52+1;
+ const eightYear=Math.floor(firstEight/52)+1,eightWeek=firstEight%52+1;
+ // At World genesis there is no historical show; contract requests may
+ // still be generated, but the show-window bounds must match no broadcasts.
+ const lastYear=last>=0?Math.floor(last/52)+1:0;
+ const lastWeek=last>=0?last%52+1:52;
  const rows=await tx.query<{request_id:string}>([
-  "WITH completed_slots AS (",
+  "WITH human_promotions AS MATERIALIZED (",
+  "SELECT DISTINCT owner.promotion_id FROM ppw_promotion_controls owner",
+  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
+  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
+  "WHERE owner.world_id=$1 AND owner.active",
+  "), completed_slots AS (",
   "SELECT sh.promotion_id,sh.show_id,",
   "row_number() OVER (PARTITION BY sh.promotion_id,sh.show_id",
   "ORDER BY played.position DESC) AS main_event_rank,",
   "s.payload->'participants' AS participants,",
   "played.crowd_response AS crowd_response",
-  "FROM ppw_completed_shows sh JOIN ppw_completed_show_matches played",
+  "FROM human_promotions human JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
+  "JOIN ppw_completed_show_matches played",
   "ON played.world_id=sh.world_id AND played.show_id=sh.show_id",
   "JOIN ppw_card_slots s ON s.world_id=played.world_id",
   "AND s.draft_id=played.show_id AND s.slot_id=played.match_id",
   "AND s.kind='MATCH'",
-  "WHERE sh.world_id=$1 AND (sh.year-1)*52+sh.week-1",
-  "BETWEEN greatest(0,$2-12) AND $2-1",
+  "WHERE (sh.year,sh.week) BETWEEN ($3::integer,$4::integer)",
+  "AND ($5::integer,$6::integer)",
   "), role_evidence AS (",
   "SELECT m.promotion_id,x.participant->>'personId' AS person_id,",
   "x.participant->>'contractId' AS contract_id,",
@@ -234,6 +254,7 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "AND a.person_a_id=ch.person_a_id AND a.person_b_id=ch.person_b_id",
   "JOIN ppw_completed_shows sh ON sh.world_id=ch.world_id",
   "AND sh.show_id=ch.show_id",
+  "JOIN human_promotions human ON human.promotion_id=sh.promotion_id",
   "CROSS JOIN LATERAL (VALUES (ch.person_a_id,ch.person_b_id),",
   "(ch.person_b_id,ch.person_a_id)) AS x(person_id,partner_id)",
   "JOIN ppw_contracts partner ON partner.world_id=ch.world_id",
@@ -244,33 +265,39 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "JOIN ppw_people coworker ON coworker.world_id=ch.world_id",
   "AND coworker.person_id=x.partner_id AND coworker.status='ACTIVE'",
   "WHERE ch.world_id=$1 AND ch.week_index=$2-1",
-  "AND (sh.year-1)*52+sh.week-1=ch.week_index",
+  "AND (sh.year,sh.week)=($5::integer,$6::integer)",
   "AND ch.change_type='STRAIN' AND ch.trust_delta<0",
   "AND ch.verified_shows>=3",
   "ORDER BY sh.promotion_id,x.person_id,ch.trust_delta,x.partner_id",
   "),",
   "career_matches AS (",
-  "SELECT sh.promotion_id,e.person_id,e.won FROM ppw_completed_shows sh",
+  "SELECT sh.promotion_id,e.person_id,e.won FROM human_promotions human",
+  "JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
   "JOIN ppw_individual_field_career_effects e",
   "ON e.world_id=sh.world_id AND e.show_id=sh.show_id",
-  "WHERE sh.world_id=$1 AND (sh.year-1)*52+sh.week-1",
-  "BETWEEN greatest(0,$2-8) AND $2-1",
+  "WHERE (sh.year,sh.week) BETWEEN ($7::integer,$8::integer)",
+  "AND ($5::integer,$6::integer)",
   "UNION ALL",
-  "SELECT sh.promotion_id,e.person_id,e.won FROM ppw_completed_shows sh",
+  "SELECT sh.promotion_id,e.person_id,e.won FROM human_promotions human",
+  "JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
   "JOIN ppw_tag_match_career_effects e",
   "ON e.world_id=sh.world_id AND e.show_id=sh.show_id",
-  "WHERE sh.world_id=$1 AND (sh.year-1)*52+sh.week-1",
-  "BETWEEN greatest(0,$2-8) AND $2-1",
+  "WHERE (sh.year,sh.week) BETWEEN ($7::integer,$8::integer)",
+  "AND ($5::integer,$6::integer)",
   "), loss_evidence AS (",
   "SELECT promotion_id,person_id,",
   "count(*) FILTER(WHERE NOT won)::integer AS losses,",
   "count(*) FILTER(WHERE won)::integer AS wins",
   "FROM career_matches GROUP BY promotion_id,person_id",
   "), recent_shows AS (",
-  "SELECT promotion_id,count(*)::integer AS show_count",
-  "FROM ppw_completed_shows WHERE world_id=$1",
-  "AND (year-1)*52+week-1 BETWEEN greatest(0,$2-12) AND $2-1",
-  "GROUP BY promotion_id",
+  "SELECT sh.promotion_id,count(*)::integer AS show_count",
+  "FROM human_promotions human JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
+  "WHERE (sh.year,sh.week) BETWEEN ($3::integer,$4::integer)",
+  "AND ($5::integer,$6::integer)",
+  "GROUP BY sh.promotion_id",
   "),",
   " eligible AS (",
   "SELECT DISTINCT ON (c.promotion_id,c.person_id)",
@@ -366,7 +393,8 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "JOIN ppw_card_slots slot ON slot.world_id=segment.world_id",
   "AND slot.draft_id=segment.show_id AND slot.slot_id=segment.slot_id",
   "WHERE sh.world_id=$1 AND sh.promotion_id=e.promotion_id",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN greatest(0,$2-12) AND $2-1",
+  "AND (sh.year,sh.week) BETWEEN ($3::integer,$4::integer)",
+  "AND ($5::integer,$6::integer)",
   "AND slot.payload->'participants' @>",
   "jsonb_build_array(jsonb_build_object('personId',e.person_id)))",
   "THEN 75 ELSE 0 END),",
@@ -424,7 +452,7 @@ export async function publishBackstageRequests(tx:SqlRows,worldId:string,weekInd
   "career_stage_at_request",
   "FROM ranked WHERE rank=1",
   "ON CONFLICT DO NOTHING RETURNING request_id"
- ].join(" "),[worldId,weekIndex]);
+ ].join(" "),[worldId,weekIndex,firstYear,firstWeek,lastYear,lastWeek,eightYear,eightWeek]);
  if(rows.length>128)throw new Error("Backstage inbox generation exceeds promotion bound");
  return {newMessages:rows.length};
 }

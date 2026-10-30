@@ -57,3 +57,12 @@
 .ppw-kp-creation-review h3{font-size:24px;color:#ffe4a8;margin:0;letter-spacing:-.03em}
 .ppw-kp-creation-review p{margin:0;font-size:13px}
 @media(max-width:370px){.ppw-kp-creator-fields{grid-template-columns:1fr}}
+
+
+.ppw-kp-active-preview{display:grid;grid-template-columns:50px minmax(0,1fr);
+ gap:4px 12px;align-items:center;margin:12px 0 15px;padding:13px;
+ border:2px solid #b6a2e6;border-radius:13px}
+.ppw-kp-active-symbol{grid-row:1/3;display:grid;place-items:center;
+ font-size:36px;line-height:1;color:#ffe6a6}
+.ppw-kp-active-preview>strong{font-size:16px;text-transform:capitalize}
+.ppw-kp-active-preview>small{font-size:12px;line-height:1.45;color:#dce1ef}

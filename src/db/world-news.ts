@@ -267,9 +267,51 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
     " turns it into a bigger opportunity remains a question, not an announced plan.",
    "MATCH");
  }
- // Two genuinely grounded stories at most; weaker rumours do not displace
- // major public results, and no private state is touched.
- return [...official.slice(0,8),...dirt.slice(0,2)];
+ // The Rumour Mill also needs the gloriously unreliable *fictional* part
+ // of wrestling journalism. These are explicitly invented online theories,
+ // not claims that an unseen backstage event actually occurred. Never mention
+ // a real person as having done something private: only an existing
+ // promotion/show provides setting. Persist this once at the certified Lock.
+ const talk=shows.slice().sort((a,b)=>a.show_id.localeCompare(b.show_id))[0];
+ if(talk){
+  let seed=2166136261;
+  for(const char of talk.show_id+":"+talk.promotion_id){
+   seed^=char.charCodeAt(0);seed=Math.imul(seed,16777619);
+  }
+  const theories=[
+   ["The mystery of the missing entrance music",
+    "The wrestling internet has decided somebody at "+talk.promotion_name+
+     " is hoarding all the decent entrance themes. The alleged evidence? "+
+     "One very confident forum thread and absolutely nothing else. No one has established that this happened."],
+   ["Does the office book matches with a wheel of destiny?",
+    "A gloriously unhinged conspiracy about "+talk.promotion_name+
+     " claims the booking office contains a giant spinning wheel marked 'SURPRISE TURN'. "+
+     "There is zero evidence for this. Please do not send us pictures of wheels."],
+   ["The dressing-room coffee machine is now part of the story, apparently",
+    "Unverified online gossip insists the real power behind "+talk.promotion_name+
+     " is a temperamental coffee machine. No backstage incident has been confirmed. "+
+     "The replies are already arguing about its finishing move."],
+   ["An emergency meeting about the smoke machine? Sure, why not",
+    "Someone on the wrestling internet is insisting "+talk.promotion_name+
+     " held an emergency creative summit over the entrance smoke. "+
+     "Our evidence is a single caps-lock post. Treat this as comedy, not backstage reporting."],
+   ["Conspiracy corner: a secret sixth member of creative",
+    "A fan theory claims that "+talk.promotion_name+
+     " secretly lets a cardboard cut-out make final storyline decisions. "+
+     "Not one detail has been corroborated, but somebody has already made it a meme."],
+   ["The internet has blamed the lighting rig for everything",
+    "A very committed section of the timeline claims the lights at "+talk.show_name+
+     " were sending coded messages about future booking. "+
+     "There is no verification; the only confirmed fact is that the show took place."]
+  ] as const;
+  const theory=theories[(seed>>>0)%theories.length]!;
+  add("DIRT",talk,"wild:"+talk.show_id,theory[0],theory[1],"EVENT");
+ }
+ // Maximum two stories per completed week: one public-result theory and
+ // one openly fabricated tabloid rumour. No privacy reads or new tables.
+ return [...official.slice(0,8),...dirt.filter(s=>!s.key.startsWith("wild:")).slice(0,1),
+  ...dirt.filter(s=>s.key.startsWith("wild:")).slice(0,1)];
+
 }
 export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:number,week:number){
  if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||

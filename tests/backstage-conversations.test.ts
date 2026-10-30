@@ -102,3 +102,20 @@ test("phase 3 private request voices are deterministic, factual and varied",()=>
  assert.throws(()=>backstageDecisionEffect("TITLE_AMBITION","PROMISE_FEATURED"),/does not offer/);
  assert.throws(()=>backstageDecisionEffect("MEDICAL_SUPPORT","PROMISE_APPEARANCE"),/does not offer/);
 });
+
+test("wrestler-led rivalry pitch speaks about its own certified shows, not a future result",()=>{
+ const evidence={partnerName:"Matt Riddle",verifiedSinglesShows:3,averageCrowd:84};
+ for(let i=0;i<9;i++){
+  const key="request-"+i;
+  const message=backstageMessage("RIVALRY_PITCH",evidence,key);
+  assert.match(message,/Matt Riddle/);
+  assert.match(message,/3 (?:different )?shows/);
+  assert.match(message,/rivalry\?/);
+  assert.doesNotMatch(message,/won|lost|next match will|scripted|score|\/100/i);
+  assert.equal(message,backstageMessage("RIVALRY_PITCH",evidence,key),
+   "archive re-reads cannot change the wrestler's original words");
+ }
+ const generic=backstageMessage("RIVALRY_PITCH",{partnerName:"Matt Riddle"}, "legacy");
+ assert.match(generic,/Matt Riddle/);
+ assert.doesNotMatch(generic,/3 shows/);
+});

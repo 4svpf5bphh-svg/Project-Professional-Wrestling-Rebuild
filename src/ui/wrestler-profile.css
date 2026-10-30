@@ -129,3 +129,11 @@
  background:linear-gradient(105deg,#453657,#1f3151);
  border-radius:10px;padding:12px;margin:12px -3px 0}
 .ppw-career-rating-breakout strong{color:#ffdf9d}
+
+
+/* The wrestler dossier is an independently scrollable viewport in Safari. */
+.ppw-profile-overlay{height:100dvh;max-height:100dvh;overflow-y:auto!important;
+ overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+ scroll-behavior:auto;overscroll-behavior-y:contain}
+body:has(.ppw-profile-overlay){overflow:hidden}
+.ppw-profile-overlay .ppw-wrestler-profile{min-height:100%;padding-top:20px}

@@ -170,13 +170,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    bookingOpen?"● BOOKING OPEN":deadlineDue?"● DEADLINE REACHED":
     world.phase==="LOCKED"?"● CARDS LOCKED":"● SHOWS IN PROGRESS");
   heroTop.append(live);
+  const identity=el("div","ppw-home-promotion-identity");
+  const mark=el("span","ppw-home-promotion-mark",brand.mark);
+  if(logo){logo.loading="eager";logo.onload=()=>mark.dataset.logoReady="true";
+   logo.onerror=()=>logo.remove();mark.append(logo);}
+  identity.append(mark,el("h2","",promotion?.name??"Choose a promotion"));
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
-    (()=>{const mark=el("span","ppw-home-promotion-mark",brand.mark);
-     if(logo){logo.loading="eager";logo.onload=()=>mark.dataset.logoReady="true";
-      logo.onerror=()=>logo.remove();mark.append(logo);}
-     return mark;})(),
-   el("h2","",promotion?.name??"Choose a promotion"),
+   identity,
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
    el("p","ppw-home-small",deadlineDue?
@@ -689,8 +690,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    clear.onclick=()=>void clearResolvedUpdates();
    root.append(clear);
   }
-  root.append(el("p","ppw-home-small ppw-home-drawer-hint",
-   "The five bottom buttons open World, News, Promotion, Plan and Business."));
+
  }
  void load();
  return {refresh:load};

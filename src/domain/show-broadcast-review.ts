@@ -238,30 +238,42 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
   const critics=rating!==undefined?
    " The official match rating was "+rating.toFixed(2)+" out of 5 stars.":"";
   const delivery=execution!==undefined?
-   execution>=85?" The performers delivered exceptional in-ring execution.":
-   execution>=70?" The execution was strong enough to carry the contest.":
-   execution>=50?" The in-ring execution was uneven.":
-   " The contest struggled on execution, regardless of the booking's intentions.":
+   execution>=85?" The wrestlers barely put a foot wrong between the bells.":
+   execution>=70?" The wrestling held together when it mattered.":
+   execution>=50?" There were good ideas here, even if the timing sometimes wobbled.":
+   " There were too many rough edges between the bells.":
    "";
   const chemistryRead=chemistry!==undefined&&chemistry>=1.5?
-   " The scored compatibility contributed positively to the match's in-ring chemistry.":
+   " Their in-ring chemistry made the exchanges feel natural.":
    chemistry!==undefined&&chemistry<=-1.5?
-   " The recorded chemistry modifier worked against this match's delivery.":
+   " Their timing worked against them when they needed it most.":
    "";
-  const rivalry=entry.fallout?.linkedProgrammes?(()=>{
-   const count=entry.fallout.linkedProgrammes;
-   const start="This match was a certified chapter in "+count+" active "+
-    (count===1?"rivalry":"rivalries")+". ";
-   switch(entry.fallout.programmeSignal){
-    case "HOT_PROGRAMME":return start+
-     "The ongoing programme carried meaningful heat into the audience response.";
-    case "COOL_PROGRAMME":return start+
-     "The rivalry was running cold, making it harder to win over the audience.";
-    case "PROGRAMME_REPETITION":return start+
-     "The audience had seen enough repetition for it to weigh on the reaction.";
-    default:return start+"The next chapter remains in the booker's hands.";
-   }
-  })():null;
+  const chapter=entry.programmeChapters?.[0];
+  const rivalry=chapter?(()=>{
+   const history=chapter.precedingMatches;
+   const prior=chapter.previousWinner==="A"?chapter.sideA:
+    chapter.previousWinner==="B"?chapter.sideB:null;
+   const who=chapter.sideA+" and "+chapter.sideB;
+   if(history>0)return who+" had already shared "+history+
+    (history===1?" match":" matches")+" in the previous twelve weeks."+
+    (prior?" "+prior+" had won their most recent meeting.":"")+
+    (chapter.precedingAngles?" There had been "+chapter.precedingAngles+
+     (chapter.precedingAngles===1?" on-screen chapter":" on-screen chapters")+
+     " along the way.":"");
+   if(chapter.precedingAngles>0)return who+" had "+chapter.precedingAngles+
+    (chapter.precedingAngles===1?" on-screen chapter":" on-screen chapters")+
+    " behind them before this encounter.";
+   return who+" had no earlier recorded rivalry meeting in the last twelve weeks.";
+  })():entry.fallout?.linkedProgrammes?(
+   "This contest was part of an ongoing rivalry. "+
+   (entry.fallout.programmeSignal==="PROGRAMME_REPETITION"?
+    "Repeated meetings had started to test the audience's patience.":
+    entry.fallout.programmeSignal==="HOT_PROGRAMME"?
+    "The story gave the crowd something to care about.":
+    entry.fallout.programmeSignal==="COOL_PROGRAMME"?
+    "The issue still needed to win the crowd over.":
+    "The next chapter belongs to the wrestlers and their booker.")
+  ):null;
   const contrast=rating!==undefined&&rating>=3.75&&entry.crowdResponse<50?
    " Technically well-rated wrestling met a stubborn crowd.":
    rating!==undefined&&rating<2.5&&entry.crowdResponse>=78?
@@ -270,14 +282,14 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
    (billing?billing+" met in a "+format+". ":"The contest took place. ")+opening+stakes+measured,
    ...(rivalry?[rivalry]:[]),
    finishColour(entry.outcome,key)+" "+entry.summary,
-   "The crowd response was "+entry.crowdResponse.toFixed(1)+"/100."+critics+
-    delivery+chemistryRead+contrast+" "+reactionText+" "+pick(tone==="RED_HOT"?[
-    "This was one of the hotter reactions on the card.",
-    "The numbers confirm it connected with the audience."]:tone==="FLAT"?[
-    "The response reflected a difficult night in front of the crowd.",
-    "It was an uphill battle to get the crowd onside."]:[
-    "The crowd score tells its own story.",
-    "The live response helps put the result in context."],key,14),
+   reactionText+critics+delivery+chemistryRead+contrast+" "+
+    pick(tone==="RED_HOT"?[
+    "One of the night's loudest moments.",
+    "The audience had plenty to talk about afterwards."]:tone==="FLAT"?[
+    "They never quite got the room onside.",
+    "The audience wanted more than it got."]:[
+    "There was plenty to pick apart once the bell rang.",
+    "The debate will outlast the final bell."],key,14),
   ];
   if(entry.outcome==="INJURY_STOPPAGE")headline="The referee waves it off";
   else if(entry.fallout?.title?.changed)headline="NEW CHAMPION: "+
