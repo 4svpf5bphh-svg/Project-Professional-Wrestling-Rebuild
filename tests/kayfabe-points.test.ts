@@ -65,3 +65,13 @@ test("Fight Night is an independent cosmetic entitlement, not an outcomes boost"
  assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"BADGE_GOLD" as never,requestId:"wrong"}),/Unknown/);
 });
+
+test("Underground Zine is a separate 750 KP cosmetic results entitlement",()=>{
+ assert.equal(catalogueItem("RESULTS_UNDERGROUND_ZINE")?.kind,"RESULTS_SKIN");
+ assert.equal(catalogueItem("RESULTS_UNDERGROUND_ZINE")?.price,750);
+ assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"RESULTS_UNDERGROUND_ZINE",requestId:"zine"}),
+  {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_UNDERGROUND_ZINE",requestId:"zine"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"BADGE_GOLD" as never,requestId:"bogus"}),/Unknown/);
+});

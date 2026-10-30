@@ -184,3 +184,14 @@ test("Fight Night results are owner-only and need no sixth Neon query",async()=>
  await assert.rejects(readCompletedShowView(fake(false,true,false,false,"FIGHT_NIGHT").pool,
   scope),/unavailable/);
 });
+
+test("Zine stays private; the same five verified results reads retain the actual winner",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"UNDERGROUND_ZINE");
+ const view=await readCompletedShowView(pool,scope);
+ assert.equal(view.resultsSkin,"UNDERGROUND_ZINE");
+ assert.deepEqual(view.entries[0]?.matchContext?.winnerNames,["Star"]);
+ assert.equal(view.entries[0]?.crowdResponse,85);
+ assert.equal(calls(),5);
+ await assert.rejects(readCompletedShowView(fake(false,true,false,false,
+  "UNDERGROUND_ZINE").pool,scope),/unavailable/);
+});
