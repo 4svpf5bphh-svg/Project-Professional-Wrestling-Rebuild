@@ -471,7 +471,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     emblem.append(el("span","","✦"),el("strong","","YEAR-END HONOURS"));
     section.append(emblem);
     if(heritage&&!heritage.honours.length)section.append(el("div","ppw-heritage-empty-spotlight",
-     "The stage is set. The first trophies will be presented once a full year of verified wrestling has been certified."));
+     "The stage is set. The first annual honours will be announced after 52 weeks of verified wrestling."));
     for(const award of heritage?.honours??[]){
      const card=el("article","ppw-heritage-honour");
      card.dataset.award=award.category.toLowerCase();
