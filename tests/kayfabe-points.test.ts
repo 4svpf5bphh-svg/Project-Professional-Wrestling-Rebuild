@@ -43,3 +43,15 @@ test("Purchased milestone appearance can be reset for free",()=>{
   {kind:"CLEAR_BADGE",requestId:"reset-badge"});
  assert.throws(()=>validateKpAction({kind:"CLEAR_BADGE",requestId:""}),/Kayfabe request/);
 });
+
+test("Territory TV is a cosmetic account entitlement with validated selection",()=>{
+ assert.equal(catalogueItem("RESULTS_TERRITORY_TV")?.kind,"RESULTS_SKIN");
+ assert.equal(catalogueItem("RESULTS_TERRITORY_TV")?.price,750);
+ assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"RESULTS_TERRITORY_TV",requestId:"apply-territory"}),
+  {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"apply-territory"});
+ assert.deepEqual(validateKpAction({kind:"CLEAR_RESULTS_SKIN",requestId:"reset-results"}),
+  {kind:"CLEAR_RESULTS_SKIN",requestId:"reset-results"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"BADGE_GOLD" as never,requestId:"bogus"}),/Unknown/);
+});

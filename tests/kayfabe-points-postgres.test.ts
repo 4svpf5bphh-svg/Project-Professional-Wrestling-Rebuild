@@ -136,6 +136,33 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   await applyKayfabeAction(db.pool,aa,{
    kind:"APPLY_BADGE",sku:"BADGE_GOLD",requestId:"restore-gold-frame"});
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBadge,"GOLD");
+  const beforeSkin=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(beforeSkin.balance,1100);
+  assert.equal(beforeSkin.activeResultsSkin,null);
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"not-owned"
+  }),/Unlock Territory TV/);
+  const purchase={kind:"BUY" as const,sku:"RESULTS_TERRITORY_TV" as const,
+   requestId:"buy-territory"};
+  const paidSkin=await applyKayfabeAction(db.pool,aa,purchase) as {price:number};
+  assert.equal(paidSkin.price,750);
+  assert.equal((await applyKayfabeAction(db.pool,aa,purchase)).replayed,true);
+  const themed=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(themed.activeResultsSkin,"TERRITORY_TV");
+  assert.equal(themed.balance,350);
+  assert.ok(themed.entitlements.includes("RESULTS_TERRITORY_TV"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"RESULTS_TERRITORY_TV",requestId:"buy-again"}),/already own/);
+  const clear=await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_RESULTS_SKIN",requestId:"remove-results-skin"}) as {price:number};
+  assert.equal(clear.price,0);
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,null);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"reapply-territory"});
+  const selected=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(selected.activeResultsSkin,"TERRITORY_TV");
+  assert.equal(selected.balance,350);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
   await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });
