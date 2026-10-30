@@ -141,7 +141,7 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(beforeSkin.activeResultsSkin,null);
   await assert.rejects(applyKayfabeAction(db.pool,aa,{
    kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"not-owned"
-  }),/Unlock Territory TV/);
+  }),/Unlock this results skin/);
   const purchase={kind:"BUY" as const,sku:"RESULTS_TERRITORY_TV" as const,
    requestId:"buy-territory"};
   const paidSkin=await applyKayfabeAction(db.pool,aa,purchase) as {price:number};
@@ -162,6 +162,32 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   const selected=await readKayfabeWorkspace(db.pool,aa);
   assert.equal(selected.activeResultsSkin,"TERRITORY_TV");
   assert.equal(selected.balance,350);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
+  // Paid once per distinct skin; selection changes never debit the wallet.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_kp_wallets SET balance=2500 WHERE player_id=$1",[a]);
+  });
+  const fight={kind:"BUY" as const,sku:"RESULTS_FIGHT_NIGHT" as const,
+   requestId:"buy-fight-night"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,fight) as {price:number}).price,750);
+  assert.equal((await applyKayfabeAction(db.pool,aa,fight)).replayed,true);
+  let switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"FIGHT_NIGHT");
+  assert.equal(switched.balance,1750);
+  assert.ok(switched.entitlements.includes("RESULTS_TERRITORY_TV"));
+  assert.ok(switched.entitlements.includes("RESULTS_FIGHT_NIGHT"));
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"unauthorised-fight"
+  }),/Unlock this results skin/);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"back-to-territory"});
+  switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"TERRITORY_TV");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"back-to-fight"});
+  switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"FIGHT_NIGHT");
+  assert.equal(switched.balance,1750);
   assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
   await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}

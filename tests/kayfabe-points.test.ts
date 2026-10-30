@@ -55,3 +55,13 @@ test("Territory TV is a cosmetic account entitlement with validated selection",(
  assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"BADGE_GOLD" as never,requestId:"bogus"}),/Unknown/);
 });
+
+test("Fight Night is an independent cosmetic entitlement, not an outcomes boost",()=>{
+ assert.equal(catalogueItem("RESULTS_FIGHT_NIGHT")?.kind,"RESULTS_SKIN");
+ assert.equal(catalogueItem("RESULTS_FIGHT_NIGHT")?.price,750);
+ assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"RESULTS_FIGHT_NIGHT",requestId:"fight"}),
+  {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"fight"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"BADGE_GOLD" as never,requestId:"wrong"}),/Unknown/);
+});

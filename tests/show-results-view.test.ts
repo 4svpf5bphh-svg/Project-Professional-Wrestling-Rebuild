@@ -174,3 +174,13 @@ test("Account skin travels with authorised results without a sixth Neon read",as
  await assert.rejects(readCompletedShowView(fake(false,false,false,false,
   "TERRITORY_TV").pool,scope),/unavailable/);
 });
+
+test("Fight Night results are owner-only and need no sixth Neon query",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"FIGHT_NIGHT");
+ const show=await readCompletedShowView(pool,scope);
+ assert.equal(show.resultsSkin,"FIGHT_NIGHT");
+ assert.deepEqual(show.entries[0]?.matchContext?.winnerNames,["Star"]);
+ assert.equal(calls(),5);
+ await assert.rejects(readCompletedShowView(fake(false,true,false,false,"FIGHT_NIGHT").pool,
+  scope),/unavailable/);
+});
