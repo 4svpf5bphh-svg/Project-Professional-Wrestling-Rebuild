@@ -8,6 +8,9 @@ import type {SqlRows} from "./world-operations.js";
 import {createKpWrestlerPersona,validateKpCreatedIdentity,kpWrestlerCreateOptions,
  type KpCreatedIdentity} from "../domain/kp-create-wrestler.js";
 import {findLegend,LEGEND_TIER_PRICES} from "../domain/legends-catalogue.js";
+import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,
+ type PromoterAchievementCounters,type AchievementMetric}
+ from "../domain/promoter-achievements.js";
 
 export const KP_WEEKLY_AWARD=100;
 export const KP_STAFF_ALIAS_COST=350;
@@ -80,6 +83,84 @@ async function lockWallet(tx:SqlRows,id:string){
  if(r.length!==1)throw new Error("Kayfabe wallet unavailable");
  return Number(r[0]!.balance);
 }
+/** One request over certified records, shared by the KP preview and full
+ *  Trophy Room. Indexes remain World/promotion scoped; no per-card queries. */
+async function queryPromoterCounters(tx:SqlRows,s:KpScope){
+ const result=await tx.query<Record<AchievementMetric,string>&{badge_style:string|null}>(`
+ WITH owned AS MATERIALIZED(
+  SELECT show_id,world_id,crowd_response FROM ppw_completed_shows
+  WHERE world_id=$1 AND promotion_id=$2
+ ),
+ show_stats AS (
+  SELECT count(*)::text AS "shows",
+   count(*) FILTER (WHERE crowd_response>=80)::text AS "hotShows"
+  FROM owned
+ ),
+ premium AS (
+  SELECT count(*)::text AS "premiumShows",
+   count(*) FILTER (WHERE e.net_result>0)::text AS "profitablePremiumShows"
+  FROM owned c JOIN ppw_booking_drafts d
+   ON d.world_id=c.world_id AND d.draft_id=c.show_id
+   AND d.booking_class='PREMIUM'
+  LEFT JOIN ppw_show_economics e
+   ON e.world_id=c.world_id AND e.show_id=c.show_id
+ ),
+ financial AS (
+  SELECT count(*) FILTER(WHERE e.net_result>0)::text AS "profitableShows",
+   coalesce(sum(e.attendance),0)::text AS "totalAttendance"
+  FROM owned c JOIN ppw_show_economics e
+   ON e.world_id=c.world_id AND e.show_id=c.show_id
+ ),
+ ratings AS (
+  SELECT count(*) FILTER(WHERE f.rating_stars>=4)::text AS "greatMatches",
+   count(*) FILTER(WHERE f.rating_stars>=4.5)::text AS "excellentMatches",
+   count(*) FILTER(WHERE f.rating_stars>=5)::text AS "fiveStarMatches"
+  FROM owned c JOIN ppw_completed_match_report_facts f
+   ON f.world_id=c.world_id AND f.show_id=c.show_id
+ ),
+ moments AS (
+  SELECT count(*)::text AS "liveSegments",
+   count(*) FILTER(WHERE a.crowd_response>=80)::text AS "hotSegments"
+  FROM owned c JOIN ppw_completed_show_segments a
+   ON a.world_id=c.world_id AND a.show_id=c.show_id
+  WHERE a.kind<>'VIDEO_PACKAGE'
+   AND a.authored_outcome IN ('HAPPENS','INTERRUPTED')
+ ),
+ rivalries AS (
+  SELECT count(*) FILTER(WHERE activity_count>0)::text AS "rivalriesStarted",
+   count(*) FILTER(WHERE ended_week_index IS NOT NULL AND activity_count>0)::text AS "rivalriesConcluded"
+  FROM ppw_programmes
+  WHERE world_id=$1 AND promotion_id=$2
+ ),
+ title_history AS (
+  SELECT coalesce(sum(defenses),0)::text AS "titleDefences",
+   count(*) FILTER(WHERE ended_week_index IS NOT NULL)::text AS "completedTitleReigns"
+  FROM ppw_championship_reigns WHERE world_id=$1 AND promotion_id=$2
+ )
+ SELECT show_stats.*,premium.*,financial.*,ratings.*,moments.*,rivalries.*,title_history.*,
+  (SELECT style FROM ppw_kp_badge_styles WHERE player_id=$3) AS badge_style
+ FROM show_stats CROSS JOIN premium CROSS JOIN financial CROSS JOIN ratings
+ CROSS JOIN moments CROSS JOIN rivalries CROSS JOIN title_history
+ `,[s.worldId,s.promotionId,s.playerId]);
+ const stats={...EMPTY_PROMOTER_COUNTERS};
+ const row=result[0];
+ for(const key of Object.keys(stats) as AchievementMetric[]){
+  const value=Number(row?.[key]??0);
+  stats[key]=Number.isFinite(value)&&value>=0?value:0;
+ }
+ return {stats,activeBadge:row?.badge_style??null};
+}
+/** Only executed when Trophy Room is deliberately opened. Never polls. */
+export async function readPromoterAchievementWorkspace(pool:TransactionPool,s:KpScope){
+ if(!Object.values(s).every(validId))throw new Error("Invalid achievements identity");
+ return withSqlClient(pool,async tx=>{
+  const world=await assertOwner(tx,s);
+  const {stats,activeBadge}=await queryPromoterCounters(tx,s);
+  return {...derivePromoterAchievements(stats),activeBadge,
+   worldYear:world.year,week:world.week,promotionName:world.name};
+ });
+}
+
 export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
  if(!Object.values(s).every(validId))throw new Error("Invalid Kayfabe identity");
  return withSqlClient(pool,async tx=>{
@@ -101,18 +182,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     AND a.player_id=$3
    WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
    ORDER BY e.role LIMIT 8`,[s.worldId,s.promotionId,s.playerId]);
-  // Three indexed aggregates in one request; milestones never poll the World.
-  const played=await tx.query<{total:string;profitable:string;great_matches:string}>(`
-   SELECT
-    (SELECT count(*)::text FROM ppw_completed_shows c
-      WHERE c.world_id=$1 AND c.promotion_id=$2) AS total,
-    (SELECT count(*)::text FROM ppw_show_economics e
-      JOIN ppw_completed_shows c ON c.world_id=e.world_id AND c.show_id=e.show_id
-      WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.net_result>0) AS profitable,
-    (SELECT count(*)::text FROM ppw_completed_match_report_facts f
-      JOIN ppw_completed_shows c ON c.world_id=f.world_id AND c.show_id=f.show_id
-      WHERE f.world_id=$1 AND c.promotion_id=$2 AND f.rating_stars>=4) AS great_matches
-   `,[s.worldId,s.promotionId]);
+  const achievementData=await queryPromoterCounters(tx,s);
   const weeks=await tx.query<{year:number;week:number;played:boolean;claimed:boolean;daily_claimed:boolean}>(`
    SELECT n.year,n.week,
     EXISTS(SELECT 1 FROM ppw_completed_shows c
@@ -130,10 +200,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.creator_player_id=$2
    ORDER BY c.created_year DESC LIMIT 10`,[s.worldId,s.playerId]);
-  const total=Number(played[0]?.total??0),profitable=Number(played[0]?.profitable??0),
-   greatMatches=Number(played[0]?.great_matches??0),last=weeks[0],money=balances[0];
-  const milestone=(key:string,label:string,progress:number,target:number,unit:string)=>({
-   key,label,earned:progress>=target,progress:Math.min(progress,target),target,unit});
+  const last=weeks[0],money=balances[0];
   return {balance:Number(money?.balance??0),lifetimeEarned:Number(money?.lifetime_earned??0),
    lifetimeSpent:Number(money?.lifetime_spent??0),worldYear:world.year,week:world.week,
    promotionName:world.name,weeklyAward:KP_WEEKLY_AWARD,
@@ -143,20 +210,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
    activeBadge:badge[0]?.style??null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
-   achievements:[
-    milestone("FIRST_BELL","First Bell",total,1,"shows"),
-    milestone("FIVE_SHOWS","Five Alive",total,5,"shows"),
-    milestone("TEN_SHOWS","The Regular",total,10,"shows"),
-    milestone("TWENTY_FIVE_SHOWS","Quarter Century",total,25,"shows"),
-    milestone("YEAR_OF_SHOWS","Iron Booker",total,52,"shows"),
-    milestone("HUNDRED_SHOWS","Centurion",total,100,"shows"),
-    milestone("TWO_HUNDRED_SHOWS","The Institution",total,200,"shows"),
-    milestone("FIRST_PROFIT","In The Black",profitable,1,"profitable shows"),
-    milestone("FIVE_PROFITS","Money Maker",profitable,5,"profitable shows"),
-    milestone("TWENTY_PROFITS","Business Mogul",profitable,20,"profitable shows"),
-    milestone("FIRST_CLASSIC","Matchmaker",greatMatches,1,"4★ matches"),
-    milestone("FIVE_CLASSICS","Show Stealer",greatMatches,5,"4★ matches"),
-    milestone("TWENTY_FIVE_CLASSICS","Match Legend",greatMatches,25,"4★ matches")],
+   achievements:derivePromoterAchievements(achievementData.stats).achievements,
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
    catalogue:KP_CATALOGUE,staffAliasPrice:KP_STAFF_ALIAS_COST,
    createTalentPrice:KP_CREATE_TALENT_COST,createOptions:kpWrestlerCreateOptions};
