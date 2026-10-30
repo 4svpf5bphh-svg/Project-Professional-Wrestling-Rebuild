@@ -7,6 +7,8 @@ import {STAFF_ROLES,worldTalentManagers,staffBuyout,type StaffRole} from "../dom
 import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {GorillaPolicy} from "../domain/gorilla-position.js";
 import {selectScoutRecommendations,type ScoutProspect} from "../domain/talent-scout.js";
+import {deriveStaffRivalryObservations,type StaffRivalryEvidence}
+ from "../domain/verified-wrestler-rivalry-memory.js";
 
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
@@ -28,12 +30,23 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
    staff_aliases:Record<string,string>;
+   featured_programme:StaffRivalryEvidence|null;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
      COALESCE((SELECT jsonb_object_agg(a.staff_id,a.alias) FROM ppw_kp_staff_aliases a
       WHERE a.world_id=w.world_id AND a.promotion_id=$3
        AND a.player_id=$2),'{}'::jsonb) AS staff_aliases,
+    CASE WHEN spotlight.programme_id IS NULL THEN NULL ELSE jsonb_build_object(
+     'sideA',coalesce(sides.side_a,'Side A'),
+     'sideB',coalesce(sides.side_b,'Side B'),
+     'heat',spotlight.heat,'lastKind',beat.kind,
+     'lastWeekIndex',beat.week_index,'lastWinnerSide',beat.winner_side,
+     'directionChoice',direction.choice,
+     'directionWeekIndex',direction.chosen_week_index,
+     'laterMatch',coalesce(later_beats.match_completed,false),
+     'laterAngle',coalesce(later_beats.angle_completed,false)
+    ) END AS featured_programme,
     COALESCE(medical.risks,0) AS medical_risks,
     medical.wrestler AS medical_example,
     COALESCE((SELECT jsonb_agg(to_jsonb(history)) FROM
@@ -135,6 +148,53 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
       AND injury.injured_week_index<(w.year-1)*52+w.week-1
       AND injury.cleared_week_index>(w.year-1)*52+w.week-1
    ) medical ON TRUE
+   -- One named active programme per promotion, picked by heat.
+   -- Each lateral lookup is bounded to that programme using existing indexes.
+   LEFT JOIN LATERAL (
+    SELECT programme_id,heat FROM ppw_programmes programme
+    WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
+     AND programme.status='ACTIVE'
+    ORDER BY programme.heat DESC NULLS LAST,
+     programme.started_week_index DESC NULLS LAST,programme.programme_id LIMIT 1
+   ) spotlight ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT string_agg(coalesce(person.name,team.name,ref.ref_id),' & '
+     ORDER BY ref.position) FILTER(WHERE ref.side='A') AS side_a,
+     string_agg(coalesce(person.name,team.name,ref.ref_id),' & '
+     ORDER BY ref.position) FILTER(WHERE ref.side='B') AS side_b
+    FROM ppw_programme_side_refs ref
+    LEFT JOIN ppw_people person ON person.world_id=ref.world_id
+     AND ref.ref_kind='PERSON' AND person.person_id=ref.ref_id
+    LEFT JOIN ppw_tag_teams team ON team.world_id=ref.world_id
+     AND ref.ref_kind='TEAM' AND team.team_id=ref.ref_id
+    WHERE ref.world_id=w.world_id AND ref.promotion_id=$3
+     AND ref.programme_id=spotlight.programme_id
+   ) sides ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT kind,week_index,winner_side FROM ppw_programme_resolved_activities a
+    WHERE a.world_id=w.world_id AND a.promotion_id=$3
+     AND a.programme_id=spotlight.programme_id
+     AND a.week_index<(w.year-1)*52+w.week-1
+    ORDER BY a.week_index DESC,a.show_id DESC,a.slot_id DESC LIMIT 1
+   ) beat ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT d.choice,d.chosen_week_index FROM ppw_programme_postshow_directions d
+    WHERE d.world_id=w.world_id AND d.promotion_id=$3
+     AND d.programme_id=spotlight.programme_id
+    ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1
+   ) direction ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT EXISTS(SELECT 1 FROM ppw_programme_resolved_activities a
+     WHERE a.world_id=w.world_id AND a.promotion_id=$3
+      AND a.programme_id=spotlight.programme_id
+      AND a.kind='MATCH' AND a.week_index>direction.chosen_week_index
+      AND a.week_index<(w.year-1)*52+w.week-1) AS match_completed,
+     EXISTS(SELECT 1 FROM ppw_programme_resolved_activities a
+     WHERE a.world_id=w.world_id AND a.promotion_id=$3
+      AND a.programme_id=spotlight.programme_id
+      AND a.kind='SEGMENT' AND a.week_index>direction.chosen_week_index
+      AND a.week_index<(w.year-1)*52+w.week-1) AS angle_completed
+   ) later_beats ON direction.choice IS NOT NULL
    LEFT JOIN LATERAL (SELECT e.staff_id,e.employment_id,e.weekly_salary
     FROM ppw_staff_employments e WHERE e.world_id=w.world_id
      AND e.promotion_id=$3 AND e.role='TALENT_MANAGER'
@@ -185,6 +245,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     craft:Number(p.match_craft??50),presentation:Number(p.presentation??50),
     popularity:Number(p.popularity??50)
    } satisfies ScoutProspect)),hiredScout):[];
+  const observations=deriveStaffRivalryObservations(current.featured_programme);
   const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"|"market"}[]=[];
   const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
   const voice=(role:StaffRole,fallback:string)=>{
@@ -195,6 +256,10 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
   if(renewals.length)notices.push({department:voice("TALENT_MANAGER","Talent office"),target:"contracts",
    message:renewals.length+" wrestler contract"+(renewals.length===1?"":"s")+
     " nearing expiry, including "+renewals[0]!.personName+"."});
+  if(observations.priority)notices.push({
+   department:voice("CREATIVE","Creative desk"),target:"programmes",
+   message:observations.priority
+  });
   if(current.repeated_programmes>0)notices.push({department:voice("CREATIVE","Creative desk"),target:"programmes",
    message:current.repeated_programmes+" active programme"+
     (current.repeated_programmes===1?" has":"s have")+
@@ -271,6 +336,11 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      "A trainer's limited recovery support never bypasses medical clearance.":
     "No active contracted wrestlers currently exceed the high-fatigue watch threshold."}
   };
+  // Personality still controls the voice in the UI; the facts stay grounded
+  // in one settled programme. No staff member can book a follow-up here.
+  if(observations.creative)meetingContent.CREATIVE.message+=" "+observations.creative;
+  if(observations.commentary)meetingContent.COMMENTATOR.message+=" "+observations.commentary;
+  if(observations.roadAgent)meetingContent.ROAD_AGENT.message+=" "+observations.roadAgent;
   const meetings=STAFF_ROLES.map(role=>{
    const member=officeRole(role);
    return {role,staffName:member?.name??null,
