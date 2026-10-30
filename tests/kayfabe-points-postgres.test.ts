@@ -113,6 +113,23 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(wallet.balance,1450);
   assert.equal(wallet.activeBrand,"CHROME");
   assert.equal(wallet.createdTalent.length,1);
+  assert.equal(wallet.achievements.length,13);
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_BELL")?.earned,true);
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_PROFIT")?.unit,"profitable shows");
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_CLASSIC")?.unit,"4★ matches");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"BADGE_GOLD",requestId:"buy-gold"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBadge,"GOLD");
+  const reset=await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_BADGE",requestId:"restore-original-frame"}) as {price:number};
+  assert.equal(reset.price,0);
+  const standard=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(standard.activeBadge,null);
+  assert.ok(standard.entitlements.includes("BADGE_GOLD"));
+  assert.equal(standard.balance,1100);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_BADGE",sku:"BADGE_GOLD",requestId:"restore-gold-frame"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBadge,"GOLD");
   await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });
