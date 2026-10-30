@@ -3,6 +3,8 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import {programmeBroadcastRecap,programmeManagementNote}
+ from "../domain/verified-programme-broadcast.js";
 import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
 type MediaScrumView={showId:string;showName?:string;questions:{
  id:ScrumQuestionId;journalist:string;question:string;
@@ -357,6 +359,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    }
    append(body,profiles);
   }
+  const chapters=entry.programmeChapters??[];
+  if(chapters.length){
+   const context=node("section","ppw-rivalry-at-ringside");
+   context.append(node("span","ppw-eyebrow","THE RIVALRY SO FAR"));
+   for(const chapter of chapters){
+    const record=node("div","ppw-ringside-rivalry-chapter");
+    record.append(node("strong","",chapter.sideA+" vs "+chapter.sideB),
+     node("p","",programmeBroadcastRecap(chapter,entry.type)));
+    context.append(record);
+   }
+   body.append(context);
+  }
   append(details,body);
   storyLinks.set(entry.slotId,details);
   const lead=node("p","ppw-show-transition",
@@ -402,7 +416,17 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(strongest)office.append(node("p","ppw-road-agent-standout",
    "If I were showing the locker room one match from tonight, it'd be "+
     strongest.headline+"."));
+  const storylineNote=programmeManagementNote(show.entries.flatMap(e=>e.programmeChapters??[]));
+  if(storylineNote)office.append(node("p","ppw-road-agent-continuity",
+   "On our ongoing stories: "+storylineNote));
   management.append(office);
+ }
+ // Without a hired Road Agent, the factual hand-off still belongs in the
+ // management brief. No extra generated staff report or database read.
+ if(!report){
+  const storylineNote=programmeManagementNote(show.entries.flatMap(e=>e.programmeChapters??[]));
+  if(storylineNote)management.append(node("p","ppw-road-agent-continuity",
+   "Storylines from tonight: "+storylineNote));
  }
  const gorilla=show.gorillaLog;
  const position=gorilla?node("section","ppw-staff-show-report ppw-gorilla-log"):null;
