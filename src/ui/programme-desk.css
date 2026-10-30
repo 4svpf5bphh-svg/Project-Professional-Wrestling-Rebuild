@@ -117,7 +117,7 @@
 .ppw-programme-follow-through{margin:10px 0;padding:11px 12px;border-left:3px solid #ffc16f;
  border-radius:9px;background:#102c40}
 .ppw-programme-follow-through[data-status=rematch_held],
-.ppw-programme-follow-through[data-status=retaliation_shown],
+.ppw-programme-follow-through[data-status=angle_after_retaliation],
 .ppw-programme-follow-through[data-status=result_stands]{
  border-left-color:#92e6bc;background:#123a3a}
 .ppw-programme-follow-through strong{display:block;font-size:13px;color:#f3f8ff}
