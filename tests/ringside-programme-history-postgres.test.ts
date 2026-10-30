@@ -4,6 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
+import {readRingsideMemory} from "../src/db/ringside-continuity.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import type {TransactionPool} from "../src/db/transaction.js";
@@ -56,6 +57,16 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
      plannedFinish:"CLEAN_PIN"}),
     JSON.stringify({kind:"CHALLENGE",participants:[
      {personId:people[0],contractId:"contract-"+people[0]}]})]);
+   // Earlier certified match from the same owner promotion. This is the
+   // ONLY additional historic read needed for a new Groq article.
+   await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)"+
+    " VALUES($1,'older','historic',0,'MATCH',$2::jsonb)",
+    [worldId,JSON.stringify({matchType:"SINGLES",participants:people.map(personId=>({
+     personId,contractId:"contract-"+personId})),scriptedWinner:people[1],
+     plannedFinish:"CLEAN_PIN"})]);
+   await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,"+
+    "crowd_response,actual_finish,actual_winner_side)"+
+    " VALUES($1,'older','historic',0,75,'CLEAN_PIN','B')",[worldId]);
    await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,"+
     "crowd_response,actual_finish,actual_winner_side)"+
     " VALUES($1,'current','main',0,81,'CLEAN_PIN','A')",[worldId]);
@@ -97,6 +108,12 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
   const promo=view.entries.find(x=>x.slotId==="promo")!;
   assert.equal(promo.programmeChapters?.[0]?.currentWinner,null);
   assert.equal(promo.programmeChapters?.[0]?.previousWinner,"B");
+  const memory=await readRingsideMemory(pool,scope,view);
+  assert.equal(memory.programmes.length,0,
+   "Exact programme context is already in the five-query completed show");
+  assert.deepEqual(memory.priorMatches.map(x=>x.winners),[["Matt Riddle"]]);
+  assert.equal(meter.assertBudget({maxQueries:7,maxResultBytes:160_000}).queryCount,7,
+   "Five verified-show reads plus two previous-match reads, not the former eight");
   await assert.rejects(readCompletedShowView(db.pool,{...scope,playerId:"intruder"}),
    /unavailable to this controller/);
  }finally{
