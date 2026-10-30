@@ -15,6 +15,8 @@ test("World-resolution integration: pending offer blocks publication, is settled
 },async()=>{
  const uuid=randomUUID(),world="auto-publish-"+uuid,promo="promo-"+uuid,
   person="performer-"+uuid,offer="new-signing-"+uuid,show="show-"+uuid,
+  renewPerson="renew-performer-"+uuid,renewContract="renew-contract-"+uuid,
+  renewal="renew-proposal-"+uuid,
   db=postgresPool(url!,3);
  try{
   await withWorldTransaction(db.pool,async tx=>{
@@ -25,6 +27,29 @@ test("World-resolution integration: pending offer blocks publication, is settled
     in_ring_quality,match_craft,presentation,stamina,fatigue,career_stage,morale,contract_priorities)
     VALUES($1,$2,'Main Event Talent','ACTIVE',90,90,85,85,90,80,0,'PRIME',80,$3::jsonb)`,
     [world,person,JSON.stringify({money:60,role:10,prestige:10,schedule:10,loyalty:5,exposure:5})]);
+   // Certified week 10 stalled on two same-terms renewals because annual trust
+   // is double precision while short-term trust is integer. Exercise the real
+   // resolver with both values present (a mixed-type PostgreSQL expression).
+   await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,recognition,popularity,
+    in_ring_quality,match_craft,presentation,stamina,fatigue,career_stage,morale,contract_priorities)
+    VALUES($1,$2,'Renewing Talent','ACTIVE',80,80,80,80,80,85,0,'PRIME',85,$3::jsonb)`,
+    [world,renewPerson,JSON.stringify({money:70,role:10,prestige:10,schedule:5,loyalty:3,exposure:2})]);
+   await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+    family,status,start_week_index,expires_week_index,remaining_dates,date_entitlement,
+    weekly_guarantee,appearance_fee,role_expectation,creative_control)
+    VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',0,0,NULL,1,0,0,'REGULAR','NONE')`,
+    [world,renewContract,renewPerson,promo]);
+   await tx.query(`INSERT INTO ppw_contract_renewal_proposals(world_id,proposal_id,
+    contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
+    VALUES($1,$2,$3,$4,$5,'PENDING',0,$6::jsonb)`,
+    [world,renewal,renewContract,promo,renewPerson,JSON.stringify({family:"EXCLUSIVE",
+     termWeeks:13,dateEntitlement:13,weeklyGuarantee:12000,appearanceFee:0,
+     roleExpectation:"REGULAR",creativeControl:"NONE",signingBonus:0})]);
+   await tx.query(`INSERT INTO ppw_backstage_promotion_trust(world_id,promotion_id,person_id,trust)
+    VALUES($1,$2,$3,70)`,[world,promo,renewPerson]);
+   await tx.query(`INSERT INTO ppw_promotion_talent_trust
+    (world_id,promotion_id,person_id,trust,last_evaluated_year)
+    VALUES($1,$2,$3,52.5,1)`,[world,promo,renewPerson]);
    const terms:OfferTerms={family:"EXCLUSIVE",roleExpectation:"MAIN_EVENT",
     creativeControl:"CONSULTATION",startWeekIndex:0,termWeeks:13,dateEntitlement:13,
     weeklyGuarantee:20000,appearanceFee:0,signingBonus:3000};
@@ -61,10 +86,16 @@ test("World-resolution integration: pending offer blocks publication, is settled
    worldId:world,requestId:"contracts-"+uuid,expectedRevision:0,resolutionId:"week-"+uuid});
   assert.equal(stage.status,"EXECUTED");
   assert.equal(stage.action,"RESOLVE_CONTRACTS");
+  const settledRenewal=await withWorldTransaction(db.pool,tx=>tx.query<{status:string}>(
+   "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND proposal_id=$2",
+   [world,renewal]));
+  assert.equal(settledRenewal[0]!.status,"ACCEPTED",
+   "Mixed integer/double trust must not stop an otherwise acceptable renewal");
   const after=await planNextWorldResolutionAction(db.pool,world);
   assert.equal(after.action,"PUBLISH_WEEK");
   const res=await advanceResolvedWorldWeek(db.pool,{
-   worldId:world,requestId:"rollover-"+uuid,expectedRevision:1});
+   // The offer and renewal each posted a durable command receipt.
+   worldId:world,requestId:"rollover-"+uuid,expectedRevision:2});
   assert.equal(res.status,"APPLIED");
   const rows=await withWorldTransaction(db.pool,async tx=>{
    const c=await tx.query<{start_week_index:number;expires_week_index:number;
@@ -87,7 +118,8 @@ test("World-resolution integration: pending offer blocks publication, is settled
   assert.equal(Number(rows.p[0]!.cash),97000);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_contract_offers",
+   for(const table of ["ppw_promotion_talent_trust","ppw_backstage_promotion_trust",
+    "ppw_contract_renewal_proposals","ppw_ledger_events","ppw_contract_offers",
     "ppw_week_resolution_seals","ppw_week_resource_clearances","ppw_completed_shows",
     "ppw_show_resolutions","ppw_command_receipts","ppw_booking_drafts","ppw_venues",
     "ppw_contracts","ppw_people","ppw_promotions"]){
