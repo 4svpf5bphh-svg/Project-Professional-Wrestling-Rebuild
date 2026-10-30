@@ -100,6 +100,17 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   achievements.append(el("span","ppw-kp-kicker","EARNED, NOT BOUGHT"),
    el("h2","","Promoter milestones"),
    el("p","ppw-kp-muted","Achievements come from verified completed shows. Cosmetics only change their presentation."));
+  // Purchased badge finishes only restyle genuine earned milestones. Show
+  // exactly where the purchase is applied; it does not create an achievement.
+  if(view.activeBadge){
+   const preview=el("div","ppw-kp-active-preview ppw-kp-achievement-"+
+    view.activeBadge.toLowerCase());
+   preview.append(el("span","ppw-kp-active-symbol","★"),
+    el("strong","","Active "+view.activeBadge.toLowerCase()+" milestone frame"),
+    el("small","","Applied to unlocked achievements below. This is cosmetic; it does not alter promotion prestige or add new milestones."));
+   achievements.append(preview);
+  }else achievements.append(el("p","ppw-kp-muted",
+   "No achievement display frame selected. Unlock or apply one below to style your earned milestones."));
   const badgeList=el("div","ppw-kp-achievements");
   for(const a of view.achievements){
    const article=el("article","ppw-kp-badge"+(a.earned?" ppw-kp-earned":"")+
@@ -112,7 +123,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   achievements.append(badgeList);root.append(achievements);
   const shop=el("section","ppw-kp-section");
   shop.append(el("span","ppw-kp-kicker","COSMETIC ONLY"),el("h2","","Promotion style & prestige"),
-   el("p","ppw-kp-muted","Your shop unlocks travel with your account. Promotion crests can be applied to this promotion, without changing its business standing."));
+   el("p","ppw-kp-muted","Promotion crests change your company mark. Gold and platinum achievement displays ONLY recolour earned milestone cards in the Promoter milestones section above. A purchase automatically applies its style; you can switch between owned styles using Apply. Neither changes your in-game standing."));
   const list=el("div","ppw-kp-catalogue");
   for(const item of view.catalogue){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
