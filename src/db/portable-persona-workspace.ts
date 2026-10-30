@@ -189,7 +189,12 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ON beat.world_id=member.world_id",
    "AND beat.promotion_id=member.promotion_id",
    "AND beat.programme_id=member.programme_id",
-   "LEFT JOIN LATERAL (SELECT string_agg(",
+   // A wrestler can belong to a multi-person feud without participating in
+   // every chapter. Only their actual card appearances become their memories.
+   "JOIN ppw_card_slots card ON card.world_id=beat.world_id",
+   "AND card.draft_id=beat.show_id AND card.slot_id=beat.slot_id",
+   "AND card.kind=beat.kind",
+   "LEFT JOIN LATERAL (SELECT string_agg("
    "coalesce(p.name,t.name,ref.ref_id),' & ' ORDER BY ref.position) AS names",
    "FROM ppw_programme_side_refs ref",
    "LEFT JOIN ppw_people p ON p.world_id=ref.world_id",
@@ -202,6 +207,10 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND ref.side<>member.side) opposition ON TRUE",
    "WHERE member.world_id=$1 AND member.promotion_id=$2",
    "AND member.person_id=$3",
+   "AND EXISTS (SELECT 1 FROM jsonb_array_elements(",
+   "CASE WHEN jsonb_typeof(card.payload->'participants')='array'",
+   "THEN card.payload->'participants' ELSE '[]'::jsonb END) cast_member",
+   "WHERE cast_member.value->>'personId'=$3)",
    "AND beat.week_index BETWEEN greatest(0,$4-12) AND $4-1",
    "ORDER BY beat.week_index DESC,beat.show_id DESC,beat.slot_id DESC LIMIT 4",
    ") recent ORDER BY occurred_week_index DESC,source_id DESC LIMIT 13"
