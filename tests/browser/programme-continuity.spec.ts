@@ -36,7 +36,7 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await page.getByRole("button",{name:"Ask Creative · what next?"}).click();
  await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
  await expect(page.getByText(/A newer match has taken place/)).toBeVisible();
- expect(calls).toEqual(["programmes"],"Editorial continuity never sends a booking command");
+ expect(calls).toEqual(["programmes"]); // Reading is not a booking command
 });
 test("iPhone makes an unfulfilled retaliation direction visible without pretending to book an angle",async({page})=>{
  await page.setViewportSize({width:320,height:740});
