@@ -18,6 +18,12 @@ const name=(v:string)=>v.trim().slice(0,160);
 const same=(a:string,b:string)=>name(a).toLocaleLowerCase("en-US")===
  name(b).toLocaleLowerCase("en-US");
 const priorWeek=(i:number)=>"Year "+(Math.floor(i/52)+1)+", Week "+(i%52+1);
+const historicalIndex=(when:string)=>{
+ const parts=/^Y(\d{1,4}) W(\d{1,2})$/.exec(when);
+ if(!parts)return null;
+ const year=Number(parts[1]),week=Number(parts[2]);
+ return year>=1&&week>=1&&week<=52?(year-1)*52+week-1:null;
+};
 function currentOppositeSides(entry:ShowResultEntry):string[][]{
  if(entry.type==="MATCH")return (entry.matchContext?.sides??[]).map(x=>x.map(name));
  const ctx=entry.segmentContext;
@@ -33,6 +39,7 @@ export function verifiedSlotStoryThreads(
  show:CompletedShowView,memory:RingsideMemory,
 ):Array<RingsideStoryThread|null>{
  const used=new Map<string,{card:number;kind:"MATCH"|"SEGMENT"}>();
+ const showWeekIndex=(show.year-1)*52+show.week-1;
  const result:Array<RingsideStoryThread|null>=[];
  for(const [index,entry] of show.entries.entries()){
   const chapter=entry.programmeChapters?.[0];
@@ -56,6 +63,7 @@ export function verifiedSlotStoryThreads(
   // That is not evidence of a feud or of a previous head-to-head result.
   if(!chapter||chapter.precedingMatches===0){
    const previous=memory.priorMatches.find(x=>
+    (historicalIndex(x.when)??Infinity)<showWeekIndex&&
     sameOpposingPair(entry,x.wrestlers)&&
     x.wrestlers.length<=12&&x.winners.length<=6);
    if(previous){
