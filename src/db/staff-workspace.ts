@@ -42,6 +42,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      'sideB',coalesce(sides.side_b,'Side B'),
      'heat',spotlight.heat,'lastKind',beat.kind,
      'lastWeekIndex',beat.week_index,'lastWinnerSide',beat.winner_side,
+     'lastMatchWinnerSide',last_match.winner_side,
+     'lastMatchWeekIndex',last_match.week_index,
      'directionChoice',direction.choice,
      'directionWeekIndex',direction.chosen_week_index,
      'laterMatch',coalesce(later_beats.match_completed,false),
@@ -177,6 +179,13 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      AND a.week_index<(w.year-1)*52+w.week-1
     ORDER BY a.week_index DESC,a.show_id DESC,a.slot_id DESC LIMIT 1
    ) beat ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT winner_side,week_index FROM ppw_programme_resolved_activities a
+    WHERE a.world_id=w.world_id AND a.promotion_id=$3
+     AND a.programme_id=spotlight.programme_id AND a.kind='MATCH'
+     AND a.week_index<(w.year-1)*52+w.week-1
+    ORDER BY a.week_index DESC,a.show_id DESC,a.slot_id DESC LIMIT 1
+   ) last_match ON TRUE
    LEFT JOIN LATERAL (
     SELECT d.choice,d.chosen_week_index FROM ppw_programme_postshow_directions d
     WHERE d.world_id=w.world_id AND d.promotion_id=$3
