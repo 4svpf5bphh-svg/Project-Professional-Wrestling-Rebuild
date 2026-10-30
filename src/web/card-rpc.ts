@@ -253,8 +253,15 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   const terms=p.terms;
   if(!terms||typeof terms!=="object"||Array.isArray(terms))
    throw new Error("Invalid contract offer");
+  // Keep the signed source agreement. Otherwise the service mistakes
+  // a next-term renewal for recruitment starting in the current week.
+  const source=p.sourceContractId;
+  if(source!==undefined&&source!==null&&
+   (typeof source!=="string"||!source||source.length>200))
+   throw new Error("Invalid renewal source contract");
   return submitContractOfferAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,personId:id("personId"),
+   sourceContractId:source as string|null|undefined,
    terms:terms as import("../domain/contract-economics.js").OfferTerms});
  }
  if(method==="requestContractDates"){
