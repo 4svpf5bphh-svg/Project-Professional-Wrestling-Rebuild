@@ -1,0 +1,67 @@
+/* The Trophy Room has its own premium visual identity and lazy-loaded data. */
+.ppw-trophy-room{max-width:980px;margin:0 auto;padding:14px 14px 128px;color:#f9f5ff;min-width:0}
+.ppw-trophy-header{display:grid;gap:12px;margin:7px 0 24px}
+.ppw-trophy-top-actions{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.ppw-trophy-button{background:linear-gradient(135deg,#373357,#222946);border:1px solid #9381b9;
+ color:#fff0d5;padding:11px 14px;border-radius:13px;min-height:44px;font-weight:850;font-size:13px}
+.ppw-trophy-header h1{font:950 italic clamp(42px,10vw,72px)/.95 system-ui;letter-spacing:-.045em;margin:0;
+ color:#fff1cc;text-shadow:3px 4px 0 #361939}
+.ppw-trophy-kicker{color:#74ddf1;letter-spacing:.13em;font-size:10px;font-weight:900}
+.ppw-trophy-subhead,.ppw-trophy-muted{color:#b3c6d9;font-size:13px;line-height:1.6;margin:0}
+.ppw-trophy-error{padding:12px 14px;border:1px solid #bd6c78;color:#ffe5e5;background:#4e2734;border-radius:10px}
+.ppw-trophy-hero{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;
+ background:radial-gradient(ellipse at 100% 10%,#b0886a55,transparent 53%),linear-gradient(130deg,#252546,#18273c);
+ border:2px solid #a38dbe;box-shadow:5px 5px 0 #110d2380;border-radius:18px;padding:17px;margin-bottom:16px}
+.ppw-trophy-hero[data-finish=gold]{border-color:#e6c66d;background:radial-gradient(ellipse at 100% 15%,#f2b23a55,transparent 60%),linear-gradient(125deg,#3c302c,#1c273b)}
+.ppw-trophy-hero[data-finish=platinum]{border-color:#a4e6f5;background:radial-gradient(ellipse at 100% 15%,#b6eaff45,transparent 60%),linear-gradient(125deg,#293a56,#1b243a)}
+.ppw-trophy-hero-copy{display:grid;gap:8px;min-width:0;flex:1}
+.ppw-trophy-hero h2{font-size:12px;letter-spacing:.12em;margin:0;color:#f6cc89}
+.ppw-trophy-rank{font:950 italic clamp(22px,6vw,37px)/1.1 system-ui;letter-spacing:-.03em;color:#fff3cc}
+.ppw-trophy-rank-medal{display:grid;place-items:center;flex:none;width:65px;height:73px;
+ border-radius:16px;background:linear-gradient(150deg,#fce2a6,#8d602b);border:3px solid #fff5c6;
+ font-size:34px;color:#392c37;box-shadow:2px 3px 0 #10122385}
+.ppw-trophy-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:28px}
+.ppw-trophy-count{padding:13px 9px;background:#fdf0d3;color:#242338;display:grid;gap:5px;border-radius:10px;
+ box-shadow:3px 4px 0 #987d8f88;min-width:0}
+.ppw-trophy-count span{font-weight:850;letter-spacing:.1em;font-size:9px}
+.ppw-trophy-count strong{font:950 clamp(25px,8vw,36px)/1.1 system-ui}
+.ppw-trophy-next,.ppw-trophy-filter-panel{display:grid;gap:10px;margin:0 0 21px}
+.ppw-trophy-next h2,.ppw-trophy-filter-panel h2{font:900 25px/1.1 system-ui;margin:0}
+.ppw-trophy-next-grid,.ppw-trophy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-trophy-next-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ppw-trophy-filter-list{display:flex;gap:7px;flex-wrap:wrap}
+.ppw-trophy-filter{min-height:40px;padding:8px 12px;border:1px solid #725f9c;color:#e2daf2;
+ background:#24213d;border-radius:11px;font-weight:800;font-size:12px}
+.ppw-trophy-filter[aria-pressed=true]{color:#fff;background:#c32794;border-color:#ff9ee5}
+.ppw-trophy-category{border:1px solid #8d81ba;border-radius:9px;min-height:44px;padding:9px 12px;
+ background:#1c2741;color:#fff;font-size:16px;width:100%}
+.ppw-trophy-group{margin:0 0 22px;display:grid;gap:9px}
+.ppw-trophy-group-head{display:flex;align-items:center;gap:10px;color:#f7e1b0;font-weight:900;
+ border-bottom:1px solid #76658d;padding-bottom:11px}
+.ppw-trophy-group-symbol{display:grid;place-items:center;min-width:35px;height:35px;
+ border-radius:50%;background:#47305e;color:#f2c879;font-size:19px}
+.ppw-trophy-tile{display:grid;align-content:start;min-width:0;gap:9px;border:1px solid #5a6a88;
+ border-left:4px solid #77709e;border-radius:12px;padding:12px;background:#19283f;color:#f6f6ff}
+.ppw-trophy-tile.is-earned{background:linear-gradient(125deg,#3a3045,#1e293d)}
+.ppw-trophy-tile[data-tier=silver].is-earned{border-left-color:#a3d8f4}
+.ppw-trophy-tile[data-tier=gold].is-earned{border-left-color:#f2c96d}
+.ppw-trophy-tile[data-tier=icon].is-earned{border-left-color:#c999fa}
+.ppw-trophy-tile.is-featured{background:#242943}
+.ppw-trophy-item-head{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.ppw-trophy-item-icon{flex:none;font-size:24px;color:#efc773}
+.ppw-trophy-item-title{display:grid;gap:4px;flex:1;min-width:0}
+.ppw-trophy-item-title strong{font-size:14px;line-height:1.2;overflow-wrap:anywhere}
+.ppw-trophy-item-title span{font-size:9px;color:#b0c6d8;line-height:1.25;letter-spacing:.05em}
+.ppw-trophy-item-status{font-weight:850;color:#abf2d5;font-size:9px;flex:none;text-align:right}
+.ppw-trophy-tile:not(.is-earned) .ppw-trophy-item-status{color:#a4b0cb}
+.ppw-trophy-item-description{font-size:12px;line-height:1.5;color:#d0d9e7;margin:0}
+.ppw-trophy-item-foot{display:flex;gap:8px;justify-content:space-between;color:#d1e3f6;font-size:11px;line-height:1.4}
+.ppw-trophy-item-foot strong{font-weight:900;flex:none}
+.ppw-trophy-progress{height:7px;border-radius:99px;overflow:hidden;background:#0a1829}
+.ppw-trophy-progress-fill{display:block;height:100%;background:linear-gradient(90deg,#58c8ee,#e5c96f);border-radius:inherit}
+.ppw-trophy-no-results{padding:16px;border:1px dashed #7b82a1;border-radius:10px;color:#b4c5d9}
+.ppw-trophy-footer{color:#abb9ce;margin:32px 0 0;font-size:12px;line-height:1.6}
+@media(max-width:640px){.ppw-trophy-next-grid{grid-template-columns:1fr}}
+@media(max-width:370px){.ppw-trophy-room{padding-inline:10px}.ppw-trophy-grid{grid-template-columns:1fr}
+.ppw-trophy-count span{letter-spacing:.02em}.ppw-trophy-count{padding:11px 6px}
+.ppw-trophy-rank-medal{width:44px;height:54px;font-size:24px}}
