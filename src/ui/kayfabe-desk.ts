@@ -51,6 +51,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="BUY"?"Unlocked. Your purchase is available on your account.":
     action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
     action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
+    action.kind==="APPLY_RESULTS_SKIN"?"Territory TV results skin applied.":
+    action.kind==="CLEAR_RESULTS_SKIN"?"Original PPW results appearance restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
   finally{busy=false;draw();}
@@ -135,7 +137,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("h2","","Promotion style & prestige"),
    el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
   const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue){
+  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN")){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
    const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
    const article=el("article","ppw-kp-item");
@@ -156,6 +158,35 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    list.append(article);
   }
   shop.append(list);root.append(shop);
+  // Only the owner's completed shows are restyled. The World UI is unchanged.
+  const resultsShop=el("section","ppw-kp-section ppw-kp-results-skins");
+  resultsShop.append(el("span","ppw-kp-kicker","BROADCAST PRESENTATION"),
+   el("h2","","My results skins"),
+   el("p","ppw-kp-muted",
+    "Customise only your own completed show reports: headlines, Full Card, POP! and the Post-Management Brief. Booking, dashboard and match results never change."));
+  const preview=el("div","ppw-kp-territory-preview");
+  preview.append(el("span","ppw-kp-territory-channel","★ PPW TERRITORY TELEVISION"),
+   el("strong","","TERRITORY TV"),
+   el("span","ppw-kp-territory-sub","Vintage red · championship gold · cream reports"));
+  const skin=view.catalogue.find(item=>item.sku==="RESULTS_TERRITORY_TV");
+  if(skin){
+   const owned=view.entitlements.includes(skin.sku);
+   const active=view.activeResultsSkin==="TERRITORY_TV";
+   const row=el("div","ppw-kp-results-skin-row");
+   const info=el("div","ppw-kp-item-copy");
+   info.append(el("strong","",skin.label),
+    el("small","",owned?active?"Owned · applied to your results":"Owned · ready to apply":
+     "One-time "+format(skin.price)+" · account-wide"));
+   row.append(info,btn(active?"Applied":owned?"Apply":"Unlock",
+    ()=>void run(owned?
+     {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:crypto.randomUUID()}:
+     {kind:"BUY",sku:"RESULTS_TERRITORY_TV",requestId:crypto.randomUUID()}),
+    busy||active||(!owned&&view.balance<skin.price)));
+   resultsShop.append(preview,row);
+   if(active)resultsShop.append(btn("Use original PPW results",()=>void run({
+    kind:"CLEAR_RESULTS_SKIN",requestId:crypto.randomUUID()}),busy));
+  }
+  root.append(resultsShop);
   const people=el("section","ppw-kp-section");
   people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),
    el("h2","","Personalise your staff"),

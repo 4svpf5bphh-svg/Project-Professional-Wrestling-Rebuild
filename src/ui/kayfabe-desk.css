@@ -74,3 +74,17 @@
 .ppw-kp-badge small{font-size:11px;line-height:1.4}
 .ppw-kp-earned .ppw-kp-badge-icon{filter:drop-shadow(0 0 5px #ffda775e)}
 .ppw-kp-active-preview+.ppw-kp-button{justify-self:start;margin:-5px 0 8px}
+
+/* Small CSS-only preview, deliberately outside all dashboard and business styles. */
+.ppw-kp-territory-preview{display:grid;gap:7px;padding:14px 16px;border:2px solid #d8ad65;
+ border-bottom:5px solid #ad3341;border-radius:10px;
+ background:repeating-linear-gradient(135deg,#27374c 0px,#27374c 10px,#2d3c51 10px,#2d3c51 12px);
+ color:#fff1d5;min-width:0}
+.ppw-kp-territory-channel{font:900 10px/1.4 system-ui;color:#ecc687;letter-spacing:.095em}
+.ppw-kp-territory-preview strong{font:950 italic 28px/1 system-ui;color:#ffe9b5;text-shadow:2px 3px 0 #a63345}
+.ppw-kp-territory-sub{font-size:11px;color:#f3e2c2}
+.ppw-kp-results-skin-row{display:flex;align-items:center;gap:8px;justify-content:space-between;
+ margin:10px 0;padding:12px;border:1px solid #506080;border-radius:10px;background:#1b2940;min-width:0}
+.ppw-kp-results-skin-row .ppw-kp-item-copy{flex:1}
+@media(max-width:350px){.ppw-kp-results-skin-row{flex-wrap:wrap}
+.ppw-kp-results-skin-row .ppw-kp-button{margin-left:auto}}

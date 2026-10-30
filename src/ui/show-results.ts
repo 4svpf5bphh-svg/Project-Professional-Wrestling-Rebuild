@@ -23,6 +23,7 @@ import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
+import "./territory-results-skin.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -140,10 +141,15 @@ export async function mountShowResults(root:HTMLElement,port:{
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
  root.classList.remove("ppw-editorial-ready");
+ if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
+ else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
+ if(show.resultsSkin==="TERRITORY_TV")
+  header.append(node("div","ppw-territory-station",
+   "★ PPW TERRITORY TELEVISION  ·  ON THE AIR"));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -459,8 +465,22 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
+ if(show.resultsSkin==="TERRITORY_TV"){
+  const station=node("header","ppw-territory-chapter-head");
+  station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · FULL CARD"),
+   node("h2","","THE COMPLETE NIGHT"),
+   node("p","","OFFICIAL MATCHES, RESULTS & ON-AIR MOMENTS"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
+ if(show.resultsSkin==="TERRITORY_TV"){
+  const station=node("header","ppw-territory-chapter-head");
+  station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · AFTER THE BELL"),
+   node("h2","","THE AFTERMATH"),
+   node("p","","FANS, RUMOURS & PRIVATE MANAGEMENT"));
+  after.append(station);
+ }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
   ...(reactions.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);
