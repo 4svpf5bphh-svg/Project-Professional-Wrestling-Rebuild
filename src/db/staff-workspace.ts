@@ -299,9 +299,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      " coming due; "+renewals[0]!.personName+" is first on my list.":
     "No signed wrestler contracts are due within the next twelve weeks."},
    ROAD_AGENT:{target:"gorilla",message:current.recent_matches?
-    "We've worked "+current.recent_matches+" matches on recent shows. "+
-     "Give the next card a clear opening, a middle that builds, and a main event worth waiting for. "+
-     "If something goes sideways, your Gorilla instructions still decide what I can change.":
+    "We've worked "+current.recent_matches+" matches recently. My card plan: open with a competitive bout, put a five-minute interview in the middle, then protect a fresh main-event payoff. "+
+     "Check the exact time allowance and planned finish at Gorilla before we go on air.":
     "We haven't put a match in the books recently. Bring me a card with a clear finish, "+
      "and make sure the Gorilla instructions reflect how you want me to handle surprises."},
    MEDICAL:{target:"roster",message:current.medical_risks?
@@ -309,25 +308,23 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      "Check their clearance dates rather than assuming they can work.":
     "No contracted wrestlers currently have an active medical restriction on record."},
    CREATIVE:{target:"programmes",message:current.repeated_programmes?
-    "We've got "+current.repeated_programmes+" stor"+(current.repeated_programmes===1?"y":"ies")+
-     " circling the same ground. Give the people involved a different kind of encounter, "+
-     "or a reason to want the next match before we book it.":
+    "I've spotted "+current.repeated_programmes+" rivalry"+(current.repeated_programmes===1?"":"ies")+" repeating recent beats. "+
+     "Pause another straight rematch: have the trailing side cut a six-minute interview, then let their opponents answer on the following show.":
     current.active_programmes?
-     "There are "+current.active_programmes+" active rivalries to work with. "+
-      "I'd rather give one of them a memorable next chapter than cram in five half-finished stories.":
+     "We have "+current.active_programmes+" active rivalries. I'd give the strongest recent one a challenge or face-to-face first, "+
+      "then build to a properly advertised match. Save the other stories for another week.":
      "Nothing is running as an active rivalry yet. Pick two people with a reason to clash, "+
       "and build something the audience can follow from one show to the next."},
    COMMENTATOR:{target:"programmes",message:current.active_programmes?
-    "We have "+current.active_programmes+" active stories to explain. "+
-     "Give us one real development to talk about on the next broadcast; "+
-     "the audience remembers facts better than a string of empty promises.":
+    "We have "+current.active_programmes+" active stories. Give commentary one actual result and one clear hook for the next scene. "+
+     "An advertised interview or an open challenge tells viewers exactly what to watch for.":
     "We're short on ongoing stories to call. A clear challenge or a meaningful result "+
      "gives commentary something to carry into the next show."},
    REFEREE:{target:"staff",message:current.recent_disqualifications?
-    current.recent_disqualifications+" certified disqualification finishes in the last nine weeks. "+
-     "Make the next scripted finish unmistakable to the referee.":
-    "No certified disqualification finishes in the last nine weeks. "+
-     "Our referees will stick to the authorised card."},
+    current.recent_disqualifications+" disqualification finishes in the last nine weeks. If you book another, "+
+     "tell me whose interference is seen and what causes the DQ. I won't invent a different finish.":
+    "No DQ finishes recently. If an outsider gets involved next time, decide whether I catch them or miss it. "+
+     "That should be specified before the card is locked."},
    PRODUCTION:{target:"staff",message:current.recent_shows?
     "We've delivered "+current.recent_shows+" recent shows. "+
      "Keep your event layout clear and make sure the next venue and date are confirmed early. "+
@@ -347,9 +344,13 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
   };
   // Personality still controls the voice in the UI; the facts stay grounded
   // in one settled programme. No staff member can book a follow-up here.
-  if(observations.creative)meetingContent.CREATIVE.message+=" "+observations.creative;
-  if(observations.commentary)meetingContent.COMMENTATOR.message+=" "+observations.commentary;
-  if(observations.roadAgent)meetingContent.ROAD_AGENT.message+=" "+observations.roadAgent;
+  if(observations.creative)meetingContent.CREATIVE.message=observations.creative+
+   " My next-card pitch: interview "+current.featured_programme!.sideA+
+   " about "+current.featured_programme!.sideB+" for six minutes. Let their answer set up the match.";
+  if(observations.commentary)meetingContent.COMMENTATOR.message=observations.commentary+
+   " I'll recap the last recorded winner before their next entrance, then call the new angle as it happens.";
+  if(observations.roadAgent)meetingContent.ROAD_AGENT.message=observations.roadAgent+
+   " Don't rush another opening-match rematch. Check their slot, time allowance and finish at Gorilla.";
   const meetings=STAFF_ROLES.map(role=>{
    const member=officeRole(role);
    return {role,staffName:member?.name??null,

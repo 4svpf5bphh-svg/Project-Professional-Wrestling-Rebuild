@@ -8,6 +8,10 @@ import type {SqlRows} from "./world-operations.js";
 import {createKpWrestlerPersona,validateKpCreatedIdentity,kpWrestlerCreateOptions,
  type KpCreatedIdentity} from "../domain/kp-create-wrestler.js";
 import {findLegend,LEGEND_TIER_PRICES} from "../domain/legends-catalogue.js";
+import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
+import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,
+ type PromoterAchievementCounters,type AchievementMetric}
+ from "../domain/promoter-achievements.js";
 
 export const KP_WEEKLY_AWARD=100;
 export const KP_STAFF_ALIAS_COST=350;
@@ -17,16 +21,26 @@ export const KP_CATALOGUE=[
  {sku:"BRAND_NEON",label:"Neon promotion crest",price:350,kind:"BRAND"},
  {sku:"BRAND_GOLD",label:"Gold promotion crest",price:600,kind:"BRAND"},
  {sku:"BADGE_GOLD",label:"Gold achievement display",price:350,kind:"BADGE"},
- {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"}
+ {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"},
+ {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:750,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:750,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:750,kind:"RESULTS_SKIN"}
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
+type ResultsSkinSku="RESULTS_TERRITORY_TV"|"RESULTS_FIGHT_NIGHT"|"RESULTS_UNDERGROUND_ZINE";
+const resultsStyle=(sku:ResultsSkinSku):"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"=>
+ sku==="RESULTS_FIGHT_NIGHT"?"FIGHT_NIGHT":
+ sku==="RESULTS_UNDERGROUND_ZINE"?"UNDERGROUND_ZINE":"TERRITORY_TV";
 export type KpSku=typeof KP_CATALOGUE[number]["sku"];
 export type KpScope={worldId:string;promotionId:string;playerId:string};
 export type KpAction=
  |{kind:"BUY";sku:KpSku;requestId:string}
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
  |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
+ |{kind:"CLEAR_BADGE";requestId:string}
+ |{kind:"APPLY_RESULTS_SKIN";sku:ResultsSkinSku;requestId:string}
+ |{kind:"CLEAR_RESULTS_SKIN";requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
  |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity)
  |{kind:"COLLECT_LEGEND";legendId:string;requestId:string};
@@ -41,11 +55,14 @@ function cleanName(value:string){
 export const catalogueItem=(sku:string)=>KP_CATALOGUE.find(p=>p.sku===sku)??null;
 export function validateKpAction(action:KpAction){
  if(!action||!validId(action.requestId))throw new Error("Invalid Kayfabe request");
- if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"){
+ if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"||action.kind==="APPLY_RESULTS_SKIN"){
   const item=catalogueItem(action.sku);
   if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND")||
-   (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE"))
+   (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE")||
+   (action.kind==="APPLY_RESULTS_SKIN"&&item.kind!=="RESULTS_SKIN"))
    throw new Error("Unknown Kayfabe Points item");
+ }else if(action.kind==="CLEAR_BADGE"||action.kind==="CLEAR_RESULTS_SKIN"){
+  // The standard look is always available and costs nothing.
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
   cleanName(action.name);
@@ -77,20 +94,45 @@ async function lockWallet(tx:SqlRows,id:string){
  if(r.length!==1)throw new Error("Kayfabe wallet unavailable");
  return Number(r[0]!.balance);
 }
+/** One request over certified records, shared by the KP preview and full
+ *  Trophy Room. Indexes remain World/promotion scoped; no per-card queries. */
+async function queryPromoterCounters(tx:SqlRows,s:KpScope){
+ const result=await tx.query<Record<AchievementMetric,string>&{badge_style:string|null}>(
+  promoterAchievementCountersSql("$1","$2",
+   "(SELECT style FROM ppw_kp_badge_styles WHERE player_id=$3) AS badge_style"),
+  [s.worldId,s.promotionId,s.playerId]);
+ const stats={...EMPTY_PROMOTER_COUNTERS};
+ const row=result[0];
+ for(const key of Object.keys(stats) as AchievementMetric[]){
+  const value=Number(row?.[key]??0);
+  stats[key]=Number.isFinite(value)&&value>=0?value:0;
+ }
+ return {stats,activeBadge:row?.badge_style??null};
+}
+/** Only executed when Trophy Room is deliberately opened. Never polls. */
+export async function readPromoterAchievementWorkspace(pool:TransactionPool,s:KpScope){
+ if(!Object.values(s).every(validId))throw new Error("Invalid achievements identity");
+ return withSqlClient(pool,async tx=>{
+  const world=await assertOwner(tx,s);
+  const {stats,activeBadge}=await queryPromoterCounters(tx,s);
+  return {...derivePromoterAchievements(stats),activeBadge,
+   worldYear:world.year,week:world.week,promotionName:world.name};
+ });
+}
+
 export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
  if(!Object.values(s).every(validId))throw new Error("Invalid Kayfabe identity");
  return withSqlClient(pool,async tx=>{
   const world=await assertOwner(tx,s);
-  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string}>(`
-   SELECT balance::text,lifetime_earned::text,lifetime_spent::text
+  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string;results_skin:string|null}>(`
+   SELECT balance::text,lifetime_earned::text,lifetime_spent::text,
+    (SELECT style FROM ppw_kp_results_skins WHERE player_id=$1) AS results_skin
    FROM ppw_kp_wallets WHERE player_id=$1`,[s.playerId]);
   const items=await tx.query<{sku:string}>(`
    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 20`,[s.playerId]);
   const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
    AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
-  const badge=await tx.query<{style:string}>(
-   "SELECT style FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
   const staff=await tx.query<{staff_id:string;alias:string|null}>(`
    SELECT e.staff_id,a.alias FROM ppw_staff_employments e
    LEFT JOIN ppw_kp_staff_aliases a ON a.world_id=e.world_id
@@ -98,9 +140,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     AND a.player_id=$3
    WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
    ORDER BY e.role LIMIT 8`,[s.worldId,s.promotionId,s.playerId]);
-  const played=await tx.query<{total:string}>(`
-   SELECT count(*)::text AS total FROM ppw_completed_shows
-   WHERE world_id=$1 AND promotion_id=$2`,[s.worldId,s.promotionId]);
+  const achievementData=await queryPromoterCounters(tx,s);
   const weeks=await tx.query<{year:number;week:number;played:boolean;claimed:boolean;daily_claimed:boolean}>(`
    SELECT n.year,n.week,
     EXISTS(SELECT 1 FROM ppw_completed_shows c
@@ -118,7 +158,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.creator_player_id=$2
    ORDER BY c.created_year DESC LIMIT 10`,[s.worldId,s.playerId]);
-  const total=Number(played[0]?.total??0),last=weeks[0],money=balances[0];
+  const last=weeks[0],money=balances[0];
   return {balance:Number(money?.balance??0),lifetimeEarned:Number(money?.lifetime_earned??0),
    lifetimeSpent:Number(money?.lifetime_spent??0),worldYear:world.year,week:world.week,
    promotionName:world.name,weeklyAward:KP_WEEKLY_AWARD,
@@ -126,12 +166,10 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     eligible:last.played&&!last.claimed&&!last.daily_claimed,
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
-   activeBadge:badge[0]?.style??null,
+   activeBadge:achievementData.activeBadge,
+   activeResultsSkin:money?.results_skin==="TERRITORY_TV"||money?.results_skin==="FIGHT_NIGHT"||money?.results_skin==="UNDERGROUND_ZINE"?money.results_skin:null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
-   achievements:[
-    {key:"FIRST_BELL",label:"First Bell",earned:total>=1,progress:Math.min(total,1),target:1},
-    {key:"TEN_SHOWS",label:"The Regular",earned:total>=10,progress:Math.min(total,10),target:10},
-    {key:"YEAR_OF_SHOWS",label:"Iron Booker",earned:total>=52,progress:Math.min(total,52),target:52}],
+   achievements:derivePromoterAchievements(achievementData.stats).achievements,
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
    catalogue:KP_CATALOGUE,staffAliasPrice:KP_STAFF_ALIAS_COST,
    createTalentPrice:KP_CREATE_TALENT_COST,createOptions:kpWrestlerCreateOptions};
@@ -191,6 +229,10 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
     SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
+   if(item.kind==="RESULTS_SKIN")await tx.query(`
+    INSERT INTO ppw_kp_results_skins(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,resultsStyle(action.sku as ResultsSkinSku)]);
    if(item.kind==="BADGE")await tx.query(`
     INSERT INTO ppw_kp_badge_styles(player_id,style) VALUES($1,$2)
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
@@ -217,6 +259,21 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
     [s.playerId,action.sku.replace("BADGE_","")]);
    outcome={style:action.sku};
+  }else if(action.kind==="APPLY_RESULTS_SKIN"){
+   const owns=await tx.query<{sku:string}>(
+    "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",
+    [s.playerId,action.sku]);
+   if(!owns.length)throw new Error("Unlock this results skin before applying it");
+   await tx.query(`INSERT INTO ppw_kp_results_skins(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,resultsStyle(action.sku)]);
+   outcome={style:resultsStyle(action.sku)};
+  }else if(action.kind==="CLEAR_RESULTS_SKIN"){
+   await tx.query("DELETE FROM ppw_kp_results_skins WHERE player_id=$1",[s.playerId]);
+   outcome={style:null};
+  }else if(action.kind==="CLEAR_BADGE"){
+   await tx.query("DELETE FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
+   outcome={style:null};
   }else if(action.kind==="RENAME_STAFF"){
    const name=cleanName(action.name);
    const hired=await tx.query<{staff_id:string}>(`

@@ -19,6 +19,7 @@ import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
 import {mountBusinessDesk,type BusinessPort} from "../ui/business-desk.js";
 import {mountKayfabeDesk} from "../ui/kayfabe-desk.js";
+import {mountAchievementDesk,type TrophyRoomView} from "../ui/achievements-desk.js";
 import {mountStaffDesk,type StaffPort} from "../ui/staff-desk.js";
 import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
@@ -62,6 +63,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   manualAdvance,extendBooking,onWeekPublished,
   claimWeeklyKP:()=>call("kpClaimWeek") as Promise<{awarded:number;reason?:string}>,
   openKayfabe:()=>onNavigate?.("kayfabe"),
+  openAchievements:()=>onNavigate?.("achievements"),
   openLegends:()=>{if(typeof window!=="undefined")window.location.hash=legendsVaultHash;},
   load:async()=>{
    const latest=await call("overview") as PlayerWorldOverview|null;
@@ -291,11 +293,22 @@ export function mountStaffPage(root:HTMLElement,scope:Scope){
  return mountStaffDesk(root,staffPort(root,scope,call));
 }
 /** Header KP route: fetch the wallet only when the player opens it. */
-export function mountKayfabePage(root:HTMLElement,scope:Scope,onBack:()=>void){
+export function mountKayfabePage(root:HTMLElement,scope:Scope,onBack:()=>void,
+ onAchievements:()=>void=()=>{window.location.hash=hostSectionHash("achievements");}){
  const call=createCardClient(scope);
  return mountKayfabeDesk(root,{
   load:()=>call("kpWorkspace"),claim:()=>call("kpClaimWeek"),
-  apply:action=>call("kpAction",{...action}),back:onBack,backLabel:"← Back to World"
+  apply:action=>call("kpAction",{...action}),back:onBack,backLabel:"← Back to World",
+  openAchievements:onAchievements
+ });
+}
+/** Independent lazy Trophy Room route; no extra read on World Home. */
+export function mountAchievementsPage(root:HTMLElement,scope:Scope,
+ onBack:()=>void,onWallet:()=>void){
+ const call=createCardClient(scope);
+ return mountAchievementDesk(root,{
+  load:()=>call("achievements") as Promise<TrophyRoomView>,
+  back:onBack,openWallet:onWallet
  });
 }
 function businessPort(root:HTMLElement,scope:Scope,

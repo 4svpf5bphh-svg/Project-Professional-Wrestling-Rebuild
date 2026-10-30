@@ -71,7 +71,7 @@ export async function readContractDesk(
     FROM (SELECT proposal_id,contract_id,person_id,status,
       created_week_index,proposed_terms
      FROM ppw_contract_renewal_proposals
-     WHERE world_id=$1 AND promotion_id=$2 AND status='PENDING'
+     WHERE world_id=$1 AND promotion_id=$2 AND status IN ('PENDING','ACCEPTED')
      ORDER BY created_week_index,proposal_id LIMIT 200) r),
     '[]'::jsonb) AS renewals,
     coalesce((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.event_id DESC)
@@ -90,7 +90,9 @@ export async function readContractDesk(
    ORDER BY e.event_id DESC LIMIT 20) d),
       '[]'::jsonb) AS date_decisions`,
     [worldId,promotionId,currentWeekIndex]);
-  const renewals=deskHistory?.renewals??[];
+  const renewalRecords=deskHistory?.renewals??[];
+   const renewals=renewalRecords.filter(r=>r.status==='PENDING');
+   const arrangedIds=new Set(renewalRecords.filter(r=>r.status==='ACCEPTED').map(r=>r.contract_id));
   const dateDecisions=deskHistory?.date_decisions??[];
   // The very same fifth SQL read now includes recent decisions, allowing Home's
   // contract news to lead into a meaningful detail view without extra reads.
@@ -126,6 +128,7 @@ export async function readContractDesk(
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
     pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
+     renewalArranged:arrangedIds.has(c.contractId),
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
    renewals,offers:pendingOffers,

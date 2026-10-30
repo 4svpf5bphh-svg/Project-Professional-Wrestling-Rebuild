@@ -2,6 +2,7 @@
  * never polls, advances time, or invents future show and finance outcomes.
  */
 import {promotionBrand} from "./broadcast-identity.js";
+import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
@@ -12,7 +13,7 @@ export interface WorldHomePort{
  extendBooking?:(year:number,week:number)=>Promise<{status:string}>;
  onWeekPublished?():Promise<void>;
  claimWeeklyKP?():Promise<{awarded:number;reason?:string}>;
- openLegends?():void;openKayfabe?():void;
+ openLegends?():void;openKayfabe?():void;openAchievements?():void;
  planner():void;roster():void;market():void;contracts():void;
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
@@ -178,6 +179,15 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
    identity,
+   ...(promotion?.promoterPrestige&&port.openAchievements?[
+    createPromoterPrestigeCrest({
+     rank:promotion.promoterPrestige.rank,
+     earned:promotion.promoterPrestige.earnedCount,
+     total:promotion.promoterPrestige.total,
+     finish:promotion.milestoneFrame,
+     onOpen:port.openAchievements
+    })
+   ]:[]),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
    el("p","ppw-home-small",deadlineDue?

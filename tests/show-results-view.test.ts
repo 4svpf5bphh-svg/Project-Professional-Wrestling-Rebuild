@@ -9,7 +9,7 @@ const receipt={worldId:"world",promotionId:"prom",showId:"show",year:1,week:1,
  resolutionId:"res",crowdResponse:77,
  matches:[{matchId:"m",position:0,crowdResponse:85,actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],
  segments:[{slotId:"a",position:1,kind:"PROMO",outcome:"REFUSED",crowdResponse:64}]};
-function fake(authorized=true,canonical=false,historicPersona=false,withProgrammes=false){
+function fake(authorized=true,canonical=false,historicPersona=false,withProgrammes=false,resultsSkin:string|null=null){
  let calls=0;
  const pool:TransactionPool={async connect(){return {release(){},
   async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[]){
@@ -17,7 +17,8 @@ function fake(authorized=true,canonical=false,historicPersona=false,withProgramm
    calls++;
    if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:withProgrammes?
     {...receipt,year:2,week:3,
-     segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]}:receipt}]:[]) as unknown as T[];
+     segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]}:receipt,
+    results_skin:resultsSkin}]:[]) as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [
     {slot_id:"m",kind:"MATCH",position:0,payload:canonical?{
      matchType:"SINGLES",family:"INDIVIDUAL",
@@ -162,4 +163,35 @@ test("certified rivalry history reaches matches and angles in the existing five-
  assert.equal(angle.programmeChapters?.[0]?.currentWinner,null);
  assert.equal(angle.outcome,"HAPPENS",
   "Only a completed on-screen segment may be a certified rivalry chapter");
+});
+
+test("Account skin travels with authorised results without a sixth Neon read",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"TERRITORY_TV");
+ const show=await readCompletedShowView(pool,scope);
+ assert.equal(show.resultsSkin,"TERRITORY_TV");
+ assert.equal(calls(),5);
+ assert.equal((await readCompletedShowView(fake().pool,scope)).resultsSkin,null);
+ await assert.rejects(readCompletedShowView(fake(false,false,false,false,
+  "TERRITORY_TV").pool,scope),/unavailable/);
+});
+
+test("Fight Night results are owner-only and need no sixth Neon query",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"FIGHT_NIGHT");
+ const show=await readCompletedShowView(pool,scope);
+ assert.equal(show.resultsSkin,"FIGHT_NIGHT");
+ assert.deepEqual(show.entries[0]?.matchContext?.winnerNames,["Star"]);
+ assert.equal(calls(),5);
+ await assert.rejects(readCompletedShowView(fake(false,true,false,false,"FIGHT_NIGHT").pool,
+  scope),/unavailable/);
+});
+
+test("Zine stays private; the same five verified results reads retain the actual winner",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"UNDERGROUND_ZINE");
+ const view=await readCompletedShowView(pool,scope);
+ assert.equal(view.resultsSkin,"UNDERGROUND_ZINE");
+ assert.deepEqual(view.entries[0]?.matchContext?.winnerNames,["Star"]);
+ assert.equal(view.entries[0]?.crowdResponse,85);
+ assert.equal(calls(),5);
+ await assert.rejects(readCompletedShowView(fake(false,true,false,false,
+  "UNDERGROUND_ZINE").pool,scope),/unavailable/);
 });

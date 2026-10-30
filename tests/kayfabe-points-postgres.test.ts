@@ -7,7 +7,7 @@ import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
-import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction}
+import {readKayfabeWorkspace,readPromoterAchievementWorkspace,claimKayfabeWeek,applyKayfabeAction}
  from "../src/db/kayfabe-points.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
 import {readStaffWorkspace} from "../src/db/staff-workspace.js";
@@ -113,6 +113,117 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal(wallet.balance,1450);
   assert.equal(wallet.activeBrand,"CHROME");
   assert.equal(wallet.createdTalent.length,1);
+  assert.equal(wallet.achievements.length,47);
+  const dedicated=await readPromoterAchievementWorkspace(db.pool,aa);
+  assert.equal(dedicated.total,47);
+  assert.equal(dedicated.achievements.find(a=>a.key==="FIRST_BELL")?.earned,true);
+  assert.equal(dedicated.achievements.find(a=>a.key==="PREMIUM_PROFIT")?.earned,false);
+  await assert.rejects(readPromoterAchievementWorkspace(db.pool,{...aa,playerId:b}),
+   /active promotion/);
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_BELL")?.earned,true);
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_PROFIT")?.unit,"profitable shows");
+  assert.equal(wallet.achievements.find(a=>a.key==="FIRST_CLASSIC")?.unit,"4★ matches");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"BADGE_GOLD",requestId:"buy-gold"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBadge,"GOLD");
+  const reset=await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_BADGE",requestId:"restore-original-frame"}) as {price:number};
+  assert.equal(reset.price,0);
+  const standard=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(standard.activeBadge,null);
+  assert.ok(standard.entitlements.includes("BADGE_GOLD"));
+  assert.equal(standard.balance,1100);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_BADGE",sku:"BADGE_GOLD",requestId:"restore-gold-frame"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBadge,"GOLD");
+  const beforeSkin=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(beforeSkin.balance,1100);
+  assert.equal(beforeSkin.activeResultsSkin,null);
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"not-owned"
+  }),/Unlock this results skin/);
+  const purchase={kind:"BUY" as const,sku:"RESULTS_TERRITORY_TV" as const,
+   requestId:"buy-territory"};
+  const paidSkin=await applyKayfabeAction(db.pool,aa,purchase) as {price:number};
+  assert.equal(paidSkin.price,750);
+  assert.equal((await applyKayfabeAction(db.pool,aa,purchase)).replayed,true);
+  const themed=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(themed.activeResultsSkin,"TERRITORY_TV");
+  assert.equal(themed.balance,350);
+  assert.ok(themed.entitlements.includes("RESULTS_TERRITORY_TV"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"RESULTS_TERRITORY_TV",requestId:"buy-again"}),/already own/);
+  const clear=await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_RESULTS_SKIN",requestId:"remove-results-skin"}) as {price:number};
+  assert.equal(clear.price,0);
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,null);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"reapply-territory"});
+  const selected=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(selected.activeResultsSkin,"TERRITORY_TV");
+  assert.equal(selected.balance,350);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
+  // Paid once per distinct skin; selection changes never debit the wallet.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_kp_wallets SET balance=2500 WHERE player_id=$1",[a]);
+  });
+  const fight={kind:"BUY" as const,sku:"RESULTS_FIGHT_NIGHT" as const,
+   requestId:"buy-fight-night"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,fight) as {price:number}).price,750);
+  assert.equal((await applyKayfabeAction(db.pool,aa,fight)).replayed,true);
+  let switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"FIGHT_NIGHT");
+  assert.equal(switched.balance,1750);
+  assert.ok(switched.entitlements.includes("RESULTS_TERRITORY_TV"));
+  assert.ok(switched.entitlements.includes("RESULTS_FIGHT_NIGHT"));
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"unauthorised-fight"
+  }),/Unlock this results skin/);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"back-to-territory"});
+  switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"TERRITORY_TV");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"back-to-fight"});
+  switched=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(switched.activeResultsSkin,"FIGHT_NIGHT");
+  assert.equal(switched.balance,1750);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
+
+  // Third paid skin, independently owned: duplicate purchase and replays are safe.
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_UNDERGROUND_ZINE",requestId:"other-owner-zine"
+  }),/Unlock this results skin/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_kp_wallets SET balance=2500 WHERE player_id=$1",[a]));
+  const zine={kind:"BUY" as const,sku:"RESULTS_UNDERGROUND_ZINE" as const,
+   requestId:"zine-purchase"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,zine) as {price:number}).price,750);
+  assert.equal((await applyKayfabeAction(db.pool,aa,zine)).replayed,true);
+  let owned=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(owned.activeResultsSkin,"UNDERGROUND_ZINE");
+  assert.equal(owned.balance,1750);
+  assert.ok(owned.entitlements.includes("RESULTS_TERRITORY_TV"));
+  assert.ok(owned.entitlements.includes("RESULTS_FIGHT_NIGHT"));
+  assert.ok(owned.entitlements.includes("RESULTS_UNDERGROUND_ZINE"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"RESULTS_UNDERGROUND_ZINE",requestId:"duplicate-zine"
+  }),/already own/);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_RESULTS_SKIN",requestId:"zine-reset-original"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,null);
+  for(const [i,sku,style] of [
+   [1,"RESULTS_TERRITORY_TV","TERRITORY_TV"],
+   [2,"RESULTS_FIGHT_NIGHT","FIGHT_NIGHT"],
+   [3,"RESULTS_UNDERGROUND_ZINE","UNDERGROUND_ZINE"]
+  ] as const){
+   await applyKayfabeAction(db.pool,aa,{
+    kind:"APPLY_RESULTS_SKIN",sku,requestId:"zine-select-"+i});
+   owned=await readKayfabeWorkspace(db.pool,aa);
+   assert.equal(owned.activeResultsSkin,style);
+   assert.equal(owned.balance,1750);
+  }
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
   await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });

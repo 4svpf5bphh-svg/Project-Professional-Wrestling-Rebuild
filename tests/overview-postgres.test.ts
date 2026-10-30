@@ -8,6 +8,7 @@ import { createWorld, addPromotion } from "../src/db/world-operations.js";
 import { joinWorld } from "../src/db/membership-operations.js";
 import { submitPromotionClaim } from "../src/db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../src/db/player-world-overview.js";
+import {readPromoterAchievementWorkspace} from "../src/db/kayfabe-points.js";
 import { listAvailablePromotions } from "../src/db/available-promotions.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -46,6 +47,13 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.equal(after?.membership,"ACTIVE");
     assert.equal(after?.world.revision,2);
     assert.equal(after?.promotion?.id,first);
+    assert.equal(after?.promotion?.promoterPrestige?.rank,"ROOKIE BOOKER");
+    assert.equal(after?.promotion?.promoterPrestige?.earnedCount,0);
+    assert.equal(after?.promotion?.promoterPrestige?.total,47);
+    const trophy=await readPromoterAchievementWorkspace(db.pool,{
+     worldId,promotionId:first,playerId});
+    assert.equal(after?.promotion?.promoterPrestige?.rank,trophy.rank);
+    assert.equal(after?.promotion?.promoterPrestige?.prestigeScore,trophy.prestigeScore);
     assert.equal(after?.promotion?.lastWeeklyNet,-125);
     assert.equal(after?.promotion?.runwayWeeks,9.5);
     assert.equal(after?.promotion?.financialDistress,"WATCH");

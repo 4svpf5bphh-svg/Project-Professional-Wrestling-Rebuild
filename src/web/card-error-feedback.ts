@@ -47,19 +47,28 @@ export function bookingErrorCode(message:string):BookingErrorCode|null{
 
 /** Never expose raw SQL or exception text. Use a small, stable error vocabulary. */
 export function cardActionDomain(method:string):
- "booking"|"kayfabe"|"legends"|"business"|"general"{
+ "booking"|"kayfabe"|"legends"|"business"|"contracts"|"general"{
  if(["save","ready","load","talent","results","creativeConsent",
   "planner","planShow","calendar","saveCalendar","archiveCalendar"].includes(method))
   return "booking";
  if(method.startsWith("kp")||method==="kpWorkspace")return "kayfabe";
+ if(["renewContract","submitContractOffer","requestContractDates","withdrawContractRenewal",
+  "withdrawContractOffer","cancelContractDates"].includes(method))return "contracts";
  if(["legendsVault","legendSeen"].includes(method))return "legends";
  if(["business","signCommercial","previewRestructure","restructurePromotion"].includes(method))
   return "business";
  return "general";
 }
-export type DeskErrorCode="KP_BALANCE"|"ALREADY_OWNED"|"ART_PENDING"|"LEGEND_LOCKED";
+export type DeskErrorCode="KP_BALANCE"|"ALREADY_OWNED"|"ART_PENDING"|"LEGEND_LOCKED"|
+ "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED";
 export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
  const domain=cardActionDomain(method);
+ if(domain==="contracts"){
+  if(/renewal already arranged|renewal already reserved/i.test(message))return "RENEWAL_ARRANGED";
+  if(/manual negotiation required|invalid renewal source contract/i.test(message))return "RENEWAL_MANUAL";
+  if(/contract already expired/i.test(message))return "CONTRACT_EXPIRED";
+  return null;
+ }
  if(domain!=="kayfabe"&&domain!=="legends")return null;
  if(/not enough Kayfabe Points/i.test(message))return "KP_BALANCE";
  if(/already own.*(?:card|style)|already own this legend/i.test(message))return "ALREADY_OWNED";
@@ -72,7 +81,10 @@ export function deskErrorMessage(code:unknown):string|null{
   KP_BALANCE:"Not enough Kayfabe Points. Earn more from certified shows and try again.",
   ALREADY_OWNED:"You already own this collectible or style. Check your personal collection.",
   ART_PENDING:"This collectible is awaiting approved artwork and cannot be purchased yet.",
-  LEGEND_LOCKED:"This legend has not entered the shared World yet. Check the Vault clues."
+  LEGEND_LOCKED:"This legend has not entered the shared World yet. Check the Vault clues.",
+  RENEWAL_ARRANGED:"A renewal is already accepted. Reload Contracts to see the next agreement.",
+  RENEWAL_MANUAL:"These renewal terms need a negotiated offer. Review the duration and payment before submitting.",
+  CONTRACT_EXPIRED:"This agreement has expired. Review the wrestler’s availability in the Talent Market."
  };
  return typeof code==="string"&&Object.prototype.hasOwnProperty.call(map,code)?
   map[code as DeskErrorCode]:null;
@@ -82,6 +94,7 @@ export function actionStatusMessage(method:string,status:number):string{
  const subject=domain==="kayfabe"?"Kayfabe Points":
   domain==="legends"?"Legends Vault":
   domain==="business"?"Business office":
+  domain==="contracts"?"Contracts desk":
   domain==="booking"?"Booking":"This action";
  if(status===401)return "Please sign in again.";
  if(status===403)return "Your session cannot perform this action. Refresh and sign in again.";

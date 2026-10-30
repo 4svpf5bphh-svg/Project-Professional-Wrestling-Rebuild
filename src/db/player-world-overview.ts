@@ -1,11 +1,15 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
+import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetric} from "../domain/promoter-achievements.js";
+import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
  membership:"ACTIVE"|"INACTIVE"|"NONE";
  promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
+    milestoneFrame?:"GOLD"|"PLATINUM"|null;
+    promoterPrestige?:{rank:string;earnedCount:number;total:number;prestigeScore:number};
    standing?:{position:number;total:number}|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
    latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
@@ -55,7 +59,7 @@ export async function readPlayerWorldOverview(
    phase:string;revision:string|number;next_lock_epoch:string;
    server_epoch:string;membership_status:"ACTIVE"|"INACTIVE"|null;
    promotion_id:string|null;promotion_name:string|null;tier:string|null;
-   home_market_name:string|null;
+   home_market_name:string|null;prestige_style:string|null;prestige_metrics:unknown;
    cash:string|number|null;debt:string|number|null;
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
@@ -74,6 +78,7 @@ export async function readPlayerWorldOverview(
     extract(epoch FROM clock_timestamp())::text AS server_epoch,
     m.status AS membership_status,
     owned.promotion_id,owned.name AS promotion_name,owned.tier,owned.home_market_name,
+     showcase.style AS prestige_style,achievement.prestige_metrics,
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
@@ -99,6 +104,12 @@ export async function readPlayerWorldOverview(
      AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'
     ORDER BY p.promotion_id LIMIT 1
    ) owned ON TRUE
+   LEFT JOIN ppw_kp_badge_styles showcase ON showcase.player_id=$2
+    AND owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (
+    SELECT to_jsonb(counters) AS prestige_metrics
+    FROM (${promoterAchievementCountersSql("w.world_id","owned.promotion_id")}) counters
+   ) achievement ON owned.promotion_id IS NOT NULL
    LEFT JOIN LATERAL (
     SELECT
      (SELECT count(*)::integer FROM ppw_booking_drafts d
@@ -489,6 +500,14 @@ export async function readPlayerWorldOverview(
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
+  const rawMetrics=x.prestige_metrics&&typeof x.prestige_metrics==="object"?
+   x.prestige_metrics as Record<string,unknown>:{};
+  const metrics={...EMPTY_PROMOTER_COUNTERS};
+  for(const key of Object.keys(metrics) as AchievementMetric[]){
+   const value=Number(rawMetrics[key]??0);
+   metrics[key]=Number.isFinite(value)&&value>=0?value:0;
+  }
+  const achievementSummary=derivePromoterAchievements(metrics);
   return {
    world:{id:x.world_id,name:x.world_name,
     year:x.year,week:x.week,day:x.day,phase:x.phase,
@@ -497,6 +516,10 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
+    promoterPrestige:{rank:achievementSummary.rank,
+     earnedCount:achievementSummary.earnedCount,total:achievementSummary.total,
+     prestigeScore:achievementSummary.prestigeScore},
+     milestoneFrame:x.prestige_style==="GOLD"||x.prestige_style==="PLATINUM"?x.prestige_style:null,
     standing:x.standing&&typeof x.standing==="object"&&"position" in x.standing&&
      "total" in x.standing&&typeof x.standing.position==="number"&&
      typeof x.standing.total==="number"?

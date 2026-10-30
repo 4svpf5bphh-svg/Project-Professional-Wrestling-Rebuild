@@ -1,0 +1,278 @@
+/* UNDERGROUND ZINE — APPROVED RESULTS-ONLY INDIE FANZINE.
+ * Original certified show, portraits, POP posts and management actions remain
+ * intact. Styling never reaches dashboard, booker, other people's game UI.
+ * Paper/ink effect uses CSS only — no image downloads, polling or new prompts.
+ */
+#game .ppw-results[data-results-skin="underground-zine"]{
+ --uz-paper:#f3eedf;--uz-ink:#1b1b1b;--uz-orange:#e55a2b;
+ --uz-muted:#55483b;--uz-border:#bfb3a1;--uz-cream:#e7d7b9;
+ --uz-dark:#171717;--ring-ink:var(--uz-ink);--ring-line:var(--uz-border);
+ color:var(--uz-ink);min-width:0;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-steps{
+ padding:5px;border-radius:2px;background:#171717;gap:5px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-step{
+ background:#2b2a2b;color:#f3e8d9;border:1px solid #7d7569;border-radius:1px;
+ font-weight:950;letter-spacing:.01em;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-step[aria-current="step"]{
+ background:var(--uz-orange);color:#141414;border-color:#f6a67d;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page{min-width:0}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-hero,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-hero.ppw-tone-flat,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-hero.ppw-tone-red_hot{
+ background:#e55a2b!important;background-image:repeating-linear-gradient(0deg,#e55a2b 0px,#e55a2b 24px,#e85e30 24px,#e85e30 25px)!important;
+ color:#151515;border:2px solid #171717;border-bottom:7px solid #171717;
+ border-radius:1px;padding:0 0 20px;box-shadow:5px 6px 0 #08090970;overflow:hidden;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-station{
+ padding:12px 13px;background:#151515;color:#f3eadb;
+ font:950 10px/1.4 system-ui;letter-spacing:.1em;text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-hero-main{
+ margin:22px 15px 0;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-title-wrap h1{
+ color:#151515;font:1000 italic clamp(36px,10vw,56px)/.92 system-ui;
+ letter-spacing:-.078em;text-shadow:2px 2px 0 #ffae77;overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-hero :is(
+ .ppw-eyebrow,.ppw-result-edition){
+ color:#211913;font:900 11px/1.4 system-ui;letter-spacing:.07em;text-shadow:none;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-lead{
+ color:#201713;font:850 clamp(16px,4.8vw,22px)/1.27 system-ui;
+ margin:11px 15px 0;text-shadow:none;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-final-bell{
+ background:repeating-linear-gradient(0deg,#f3eedf 0,#f3eedf 24px,#f0ebdd 24px,#f0ebdd 25px);
+ color:#24201d;border:2px solid var(--uz-ink);border-radius:2px;
+ box-shadow:4px 4px 0 var(--uz-orange);
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-final-bell .ppw-eyebrow{
+ display:inline-block;background:var(--uz-ink);color:#ffebd5;padding:5px 8px;
+ font:900 10px/1.4 system-ui;letter-spacing:.08em;transform:rotate(-.5deg);
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-final-bell-headline{
+ font:1000 clamp(25px,7vw,36px)/1.1 system-ui;letter-spacing:-.055em;
+ color:var(--uz-ink);text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-final-bell :is(
+ .ppw-final-bell-paragraph,.ppw-ringside-await){
+ color:#342b25;font:400 14px/1.72 Georgia,serif;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-broadcast-section-title{
+ background:#171717;color:#fff0d9;border:2px solid #171717;border-left:6px solid var(--uz-orange);
+ border-radius:1px;padding:12px;font-weight:1000;letter-spacing:.07em;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-broadcast-headline{
+ background:#e8d8ba;color:var(--uz-ink);border:2px solid #242424;
+ border-left:5px solid var(--uz-orange);border-radius:1px;box-shadow:3px 3px 0 #ad754c60;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-broadcast-headline :is(
+ strong,p){color:#221c19}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-broadcast-headline :is(
+ .ppw-eyebrow,.ppw-result-read){color:#a13d21;font-weight:950}
+/* Pale paper and explicitly DARK match participants. */
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="full"],
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"]{
+ background:repeating-linear-gradient(0deg,#f3eedf 0,#f3eedf 24px,#f0ebdd 24px,#f0ebdd 25px);
+ color:var(--uz-ink);border:1px solid #d5cabc;border-radius:1px;
+ box-shadow:5px 6px 0 #0005;overflow:hidden;margin-bottom:16px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-chapter-head{
+ background:var(--uz-ink);color:#fff0d9;border-bottom:6px solid var(--uz-orange);
+ padding:19px 14px 18px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-eyebrow{
+ font:950 10px/1.5 system-ui;color:#f8aa79;letter-spacing:.08em;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-chapter-head h2{
+ font:1000 italic clamp(28px,8vw,42px)/.99 system-ui;letter-spacing:-.07em;
+ color:#fff1dc;margin:9px 0 6px;text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-chapter-head p{
+ color:#f5b88d;font:900 10px/1.5 system-ui;letter-spacing:.06em;margin:0;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-timeline{
+ padding:16px 13px;display:grid;gap:8px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-filters{margin:0 0 7px}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-filter{
+ background:#e7d7b9;color:#2e261f;border:1px solid #9e8974;border-radius:2px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-filter[aria-pressed="true"]{
+ background:#1a1a1a;color:#fff0dd;border-color:var(--uz-orange);
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry.ppw-tone-red_hot{
+ background:#f3eedf;color:#1b1b1b;border:2px solid #282523;
+ border-left:2px solid #282523;border-top:5px solid #262424;
+ border-radius:1px;box-shadow:4px 4px 0 #e55a2b7d;margin:0 3px 17px 0;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry.ppw-result-angle{
+ background:#e8d7b7;border:2px solid #252424;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry summary{
+ background:#f3eedf;color:#20201f;padding:13px 10px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry.ppw-result-angle summary{
+ background:#e8d7b7;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry :is(
+ .ppw-result-headline,.ppw-result-competitor-name,.ppw-result-competitor,
+ .ppw-result-team,.ppw-result-main-event,.ppw-result-rating,.ppw-result-trail,
+ .ppw-result-minutes,.ppw-result-meter,.ppw-result-programme){
+ color:#1b1b1b!important;text-shadow:none!important;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-headline{
+ font:1000 italic clamp(21px,6vw,27px)/1.09 system-ui;letter-spacing:-.045em;
+ text-transform:uppercase;overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-category,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-vs{
+ color:#b54722!important;font-weight:950;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-lineup{
+ background:#e6d8be;border:2px solid #292522;border-radius:1px;
+ box-shadow:none;gap:8px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-competitor-name{
+ font-size:12px;color:#181818!important;font-weight:950;text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-photo{
+ background:#ccbda5;border:2px solid #262320;border-radius:1px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-photo-fallback{
+ color:#4c4133;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry summary::after{
+ color:#b54722;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-story{
+ color:#26211e;background:#f3eedf;padding:15px 12px;
+ border-top:2px dashed #ad9881;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-story :is(
+ p,h3,strong,.ppw-ringside-slot-headline,.ppw-ringside-slot-paragraph,
+ .ppw-result-recap,.ppw-result-reaction){
+ color:#2d2621;font-family:Georgia,serif;line-height:1.7;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-ringside-slot-headline{
+ color:#1b1b1b;font-family:system-ui;font-weight:950;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-story .ppw-result-verdict{
+ background:#1b1b1b;color:#fff0da;border-left:6px solid var(--uz-orange);
+ border-radius:1px;font:900 12px/1.5 system-ui;padding:12px 11px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-story .ppw-verified-finish-details{
+ background:#e8d8b9;color:#302722;border:1px solid #baa48c;border-radius:1px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-verified-finish-details :is(summary,p){
+ color:#322921;font-family:system-ui;
+}
+#game .ppw-results[data-results-skin="underground-zine"] :is(
+ .ppw-show-transition,.ppw-ringside-conclusion){
+ background:#e8d7b9;color:#352b23;border-left:5px solid var(--uz-orange);
+ border-radius:0;padding:11px 13px;font-family:Georgia,serif;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-ringside-conclusion :is(p,span){
+ color:#332920;
+}
+/* POP! is a separate social network — dark cards, bright type and silly posts
+   stay intact, no attempt to rewrite the fan voice. */
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"]{
+ color:var(--uz-ink);padding-bottom:10px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"]>.ppw-broadcast-section-title{
+ margin:14px 13px 9px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social{
+ background:#e8ddc8;color:#24201d;margin:13px 12px 17px;
+ border:1px solid #bba893;border-top:6px solid var(--uz-orange);
+ border-radius:1px;padding:12px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social .ppw-pop-title{
+ color:#151515;text-shadow:none;font:1000 italic clamp(28px,8vw,40px)/1 system-ui;
+ letter-spacing:-.06em;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social :is(
+ .ppw-pop-kicker,.ppw-crowd-noise-disclaimer){
+ color:#4a3c32;font-weight:850;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social .ppw-pop-post{
+ background:#293146;color:#fff0df;border:1px solid #666b80;
+ border-radius:8px;box-shadow:none;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social .ppw-pop-post :is(
+ .ppw-pop-display-name,.ppw-pop-copy,.ppw-pop-reply,.ppw-pop-reply span){
+ color:#fff2e8;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social .ppw-pop-handle{
+ color:#c6d2e3;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social .ppw-pop-reply{
+ background:#172136;color:#ffefe1;border-left:3px solid #ee9b67;border-radius:4px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-pop-social :is(
+ .ppw-pop-metrics,.ppw-crowd-noise-read){color:#d9e3f0}
+/* Private office: magazine cut-out label and handwritten-looking notes via
+   established typography; keep actual credible Road Agent data as written. */
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-brief{
+ background:#f3eedf;color:#231e1b;border:2px solid #292423;
+ border-top:6px solid var(--uz-orange);border-radius:1px;
+ box-shadow:4px 4px 0 #27212050;margin:12px 13px 19px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-brief :is(
+ h2,h3,strong,p,.ppw-post-show-guidance,.ppw-road-agent-voice,.ppw-road-agent-next,
+ .ppw-road-agent-standout,.ppw-road-agent-continuity){
+ color:#27201c;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-brief>h2{
+ background:var(--uz-orange);border:2px solid #1b1b1b;
+ box-shadow:3px 3px 0 #171717;padding:10px;
+ font:1000 clamp(17px,5vw,24px)/1.2 system-ui;color:#181818;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-brief .ppw-eyebrow,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-road-agent h3{
+ color:#a93d1e;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-post-show-priority{
+ background:#e8d7b9;border-left:5px solid #b94925;border-radius:0;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-next-show-choice{
+ color:#2e271e;background:#e7d8bb;border:1px solid #b3a08b;
+ border-left:5px solid var(--uz-orange);border-radius:1px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-next-show-choice :is(
+ h3,p,strong){color:#2a221e}
+#game .ppw-results[data-results-skin="underground-zine"] :is(
+ .ppw-next-show-route,.ppw-results-next){
+ background:#171717;color:#fff0d7;border:1px solid var(--uz-orange);
+ border-radius:1px;font-weight:950;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum){
+ color:#261e19;background:#e7d7bb;border:1px solid #b5a38c;
+ border-left:4px solid var(--uz-orange);border-radius:1px;margin:12px 13px;
+}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum) :is(
+ h2,h3,p,strong,summary){color:#271f1b}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="full"]>.ppw-results-next,
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-results-page[data-page="after"]>.ppw-results-next{
+ margin:15px 13px;width:calc(100% - 26px);
+}
+/* Explicit narrow screen widths are already constrained by the main Results
+   layout; these rules keep decorated card shadows inside 320px. */
+@media(max-width:390px){
+ #game .ppw-results[data-results-skin="underground-zine"] .ppw-zine-chapter-head{padding:16px 12px}
+ #game .ppw-results[data-results-skin="underground-zine"] .ppw-result-timeline{padding:12px 10px}
+ #game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry summary{padding:11px 9px}
+ #game .ppw-results[data-results-skin="underground-zine"] .ppw-result-story{padding:12px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-results[data-results-skin="underground-zine"] *{transition:none!important;animation:none!important}
+}

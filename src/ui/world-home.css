@@ -211,3 +211,6 @@
 .ppw-home-broadcast{margin-top:18px}
 @media(max-width:370px){.ppw-home-promotion-identity{gap:9px}
  .ppw-home-promotion-mark{width:58px;height:58px}}
+
+/* Crest lives below promotion identity rather than competing with it. */
+.ppw-home-hero .ppw-promoter-prestige-crest{margin:7px 0 5px;max-width:405px}

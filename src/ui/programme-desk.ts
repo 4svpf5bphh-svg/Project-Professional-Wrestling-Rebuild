@@ -257,15 +257,23 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      sideBWins:p.sideBWins,championshipId:p.championshipId,
      sideAName:p.sideA.map(x=>x.name).join(" & "),
      sideBName:p.sideB.map(x=>x.name).join(" & "),
+     direction:p.latestFollowUp?.choice??null,directionStatus:continuity.directionKind,
      recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null});
     const sheet=element("div","ppw-programme-staff-note");
     sheet.append(element("span","ppw-programme-eyebrow","CREATIVE DESK · OPTIONAL"),
      element("h3","",note.headline),
      element("p","",note.observation),
      element("p","ppw-programme-staff-suggestion",
-      continuity.directionKind!=="UNSET"&&continuity.suggestion?
-       continuity.suggestion:note.suggestion),
+      note.suggestion),
      element("small","ppw-muted","From this rivalry's existing verified record. You control the booking."));
+    const ideas=element("div","ppw-programme-booking-ideas");
+    for(const idea of note.options){
+     const item=element("article","ppw-programme-booking-idea");
+     item.append(element("strong","",idea.label),element("p","",idea.plan));
+     ideas.append(item);
+    }
+    sheet.append(element("span","ppw-programme-eyebrow","THREE NEXT-CARD OPTIONS"),ideas);
+    if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
     advice.append(sheet);
    }
    panel.append(advice);
@@ -297,8 +305,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       direction.append(element("p","ppw-programme-direction-note",
        "A newer match has taken place. Decide whether to continue the issue or change course."));
     }
-    direction.append(element("p","ppw-programme-direction-note",
-     "This is a creative reminder only. No bout or angle is booked for you."));
+    if(p.latestFollowUp){
+     const elapsed=Math.max(0,weekIndex-p.latestFollowUp.weekIndex);
+     const pending=["PENDING_REMATCH","PENDING_RETALIATION","BUILDING_REMATCH"].includes(continuity.directionKind);
+     direction.append(element("p","ppw-programme-direction-note",
+      (pending?"Still open":"Progress recorded")+" · "+elapsed+" week"+(elapsed===1?"":"s")+
+      " since your decision. "+(continuity.suggestion??"Choose a relevant next card.")));
+    }else direction.append(element("p","ppw-programme-direction-note",
+     "Your choice becomes a continuing creative thread; a future certified chapter records whether you followed through."));
     if(latestMatch&&view.canEdit){
      const choices=element("div","ppw-programme-directions");
      for(const [choice,title,note] of [
@@ -319,6 +333,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }else if(latestMatch&&!view.canEdit)
      direction.append(element("p","ppw-programme-direction-note",
       "The card deadline has passed. Creative decisions reopen next week."));
+    direction.append(element("small","ppw-muted",
+     "No bout or angle is booked for you. Choose and save the actual card separately."));
     if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
     panel.append(direction);
    }

@@ -23,6 +23,9 @@ import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
+import "./territory-results-skin.css";
+import "./fight-night-results-skin.css";
+import "./underground-zine-results-skin.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -140,10 +143,23 @@ export async function mountShowResults(root:HTMLElement,port:{
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
  root.classList.remove("ppw-editorial-ready");
+ if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
+ else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
+ else if(show.resultsSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
+ else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
+ if(show.resultsSkin==="TERRITORY_TV")
+  header.append(node("div","ppw-territory-station",
+   "★ PPW TERRITORY TELEVISION  ·  ON THE AIR"));
+ if(show.resultsSkin==="FIGHT_NIGHT")
+  header.append(node("div","ppw-fight-station",
+   "PPW / FIGHT NIGHT  ·  OFFICIAL EVENT REPORT"));
+ if(show.resultsSkin==="UNDERGROUND_ZINE")
+  header.append(node("div","ppw-zine-station",
+   "THE UNDERGROUND REPORT · ISSUE "+String(show.week).padStart(3,"0")));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -333,23 +349,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   const narrative=node("div","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
-  // The columnist's account precedes the permanently visible verified finish.
-  // Staff will eventually deliver analysis; no simulated Booker Breakdown.
+  // Official finish remains verifiable without repeating the result in a huge box.
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
-   const replay=node("section","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
-   replay.setAttribute("aria-label","Finish replay");
-   append(replay,node("span","ppw-finish-eyebrow","◉ OFFICIAL FINISH"),
-    node("strong","ppw-finish-title",finish.title));
    const finishNotes=document.createElement("details");
-   finishNotes.className="ppw-verified-finish-details";
-   finishNotes.open=true; // Readable when AI editorial is unavailable.
-   finishNotes.append(node("summary","","Read the certified finish"),
+   finishNotes.className="ppw-verified-finish-details ppw-finish-"+finish.tone.toLowerCase();
+   finishNotes.open=true; // Offline fallback if the editorial isn't ready.
+   finishNotes.append(node("summary","","Official finish · "+finish.title),
     node("p","ppw-finish-description",finish.description));
-   replay.append(finishNotes);
-   if(finish.winnerLabel)
-    append(replay,node("p","ppw-finish-winner","WINNER: "+finish.winnerLabel));
-   append(body,replay);
+   body.append(finishNotes);
   }
   if(review.bulletins.length){
    append(body,node("h3","ppw-result-fallout-title","CONFIRMED FALLOUT"));
@@ -361,17 +369,6 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.type==="MATCH"&&entry.matchContext?.winnerNames.length)
    append(body,node("p","ppw-result-verdict",
     "WINNER  ·  "+entry.matchContext.winnerNames.join(" & ")));
-  if(entry.performerIdentities?.length){
-   const profiles=node("div","ppw-result-personas");
-   for(const person of entry.performerIdentities){
-    const tag=node("div","ppw-result-persona");
-    append(tag,node("strong","",person.ringName),
-     node("span","",label(person.character)));
-    if(person.style)append(tag,node("small","",label(person.style)));
-    append(profiles,tag);
-   }
-   append(body,profiles);
-  }
   const chapters=entry.programmeChapters??[];
   if(chapters.length){
    const context=node("section","ppw-rivalry-at-ringside");
@@ -478,8 +475,50 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
+ if(show.resultsSkin==="TERRITORY_TV"){
+  const station=node("header","ppw-territory-chapter-head");
+  station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · FULL CARD"),
+   node("h2","","THE COMPLETE NIGHT"),
+   node("p","","OFFICIAL MATCHES, RESULTS & ON-AIR MOMENTS"));
+  full.append(station);
+ }
+ if(show.resultsSkin==="FIGHT_NIGHT"){
+  const station=node("header","ppw-fight-chapter-head");
+  station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · OFFICIAL RECORD"),
+   node("h2","","MATCH REPORT"),
+   node("p","","COMPLETE CARD · IN EVENT ORDER"));
+  full.append(station);
+ }
+ if(show.resultsSkin==="UNDERGROUND_ZINE"){
+  const station=node("header","ppw-zine-chapter-head");
+  station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · COMPLETE CARD"),
+   node("h2","","EVERY BELL. EVERY BRAWL."),
+   node("p","","THE COMPLETE SHOW · AS IT HAPPENED"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
+ if(show.resultsSkin==="TERRITORY_TV"){
+  const station=node("header","ppw-territory-chapter-head");
+  station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · AFTER THE BELL"),
+   node("h2","","THE AFTERMATH"),
+   node("p","","FANS, RUMOURS & PRIVATE MANAGEMENT"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="FIGHT_NIGHT"){
+  const station=node("header","ppw-fight-chapter-head");
+  station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · THE FALLOUT"),
+   node("h2","","AFTER THE BELL"),
+   node("p","","FAN REACTIONS · PRIVATE MANAGEMENT REPORT"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="UNDERGROUND_ZINE"){
+  const station=node("header","ppw-zine-chapter-head");
+  station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · THE AFTERMATH"),
+   node("h2","","AFTER THE BELL!"),
+   node("p","","THE INTERNET REACTS · THE OFFICE ASSESSES"));
+  after.append(station);
+ }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
   ...(reactions.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);

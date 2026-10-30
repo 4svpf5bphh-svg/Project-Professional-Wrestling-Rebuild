@@ -44,7 +44,7 @@ import {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world-reco
 import {readLegendsVault,markLegendRevealSeen} from "../db/legends-vault.js";
 import {readWorldHeritage,readOlderWorldMoments,type WorldMomentCursor}
  from "../db/world-honours.js";
-import {readKayfabeWorkspace,claimKayfabeWeek,applyKayfabeAction,type KpAction}
+import {readKayfabeWorkspace,readPromoterAchievementWorkspace,claimKayfabeWeek,applyKayfabeAction,type KpAction}
  from "../db/kayfabe-points.js";
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
@@ -261,6 +261,10 @@ export async function claimPromotionAsActor(context:WorldApiContext,input:ClaimI
 export async function kayfabeWorkspaceAsActor(context:WorldApiContext,worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
  return readKayfabeWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function achievementsWorkspaceAsActor(context:WorldApiContext,worldId:string,promotionId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
+ return readPromoterAchievementWorkspace(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
 }
 export async function claimKayfabeWeekAsActor(context:WorldApiContext,worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");validate(promotionId,"promotion");
