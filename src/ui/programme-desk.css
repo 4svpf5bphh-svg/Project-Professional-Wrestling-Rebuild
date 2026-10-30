@@ -105,3 +105,35 @@
 .ppw-programme-chapter[data-kind=cooling]{border-left-color:#f0a6a2}
 .ppw-programme-chapter strong{display:block;font-size:13px;line-height:1.35;color:#eaf9ff}
 .ppw-programme-chapter p{margin:5px 0 0;color:#b8d4e5;font-size:12px;line-height:1.5}
+
+/* Programme continuity is a compact broadcast recap, not another dashboard
+   full of simulator scores. The same verified beats also inform Creative. */
+.ppw-programme-last-chapter{margin:11px 0 6px;padding:12px 13px;
+ border:1px solid #426a7a;border-radius:12px;
+ background:linear-gradient(110deg,#142a43,#162536)}
+.ppw-programme-last-chapter .ppw-programme-eyebrow{padding-bottom:5px;color:#92dbfb}
+.ppw-programme-last-chapter strong{font-size:13px;line-height:1.4;color:#fff0cf}
+.ppw-programme-last-chapter p{font-size:12px;line-height:1.45;color:#d0e1ee;margin:6px 0 0}
+.ppw-programme-follow-through{margin:10px 0;padding:11px 12px;border-left:3px solid #ffc16f;
+ border-radius:9px;background:#102c40}
+.ppw-programme-follow-through[data-status=rematch_held],
+.ppw-programme-follow-through[data-status=angle_after_retaliation],
+.ppw-programme-follow-through[data-status=result_stands]{
+ border-left-color:#92e6bc;background:#123a3a}
+.ppw-programme-follow-through strong{display:block;font-size:13px;color:#f3f8ff}
+.ppw-programme-follow-through p{font-size:12px;line-height:1.5;margin:6px 0 0;color:#bad7e7}
+
+/* Completed feuds are archived chapters, not one-line labels. */
+.ppw-programme-archive-card{margin:11px 0;border:1px solid #3c5872;
+ border-radius:12px;padding:11px 13px;background:linear-gradient(135deg,#17283c,#102033)}
+.ppw-programme-archive-card summary{display:flex;flex-direction:column;gap:5px;
+ cursor:pointer;min-height:42px;justify-content:center}
+.ppw-programme-archive-card summary strong{font-size:14px;line-height:1.4;color:#f9e5bf;
+ overflow-wrap:anywhere}
+.ppw-programme-archive-card summary small{color:#a9c5d8;font-size:11px}
+.ppw-programme-archive-card p{border:0;margin:8px 0;padding:0;
+ font-size:12px;line-height:1.5;color:#bdd9e9}
+.ppw-programme-archive-card .ppw-programme-archive-score{font-weight:850;
+ font-size:14px;color:#fff}
+.ppw-programme-archive-card .ppw-programme-archive-beats{color:#a9d5ed}
+.ppw-programme-archive-card button{max-width:100%;white-space:normal}

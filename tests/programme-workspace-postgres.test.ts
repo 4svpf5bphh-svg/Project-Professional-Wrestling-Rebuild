@@ -163,7 +163,8 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   const firstDirection=(await readProgrammeWorkspace(db.pool,scope)).programmes
    .find(x=>x.programmeId===activeProgramme)?.latestFollowUp;
   assert.deepEqual(firstDirection,{choice:"PURSUE_REMATCH",
-   showId:"postshow-one",slotId:"main-event",weekIndex:0});
+   showId:"postshow-one",slotId:"main-event",weekIndex:0,
+   nextMatchWeekIndex:null,nextAngleWeekIndex:null});
   const changed=await chooseProgrammeDirection(db.pool,{...choice,
    choice:"LET_STAND",requestId:"direction-change",expectedRevision:6});
   assert.equal(changed.status,"APPLIED");
@@ -177,6 +178,65 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   const links=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_booking_drafts WHERE world_id=$1",[worldId]));
   assert.equal(links[0]!.n,"1","Post-show direction does not generate an unsolicited booking");
+  // Only a *later certified chapter* can count as follow-through. The same
+  // selected match and a planned draft cannot do it. The winning side in
+  // this new chapter is reported from World history, not inferred from heat.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]);
+   await tx.query(
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
+    "resolution_id,crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'postshow-two',1,2,'resolution-chapter',80,'{}'::jsonb,$3)",
+    [worldId,promotionId,"b".repeat(64)]);
+   await tx.query(
+    "INSERT INTO ppw_programme_resolved_activities("+
+    "world_id,promotion_id,programme_id,show_id,slot_id,week_index,"+
+    "kind,signature,crowd_response,impact,winner_side)"+
+    " VALUES($1,$2,$3,'postshow-two','main-event-two',1,"+
+    "'MATCH','second chapter',80,77,'B')",
+    [worldId,promotionId,activeProgramme]);
+  });
+  const chapter=await readProgrammeWorkspace(db.pool,scope);
+  const observed=chapter.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(observed.latestFollowUp?.choice,"LET_STAND");
+  assert.equal(observed.latestFollowUp?.nextMatchWeekIndex,1);
+  assert.equal(observed.latestFollowUp?.nextAngleWeekIndex,null);
+  assert.equal(observed.recentActivity[0]?.winnerSide,"B");
+  assert.equal(observed.recentActivity[0]?.weekIndex,1);
+  assert.equal(observed.recentActivity[1]?.winnerSide,null);
+  // The player-facing BOOKING editor must see the same facts as Programmes.
+  // A later match does not fulfil a promised on-screen retaliation angle.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)"+
+   " VALUES($1,'weekly-two',$2,1,2,'DRAFT')",[worldId,promotionId]));
+  const cardAfterMatch=await showCardEditorAsActor(context,worldId,promotionId,"weekly-two");
+  const reminder=cardAfterMatch.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(reminder.latestFollowUp?.laterMatchRecorded,true);
+  assert.equal(reminder.latestFollowUp?.laterAngleRecorded,false);
+  assert.equal(reminder.latestFollowUp?.laterBeatRecorded,true);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[worldId]);
+   await tx.query(
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
+    "resolution_id,crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'postshow-three',1,3,'resolution-third-chapter',75,'{}'::jsonb,$3)",
+    [worldId,promotionId,"c".repeat(64)]);
+   await tx.query(
+    "INSERT INTO ppw_programme_resolved_activities("+
+    "world_id,promotion_id,programme_id,show_id,slot_id,week_index,"+
+    "kind,signature,crowd_response,impact)"+
+    " VALUES($1,$2,$3,'postshow-three','third-angle',2,"+
+    "'SEGMENT','retaliation angle',75,71)",
+    [worldId,promotionId,activeProgramme]);
+  });
+  const afterAngle=await readProgrammeWorkspace(db.pool,scope);
+  const third=afterAngle.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(third.latestFollowUp?.nextMatchWeekIndex,1);
+  assert.equal(third.latestFollowUp?.nextAngleWeekIndex,2);
+  const cardAfterAngle=await showCardEditorAsActor(context,worldId,promotionId,"weekly-two");
+  const next=cardAfterAngle.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(next.latestFollowUp?.laterMatchRecorded,true);
+  assert.equal(next.latestFollowUp?.laterAngleRecorded,true);
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
