@@ -1,5 +1,7 @@
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView} from "../db/show-results-view.js";
+import type {RingsideMemory} from "../db/ringside-continuity.js";
+import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
 export const RINGSIDE_PROMPT_VERSION="ringside-v5";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
@@ -261,7 +263,8 @@ const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
  n>=42?"divided":n>=28?"muted":"quiet";
 
 /** Send relevant certified facts once, without redundant IDs and analytics. */
-export function ringsideBrief(show:CompletedShowView){
+export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
+ const slotStories=verifiedSlotStoryThreads(show,memory);
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
@@ -272,6 +275,7 @@ export function ringsideBrief(show:CompletedShowView){
     previous:i?{type:show.entries[i-1]!.type,headline:show.entries[i-1]!.headline}:null,
     next:show.entries[i+1]?{type:show.entries[i+1]!.type,headline:show.entries[i+1]!.headline}:null,
    summary:e.summary,
+   ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     titleContested:e.matchContext.championshipContested}}:{}),
@@ -348,14 +352,20 @@ turn, medical consequence, contractual fact, or actual quotation. Never
 claim an invented spot will change simulation statistics or future history.
 These details are coloured commentary, not new durable World events.
 
-HISTORY is a tiny verified retrospective of *this promotion* before this show.
-Mention at most ONE relevant callback per bout, preferably an actual previous
-meeting, rematch result or currently active programme. Refer to Y/W or
-programme only when supplied, without inventing show lore, quotes, grudges,
-turns, hot streaks or rivalries from isolated results. No verified HISTORY?
-Do not pretend to remember. Never use current or future programme state as
-if it happened before the show. History is colour, never authority over
-this card\u0027s winners, finishes or title consequences.
+HISTORY is now scoped to each slot as optional storyThread evidence, never
+as a licence to embroider. A rivalry entry gives verified preceding meetings,
+on-screen chapters and (if recorded) the last match's winner. An
+'earlierOnThisCard' field means an earlier certified scene in that SAME
+programme; it does not prove retaliation, a promo promise, changed alignment,
+or that the previous scene caused the match. 'previousSharedMatch' proves only
+both sides shared a completed card, NOT that they were rivals then. Mention
+at most ONE relevant historical callback in a bout, varying where you place
+it; do not recite the complete programme history or mechanically prefix every
+match with a recap. Use the history to colour personalities and stakes
+without inventing a feud result, grudge, quote, rivalry agreement or revenge.
+When no storyThread exists, do not invent a shared history. Never treat future
+or live-world state as prior history. The current card still decides finishes,
+injuries and titles, regardless of any history.
 
 Use PROVIDED wrestler signature and finisher moves with precision, especially
 when they naturally fit the decisive result. A name in the supplied repertoire
