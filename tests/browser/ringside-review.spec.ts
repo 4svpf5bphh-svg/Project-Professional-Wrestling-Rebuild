@@ -97,6 +97,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
   await expect(page.locator(".ppw-results")).toHaveClass(/ppw-editorial-ready/);
+   await expect(page.locator(".ppw-results")).not.toHaveAttribute("data-results-skin");
   await expect(page.locator(".ppw-result-meter").first()).toHaveCSS("display","none");
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(page.getByRole("heading",{name:"Omega takes the win"})).toBeVisible();
@@ -323,3 +324,47 @@ test("Ringside: partial cached article falls back to canonical results",async({p
  await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
  expect(reads).toBe(1);expect(commentary).toBe(1);
 });
+
+for(const width of [320,390]){
+ test(`Territory TV ${width}px: dark names on cream, readable POP, private brief and one results read`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let reads=0,editorials=0;
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const method=r.request().postDataJSON().method;
+   if(method==="results")reads++;
+   return r.fulfill({json:method==="resultsArchive"?{
+    items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+     bookingClass:"REGULAR",crowdResponse:84,matchCount:1,angleCount:1}],
+    nextCursor:null}:{...show,resultsSkin:"TERRITORY_TV"}});
+  });
+  await page.route("**/api/results-commentary",r=>{
+   editorials++;return r.fulfill({json:{status:"ready",review}});
+  });
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const themed=page.locator(".ppw-results[data-results-skin='territory-tv']");
+  await expect(themed).toBeVisible();
+  await expect(themed.locator(".ppw-territory-station")).toContainText("TERRITORY TELEVISION");
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(page.getByRole("heading",{name:"THE COMPLETE NIGHT"})).toBeVisible();
+  const names=page.locator(".ppw-result-competitor-name");
+  await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
+  await expect(names.first()).toHaveCSS("color","rgb(40, 35, 45)");
+  await expect(page.locator(".ppw-result-match > summary")).toHaveCSS(
+   "background-color","rgb(240, 228, 197)");
+  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
+  await expect(page.locator(".ppw-result-verdict")).toContainText("Kenny Omega");
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await expect(page.getByRole("heading",{name:"THE AFTERMATH"})).toBeVisible();
+  await expect(page.locator(".ppw-pop-social .ppw-pop-post").first()).toHaveCSS(
+   "background-color","rgb(37, 51, 74)");
+  await expect(page.locator(".ppw-pop-copy").first()).toHaveCSS("color","rgb(255, 241, 221)");
+  await expect(page.locator(".ppw-post-show-brief")).toHaveCSS(
+   "background-color","rgb(233, 219, 186)");
+  await expect(page.locator(".ppw-post-show-road-agent")).toContainText("The main event delivered.");
+  expect(reads).toBe(1);expect(editorials).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
