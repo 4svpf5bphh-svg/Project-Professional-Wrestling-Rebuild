@@ -73,8 +73,9 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await expect(dialog).toContainText("Matt Riddle");
  await expect(dialog).toContainText("Alex Shelley");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
- await page.getByRole("button",{name:/Book a turn/}).click();
+ await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByLabel("Creative direction").selectOption("TURN");
  await dialog.getByLabel("Turn a complete tag team").selectOption("pair-a");
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Matt Riddle");
