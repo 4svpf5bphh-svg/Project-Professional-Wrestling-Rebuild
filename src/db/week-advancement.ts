@@ -63,6 +63,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       const ready=await tx.query<{
         required_promotions:number;submitted_shows:number;resolved_promotions:number;
         certified_promotions:number|null;cleared_promotions:number|null;
+        has_active_human_manager:boolean;
       }>(
         `SELECT count(DISTINCT p.promotion_id)::integer AS required_promotions,
                 count(d.draft_id)::integer AS submitted_shows,
@@ -70,7 +71,11 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
                 (SELECT s.certified_promotions FROM ppw_week_resolution_seals s
                   WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3) AS certified_promotions,
                 (SELECT c.eligible_promotions FROM ppw_week_resource_clearances c
-                  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3) AS cleared_promotions
+                  WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3) AS cleared_promotions,
+                EXISTS (SELECT 1 FROM ppw_promotion_controls owner
+                  JOIN ppw_memberships member ON member.world_id=owner.world_id
+                    AND member.player_id=owner.player_id AND member.status='ACTIVE'
+                  WHERE owner.world_id=$1 AND owner.active) AS has_active_human_manager
            FROM ppw_promotions p
            LEFT JOIN ppw_booking_drafts d
              ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
@@ -86,7 +91,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       );
       if(ready.length!==1) throw new Error("World readiness lookup failed");
       const {required_promotions:required,submitted_shows:submitted,resolved_promotions:resolved,
-        certified_promotions:certified,cleared_promotions:cleared}=ready[0]!;
+        certified_promotions:certified,cleared_promotions:cleared,
+        has_active_human_manager:hasActiveHumanManager}=ready[0]!;
       if(required<1) throw new Error("World has no active promotions");
       if(submitted<required||submitted>required*2||resolved!==submitted)
        throw new Error("World week incomplete: active promotions need resolved shows; all submitted PPVs also require matching receipts");
@@ -291,13 +297,20 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // Expired unanswered requests become an automatic historical closure,
       // not a forged booker decision or a permanent full inbox.
       await closeUnavailableBackstageRequests(tx,input.worldId,weekIndex+1);
-      // One evidence-led partnership pitch may occupy this week's slot.
-      await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
-      await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);
+      // New private creative pitches are only authored for active human bookers.
+      // The readiness query already knows whether one exists; do not run four
+      // historic card scans for an AI-only World every week. Keep memory and
+      // follow-through settlement independent so old human records survive.
+      if(hasActiveHumanManager){
+       await publishBackstageTagPitches(tx,input.worldId,weekIndex+1);
+       await publishBackstageRivalryPitches(tx,input.worldId,weekIndex+1);
+      }
       // Evidence-backed recollections are certified before choosing new requests.
       await publishBackstageMemories(tx,input.worldId,weekIndex+1);
-      await publishBackstageRequests(tx,input.worldId,weekIndex+1);
-      await publishBackstageTeamMoments(tx,input.worldId,weekIndex+1);
+      if(hasActiveHumanManager){
+       await publishBackstageRequests(tx,input.worldId,weekIndex+1);
+       await publishBackstageTeamMoments(tx,input.worldId,weekIndex+1);
+      }
       await tx.query(
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],
