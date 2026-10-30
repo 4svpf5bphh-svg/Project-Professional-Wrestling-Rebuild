@@ -723,7 +723,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
     if(index===0)item.classList.add("ppw-news-lead");
-    const wild=!official&&story.key.startsWith("wild:");
+    const wild=!official&&story.id.startsWith("wild:");
     if(wild)item.classList.add("ppw-news-wild-theory");
     item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
      wild?"UNVERIFIED / INTERNET CONSPIRACY 👀":"RUMOUR / NOT CONFIRMED"),
