@@ -27,6 +27,8 @@ export interface StaffRivalryEvidence{
  sideA:string;sideB:string;heat:number|null;
  lastKind:"MATCH"|"SEGMENT"|null;lastWeekIndex:number|null;
  lastWinnerSide:"A"|"B"|null;
+ lastMatchWinnerSide:"A"|"B"|null;
+ lastMatchWeekIndex:number|null;
  directionChoice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND"|null;
  directionWeekIndex:number|null;
  laterMatch:boolean;laterAngle:boolean;
@@ -47,7 +49,12 @@ export function deriveStaffRivalryObservations(story:StaffRivalryEvidence|null):
   "Their last recorded rivalry chapter was a match"+
    (story.lastWinnerSide==="A"?", won by "+story.sideA:
     story.lastWinnerSide==="B"?", won by "+story.sideB:"")+". ":
-  story.lastKind==="SEGMENT"?"Their latest chapter was an on-screen angle. ":
+  story.lastKind==="SEGMENT"?"Their latest chapter was an on-screen angle. "+
+   (story.lastMatchWeekIndex!==null?
+    "Their previous recorded match"+
+    (story.lastMatchWinnerSide==="A"?" went to "+story.sideA:
+     story.lastMatchWinnerSide==="B"?" went to "+story.sideB:" had no confirmed winner")+
+    ". ":""):
   "This rivalry has not yet had a completed chapter. ";
  const unresolved=story.directionChoice==="PURSUE_REMATCH"&&!story.laterMatch?
   "A return bout was requested but has not been completed.":
