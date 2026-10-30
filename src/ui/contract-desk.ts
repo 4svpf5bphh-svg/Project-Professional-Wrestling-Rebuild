@@ -235,6 +235,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     const freeWeeks=Math.max(0,c.weeksRemaining-(c.remainingDates??0));
     const maxExtra=Math.max(0,Math.min(freeWeeks,
      104-(c.dateEntitlement??c.remainingDates??0)));
+    if(c.additionalDatesEligible&&!c.pendingNegotiation&&view!.canEdit&&maxExtra===0)
+     body.append(el("p","ppw-contract-renew-hint",
+      "No extra appearances fit before this agreement expires. Consider a renewal instead."));
     if(c.additionalDatesEligible&&!c.pendingNegotiation&&view!.canEdit&&maxExtra>0){
      const values=amounts.get(c.contractId)??{dates:Math.min(3,maxExtra),payment:0};
      values.dates=Math.min(values.dates,maxExtra);
@@ -301,10 +304,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       input.value=String(draft[key]);input.disabled=disabled;
       input.setAttribute("aria-label",name+" for "+c.name);
       input.oninput=()=>{if(input.value!=="")draft[key]=Number(input.value);
-       if(key==="termWeeks"&&family==="EXCLUSIVE"){
-        draft.dateEntitlement=Number(input.value);
+       if(key==="termWeeks"){
+        if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
+        else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
         const dates=panel.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
-        if(dates)dates.value=input.value;
+        if(dates)dates.value=String(draft.dateEntitlement);
        }};
       if(key==="dateEntitlement")input.dataset.renewDates="yes";
       label.append(input);panel.append(label);
