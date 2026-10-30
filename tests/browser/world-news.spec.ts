@@ -38,7 +38,12 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     title:"A certified classic",summary:"4.75 star match",sourceKind:"MATCH"},
     {year:2,week:6,id:"s1",desk:"DIRT",certainty:"SPECULATION",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
-    title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"}]
+    title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"},
+    {year:2,week:6,id:"wild:s1",desk:"DIRT",certainty:"SPECULATION",
+    promotionId:"human",promotionName:"Human Pro",showId:"s1",
+    title:"Conspiracy corner: is the coffee machine running creative?",
+    summary:"An internet theory with no evidence. The coffee machine has not responded.",
+    sourceKind:"EVENT"}]
   }});
   return route.fulfill({json:method==="overview"?overview:{}});
  });
@@ -70,7 +75,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  expect(rect!.x+rect!.width).toBeLessThanOrEqual(391);
  await page.getByRole("button",{name:"Dirt Sheets"}).click();
  await expect(page.getByText("Creative shake-up?")).toBeVisible();
- await expect(page.getByText("SPECULATION / NOT CONFIRMED")).toBeVisible();
+ await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
+ await expect(page.getByText("UNVERIFIED / INTERNET CONSPIRACY 👀")).toBeVisible();
+ await expect(page.getByText(/coffee machine running creative/)).toBeVisible();
+ await expect(page.locator(".ppw-news-wild-theory")).toHaveCount(1);
  await expect(page.getByText("A certified classic")).toHaveCount(0);
  await expect(page.getByText("SECRET PRIVATE CONTRACT")).toHaveCount(0);
  await page.getByRole("button",{name:"Official News"}).click();
