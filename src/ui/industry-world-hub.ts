@@ -465,10 +465,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      WRESTLER_WOMEN:"WOMEN'S WRESTLER OF THE YEAR",
      PROMOTION:"PROMOTION OF THE YEAR"
     };
-    const trophy=el("div","ppw-honours-trophy");
-    trophy.setAttribute("aria-hidden","true");
-    trophy.append(el("span","ppw-honours-trophy-cup","★"));
-    section.append(trophy);
+    // A graphic identity for the awards, not a misleading generic cup.
+    const emblem=el("div","ppw-honours-emblem");
+    emblem.setAttribute("aria-hidden","true");
+    emblem.append(el("span","","✦"),el("strong","","YEAR-END HONOURS"));
+    section.append(emblem);
     if(heritage&&!heritage.honours.length)section.append(el("div","ppw-heritage-empty-spotlight",
      "The stage is set. The first trophies will be presented once a full year of verified wrestling has been certified."));
     for(const award of heritage?.honours??[]){
