@@ -44,14 +44,41 @@ test("staff and Backstage recall private certified rivalries without extra Neon 
    await tx.query("INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,"+
     "side,position,ref_kind,ref_id) VALUES($1,$2,'feud','A',0,'PERSON',$3),"+
     "($1,$2,'feud','B',0,'PERSON',$4)",[worldId,promotionId,...wrestlers]);
-   for(const [showId,week] of [["old-show",3],["angle-show",4],["future-show",7]] as const)
+   for(const [showId,week] of [["old-show",3],["angle-show",4],["future-show",7]] as const){
+    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,"+
+     "status) VALUES($1,$2,$3,1,$4,'DRAFT')",[worldId,showId,promotionId,week]);
     await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,"+
      "week,resolution_id,crowd_response,receipt_json,receipt_digest)"+
      " VALUES($1,$2,$3,1,$4,$5,80,'{}'::jsonb,$6)",
      [worldId,promotionId,showId,week,"resolution-"+showId+"-"+id,"a".repeat(64)]);
+   }
+   const cardEvents=[
+    {showId:"old-show",slotId:"main",kind:"MATCH",position:0,cast:wrestlers},
+    {showId:"angle-show",slotId:"challenge",kind:"SEGMENT",position:0,cast:[wrestlers[0]!]},
+    {showId:"angle-show",slotId:"offscreen",kind:"SEGMENT",position:1,cast:[wrestlers[1]!] },
+    {showId:"future-show",slotId:"rematch",kind:"MATCH",position:0,cast:wrestlers}
+   ] as const;
+   for(const event of cardEvents){
+    const cast=event.cast.map(personId=>({personId,contractId:"contract-"+
+     wrestlers.indexOf(personId)+"-0-"+id}));
+    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,"+
+     "kind,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb)",
+     [worldId,event.showId,event.slotId,event.position,event.kind,
+      JSON.stringify({participants:cast,kind:event.kind==="SEGMENT"?"CHALLENGE":undefined})]);
+    if(event.kind==="MATCH")await tx.query("INSERT INTO ppw_completed_show_matches("+
+     "world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)"+
+     " VALUES($1,$2,$3,$4,80,'CLEAN_PIN',$5)",
+     [worldId,event.showId,event.slotId,event.position,
+      event.showId==="old-show"?"B":"A"]);
+    else await tx.query("INSERT INTO ppw_completed_show_segments(world_id,show_id,"+
+     "slot_id,position,kind,authored_outcome,crowd_response)"+
+     " VALUES($1,$2,$3,$4,'CHALLENGE','HAPPENS',80)",
+     [worldId,event.showId,event.slotId,event.position]);
+   }
    for(const [showId,slotId,weekIndex,kind,winner] of [
     ["old-show","main",2,"MATCH","B"],
     ["angle-show","challenge",3,"SEGMENT",null],
+    ["angle-show","offscreen",3,"SEGMENT",null],
     ["future-show","rematch",6,"MATCH","A"]
    ] as const)
     await tx.query("INSERT INTO ppw_programme_resolved_activities(world_id,promotion_id,"+
@@ -88,7 +115,16 @@ test("staff and Backstage recall private certified rivalries without extra Neon 
    worldId,promotionId,playerId,personId:wrestlers[0]});
   assert.equal(meter.assertBudget({maxQueries:11,maxResultBytes:95000}).queryCount-count,9);
   const chapters=backstage.memories.filter(x=>x.kind.startsWith("RIVALRY_"));
-  assert.equal(chapters.length,2,"only certified preceding events, not the future match");
+  assert.equal(chapters.length,2,
+   "Only this wrestler's two real appearances count, not their partner's solo scene or a future match");
+  assert.ok(chapters.every(m=>!m.sourceId.includes("offscreen")&&
+   !m.sourceId.includes("future")));
+  const riddle=await readPortablePersonaWorkspace(db.pool,{
+   worldId,promotionId,playerId,personId:wrestlers[1]});
+  const riddleChapters=riddle.memories.filter(x=>x.kind.startsWith("RIVALRY_"));
+  assert.equal(riddleChapters.length,2);
+  assert.ok(riddleChapters.some(x=>x.sourceId.includes("offscreen")));
+  assert.ok(riddleChapters.every(x=>!x.sourceId.includes("challenge")));
   assert.equal(chapters[0]?.relatedName,"Matt Riddle");
   const match=chapters.find(x=>x.kind==="RIVALRY_MATCH")!;
   assert.equal(match.ownSide,"A");
@@ -111,7 +147,9 @@ test("staff and Backstage recall private certified rivalries without extra Neon 
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_programme_postshow_directions",
     "ppw_programme_resolved_activities","ppw_programme_side_refs",
-    "ppw_programme_participants","ppw_programmes","ppw_completed_shows",
+    "ppw_programme_participants","ppw_programmes",
+    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_card_slots","ppw_completed_shows","ppw_booking_drafts",
     "ppw_contracts","ppw_people","ppw_promotion_controls",
     "ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
