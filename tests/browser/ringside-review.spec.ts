@@ -58,11 +58,53 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"TONIGHT'S HEADLINES"})).toBeVisible();
+  const chapters=page.locator(".ppw-results-steps .ppw-results-step");
+  await expect(chapters).toHaveCount(3);
+  await expect(chapters.nth(0)).toHaveAccessibleName("Headlines & Ringside");
+  await expect(chapters.nth(1)).toHaveAccessibleName("The Full Show");
+  await expect(chapters.nth(2)).toHaveAccessibleName("Post-show Brief");
+  if(width===320){
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toHaveText("Ringside");
+   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
+   // Chromium can report button.scrollWidth for clipped internal glyph
+   // decoration even when the short visible label itself fits. Assert that
+   // the actual visible text fits its control, and the page does not scroll.
+   for(const tab of await chapters.all()){
+    const metrics=await tab.evaluate(button=>{
+     const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
+     if(!label)return {name:"missing",width:0,left:0,right:0,
+      buttonLeft:0,buttonRight:0,display:"none"};
+     const buttonBox=button.getBoundingClientRect();
+     const range=document.createRange();
+     range.selectNodeContents(label);
+     const textBox=range.getBoundingClientRect();
+     return {name:label.textContent??"",width:textBox.width,
+      left:textBox.left,right:textBox.right,buttonLeft:buttonBox.left,
+      buttonRight:buttonBox.right,display:getComputedStyle(label).display};
+    });
+    const fits=metrics.width>0&&metrics.display!=="none"&&
+     metrics.left>=metrics.buttonLeft-1&&
+     metrics.right<=metrics.buttonRight+1;
+    expect(fits,JSON.stringify(metrics)).toBe(true);
+   }
+  }else{
+   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
+   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
+  }
   await expect(page.getByRole("heading",{name:"THE NOISE AFTER THE BELL"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
-  await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+  await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
+  await expect(page.locator(".ppw-results")).toHaveClass(/ppw-editorial-ready/);
+  await expect(page.locator(".ppw-result-meter").first()).toHaveCSS("display","none");
   await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
+  await expect(page.getByRole("heading",{name:"Omega takes the win"})).toBeVisible();
+  await expect(page.locator(".ppw-ringside-conclusion")).toContainText("The main event delivered");
+  await expect(page.locator(".ppw-verified-finish-details")).not.toHaveAttribute("open");
+  await page.locator(".ppw-verified-finish-details").first().locator("summary").click();
+  await expect(page.locator(".ppw-verified-finish-details").first()).toHaveAttribute("open");
+  await expect(page.locator(".ppw-final-bell")).not.toContainText("The main event delivered");
   await expect(page.locator(".ppw-finish-winner")).toContainText("Kenny Omega");
   await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
@@ -72,7 +114,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
-  await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent's Report"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).toHaveCount(1);
   await expect(page.locator(".ppw-results-analysis")).not.toHaveAttribute("open");
@@ -95,6 +137,11 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+ await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+ await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
+ await expect(page.locator(".ppw-result-meter").first()).not.toHaveCSS("display","none");
+ await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
+ await expect(page.locator(".ppw-ringside-conclusion")).toHaveCount(0);
  await expect(page.locator(".ppw-booker-breakdown")).toHaveCount(0);
  await expect(page.getByRole("region",{name:"Finish replay"})).toBeVisible();
  await expect(page.getByText("Generate AI Review")).toHaveCount(0);
@@ -241,4 +288,31 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  expect(answers).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
+});
+
+test("Ringside: partial cached article falls back to canonical results",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let reads=0,commentary=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  if(r.request().postDataJSON().method==="results")reads++;
+  return r.fulfill({json:r.request().postDataJSON().method==="resultsArchive"?{
+   items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+    crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:show});
+ });
+ await page.route("**/api/results-commentary",r=>{
+  commentary++;
+  return r.fulfill({json:{status:"ready",review:{
+   ...review,slots:[review.slots[0]]
+  }}});
+ });
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await expect(page.locator(".ppw-ringside-dispatch")).toHaveAttribute("data-ai-status","fallback");
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+ await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
+ await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+ await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
+ await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
+ expect(reads).toBe(1);expect(commentary).toBe(1);
 });

@@ -113,3 +113,40 @@
 .ppw-calendar-current .ppw-calendar-now{flex:none}
 
 .ppw-calendar-tradition{display:block;color:#a5d0e0;font-size:12px;line-height:1.5;margin:5px 0 9px}
+
+/* The on-air schedule is the front page. Recurring administration is a
+   single disclosure after the event guide, not a wall above the fixtures. */
+.ppw-calendar-schedule{padding:16px 13px;margin-top:14px;
+ background:linear-gradient(150deg,#173651,#0e2237);border-color:#517a90}
+.ppw-calendar-schedule-kicker{font-size:10px;letter-spacing:.15em;
+ font-weight:900;color:#e6bc83}
+.ppw-calendar-schedule h2{font-size:clamp(21px,5vw,26px);margin:8px 0 13px}
+.ppw-calendar-view-tabs,.ppw-calendar-type-tabs{
+ display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+.ppw-calendar-view-tabs .ppw-calendar-button,.ppw-calendar-type-tabs .ppw-calendar-button{
+ flex:1 1 125px;margin:0;border-radius:8px;font-size:13px;min-height:44px}
+.ppw-calendar-view-tabs [aria-pressed=true],.ppw-calendar-type-tabs [aria-pressed=true]{
+ background:#d7ecfa;color:#173149;border-color:#c8f4ff;font-weight:850}
+.ppw-calendar-empty{padding:19px 15px;border:1px dashed #7990a3;
+ border-radius:11px;background:#0e273b;color:#cadde7;font-size:14px;
+ line-height:1.65;margin:16px 0}
+.ppw-calendar-management{border:1px solid #456273;border-radius:13px;
+ background:#132a3e;margin:15px 0 28px;overflow:hidden}
+.ppw-calendar-management-toggle{list-style:none;cursor:pointer;
+ min-height:60px;padding:13px 16px;display:grid;gap:5px;
+ background:linear-gradient(110deg,#243b56,#18263e)}
+.ppw-calendar-management-toggle::-webkit-details-marker{display:none}
+.ppw-calendar-management-toggle strong{font-size:16px;color:#e5f5fb}
+.ppw-calendar-management-toggle span{font-size:12px;color:#accddd}
+.ppw-calendar-management[open] .ppw-calendar-management-toggle{
+ border-bottom:1px solid #416c80}
+.ppw-calendar-management>.ppw-calendar-panel{margin:0;border:0;border-radius:0;
+ box-shadow:none;padding:14px}
+.ppw-calendar-management-toggle:focus-visible{outline:3px solid #f4ca82;
+ outline-offset:-3px}
+
+.ppw-calendar-header>.ppw-calendar-button:last-child{
+ min-height:44px;margin:11px 0 0;border:1px solid #b5d4eb;
+ background:#193e56;color:#eaf7ff;font-weight:800}
+.ppw-calendar-header>.ppw-calendar-button:last-child:focus-visible{
+ outline:3px solid #f4c781;outline-offset:2px}

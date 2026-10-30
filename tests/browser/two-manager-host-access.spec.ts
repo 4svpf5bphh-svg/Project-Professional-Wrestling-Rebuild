@@ -122,7 +122,7 @@ test("first-time iPhone manager names their owner identity and may rebrand after
  await expect(page.getByRole("heading",{name:"What's your name?"})).toBeVisible();
  await page.getByRole("textbox",{name:"Your manager name"}).fill("Josh Robinson");
  await page.getByRole("button",{name:"Enter the wrestling world"}).click();
- expect(ownerName).toBe("Josh Robinson");
+ await expect.poll(()=>ownerName).toBe("Josh Robinson");
  await expect(page.getByRole("heading",{name:/Join /})).toBeVisible();
  await expect(page.locator(".ppw-shell-brand small")).toContainText("Josh Robinson");
  await page.getByRole("button",{name:"Join World"}).click();

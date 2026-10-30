@@ -4,6 +4,7 @@
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
+import {staffMeetingDialogue} from "./staff-meeting-voice.js";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
@@ -180,7 +181,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
-    "Nine departments. Advice from verified shows and available talent; vacancies retain basic house cover."));
+    "Your people, their opinions and the decisions that matter. Open a department for its full report."));
   const attendees=el("div","ppw-staff-meeting-grid");
   for(const brief of view.meetings??[]){
    const slot=el("details","ppw-staff-meeting-brief");
@@ -189,7 +190,9 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    caption.append(el("span","ppw-staff-kicker",roles(brief.role)),
     el("strong","",brief.staffName??"Position vacant · house cover"));
    lead.append(caption);slot.append(lead);
-   slot.append(el("p","ppw-staff-muted",brief.message));
+   slot.append(el("p","ppw-staff-dialogue",
+    staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
+     personality:brief.personality,message:brief.message})));
    if(brief.role==="SCOUT"&&view.scoutReport?.length){
     for(const prospect of view.scoutReport){
      const item=el("div","ppw-staff-scout-pick");
@@ -199,13 +202,8 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     }
     if(port.openMarket)slot.append(button("Browse Talent Market",()=>port.openMarket?.()));
    }
-   if(brief.staffName&&brief.personality)
-    slot.append(el("small","ppw-staff-voice",
-     brief.personality==="FRANK"?"A direct assessment from your department lead":
-     brief.personality==="PATIENT"?"Measured advice from your department lead":
-     brief.personality==="ECCENTRIC"?"An unconventional take from your department lead":
-     brief.personality==="LOYAL"?"Advice grounded in team continuity":
-     "An ambitious eye on the next opportunity"));
+   if(brief.staffName)slot.append(el("small","ppw-staff-voice",
+    "— "+brief.staffName+" · "+roles(brief.role)));
    if(brief.target==="contracts"&&port.openContracts)
     slot.append(button("Review contracts",()=>port.openContracts?.()));
    if(brief.target==="roster"&&port.openRoster)
@@ -267,10 +265,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("span","",member?
      member.personality+" · "+member.specialism+" · "+money(member.weeklySalary)+"/wk":
      "Basic cover · no weekly staff wage"));
-   if(member)detail.append(el("span","",
+   if(member&&pane!=="CONTRACTS")detail.append(el("span","",
     "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
     "  ·  RELIABILITY "+member.reliability+
     "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
+   if(member&&pane==="CONTRACTS")detail.append(el("span","",
+    member.weeksRemaining+" weeks remaining · "+
+    money(member.weeklySalary)+" per week · "+
+    money(member.buyoutCost)+" buyout"));
    item.append(detail);
    if(member){
     if(pane==="CONTRACTS"){
@@ -302,8 +304,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   }
   team.append(teamRows);
   if(pane==="CONTRACTS"){
-   team.querySelector("h2")!.textContent="Staff contracts";
-   team.querySelector(".ppw-staff-muted")!.textContent="Renew approaching terms or buy out an existing agreement. Staff wages are paid weekly.";
+   team.classList.add("ppw-staff-contract-ledger");
+   team.querySelector("h2")!.textContent="Contract decisions";
+   team.querySelector(".ppw-staff-muted")!.textContent=
+    "Employed staff only. Renewals and buyouts have real weekly payroll consequences; vacancies are managed under My Staff.";
+   team.insertBefore(el("p","ppw-staff-contract-total",
+    view.employees.length+" active agreements · "+money(view.weeklyPayroll)+"/week committed"),
+    teamRows);
   }
   if(pane==="TEAM"||pane==="CONTRACTS")root.append(team);
   const market=el("section","ppw-staff-panel ppw-staff-market");

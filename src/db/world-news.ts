@@ -248,6 +248,27 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    " That's the fun of wrestling: the card is still the booker's to write.",
    "ANGLE");
  }
+ // "Who gets a push next?" is fair public speculation when a verified
+ // emerging wrestler appeared in an exceptional completed match. It is not
+ // inside knowledge of a promoter's future card or private negotiations.
+ const breakout=[...bouts].filter(s=>Number(s.rating_stars)>=4.35&&
+  Number.isFinite(Number(s.rating_stars))&&
+  participants(s.payload).some(id=>careerStages.get(id)==="PROSPECT"&&names.has(id)))
+  .sort((a,b)=>Number(b.rating_stars)-Number(a.rating_stars)||byId(a,b))[0];
+ if(breakout){
+  const participantId=participants(breakout.payload).find(id=>
+   careerStages.get(id)==="PROSPECT"&&names.has(id));
+  const wrestler=participantId?names.get(participantId):undefined;
+  if(wrestler)add("DIRT",breakout,
+   "rumour:breakout:"+breakout.show_id+":"+breakout.slot_id,
+   "Could "+wrestler+" be in line for a bigger opportunity?",
+   wrestler+" took part in a standout match on "+breakout.show_name+
+    ". That's the public result. Whether "+breakout.promotion_name+
+    " turns it into a bigger opportunity remains a question, not an announced plan.",
+   "MATCH");
+ }
+ // Two genuinely grounded stories at most; weaker rumours do not displace
+ // major public results, and no private state is touched.
  return [...official.slice(0,8),...dirt.slice(0,2)];
 }
 export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:number,week:number){

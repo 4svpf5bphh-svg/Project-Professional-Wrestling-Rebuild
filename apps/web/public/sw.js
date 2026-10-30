@@ -1,5 +1,7 @@
 /* Static install shell only: never cache authenticated requests or World data. */
-const CACHE="ppw-static-shell-v2";
+// Asset names are stable across Legends artwork upgrades; rotate the shell
+// cache with each curated art replacement so old portraits are never served.
+const CACHE="ppw-static-shell-v3";
 const CORE=["/offline.html","/icon.svg","/manifest.webmanifest"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));

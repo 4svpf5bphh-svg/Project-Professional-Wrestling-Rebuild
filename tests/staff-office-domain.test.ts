@@ -66,9 +66,9 @@ test("Road Agent reports use only certified match details and keep recorded slot
  const report=deriveRoadAgentReport(receipt,facts,agent);
  assert.equal(report.reporter,agent.name);
  assert.equal(report.strongestMatchId,"match-1");
- assert.match(report.concern,/weakest bout|simplify the layout/i);
+ assert.match(report.concern,/closing match|simpler match/i);
  assert.doesNotMatch(JSON.stringify(report),/execution score|chemistry modifier|Card [0-9]/i);
- assert.match(report.recommendation,/chemistry|pairing/);
+ assert.match(report.recommendation,/shorter structure|different opponents|pairing/);
  assert.deepEqual(report,deriveRoadAgentReport(receipt,facts,agent));
  const voices=["FRANK","PATIENT","AMBITIOUS","LOYAL","ECCENTRIC"] as const;
  const reports=voices.map(personality=>deriveRoadAgentReport(receipt,facts,

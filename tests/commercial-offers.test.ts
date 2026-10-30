@@ -20,9 +20,9 @@ test("one earned broadcaster tradeoff and sensible sponsorship, with capped init
   "BROADCAST_STABLE","BROADCAST_GROWTH","SPONSOR_LOCAL"
  ]);
  assert.equal(options[0]!.weeklyIncome,11200);
- assert.equal(options[0]!.reachIncrease,5);
+ assert.equal(options[0]!.reachIncrease,0);
  assert.equal(options[1]!.weeklyIncome,10400);
- assert.equal(options[1]!.reachIncrease,17);
+ assert.equal(options[1]!.reachIncrease,0);
  assert.equal(options[2]!.weeklyIncome,2160);
  assert.equal(options[2]!.reachIncrease,0);
  assert.deepEqual(options.map(x=>x.termWeeks),[26,26,13]);
@@ -52,4 +52,17 @@ test("fictional sponsor and broadcaster identities keep their economics separate
  assert.equal(offers.find(x=>x.code==="BROADCAST_TV")?.name,"BBS Sports");
  assert.ok(offers.filter(x=>x.kind==="SPONSOR").every(x=>x.reachIncrease===0));
  assert.ok(offers.every(x=>x.termWeeks===13||x.termWeeks===26||x.termWeeks===52));
+});
+
+test("long-term broadcasters saturate at 100 rather than blocking demand in later years",()=>{
+ const low=commercialOffers({...settled,mediaReach:90});
+ assert.equal(low.find(o=>o.code==="BROADCAST_STABLE")?.reachIncrease,5);
+ assert.equal(low.find(o=>o.code==="BROADCAST_GROWTH")?.reachIncrease,10);
+ const high=commercialOffers({...settled,mediaReach:98});
+ assert.equal(high.find(o=>o.code==="BROADCAST_GROWTH")?.reachIncrease,2);
+ assert.ok(commercialOffers({...settled,mediaReach:100})
+  .filter(o=>o.kind==="BROADCAST").every(o=>o.reachIncrease===0));
+ const overLegacy=commercialOffers({...settled,mediaReach:105});
+ assert.ok(overLegacy.filter(o=>o.kind==="BROADCAST")
+  .every(o=>o.reachIncrease===0));
 });

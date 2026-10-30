@@ -8,6 +8,7 @@ export interface TagTeamPort {
  load():Promise<TagTeamView>;
  create(input:{requestId:string;expectedRevision:number;name:string;personIds:string[]}):Promise<unknown>;
  rename?(input:{requestId:string;expectedRevision:number;teamId:string;name:string}):Promise<unknown>;
+ createTrio?(input:{requestId:string;expectedRevision:number;name:string;personIds:string[]}):Promise<unknown>;
  openWrestler?(personId:string):void;
 }
 const el=(tag:string,cls="",text="")=>{
@@ -18,6 +19,7 @@ const btn=(text:string,fn:()=>void,disabled=false)=>{
 export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void){
  let view:TagTeamView|null=null,working=false,error="",success="";
  let name="",one="",two="",rosterSearch="",teamSearch="";
+ let trioName="",trioMembers=["","",""],trioRequest:string|null=null;
  let partnerDivision:"ALL"|"MEN"|"WOMEN"="ALL";
  let renaming="",renameValue="",createRequest:string|null=null,renameRequest:string|null=null;
  const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
@@ -58,6 +60,21 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   const input={requestId:renameRequest??(renameRequest=crypto.randomUUID()),
    expectedRevision:view.worldRevision,teamId,name:renameValue};
   await apply(()=>port.rename!(input),"Team renamed.");
+ }
+ async function formTrio(){
+  if(!view||!editable()||!port.createTrio)return;
+  const ids=[...trioMembers];
+  if(trioName.trim().length<2||new Set(ids).size!==3||ids.some(x=>!x)){
+   error="Name your trio and select three different wrestlers.";render();return;
+  }
+  const selected=ids.map(id=>view!.roster.find(p=>p.personId===id));
+  if(selected.some(x=>!x||x.division!==selected[0]?.division)){
+   error="All three trio partners must be in the same division.";render();return;
+  }
+  const input={requestId:trioRequest??(trioRequest=crypto.randomUUID()),
+   expectedRevision:view.worldRevision,name:trioName,personIds:ids};
+  await apply(()=>port.createTrio!(input),"Your three-person team is official.");
+  if(!error){trioName="";trioMembers=["","",""];trioRequest=null;render();}
  }
  function render(){
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
@@ -171,7 +188,9 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
     heading.append(el("strong","",team.name),
      el("span","ppw-pair-members",team.members.map(p=>p.name).join(" & ")),
      el("span","ppw-pair-meta",label(team.experience)+
-      " · "+team.matchesTogether+" matches together"));
+      (("historicalPartnership" in team && team.historicalPartnership)?
+       " · Pre-World partners · ":" · ")+
+      team.matchesTogether+" World matches"));
     if(team.currentTitles.length)
      heading.append(el("span","ppw-pair-belt",
       team.currentTitles.map(t=>t.name).join(" · ")));
@@ -211,6 +230,57 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   };
   search.oninput=()=>{teamSearch=search.value;paintTeams();};
   paintTeams();root.append(section);
+  const trioSection=el("section","ppw-pair-create ppw-trio-workspace");
+  trioSection.append(el("span","ppw-eyebrow","THREE AS ONE"),
+   el("h2","","Named Trios"),
+   el("p","ppw-muted","A trio is a permanent three-person unit, separate from two-person tag teams and larger factions. Book all three together in a 3v3 match."));
+  const three=view.trios??[];
+  if(port.createTrio){
+   const input=document.createElement("input");
+   input.type="text";input.maxLength=70;input.value=trioName;
+   input.placeholder="Name your trio";
+   input.setAttribute("aria-label","New trio name");
+   input.disabled=!editable();
+   input.oninput=()=>{trioName=input.value;trioRequest=null;};
+   trioSection.append(input);
+   for(let index=0;index<3;index++){
+    const select=document.createElement("select");
+    select.setAttribute("aria-label","Trio partner "+(index+1));
+    select.disabled=!editable();
+    const other=trioMembers.find(id=>!!id);
+    const selectedDivision=view.roster.find(p=>p.personId===other)?.division;
+    for(const item of [{personId:"",name:"Partner "+(index+1),division:""},
+      ...view.roster.filter(p=>p.personId===trioMembers[index]||
+       (!trioMembers.includes(p.personId)&&
+        (!selectedDivision||p.division===selectedDivision)))]){
+     const option=document.createElement("option");
+     option.value=item.personId;option.textContent=item.name;
+     option.selected=item.personId===trioMembers[index];
+     select.append(option);
+    }
+    select.onchange=()=>{trioMembers[index]=select.value;trioRequest=null;render();};
+    trioSection.append(select);
+   }
+   trioSection.append(btn("✓ Form this trio",()=>void formTrio(),!editable()||
+    trioName.trim().length<2||trioMembers.some(x=>!x)||
+    new Set(trioMembers).size!==3));
+  }
+  const listOfTrios=el("div","ppw-trio-list");
+  for(const t of three){
+   const card=el("article","ppw-pair-card ppw-trio-card");
+   card.append(el("strong","",t.name),
+    el("span","ppw-pair-members",t.members.map(m=>m.name).join(" · ")));
+   if(port.openWrestler){
+    const links=el("div","ppw-pair-partner-links");
+    for(const member of t.members)links.append(btn(member.name+" · Dossier ↗",
+     ()=>port.openWrestler?.(member.personId)));
+    card.append(links);
+   }
+   listOfTrios.append(card);
+  }
+  if(!three.length)listOfTrios.append(el("p","ppw-muted",
+   "No named three-person units yet. Create one without altering existing tag partnerships."));
+  trioSection.append(listOfTrios);root.append(trioSection);
  }
  async function load(){
   working=true;render();

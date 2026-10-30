@@ -7,7 +7,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
  portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
- tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,
+ tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
@@ -298,6 +298,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    p.personIds.some(x=>typeof x!=="string"))
    throw new Error("Invalid tag team pairing");
   return createTagTeamAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,name:p.name,personIds:p.personIds as string[]});
+ }
+ if(method==="createTrio"){
+  if(typeof p.name!=="string"||!Array.isArray(p.personIds)||
+   p.personIds.length!==3||
+   p.personIds.some(x=>typeof x!=="string"||!x||x.length>200))
+   throw new Error("Invalid trio members");
+  return createTrioAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,name:p.name,personIds:p.personIds as string[]});
  }
  if(method==="createStable"){

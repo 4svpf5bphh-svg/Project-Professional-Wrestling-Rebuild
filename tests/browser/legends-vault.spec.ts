@@ -46,10 +46,7 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await expect.poll(()=>acknowledged).toBe(true);
  await expect(page.getByRole("heading",{name:"Identity shrouded"})).toBeVisible();
  await expect(page.getByText("2 / 8 · 25%")).toBeVisible();
- await expect(page.locator(".ppw-album-slot")).toHaveCount(3);
- await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"Icons"}).click();
- await expect(page.locator(".ppw-album-slot")).toHaveCount(0); 
- await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"All pages"}).click();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(0);
  await page.getByRole("button",{name:"Discovered (1)"}).click();
  await expect(page.locator(".ppw-legend-tile:visible")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"Discovered (1)"})).toHaveAttribute("aria-pressed","true");
@@ -67,6 +64,15 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  expect(called).toContain("legendsVault");
  expect(called).toContain("legendSeen");
  expect(called).not.toContain("kpAction");
+ await page.getByRole("link",{name:"Open My Collection"}).click();
+ await expect(page).toHaveURL(/#\/collection$/);
+ await expect(page.getByRole("heading",{name:"My Collection"})).toBeVisible();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(3);
+ await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"Icons"}).click();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(0);
+ await page.getByRole("navigation",{name:"Card album pages"}).getByRole("button",{name:"All pages"}).click();
+ await expect(page.locator(".ppw-album-slot")).toHaveCount(3);
+ expect(called.filter(x=>x==="industry")).toHaveLength(1);
 });
 
 test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault, paid cabinet and full viewer",async({page})=>{
@@ -112,6 +118,7 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await expect(tile.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
  await tile.getByRole("button",{name:/Collect card/}).click();
  await expect.poll(()=>collects).toBe(1);
+ await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
  await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
  await expect(cabinet.getByRole("progressbar",{name:"Legend card collection progress"}))
@@ -169,6 +176,7 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expect(tile.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
  await tile.getByRole("button",{name:/Collect card/}).click();
  await expect.poll(()=>collects).toBe(1);
+ await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
  await expect(cabinet.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
  await cabinet.getByRole("button",{name:"Collected"}).click();
@@ -233,6 +241,7 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  expect(seen).toBe(0);
  await trish.getByRole("button",{name:/Collect card/}).click();
  await expect.poll(()=>charged).toBe(1);
+ await page.goto("/#/collection");
  const album=page.locator(".ppw-legend-collection");
  await album.getByRole("button",{name:"Collected"}).click();
  await expect(album.locator("img.ppw-legend-card-art")).toHaveAttribute("src",

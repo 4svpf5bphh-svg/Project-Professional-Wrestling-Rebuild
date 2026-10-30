@@ -127,6 +127,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const errorText=(e:unknown)=>e instanceof Error?e.message:"Unable to load booking";
  const matchLabel=(m:EditorMatch)=>bookedMatchHeadline(m,selectedName);
  const eligibleTeams=()=>view?.bookableTeams??[];
+ const eligibleTrios=()=>view?.bookableTrios??[];
+ function selectTrioForMatch(match:EditorMatch,side:number,trioId:string){
+  const trio=eligibleTrios().find(t=>t.trioId===trioId);
+  if(!trio||match.format!=="TRIOS")return;
+  const occupied=new Set([...matches.values()].filter(m=>m.slotId!==match.slotId)
+   .flatMap(assignedIds));
+  if(trio.members.some(m=>occupied.has(m.personId))){
+   error="One or more trio partners already have a match on this card";render();return;
+  }
+  try{setMatch(match.slotId,assignBookedTeam(match,side,trio.members));}
+  catch(e){error=errorText(e);render();}
+ }
  function selectTeamForMatch(match:EditorMatch,side:number,teamId:string){
   const team=eligibleTeams().find(x=>x.teamId===teamId);
   if(!team)return;
@@ -177,7 +189,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    // Selecting an established team must show actual wrestler names without
    // two extra talent queries; the canonical card continues storing IDs.
-   for(const team of view.bookableTeams??[]){
+   for(const team of [...(view.bookableTeams??[]),...(view.bookableTrios??[])]){
     for(const member of team.members){
      const old=roster.get(member.personId);
      roster.set(member.personId,{...old,personId:member.personId,
@@ -1163,6 +1175,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const sideCard=el("div","ppw-side");
      sideCard.append(el("h3","",m.format==="BATTLE_ROYAL"?
       "Entrant "+(side+1):"Side "+sideLabel(side)));
+     if(m.format==="TRIOS"&&m.teams[side]!.length===3&&eligibleTrios().length){
+      const booked=eligibleTrios().find(t=>
+       t.members.every(p=>m.teams[side]!.some(chosen=>chosen?.personId===p.personId)));
+      sideCard.append(field("Choose trio",selector(booked?.trioId??"",
+       [["","Select a complete trio"],...eligibleTrios().map(t=>[t.trioId,t.name])],
+       id=>selectTrioForMatch(m,side,id),!mutable())));
+     }
      if(m.teams[side]!.length===2&&eligibleTeams().length){
       const booked=eligibleTeams().find(t=>t.members.length===2&&
        t.members.every(p=>m.teams[side]!.some(chosen=>chosen?.personId===p.personId)));

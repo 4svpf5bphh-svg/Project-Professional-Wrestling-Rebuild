@@ -46,19 +46,40 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
    "ORDER BY p.name,p.person_id,p.booking_division LIMIT 501"
   ].join(" "),[who.worldId,who.promotionId,auth.weekIndex]);
   if(roster.length>500)throw new Error("Tag team roster too large");
-  const teams=roster.length?await tx.query<{team_id:string;name:string;
-   members:string[];naming_promotion_id:string|null;
-   formed_week_index:number|null}>([
-   "SELECT t.team_id,t.name,t.naming_promotion_id,t.formed_week_index,",
+  // The roster is read once for both portable identities, preserving the
+  // three-query empty-team budget on iPhone. A team only appears when *all*
+  // its active members are on the current promotion's signed roster.
+  const units=roster.length?await tx.query<{
+   kind:"TAG"|"TRIO";unit_id:string;name:string;formed_week_index:number|null;
+   naming_promotion_id:string|null;members:string[]}>([
+   "SELECT 'TAG'::text AS kind,t.team_id AS unit_id,t.name,",
+   "t.formed_week_index,t.naming_promotion_id,",
    "array_agg(m.person_id ORDER BY m.person_id) AS members",
    "FROM ppw_tag_teams t JOIN ppw_tag_team_members m",
    "ON m.world_id=t.world_id AND m.team_id=t.team_id AND m.active",
    "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
-   "GROUP BY t.team_id,t.name,t.naming_promotion_id,t.formed_week_index",
-   "HAVING count(*)=2",
-   "ORDER BY t.name,t.team_id LIMIT 201"
+   "GROUP BY t.world_id,t.team_id,t.name,t.formed_week_index,t.naming_promotion_id",
+   "HAVING count(*)=2 AND count(*)=(SELECT count(*) FROM ppw_tag_team_members",
+   "allm WHERE allm.world_id=t.world_id AND allm.team_id=t.team_id",
+   "AND allm.active)",
+   "UNION ALL",
+   "SELECT 'TRIO'::text AS kind,t.trio_id AS unit_id,t.name,",
+   "t.formed_week_index,t.naming_promotion_id,",
+   "array_agg(m.person_id ORDER BY m.person_id) AS members",
+   "FROM ppw_trios t JOIN ppw_trio_members m",
+   "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
+   "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
+   "GROUP BY t.world_id,t.trio_id,t.name,t.formed_week_index,t.naming_promotion_id",
+   "HAVING count(*)=3 AND count(*)=(SELECT count(*) FROM ppw_trio_members",
+   "allm WHERE allm.world_id=t.world_id AND allm.trio_id=t.trio_id",
+   "AND allm.active)",
+   "ORDER BY kind,name,unit_id LIMIT 301"
   ].join(" "),[who.worldId,roster.map(x=>x.person_id)]):[];
-  if(teams.length>200)throw new Error("Too many active roster teams");
+  if(units.length>300)throw new Error("Too many roster teams and trios");
+  const teams=units.filter(t=>t.kind==="TAG").map(t=>({...t,team_id:t.unit_id}));
+  const trios=units.filter(t=>t.kind==="TRIO").map(t=>({...t,trio_id:t.unit_id}));
+  if(teams.length>200||trios.length>100)
+   throw new Error("Too many active roster teams or trios");
   // History is restricted to named teams on this promotion's CURRENT roster.
   const chemistry=teams.length?await tx.query<{
    person_a_id:string;person_b_id:string;matches_together:number;familiarity:number
@@ -104,6 +125,13 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
      inRingQuality:x.in_ring_quality,matchCraft:x.match_craft,
      presentation:x.presentation};
    }),
+   trios:trios.map(t=>({
+    trioId:t.trio_id,name:t.name,formedWeekIndex:t.formed_week_index,
+    canRename:t.naming_promotion_id===null||t.naming_promotion_id===who.promotionId,
+    members:t.members.map(personId=>({personId,
+     name:byName.get(personId)?.name??personId,
+     division:byName.get(personId)?.booking_division??"UNKNOWN"}))
+   })),
    teams:teams.map(x=>{
     const pair=byPair.get(x.members[0]+"|"+x.members[1]);
     const matchesTogether=pair?.matches_together??0;
@@ -115,7 +143,9 @@ export async function readTagTeamWorkspace(pool:TransactionPool,who:Scope){
       name:byName.get(personId)?.name??personId,
       division:byName.get(personId)?.booking_division??"UNKNOWN"})),
      matchesTogether,familiarity:Number(pair?.familiarity??0),
-     experience:band(matchesTogether),
+     experience:matchesTogether===0&&Number(pair?.familiarity??0)>=70?
+      "ESTABLISHED":band(matchesTogether),
+     historicalPartnership:matchesTogether===0&&Number(pair?.familiarity??0)>=70,
      currentTitles:titles.filter(t=>t.is_current).map(t=>({
       championshipId:t.championship_id,name:t.championship_name,
       promotionName:t.promotion_name,defenses:t.defenses})),
@@ -234,4 +264,65 @@ export async function nameTagTeam(pool:TransactionPool,input:NameTagTeam){
     [input.worldId,auth.year,auth.week,input.teamId,input.promotionId,name]);
    return {teamId:input.teamId,name};
   }});
+}
+
+/** Trio identity is independent of a 2v2 tag team and a local faction.
+ * The same three wrestlers may represent both, but neither grants a title
+ * reign or any fabricated completed-match experience.
+ */
+export type CreateTrio=Scope&{requestId:string;expectedRevision:number;
+ name:string;personIds:readonly string[]};
+export async function createTrio(pool:TransactionPool,input:CreateTrio){
+ const name=input.name?.trim();
+ if(typeof name!=="string"||name.length<2||name.length>70)
+  throw new Error("Trio name must contain 2–70 characters");
+ if(!Array.isArray(input.personIds)||input.personIds.length!==3||
+  !input.personIds.every(id)||new Set(input.personIds).size!==3)
+  throw new Error("Choose three different wrestlers");
+ const ids=[...input.personIds].sort();
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,commandType:"CREATE_TRIO",
+  requiresOpenWeek:true,execute:async tx=>{
+   const auth=await scope(tx,input);
+   if(!auth.can_edit)throw new Error("Trio creation closed for World Lock");
+   const members=await tx.query<{person_id:string;booking_division:string|null}>([
+    "SELECT p.person_id,p.booking_division FROM ppw_people p WHERE p.world_id=$1",
+    "AND p.person_id=ANY($3::text[]) AND p.status='ACTIVE'",
+    "AND EXISTS(SELECT 1 FROM ppw_contracts c WHERE c.world_id=p.world_id",
+    "AND c.person_id=p.person_id AND c.promotion_id=$2 AND c.status='SIGNED'",
+    "AND c.start_week_index<=$4 AND c.expires_week_index>=$4)"
+   ].join(" "),[input.worldId,input.promotionId,ids,auth.weekIndex]);
+   if(members.length!==3)throw new Error("All trio members must be on your active roster");
+   if(!members[0]!.booking_division||members.some(m=>
+    m.booking_division!==members[0]!.booking_division))
+    throw new Error("Trio members must belong to the same division");
+   const existing=await tx.query<{trio_id:string}>([
+    "SELECT t.trio_id FROM ppw_trios t JOIN ppw_trio_members m",
+    "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
+    "WHERE t.world_id=$1 AND t.status='ACTIVE' AND m.person_id=ANY($2::text[])",
+    "GROUP BY t.trio_id HAVING count(*)=3 AND",
+    "(SELECT count(*) FROM ppw_trio_members allm WHERE",
+    "allm.world_id=$1 AND allm.trio_id=t.trio_id AND allm.active)=3 LIMIT 1"
+   ].join(" "),[input.worldId,ids]);
+   if(existing.length)throw new Error("This trio already has an active World identity");
+   const trioId="trio-"+randomUUID();
+   await tx.query(`INSERT INTO ppw_trios(
+    world_id,trio_id,name,status,naming_promotion_id,formed_week_index)
+    VALUES($1,$2,$3,'ACTIVE',$4,$5)`,
+    [input.worldId,trioId,name,input.promotionId,auth.weekIndex]);
+   const inserted=await tx.query<{person_id:string}>(`
+    INSERT INTO ppw_trio_members(world_id,trio_id,person_id)
+    SELECT $1,$2,unnest($3::text[]) RETURNING person_id`,
+    [input.worldId,trioId,ids]);
+   if(inserted.length!==3)throw new Error("Trio members not recorded");
+   await tx.query(`
+    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    VALUES($1,$2,$3,'TRIO_CREATED',
+     jsonb_build_object('trioId',$4::text,'promotionId',$5::text,
+      'memberIds',$6::text[]))`,
+    [input.worldId,auth.year,auth.week,trioId,input.promotionId,ids]);
+   return {trioId,name,personIds:ids};
+  }
+ });
 }

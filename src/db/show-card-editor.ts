@@ -229,18 +229,33 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   // One bounded, show-week-specific lookup populates team shortcuts. Only
   // complete two-person teams with two valid signed appearance rights are
   // offered; final card save still independently validates all contracts.
-  const bookableTeams=await tx.query<{team_id:string;name:string;
-   members:{personId:string;contractId:string;name:string}[]}>([
-   "SELECT t.team_id,t.name,jsonb_agg(jsonb_build_object(",
-   "'personId',m.person_id,'contractId',rights.contract_id,",
-   "'name',person.name)",
-   "ORDER BY m.person_id) AS members",
+  // One bounded read serves portable 2v2 teams AND named 3v3 units. Both
+  // have exact membership and show-week appearance rights. Do not add an
+  // extra SQL query for every new group type: booking is a hot mobile path.
+  const bookableUnits=await tx.query<{kind:"TEAM"|"TRIO";unit_id:string;
+   name:string;members:{personId:string;contractId:string;name:string}[]}>([
+   "WITH units AS (",
+   "SELECT 'TEAM'::text AS kind,t.world_id,t.team_id AS unit_id,t.name,",
+   "array_agg(m.person_id ORDER BY m.person_id) AS person_ids",
    "FROM ppw_tag_teams t JOIN ppw_tag_team_members m",
    "ON m.world_id=t.world_id AND m.team_id=t.team_id AND m.active",
-   "JOIN ppw_people person ON person.world_id=m.world_id",
+   "WHERE t.world_id=$1 AND t.status='ACTIVE'",
+   "GROUP BY t.world_id,t.team_id,t.name HAVING count(*)=2",
+   "UNION ALL",
+   "SELECT 'TRIO'::text AS kind,t.world_id,t.trio_id AS unit_id,t.name,",
+   "array_agg(m.person_id ORDER BY m.person_id) AS person_ids",
+   "FROM ppw_trios t JOIN ppw_trio_members m",
+   "ON m.world_id=t.world_id AND m.trio_id=t.trio_id AND m.active",
+   "WHERE t.world_id=$1 AND t.status='ACTIVE'",
+   "GROUP BY t.world_id,t.trio_id,t.name HAVING count(*)=3",
+   "), eligible AS (",
+   "SELECT u.kind,u.unit_id,u.name,u.person_ids,person.person_id,",
+   "person.name AS wrestler_name,rights.contract_id",
+   "FROM units u JOIN LATERAL unnest(u.person_ids) m(person_id) ON TRUE",
+   "JOIN ppw_people person ON person.world_id=u.world_id",
    "AND person.person_id=m.person_id AND person.status='ACTIVE'",
    "JOIN LATERAL (SELECT c.contract_id FROM ppw_contracts c",
-   "WHERE c.world_id=t.world_id AND c.person_id=m.person_id",
+   "WHERE c.world_id=u.world_id AND c.person_id=m.person_id",
    "AND c.promotion_id=$2 AND c.status='SIGNED'",
    "AND c.start_week_index<=$3 AND c.expires_week_index>=$3",
    "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
@@ -250,18 +265,23 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
    "ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "c.contract_id LIMIT 1) rights ON TRUE",
-   "WHERE t.world_id=$1 AND t.status='ACTIVE'",
-   "AND NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
-   "WHERE absence.world_id=m.world_id AND absence.person_id=m.person_id",
+   "WHERE NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
+   "WHERE absence.world_id=u.world_id AND absence.person_id=m.person_id",
    "AND absence.status='ACTIVE' AND absence.injured_week_index<$3",
    "AND absence.cleared_week_index>$3)",
-   "GROUP BY t.world_id,t.team_id,t.name HAVING count(*)=2",
-   "AND count(*)=(SELECT count(*) FROM ppw_tag_team_members all_members",
-   "WHERE all_members.world_id=t.world_id AND all_members.team_id=t.team_id",
-   "AND all_members.active)",
-   "ORDER BY t.name,t.team_id LIMIT 101"
+   ")",
+   "SELECT kind,unit_id,name,jsonb_agg(jsonb_build_object(",
+   "'personId',person_id,'contractId',contract_id,'name',wrestler_name)",
+   "ORDER BY person_id) AS members",
+   "FROM eligible GROUP BY kind,unit_id,name,person_ids",
+   "HAVING count(*)=cardinality(person_ids)",
+   "ORDER BY kind,name,unit_id LIMIT 201"
   ].join(" "),[id.worldId,id.promotionId,(show.year-1)*52+show.week-1]);
-  if(bookableTeams.length>100)throw new Error("Too many eligible teams");
+  if(bookableUnits.length>200)throw new Error("Too many eligible teams or trios");
+  const bookableTeams=bookableUnits.filter(u=>u.kind==="TEAM");
+  const bookableTrios=bookableUnits.filter(u=>u.kind==="TRIO");
+  if(bookableTeams.length>100||bookableTrios.length>100)
+   throw new Error("Too many eligible teams or trios");
   const creativeConcerns=await creativeReviewsInTransaction(tx,id.worldId,[{
    showId:id.showId,promotionId:id.promotionId,
    weekIndex:(show.year-1)*52+show.week-1,slots,
@@ -271,7 +291,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   if(!Array.isArray(tournamentBouts)||tournamentBouts.length>4)
    throw new Error("Card tournament selection exceeded safe bounds");
   return {tournamentBouts,creativeConcerns,bookableTeams:bookableTeams.map(t=>({
-   teamId:t.team_id,name:t.name,members:t.members})),
+   teamId:t.unit_id,name:t.name,members:t.members})),
+   bookableTrios:bookableTrios.map(t=>({
+    trioId:t.unit_id,name:t.name,members:t.members})),
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),

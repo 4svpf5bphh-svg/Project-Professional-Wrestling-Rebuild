@@ -190,8 +190,47 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  return "I have something I want to discuss backstage.";
 }
 
+/** Optional subject-aware dialogue changes no outcomes, promises or World state. */
+const topicManagerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"DECLINE",string>>>>={
+ CONTRACT:{
+  TALK:"Let's talk about your deal and what you'd want next. Nothing is signed yet.",
+  DECLINE:"I can't offer new terms right now. I won't pretend otherwise."},
+ MORALE:{
+  TALK:"Tell me what's been bothering you. I'd rather hear it properly than guess.",
+  DECLINE:"I've heard how you feel, but I can't make that commitment today."},
+ MOMENTUM:{
+  TALK:"I can see the run has cooled. Tell me how you'd like to get moving again.",
+  DECLINE:"I can't give you a new booking commitment just yet."},
+ CREATIVE:{
+  TALK:"Walk me through your idea. Let's see whether it works for the show.",
+  DECLINE:"I don't see room for that direction on our cards right now."},
+ PARTNERSHIP:{
+  TALK:"Tell me what's gone wrong between you two before we decide anything.",
+  DECLINE:"I'm not stepping into this dispute right now. That's the decision."},
+ ROLE_USAGE:{
+  TALK:"You're right to ask about the role we agreed. Let's review those bookings.",
+  DECLINE:"I hear your frustration about the featured spot. I can't promise a change."},
+ MEDICAL_SUPPORT:{
+  TALK:"How is recovery going? Your health comes before any return to the ring.",
+  DECLINE:"I can't offer a return plan while medical clearance is outstanding."},
+ BOOKING_OMISSION:{
+  TALK:"I know you've been off the card. Let's talk about how to use you properly.",
+  DECLINE:"I can't promise you a match on our next cards."},
+ LOSS_STREAK:{
+  TALK:"Those losses haven't gone unnoticed. Tell me where you think we go next.",
+  DECLINE:"I hear you about the losses, but I'm not changing your direction today."},
+ TITLE_AMBITION:{
+  TALK:"I hear the ambition. Let's discuss how you could earn another title shot.",
+  DECLINE:"I respect that you want the belt, but I can't offer you a title shot."},
+ TRUST_CHECK_IN:{
+  TALK:"You're right to ask about that promise. I owe you a proper conversation.",
+  DECLINE:"I can't undo the broken promise. I'm not making another one I may miss."}
+};
 /** The manager speaks naturally; labels remain brief buttons, not dialogue. */
-export function backstageManagerReply(decision:BackstageDecision):string{
+export function backstageManagerReply(decision:BackstageDecision,kind?:BackstageKind):string{
+ const specific=(decision==="TALK"||decision==="DECLINE")&&kind?
+  topicManagerReplies[kind]?.[decision]:undefined;
+ if(specific)return specific;
  switch(decision){
   case "TALK":return "You've got my attention. Tell me what you've got in mind.";
   case "DECLINE":return "I've heard your case, but I can't agree right now.";
@@ -207,10 +246,48 @@ export function backstageManagerReply(decision:BackstageDecision):string{
   case "NOT_NOW":return "Not right now. Keep at it and we'll revisit the idea.";
  }
 }
-export function backstageReply(decision:BackstageDecision,status:string){
+const topicWrestlerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"DECLINE",string>>>>={
+ CONTRACT:{
+  TALK:"Good. I want to know where I stand before this deal runs out.",
+  DECLINE:"That's disappointing, but at least I know where you stand."},
+ MORALE:{
+  TALK:"Thanks. I needed to know you were listening.",
+  DECLINE:"That's hard to hear. I'll have to think about my next move."},
+ MOMENTUM:{
+  TALK:"All right. I don't want this cold run to become the whole story.",
+  DECLINE:"I was hoping for an opportunity to turn things around."},
+ CREATIVE:{
+  TALK:"I've got an idea in mind. I'll make the case for it when we talk.",
+  DECLINE:"I still think I've got more to offer than we're showing."},
+ PARTNERSHIP:{
+  TALK:"I appreciate it. I don't want this team falling apart.",
+  DECLINE:"We're still going to have to work out our problems somehow."},
+ ROLE_USAGE:{
+  TALK:"Good. I want to feel that the deal we agreed actually means something.",
+  DECLINE:"I signed up for a featured role. I'm not going to forget this."},
+ MEDICAL_SUPPORT:{
+  TALK:"Thanks. I'll focus on getting healthy before anything else.",
+  DECLINE:"I understand. Recovery still has to come first."},
+ BOOKING_OMISSION:{
+  TALK:"That's all I'm asking. I just want a chance to be part of the show.",
+  DECLINE:"I can't build a career sitting in the back every week."},
+ LOSS_STREAK:{
+  TALK:"I can handle the losses if there's an actual direction behind them.",
+  DECLINE:"I can put people over, but I need to know where that leaves me."},
+ TITLE_AMBITION:{
+  TALK:"Fair enough. I'll keep trying to earn that opportunity.",
+  DECLINE:"I won't stop chasing that championship."},
+ TRUST_CHECK_IN:{
+  TALK:"I want to believe that. I'll be watching what happens next.",
+  DECLINE:"That doesn't rebuild the trust we lost."}
+};
+export function backstageReply(decision:BackstageDecision,status:string,kind?:BackstageKind){
  if(status==="FULFILLED")return "You kept your word. That match meant a lot to me.";
  if(status==="BROKEN")return "You made me a booking promise and didn't deliver. I won't forget.";
  if(status==="EXCUSED")return "The circumstances changed. We couldn't reasonably follow through this time.";
+ const specific=(decision==="TALK"||decision==="DECLINE")&&kind?
+  topicWrestlerReplies[kind]?.[decision]:undefined;
+ if(specific)return specific;
  switch(decision){
   case "TALK":return "Thanks for hearing me out. It helps.";
   case "DECLINE":return "That's disappointing. I thought we could work something out.";

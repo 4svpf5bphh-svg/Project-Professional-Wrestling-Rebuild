@@ -2,14 +2,18 @@ name: Verify rebuild
 on:
   push:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 # A branch's CI can be expensive; obsolete 100+ browser and database suites
 # must not pile up while newer, integrated commits are ready to verify.
 concurrency:
-  group: rebuild-verify-${{ github.ref }}
+  # A PR and its push must not run the 52-week disposable DB check twice.
+  group: rebuild-verify-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 28
     services:
       postgres:
         image: postgres:16
@@ -481,7 +485,40 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0109_premium_media_scrum.sql
+      - name: Reconcile company-branded championships after earlier promotion rebrands
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0110_rebrand_championship_labels.sql
+      - name: Restore reviewed tag-team identities and historical partner familiarity
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0111_reviewed_world_tag_heritage.sql
+      - name: Create portable three-person team identities
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0112_portable_trios.sql
+      - name: Keep historic broadcast reach inside the original 0–100 audience scale
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0113_cap_broadcast_reach.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:postgres
+      - name: Bound stalled disposable PostgreSQL statements during season tests
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -c "ALTER ROLE ppw_test SET statement_timeout = '20s'"
+      - name: Verify 52-week AI World with isolated database load
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: timeout --signal=TERM --kill-after=10s 480s npm run test:world-year
+      # An authentic 156-week World resolution is expensive; keep it as a
+      # deliberate full-run readiness gate, not on every small PR edit.
+      - name: Verify three years of real AI-controlled World Lock without production access
+        # A labelled PR can launch this isolated run even before the workflow
+        # exists on the default branch; commits and other labels never do.
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'ppw-long-run')
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+        run: npm run test:world-three-years

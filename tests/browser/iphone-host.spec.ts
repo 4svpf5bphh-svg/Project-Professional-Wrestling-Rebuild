@@ -612,6 +612,11 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  const worker=await request.get("/sw.js");
  expect(worker.ok()).toBeTruthy();
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
+ // A refreshed shell must evict the old cache-first portrait entries; the
+ // original 48 Legends retain their URL paths across this release.
+ expect(await worker.text()).toContain('ppw-static-shell-v3');
+ expect(await worker.text()).toContain('key!==CACHE');
+ expect(await worker.text()).toContain('caches.delete(key)');
  const offline=await request.get("/offline.html");
  expect(offline.ok()).toBeTruthy();
  expect(await offline.text()).toContain("Bookings, results and contracts are not available offline");
@@ -642,7 +647,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  await menu.click();
  await expect(nav).toBeVisible();
  await expect(nav.locator(".ppw-tab")).toHaveCount(0);
- await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(8);
+ await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(9);
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
  await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
@@ -764,6 +769,9 @@ test("Backstage phone inbox stays visible without seeded personas; local filters
  await page.goto("/#/backstage");
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-messenger.ppw-messenger-inbox")).toHaveCount(1);
+ await expect(page.locator("#account")).toBeHidden();
+ await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
+ await expect(page.getByRole("button",{name:"Leave Backstage"})).toBeVisible();
  await expect(page.getByRole("navigation",{name:"Backstage messages and contacts"})).toBeVisible();
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("2 chats");
  await expect(page.locator(".ppw-messenger-inbox-topline")).toContainText("1 unread");
@@ -1044,6 +1052,7 @@ test("Annual show editor previews real weeks, catches clashing PPVs and never po
   await route.fulfill({json:method==="calendar"?view:{status:"APPLIED"}});
  });
  await page.goto("/#/calendar");
+ await page.getByText("Manage recurring events",{exact:true}).click();
  await page.getByRole("button",{name:"+ Add event"}).click();
  await page.getByRole("textbox",{name:"Event name"}).fill("Summer Clash");
  const frequency=page.getByRole("combobox",{name:"Repeat frequency"});

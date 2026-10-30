@@ -31,6 +31,7 @@ test("the Road Agent's opinions refer to the actual card and practical issues",(
  assert.equal(report.reviewedMatches,2);
  assert.match(report.praise,/opener/);
  assert.match(report.concern,/longer than planned/);
+ assert.match(report.concern,/10 minutes/);
  assert.ok(report.recommendation.length>30);
  assert.doesNotMatch(JSON.stringify(report),/executionQuality|ratingStars|simulator/i);
 });
@@ -48,4 +49,54 @@ test("a staff personality changes the voice, never the verified strongest match"
 test("staff reports cannot treat missing or duplicated match evidence as completed",()=>{
  assert.throws(()=>deriveRoadAgentReport(receipt,facts.slice(0,1),null),/complete/);
  assert.throws(()=>deriveRoadAgentReport(receipt,[facts[0]!,facts[0]!],null),/complete/);
+});
+
+test("Road Agent gives location-specific, fixable notes for real timing and execution issues",()=>{
+ const report=deriveRoadAgentReport(receipt,facts,{
+  name:"Morgan Stone",staffId:"staff-road",personality:"FRANK"
+ } as WorldStaffMember);
+ assert.match(report.concern,/closing match run 10 minutes longer/);
+ assert.match(report.recommendation,/timing of the closing match/);
+ assert.match(report.recommendation,/unbooked transitions/);
+ const unpaced=deriveRoadAgentReport(receipt,facts.map(f=>({
+  ...f,actualMinutes:f.plannedMinutes!
+ })),null);
+ assert.match(unpaced.concern,/closing match/);
+ assert.match(unpaced.recommendation,/shorter structure/);
+ assert.doesNotMatch(report.recommendation,/\b[0-9]+\/100|execution score|match quality meter/i);
+});
+
+test("Road Agent chooses the largest certified timing overrun, not the first one",()=>{
+ const overloaded=facts.map((fact,i)=>({
+  ...fact,plannedMinutes:10,actualMinutes:i===0?16:22,
+  executionQuality:80,chemistryModifier:0
+ }));
+ const report=deriveRoadAgentReport(receipt,overloaded,null);
+ assert.match(report.concern,/closing match run 12 minutes longer/);
+ assert.match(report.recommendation,/timing of the closing match/);
+ assert.doesNotMatch(report.concern,/opener run/);
+});
+
+test("Road Agent diagnoses poor execution, not merely the lowest critic rating",()=>{
+ const uneven=facts.map((fact,i)=>({
+  ...fact,ratingStars:i===0?1.5:4.5,
+  executionQuality:i===0?80:35,
+  plannedMinutes:18,actualMinutes:18,chemistryModifier:0
+ }));
+ const report=deriveRoadAgentReport(receipt,uneven,null);
+ assert.match(report.concern,/closing match/);
+ assert.match(report.concern,/comfortable rhythm/);
+ assert.match(report.recommendation,/cleaner, shorter structure/);
+ assert.doesNotMatch(report.concern,/opener/);
+});
+
+test("Road Agent identifies the worst negative working chemistry when timings are sound",()=>{
+ const awkward=facts.map((fact,i)=>({
+  ...fact,executionQuality:78,plannedMinutes:18,actualMinutes:18,
+  chemistryModifier:i===0?-3:-8
+ }));
+ const report=deriveRoadAgentReport(receipt,awkward,null);
+ assert.match(report.concern,/chemistry in the closing match/);
+ assert.match(report.recommendation,/different opponents/);
+ assert.equal(report.strongestMatchId,"opener");
 });

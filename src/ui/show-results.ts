@@ -124,7 +124,10 @@ export async function mountShowResults(root:HTMLElement,port:{
   renderBroadcast(root,show,port.openNext,port.mediaScrum);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
-   if(result.status==="ready"&&result.review)
+   if(result.status==="ready"&&result.review&&
+    Array.isArray(result.review.slots)&&
+    result.review.slots.length===show.entries.length&&
+    result.review.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))
     insertRingsideEditorial(root,show,result.review);
    else markRingsideFallback(root,show);
   }).catch(()=>markRingsideFallback(root,show));
@@ -133,6 +136,7 @@ export async function mountShowResults(root:HTMLElement,port:{
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
+ root.classList.remove("ppw-editorial-ready");
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
@@ -320,9 +324,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(finish){
    const replay=node("section","ppw-finish-replay ppw-finish-"+finish.tone.toLowerCase());
    replay.setAttribute("aria-label","Finish replay");
-   append(replay,node("span","ppw-finish-eyebrow","◉ FINISH REPLAY"),
-    node("strong","ppw-finish-title",finish.title),
+   append(replay,node("span","ppw-finish-eyebrow","◉ OFFICIAL FINISH"),
+    node("strong","ppw-finish-title",finish.title));
+   const finishNotes=document.createElement("details");
+   finishNotes.className="ppw-verified-finish-details";
+   finishNotes.open=true; // Readable when AI editorial is unavailable.
+   finishNotes.append(node("summary","","Read the certified finish"),
     node("p","ppw-finish-description",finish.description));
+   replay.append(finishNotes);
    if(finish.winnerLabel)
     append(replay,node("p","ppw-finish-winner","WINNER: "+finish.winnerLabel));
    append(body,replay);
@@ -383,12 +392,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
-  office.append(node("h3","",report.reporter+" · Road Agent's Report"),
-   node("strong","",report.headline),node("p","",report.praise),
-   node("p","",report.concern),node("p","",report.recommendation));
+  office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
+   node("h3","",report.reporter+" · Road Agent"),
+   node("strong","",report.headline),
+   node("p","ppw-road-agent-voice",report.praise),
+   node("p","ppw-road-agent-voice",report.concern),
+   node("p","ppw-road-agent-next",report.recommendation));
   const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
-  if(strongest)office.append(node("small","ppw-muted",
-   "Standout: "+strongest.headline));
+  if(strongest)office.append(node("p","ppw-road-agent-standout",
+   "If I were showing the locker room one match from tonight, it'd be "+
+    strongest.headline+"."));
   management.append(office);
  }
  const gorilla=show.gorillaLog;
@@ -400,7 +413,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     gorilla.policy.replaceAll("_"," ").toLowerCase()),
    node("p","","The crew's account of what happened between the curtain and the ring."));
   if(!gorilla.incidents.length)position.append(node("p","",
-   "No exceptional production incident required a change of plan."));
+   "The crew kept the show on course. No production intervention was needed."));
   for(const incident of gorilla.incidents.slice(0,12)){
    const line=node("article","ppw-gorilla-incident");
    const source=show.entries.find(entry=>entry.position===incident.position);
@@ -503,7 +516,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  };
  for(const [index,label] of labels.entries()){
   const button=goButton(label,index as 0|1|2);
-  button.className="ppw-results-step";tabButtons.push(button);steps.append(button);
+  button.className="ppw-results-step";
+  // Short, readable labels at 320px; keep the complete chapter title for
+  // accessible controls and normal-width screens without breaking words.
+  button.setAttribute("aria-label",label);
+  button.replaceChildren(
+   node("span","ppw-results-step-full",label),
+   node("span","ppw-results-step-short",["Ringside","Full show","Brief"][index]!)
+  );
+  tabButtons.push(button);steps.append(button);
  }
  headlines.append(goButton("Read the Full Show",1));
  full.append(goButton("Read Post-show Brief",2));
@@ -526,19 +547,39 @@ function metric(value:string,caption:string){
 function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:RingsideCopy){
  const region=root.querySelector<HTMLElement>(".ppw-ringside-dispatch");
  if(!region||region.dataset.showId!==show.showId||
+  copy.slots.length!==show.entries.length||
   !copy.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))return;
  region.querySelector(".ppw-ringside-await")?.remove();
  region.dataset.aiStatus="ready";
+ // Verified editorial joins these scenes; mechanical interstitials belong
+ // only to the offline fallback, which has no authored transitions.
+ for(const bridge of root.querySelectorAll(".ppw-show-transition"))bridge.remove();
+ for(const finish of root.querySelectorAll<HTMLDetailsElement>(".ppw-verified-finish-details"))
+  finish.open=false; // The columnist tells the story; the source decision remains one tap away.
+ root.classList.add("ppw-editorial-ready");
  const status=region.querySelector(".ppw-ringside-ai-status");
  if(status)status.textContent="GROQ ARTICLE · VERIFIED RECORD";
  const headline=region.querySelector(".ppw-final-bell-headline");
  if(headline)headline.textContent=copy.showHeadline;
- region.append(node("p","ppw-final-bell-paragraph",copy.opening),
-  node("p","ppw-final-bell-paragraph",copy.closing));
+ region.append(node("p","ppw-final-bell-paragraph",copy.opening));
+ const full=root.querySelector<HTMLElement>('.ppw-results-page[data-page="full"]');
+ if(full){
+  const conclusion=node("section","ppw-ringside-conclusion");
+  conclusion.append(node("span","ppw-eyebrow","FINAL WORD"),
+   node("p","",copy.closing));
+  full.insertBefore(conclusion,full.querySelector(".ppw-results-next"));
+ }
  for(const slot of copy.slots){
   const report=Array.from(root.querySelectorAll<HTMLElement>(".ppw-ringside-slot"))
    .find(el=>el.dataset.slotId===slot.slotId);
-  if(report){report.textContent=slot.recap;report.hidden=false;}
+  if(report){
+   // The Groq passage is a part of one chronological article. Keep its own
+   // heading and paragraphs, while the immutable match receipt stays separate.
+   const paragraphs=slot.recap.split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
+   report.replaceChildren(node("h3","ppw-ringside-slot-headline",slot.headline),
+    ...paragraphs.map(p=>node("p","ppw-ringside-slot-paragraph",p)));
+   report.hidden=false;
+  }
  }
 }
 function markRingsideFallback(root:HTMLElement,show:CompletedShowView){

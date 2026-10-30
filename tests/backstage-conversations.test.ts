@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply}
+import {BACKSTAGE_CHOICES,backstageDecisionEffect,backstageMessage,backstageReply,backstageManagerReply}
  from "../src/domain/backstage-conversations.js";
 test("wrestler-initiated requests have constrained authored replies",()=>{
  for(const kind of ["CONTRACT","MORALE","MOMENTUM","CREATIVE","PARTNERSHIP","ROLE_USAGE","GIMMICK_PITCH","TAG_TEAM_PITCH","RIVALRY_PITCH","TEAM_MOMENT"] as const){
@@ -44,6 +44,28 @@ test("wrestler-initiated requests have constrained authored replies",()=>{
  assert.match(backstageMessage("TEAM_MOMENT",{partnerName:"Partner"}),/Partner/);
 });
 
+test("manager SMS reflects the subject but never grants a new gameplay promise",()=>{
+ const contract=backstageManagerReply("TALK","CONTRACT");
+ const injury=backstageManagerReply("TALK","MEDICAL_SUPPORT");
+ const title=backstageManagerReply("TALK","TITLE_AMBITION");
+ const trust=backstageManagerReply("TALK","TRUST_CHECK_IN");
+ assert.match(contract,/deal|signed/);
+ assert.match(injury,/recovery|health|ring/);
+ assert.match(title,/title shot/);
+ assert.match(trust,/promise/);
+ assert.equal(new Set([contract,injury,title,trust]).size,4);
+ assert.match(backstageManagerReply("DECLINE","TITLE_AMBITION"),/title shot/);
+ assert.match(backstageManagerReply("PROMISE_APPEARANCE","BOOKING_OMISSION"),/two weeks/);
+ assert.match(backstageManagerReply("TALK"),/got my attention/);
+ assert.match(backstageReply("TALK","ANSWERED","CONTRACT"),/deal/);
+ assert.match(backstageReply("TALK","ANSWERED","MEDICAL_SUPPORT"),/healthy/);
+ assert.match(backstageReply("DECLINE","DECLINED","TITLE_AMBITION"),/championship/);
+ assert.notEqual(backstageReply("TALK","ANSWERED","CONTRACT"),
+  backstageReply("TALK","ANSWERED","LOSS_STREAK"));
+ assert.match(backstageReply("PROMISE_APPEARANCE","BROKEN","MORALE"),/didn't deliver/);
+ assert.deepEqual(backstageDecisionEffect("CONTRACT","TALK"),{
+  moraleDelta:0,promise:false,status:"ANSWERED"});
+});
 test("career-sensitive wrestler ambitions are frozen to their original stage",()=>{
  const message=(stage:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION")=>
   backstageMessage("BOOKING_OMISSION",{careerStage:stage},"career-voice-1");

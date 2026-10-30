@@ -1,6 +1,6 @@
 import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
- mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountKayfabePage,
+ mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost}
@@ -21,6 +21,7 @@ import "../graphic-collections.css";
 import "../type-led.css";
 import "../bottom-navigation.css";
 import "../ringside-editorial.css";
+import "../phase16.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
 import "../admin-centre.css";
@@ -340,7 +341,8 @@ function renderSection(){
   case "world-moments":
    mountIndustryPage(view,scope,pendingLegends??undefined);
    pendingLegends=null;break;
-  case "news":mountIndustryPage(view,scope);break;
+  case "collection":mountCollectionPage(view,scope);break;
+   case "news":mountIndustryPage(view,scope);break;
   case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"));break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;

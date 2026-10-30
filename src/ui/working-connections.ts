@@ -65,7 +65,10 @@ export function mountWorkingConnections(root:HTMLElement,
    list.append(el("p","ppw-muted","No established partnership or verified recent tag appearances yet."));
   for(const c of view.connections){
    const card=el("article","ppw-connection-card");
-   card.append(el("h3","",c.name));
+   card.dataset.connection=c.established?"established":"recent";
+   card.append(el("span","ppw-connection-status",
+    c.established?"ESTABLISHED PARTNERSHIP":"RECENT TEAMMATES"),
+    el("h3","",c.name));
    if(port.openWrestler){
     const scout=el("button","ppw-connections-button","View "+c.name+"'s dossier ↗") as HTMLButtonElement;
     scout.type="button";scout.onclick=()=>port.openWrestler?.(c.personId);
@@ -76,6 +79,10 @@ export function mountWorkingConnections(root:HTMLElement,
     el("span","","Familiarity · "+(c.established?c.familiarity:"Not established")));
    if(c.established){
     facts.append(el("span","","Professional trust · "+c.professionalTrust.toFixed(1)));
+    card.append(el("p","ppw-connection-verdict",
+     c.professionalTrust>=70?"They have earned the trust to work together again.":
+     c.professionalTrust<=30?"Recent work has left this partnership under strain.":
+     "A workable connection, with trust still being earned between the ropes."));
     if(c.tags.length)card.append(el("p","ppw-muted","Background · "+c.tags.join(", ")));
     if(c.lastDevelopment)
      card.append(el("p","ppw-muted",

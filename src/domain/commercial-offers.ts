@@ -58,7 +58,10 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
   // transfer it repeatedly in every Business workspace RPC.
   offers.push({code,kind,name:company.name,description,
    weeklyIncome:term(base,percent),
-   reachIncrease:Math.round((reach??0)*reachPercent),
+   // Reach is a percentage-sized, 0–100 audience index. New TV terms
+   // may improve distribution but never put the World above its valid cap.
+   reachIncrease:Math.max(0,Math.min(100-Math.min(100,reach??0),
+    Math.round(Math.min(100,reach??0)*reachPercent))),
    termWeeks,obligation});
  };
  if(good(e.weeklyMediaIncome)&&good(reach)){

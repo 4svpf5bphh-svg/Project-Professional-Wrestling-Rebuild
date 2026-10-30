@@ -86,3 +86,53 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await page.reload();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first()).toBeVisible();
 });
+
+
+test("iPhone books a complete named trio against another in one certified 3v3 card",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ const six=[...roster,
+  {personId:"dax",contractId:"c-dax",name:"Dax Harwood"},
+  {personId:"cash",contractId:"c-cash",name:"Cash Wheeler"}];
+ const booked=[{trioId:"first",name:"The Lightning Trio",members:six.slice(0,3)},
+  {trioId:"second",name:"The Steel Trio",members:six.slice(3)}];
+ let revision=4,saves=0;
+ let slots:{slotId:string;kind:"MATCH";position:number;payload:unknown}[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON(),method=req.method;
+  if(method==="save"){
+   saves++;
+   const matches=req.matches as {slotId:string;payload:{
+    family:string;participants:{personId:string}[];sides:{participants:{personId:string}[]}[]}}[];
+   const trio=matches.find(x=>x.payload.participants.length===6);
+   expect(trio?.payload.family).toBe("TEAMS");
+   expect(trio?.payload.sides.map(s=>s.participants.map(p=>p.personId))).toEqual([
+    ["joe","riddle","alex"],["chris","dax","cash"]]);
+   slots=matches.map((x,i)=>({slotId:x.slotId,kind:"MATCH",position:i,payload:x.payload}));
+   revision++;
+  }
+  return route.fulfill({json:method==="planner"?planner:method==="load"?{
+   ...cardBase,worldRevision:revision,slots,
+   bookableTeams:[],bookableTrios:booked
+  }:method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator('select[aria-label="Match format"]').selectOption("TRIOS");
+ await page.getByRole("button",{name:"+ Add match"}).click();
+ let dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog.getByLabel("Choose trio")).toHaveCount(2);
+ await dialog.getByLabel("Choose trio").first().selectOption("first");
+ dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByLabel("Choose trio").nth(1).selectOption("second");
+ await expect(dialog).toContainText("Samoa Joe");
+ await expect(dialog).toContainText("Dax Harwood");
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saves).toBe(1);
+ await page.reload();
+ await expect(page.locator(".ppw-card-lineup")).toContainText("6 / 6 booked");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

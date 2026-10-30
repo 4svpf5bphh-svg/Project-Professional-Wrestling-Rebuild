@@ -7,13 +7,29 @@ export async function publishBackstageTagPitches(tx:SqlRows,
  worldId:string,weekIndex:number){
  if(!worldId||!Number.isSafeInteger(weekIndex)||weekIndex<0)
   throw new Error("Invalid Backstage pitch week");
+ if(weekIndex===0)return {newPitches:0};
+ // Keep an indexed twelve-week window across the World year boundary;
+ // there can be no eligible team pitch from a future or expired appearance.
+ const first=Math.max(0,weekIndex-12),last=weekIndex-1;
+ const firstYear=Math.floor(first/52)+1,firstWeek=first%52+1;
+ const lastYear=Math.floor(last/52)+1,lastWeek=last%52+1;
  const created=await tx.query<{request_id:string}>([
-  "WITH eligible AS (",
+  "WITH human_promotions AS MATERIALIZED (",
+  "SELECT DISTINCT owner.promotion_id FROM ppw_promotion_controls owner",
+  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
+  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
+  "WHERE owner.world_id=$1 AND owner.active",
+  "), eligible AS (",
   "SELECT sh.promotion_id,a.person_a_id,a.person_b_id,",
   "count(DISTINCT a.show_id)::integer AS shared_shows,",
   "round(avg(a.execution_quality)::numeric,1) AS avg_quality",
-  "FROM ppw_tag_working_pair_appearances a",
-  "JOIN ppw_completed_shows sh ON sh.world_id=a.world_id AND sh.show_id=a.show_id",
+  "FROM human_promotions human",
+  "JOIN ppw_completed_shows sh ON sh.world_id=$1",
+  "AND sh.promotion_id=human.promotion_id",
+  "AND (sh.year,sh.week) BETWEEN ($3::integer,$4::integer)",
+  "AND ($5::integer,$6::integer)",
+  "JOIN ppw_tag_working_pair_appearances a ON a.world_id=sh.world_id",
+  "AND a.show_id=sh.show_id",
   "JOIN ppw_completed_show_matches played ON played.world_id=a.world_id",
   "AND played.show_id=a.show_id AND played.match_id=a.match_id",
   "JOIN ppw_wrestler_relationships rel ON rel.world_id=a.world_id",
@@ -33,10 +49,6 @@ export async function publishBackstageTagPitches(tx:SqlRows,
   "AND first_person.person_id=a.person_a_id AND first_person.status='ACTIVE'",
   "JOIN ppw_people second_person ON second_person.world_id=a.world_id",
   "AND second_person.person_id=a.person_b_id AND second_person.status='ACTIVE'",
-  "JOIN ppw_promotion_controls owner ON owner.world_id=sh.world_id",
-  "AND owner.promotion_id=sh.promotion_id AND owner.active",
-  "JOIN ppw_memberships member ON member.world_id=owner.world_id",
-  "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
   "WHERE a.world_id=$1 AND a.week_index BETWEEN greatest(0,$2-12) AND $2-1",
   "AND NOT EXISTS(SELECT 1 FROM ppw_tag_teams team",
   "JOIN ppw_tag_team_members am ON am.world_id=team.world_id",
@@ -74,7 +86,7 @@ export async function publishBackstageTagPitches(tx:SqlRows,
   "promotion_id,person_a_id,person_b_id,'TAG_TEAM_PITCH',$2,",
   "shared_shows,avg_quality FROM ranked WHERE rank=1",
   "ON CONFLICT DO NOTHING RETURNING request_id"
- ].join(" "),[worldId,weekIndex]);
+ ].join(" "),[worldId,weekIndex,firstYear,firstWeek,lastYear,lastWeek]);
  if(created.length>128)throw new Error("Backstage tag proposals exceed World cap");
  return {newPitches:created.length};
 }

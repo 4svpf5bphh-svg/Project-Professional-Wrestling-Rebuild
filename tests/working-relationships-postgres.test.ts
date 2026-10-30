@@ -64,6 +64,10 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
   assert.equal((await read<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_wrestler_relationships WHERE world_id=$1",[worldId]))[0]!.n,"0");
   assert.deepEqual(await addShow(2,85),{appearances:2,developments:2});
+  // Read a Week 2 completed match from the Week 2 World clock, rather than
+  // asking for "recent" appearances while the fixture is still on Week 1.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
   const rel=await read<{professional_trust:number;familiarity:number;
    affinity:number;rivalry_heat:number}>([
    "SELECT professional_trust,familiarity,affinity,rivalry_heat",
@@ -119,6 +123,63 @@ test("PostgreSQL: original working chemistry develops across promotions, respect
     "ppw_memberships","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("certified 3v3 bouts develop all six authentic teammate pairs only after two shows",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const id=randomUUID(),worldId="trio-chem-"+id,promo="arena-"+id;
+ const people=["a","b","c","d","e","f"].map(x=>x+"-"+id);
+ const db=postgresPool(url!,3);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Real Trio Chemistry",seed:17,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promo,name:"Arena",tier:"LOCAL"});
+   for(const p of people)await tx.query(
+    "INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,$3)",
+    [worldId,p,p]);
+  });
+  for(const week of [1,2]){
+   const showId="trio-show-"+week,matchId="trio-match-"+week;
+   await withWorldTransaction(db.pool,async tx=>{
+    await tx.query([
+     "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,",
+     "resolution_id,crowd_response,receipt_json,receipt_digest)",
+     "VALUES($1,$2,$3,1,$4,$5,88,'{}'::jsonb,repeat('b',64))"
+    ].join(" "),[worldId,promo,showId,week,"resolve-"+id+"-"+week]);
+    await tx.query([
+     "INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,",
+     "crowd_response,actual_finish,actual_winner_side)",
+     "VALUES($1,$2,$3,0,88,'CLEAN_PIN','A')"
+    ].join(" "),[worldId,showId,matchId]);
+    const outcome=await settleWorkingPartnerships(tx,{worldId,showId,year:1,week,
+     matches:[{matchId,executionQuality:82,
+      sideA:people.slice(0,3),sideB:people.slice(3)}]});
+    assert.deepEqual(outcome,{appearances:6,developments:week===1?0:6});
+   });
+  }
+  await withWorldTransaction(db.pool,async tx=>{
+   const pairs=await tx.query<{n:number}>([
+    "SELECT count(*)::integer AS n FROM ppw_tag_working_pair_appearances",
+    "WHERE world_id=$1"
+   ].join(" "),[worldId]);
+   const developments=await tx.query<{n:number}>([
+    "SELECT count(*)::integer AS n FROM ppw_wrestler_relationship_changes",
+    "WHERE world_id=$1"
+   ].join(" "),[worldId]);
+   assert.equal(pairs[0]!.n,12);
+   assert.equal(developments[0]!.n,6);
+  });
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_wrestler_relationship_changes",
+    "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
+    "ppw_completed_show_matches","ppw_completed_shows",
+    "ppw_ledger_events","ppw_people","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());
  }

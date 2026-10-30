@@ -123,10 +123,14 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
  if(entry.outcome!=="HAPPENS")return null;
  if(entry.intent==="TURN_OCCURRED")
   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:108,
-   text:"That turn! "+entry.headline+". I saw the warning signs and still got caught out."};
+   text:"That turn! "+entry.headline+". I saw the warning signs and still got caught out.",
+   reply:{voice:"THE HEEL DEFENDER",
+    text:"Call it betrayal if you want. I want to see what they do now the mask is off."}};
  if(entry.intent==="DEBUT_OCCURRED")
   return {...base,voice:"THE DIEHARD",mood:"BUZZ",source:"ANGLE",priority:104,
-   text:"A debut worth getting out of your seat for. "+entry.headline+". Now give them something worth doing."};
+   text:"A debut worth getting out of your seat for. "+entry.headline+". Now give them something worth doing.",
+   reply:{voice:"THE SKEPTICAL SMARK",
+    text:"A grand entrance is one night. I'm more interested in the first real rivalry."}};
  if(entry.crowdResponse>=84)
   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ANGLE",priority:76,
    text:"That "+(entry.segmentKind??"segment").toLowerCase().replaceAll("_"," ")+" really landed. The reactions were half the show."};
@@ -135,6 +139,47 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    text:"Not every idea needs another week of airtime. That "+(entry.segmentKind??"segment").toLowerCase().replaceAll("_"," ")+" struggled."};
  return {...base,voice:"THE BACK ROW",mood:"DEBATE",source:"ANGLE",priority:18,
   text:entry.headline+". Half our row loved it, half hated it. That's wrestling for you."};
+}
+/** The feed is fictional but the personalities shouldn't be interchangeable.
+ * Only revisit the original certified match when adapting a generic reaction.
+ * Never invent a move, an injury, an actual fan eyewitness or a new outcome.
+ */
+function fanVoiceForGenericMatch(
+ voice:ReactionVoice,mood:ReactionMood,entry:ShowResultEntry,
+):string|null{
+ const bout=contender(entry);
+ if(mood==="BUZZ"){
+  const lines:Record<ReactionVoice,string>={
+   "THE FRONT ROW":"The noise for "+bout+" was extraordinary. That's why people love live wrestling.",
+   "THE SKEPTICAL SMARK":"I came ready to nitpick "+bout+", but that crowd reaction was difficult to argue with.",
+   "THE TAPE TRADER":"That building got behind "+bout+". I'll be watching the match again to see how it holds up.",
+   "THE DIEHARD":"Give me nights like "+bout+" every week. The reaction was ridiculous.",
+   "THE HEEL DEFENDER":"Love the result or hate it, "+bout+" absolutely had the room.",
+   "THE CONCERNED FAN":"That was a passionate crowd for "+bout+". Here's hoping the wrestlers keep that momentum.",
+   "THE RIVALRY ADDICT":"The reaction to "+bout+" was huge. Now give me a reason to care about what happens next.",
+   "THE BACK ROW":"I thought "+bout+" might split the room. Instead, everyone sounded invested."
+  };
+  return lines[voice];
+ }
+ if(mood==="COLD"){
+  const lines:Partial<Record<ReactionVoice,string>>={
+   "THE BACK ROW":"The room never really came along for "+bout+". There was a lot of work left to do.",
+   "THE DIEHARD":"I wanted to get into "+bout+", honestly. That crowd never found its way in.",
+   "THE SKEPTICAL SMARK":"Not much heat for "+bout+". You can't argue an audience into caring.",
+   "THE TAPE TRADER":"I'll revisit "+bout+" on tape, but the response in the building was quiet."
+  };
+  return lines[voice]??null;
+ }
+ if(mood==="DEBATE"){
+  const lines:Partial<Record<ReactionVoice,string>>={
+   "THE BACK ROW":"I'm still making up my mind about "+bout+". That one divided the discussion on the way home.",
+   "THE SKEPTICAL SMARK":"Not convinced "+bout+" settled the argument. People will be picking it apart.",
+   "THE TAPE TRADER":"Put "+bout+" on the watch-again list. There's more to discuss than the first impression.",
+   "THE DIEHARD":"I know people disagree about "+bout+". That's half the reason I love wrestling."
+  };
+  return lines[voice]??null;
+ }
+ return null;
 }
 /** Most important distinct *recorded* slots; no synthetic accounts, no polling.
  * Caller can click the source slot in the already-loaded broadcast.
@@ -149,7 +194,31 @@ export function showReactionWire(
   const story=candidate(entry,show.showId);
   return story?[story]:[];
  });
- return candidates.sort((a,b)=>b.priority-a.priority||a.position-b.position||
-  a.slotId.localeCompare(b.slotId)).slice(0,limit)
-  .map(({priority:_priority,position:_position,...reaction})=>reaction);
+ const selected=candidates.sort((a,b)=>b.priority-a.priority||a.position-b.position||
+  a.slotId.localeCompare(b.slotId)).slice(0,limit);
+ // Diverse fictional perspectives, still sourced from the same certified slots.
+ const used=new Set<ReactionVoice>();
+ const voices:readonly ReactionVoice[]=["THE BACK ROW","THE DIEHARD","THE TAPE TRADER",
+  "THE SKEPTICAL SMARK","THE FRONT ROW","THE RIVALRY ADDICT",
+  "THE HEEL DEFENDER","THE CONCERNED FAN"];
+ return selected.map(({priority:_priority,position:_position,...reaction})=>{
+  if(used.has(reaction.voice)){
+   const replacement=voices.find(v=>!used.has(v)&&v!==reaction.reply?.voice&&
+    (reaction.mood!=="CONCERN"||v==="THE CONCERNED FAN"));
+   if(replacement){
+    // The same generic text assigned to five unrelated voices is robotic.
+    // Rephrase only when the certified evidence supports that voice.
+    if(reaction.source==="MATCH"){
+     const entry=show.entries.find(e=>e.slotId===reaction.slotId);
+     const copy=entry&&fanVoiceForGenericMatch(replacement,reaction.mood,entry);
+     if(copy){reaction.voice=replacement;reaction.text=copy;}
+    }else{
+     // A title change, injury or other major event has its own natural
+     // speaker: keep that speaker instead of relabelling a specific opinion.
+    }
+   }
+  }
+  used.add(reaction.voice);
+  return reaction;
+ });
 }

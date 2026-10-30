@@ -85,6 +85,15 @@ test("championship directory renders loaded distinct authored belt artwork witho
  await expect(identity).toHaveCount(2);
  await expect(identity.nth(0)).toHaveText("World Championship");
  await expect(identity.nth(1)).toHaveText("Tag Team Championship");
+ const belts=await page.locator(".ppw-belt-plate").evaluateAll(elements=>
+  elements.map(el=>({strap:getComputedStyle(el,"::before").content,
+   plate:getComputedStyle(el,"::after").content,
+   bounds:el.getBoundingClientRect().toJSON()})));
+ expect(belts).toHaveLength(2);
+ expect(belts.every(b=>b.strap!=="none"&&b.plate!=="none")).toBe(true);
+ expect(belts.every(b=>b.bounds.width>150)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
  await expect(page.locator(".ppw-belt-card").first()).toHaveAttribute("data-title-family","world");
  await expect(page.locator(".ppw-belt-card").last()).toHaveAttribute("data-title-family","tag");
  await expect(page.getByText("Alice",{exact:false}).first()).toBeVisible();

@@ -17,6 +17,7 @@ export const HOST_SECTIONS=[
  {id:"broadcasts",label:"Recent Broadcasts",glyph:"▣"},
  {id:"records",label:"Record Book",glyph:"▤"},
  {id:"legends",label:"Legends Vault",glyph:"★"},
+ {id:"collection",label:"My Collection",glyph:"▣"},
  {id:"hall-of-fame",label:"Hall of Fame",glyph:"♛"},
  {id:"annual-awards",label:"Annual Awards",glyph:"◆"},
  {id:"world-moments",label:"World Moments",glyph:"✦"},
@@ -59,7 +60,8 @@ export const HOST_DRAWER_ROOTS=[
   ["promotions","Promotions","Companies and industry standings"],
   ["broadcasts","Recent Broadcasts","Completed shows and public results"],
   ["records","Record Book","Wrestler records and career search"],
-  ["legends","Legends Vault","Clues, reveals and collectibles"],
+  ["legends","Legends Vault","Clues, discoveries and unlock reveals"],
+  ["collection","My Collection","Your private Legends card binder"],
   ["hall-of-fame","Hall of Fame","Careers that earned their place"],
   ["annual-awards","Annual Awards","The finest of each completed year"],
   ["world-moments","World Moments","Historic highlights worth remembering"]]},
@@ -87,7 +89,7 @@ export const HOST_DRAWER_ROOTS=[
 export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
 export function drawerRootForSection(section:HostSection):HostDrawerRoot{
  if(section==="news")return "news";
- if(["industry","promotions","broadcasts","records","legends","hall-of-fame",
+ if(["industry","promotions","broadcasts","records","legends","collection","hall-of-fame",
   "annual-awards","world-moments"].includes(section))return "world";
  if(["roster","market","results","championships","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";

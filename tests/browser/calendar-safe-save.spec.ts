@@ -50,6 +50,7 @@ for(const stale of [false,true]){
   });
   await page.goto("/#/calendar");
   await expect(page.getByRole("heading",{name:"Show Calendar"})).toBeVisible();
+  await page.getByText("Manage recurring events",{exact:true}).click();
   await page.getByRole("button",{name:"Edit"}).nth(1).click();
   await page.getByLabel("Event importance").fill("90");
   await page.getByRole("button",{name:"Save event"}).click();
@@ -94,6 +95,7 @@ test("a lost response for a newly generated PPV replays the same one-time creati
    result:{status:"CREATED",seriesId:"new-autumn-slam"}}});
  });
  await page.goto("/#/calendar");
+ await page.getByText("Manage recurring events",{exact:true}).click();
  await page.getByRole("button",{name:"+ Add event"}).click();
  await page.getByLabel("Event name").fill("Autumn Slam");
  await page.getByLabel("Event importance").fill("90");
@@ -104,4 +106,36 @@ test("a lost response for a newly generated PPV replays the same one-time creati
  await expect(page.getByText("Autumn Slam",{exact:true})).toHaveCount(1);
  expect(seen).toHaveLength(2);
  expect(seen[0]).toBe(seen[1]);
+});
+
+test("Calendar prioritises announced fixtures, and empty premium view explains itself without another read",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const calls:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  calls.push(method);
+  if(method!=="calendar")throw Error("Unexpected calendar read "+method);
+  return route.fulfill({json:{
+   ...calendar(4,80),
+   weeks:[{year:1,week:5,offset:0,shows:[flagship]},
+    {year:1,week:6,offset:1,shows:[flagship]}],
+   worldWeeks:[]
+  }});
+ });
+ await page.goto("/#/calendar");
+ await expect(page.getByRole("heading",{name:"Upcoming weeks"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Edit recurring schedule"})).toBeVisible();
+ await expect(page.locator(".ppw-calendar-management")).not.toHaveAttribute("open");
+ await expect(page.getByText("Indie Weekly").first()).toBeVisible();
+ await page.getByRole("button",{name:"PPVs & specials"}).click();
+ await expect(page.getByText(/No premium events or specials are announced/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Across the World"})).toHaveAttribute("aria-pressed","false");
+ await page.getByRole("button",{name:"Across the World"}).click();
+ await expect(page.getByText(/No rival premium events or specials have been announced/)).toBeVisible();
+ await page.getByText("Manage recurring events",{exact:true}).click();
+ await expect(page.getByRole("button",{name:"+ Add event"})).toBeVisible();
+ expect(calls).toEqual(["calendar"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });

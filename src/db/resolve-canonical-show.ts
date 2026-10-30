@@ -90,7 +90,8 @@ export async function resolveCanonicalShow(
    await settleWorkingPartnerships(tx,{
     ...input,matches:projection.projections.flatMap(p=>{
      const sides=p.tag?.layout.sides;
-     if(!sides||sides.length!==2||sides.some(s=>s.participants.length!==2))
+     if(!sides||sides.length!==2||![2,3].includes(sides[0]?.participants.length??0)||
+      sides[0]!.participants.length!==sides[1]!.participants.length)
       return [];
      return [{matchId:p.slotId,executionQuality:p.score.executionQuality,
       sideA:sides[0]!.participants.map(x=>x.personId),

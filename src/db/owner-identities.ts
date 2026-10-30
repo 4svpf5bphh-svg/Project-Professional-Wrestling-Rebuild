@@ -75,6 +75,14 @@ export async function renameOwnedPromotion(pool:TransactionPool,scope:{
    UPDATE ppw_promotions SET name=$4
    WHERE world_id=$1 AND promotion_id=$2 AND name=$3`,
    [worldId,promotionId,owned.name,name]);
+  // Update the display names of company-branded titles in this owned promotion.
+  // Stable championship IDs, historical reigns, result receipts and prestige survive.
+  await tx.query(`
+   UPDATE ppw_championships
+   SET name=$4||substring(name FROM char_length($3)+1)
+   WHERE world_id=$1 AND promotion_id=$2
+    AND left(name,char_length($3)+1)=$3||' '`,
+   [worldId,promotionId,owned.name,name]);
   await tx.query(`
    INSERT INTO ppw_promotion_name_history(world_id,promotion_id,player_id,
     previous_name,new_name,year,week)

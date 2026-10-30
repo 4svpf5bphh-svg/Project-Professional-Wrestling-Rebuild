@@ -23,11 +23,18 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  });
  const best=[...matches].sort((a,b)=>
   b.f.ratingStars-a.f.ratingStars||b.m.crowdResponse-a.m.crowdResponse)[0];
- const weakest=[...matches].sort((a,b)=>a.f.ratingStars-b.f.ratingStars)[0];
+ // Review the actual production problem, not simply the lowest star rating.
+ // A crowd-pleasing contest can still have poor execution, and the first
+ // overrun on the card is not necessarily the most disruptive.
+ const poorExecution=[...matches].sort((a,b)=>
+  a.f.executionQuality-b.f.executionQuality||a.m.position-b.m.position)
+  .find(x=>x.f.executionQuality<55);
  const injuries=matches.reduce((sum,x)=>sum+x.f.injuries.length,0);
  const linked=matches.filter(x=>(x.f.linkedProgrammes??0)>0).length;
  const highChem=matches.find(x=>x.f.chemistryModifier>=3);
- const lowChem=matches.find(x=>x.f.chemistryModifier<=-3);
+ const lowChem=[...matches].sort((a,b)=>
+  a.f.chemistryModifier-b.f.chemistryModifier||a.m.position-b.m.position)
+  .find(x=>x.f.chemistryModifier<=-3);
  const reporter=agent?.name??"PPW House Road Agent";
  const voice=agent?.personality??"BALANCED";
  const bestCrowd=best?.m.crowdResponse??0;
@@ -65,30 +72,50 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "I'd build on "+place+". It "+mood+
     "; "+(finishPoint||"the audience had a reason to pay attention.")
  ):"We didn't have a contest to judge. I'd like a proper bell-to-bell bout on the next show.";
- const ranLong=matches.find(x=>x.f.plannedMinutes!==undefined&&
-  x.f.actualMinutes-x.f.plannedMinutes>=5);
+ const ranLong=[...matches].filter(x=>x.f.plannedMinutes!==undefined)
+  .sort((a,b)=>
+   (b.f.actualMinutes-b.f.plannedMinutes!)-
+    (a.f.actualMinutes-a.f.plannedMinutes!)||
+    a.m.position-b.m.position)
+  .find(x=>x.f.actualMinutes-x.f.plannedMinutes!>=5);
+ const boutName=(position:number)=>position===opener?"the opener":
+  position===finalMatch?"the closing match":"the match at slot "+(position+1);
+ const worstLabel=poorExecution?boutName(poorExecution.m.position):"the match";
  const concern=injuries>0?
   (voice==="FRANK"?"First priority: we've got an injury to deal with. ":
    "We need to check on the injured talent. ")+
    "Let Medical decide who is cleared before we make next week's promises.":
   ranLong?
-   "We had a match run noticeably longer than planned. Protect the rest of the card's breathing room.":
-  weakest&&weakest.f.executionQuality<55?
-   "The weakest bout asked more of the wrestlers than the execution delivered. I'd simplify the layout before booking that combination again.":
+   "We had "+boutName(ranLong.m.position)+" run "+
+    (ranLong.f.actualMinutes-ranLong.f.plannedMinutes!)+
+    " minutes longer than planned. That put the rest of the running order under pressure. "+
+    "We can protect the booked match and still keep a better eye on the clock.":
+  poorExecution?
+   "I'd look again at "+worstLabel+". The work never found a comfortable rhythm. "+
+    "If you use that pairing again, give them a simpler match to settle into.":
   lowChem?
-   "That pairing never quite settled together. No need to blame anyone, but I wouldn't immediately ask them to go longer.":
+   "I wasn't convinced by the chemistry in "+boutName(lowChem.m.position)+
+    ". No need to blame anyone, but I wouldn't ask them to go longer next time.":
   linked===0&&matches.length>1?
    "The wrestling had moments, but the card could use a stronger thread between the matches.":
-   "I haven't got a major in-ring warning from the completed show.";
+   "Nobody gave me a major in-ring concern tonight. Let's keep that standard.";
  const recommendation=injuries>0?
-  "Medical clearance first. Rebuild the next card around the people who can actually wrestle.":
+  "Ask Medical who is cleared before the next card is locked. Keep injured talent out of the promised matches until that is confirmed.":
+  ranLong?
+   "Before the next show, review the timing of "+boutName(ranLong.m.position)+
+   ". Give a longer bout the time it needs on the running sheet and tighten only unbooked transitions; don't sacrifice another scripted scene.":
+  poorExecution?
+   "If you revisit "+worstLabel+", give the wrestlers a cleaner, shorter structure. Let them build confidence before adding extra spots.":
+  lowChem?
+   "Give the wrestlers from "+boutName(lowChem.m.position)+
+   " a fresh programme beat or different opponents before asking them to carry a longer rematch.":
   linked===0&&matches.length?
    "Follow "+place+" with a clear challenge or rivalry. A strong match means more when something is at stake.":
   highChem?
    "Those wrestlers worked well together. Revisit the pairing, but give them a new reason to meet.":
   receipt.segments.length===0?
    "Put a short confrontation between the matches. Let the audience know why the next fight matters.":
-   "Keep the strongest story moving, trim the less convincing parts and set one unmistakable hook for next week.";
+   "Pick the story the crowd cared about most and give them a reason to tune in next week. We don't need five hooks when one good one will do.";
  const parting=voice==="FRANK"?" No need to dress it up.":
   voice==="PATIENT"?" Small improvements next week will add up.":
   voice==="ECCENTRIC"?" And give them one moment they'll argue about on the way out.":
