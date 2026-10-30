@@ -59,3 +59,23 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await expect(page.getByText(/Give the response a moment on screen/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
+
+test("completed feud remains a readable promotion archive instead of a forgotten name",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>route.fulfill({json:{
+  year:1,week:9,worldRevision:4,canEdit:true,
+  people:[],teams:[],championships:[],
+  programmes:[{...programme,status:"COMPLETED",endedWeekIndex:8,
+   latestFollowUp:null}]
+ }}));
+ await page.goto("/#/programmes");
+ await expect(page.getByRole("heading",{name:"Recently concluded"})).toBeVisible();
+ const archive=page.locator(".ppw-programme-archive-card");
+ await expect(archive).toHaveCount(1);
+ await archive.locator("summary").click();
+ await expect(archive.getByText("Samoa Joe 2 — 1 Matt Riddle")).toBeVisible();
+ await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
+ await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
+ await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
+});
