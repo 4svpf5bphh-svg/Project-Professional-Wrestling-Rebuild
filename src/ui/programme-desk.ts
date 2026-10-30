@@ -435,12 +435,38 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       !a.length||!b.length));
    root.append(creation);
   }
-  const recent=view.programmes.filter(p=>p.status!=="ACTIVE").slice(0,15);
-  if(recent.length){
+  const concluded=view.programmes.filter(p=>p.status!=="ACTIVE").slice(0,15);
+  if(concluded.length){
    const history=element("section","ppw-programme-history");
-   history.append(element("h2","","Recently concluded"));
-   for(const p of recent)history.append(element("p","",p.sideA.map(x=>x.name).join(" & ")+
-    " vs "+p.sideB.map(x=>x.name).join(" & ")));
+   history.append(element("h2","","Recently concluded"),
+    element("p","ppw-muted","Completed feuds remain part of your promotion's story. Scores and chapters come from certified broadcasts."));
+   for(const p of concluded){
+    const aName=p.sideA.map(x=>x.name).join(" & ");
+    const bName=p.sideB.map(x=>x.name).join(" & ");
+    const archive=document.createElement("details");
+    archive.className="ppw-programme-archive-card";
+    const heading=document.createElement("summary");
+    heading.append(element("strong","",aName+" vs "+bName),
+     element("small","",p.endedWeekIndex==null?"Completed rivalry":
+      "Closed · Year "+(Math.floor(p.endedWeekIndex/52)+1)+
+      " Week "+(p.endedWeekIndex%52+1)));
+    archive.append(heading);
+    archive.append(element("p","ppw-programme-archive-score",
+     aName+" "+p.sideAWins+" — "+p.sideBWins+" "+bName+
+     (p.draws?" · "+p.draws+" draw"+(p.draws===1?"":"s"):"")),
+     element("p","ppw-programme-archive-beats",
+      p.matchCount+" in-ring "+(p.matchCount===1?"meeting":"meetings")+
+      " · "+p.segmentCount+" on-screen "+(p.segmentCount===1?"chapter":"chapters")));
+    const chapter=readProgrammeContinuity({sideAName:aName,sideBName:bName,
+     recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp});
+    if(chapter.lastBell)archive.append(element("p","",chapter.lastBell));
+    if(chapter.latestChapter)archive.append(element("p","",chapter.latestChapter));
+    const last=p.recentActivity[0];
+    if(last&&port.openResults)archive.append(button("Revisit the final chapter →",()=>{
+     port.openResults?.(last.showId);
+    }));
+    history.append(archive);
+   }
    root.append(history);
   }
  }
