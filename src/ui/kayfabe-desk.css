@@ -88,3 +88,11 @@
 .ppw-kp-results-skin-row .ppw-kp-item-copy{flex:1}
 @media(max-width:350px){.ppw-kp-results-skin-row{flex-wrap:wrap}
 .ppw-kp-results-skin-row .ppw-kp-button{margin-left:auto}}
+
+/* The approved Fight Night preview is editorial white/black/red, not a recoloured TT card. */
+.ppw-kp-fight-preview{display:grid;gap:8px;padding:15px 16px;border:1px solid #c4c8ce;
+ border-top:7px solid #c52a3b;border-radius:5px;background:#fbfbfb;color:#191d23;min-width:0}
+.ppw-kp-fight-channel{font:900 10px/1.35 system-ui;color:#af2635;letter-spacing:.12em}
+.ppw-kp-fight-preview strong{font:950 italic 29px/1 system-ui;color:#171b20;letter-spacing:-.055em}
+.ppw-kp-fight-sub{font:700 11px/1.45 system-ui;color:#454e59}
+.ppw-kp-results-skin-row+.ppw-kp-fight-preview{margin-top:17px}

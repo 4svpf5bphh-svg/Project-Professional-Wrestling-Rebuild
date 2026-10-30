@@ -51,7 +51,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="BUY"?"Unlocked. Your purchase is available on your account.":
     action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
     action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
-    action.kind==="APPLY_RESULTS_SKIN"?"Territory TV results skin applied.":
+    action.kind==="APPLY_RESULTS_SKIN"?"Results skin applied.":
     action.kind==="CLEAR_RESULTS_SKIN"?"Original PPW results appearance restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
@@ -164,14 +164,19 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("h2","","My results skins"),
    el("p","ppw-kp-muted",
     "Customise only your own completed show reports: headlines, Full Card, POP! and the Post-Management Brief. Booking, dashboard and match results never change."));
-  const preview=el("div","ppw-kp-territory-preview");
-  preview.append(el("span","ppw-kp-territory-channel","★ PPW TERRITORY TELEVISION"),
-   el("strong","","TERRITORY TV"),
-   el("span","ppw-kp-territory-sub","Vintage red · championship gold · cream reports"));
-  const skin=view.catalogue.find(item=>item.sku==="RESULTS_TERRITORY_TV");
-  if(skin){
+  const resultsSkins=view.catalogue.filter(item=>item.kind==="RESULTS_SKIN");
+  for(const skin of resultsSkins){
+   const isFight=skin.sku==="RESULTS_FIGHT_NIGHT";
+   const style=isFight?"FIGHT_NIGHT":"TERRITORY_TV";
+   const preview=el("div",isFight?"ppw-kp-fight-preview":"ppw-kp-territory-preview");
+   preview.append(el("span",isFight?"ppw-kp-fight-channel":"ppw-kp-territory-channel",
+    isFight?"PPW / FIGHT NIGHT":"★ PPW TERRITORY TELEVISION"),
+    el("strong","",isFight?"FIGHT NIGHT":"TERRITORY TV"),
+    el("span",isFight?"ppw-kp-fight-sub":"ppw-kp-territory-sub",
+     isFight?"Clean white · bold black · red sports reports":
+     "Vintage red · championship gold · cream reports"));
    const owned=view.entitlements.includes(skin.sku);
-   const active=view.activeResultsSkin==="TERRITORY_TV";
+   const active=view.activeResultsSkin===style;
    const row=el("div","ppw-kp-results-skin-row");
    const info=el("div","ppw-kp-item-copy");
    info.append(el("strong","",skin.label),
@@ -179,13 +184,13 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
      "One-time "+format(skin.price)+" · account-wide"));
    row.append(info,btn(active?"Applied":owned?"Apply":"Unlock",
     ()=>void run(owned?
-     {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:crypto.randomUUID()}:
-     {kind:"BUY",sku:"RESULTS_TERRITORY_TV",requestId:crypto.randomUUID()}),
+     {kind:"APPLY_RESULTS_SKIN",sku:skin.sku,requestId:crypto.randomUUID()}:
+     {kind:"BUY",sku:skin.sku,requestId:crypto.randomUUID()}),
     busy||active||(!owned&&view.balance<skin.price)));
    resultsShop.append(preview,row);
-   if(active)resultsShop.append(btn("Use original PPW results",()=>void run({
-    kind:"CLEAR_RESULTS_SKIN",requestId:crypto.randomUUID()}),busy));
   }
+  if(view.activeResultsSkin)resultsShop.append(btn("Use original PPW results",()=>void run({
+   kind:"CLEAR_RESULTS_SKIN",requestId:crypto.randomUUID()}),busy));
   root.append(resultsShop);
   const people=el("section","ppw-kp-section");
   people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),

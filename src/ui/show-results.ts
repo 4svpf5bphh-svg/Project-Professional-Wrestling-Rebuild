@@ -24,6 +24,7 @@ import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
 import "./territory-results-skin.css";
+import "./fight-night-results-skin.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -142,6 +143,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
  root.classList.remove("ppw-editorial-ready");
  if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
+ else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
  else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
@@ -150,6 +152,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="TERRITORY_TV")
   header.append(node("div","ppw-territory-station",
    "★ PPW TERRITORY TELEVISION  ·  ON THE AIR"));
+ if(show.resultsSkin==="FIGHT_NIGHT")
+  header.append(node("div","ppw-fight-station",
+   "PPW / FIGHT NIGHT  ·  OFFICIAL EVENT REPORT"));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -472,6 +477,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","OFFICIAL MATCHES, RESULTS & ON-AIR MOMENTS"));
   full.append(station);
  }
+ if(show.resultsSkin==="FIGHT_NIGHT"){
+  const station=node("header","ppw-fight-chapter-head");
+  station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · OFFICIAL RECORD"),
+   node("h2","","MATCH REPORT"),
+   node("p","","COMPLETE CARD · IN EVENT ORDER"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(show.resultsSkin==="TERRITORY_TV"){
@@ -479,6 +491,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · AFTER THE BELL"),
    node("h2","","THE AFTERMATH"),
    node("p","","FANS, RUMOURS & PRIVATE MANAGEMENT"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="FIGHT_NIGHT"){
+  const station=node("header","ppw-fight-chapter-head");
+  station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · THE FALLOUT"),
+   node("h2","","AFTER THE BELL"),
+   node("p","","FAN REACTIONS · PRIVATE MANAGEMENT REPORT"));
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
