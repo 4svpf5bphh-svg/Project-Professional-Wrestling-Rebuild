@@ -66,7 +66,9 @@ export function deriveStaffRivalryObservations(story:StaffRivalryEvidence|null):
   "Build on what actually happened; the next finish remains the booker's decision. ";
  return {
   creative:"On "+pairing+": "+last+(unresolved??active),
-  commentary:"When we call "+pairing+", "+last.toLowerCase()+
+  // Lowercase only the sentence opening, NEVER proper names such as FTR,
+  // NJPW, Samoa Joe or branded tag teams in the rest of the evidence.
+  commentary:"When we call "+pairing+", "+last[0]!.toLowerCase()+last.slice(1)+
    "Give the next segment an honest link to that record, not a promised result.",
   roadAgent:"The recent story to keep straight is "+pairing+". "+last+
    "We can build the next show around a clear follow-up without repeating the same match by default.",
