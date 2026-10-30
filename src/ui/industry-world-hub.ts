@@ -662,7 +662,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     el("h2","",official?"Official News":"Dirt Sheets"),
     el("p","ppw-industry-muted",official?
      "What actually happened in the wrestling world. Awards and reports come from certified completed shows.":
-     "The insider desk reads between the lines of public shows. Speculation is labelled; another manager's plans and negotiations stay private."));
+     "Backstage gossip, theories and occasionally complete nonsense. Rumours are not facts. Another manager's private decisions stay private."));
    if(newsBusy)section.append(el("p","ppw-industry-muted","Opening this week's news desk…"));
    if(newsError)section.append(el("p","ppw-alert ppw-error",newsError),
     btn("Retry",()=>void loadNews()));
@@ -719,12 +719,14 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
-     "Nothing worth printing in the rumour mill. No fabricated backstage sources here."));
+     "The rumour mill is unusually quiet. We suspect someone has disconnected the office coffee machine."));
    for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
     if(index===0)item.classList.add("ppw-news-lead");
+    const wild=!official&&story.id.startsWith("wild:");
+    if(wild)item.classList.add("ppw-news-wild-theory");
     item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
-     "SPECULATION / NOT CONFIRMED"),
+     wild?"UNVERIFIED / INTERNET CONSPIRACY 👀":"RUMOUR / NOT CONFIRMED"),
      el("strong","ppw-news-story-title",story.title),
      el("p","",story.summary),
      el("small","ppw-industry-muted",story.promotionName+
