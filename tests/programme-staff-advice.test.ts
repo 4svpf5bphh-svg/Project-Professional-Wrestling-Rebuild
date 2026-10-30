@@ -34,3 +34,15 @@ test("creative notes address the actual trailing wrestlers rather than imaginary
  assert.match(reversed.observation,/FTR/);
  assert.match(reversed.suggestion,/The Lucha Brothers/);
 });
+
+test("Creative proposes specific named matches and segments without imposing results",()=>{
+ const note=suggestProgrammeAdvice({...base,sideAName:"Samoa Joe",sideBName:"Matt Riddle",
+  direction:"PLAN_RETALIATION",directionStatus:"PENDING_RETALIATION"});
+ assert.equal(note.options.length,3);
+ assert.match(note.options[0]!.plan,/Samoa Joe/);
+ assert.match(note.options[0]!.plan,/Matt Riddle/);
+ assert.match(note.options.map(o=>o.label).join(" "),/Interview/);
+ assert.match(note.options.map(o=>o.label).join(" "),/Confrontation/);
+ assert.match(note.options.map(o=>o.label).join(" "),/match/);
+ assert.doesNotMatch(JSON.stringify(note.options),/guaranteed outcome|winner will/i);
+});
