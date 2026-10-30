@@ -234,3 +234,9 @@
  text-shadow:0 0 20px #d89958aa}
 .ppw-honours-emblem>strong{letter-spacing:.16em;font-size:clamp(13px,3vw,18px);
  font-weight:900;color:#ffe5aa;text-align:center}
+
+/* Clearly fictional tabloid threads sit apart from actual event reporting. */
+.ppw-news-wild-theory{background:radial-gradient(ellipse at 100% 0%,#59316b77,transparent 66%),
+ linear-gradient(120deg,#291e39,#161d32);border-color:#8d6ab0}
+.ppw-news-wild-theory .ppw-news-desk{color:#e3b7ff}
+.ppw-news-wild-theory .ppw-news-story-title{color:#fff0fc}
