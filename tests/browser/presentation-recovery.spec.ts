@@ -212,7 +212,7 @@ test("iPhone authentic promotion image failure reveals an intentionally integrat
  await page.screenshot({path:images+"/logo-fallback-320.png",fullPage:true});
 });
 
-test("Championship visual acceptance: women, singles, tag, and secondary plates are distinct on iPhone",async({page})=>{
+test("Championship visual acceptance: clear text-first women, singles, tag and secondary titles",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  const definitions=[
@@ -227,7 +227,7 @@ test("Championship visual acceptance: women, singles, tag, and secondary plates 
    currentReignId:null,holderId:null,holderType:null,holderName:null,defenses:0}))
  }}));
  await page.goto("/#/championships");
- const names=page.locator(".ppw-title-typographic-name");
+ const names=page.locator(".ppw-belt-name");
  await expect(names).toHaveCount(4);
  await expect(names).toHaveText(["World Heavyweight Championship",
   "Women's Championship","World Tag Team Championship","Intercontinental Championship"]);
@@ -235,6 +235,7 @@ test("Championship visual acceptance: women, singles, tag, and secondary plates 
   cards=>cards.map(c=>(c as HTMLElement).dataset.titleFamily));
  expect(families).toEqual(["world","women","tag","secondary"]);
  await expect(page.locator(".ppw-belt-graphic")).toHaveCount(0);
+ await expect(page.locator(".ppw-belt-plate")).toHaveCount(0);
  await page.screenshot({path:images+"/four-championship-variants-390.png",fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
