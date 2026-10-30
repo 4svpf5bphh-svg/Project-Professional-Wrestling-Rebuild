@@ -26,7 +26,7 @@
 #game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero,
 #game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero.ppw-tone-flat,
 #game .ppw-results[data-results-skin="fight-night"] .ppw-result-hero.ppw-tone-red_hot{
- background:var(--fn-paper);color:var(--fn-ink);
+ background:#fff!important;background-image:none!important;color:var(--fn-ink);
  border:1px solid #bbc2c9;border-top:5px solid var(--fn-red);
  border-bottom:3px solid var(--fn-red);border-radius:3px;
  padding:0 0 17px;margin-top:8px;box-shadow:0 8px 18px #0003;
