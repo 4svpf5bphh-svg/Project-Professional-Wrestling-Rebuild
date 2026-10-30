@@ -420,3 +420,50 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test(`Underground Zine ${width}px has dark names, readable fan POP and accurate official results`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let reads=0,commentaries=0;
+  await page.route("**/api/session",route=>route.fulfill({json:session}));
+  await page.route("**/api/card",route=>{
+   const method=route.request().postDataJSON().method;
+   if(method==="results")reads++;
+   return route.fulfill({json:method==="resultsArchive"?{
+    items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+     bookingClass:"REGULAR",crowdResponse:84,matchCount:1,angleCount:1}],
+    nextCursor:null}:{...show,resultsSkin:"UNDERGROUND_ZINE"}});
+  });
+  await page.route("**/api/results-commentary",route=>{
+   commentaries++;return route.fulfill({json:{status:"ready",review}});
+  });
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const report=page.locator(".ppw-results[data-results-skin='underground-zine']");
+  await expect(report).toBeVisible();
+  await expect(report.locator(".ppw-zine-station")).toContainText("UNDERGROUND REPORT");
+  await expect(report.locator(".ppw-result-title-wrap h1")).toContainText("Dynamite");
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(report.getByRole("heading",{name:"EVERY BELL. EVERY BRAWL."})).toBeVisible();
+  const names=report.locator(".ppw-result-competitor-name");
+  await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
+  await expect(names.first()).toHaveCSS("color","rgb(27, 27, 27)");
+  await expect(report.locator(".ppw-result-match > summary")).toHaveCSS(
+   "background-color","rgb(243, 238, 223)");
+  await expect(report.locator(".ppw-result-vs")).toHaveCSS("color","rgb(181, 71, 34)");
+  await expect(report.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
+  await expect(report.locator(".ppw-result-verdict").first()).toContainText("Kenny Omega");
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await expect(report.locator(".ppw-zine-chapter-head").last()).toContainText("AFTER THE BELL!");
+  await expect(report.locator(".ppw-pop-post").first()).toHaveCSS(
+   "background-color","rgb(41, 49, 70)");
+  await expect(report.locator(".ppw-pop-copy").first()).toHaveCSS(
+   "color","rgb(255, 242, 232)");
+  await expect(report.locator(".ppw-post-show-brief")).toHaveCSS(
+   "background-color","rgb(243, 238, 223)");
+  await expect(report.locator(".ppw-post-show-road-agent")).toContainText("The main event delivered.");
+  expect(reads).toBe(1);expect(commentaries).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
