@@ -88,8 +88,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
  memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY):Promise<RingsideCopy>{
- const facts=JSON.stringify(ringsideBrief(show));
- if(facts.length>26000||show.entries.length>30||show.entries.length===0)
+ if(JSON.stringify(ringsideBrief(show)).length>26000||
+    show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  const keys=show.entries.map((entry,i)=>"card_"+i+" = "+entry.slotId);
  // Never let contextual history displace authoritative current-show facts.
@@ -102,7 +102,18 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   else if(bounded.programmes.length)bounded.programmes.pop();
   else break;
  }
- const historical=JSON.stringify(bounded);
+ // Attach relevant verified history to the *correct card*. Historic records
+ // are never passed as a free-floating story that can migrate between bouts.
+ // If the request grows too large, remove optional retrospective data before
+ // losing any of the settled current-show facts or paying for a Groq request.
+ let facts=JSON.stringify(ringsideBrief(show,bounded));
+ while(facts.length>26000&&(bounded.priorMatches.length||bounded.programmes.length)){
+  if(bounded.priorMatches.length)bounded.priorMatches.pop();
+  else bounded.programmes.pop();
+  facts=JSON.stringify(ringsideBrief(show,bounded));
+ }
+ if(facts.length>26000)throw new RingsideGenerationError("INVALID_OUTPUT",
+  "Verified Ringside facts exceed the bounded article size.");
  const schema=ringsideResponseSchema(show);
  let correction="";
  for(let attempt=0;attempt<2;attempt++){
@@ -124,8 +135,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Required schema slot keys map to these immutable recorded entries:\n"+keys.join("\n")+
        "\nDo not invent or swap performers, winners, title changes, injuries or finishes.\n"+
        "Each required card entry must contain a vivid headline and recap.\n"+
-       "Past context is optional verified history; never invent a connection.\n"+
-       "HISTORY (only cite relevant previous matches and programmes): "+historical+"\n"+
+       "Each card's optional storyThread is its ONLY verified historical callback. "+
+       "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
     })
