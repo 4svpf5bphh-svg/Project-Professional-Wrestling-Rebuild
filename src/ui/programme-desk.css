@@ -105,3 +105,20 @@
 .ppw-programme-chapter[data-kind=cooling]{border-left-color:#f0a6a2}
 .ppw-programme-chapter strong{display:block;font-size:13px;line-height:1.35;color:#eaf9ff}
 .ppw-programme-chapter p{margin:5px 0 0;color:#b8d4e5;font-size:12px;line-height:1.5}
+
+/* Programme continuity is a compact broadcast recap, not another dashboard
+   full of simulator scores. The same verified beats also inform Creative. */
+.ppw-programme-last-chapter{margin:11px 0 6px;padding:12px 13px;
+ border:1px solid #426a7a;border-radius:12px;
+ background:linear-gradient(110deg,#142a43,#162536)}
+.ppw-programme-last-chapter .ppw-programme-eyebrow{padding-bottom:5px;color:#92dbfb}
+.ppw-programme-last-chapter strong{font-size:13px;line-height:1.4;color:#fff0cf}
+.ppw-programme-last-chapter p{font-size:12px;line-height:1.45;color:#d0e1ee;margin:6px 0 0}
+.ppw-programme-follow-through{margin:10px 0;padding:11px 12px;border-left:3px solid #ffc16f;
+ border-radius:9px;background:#102c40}
+.ppw-programme-follow-through[data-status=rematch_held],
+.ppw-programme-follow-through[data-status=retaliation_shown],
+.ppw-programme-follow-through[data-status=result_stands]{
+ border-left-color:#92e6bc;background:#123a3a}
+.ppw-programme-follow-through strong{display:block;font-size:13px;color:#f3f8ff}
+.ppw-programme-follow-through p{font-size:12px;line-height:1.5;margin:6px 0 0;color:#bad7e7}
