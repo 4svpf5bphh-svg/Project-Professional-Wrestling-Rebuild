@@ -204,6 +204,39 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   assert.equal(observed.recentActivity[0]?.winnerSide,"B");
   assert.equal(observed.recentActivity[0]?.weekIndex,1);
   assert.equal(observed.recentActivity[1]?.winnerSide,null);
+  // The player-facing BOOKING editor must see the same facts as Programmes.
+  // A later match does not fulfil a promised on-screen retaliation angle.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)"+
+   " VALUES($1,'weekly-two',$2,1,2,'DRAFT')",[worldId,promotionId]));
+  const cardAfterMatch=await showCardEditorAsActor(context,worldId,promotionId,"weekly-two");
+  const reminder=cardAfterMatch.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(reminder.latestFollowUp?.laterMatchRecorded,true);
+  assert.equal(reminder.latestFollowUp?.laterAngleRecorded,false);
+  assert.equal(reminder.latestFollowUp?.laterBeatRecorded,true);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[worldId]);
+   await tx.query(
+    "INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,"+
+    "resolution_id,crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'postshow-three',1,3,'resolution-third-chapter',75,'{}'::jsonb,$3)",
+    [worldId,promotionId,"c".repeat(64)]);
+   await tx.query(
+    "INSERT INTO ppw_programme_resolved_activities("+
+    "world_id,promotion_id,programme_id,show_id,slot_id,week_index,"+
+    "kind,signature,crowd_response,impact)"+
+    " VALUES($1,$2,$3,'postshow-three','third-angle',2,"+
+    "'SEGMENT','retaliation angle',75,71)",
+    [worldId,promotionId,activeProgramme]);
+  });
+  const afterAngle=await readProgrammeWorkspace(db.pool,scope);
+  const third=afterAngle.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(third.latestFollowUp?.nextMatchWeekIndex,1);
+  assert.equal(third.latestFollowUp?.nextAngleWeekIndex,2);
+  const cardAfterAngle=await showCardEditorAsActor(context,worldId,promotionId,"weekly-two");
+  const next=cardAfterAngle.programmes.find(x=>x.programmeId===activeProgramme)!;
+  assert.equal(next.latestFollowUp?.laterMatchRecorded,true);
+  assert.equal(next.latestFollowUp?.laterAngleRecorded,true);
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
