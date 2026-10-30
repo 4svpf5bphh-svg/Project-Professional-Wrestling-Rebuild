@@ -77,8 +77,10 @@ test("Groq's compact factual brief has different private history per slot and no
  assert.equal(brief.slots[1]?.storyThread?.earlierOnThisCard?.card,1);
  assert.equal(brief.slots[2]?.storyThread?.previousSharedMatch?.winner,"PAC");
  assert.equal(brief.slots[3]?.storyThread?.previousSharedMatch?.winner,"MJF");
- assert.doesNotMatch(JSON.stringify(brief.slots[2]),/Matt Riddle|Samoa Joe/);
- assert.doesNotMatch(JSON.stringify(brief.slots[3]),/PAC|Samoa Joe/);
+ // Previous/next card headlines are intentionally retained for transitions.
+ // Only historical evidence must be strictly scoped to its own encounter.
+ assert.doesNotMatch(JSON.stringify(brief.slots[2]?.storyThread),/Matt Riddle|Samoa Joe/);
+ assert.doesNotMatch(JSON.stringify(brief.slots[3]?.storyThread),/PAC|Samoa Joe/);
  const without=ringsideBrief({...show,entries:[noMatch]});
  assert.equal("storyThread" in without.slots[0]!,false);
 });
