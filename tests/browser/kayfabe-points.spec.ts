@@ -96,3 +96,53 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
    "kpAction","kpWorkspace","kpAction","kpWorkspace",
    "kpAction","kpWorkspace","kpAction","kpWorkspace"]);
 });
+
+test("Territory TV skin can be purchased once and switched off/on without a second charge",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let balance=2000,activeResultsSkin:string|null=null;
+ const entitlements:string[]=[];
+ const actions:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"secret",overview,availablePromotions:[]}}));
+ await page.route("**/api/card",r=>{
+  const request=r.request().postDataJSON() as {method:string;kind?:string;sku?:string};
+  if(request.method==="kpWorkspace")return r.fulfill({json:{
+   balance,lifetimeEarned:2000,lifetimeSpent:2000-balance,worldYear:1,week:5,
+   promotionName:"Home",weeklyAward:100,claim:null,entitlements,
+   activeBrand:null,activeBadge:null,activeResultsSkin,staff:[],achievements:[],
+   createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
+    styles:[],gimmicks:[]},staffAliasPrice:350,createTalentPrice:3000,
+   catalogue:[{sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",
+    price:750,kind:"RESULTS_SKIN"}]
+  }});
+  if(request.method==="kpAction"){
+   actions.push(String(request.kind));
+   if(request.kind==="BUY"){
+    expect(request.sku).toBe("RESULTS_TERRITORY_TV");
+    balance-=750;entitlements.push(request.sku!);activeResultsSkin="TERRITORY_TV";
+   }
+   if(request.kind==="CLEAR_RESULTS_SKIN")activeResultsSkin=null;
+   if(request.kind==="APPLY_RESULTS_SKIN"){
+    expect(entitlements).toContain("RESULTS_TERRITORY_TV");
+    activeResultsSkin="TERRITORY_TV";
+   }
+   return r.fulfill({json:{price:request.kind==="BUY"?750:0,balance}});
+  }
+  return r.fulfill({json:{}});
+ });
+ await page.goto("/#/kayfabe");
+ const skins=page.locator(".ppw-kp-results-skins");
+ await expect(skins.getByRole("heading",{name:"My results skins"})).toBeVisible();
+ await expect(skins.getByText("TERRITORY TV",{exact:true})).toBeVisible();
+ await skins.getByRole("button",{name:"Unlock"}).click();
+ await expect(skins.getByText("Owned · applied to your results")).toBeVisible();
+ await expect(page.getByText("1,250 KP",{exact:true})).toBeVisible();
+ await skins.getByRole("button",{name:"Use original PPW results"}).click();
+ await expect(skins.getByText("Owned · ready to apply")).toBeVisible();
+ await skins.getByRole("button",{name:"Apply"}).click();
+ await expect(skins.getByText("Owned · applied to your results")).toBeVisible();
+ await expect(page.getByText("1,250 KP",{exact:true})).toBeVisible();
+ expect(actions).toEqual(["BUY","CLEAR_RESULTS_SKIN","APPLY_RESULTS_SKIN"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
