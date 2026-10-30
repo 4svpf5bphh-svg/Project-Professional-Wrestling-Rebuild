@@ -47,6 +47,7 @@ export interface ShowResultEntry{
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
+ resultsSkin?:"TERRITORY_TV"|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
  gorillaLog?:GorillaShowLog|null;
 }
@@ -60,11 +61,12 @@ export async function readCompletedShowView(
   throw new Error("Invalid results scope");
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{receipt_json:unknown;show_name:string|null;
-    booking_class:"REGULAR"|"PREMIUM";staff_report:RoadAgentReport|null;
+    booking_class:"REGULAR"|"PREMIUM";results_skin:string|null;staff_report:RoadAgentReport|null;
     gorilla_log:GorillaShowLog|null}>(`
-   SELECT c.receipt_json,d.show_name,d.booking_class,
+   SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
+   LEFT JOIN ppw_kp_results_skins skin ON skin.player_id=$2
    LEFT JOIN ppw_staff_show_reports report
     ON report.world_id=c.world_id AND report.show_id=c.show_id
    LEFT JOIN ppw_gorilla_show_logs gorilla
@@ -343,6 +345,7 @@ export async function readCompletedShowView(
     "Premium event":"Weekly show"),bookingClass:rows[0]!.booking_class,
    crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
-   gorillaLog:rows[0]!.gorilla_log};
+   gorillaLog:rows[0]!.gorilla_log,
+   resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"?"TERRITORY_TV":null};
  });
 }

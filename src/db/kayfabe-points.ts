@@ -21,10 +21,12 @@ export const KP_CATALOGUE=[
  {sku:"BRAND_NEON",label:"Neon promotion crest",price:350,kind:"BRAND"},
  {sku:"BRAND_GOLD",label:"Gold promotion crest",price:600,kind:"BRAND"},
  {sku:"BADGE_GOLD",label:"Gold achievement display",price:350,kind:"BADGE"},
- {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"}
+ {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"},
+ {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:750,kind:"RESULTS_SKIN"}
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
+type ResultsSkinSku="RESULTS_TERRITORY_TV";
 export type KpSku=typeof KP_CATALOGUE[number]["sku"];
 export type KpScope={worldId:string;promotionId:string;playerId:string};
 export type KpAction=
@@ -32,6 +34,8 @@ export type KpAction=
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
  |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
  |{kind:"CLEAR_BADGE";requestId:string}
+ |{kind:"APPLY_RESULTS_SKIN";sku:ResultsSkinSku;requestId:string}
+ |{kind:"CLEAR_RESULTS_SKIN";requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
  |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity)
  |{kind:"COLLECT_LEGEND";legendId:string;requestId:string};
@@ -46,12 +50,13 @@ function cleanName(value:string){
 export const catalogueItem=(sku:string)=>KP_CATALOGUE.find(p=>p.sku===sku)??null;
 export function validateKpAction(action:KpAction){
  if(!action||!validId(action.requestId))throw new Error("Invalid Kayfabe request");
- if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"){
+ if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"||action.kind==="APPLY_RESULTS_SKIN"){
   const item=catalogueItem(action.sku);
   if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND")||
-   (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE"))
+   (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE")||
+   (action.kind==="APPLY_RESULTS_SKIN"&&item.kind!=="RESULTS_SKIN"))
    throw new Error("Unknown Kayfabe Points item");
- }else if(action.kind==="CLEAR_BADGE"){
+ }else if(action.kind==="CLEAR_BADGE"||action.kind==="CLEAR_RESULTS_SKIN"){
   // The standard look is always available and costs nothing.
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
@@ -114,8 +119,9 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
  if(!Object.values(s).every(validId))throw new Error("Invalid Kayfabe identity");
  return withSqlClient(pool,async tx=>{
   const world=await assertOwner(tx,s);
-  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string}>(`
-   SELECT balance::text,lifetime_earned::text,lifetime_spent::text
+  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string;results_skin:string|null}>(`
+   SELECT balance::text,lifetime_earned::text,lifetime_spent::text,
+    (SELECT style FROM ppw_kp_results_skins WHERE player_id=$1) AS results_skin
    FROM ppw_kp_wallets WHERE player_id=$1`,[s.playerId]);
   const items=await tx.query<{sku:string}>(`
    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 20`,[s.playerId]);
@@ -156,6 +162,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
    activeBadge:achievementData.activeBadge,
+   activeResultsSkin:money?.results_skin==="TERRITORY_TV"?"TERRITORY_TV":null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:derivePromoterAchievements(achievementData.stats).achievements,
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
@@ -217,6 +224,10 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
     SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
+   if(item.kind==="RESULTS_SKIN")await tx.query(`
+    INSERT INTO ppw_kp_results_skins(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,"TERRITORY_TV"]);
    if(item.kind==="BADGE")await tx.query(`
     INSERT INTO ppw_kp_badge_styles(player_id,style) VALUES($1,$2)
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
@@ -243,6 +254,18 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
     [s.playerId,action.sku.replace("BADGE_","")]);
    outcome={style:action.sku};
+  }else if(action.kind==="APPLY_RESULTS_SKIN"){
+   const owns=await tx.query<{sku:string}>(
+    "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",
+    [s.playerId,action.sku]);
+   if(!owns.length)throw new Error("Unlock Territory TV before applying it");
+   await tx.query(`INSERT INTO ppw_kp_results_skins(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,"TERRITORY_TV"]);
+   outcome={style:"TERRITORY_TV"};
+  }else if(action.kind==="CLEAR_RESULTS_SKIN"){
+   await tx.query("DELETE FROM ppw_kp_results_skins WHERE player_id=$1",[s.playerId]);
+   outcome={style:null};
   }else if(action.kind==="CLEAR_BADGE"){
    await tx.query("DELETE FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
    outcome={style:null};
