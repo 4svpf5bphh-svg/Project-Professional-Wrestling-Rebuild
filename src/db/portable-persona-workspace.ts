@@ -176,7 +176,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY importance DESC,occurred_week_index DESC,memory_id DESC LIMIT 9",
    ") old",
    "UNION ALL",
-   "SELECT CASE WHEN beat.kind='MATCH' THEN 'RIVALRY_MATCH'",
+   "SELECT recent.kind,recent.source_id,recent.occurred_week_index,",
+   "recent.importance,recent.related_name,recent.own_side,recent.winner_side",
+   "FROM (SELECT CASE WHEN beat.kind='MATCH' THEN 'RIVALRY_MATCH'",
    "ELSE 'RIVALRY_ANGLE' END AS kind,",
    "beat.programme_id||':'||beat.show_id||':'||beat.slot_id AS source_id,",
    "beat.week_index AS occurred_week_index,2 AS importance,",
@@ -201,7 +203,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "WHERE member.world_id=$1 AND member.promotion_id=$2",
    "AND member.person_id=$3",
    "AND beat.week_index BETWEEN greatest(0,$4-12) AND $4-1",
-   "ORDER BY occurred_week_index DESC,source_id DESC LIMIT 13"
+   "ORDER BY beat.week_index DESC,beat.show_id DESC,beat.slot_id DESC LIMIT 4",
+   ") recent ORDER BY occurred_week_index DESC,source_id DESC LIMIT 13"
   ].join(" "),[s.worldId,s.promotionId,selected,now]);
   const reference=wrestlerIdentityReference(wrestler.name);
   return {roster:listed,personId:selected,personName:wrestler.name,
