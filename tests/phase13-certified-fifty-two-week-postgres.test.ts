@@ -141,6 +141,20 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
    assert.deepEqual(clock,[{year:week===52?2:1,week:week===52?1:week+1,phase:"OPEN"}]);
   }
   progress("year-complete",weeks);
+  // These eight companies have no human booking rights. Automatic World
+  // settlement must not manufacture private Backstage conversations for AI.
+  const backstage=await withWorldTransaction(db.pool,tx=>tx.query<{
+   human_managers:number;private_requests:number
+  }>([
+   "SELECT (SELECT count(*)::integer FROM ppw_promotion_controls owner",
+   "JOIN ppw_memberships member ON member.world_id=owner.world_id",
+   "AND member.player_id=owner.player_id AND member.status='ACTIVE'",
+   "WHERE owner.world_id=$1 AND owner.active) AS human_managers,",
+   "(SELECT count(*)::integer FROM ppw_backstage_requests r",
+   "WHERE r.world_id=$1) AS private_requests"
+  ].join(" "),[world]));
+  assert.deepEqual(backstage,[{human_managers:0,private_requests:0}],
+   "AI-only World weeks cannot generate human-only Backstage requests");
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
