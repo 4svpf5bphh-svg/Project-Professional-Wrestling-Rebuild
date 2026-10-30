@@ -2,6 +2,7 @@
  * never polls, advances time, or invents future show and finance outcomes.
  */
 import {promotionBrand} from "./broadcast-identity.js";
+import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
@@ -178,12 +179,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
    identity,
-   ...(promotion?.milestoneFrame&&port.openAchievements?[
-    (()=>{const medal=el("button","ppw-home-promoter-medal",
-     "★ "+promotion.milestoneFrame+" SHOWCASE · VIEW ACHIEVEMENTS") as HTMLButtonElement;
-     medal.type="button";medal.onclick=()=>port.openAchievements?.();
-     medal.setAttribute("aria-label","Open your "+promotion.milestoneFrame.toLowerCase()+" milestone cabinet");
-     medal.dataset.finish=promotion.milestoneFrame.toLowerCase();return medal;})()
+   ...(promotion?.promoterPrestige&&port.openAchievements?[
+    createPromoterPrestigeCrest({
+     rank:promotion.promoterPrestige.rank,
+     earned:promotion.promoterPrestige.earnedCount,
+     total:promotion.promoterPrestige.total,
+     finish:promotion.milestoneFrame,
+     onOpen:port.openAchievements
+    })
    ]:[]),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),

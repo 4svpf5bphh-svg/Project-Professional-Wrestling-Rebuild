@@ -65,3 +65,6 @@
 @media(max-width:370px){.ppw-trophy-room{padding-inline:10px}.ppw-trophy-grid{grid-template-columns:1fr}
 .ppw-trophy-count span{letter-spacing:.02em}.ppw-trophy-count{padding:11px 6px}
 .ppw-trophy-rank-medal{width:44px;height:54px;font-size:24px}}
+
+/* One approved prestige crest design shared with the World dashboard. */
+.ppw-trophy-room .ppw-trophy-prestige-crest{margin:2px 0 17px;max-width:520px}

@@ -2,6 +2,7 @@
  *  No polling, browser persistence, prize purchasing or World writes.
  */
 import type {readPromoterAchievementWorkspace} from "../db/kayfabe-points.js";
+import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
 import {PROMOTER_ACHIEVEMENT_CATEGORIES,
  type AchievementCategory,type AchievementTier,type PromoterAchievement}
  from "../domain/promoter-achievements.js";
@@ -84,15 +85,12 @@ export function mountAchievementDesk(root:HTMLElement,port:TrophyRoomPort){
    if(!busy)root.append(button("Retry Trophy Room",()=>void load()));
    return;
   }
-  const hero=el("section","ppw-trophy-hero");
-  hero.dataset.finish=view.activeBadge?.toLowerCase()??"standard";
-  const headline=el("div","ppw-trophy-hero-copy");
-  headline.append(el("span","ppw-trophy-kicker",view.promotionName+" · YEAR "+view.worldYear+" WEEK "+view.week),
-   el("h2","","PROMOTER PRESTIGE"),
-   el("strong","ppw-trophy-rank",view.rank.replaceAll("_"," ")),
-   el("p","ppw-trophy-muted","Your rank is earned from completed achievements. Gold and platinum KP finishes change only how your trophy cabinet looks."));
-  const marker=el("div","ppw-trophy-rank-medal","★");
-  marker.setAttribute("aria-hidden","true");hero.append(headline,marker);root.append(hero);
+  const prestige=createPromoterPrestigeCrest({
+   rank:view.rank,earned:view.earnedCount,total:view.total,
+   finish:view.activeBadge==="GOLD"||view.activeBadge==="PLATINUM"?view.activeBadge:null
+  });
+  prestige.classList.add("ppw-trophy-prestige-crest");
+  root.append(prestige);
   const counts=el("section","ppw-trophy-counts");
   for(const [label,value] of [
    ["EARNED",view.earnedCount],
