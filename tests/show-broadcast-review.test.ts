@@ -100,16 +100,16 @@ test("ongoing rivalries enrich the match report only when a certified programme 
    programmeSignal:"HOT_PROGRAMME",ratingStars:4.5,executionQuality:89,
    actualMinutes:28}};
  const reviewed=reviewCompletedEntry(entry,"rivalry");
- assert.match(reviewed.recap,/certified chapter in 1 active rivalry/);
- assert.match(reviewed.recap,/meaningful heat/);
- assert.match(reviewed.recap,/exceptional in-ring execution/);
+ assert.match(reviewed.recap,/part of an ongoing rivalry/);
+ assert.match(reviewed.recap,/story gave the crowd something to care about/);
+ assert.match(reviewed.recap,/barely put a foot wrong/);
  assert.match(reviewed.recap,/28 minutes/);
  entry.fallout!.programmeSignal="PROGRAMME_REPETITION";
  assert.match(reviewCompletedEntry(entry,"rivalry").recap,
-  /enough repetition/);
+  /Repeated meetings had started to test/);
  entry.fallout!.linkedProgrammes=0;
  assert.doesNotMatch(reviewCompletedEntry(entry,"rivalry").recap,
-  /chapter in|repetition/);
+  /ongoing rivalry|repetition/);
 });
 
 test("completed segments get detailed, evidence-only copy for all authored angle types",()=>{
@@ -154,4 +154,25 @@ test("an accepted faction invitation remains a scripted answer, not a hidden ros
  const result=reviewCompletedEntry(entry,"show");
  assert.match(result.recap,/accepted the faction invitation/);
  assert.match(result.recap,/not by itself a transfer/);
+});
+
+test("the no-AI match review remembers a certified named feud without score-speak",()=>{
+ const entry:ShowResultEntry={...basic,type:"MATCH",
+  headline:"Joe vs Riddle",summary:"Joe secured the pinfall.",outcome:"CLEAN_PIN",
+  matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:18,
+   sides:[["Samoa Joe"],["Matt Riddle"]],winnerNames:["Samoa Joe"],
+   championshipContested:false},
+  programmeChapters:[{programmeId:"rivalry",sideA:"Samoa Joe",sideB:"Matt Riddle",
+   precedingMatches:2,precedingAngles:1,previousWinner:"B",
+   previousMatchWeek:53,currentWinner:"A"}],
+  fallout:{injuries:[],eliminations:[],linkedProgrammes:1,
+   programmeSignal:"HOT_PROGRAMME",ratingStars:4.5,executionQuality:88,
+   chemistryModifier:2.1}};
+ const result=reviewCompletedEntry(entry,"fallback-rivalry");
+ assert.match(result.recap,/Samoa Joe and Matt Riddle had already shared 2 matches/);
+ assert.match(result.recap,/Matt Riddle had won their most recent meeting/);
+ assert.match(result.recap,/Their in-ring chemistry/);
+ assert.doesNotMatch(result.recap,
+  /\/100|programme heat|meaningful heat|scored compatibility|crowd score|chemistry modifier/i);
+ assert.deepEqual(result,reviewCompletedEntry(entry,"fallback-rivalry"));
 });
