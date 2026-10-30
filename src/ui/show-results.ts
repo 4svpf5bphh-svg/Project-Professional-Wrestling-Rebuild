@@ -25,6 +25,7 @@ import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
+import "./underground-zine-results-skin.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -144,6 +145,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  root.classList.remove("ppw-editorial-ready");
  if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
  else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
+ else if(show.resultsSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
  else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
@@ -155,6 +157,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="FIGHT_NIGHT")
   header.append(node("div","ppw-fight-station",
    "PPW / FIGHT NIGHT  ·  OFFICIAL EVENT REPORT"));
+ if(show.resultsSkin==="UNDERGROUND_ZINE")
+  header.append(node("div","ppw-zine-station",
+   "THE UNDERGROUND REPORT · ISSUE "+String(show.week).padStart(3,"0")));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -484,6 +489,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","COMPLETE CARD · IN EVENT ORDER"));
   full.append(station);
  }
+ if(show.resultsSkin==="UNDERGROUND_ZINE"){
+  const station=node("header","ppw-zine-chapter-head");
+  station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · COMPLETE CARD"),
+   node("h2","","EVERY BELL. EVERY BRAWL."),
+   node("p","","THE COMPLETE SHOW · AS IT HAPPENED"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(show.resultsSkin==="TERRITORY_TV"){
@@ -498,6 +510,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · THE FALLOUT"),
    node("h2","","AFTER THE BELL"),
    node("p","","FAN REACTIONS · PRIVATE MANAGEMENT REPORT"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="UNDERGROUND_ZINE"){
+  const station=node("header","ppw-zine-chapter-head");
+  station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · THE AFTERMATH"),
+   node("h2","","AFTER THE BELL!"),
+   node("p","","THE INTERNET REACTS · THE OFFICE ASSESSES"));
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),

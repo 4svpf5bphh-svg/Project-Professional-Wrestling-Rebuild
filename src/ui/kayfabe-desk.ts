@@ -167,12 +167,16 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   const resultsSkins=view.catalogue.filter(item=>item.kind==="RESULTS_SKIN");
   for(const skin of resultsSkins){
    const isFight=skin.sku==="RESULTS_FIGHT_NIGHT";
-   const style=isFight?"FIGHT_NIGHT":"TERRITORY_TV";
-   const preview=el("div",isFight?"ppw-kp-fight-preview":"ppw-kp-territory-preview");
-   preview.append(el("span",isFight?"ppw-kp-fight-channel":"ppw-kp-territory-channel",
+   const isZine=skin.sku==="RESULTS_UNDERGROUND_ZINE";
+   const style=isZine?"UNDERGROUND_ZINE":isFight?"FIGHT_NIGHT":"TERRITORY_TV";
+   const kind=isZine?"zine":isFight?"fight":"territory";
+   const preview=el("div","ppw-kp-"+kind+"-preview");
+   preview.append(el("span","ppw-kp-"+kind+"-channel",
+    isZine?"THE UNDERGROUND REPORT · ISSUE 001":
     isFight?"PPW / FIGHT NIGHT":"★ PPW TERRITORY TELEVISION"),
-    el("strong","",isFight?"FIGHT NIGHT":"TERRITORY TV"),
-    el("span",isFight?"ppw-kp-fight-sub":"ppw-kp-territory-sub",
+    el("strong","",isZine?"UNDERGROUND ZINE":isFight?"FIGHT NIGHT":"TERRITORY TV"),
+    el("span","ppw-kp-"+kind+"-sub",isZine?
+     "Punk orange · black ink · off-white indie fanzine":
      isFight?"Clean white · bold black · red sports reports":
      "Vintage red · championship gold · cream reports"));
    const owned=view.entitlements.includes(skin.sku);

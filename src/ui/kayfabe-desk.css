@@ -96,3 +96,13 @@
 .ppw-kp-fight-preview strong{font:950 italic 29px/1 system-ui;color:#171b20;letter-spacing:-.055em}
 .ppw-kp-fight-sub{font:700 11px/1.45 system-ui;color:#454e59}
 .ppw-kp-results-skin-row+.ppw-kp-fight-preview{margin-top:17px}
+
+/* Approved Underground Zine indie fanzine preview, scoped only to KP shop. */
+.ppw-kp-zine-preview{display:grid;gap:8px;padding:16px 15px;min-width:0;
+ background:repeating-linear-gradient(0deg,#f1e9d8 0,#f1e9d8 20px,#ece2d0 20px,#ece2d0 21px);
+ color:#181717;border:2px solid #171717;border-top:8px solid #e45a2b;
+ box-shadow:4px 4px 0 #1c1a19;border-radius:2px;}
+.ppw-kp-zine-channel{font:900 10px/1.4 system-ui;color:#ba4a28;letter-spacing:.08em}
+.ppw-kp-zine-preview strong{font:950 italic 28px/1 system-ui;color:#1b1b1b;letter-spacing:-.065em}
+.ppw-kp-zine-sub{font:750 11px/1.45 system-ui;color:#453b34}
+.ppw-kp-results-skin-row+.ppw-kp-zine-preview{margin-top:17px}
