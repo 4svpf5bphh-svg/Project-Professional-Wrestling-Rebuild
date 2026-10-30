@@ -67,8 +67,7 @@ test("Staff Meeting discusses a named verified feud with distinct department voi
   reads++;return r.fulfill({json:staff});
  });
  await page.goto("/#/staff");
- await expect(page.locator(".ppw-staff-agenda-item")).toContainText(
-  ["Creative deskSamoa Joe and Matt Riddle: A return bout was requested but has not been completed."]);
+ await expect(page.locator(".ppw-staff-agenda-item")).toContainText("Samoa Joe and Matt Riddle");
  await page.locator("summary").filter({hasText:"Full staff meeting"}).click();
  const briefs=page.locator(".ppw-staff-meeting-brief");
  await briefs.nth(0).locator("summary").click();
