@@ -1,0 +1,248 @@
+/* TERRITORY TV — APPROVED RESULT-ONLY SKIN.
+ * Intentionally scoped to the authenticated owner's results root.
+ * Does not style World Home, booking screens, public records or other players.
+ * Accessible in iPhone light/dark PWA, no image dependencies.
+ */
+#game .ppw-results[data-results-skin="territory-tv"]{
+ --tt-red:#a32f40;--tt-red-dark:#832738;--tt-paper:#f0e4c5;
+ --tt-ink:#28232d;--tt-navy:#253348;--tt-gold:#d7ad67;--tt-line:#c6b184;
+ --ring-line:var(--tt-line);--ring-ink:var(--tt-ink);
+ color:var(--tt-ink);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-steps{
+ border-radius:10px;padding:5px;background:#273348;gap:5px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-step{
+ background:#202c3e;color:#f9e7c8;border:1px solid #8f744f;border-radius:6px;font-weight:900;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-step[aria-current="step"]{
+ background:var(--tt-red);color:#fff2d7;border-color:var(--tt-gold);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page{
+ min-width:0;
+}
+/* Headlines: original broadcast masthead and newspaper-style readable article. */
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-hero,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-hero.ppw-tone-flat,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-hero.ppw-tone-red_hot{
+ background:repeating-linear-gradient(135deg,#253247 0,#253247 11px,#29394e 11px,#29394e 13px);
+ color:#fff1d6;border:2px solid var(--tt-gold);border-bottom:5px solid var(--tt-red);
+ border-radius:9px;padding:0 0 13px;box-shadow:0 6px 15px #06101b80;overflow:hidden;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-station{
+ padding:11px 13px;background:var(--tt-red);color:#fff0d2;font:900 10px/1.35 system-ui;
+ letter-spacing:.08em;text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-hero-main{
+ margin:17px 15px 0;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-title-wrap h1{
+ color:#ffecbf;font:950 italic clamp(32px,9vw,52px)/.98 system-ui;
+ letter-spacing:-.055em;text-shadow:3px 3px 0 var(--tt-red-dark);overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-hero :is(.ppw-eyebrow,.ppw-result-edition){
+ color:#eed19a;font-weight:850;letter-spacing:.065em;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-lead{
+ margin:5px 15px 0;color:#f6e4c5;font-family:Georgia,serif;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell{
+ color:var(--tt-ink);background:var(--tt-paper);border:2px solid var(--tt-line);
+ border-radius:8px;box-shadow:0 4px 0 #4a354b40;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell .ppw-eyebrow,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell .ppw-ringside-ai-status{
+ color:var(--tt-red-dark);font-weight:900;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell-headline{
+ font-family:Georgia,serif;font-weight:900;color:var(--tt-ink);line-height:1.2;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell-paragraph,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-ringside-await{
+ color:#342f36;font-family:Georgia,serif;line-height:1.68;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-broadcast-section-title{
+ color:#ffe4a6;background:var(--tt-red);padding:11px 13px;border-radius:5px;
+ font-weight:950;letter-spacing:.09em;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-broadcast-headline{
+ color:var(--tt-ink);background:#ebdab4;border:1px solid var(--tt-line);
+ border-left:4px solid var(--tt-red);border-radius:6px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-broadcast-headline :is(strong,p){
+ color:var(--tt-ink);font-family:Georgia,serif;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-broadcast-headline :is(.ppw-eyebrow,.ppw-result-read){
+ color:var(--tt-red-dark);font-family:system-ui;font-weight:900;
+}
+/* Full Card: cream paper and DARK wrestler names, exactly as approved. */
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="full"],
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"]{
+ background:var(--tt-paper);border:2px solid var(--tt-line);border-radius:8px;
+ overflow:hidden;box-shadow:0 6px 17px #050b1870;margin-bottom:14px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-chapter-head{
+ background:repeating-linear-gradient(135deg,#263449 0,#263449 11px,#2b3a50 11px,#2b3a50 13px);
+ padding:18px 15px;color:#fff1d4;border-bottom:5px solid var(--tt-gold);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-eyebrow{
+ font:900 10px/1.4 system-ui;letter-spacing:.1em;color:#e8c486;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-chapter-head h2{
+ font:950 italic clamp(26px,7vw,39px)/1.07 system-ui;color:#ffedbf;
+ letter-spacing:-.048em;text-shadow:2px 2px 0 var(--tt-red-dark);margin:9px 0 4px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-chapter-head p{
+ font-size:11px;color:#ecddbf;margin:0;font-weight:800;letter-spacing:.04em;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-timeline{padding:14px 13px;gap:10px}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-timeline>.ppw-broadcast-section-title{
+ background:var(--tt-red);color:#fff2d5;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-filters{margin:0 0 6px}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-filter{
+ background:#e4d1aa;color:#483544;border:1px solid #bb9b64;border-radius:5px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-filter[aria-pressed="true"]{
+ background:var(--tt-red);color:#fff5dc;border-color:var(--tt-red-dark);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry.ppw-tone-red_hot{
+ color:var(--tt-ink);background:#f0e4c5;border:1px solid var(--tt-line);
+ border-top:4px solid var(--tt-red);border-radius:4px;box-shadow:none;margin-bottom:12px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry.ppw-result-angle{
+ border-top-color:var(--tt-gold);
+ background:#e3d3b0;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry summary{
+ background:#f0e4c5;color:var(--tt-ink);padding:13px 11px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry.ppw-result-angle summary{
+ background:#e3d3b0;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry :is(
+ .ppw-result-headline,.ppw-result-competitor-name,.ppw-result-competitor,
+ .ppw-result-team,.ppw-result-category,.ppw-result-meter,.ppw-result-trail,
+ .ppw-result-minutes,.ppw-result-main-event,.ppw-result-rating,
+ .ppw-result-programme){
+ color:var(--tt-ink)!important;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-headline{
+ font:950 italic clamp(19px,5.6vw,25px)/1.12 system-ui;letter-spacing:-.04em;
+ text-transform:uppercase;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-match .ppw-result-category,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-vs{
+ color:var(--tt-red-dark)!important;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-competitor-name{
+ font-weight:900;font-size:12px;text-shadow:none;overflow-wrap:anywhere;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-photo{
+ border-color:#a48e6c;background:#d4c7aa;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry summary::after{
+ color:var(--tt-red-dark);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-story{
+ background:#f0e4c5;color:var(--tt-ink);
+ border-top:1px solid var(--tt-line);padding:15px 12px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-story :is(
+ p,h3,strong,.ppw-ringside-slot-headline,.ppw-ringside-slot-paragraph,
+ .ppw-result-recap,.ppw-result-reaction){
+ color:#2c2830;font-family:Georgia,serif;line-height:1.65;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-story .ppw-result-verdict{
+ color:#fff2d7;background:var(--tt-navy);border-left:5px solid var(--tt-gold);
+ border-radius:2px;font-family:system-ui;font-weight:900;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-story .ppw-verified-finish-details{
+ background:#e3d3b1;border:1px solid #ae9975;color:#3d3340;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-verified-finish-details :is(summary,p){
+ color:#413641;font-family:system-ui;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-show-transition,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-ringside-conclusion{
+ color:#3e3540;background:#e7d9ba;border:1px solid var(--tt-line);
+ font-family:Georgia,serif;padding:10px 12px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-ringside-conclusion :is(p,span){
+ color:#382e36;
+}
+/* After the bell: social feed stays legible and distinct, private brief is vintage paper. */
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"]{
+ color:var(--tt-ink);padding-bottom:12px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"]>.ppw-broadcast-section-title{
+ margin:14px 13px 8px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social{
+ margin:10px 13px 18px;border:2px solid var(--tt-gold);border-top:5px solid var(--tt-red);
+ border-radius:6px;background:#26344a;color:#f3e9f5;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social .ppw-pop-title{
+ color:#ffe6ad;font:950 italic 28px/1 system-ui;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social :is(
+ .ppw-pop-kicker,.ppw-crowd-noise-disclaimer){color:#e2c58f}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social .ppw-pop-post{
+ background:#25334a;border:1px solid #80718f;color:#fff0de;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social .ppw-pop-post :is(
+ .ppw-pop-display-name,.ppw-pop-copy,.ppw-pop-reply,.ppw-pop-reply span,.ppw-pop-metrics){
+ color:#fff1dd;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social .ppw-pop-post .ppw-pop-handle{
+ color:#d0c7d8;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-pop-social .ppw-pop-reply{
+ background:#182438;border:1px solid #8d7e83;border-left:3px solid var(--tt-gold);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-post-show-brief{
+ margin:12px 13px 18px;background:#e9dbba;color:var(--tt-ink);
+ border:2px solid var(--tt-line);border-top:5px solid var(--tt-red);border-radius:5px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-post-show-brief :is(
+ h2,h3,strong,p,.ppw-eyebrow,.ppw-post-show-guidance,.ppw-road-agent-voice,
+ .ppw-road-agent-next,.ppw-road-agent-standout,.ppw-road-agent-continuity){
+ color:var(--tt-ink);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-post-show-brief .ppw-eyebrow,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-post-show-road-agent h3{
+ color:var(--tt-red-dark);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-next-show-choice{
+ background:#dfcc9e;border:1px solid #ad9565;color:var(--tt-ink);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-next-show-choice :is(h3,p,strong){
+ color:var(--tt-ink);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-next-show-route,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-next{
+ color:#fff3d8;background:var(--tt-red);border:1px solid var(--tt-gold);
+ border-radius:5px;font-weight:900;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum){
+ margin:10px 13px 15px;color:var(--tt-ink);background:#e6d5b1;border:1px solid #c1a771;border-radius:4px;
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"] :is(
+ .ppw-staff-show-report,.ppw-gorilla-log,.ppw-results-analysis,.ppw-media-scrum) :is(h2,h3,strong,p,summary){
+ color:var(--tt-ink);
+}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="full"]>.ppw-results-next,
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-results-page[data-page="after"]>.ppw-results-next{
+ margin:15px auto;width:calc(100% - 26px);display:block;
+}
+@media(max-width:390px){
+ #game .ppw-results[data-results-skin="territory-tv"] .ppw-territory-chapter-head{padding:15px 12px}
+ #game .ppw-results[data-results-skin="territory-tv"] .ppw-result-timeline{padding:10px 9px}
+ #game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry summary{padding:11px 9px}
+ #game .ppw-results[data-results-skin="territory-tv"] .ppw-result-story{padding:13px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-results[data-results-skin="territory-tv"] *{animation:none!important;transition:none!important}
+}
