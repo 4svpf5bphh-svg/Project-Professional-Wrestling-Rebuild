@@ -57,9 +57,23 @@ test("contract desk handles pending proposals, withdrawal and ownership",{
   const after=await readContractDesk(db.pool,worldId,playerId,promotionId);
   assert.equal(after.summary.pendingNegotiations,0);
   assert.equal(after.roster[0]!.remainingDates,0);
+  // An accepted renewal must suppress another same-terms offer, while
+  // remaining visible to the owner without an extra Neon read.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_contract_renewal_proposals
+    (world_id,proposal_id,contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
+   VALUES($1,$2,$3,$4,$5,'ACCEPTED',0,$6::jsonb)`,
+   [worldId,"accepted-"+id,contractId,promotionId,personId,
+    JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:13,dateEntitlement:4,
+     weeklyGuarantee:100,appearanceFee:100,roleExpectation:"REGULAR",
+     creativeControl:"NONE",signingBonus:0})]));
+  const arranged=await readContractDesk(db.pool,worldId,playerId,promotionId);
+  assert.equal(arranged.roster[0]!.renewalArranged,true);
+  assert.equal(arranged.summary.pendingRenewals,0);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("DELETE FROM ppw_contract_date_requests WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
