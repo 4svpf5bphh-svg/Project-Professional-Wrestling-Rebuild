@@ -16,7 +16,8 @@ function fake(authorized=true,canonical=false,historicPersona=false,withProgramm
    if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return [] as T[];
    calls++;
    if(sql.includes("FROM ppw_completed_shows"))return (authorized?[{receipt_json:withProgrammes?
-    {...receipt,year:2,week:3}:receipt}]:[]) as unknown as T[];
+    {...receipt,year:2,week:3,
+     segments:[{...receipt.segments[0]!,outcome:"HAPPENS"}]}:receipt}]:[]) as unknown as T[];
    if(sql.includes("FROM ppw_card_slots"))return [
     {slot_id:"m",kind:"MATCH",position:0,payload:canonical?{
      matchType:"SINGLES",family:"INDIVIDUAL",
@@ -64,8 +65,9 @@ function fake(authorized=true,canonical=false,historicPersona=false,withProgramm
       previousMatchWeek:52,currentWinner:null}}
     ]:[];
     return [{source:"STORY",slot_id:"a",story_json:{slotId:"a",position:1,
-      kind:"PROMO",outcome:"REFUSED",headline:"In-ring promo",
-      summary:"The wrestler refuses the promo.",actorIds:["a"],targetIds:[],intent:null},
+      kind:"PROMO",outcome:withProgrammes?"HAPPENS":"REFUSED",headline:"In-ring promo",
+      summary:withProgrammes?"The wrestler spoke on screen.":"The wrestler refuses the promo.",
+      actorIds:["a"],targetIds:[],intent:null},
       programme_context:null},...history] as unknown as T[];
    }
    throw new Error("Unexpected SQL: "+sql);
@@ -158,6 +160,6 @@ test("certified rivalry history reaches matches and angles in the existing five-
  }]);
  assert.equal(angle.programmeChapters?.[0]?.previousWinner,"B");
  assert.equal(angle.programmeChapters?.[0]?.currentWinner,null);
- assert.equal(angle.outcome,"REFUSED",
-  "The programme reference cannot turn a refused angle into a performed scene");
+ assert.equal(angle.outcome,"HAPPENS",
+  "Only a completed on-screen segment may be a certified rivalry chapter");
 });
