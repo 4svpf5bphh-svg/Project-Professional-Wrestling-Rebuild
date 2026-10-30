@@ -191,3 +191,23 @@
 @media(max-width:350px){.ppw-home-news-strip .ppw-home-tile{gap:5px}
  .ppw-home-news-strip .ppw-home-tile-copy strong{font-size:12px}}
 @media(min-width:700px){.ppw-home-dashboard{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+
+/* Keep the promotion badge attached to its company name, never floating
+   between the hero kicker and the title on narrow iPhone viewports. */
+.ppw-home-promotion-identity{display:flex;align-items:center;gap:13px;
+ margin:12px 0 6px;min-width:0}
+.ppw-home-promotion-identity h2{min-width:0;flex:1;margin:0;
+ font-size:clamp(26px,7vw,41px);overflow-wrap:normal;line-height:1.08}
+.ppw-home-promotion-mark{flex:none;display:grid;place-items:center;
+ box-sizing:border-box;width:66px;height:66px;padding:5px;
+ border:2px solid #e6c1ff;border-radius:12px;
+ background:linear-gradient(125deg,#54236d,#703c9c);color:#fff;
+ font:italic 900 17px/1 system-ui;text-align:center;
+ box-shadow:4px 5px 0 #10132a9c}
+.ppw-home-promotion-mark img{max-width:100%;max-height:100%;width:100%;
+ height:100%;object-fit:contain}
+.ppw-home-promotion-mark[data-logo-ready="true"]{font-size:0}
+.ppw-home-broadcast{margin-top:18px}
+@media(max-width:370px){.ppw-home-promotion-identity{gap:9px}
+ .ppw-home-promotion-mark{width:58px;height:58px}}
