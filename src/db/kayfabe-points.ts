@@ -27,6 +27,7 @@ export type KpAction=
  |{kind:"BUY";sku:KpSku;requestId:string}
  |{kind:"APPLY_BRAND";sku:BrandSku;requestId:string}
  |{kind:"APPLY_BADGE";sku:BadgeSku;requestId:string}
+ |{kind:"CLEAR_BADGE";requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
  |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity)
  |{kind:"COLLECT_LEGEND";legendId:string;requestId:string};
@@ -46,6 +47,8 @@ export function validateKpAction(action:KpAction){
   if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND")||
    (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE"))
    throw new Error("Unknown Kayfabe Points item");
+ }else if(action.kind==="CLEAR_BADGE"){
+  // The standard look is always available and costs nothing.
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
   cleanName(action.name);
@@ -98,9 +101,18 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     AND a.player_id=$3
    WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
    ORDER BY e.role LIMIT 8`,[s.worldId,s.promotionId,s.playerId]);
-  const played=await tx.query<{total:string}>(`
-   SELECT count(*)::text AS total FROM ppw_completed_shows
-   WHERE world_id=$1 AND promotion_id=$2`,[s.worldId,s.promotionId]);
+  // Three indexed aggregates in one request; milestones never poll the World.
+  const played=await tx.query<{total:string;profitable:string;great_matches:string}>(`
+   SELECT
+    (SELECT count(*)::text FROM ppw_completed_shows c
+      WHERE c.world_id=$1 AND c.promotion_id=$2) AS total,
+    (SELECT count(*)::text FROM ppw_show_economics e
+      JOIN ppw_completed_shows c ON c.world_id=e.world_id AND c.show_id=e.show_id
+      WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.net_result>0) AS profitable,
+    (SELECT count(*)::text FROM ppw_completed_match_report_facts f
+      JOIN ppw_completed_shows c ON c.world_id=f.world_id AND c.show_id=f.show_id
+      WHERE f.world_id=$1 AND c.promotion_id=$2 AND f.rating_stars>=4) AS great_matches
+   `,[s.worldId,s.promotionId]);
   const weeks=await tx.query<{year:number;week:number;played:boolean;claimed:boolean;daily_claimed:boolean}>(`
    SELECT n.year,n.week,
     EXISTS(SELECT 1 FROM ppw_completed_shows c
@@ -118,7 +130,10 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
    WHERE c.world_id=$1 AND c.creator_player_id=$2
    ORDER BY c.created_year DESC LIMIT 10`,[s.worldId,s.playerId]);
-  const total=Number(played[0]?.total??0),last=weeks[0],money=balances[0];
+  const total=Number(played[0]?.total??0),profitable=Number(played[0]?.profitable??0),
+   greatMatches=Number(played[0]?.great_matches??0),last=weeks[0],money=balances[0];
+  const milestone=(key:string,label:string,progress:number,target:number,unit:string)=>({
+   key,label,earned:progress>=target,progress:Math.min(progress,target),target,unit});
   return {balance:Number(money?.balance??0),lifetimeEarned:Number(money?.lifetime_earned??0),
    lifetimeSpent:Number(money?.lifetime_spent??0),worldYear:world.year,week:world.week,
    promotionName:world.name,weeklyAward:KP_WEEKLY_AWARD,
@@ -129,9 +144,19 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    activeBadge:badge[0]?.style??null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:[
-    {key:"FIRST_BELL",label:"First Bell",earned:total>=1,progress:Math.min(total,1),target:1},
-    {key:"TEN_SHOWS",label:"The Regular",earned:total>=10,progress:Math.min(total,10),target:10},
-    {key:"YEAR_OF_SHOWS",label:"Iron Booker",earned:total>=52,progress:Math.min(total,52),target:52}],
+    milestone("FIRST_BELL","First Bell",total,1,"shows"),
+    milestone("FIVE_SHOWS","Five Alive",total,5,"shows"),
+    milestone("TEN_SHOWS","The Regular",total,10,"shows"),
+    milestone("TWENTY_FIVE_SHOWS","Quarter Century",total,25,"shows"),
+    milestone("YEAR_OF_SHOWS","Iron Booker",total,52,"shows"),
+    milestone("HUNDRED_SHOWS","Centurion",total,100,"shows"),
+    milestone("TWO_HUNDRED_SHOWS","The Institution",total,200,"shows"),
+    milestone("FIRST_PROFIT","In The Black",profitable,1,"profitable shows"),
+    milestone("FIVE_PROFITS","Money Maker",profitable,5,"profitable shows"),
+    milestone("TWENTY_PROFITS","Business Mogul",profitable,20,"profitable shows"),
+    milestone("FIRST_CLASSIC","Matchmaker",greatMatches,1,"4★ matches"),
+    milestone("FIVE_CLASSICS","Show Stealer",greatMatches,5,"4★ matches"),
+    milestone("TWENTY_FIVE_CLASSICS","Match Legend",greatMatches,25,"4★ matches")],
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),
    catalogue:KP_CATALOGUE,staffAliasPrice:KP_STAFF_ALIAS_COST,
    createTalentPrice:KP_CREATE_TALENT_COST,createOptions:kpWrestlerCreateOptions};
@@ -217,6 +242,9 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
     [s.playerId,action.sku.replace("BADGE_","")]);
    outcome={style:action.sku};
+  }else if(action.kind==="CLEAR_BADGE"){
+   await tx.query("DELETE FROM ppw_kp_badge_styles WHERE player_id=$1",[s.playerId]);
+   outcome={style:null};
   }else if(action.kind==="RENAME_STAFF"){
    const name=cleanName(action.name);
    const hired=await tx.query<{staff_id:string}>(`

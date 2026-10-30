@@ -48,7 +48,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     result.name+" has entered the shared World as a free agent. Every promotion can negotiate normally.":
     action.kind==="RENAME_STAFF"?"Staff display name updated.":
     action.kind==="BUY"?"Unlocked. Your purchase is available on your account.":
-    action.kind==="APPLY_BADGE"?"Prestige badge finish applied.":
+    action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
+    action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
   finally{busy=false;draw();}
@@ -97,9 +98,11 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   }else grant.append(el("p","ppw-kp-muted","Points appear after your first completed, certified show."));
   funds.append(grant);root.append(funds);
   const achievements=el("section","ppw-kp-section");
-  achievements.append(el("span","ppw-kp-kicker","EARNED, NOT BOUGHT"),
+  const earned=view.achievements.filter(a=>a.earned).length;
+  achievements.append(el("span","ppw-kp-kicker","YOUR TROPHY CABINET"),
    el("h2","","Promoter milestones"),
-   el("p","ppw-kp-muted","Achievements come from verified completed shows. Cosmetics only change their presentation."));
+   el("p","ppw-kp-muted",earned+" / "+view.achievements.length+
+    " earned · certified shows, profitable events and great matches. Milestones can't be bought."));
   // Purchased badge finishes only restyle genuine earned milestones. Show
   // exactly where the purchase is applied; it does not create an achievement.
   if(view.activeBadge){
@@ -108,22 +111,24 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    preview.append(el("span","ppw-kp-active-symbol","★"),
     el("strong","","Active "+view.activeBadge.toLowerCase()+" milestone frame"),
     el("small","","Applied to unlocked achievements below. This is cosmetic; it does not alter promotion prestige or add new milestones."));
-   achievements.append(preview);
+   achievements.append(preview,btn("Use standard milestone frame",()=>void run({
+    kind:"CLEAR_BADGE",requestId:crypto.randomUUID()}),busy));
   }else achievements.append(el("p","ppw-kp-muted",
-   "No achievement display frame selected. Unlock or apply one below to style your earned milestones."));
+   "Standard milestone frame active. Apply a purchased showcase finish below whenever you like."));
   const badgeList=el("div","ppw-kp-achievements");
   for(const a of view.achievements){
    const article=el("article","ppw-kp-badge"+(a.earned?" ppw-kp-earned":"")+
     (a.earned&&view.activeBadge?" ppw-kp-achievement-"+view.activeBadge.toLowerCase():""));
    article.append(el("span","ppw-kp-badge-icon",a.earned?"★":"◇"),
     el("strong","",a.label),
-    el("small","",a.earned?"Unlocked":a.progress+" / "+a.target+" shows"));
+    el("small","",a.earned?"Unlocked":a.progress+" / "+a.target+" "+(a.unit??"shows")));
    badgeList.append(article);
   }
   achievements.append(badgeList);root.append(achievements);
   const shop=el("section","ppw-kp-section");
-  shop.append(el("span","ppw-kp-kicker","COSMETIC ONLY"),el("h2","","Promotion style & prestige"),
-   el("p","ppw-kp-muted","Promotion crests change your company mark. Gold and platinum achievement displays ONLY recolour earned milestone cards in the Promoter milestones section above. A purchase automatically applies its style; you can switch between owned styles using Apply. Neither changes your in-game standing."));
+  shop.append(el("span","ppw-kp-kicker","PERSONALISE YOUR LEGACY"),
+   el("h2","","Promotion style & prestige"),
+   el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
   const list=el("div","ppw-kp-catalogue");
   for(const item of view.catalogue){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";

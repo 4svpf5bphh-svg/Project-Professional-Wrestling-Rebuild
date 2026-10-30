@@ -37,3 +37,9 @@ test("Kayfabe purchase and Create-a-Wrestler validation rejects unsafe client da
  assert.throws(()=>validateKpAction({kind:"APPLY_BRAND",sku:"BADGE_GOLD" as never,
   requestId:"r4"}),/Unknown/);
 });
+
+test("Purchased milestone appearance can be reset for free",()=>{
+ assert.deepEqual(validateKpAction({kind:"CLEAR_BADGE",requestId:"reset-badge"}),
+  {kind:"CLEAR_BADGE",requestId:"reset-badge"});
+ assert.throws(()=>validateKpAction({kind:"CLEAR_BADGE",requestId:""}),/Kayfabe request/);
+});

@@ -66,3 +66,11 @@
  font-size:36px;line-height:1;color:#ffe6a6}
 .ppw-kp-active-preview>strong{font-size:16px;text-transform:capitalize}
 .ppw-kp-active-preview>small{font-size:12px;line-height:1.45;color:#dce1ef}
+
+/* Earned milestones receive a compact but distinctive trophy-cabinet layout. */
+.ppw-kp-achievements{grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px}
+.ppw-kp-badge{min-height:110px;justify-content:center;padding:14px 8px;border-radius:13px}
+.ppw-kp-badge strong{font-size:13px;line-height:1.35}
+.ppw-kp-badge small{font-size:11px;line-height:1.4}
+.ppw-kp-earned .ppw-kp-badge-icon{filter:drop-shadow(0 0 5px #ffda775e)}
+.ppw-kp-active-preview+.ppw-kp-button{justify-self:start;margin:-5px 0 8px}
