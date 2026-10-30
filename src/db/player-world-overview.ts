@@ -6,6 +6,7 @@ export interface PlayerWorldOverview {
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
  membership:"ACTIVE"|"INACTIVE"|"NONE";
  promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
+    milestoneFrame?:"GOLD"|"PLATINUM"|null;
    standing?:{position:number;total:number}|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
    latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
@@ -55,7 +56,7 @@ export async function readPlayerWorldOverview(
    phase:string;revision:string|number;next_lock_epoch:string;
    server_epoch:string;membership_status:"ACTIVE"|"INACTIVE"|null;
    promotion_id:string|null;promotion_name:string|null;tier:string|null;
-   home_market_name:string|null;
+   home_market_name:string|null;prestige_style:string|null;
    cash:string|number|null;debt:string|number|null;
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
@@ -74,6 +75,7 @@ export async function readPlayerWorldOverview(
     extract(epoch FROM clock_timestamp())::text AS server_epoch,
     m.status AS membership_status,
     owned.promotion_id,owned.name AS promotion_name,owned.tier,owned.home_market_name,
+     showcase.style AS prestige_style,
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
@@ -99,6 +101,8 @@ export async function readPlayerWorldOverview(
      AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'
     ORDER BY p.promotion_id LIMIT 1
    ) owned ON TRUE
+   LEFT JOIN ppw_kp_badge_styles showcase ON showcase.player_id=$2
+    AND owned.promotion_id IS NOT NULL
    LEFT JOIN LATERAL (
     SELECT
      (SELECT count(*)::integer FROM ppw_booking_drafts d
@@ -497,6 +501,7 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
+     milestoneFrame:x.prestige_style==="GOLD"||x.prestige_style==="PLATINUM"?x.prestige_style:null,
     standing:x.standing&&typeof x.standing==="object"&&"position" in x.standing&&
      "total" in x.standing&&typeof x.standing.position==="number"&&
      typeof x.standing.total==="number"?

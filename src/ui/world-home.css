@@ -211,3 +211,14 @@
 .ppw-home-broadcast{margin-top:18px}
 @media(max-width:370px){.ppw-home-promotion-identity{gap:9px}
  .ppw-home-promotion-mark{width:58px;height:58px}}
+
+/* Owned showcase frame visible on Home; opens the earned trophy cabinet. */
+.ppw-home-promoter-medal{display:inline-flex;align-items:center;align-self:start;
+ padding:10px 12px;min-height:44px;border-radius:10px;margin:7px 0 3px;
+ font:850 11px/1.4 system-ui;letter-spacing:.055em;text-transform:uppercase;
+ border:1px solid #c3a9f1;background:#443956;color:#ffe8ab;text-align:left}
+.ppw-home-promoter-medal[data-finish=gold]{border-color:#eaca72;
+ background:linear-gradient(115deg,#654926,#382939);color:#ffe09c}
+.ppw-home-promoter-medal[data-finish=platinum]{border-color:#b4dff4;
+ background:linear-gradient(115deg,#465b79,#2c304f);color:#e5faff}
+.ppw-home-promoter-medal:focus-visible{outline:3px solid #90f3ec;outline-offset:2px}

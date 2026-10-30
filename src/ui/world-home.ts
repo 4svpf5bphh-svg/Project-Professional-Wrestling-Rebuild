@@ -178,6 +178,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   hero.append(heroTop,
    el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
    identity,
+   ...(promotion?.milestoneFrame&&port.openKayfabe?[
+    (()=>{const medal=el("button","ppw-home-promoter-medal",
+     "★ "+promotion.milestoneFrame+" SHOWCASE · VIEW TROPHY CABINET") as HTMLButtonElement;
+     medal.type="button";medal.onclick=()=>port.openKayfabe?.();
+     medal.setAttribute("aria-label","Open your "+promotion.milestoneFrame.toLowerCase()+" milestone cabinet");
+     medal.dataset.finish=promotion.milestoneFrame.toLowerCase();return medal;})()
+   ]:[]),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
     "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
    el("p","ppw-home-small",deadlineDue?
