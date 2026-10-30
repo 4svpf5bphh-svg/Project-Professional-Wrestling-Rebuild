@@ -60,7 +60,7 @@ test("iPhone clears confirmed title and business news but never the unprepared s
  expect(methods).toEqual(["overview","dismissAttentionBatch"]);
 });
 
-test("championship directory renders loaded distinct authored belt artwork without extra requests",async({page})=>{
+test("championship directory shows premium typographic titles, not generic belt artwork",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -81,17 +81,11 @@ test("championship directory renders loaded distinct authored belt artwork witho
  await page.goto("/#/championships");
  await expect(page.locator(".ppw-belt-card")).toHaveCount(2);
  await expect(page.locator(".ppw-belt-graphic")).toHaveCount(0);
- const identity=page.locator(".ppw-title-typographic-name");
+ const identity=page.locator(".ppw-belt-name");
  await expect(identity).toHaveCount(2);
  await expect(identity.nth(0)).toHaveText("World Championship");
  await expect(identity.nth(1)).toHaveText("Tag Team Championship");
- const belts=await page.locator(".ppw-belt-plate").evaluateAll(elements=>
-  elements.map(el=>({strap:getComputedStyle(el,"::before").content,
-   plate:getComputedStyle(el,"::after").content,
-   bounds:el.getBoundingClientRect().toJSON()})));
- expect(belts).toHaveLength(2);
- expect(belts.every(b=>b.strap!=="none"&&b.plate!=="none")).toBe(true);
- expect(belts.every(b=>b.bounds.width>150)).toBe(true);
+ await expect(page.locator(".ppw-belt-plate")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
  await expect(page.locator(".ppw-belt-card").first()).toHaveAttribute("data-title-family","world");
