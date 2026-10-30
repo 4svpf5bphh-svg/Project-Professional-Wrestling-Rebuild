@@ -41,6 +41,11 @@ function stat(label:string,value:number|null|undefined){
 }
 export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
  personId:string,onBack?:()=>void){
+ // Each dossier is a new top-level reading experience. A route from the
+ // talent market or a news notification must not inherit the old scrollY.
+ // Overlay dossiers own their own scroll surface and must remain scrollable.
+ root.scrollTop=0;
+ if(!root.classList.contains("ppw-profile-overlay"))window.scrollTo(0,0);
  let view:View|null=null,loading=false,saving=false,error="",success="";
  let career:CareerView|null=null,careerLoading=false,careerError="";
  const names=(moves:View["persona"]["signatureMoves"])=>moves.map(m=>m.name).join("\n");
