@@ -78,7 +78,7 @@ test("staff and Backstage recall private certified rivalries without extra Neon 
   const commentator=staff.meetings.find(x=>x.role==="COMMENTATOR")!;
   const agent=staff.meetings.find(x=>x.role==="ROAD_AGENT")!;
   assert.match(creative.message,/Samoa Joe and Matt Riddle/);
-  assert.match(creative.message,/won by Matt Riddle/);
+  assert.match(creative.message,/previous recorded match went to Matt Riddle/);
   assert.match(creative.message,/return bout was requested but has not been completed/);
   assert.match(commentator.message,/on-screen angle/);
   assert.match(agent.message,/Samoa Joe and Matt Riddle/);
