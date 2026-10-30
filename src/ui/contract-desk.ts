@@ -232,13 +232,17 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      " · Creative control: "+title(c.creativeControl)));
     if(port.openWrestler)body.append(btn("Wrestler profile ↗",
      ()=>port.openWrestler?.(c.personId)));
-    if(c.additionalDatesEligible&&!c.pendingNegotiation&&view!.canEdit){
-     const values=amounts.get(c.contractId)??{dates:3,payment:0};
+    const freeWeeks=Math.max(0,c.weeksRemaining-(c.remainingDates??0));
+    const maxExtra=Math.max(0,Math.min(freeWeeks,
+     104-(c.dateEntitlement??c.remainingDates??0)));
+    if(c.additionalDatesEligible&&!c.pendingNegotiation&&view!.canEdit&&maxExtra>0){
+     const values=amounts.get(c.contractId)??{dates:Math.min(3,maxExtra),payment:0};
+     values.dates=Math.min(values.dates,maxExtra);
      const section=el("div","ppw-contract-date-action");
      section.append(el("span","","Request more dates"));
      const dates=document.createElement("input");
      dates.type="number";dates.inputMode="numeric";
-     dates.min="1";dates.max="104";dates.value=String(values.dates);
+     dates.min="1";dates.max=String(maxExtra);dates.value=String(values.dates);
      dates.setAttribute("aria-label","Additional dates for "+c.name);
      const pay=document.createElement("input");
      pay.type="number";pay.inputMode="numeric";
@@ -248,17 +252,20 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      pay.onchange=()=>{values.payment=Number(pay.value);amounts.set(c.contractId,values);clear("dates:"+c.contractId);};
      amounts.set(c.contractId,values);
      const submit=btn("Send request",()=>{
-      if(!Number.isSafeInteger(values.dates)||values.dates<1||values.dates>104||
+      if(!Number.isSafeInteger(values.dates)||values.dates<1||values.dates>maxExtra||
        !Number.isSafeInteger(values.payment)||values.payment<0||
        values.payment>1_000_000_000){
-       error="Dates must be 1–104 and payment must be a non-negative whole amount.";
+       error="Extra dates must fit the remaining contract weeks; payment must be non-negative.";
        render();return;
       }
       void action("dates:"+c.contractId,m=>port.requestDates({...m,
        contractId:c.contractId,additionalDates:values.dates,
        additionalPayment:values.payment}),"Additional-dates offer submitted.");
      },!editable());
-     section.append(el("label","","Dates"),dates,
+     section.append(el("small","ppw-contract-renew-hint",
+      "Maximum "+maxExtra+" further "+(maxExtra===1?"date":"dates")+
+      " before expiry · one booked appearance per week"),
+      el("label","","Dates"),dates,
       el("label","","Extra payment ($)"),pay,submit);
      body.append(section);
     }
@@ -281,7 +288,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
       startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:13,
       dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?13:
-       Math.max(1,Math.min(26,c.dateEntitlement??5)),
+       Math.max(1,Math.min(13,c.dateEntitlement??5)),
       weeklyGuarantee:family==="ONE_OFF"?0:c.weeklyGuarantee,
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
@@ -303,7 +310,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       label.append(input);panel.append(label);
      };
      numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF");
-     numeric("Purchased dates","dateEntitlement",1,104,fixed);
+     numeric("Purchased dates","dateEntitlement",1,52,fixed);
      numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
      numeric("Appearance fee ($)","appearanceFee",0,1000000000,family==="EXCLUSIVE");
      numeric("Signing bonus ($)","signingBonus",0,1000000000);
@@ -334,7 +341,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        draft.termWeeks<1||draft.termWeeks>52||
        draft.dateEntitlement<1||draft.dateEntitlement>104||
        (family==="EXCLUSIVE"&&draft.dateEntitlement!==draft.termWeeks)||
-       (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks*2)){
+       (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks)){
        error="Review the proposed duration, dates and payment values.";
        render();return;
       }
