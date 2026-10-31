@@ -30,6 +30,8 @@ import "./underground-zine-results-skin.css";
 import "./retro-booker-results-skin.css";
 import "./results-skin-contrast.css";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
+import {createAnimatedEventPoster} from "./animated-event-poster.js";
+import {eventPosterByStyle} from "../domain/event-poster-skins.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -147,25 +149,29 @@ export async function mountShowResults(root:HTMLElement,port:{
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
  root.classList.remove("ppw-editorial-ready");
- if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
- else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
- else if(show.resultsSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
- else if(show.resultsSkin==="RETRO_BOOKER_02")root.dataset.resultsSkin="retro-booker-02";
+ const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
+ const effectiveSkin=poster?null:show.resultsSkin;
+ if(poster)root.dataset.premiumPoster=poster.style.toLowerCase().replaceAll("_","-");
+ else delete root.dataset.premiumPoster;
+ if(effectiveSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
+ else if(effectiveSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
+ else if(effectiveSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
+ else if(effectiveSkin==="RETRO_BOOKER_02")root.dataset.resultsSkin="retro-booker-02";
  else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
- if(show.resultsSkin==="TERRITORY_TV")
+ if(effectiveSkin==="TERRITORY_TV")
   header.append(node("div","ppw-territory-station",
    "★ PPW TERRITORY TELEVISION  ·  ON THE AIR"));
- if(show.resultsSkin==="FIGHT_NIGHT")
+ if(effectiveSkin==="FIGHT_NIGHT")
   header.append(node("div","ppw-fight-station",
    "PPW / FIGHT NIGHT  ·  OFFICIAL EVENT REPORT"));
- if(show.resultsSkin==="UNDERGROUND_ZINE")
+ if(effectiveSkin==="UNDERGROUND_ZINE")
   header.append(node("div","ppw-zine-station",
    "THE UNDERGROUND REPORT · ISSUE "+String(show.week).padStart(3,"0")));
- if(show.resultsSkin==="RETRO_BOOKER_02")
+ if(effectiveSkin==="RETRO_BOOKER_02")
   header.append(node("div","ppw-retro-station",
    "■ PPW BOOKER 2002  /  RESULTS.DAT  /  WEEK "+String(show.week).padStart(2,"0")));
  const titleWrap=node("div","ppw-result-title-wrap");
@@ -483,7 +489,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
- if(show.broadcastPackage){
+ if(poster){
+  const opening=createAnimatedEventPoster({
+   style:poster.style,eventName:show.showName??"Premium event",
+   promotionName:show.promotionName??"PPW",compact:true
+  });
+  if(opening){
+   const wrap=node("section","ppw-results-event-poster");
+   wrap.append(opening);headlines.append(wrap);
+  }
+ }else if(show.broadcastPackage){
   const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
    promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
   if(opening){
@@ -493,28 +508,28 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  }
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
- if(show.resultsSkin==="TERRITORY_TV"){
+ if(effectiveSkin==="TERRITORY_TV"){
   const station=node("header","ppw-territory-chapter-head");
   station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · FULL CARD"),
    node("h2","","THE COMPLETE NIGHT"),
    node("p","","OFFICIAL MATCHES, RESULTS & ON-AIR MOMENTS"));
   full.append(station);
  }
- if(show.resultsSkin==="FIGHT_NIGHT"){
+ if(effectiveSkin==="FIGHT_NIGHT"){
   const station=node("header","ppw-fight-chapter-head");
   station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · OFFICIAL RECORD"),
    node("h2","","MATCH REPORT"),
    node("p","","COMPLETE CARD · IN EVENT ORDER"));
   full.append(station);
  }
- if(show.resultsSkin==="UNDERGROUND_ZINE"){
+ if(effectiveSkin==="UNDERGROUND_ZINE"){
   const station=node("header","ppw-zine-chapter-head");
   station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · COMPLETE CARD"),
    node("h2","","EVERY BELL. EVERY BRAWL."),
    node("p","","THE COMPLETE SHOW · AS IT HAPPENED"));
   full.append(station);
  }
- if(show.resultsSkin==="RETRO_BOOKER_02"){
+ if(effectiveSkin==="RETRO_BOOKER_02"){
   const station=node("header","ppw-retro-chapter-head");
   station.append(node("span","ppw-retro-eyebrow","FILE 02 / COMPLETE CARD"),
    node("h2","","MATCH RESULTS"),
@@ -523,28 +538,28 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
- if(show.resultsSkin==="TERRITORY_TV"){
+ if(effectiveSkin==="TERRITORY_TV"){
   const station=node("header","ppw-territory-chapter-head");
   station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · AFTER THE BELL"),
    node("h2","","THE AFTERMATH"),
    node("p","","FANS, RUMOURS & PRIVATE MANAGEMENT"));
   after.append(station);
  }
- if(show.resultsSkin==="FIGHT_NIGHT"){
+ if(effectiveSkin==="FIGHT_NIGHT"){
   const station=node("header","ppw-fight-chapter-head");
   station.append(node("span","ppw-fight-eyebrow","PPW / FIGHT NIGHT · THE FALLOUT"),
    node("h2","","AFTER THE BELL"),
    node("p","","FAN REACTIONS · PRIVATE MANAGEMENT REPORT"));
   after.append(station);
  }
- if(show.resultsSkin==="UNDERGROUND_ZINE"){
+ if(effectiveSkin==="UNDERGROUND_ZINE"){
   const station=node("header","ppw-zine-chapter-head");
   station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · THE AFTERMATH"),
    node("h2","","AFTER THE BELL!"),
    node("p","","THE INTERNET REACTS · THE OFFICE ASSESSES"));
   after.append(station);
  }
- if(show.resultsSkin==="RETRO_BOOKER_02"){
+ if(effectiveSkin==="RETRO_BOOKER_02"){
   const station=node("header","ppw-retro-chapter-head");
   station.append(node("span","ppw-retro-eyebrow","FILE 03 / POST-SHOW DESK"),
    node("h2","","AFTER THE SHOW"),
