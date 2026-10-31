@@ -11,6 +11,7 @@ import {readKayfabeWorkspace,readPromoterAchievementWorkspace,claimKayfabeWeek,a
  from "../src/db/kayfabe-points.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
 import {readStaffWorkspace} from "../src/db/staff-workspace.js";
+import {readPromotionCalendar} from "../src/db/calendar-workspace.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
@@ -305,6 +306,12 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   const ppvPosters=(await readKayfabeWorkspace(db.pool,aa)).premiumEventPosters;
   assert.equal(ppvPosters.find(x=>x.seriesId==="armageddon")?.style,"EMPIRE");
   assert.equal(ppvPosters.find(x=>x.seriesId==="thunderdome")?.style,"THUNDER_STRIKE");
+  // Per-PPV artwork must survive the actual Calendar read, not just KP.
+  const calendarWithArt=await readPromotionCalendar(db.pool,aa);
+  assert.equal(calendarWithArt.series.find(x=>x.seriesId==="armageddon")?.posterStyle,"EMPIRE");
+  assert.equal(calendarWithArt.series.find(x=>x.seriesId==="thunderdome")?.posterStyle,"THUNDER_STRIKE");
+  assert.ok(!JSON.stringify(calendarWithArt.worldWeeks).includes("posterStyle"),
+   "A public World calendar must not publish a rival owner's chosen cosmetics");
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).balance,2500);
   assert.ok(!(await readKayfabeWorkspace(db.pool,bb)).premiumEventPosters
    .some(x=>x.seriesId==="armageddon"));
