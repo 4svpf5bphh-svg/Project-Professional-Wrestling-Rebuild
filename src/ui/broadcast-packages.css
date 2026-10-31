@@ -130,3 +130,17 @@
 #game .ppw-card-broadcast-studio>summary:focus-visible{outline:3px solid #8ae4ff}
 #game .ppw-card-broadcast-slot{margin:3px 10px 9px;padding:2px 7px}
 #game .ppw-card-broadcast-studio .ppw-tv-frame{margin:9px auto 5px}
+
+/* Contrast refinements: on bright/red slashes, names sit on ivory cards;
+   the VS separator stays white on a dark plate instead of red-on-red. */
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-title,
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{
+ background:#fffdf5eb;padding:6px 9px;color:#172132!important;
+ text-shadow:none;max-width:100%}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-vs,
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-vs{
+ background:#1b2634;color:#fff!important;padding:5px 6px;border-radius:3px}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-title{
+ background:#101915ef;padding:6px 9px;border-left:4px solid #e3ff5a}
+#game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-title{
+ text-shadow:3px 4px 0 #8d2a7c,0 0 11px #9c387f}
