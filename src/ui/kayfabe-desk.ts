@@ -3,6 +3,8 @@
  */
 import type {readKayfabeWorkspace,KpAction} from "../db/kayfabe-points.js";
 import "./kayfabe-desk.css";
+import {createAnimatedEventPoster} from "./animated-event-poster.js";
+import {EVENT_POSTER_SKINS,type EventPosterSku} from "../domain/event-poster-skins.js";
 import type {KpCreateStyle,KpCreateGimmick} from "../domain/kp-create-wrestler.js";
 export type KayfabeView=Awaited<ReturnType<typeof readKayfabeWorkspace>>;
 export interface KayfabePort{
@@ -23,7 +25,7 @@ const format=(n:number)=>n.toLocaleString("en-GB")+" KP";
 export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
- let createOpen=false,reviewing=false;
+ let createOpen=false,reviewing=false,posterIndex=0;
  let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
  let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
  let signatureMove="",finishingMove="";
@@ -52,6 +54,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
     action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
     action.kind==="APPLY_RESULTS_SKIN"?"Results skin applied.":
+    action.kind==="APPLY_EVENT_POSTER"?"Animated event poster applied to your upcoming premium shows.":
+    action.kind==="CLEAR_EVENT_POSTER"?"Standard event artwork restored.":
     action.kind==="CLEAR_RESULTS_SKIN"?"Original PPW results appearance restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
@@ -137,7 +141,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("h2","","Promotion style & prestige"),
    el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
   const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN")){
+  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER")){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
    const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
    const article=el("article","ppw-kp-item");
@@ -200,6 +204,50 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   if(view.activeResultsSkin)resultsShop.append(btn("Use original PPW results",()=>void run({
    kind:"CLEAR_RESULTS_SKIN",requestId:crypto.randomUUID()}),busy));
   root.append(resultsShop);
+  // Keep just ONE animated preview in the DOM: 18 designs, one lightweight
+  // player-controlled animation at a time, no image assets or repeated reads.
+  const posterShop=el("section","ppw-kp-section ppw-kp-event-posters");
+  posterShop.append(el("span","ppw-kp-kicker","PREMIUM SHOW PRESENTATION"),
+   el("h2","","Animated event posters"),
+   el("p","ppw-kp-muted","Real CSS/SVG animations. Each style is 1,250 KP and stays on your account. Your own PPVs and specials use their actual event names. The match card is never invented."));
+  const options=view.catalogue.filter(item=>item.kind==="EVENT_POSTER");
+  if(options.length){
+   posterIndex=Math.min(Math.max(0,posterIndex),options.length-1);
+   const selected=options[posterIndex]!;
+   const picker=el("div","ppw-kp-poster-picker");
+   const previous=btn("← Previous",()=>{posterIndex=(posterIndex+options.length-1)%options.length;draw();},busy);
+   const next=btn("Next →",()=>{posterIndex=(posterIndex+1)%options.length;draw();},busy);
+   const selector=el("select","ppw-kp-input") as HTMLSelectElement;
+   selector.setAttribute("aria-label","Choose animated poster design");
+   for(let i=0;i<options.length;i++){
+    const option=el("option","",String(i+1).padStart(2,"0")+" · "+options[i]!.label) as HTMLOptionElement;
+    option.value=String(i);selector.append(option);
+   }
+   selector.value=String(posterIndex);
+   selector.onchange=()=>{posterIndex=Number(selector.value);draw();};
+   picker.append(previous,selector,next);
+   posterShop.append(picker);
+   const preview=createAnimatedEventPoster({style:selected.style,eventName:selected.label,
+    promotionName:view.promotionName});
+   if(preview){preview.classList.add("ppw-kp-poster-showcase");posterShop.append(preview);}
+   const owned=view.entitlements.includes(selected.sku);
+   const active=view.activeEventPoster===selected.style;
+   const detail=el("div","ppw-kp-poster-details");
+   const copy=el("div","ppw-kp-item-copy");
+   copy.append(el("strong","",selected.label),
+    el("small","",active?"Owned · applied":owned?"Owned · ready to apply":
+     "One-time "+format(selected.price)+" · account-wide"),
+    el("small","","Preview title is illustrative. Actual shows display their own event names."));
+   detail.append(copy,btn(active?"Applied":owned?"Apply":"Unlock",
+    ()=>void run(owned?
+     {kind:"APPLY_EVENT_POSTER",sku:selected.sku as EventPosterSku,requestId:crypto.randomUUID()}:
+     {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
+    busy||active||(!owned&&view.balance<selected.price)));
+   posterShop.append(detail);
+   if(view.activeEventPoster)posterShop.append(btn("Use standard event artwork",
+    ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
+  }
+  root.append(posterShop);
   const people=el("section","ppw-kp-section");
   people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),
    el("h2","","Personalise your staff"),

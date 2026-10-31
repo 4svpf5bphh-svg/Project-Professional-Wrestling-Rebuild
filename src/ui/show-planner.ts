@@ -1,4 +1,5 @@
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
+import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
 export interface PlannerPort {

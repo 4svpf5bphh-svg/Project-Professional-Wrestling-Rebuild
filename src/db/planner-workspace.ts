@@ -41,7 +41,7 @@ export interface PlannerVenuePressure {
 }
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle:string|null;
+ worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
 }
 const id=(s:unknown):s is string=>typeof s==="string"&&s.trim().length>0&&s.length<=200;
