@@ -52,7 +52,7 @@
 .ppw-event-poster[data-poster=empire] .ppw-ep-layer{inset:-60%;background:linear-gradient(110deg,transparent 42%,#ffeeba35 50%,transparent 58%);animation:ppw-ep-sweep 9s infinite}
 .ppw-event-poster[data-poster=inferno]{--ep-accent:#ffc88e;background:radial-gradient(ellipse at 50% 95%,#b23916,#4a1d1b 54%,#180d16);border-color:#ff7846}
 .ppw-event-poster[data-poster=inferno] .ppw-ep-title{color:#ffc07e;text-shadow:0 2px 0 #b02e14,0 0 18px #e5521a}
-.ppw-event-poster[data-poster=inferno] .ppw-ep-layer{bottom:0;left:var(--ep-left);width:4px;height:4px;border-radius:50%;background:#ffe2ad;box-shadow:0 0 8px 3px #e85c1d;animation:ppw-ep-rise 6s linear infinite;animation-delay:calc(var(--i)*-0.7s)}
+.ppw-event-poster[data-poster=inferno] .ppw-ep-layer{bottom:0;left:var(--ep-left);width:4px;height:4px;border-radius:50%;background:#ffe2ad;box-shadow:0 0 8px 3px #e85c1d;animation:ppw-ep-rise 6s linear infinite;animation-delay:var(--ep-rise-delay)}
 .ppw-event-poster[data-poster=retro-broadcast]{--ep-accent:#ffe1a9;background:linear-gradient(#20374c,#121d33 55%,#333348);border:7px solid #515b67;border-radius:20px}
 .ppw-event-poster[data-poster=retro-broadcast]::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#02061147 0 2px,transparent 2px 5px);z-index:3;pointer-events:none}
 .ppw-event-poster[data-poster=retro-broadcast] .ppw-ep-title{font-style:normal;color:#fff2ce;text-shadow:3px 3px 0 #d45b52,5px 5px 0 #6089ac}
@@ -80,7 +80,7 @@
 .ppw-event-poster[data-poster=frozen-crown]{--ep-accent:#d9f6ff;background:radial-gradient(ellipse at 50% 27%,#6ca7d2,#244f77 56%,#0a203b);border-color:#aee6fa}
 .ppw-event-poster[data-poster=frozen-crown]::before{content:"";position:absolute;inset:18% 15%;background:#e6fbff21;clip-path:polygon(50% 0,62% 25%,83% 10%,73% 43%,100% 52%,72% 65%,78% 99%,50% 78%,19% 99%,29% 65%,0 53%,26% 41%,18% 10%,39% 25%)}
 .ppw-event-poster[data-poster=frozen-crown] .ppw-ep-title{font-family:Georgia,serif;color:#effaff;text-shadow:0 0 11px #83d9ff}
-.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-layer{left:var(--ep-left);top:-5%;width:4px;height:4px;border-radius:50%;background:#e9ffff;box-shadow:0 0 5px #daffff;animation:ppw-ep-snow 8s linear infinite;animation-delay:calc(var(--i)*-0.9s)}
+.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-layer{left:var(--ep-left);top:-5%;width:4px;height:4px;border-radius:50%;background:#e9ffff;box-shadow:0 0 5px #daffff;animation:ppw-ep-snow 8s linear infinite;animation-delay:var(--ep-snow-delay)}
 .ppw-event-poster[data-poster=laser-grid]{--ep-accent:#9afbf6;background:radial-gradient(ellipse at 50% 30%,#2a2862,#101435 62%,#070a1c);border-color:#59e8e8}
 .ppw-event-poster[data-poster=laser-grid]::before{content:"";position:absolute;inset:50% -55% -45%;background:linear-gradient(#44eff770 1px,transparent 1px),linear-gradient(90deg,#44eff770 1px,transparent 1px);background-size:32px 32px;transform:perspective(170px) rotateX(65deg)}
 .ppw-event-poster[data-poster=laser-grid] .ppw-ep-layer{top:0;left:50%;width:2px;height:100%;background:#ff608c;box-shadow:0 0 12px #ff608c;transform-origin:50% 0;animation:ppw-ep-beam 8s ease-in-out infinite alternate}
@@ -92,7 +92,7 @@
 .ppw-event-poster[data-poster=crown-theatre] .ppw-ep-layer-1{right:0;clip-path:polygon(0 0,100% 0,100% 100%,6% 100%,23% 50%);transform-origin:right center;animation-delay:-3.5s}
 .ppw-event-poster[data-poster=crown-theatre] .ppw-ep-title{font-family:Georgia,serif;font-style:normal;color:#ffe0a8;text-shadow:0 0 13px #e0ad5b}
 .ppw-event-poster[data-poster=tidal-force]{--ep-accent:#b0f4f5;background:linear-gradient(170deg,#103b50,#135673 52%,#071b35);border-color:#74d2e7}
-.ppw-event-poster[data-poster=tidal-force] .ppw-ep-layer{top:calc(38% + var(--i)*10%);left:-22%;width:145%;height:29%;background:linear-gradient(#a5f9f18a,#227fa59c);clip-path:polygon(0 55%,10% 30%,20% 20%,30% 35%,40% 60%,50% 70%,60% 53%,70% 27%,80% 22%,90% 50%,100% 70%,100% 100%,0 100%);animation:ppw-ep-tide 7s ease-in-out infinite alternate;animation-delay:calc(var(--i)*-2s)}
+.ppw-event-poster[data-poster=tidal-force] .ppw-ep-layer{top:calc(38% + var(--i)*10%);left:-22%;width:145%;height:29%;background:linear-gradient(#a5f9f18a,#227fa59c);clip-path:polygon(0 55%,10% 30%,20% 20%,30% 35%,40% 60%,50% 70%,60% 53%,70% 27%,80% 22%,90% 50%,100% 70%,100% 100%,0 100%);animation:ppw-ep-tide 7s ease-in-out infinite alternate;animation-delay:var(--ep-tide-delay)}
 .ppw-event-poster[data-poster=tidal-force] .ppw-ep-title{color:#ddffff;text-shadow:0 0 14px #5de9f3,3px 4px 0 #105675}
 .ppw-event-poster[data-poster=blood-moon]{--ep-accent:#f6afbd;background:radial-gradient(ellipse at 50% 45%,#5d1e30,#29131f 66%,#0b0b16);border-color:#d6798e}
 .ppw-event-poster[data-poster=blood-moon] .ppw-ep-layer-0{width:65%;aspect-ratio:1;left:17.5%;top:12%;border-radius:50%;background:radial-gradient(circle at 38% 35%,#efa49d,#b63c55 58%,#742136);box-shadow:0 0 27px #e24b7190;animation:ppw-ep-moon 6s infinite}
@@ -102,7 +102,7 @@
 .ppw-event-poster[data-poster=circuit-breaker] .ppw-ep-effects svg path{stroke:#53e7bc;stroke-width:2;stroke-dasharray:15 22;fill:none;animation:ppw-ep-circuit 9s linear infinite;opacity:.75}
 .ppw-event-poster[data-poster=circuit-breaker] .ppw-ep-title{font-family:ui-monospace,Consolas,monospace;color:#d9ffee;text-shadow:0 0 12px #3feeb3}
 .ppw-event-poster[data-poster=aftershock]{--ep-accent:#ffd09e;background:radial-gradient(ellipse at 50% 43%,#874328,#402529 56%,#17111b);border-color:#f6ae65}
-.ppw-event-poster[data-poster=aftershock] .ppw-ep-layer{width:50%;aspect-ratio:1;border:3px solid #ffad6d;top:37%;left:50%;border-radius:50%;opacity:0;animation:ppw-ep-shock 6s ease-out infinite;animation-delay:calc(var(--i)*2s)}
+.ppw-event-poster[data-poster=aftershock] .ppw-ep-layer{width:50%;aspect-ratio:1;border:3px solid #ffad6d;top:37%;left:50%;border-radius:50%;opacity:0;animation:ppw-ep-shock 6s ease-out infinite;animation-delay:var(--ep-shock-delay)}
 .ppw-event-poster[data-poster=aftershock]::before{content:"";position:absolute;bottom:15%;left:-10%;width:120%;height:17px;transform:rotate(-4deg);background:repeating-linear-gradient(115deg,#ffb345 0 21px,#1e2126 21px 43px);opacity:.65}
 .ppw-event-poster[data-poster=aftershock] .ppw-ep-title{color:#ffedc9;text-shadow:4px 4px 0 #ab432a}
 @keyframes ppw-ep-flash{0%,15%,17%,19%,100%{opacity:0}15.5%,18%{opacity:.9}16%{opacity:.16}}
@@ -131,3 +131,18 @@
 .ppw-event-poster[data-size=compact] .ppw-ep-footer{padding-top:5px;gap:2px}
 .ppw-event-poster[data-size=compact] .ppw-ep-main-label{font-size:8px}
 .ppw-event-poster[data-size=compact] .ppw-ep-main{font-size:10px}
+
+/* Theatre footlights and marquee-style brightness, both CSS-only. */
+.ppw-event-poster[data-poster=crown-theatre]::after{
+ content:"";position:absolute;left:0;right:0;bottom:6%;height:19px;z-index:1;
+ background:radial-gradient(circle,#ffedb8 0 3px,transparent 5px) 0 0/27px 19px;
+ filter:drop-shadow(0 0 5px #ffd27e);animation:ppw-ep-bulbs 3s ease-in-out infinite;
+ pointer-events:none}
+@media(prefers-reduced-motion:reduce){
+ .ppw-event-poster[data-poster=crown-theatre]::after{animation:none}
+}
+/* Prevent wider PPW typography rules from drowning the poster's contrast. */
+#game .ppw-event-poster{color:#fff}
+#game .ppw-event-poster .ppw-ep-promoter{color:#f8f3e9}
+#game .ppw-event-poster .ppw-ep-type,#game .ppw-event-poster .ppw-ep-tagline{color:var(--ep-accent)}
+#game .ppw-event-poster .ppw-ep-main{color:#fff}

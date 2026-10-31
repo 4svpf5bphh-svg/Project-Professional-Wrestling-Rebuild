@@ -35,7 +35,12 @@ function decoration(root:HTMLElement,style:EventPosterStyle){
  for(let i=0;i<count;i++){
   const layer=text("span","ppw-ep-layer ppw-ep-layer-"+i,"");
   layer.style.setProperty("--i",String(i));
-  layer.style.setProperty("--ep-left",(8+i*10)+"%");effect.append(layer);
+  layer.style.setProperty("--ep-left",(8+i*10)+"%");
+  layer.style.setProperty("--ep-rise-delay",(-i*.7)+"s");
+  layer.style.setProperty("--ep-snow-delay",(-i*.9)+"s");
+  layer.style.setProperty("--ep-tide-delay",(-i*2)+"s");
+  layer.style.setProperty("--ep-shock-delay",(i*2)+"s");
+  effect.append(layer);
  }
  if(style==="THUNDER_STRIKE"||style==="CIRCUIT_BREAKER"){
   const ns="http://www.w3.org/2000/svg";
@@ -53,8 +58,11 @@ let observer:IntersectionObserver|null=null;
 function pauseOutsideViewport(el:HTMLElement){
  if(typeof IntersectionObserver==="undefined")return;
  observer??=new IntersectionObserver(entries=>{
-  for(const entry of entries)(entry.target as HTMLElement).dataset.visible=
-   entry.isIntersecting?"true":"false";
+  for(const entry of entries){
+   const node=entry.target as HTMLElement;
+   if(!node.isConnected){observer?.unobserve(node);continue;}
+   node.dataset.visible=entry.isIntersecting?"true":"false";
+  }
  },{rootMargin:"40px"});
  el.dataset.visible="false";observer.observe(el);
 }
