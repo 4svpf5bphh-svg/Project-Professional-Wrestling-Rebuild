@@ -219,7 +219,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     promotionName:view.promotionName});
    if(preview){preview.classList.add("ppw-kp-poster-showcase");posterShop.append(preview);}
    const targets=[{seriesId:"ALL",name:"Default for other PPVs",style:view.activeEventPoster},
-    ...view.premiumEventPosters];
+    ...(view.premiumEventPosters??[])];
    if(!targets.some(t=>t.seriesId===posterTarget))posterTarget="ALL";
    const selectTarget=el("select","ppw-kp-input") as HTMLSelectElement;
    selectTarget.setAttribute("aria-label","Choose PPV to customise");

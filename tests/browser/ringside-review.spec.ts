@@ -58,40 +58,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"TONIGHT'S HEADLINES"})).toBeVisible();
-  const chapters=page.locator(".ppw-results-steps .ppw-results-step");
-  await expect(chapters).toHaveCount(3);
-  await expect(chapters.nth(0)).toHaveAccessibleName("Headlines & Ringside");
-  await expect(chapters.nth(1)).toHaveAccessibleName("The Full Show");
-  await expect(chapters.nth(2)).toHaveAccessibleName("Post-show Brief");
-  if(width===320){
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toHaveText("Ringside");
-   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
-   // Chromium can report button.scrollWidth for clipped internal glyph
-   // decoration even when the short visible label itself fits. Assert that
-   // the actual visible text fits its control, and the page does not scroll.
-   for(const tab of await chapters.all()){
-    const metrics=await tab.evaluate(button=>{
-     const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
-     if(!label)return {name:"missing",width:0,left:0,right:0,
-      buttonLeft:0,buttonRight:0,display:"none"};
-     const buttonBox=button.getBoundingClientRect();
-     const range=document.createRange();
-     range.selectNodeContents(label);
-     const textBox=range.getBoundingClientRect();
-     return {name:label.textContent??"",width:textBox.width,
-      left:textBox.left,right:textBox.right,buttonLeft:buttonBox.left,
-      buttonRight:buttonBox.right,display:getComputedStyle(label).display};
-    });
-    const fits=metrics.width>0&&metrics.display!=="none"&&
-     metrics.left>=metrics.buttonLeft-1&&
-     metrics.right<=metrics.buttonRight+1;
-    expect(fits,JSON.stringify(metrics)).toBe(true);
-   }
-  }else{
-   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
-  }
+  await expect(page.locator(".ppw-results-steps")).toHaveCount(0);
+  // Editorial follows three chapters via the bottom Next actions.
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
@@ -608,8 +576,8 @@ for(const width of [320,390]){
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
   await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
-  await opening.getByRole("button",{name:"Skip opening"}).click();
-  await expect(opening).toHaveCount(0);
+  await expect(opening.getByRole("button",{name:"Skip opening"})).toHaveCount(0);
+  await expect(opening).toBeVisible();
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
