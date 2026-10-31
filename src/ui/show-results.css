@@ -408,3 +408,25 @@
 #game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-main-event{
  background:#a62740;color:#fff7d7;border:2px ridge #f1c8d7;border-radius:0;
  font-family:ui-monospace,Consolas,monospace;letter-spacing:0}
+
+/* An individually chosen PPV identity outranks the evergreen Results Skin.
+   The card narrative stays neutral/readable; the PPV gets its own masthead. */
+.ppw-results-event-poster{width:100%;min-width:0;margin:0 0 13px}
+.ppw-results-event-poster .ppw-event-poster{
+ aspect-ratio:16/10;min-height:230px;max-height:380px;
+ padding:13px 16px 14px;border-radius:16px}
+.ppw-results-event-poster .ppw-ep-middle{gap:7px}
+.ppw-results-event-poster .ppw-ep-title{
+ font-size:clamp(27px,7.8vw,51px);line-height:1.05}
+.ppw-results-event-poster .ppw-ep-footer{padding-top:7px}
+.ppw-results[data-premium-poster] .ppw-result-hero{
+ background:linear-gradient(125deg,#202b39,#151f30);
+ border-color:#8397ae}
+.ppw-results[data-premium-poster=inferno] .ppw-result-hero{
+ background:radial-gradient(ellipse at 85% 0%,#6e301a,#271e2d 65%,#1a1929);
+ border-color:#f5a065}
+.ppw-results[data-premium-poster=inferno] .ppw-result-hero h1{
+ color:#ffe1bd;text-shadow:0 2px 0 #86341e}
+@media(max-width:380px){
+ .ppw-results-event-poster .ppw-event-poster{min-height:215px;aspect-ratio:4/3}
+}
