@@ -124,7 +124,8 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   const pending=await readProgrammeWorkspace(db.pool,scope);
   const currentProgrammeId=team.status==="APPLIED"?team.result.programmeId:"";
   assert.deepEqual(pending.programmes.find(p=>p.programmeId===currentProgrammeId)?.plannedActivity,
-   [{showId:"weekly",slotId:"main",kind:"MATCH",year:1,week:1,
+   [{showId:"weekly",slotId:"main",kind:"MATCH",segmentKind:null,
+    titleMatch:false,stipulationMatch:false,year:1,week:1,
     showName:"Scheduled show",status:"DRAFT"}],
    "An actual linked drafted match must show as planned, not as certified history");
   const linkedCard=await showCardEditorAsActor(context,worldId,promotionId,"weekly");
