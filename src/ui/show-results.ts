@@ -26,6 +26,8 @@ import {projectPopFeed} from "../domain/pop-social.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
 import "./underground-zine-results-skin.css";
+import "./retro-booker-results-skin.css";
+import "./results-skin-contrast.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -146,6 +148,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
  else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
  else if(show.resultsSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
+ else if(show.resultsSkin==="RETRO_BOOKER_02")root.dataset.resultsSkin="retro-booker-02";
  else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
@@ -160,6 +163,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="UNDERGROUND_ZINE")
   header.append(node("div","ppw-zine-station",
    "THE UNDERGROUND REPORT · ISSUE "+String(show.week).padStart(3,"0")));
+ if(show.resultsSkin==="RETRO_BOOKER_02")
+  header.append(node("div","ppw-retro-station",
+   "■ PPW BOOKER 2002  /  RESULTS.DAT  /  WEEK "+String(show.week).padStart(2,"0")));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -496,6 +502,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","THE COMPLETE SHOW · AS IT HAPPENED"));
   full.append(station);
  }
+ if(show.resultsSkin==="RETRO_BOOKER_02"){
+  const station=node("header","ppw-retro-chapter-head");
+  station.append(node("span","ppw-retro-eyebrow","FILE 02 / COMPLETE CARD"),
+   node("h2","","MATCH RESULTS"),
+   node("p","","WRESTLERS · FINISHES · SEGMENTS"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(show.resultsSkin==="TERRITORY_TV"){
@@ -517,6 +530,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · THE AFTERMATH"),
    node("h2","","AFTER THE BELL!"),
    node("p","","THE INTERNET REACTS · THE OFFICE ASSESSES"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="RETRO_BOOKER_02"){
+  const station=node("header","ppw-retro-chapter-head");
+  station.append(node("span","ppw-retro-eyebrow","FILE 03 / POST-SHOW DESK"),
+   node("h2","","AFTER THE SHOW"),
+   node("p","","FAN CHAT · BACKSTAGE NOTES · MANAGEMENT"));
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),

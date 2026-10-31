@@ -22,16 +22,18 @@ export const KP_CATALOGUE=[
  {sku:"BRAND_GOLD",label:"Gold promotion crest",price:600,kind:"BRAND"},
  {sku:"BADGE_GOLD",label:"Gold achievement display",price:350,kind:"BADGE"},
  {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"},
- {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:750,kind:"RESULTS_SKIN"},
- {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:750,kind:"RESULTS_SKIN"},
- {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:750,kind:"RESULTS_SKIN"}
+ {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:1000,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:1000,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:1000,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_RETRO_BOOKER_02",label:"Retro Booker ’02 · classic PC wrestling results",price:1000,kind:"RESULTS_SKIN"}
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
-type ResultsSkinSku="RESULTS_TERRITORY_TV"|"RESULTS_FIGHT_NIGHT"|"RESULTS_UNDERGROUND_ZINE";
-const resultsStyle=(sku:ResultsSkinSku):"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"=>
+type ResultsSkinSku="RESULTS_TERRITORY_TV"|"RESULTS_FIGHT_NIGHT"|"RESULTS_UNDERGROUND_ZINE"|"RESULTS_RETRO_BOOKER_02";
+const resultsStyle=(sku:ResultsSkinSku):"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"|"RETRO_BOOKER_02"=>
  sku==="RESULTS_FIGHT_NIGHT"?"FIGHT_NIGHT":
- sku==="RESULTS_UNDERGROUND_ZINE"?"UNDERGROUND_ZINE":"TERRITORY_TV";
+ sku==="RESULTS_UNDERGROUND_ZINE"?"UNDERGROUND_ZINE":
+ sku==="RESULTS_RETRO_BOOKER_02"?"RETRO_BOOKER_02":"TERRITORY_TV";
 export type KpSku=typeof KP_CATALOGUE[number]["sku"];
 export type KpScope={worldId:string;promotionId:string;playerId:string};
 export type KpAction=
@@ -167,7 +169,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
    activeBadge:achievementData.activeBadge,
-   activeResultsSkin:money?.results_skin==="TERRITORY_TV"||money?.results_skin==="FIGHT_NIGHT"||money?.results_skin==="UNDERGROUND_ZINE"?money.results_skin:null,
+   activeResultsSkin:money?.results_skin==="TERRITORY_TV"||money?.results_skin==="FIGHT_NIGHT"||money?.results_skin==="UNDERGROUND_ZINE"||money?.results_skin==="RETRO_BOOKER_02"?money.results_skin:null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:derivePromoterAchievements(achievementData.stats).achievements,
    createdTalent:created.map(c=>({personId:c.person_id,name:c.name,year:c.created_year})),

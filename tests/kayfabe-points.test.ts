@@ -46,7 +46,7 @@ test("Purchased milestone appearance can be reset for free",()=>{
 
 test("Territory TV is a cosmetic account entitlement with validated selection",()=>{
  assert.equal(catalogueItem("RESULTS_TERRITORY_TV")?.kind,"RESULTS_SKIN");
- assert.equal(catalogueItem("RESULTS_TERRITORY_TV")?.price,750);
+ assert.equal(catalogueItem("RESULTS_TERRITORY_TV")?.price,1000);
  assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"RESULTS_TERRITORY_TV",requestId:"apply-territory"}),
   {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_TERRITORY_TV",requestId:"apply-territory"});
@@ -58,7 +58,7 @@ test("Territory TV is a cosmetic account entitlement with validated selection",(
 
 test("Fight Night is an independent cosmetic entitlement, not an outcomes boost",()=>{
  assert.equal(catalogueItem("RESULTS_FIGHT_NIGHT")?.kind,"RESULTS_SKIN");
- assert.equal(catalogueItem("RESULTS_FIGHT_NIGHT")?.price,750);
+ assert.equal(catalogueItem("RESULTS_FIGHT_NIGHT")?.price,1000);
  assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"RESULTS_FIGHT_NIGHT",requestId:"fight"}),
   {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"fight"});
@@ -66,12 +66,20 @@ test("Fight Night is an independent cosmetic entitlement, not an outcomes boost"
   sku:"BADGE_GOLD" as never,requestId:"wrong"}),/Unknown/);
 });
 
-test("Underground Zine is a separate 750 KP cosmetic results entitlement",()=>{
+test("Underground Zine is a separate 1000 KP cosmetic results entitlement",()=>{
  assert.equal(catalogueItem("RESULTS_UNDERGROUND_ZINE")?.kind,"RESULTS_SKIN");
- assert.equal(catalogueItem("RESULTS_UNDERGROUND_ZINE")?.price,750);
+ assert.equal(catalogueItem("RESULTS_UNDERGROUND_ZINE")?.price,1000);
  assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"RESULTS_UNDERGROUND_ZINE",requestId:"zine"}),
   {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_UNDERGROUND_ZINE",requestId:"zine"});
  assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"BADGE_GOLD" as never,requestId:"bogus"}),/Unknown/);
+});
+
+test("Retro Booker 02 is a separately owned 1000 KP skin",()=>{
+ assert.equal(catalogueItem("RESULTS_RETRO_BOOKER_02")?.kind,"RESULTS_SKIN");
+ assert.equal(catalogueItem("RESULTS_RETRO_BOOKER_02")?.price,1000);
+ assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"}),
+  {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"});
 });

@@ -195,3 +195,13 @@ test("Zine stays private; the same five verified results reads retain the actual
  await assert.rejects(readCompletedShowView(fake(false,true,false,false,
   "UNDERGROUND_ZINE").pool,scope),/unavailable/);
 });
+
+test("Retro Booker keeps real winners, account privacy and five Neon reads",async()=>{
+ const {pool,calls}=fake(true,true,false,false,"RETRO_BOOKER_02");
+ const show=await readCompletedShowView(pool,scope);
+ assert.equal(show.resultsSkin,"RETRO_BOOKER_02");
+ assert.deepEqual(show.entries[0]?.matchContext?.winnerNames,["Star"]);
+ assert.equal(calls(),5);
+ await assert.rejects(readCompletedShowView(fake(false,true,false,false,
+  "RETRO_BOOKER_02").pool,scope),/unavailable/);
+});
