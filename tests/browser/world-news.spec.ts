@@ -57,6 +57,12 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.getByText("A certified classic")).toBeVisible();
+ const officialThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").first();
+ await officialThread.locator("summary").click();
+ const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
+ await expect(comment).toBeVisible();
+ await expect(comment).toHaveCSS("color","rgb(230, 236, 248)");
+ await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(3);
  await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
  await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
  await expect(page.getByText(/Career stage: veteran → special attraction/)).toBeVisible();
