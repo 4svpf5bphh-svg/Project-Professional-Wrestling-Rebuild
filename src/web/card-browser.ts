@@ -173,6 +173,8 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
+  createChampionship:({requestId,expectedRevision,name,kind})=>
+   call("createChampionship",{requestId,expectedRevision,name,kind}),
   loadTournaments:()=>call("tournaments"),
   createTournament:({requestId,expectedRevision,name,division,entrants,championshipId})=>
    call("createTournament",{requestId,expectedRevision,name,division,entrants,championshipId}),
