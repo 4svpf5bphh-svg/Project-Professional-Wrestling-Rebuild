@@ -144,7 +144,8 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  const post=page.locator(".ppw-crowd-noise-card").first();
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
@@ -180,7 +181,8 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
   await expect(page.getByRole("button",{name:"Check roster"})).toBeVisible();
@@ -249,7 +251,8 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await expect(page.getByRole("heading",{name:"The Media Scrum"})).toBeVisible();
  expect(reads).toBe(0); // Results must not fetch the press session until requested.
  await page.getByRole("button",{name:"Meet the press"}).click();
