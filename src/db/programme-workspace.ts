@@ -386,6 +386,12 @@ export async function endProgramme(pool:TransactionPool,input:EndProgrammeInput)
     "RETURNING programme_id,heat,repetition"
    ].join(" "),[input.worldId,input.promotionId,input.programmeId,week]);
    if(ended.length!==1)throw new Error("Only an active promotion rivalry may be ended");
+   // Administrative retirement has no fictional on-air payoff. Remove any
+   // outstanding plan rather than leaving a false promise in the archive.
+   await tx.query("DELETE FROM ppw_programme_finales"+
+    " WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3"+
+    " AND resolved_week_index IS NULL",
+    [input.worldId,input.promotionId,input.programmeId]);
    await tx.query([
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
     "VALUES($1,$2,$3,'PROGRAMME_ENDED',",
