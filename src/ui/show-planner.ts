@@ -277,7 +277,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      posterShell.append(node("span",show.bookingClass==="PREMIUM"?"PREMIUM EVENT":"WEEKLY SHOW","ppw-event-type-line"),
       node("strong",show.showName,"ppw-dynamic-event-heading"),
       node("small",data.promotionName,"ppw-event-promoter-line"));
-     card.append(posterShell);
+     const animated=show.bookingClass==="PREMIUM"?createAnimatedEventPoster({
+      style:data.eventPosterStyle,eventName:show.showName,promotionName:data.promotionName,
+      compact:true}):null;
+     card.append(animated??posterShell);
     card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
