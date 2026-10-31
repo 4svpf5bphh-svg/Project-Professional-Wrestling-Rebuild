@@ -80,7 +80,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  expect(rect!.x).toBeGreaterThanOrEqual(0);
  expect(rect!.x+rect!.width).toBeLessThanOrEqual(391);
  await page.getByRole("button",{name:"Dirt Sheets"}).click();
- await expect(page.getByText("Creative shake-up?")).toBeVisible();
+ await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
  await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();
  await expect(page.locator(".ppw-dirt-outlet")).toHaveCount(2);
