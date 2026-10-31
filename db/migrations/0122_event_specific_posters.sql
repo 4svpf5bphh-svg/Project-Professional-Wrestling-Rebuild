@@ -1,0 +1,16 @@
+-- Account-owned premium series graphics; not World gameplay.
+CREATE TABLE ppw_kp_series_posters(
+ world_id text NOT NULL,promotion_id text NOT NULL,series_id text NOT NULL,
+ player_id text NOT NULL REFERENCES ppw_players(player_id) ON DELETE CASCADE,
+ style text NOT NULL CHECK(style IN ('THUNDER_STRIKE','HIGH_NOON','NEON_NIGHTS','SPOTLIGHT_SHOWDOWN','EMPIRE','INFERNO','RETRO_BROADCAST','VEGAS_LIGHTS','ECLIPSE','RIOT_SIGNAL','STEELWORKS','FROZEN_CROWN','LASER_GRID','CROWN_THEATRE','TIDAL_FORCE','BLOOD_MOON','CIRCUIT_BREAKER','AFTERSHOCK')),
+ PRIMARY KEY(world_id,promotion_id,series_id),
+ FOREIGN KEY(world_id,promotion_id,series_id)
+ REFERENCES ppw_show_series(world_id,promotion_id,series_id) ON DELETE CASCADE
+);
+ALTER TABLE ppw_kp_receipts DROP CONSTRAINT ppw_kp_receipts_kind_check;
+ALTER TABLE ppw_kp_receipts ADD CONSTRAINT ppw_kp_receipts_kind_check
+ CHECK(kind IN ('BUY','APPLY_BRAND','APPLY_BADGE','CLEAR_BADGE','APPLY_RESULTS_SKIN',
+ 'CLEAR_RESULTS_SKIN','APPLY_EVENT_POSTER','CLEAR_EVENT_POSTER',
+ 'APPLY_STAFF_OFFICE_THEME','CLEAR_STAFF_OFFICE_THEME','APPLY_BROADCAST_PACKAGE',
+ 'CLEAR_BROADCAST_PACKAGE','SET_SERIES_EVENT_POSTER','CLEAR_SERIES_EVENT_POSTER',
+ 'RENAME_STAFF','CREATE_WRESTLER','COLLECT_LEGEND'));
