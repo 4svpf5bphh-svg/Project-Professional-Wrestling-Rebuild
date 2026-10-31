@@ -69,9 +69,9 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
   throw new Error("Tag styles not supported by scoring");
  if(raw.championshipId!==undefined&&
   (typeof raw.championshipId!=="string"||!raw.championshipId||
-   raw.championshipId.length>200||format==="MULTI_TEAM"||
-   format==="BATTLE_ROYAL"||
-   (format==="TAG"&&layout.sides[0]!.participants.length!==2)))
+   raw.championshipId.length>200||format==="BATTLE_ROYAL"||
+   ((format==="TAG"||format==="MULTI_TEAM")&&
+    (layout.family!=="TEAMS"||layout.sides.some(s=>s.participants.length!==2)))))
   throw new Error("Unsupported championship format");
  if((raw.tournamentId===undefined)!==(raw.tournamentBoutNo===undefined))
   throw new Error("Incomplete tournament match identity");
