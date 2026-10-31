@@ -29,8 +29,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
      nextAngleWeekIndex:8}}]}});
  });
  await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"History",exact:true}).click();
  await expect(page.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
  await expect(page.getByText(/Latest chapter: an on-screen angle/)).toBeVisible();
+ await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
  await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
  await page.getByRole("button",{name:"Ask Creative · what next?"}).click();
@@ -53,6 +55,7 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
     recentActivity:[programme.recentActivity[1]]}]}});
  });
  await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
  await page.getByRole("button",{name:"Ask Creative · what next?"}).click();
@@ -114,6 +117,7 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  await page.goto("/#/programmes");
  await expect(page.getByText(/Not booked yet/)).toHaveCount(0);
  await expect(page.getByText(/Already booked · Armageddon/)).toBeVisible();
+ await page.getByRole("button",{name:/^Finale/}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
