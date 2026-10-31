@@ -54,16 +54,20 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
 async function load(tx:SqlRows,scope:CalendarScope,owned:Owner){
  const rows=await tx.query<Row>([
  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active,",
- "earned_prestige,celebrated_editions,last_celebrated_week_index",
+ "earned_prestige,celebrated_editions,last_celebrated_week_index,",
+ "(SELECT sp.style FROM ppw_kp_series_posters sp WHERE sp.world_id=$1",
+ "AND sp.promotion_id=$2 AND sp.series_id=ppw_show_series.series_id",
+ "AND sp.player_id=$3) AS poster_style",
  "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 AND active",
  "ORDER BY series_id LIMIT 17"
- ].join(" "),[scope.worldId,scope.promotionId]);
+ ].join(" "),[scope.worldId,scope.promotionId,scope.playerId]);
  if(rows.length>16)throw new Error("Calendar identity limit exceeded");
  return rows.length?rows.map(r=>({seriesId:r.series_id,name:r.name,role:r.role,
   eventType:r.event_type,cadenceWeeks:r.cadence_weeks,
   anchorWeek:r.anchor_week,importance:r.importance,active:r.active,
   earnedPrestige:r.earned_prestige,celebratedEditions:r.celebrated_editions,
-  lastCelebratedWeekIndex:r.last_celebrated_week_index})):
+  lastCelebratedWeekIndex:r.last_celebrated_week_index,
+  posterStyle:r.poster_style})):
   defaults(owned.name,owned.cadence,owned.major_interval??4);
 }
 async function bootstrap(tx:SqlRows,scope:CalendarScope,owned:Owner){
