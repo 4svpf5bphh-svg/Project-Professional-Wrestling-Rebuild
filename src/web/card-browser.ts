@@ -520,6 +520,9 @@ function programmePort(call:ReturnType<typeof createCardClient>,
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
+  planFinale:({requestId,expectedRevision,programmeId,showId,slotId,payoff})=>
+   call("planProgrammeFinale",{requestId,expectedRevision,programmeId,
+    targetShowId:showId,targetSlotId:slotId,payoff}),
 
   standingConsent:({requestId,expectedRevision,programmeId,
    personId,matchType,permittedOutcome,termWeeks})=>
