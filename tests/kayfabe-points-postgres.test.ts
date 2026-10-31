@@ -302,9 +302,9 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal((await applyKayfabeAction(db.pool,aa,arm) as {price:number}).price,0);
   assert.equal((await applyKayfabeAction(db.pool,aa,arm)).replayed,true);
   await applyKayfabeAction(db.pool,aa,thunder);
-  const selected=(await readKayfabeWorkspace(db.pool,aa)).premiumEventPosters;
-  assert.equal(selected.find(x=>x.seriesId==="armageddon")?.style,"EMPIRE");
-  assert.equal(selected.find(x=>x.seriesId==="thunderdome")?.style,"THUNDER_STRIKE");
+  const ppvPosters=(await readKayfabeWorkspace(db.pool,aa)).premiumEventPosters;
+  assert.equal(ppvPosters.find(x=>x.seriesId==="armageddon")?.style,"EMPIRE");
+  assert.equal(ppvPosters.find(x=>x.seriesId==="thunderdome")?.style,"THUNDER_STRIKE");
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).balance,2500);
   assert.ok(!(await readKayfabeWorkspace(db.pool,bb)).premiumEventPosters
    .some(x=>x.seriesId==="armageddon"));
