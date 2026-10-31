@@ -40,6 +40,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let titleId:string|null=null;
  let selectedProgrammeId:string|null=null;
  let activeLane:"NEXT"|"FINALE"|"HISTORY"|"CREATIVE"="NEXT";
+ let creationOpen=false;
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
@@ -641,6 +642,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       !a.length||!b.length));
    const createDetails=document.createElement("details");
    createDetails.className="ppw-programme-create-fold";
+   createDetails.open=creationOpen;
+   createDetails.ontoggle=()=>{
+    if(createDetails.isConnected)creationOpen=createDetails.open;
+   };
    const title=element("summary","","+ Start a new rivalry");
    createDetails.append(title,creation);
    root.append(createDetails);
