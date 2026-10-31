@@ -620,6 +620,15 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp});
     if(chapter.lastBell)archive.append(element("p","",chapter.lastBell));
     if(chapter.latestChapter)archive.append(element("p","",chapter.latestChapter));
+    if(p.finale?.resolvedWeekIndex!=null){
+     const f=p.finale;
+     const when="Year "+(Math.floor(f.resolvedWeekIndex/52)+1)+
+      " · Week "+(f.resolvedWeekIndex%52+1);
+     archive.append(element("p","ppw-programme-archive-payoff",
+      "ON-SCREEN PAYOFF · "+f.payoff.replaceAll("_"," ")+
+      " · "+when+
+      (f.resolvedWinnerSide?" · Side "+f.resolvedWinnerSide+" prevailed":"")));
+    }
     const last=p.recentActivity[0];
     if(last&&port.openResults)archive.append(button("Revisit the final chapter →",()=>{
      port.openResults?.(last.showId);
