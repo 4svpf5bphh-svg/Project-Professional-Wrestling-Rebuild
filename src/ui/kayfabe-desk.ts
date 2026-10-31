@@ -30,6 +30,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
  let createOpen=false,reviewing=false,posterIndex=0,staffThemeIndex=0,broadcastIndex=0;
+ let posterTarget="ALL";
  let broadcastScene:"OPEN"|"MATCH"|"SEGMENT"="OPEN";
  let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
  let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
@@ -59,7 +60,9 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
     action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
     action.kind==="APPLY_RESULTS_SKIN"?"Results skin applied.":
-    action.kind==="APPLY_EVENT_POSTER"?"Animated event poster applied to your upcoming premium shows.":
+    action.kind==="APPLY_EVENT_POSTER"?"Default premium poster applied to your PPVs.":
+    action.kind==="SET_SERIES_EVENT_POSTER"?"This PPV now uses the selected poster.":
+    action.kind==="CLEAR_SERIES_EVENT_POSTER"?"This PPV now uses your default poster.":
     action.kind==="CLEAR_EVENT_POSTER"?"Standard event artwork restored.":
     action.kind==="APPLY_STAFF_OFFICE_THEME"?"Staff Office appearance updated.":
     action.kind==="CLEAR_STAFF_OFFICE_THEME"?"Original Staff Office appearance restored.":
@@ -215,8 +218,26 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    const preview=createAnimatedEventPoster({style:selected.style,eventName:selected.label,
     promotionName:view.promotionName});
    if(preview){preview.classList.add("ppw-kp-poster-showcase");posterShop.append(preview);}
+   const targets=[{seriesId:"ALL",name:"Default for other PPVs",style:view.activeEventPoster},
+    ...view.premiumEventPosters];
+   if(!targets.some(t=>t.seriesId===posterTarget))posterTarget="ALL";
+   const selectTarget=el("select","ppw-kp-input") as HTMLSelectElement;
+   selectTarget.setAttribute("aria-label","Choose PPV to customise");
+   for(const t of targets){
+    const option=el("option","",t.name) as HTMLOptionElement;
+    option.value=t.seriesId;selectTarget.append(option);
+   }
+   selectTarget.value=posterTarget;
+   selectTarget.onchange=()=>{posterTarget=selectTarget.value;draw();};
+   const targetLabel=el("label","ppw-kp-poster-target");
+   targetLabel.append(el("strong","","Apply this poster to"),selectTarget);
+   posterShop.append(targetLabel);
+   const chosen=targets.find(t=>t.seriesId===posterTarget)!;
+   posterShop.append(el("small","ppw-kp-muted",
+    "Current design: "+(chosen.style??"Standard artwork")+
+    ". Each PPV may use a different owned poster."));
    const owned=view.entitlements.includes(selected.sku);
-   const active=view.activeEventPoster===selected.style;
+   const active=chosen.style===selected.style;
    const detail=el("div","ppw-kp-poster-details");
    const copy=el("div","ppw-kp-item-copy");
    copy.append(el("strong","",selected.label),
@@ -225,238 +246,17 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     el("small","","Preview title is illustrative. Actual shows display their own event names."));
    detail.append(copy,btn(active?"Applied":owned?"Apply":"Unlock",
     ()=>void run(owned?
-     {kind:"APPLY_EVENT_POSTER",sku:selected.sku as EventPosterSku,requestId:crypto.randomUUID()}:
+     posterTarget==="ALL"?{kind:"APPLY_EVENT_POSTER",sku:selected.sku as EventPosterSku,requestId:crypto.randomUUID()}:
+       {kind:"SET_SERIES_EVENT_POSTER",seriesId:posterTarget,sku:selected.sku as EventPosterSku,
+        requestId:crypto.randomUUID()}:
      {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
     busy||active||(!owned&&view.balance<selected.price)));
    posterShop.append(detail);
-   if(view.activeEventPoster)posterShop.append(btn("Use standard event artwork",
-    ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
-  }
-  root.append(posterShop);
-  // Genuine themed Staff Office preview; the live screen shares these CSS rules.
-  // Only one CSS preview is mounted at once to avoid running nine animations.
-  const themeShop=el("section","ppw-kp-section ppw-kp-staff-themes");
-  themeShop.append(el("span","ppw-kp-kicker","STAFF OFFICE PRESENTATION"),
-   el("h2","","Staff Office themes"),
-   el("p","ppw-kp-muted",
-    "Nine complete cosmetic treatments for Meetings, My Staff, Contracts and Staff Market. One-time ownership, free switching, no changes to staff abilities or wages."));
-  const themes=view.catalogue.filter(i=>i.kind==="STAFF_OFFICE_THEME");
-  if(themes.length){
-   staffThemeIndex=Math.max(0,Math.min(staffThemeIndex,themes.length-1));
-   const selected=themes[staffThemeIndex]!;
-   const nav=el("div","ppw-kp-staff-theme-picker");
-   const previous=btn("← Previous",()=>{staffThemeIndex=(staffThemeIndex+themes.length-1)%themes.length;draw();},busy);
-   const next=btn("Next →",()=>{staffThemeIndex=(staffThemeIndex+1)%themes.length;draw();},busy);
-   const picker=el("select","ppw-kp-input") as HTMLSelectElement;
-   picker.setAttribute("aria-label","Choose Staff Office theme");
-   for(let i=0;i<themes.length;i++){
-    const option=el("option","",String(i+1).padStart(2,"0")+" · "+themes[i]!.label) as HTMLOptionElement;
-    option.value=String(i);picker.append(option);
-   }
-   picker.value=String(staffThemeIndex);
-   picker.onchange=()=>{staffThemeIndex=Number(picker.value);draw();};
-   nav.append(previous,picker,next);themeShop.append(nav);
-   themeShop.append(createStaffOfficeThemePreview(selected.style));
-   themeShop.append(el("small","ppw-kp-muted",
-    "Sample staff details are illustrative; the live office uses your actual workforce and figures."));
-   const owned=view.entitlements.includes(selected.sku);
-   const active=view.activeStaffOfficeTheme===selected.style;
-   const row=el("div","ppw-kp-poster-details");
-   const copy=el("div","ppw-kp-item-copy");
-   copy.append(el("strong","",selected.label),
-    el("small","",active?"Owned · applied":owned?"Owned · ready to apply":
-     "One-time "+format(selected.price)+" · account-wide"));
-   row.append(copy,btn(active?"Applied":owned?"Apply":"Unlock",
-    ()=>void run(owned?
-     {kind:"APPLY_STAFF_OFFICE_THEME",sku:selected.sku as StaffOfficeThemeSku,requestId:crypto.randomUUID()}:
-     {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
-    busy||active||(!owned&&view.balance<selected.price)));
-   themeShop.append(row);
-   if(view.activeStaffOfficeTheme)themeShop.append(btn("Use original Staff Office",
-    ()=>void run({kind:"CLEAR_STAFF_OFFICE_THEME",requestId:crypto.randomUUID()}),busy));
-  }
-  root.append(themeShop);
-  // Single real, on-demand television preview. No extra World read, video or
-  // animation loop for a nine-item catalogue.
-  const broadcastShop=el("section","ppw-kp-section ppw-kp-broadcast-shop");
-  broadcastShop.append(el("span","ppw-kp-kicker","TELEVISION IDENTITY"),
-   el("h2","","Broadcast packages"),
-   el("p","ppw-kp-muted",
-    "Nine real CSS television identities for show openings and compact match/angle graphics. Results Skins and event posters remain separate."));
-  const tvPackages=view.catalogue.filter(p=>p.kind==="BROADCAST_PACKAGE");
-  if(tvPackages.length){
-   broadcastIndex=Math.min(Math.max(0,broadcastIndex),tvPackages.length-1);
-   const selected=tvPackages[broadcastIndex]!;
-   const navigator=el("div","ppw-kp-broadcast-picker");
-   const previous=btn("← Previous",()=>{broadcastIndex=(broadcastIndex+tvPackages.length-1)%tvPackages.length;draw();},busy);
-   const next=btn("Next →",()=>{broadcastIndex=(broadcastIndex+1)%tvPackages.length;draw();},busy);
-   const picker=el("select","ppw-kp-input") as HTMLSelectElement;
-   picker.setAttribute("aria-label","Choose broadcast package");
-   for(const [i,p] of tvPackages.entries()){
-    const option=el("option","",String(i+1).padStart(2,"0")+" · "+p.label) as HTMLOptionElement;
-    option.value=String(i);picker.append(option);
-   }
-   picker.value=String(broadcastIndex);
-   picker.onchange=()=>{broadcastIndex=Number(picker.value);draw();};
-   navigator.append(previous,picker,next);broadcastShop.append(navigator);
-   const scenes=el("div","ppw-kp-broadcast-scenes");
-   for(const [label,kind] of [["Opening titles","OPEN"],["Match graphic","MATCH"],["Segment graphic","SEGMENT"]] as const){
-    const control=btn(label,()=>{broadcastScene=kind;draw();},busy);
-    control.setAttribute("aria-pressed",String(broadcastScene===kind));
-    scenes.append(control);
-   }
-   broadcastShop.append(scenes);
-   const preview=createBroadcastPackageFrame({
-    style:selected.style,kind:broadcastScene,
-    promotion:view.promotionName,show:"Ascension",
-    sideA:"Samoa Joe",sideB:"Matt Riddle",
-    segmentPerson:"Místico",segmentLabel:"SURPRISE DEBUT"});
-   if(preview){preview.classList.add("ppw-kp-broadcast-showcase");broadcastShop.append(preview);}
-   broadcastShop.append(el("small","ppw-kp-muted",
-    "Sample show and wrestler names are illustrative. Your real promotion, events and card data appear in-game."));
-   const owned=view.entitlements.includes(selected.sku);
-   const applied=view.activeBroadcastPackage===selected.style;
-   const row=el("div","ppw-kp-poster-details");
-   const copy=el("div","ppw-kp-item-copy");
-   copy.append(el("strong","",selected.label),
-    el("small","",applied?"Owned · applied":owned?"Owned · ready to apply":
-     "One-time "+format(selected.price)+" · account-wide"));
-   row.append(copy,btn(applied?"Applied":owned?"Apply":"Unlock",
-    ()=>void run(owned?
-      {kind:"APPLY_BROADCAST_PACKAGE",sku:selected.sku as BroadcastPackageSku,requestId:crypto.randomUUID()}:
-      {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
-    busy||applied||(!owned&&view.balance<selected.price)));
-   broadcastShop.append(row);
-   if(view.activeBroadcastPackage)broadcastShop.append(btn("Use standard broadcast graphics",
-    ()=>void run({kind:"CLEAR_BROADCAST_PACKAGE",requestId:crypto.randomUUID()}),busy));
-  }
-  root.append(broadcastShop);
-  const people=el("section","ppw-kp-section");
-  people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),
-   el("h2","","Personalise your staff"),
-   el("p","ppw-kp-muted","Change the display name of somebody you employ. Abilities, contracts and wages never change."));
-  if(view.staff.length){
-   const pick=el("select","ppw-kp-input") as HTMLSelectElement;
-   pick.setAttribute("aria-label","Choose a staff member");
-   for(const s of view.staff){
-    const opt=el("option","",s.alias??s.staffId.replaceAll("-"," ").toUpperCase()) as HTMLOptionElement;
-    opt.value=s.staffId;pick.append(opt);
-   }
-   const selected=view.staff.some(s=>s.staffId===staffId)?staffId:view.staff[0]!.staffId;
-   pick.value=selected;staffId=selected;pick.onchange=()=>{staffId=pick.value;};
-   const field=el("input","ppw-kp-input") as HTMLInputElement;
-   field.placeholder="New display name";field.maxLength=48;field.value=alias;
-   field.setAttribute("aria-label","New staff display name");
-   field.oninput=()=>{alias=field.value;};
-   people.append(pick,field,btn("Rename · "+format(view.staffAliasPrice),()=>{
-    const target=alias.trim();
-    if(target.length<3){error="Enter a name of at least three characters.";draw();return;}
-    void run({kind:"RENAME_STAFF",staffId,name:target,requestId:crypto.randomUUID()});
-   },busy||view.balance<view.staffAliasPrice));
-  }else people.append(el("p","ppw-kp-muted","Hire a member of staff first."));
-  root.append(people);
-  const creation=el("section","ppw-kp-section ppw-kp-creation");
-  creation.append(el("span","ppw-kp-kicker","WORLD CONTRIBUTION"),
-   el("h2","","Create a Wrestler"),
-   el("p","ppw-kp-muted","Design a new wrestler for the shared World. Your KP pays for their introduction, not their contract. Once finalised, they enter the free-agent market where every promotion can negotiate to hire them."));
-  const quotaUsed=view.createdTalent.some(p=>p.year===view!.worldYear);
-  if(!createOpen&&!quotaUsed){
-   creation.append(btn("Design a Wrestler · "+format(view.createTalentPrice),
-    ()=>{createOpen=true;reviewing=false;draw();},busy));
-  }
-  if(quotaUsed)creation.append(el("p","ppw-kp-muted",
-   "Your one wrestler contribution for this World year is complete."));
-  if(createOpen&&!quotaUsed){
-   const draft=el("section","ppw-kp-draft");
-   draft.append(el("span","ppw-kp-kicker","CHARACTER STUDIO"),
-    el("p","ppw-kp-muted","Choose their character and ring identity. Every created wrestler starts as a balanced prospect with the same fixed abilities. Nothing enters the World or costs KP until you finalise."));
-   function choose(label:string,options:{id:string;label:string}[],value:string,
-    update:(next:string)=>void){
-    const group=el("label","ppw-kp-field");
-    group.append(el("span","",label));
-    const select=el("select","ppw-kp-input") as HTMLSelectElement;
-    select.setAttribute("aria-label",label);
-    for(const option of options){
-     const node=el("option","",option.label) as HTMLOptionElement;
-     node.value=option.id;select.append(node);
-    }
-    select.value=value;select.onchange=()=>update(select.value);
-    group.append(select);return group;
-   }
-   function field(label:string,value:string,placeholder:string,change:(s:string)=>void){
-    const group=el("label","ppw-kp-field");
-    group.append(el("span","",label));
-    const input=el("input","ppw-kp-input") as HTMLInputElement;
-    input.setAttribute("aria-label",label);input.value=value;
-    input.placeholder=placeholder;input.maxLength=70;
-    input.oninput=()=>change(input.value);
-    group.append(input);return group;
-   }
-   if(!reviewing){
-    const form=el("div","ppw-kp-creator-fields");
-    form.append(field("Wrestler name",name,"Name your wrestler",v=>{name=v;}));
-    form.append(choose("Wrestler division",[
-     {id:"MEN",label:"Men's division"},{id:"WOMEN",label:"Women's division"}],
-     division,v=>{division=v as typeof division;}));
-    form.append(choose("Alignment",view.createOptions.alignments.map(id=>({
-     id,label:id==="FACE"?"Face":id==="HEEL"?"Heel":"Tweener"})),
-     alignment,v=>{alignment=v as typeof alignment;}));
-    form.append(choose("Wrestling style",view.createOptions.styles,primaryStyle,
-     v=>{primaryStyle=v as KpCreateStyle;}));
-    form.append(choose("Character archetype",view.createOptions.gimmicks,gimmickId,
-     v=>{gimmickId=v as KpCreateGimmick;}));
-    form.append(field("Signature move",signatureMove,"e.g. Lightning Strike",
-     v=>{signatureMove=v;}));
-    form.append(field("Finishing move",finishingMove,"e.g. Comet Driver",
-     v=>{finishingMove=v;}));
-    draft.append(form);
-    const actions=el("div","ppw-kp-creator-actions");
-    actions.append(btn("Review Wrestler",()=>{
-     if(name.trim().length<3||signatureMove.trim().length<3||
-      finishingMove.trim().length<3){
-      error="Give your wrestler a name, signature move and finisher (at least 3 characters each).";
-      draw();return;
-     }
-     if(signatureMove.trim().toLowerCase()===finishingMove.trim().toLowerCase()){
-      error="Your signature move and finisher must have different names.";draw();return;
-     }
-     error="";reviewing=true;draw();
-    },busy),btn("Cancel",()=>{createOpen=false;reviewing=false;error="";draw();},busy));
-    draft.append(actions);
-   }else{
-    const details=el("div","ppw-kp-creation-review");
-    details.append(el("span","ppw-kp-kicker","READY TO FINALISE"),
-     el("h3","",name.trim()),
-     el("p","",division==="WOMEN"?"Women's division":"Men's division"),
-     el("p","","Alignment · "+alignment),
-     el("p","","Style · "+primaryStyle.replaceAll("_"," ")),
-     el("p","","Character · "+(view.createOptions.gimmicks.find(g=>g.id===gimmickId)?.label??gimmickId)),
-     el("p","","Signature · "+signatureMove.trim()),
-     el("p","","Finisher · "+finishingMove.trim()),
-     el("p","ppw-kp-muted","Prospect-level stats fixed for fair multiplayer. The wrestler joins the free-agent market; no contract is awarded to you."));
-    draft.append(details);
-    const actions=el("div","ppw-kp-creator-actions");
-    actions.append(btn("Finalise · "+format(view.createTalentPrice),()=>{
-     if(!window.confirm("Finalise "+name.trim()+" and spend "+
-      format(view!.createTalentPrice)+"? This creates a permanent shared free agent, "+
-      "not a wrestler on your roster. All promotions may bid. This cannot be undone."))return;
-     void run({kind:"CREATE_WRESTLER",name:name.trim(),division,
-      alignment,primaryStyle,gimmickId,
-      signatureMove:signatureMove.trim(),finishingMove:finishingMove.trim(),
-      requestId:crypto.randomUUID()});
-    },busy||view.balance<view.createTalentPrice));
-    actions.append(btn("Edit Wrestler",()=>{reviewing=false;draw();},busy));
-    draft.append(actions);
-   }
-   creation.append(draft);
-  }
-  if(view.createdTalent.length){
-   const history=el("div","ppw-kp-contributions");
-   for(const p of view.createdTalent)history.append(el("p","",
-    p.name+" · introduced in Year "+p.year+" · World talent market"));
-   creation.append(history);
-  }
-  root.append(creation);
- }
- void refresh();
-}
+   if(posterTarget==="ALL"&&view.activeEventPoster)
+    posterShop.append(btn("Use standard event artwork",
+     ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
+   else if(posterTarget!=="ALL"&&chosen.style)
+    posterShop.append(btn("Restore default artwork for "+chosen.name,
+     ()=>void run({kind:"CLEAR_SERIES_EVENT_POSTER",seriesId:posterTarget,
+      requestId:crypto.randomUUID()}),busy));
+

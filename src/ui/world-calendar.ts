@@ -1,5 +1,6 @@
 import {eventDesign} from "./broadcast-identity.js";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
+import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
@@ -16,7 +17,7 @@ export interface CalendarPort{
  openPlanner?(target:CalendarPlanningTarget):void;
  openCard?(draftId:string):void;
  load():Promise<{promotionId?:string;promotionName:string;year:number;week:number;worldRevision:number;
- canEdit:boolean;eventPosterStyle?:string|null;series:ShowSeries[];
+ canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
  bookings?:CalendarBooking[];
  weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
  worldWeeks?:{year:number;week:number;offset:number;events:{
@@ -217,14 +218,15 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function ownTile(s:ShowSeries,year:number,week:number,
   due:readonly ShowSeries[],owner?:string){
   const card=eventTile(s.name,s.role,s.eventType,owner);
-  if(s.eventType==="MAJOR"){
-   const poster=createAnimatedEventPoster({style:data?.eventPosterStyle,
-    eventName:s.name,promotionName:owner??data?.promotionName??"",compact:true});
-   if(poster){
-    poster.classList.add("ppw-calendar-owned-poster");
-    card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(poster);
-    card.dataset.animatedPoster="true";
-   }
+  const chosenArtwork=s.eventType==="MAJOR"?
+   createAnimatedEventPoster({style:s.posterStyle??data?.eventPosterStyle,
+    eventName:s.name,promotionName:owner??data?.promotionName??"",compact:true}):
+   createBroadcastPackageFrame({style:data?.broadcastPackage,kind:"OPEN",
+    show:s.name,promotion:owner??data?.promotionName??"",compact:true});
+  if(chosenArtwork){
+   chosenArtwork.classList.add("ppw-calendar-owned-poster");
+   card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(chosenArtwork);
+   card.dataset.animatedPoster=String(s.eventType==="MAJOR");
   }
   const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
   const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
