@@ -583,3 +583,39 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test("broadcast opening can be skipped without changing retro results narrative at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let reads=0;
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const request=r.request().postDataJSON() as {method:string};
+   if(request.method==="results")reads++;
+   return r.fulfill({json:request.method==="resultsArchive"?{
+    items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+     bookingClass:"REGULAR",crowdResponse:84,matchCount:1,angleCount:1}],
+    nextCursor:null
+   }:{...show,broadcastPackage:"PRIZEFIGHT",promotionName:"AEW",
+    resultsSkin:"RETRO_BOOKER_02"}});
+  });
+  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const opening=page.locator(".ppw-tv-opening-wrap");
+  await expect(opening).toBeVisible();
+  await expect(opening.locator(".ppw-tv-frame")).toHaveAttribute("data-broadcast-package","prizefight");
+  await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
+  await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
+  await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
+  await opening.getByRole("button",{name:"Skip opening"}).click();
+  await expect(opening).toHaveCount(0);
+  await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+  await expect(page.getByText("Kenny Omega def. Samoa Joe")).toBeVisible();
+  expect(reads).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
