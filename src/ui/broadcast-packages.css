@@ -1,0 +1,146 @@
+/* Nine genuine HTML/CSS television looks. No video, remote assets or polling.
+   Red ribbons always have ivory or white type, never red text on a red surface. */
+#game .ppw-tv-frame{
+ --tv-bg:#182746;--tv-panel:#13284b;--tv-ink:#fff;--tv-accent:#84e7ff;
+ --tv-dim:#dae6ff;--tv-border:#668dc4;--tv-red:#c12d45;
+ position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;
+ width:100%;max-width:550px;aspect-ratio:1.72;padding:14px;display:flex;
+ flex-direction:column;justify-content:space-between;gap:9px;
+ background:var(--tv-bg);color:var(--tv-ink)!important;
+ border:2px solid var(--tv-border);border-radius:9px;
+ font-family:system-ui,-apple-system,sans-serif;
+}
+#game .ppw-tv-frame *{box-sizing:border-box}
+#game .ppw-tv-frame .ppw-tv-motion{position:absolute;inset:0;pointer-events:none;z-index:0}
+#game .ppw-tv-frame :is(.ppw-tv-top,.ppw-tv-centre,.ppw-tv-footer){position:relative;z-index:2;min-width:0}
+#game .ppw-tv-frame .ppw-tv-top{display:flex;align-items:start;justify-content:space-between;gap:6px}
+#game .ppw-tv-frame .ppw-tv-promotion{font:900 10px/1.2 system-ui;text-transform:uppercase;color:var(--tv-ink)!important;letter-spacing:.035em;overflow-wrap:anywhere}
+#game .ppw-tv-frame .ppw-tv-broadcast-label{color:var(--tv-accent)!important;font:800 9px/1.2 system-ui;letter-spacing:.04em;text-align:right;max-width:32%}
+#game .ppw-tv-frame .ppw-tv-centre{display:flex;flex-direction:column;justify-content:center;gap:10px;margin:auto 0;align-items:flex-start}
+#game .ppw-tv-frame .ppw-tv-red-label{background:var(--tv-red)!important;color:#fff9ed!important;
+ font:950 10px/1.3 system-ui;letter-spacing:.1em;padding:6px 9px;text-transform:uppercase;
+ text-shadow:0 1px 1px #0007;max-width:100%;overflow-wrap:anywhere}
+#game .ppw-tv-frame .ppw-tv-title{font:1000 italic clamp(25px,8vw,45px)/.96 system-ui;
+ letter-spacing:-.055em;text-transform:uppercase;color:var(--tv-ink)!important;
+ text-shadow:2px 3px 0 #0007;overflow-wrap:anywhere}
+#game .ppw-tv-frame .ppw-tv-caption{font:800 10px/1.35 system-ui;
+ letter-spacing:.12em;color:var(--tv-accent)!important;text-transform:uppercase}
+#game .ppw-tv-frame .ppw-tv-fighters{display:flex;width:100%;align-items:stretch;gap:5px;min-width:0}
+#game .ppw-tv-frame .ppw-tv-fighter{display:flex;flex:1 1 0;min-width:0;
+ align-items:center;justify-content:center;text-align:center;padding:11px 6px;
+ background:var(--tv-panel)!important;color:var(--tv-ink)!important;border:1px solid var(--tv-border);
+ border-bottom:3px solid var(--tv-accent);font:950 clamp(15px,4.5vw,23px)/1 system-ui;
+ text-transform:uppercase;overflow-wrap:anywhere}
+#game .ppw-tv-frame .ppw-tv-vs{align-self:center;color:var(--tv-accent)!important;font:950 italic 15px system-ui}
+#game .ppw-tv-frame .ppw-tv-lower{width:95%;padding:12px 13px;background:var(--tv-panel);
+ border-left:5px solid var(--tv-accent);display:flex;flex-direction:column;gap:5px}
+#game .ppw-tv-frame .ppw-tv-lower-name{font:950 clamp(19px,6vw,34px)/1 system-ui;
+ color:var(--tv-ink)!important;overflow-wrap:anywhere}
+#game .ppw-tv-frame .ppw-tv-lower-show{font:800 10px system-ui;text-transform:uppercase;
+ color:var(--tv-accent)!important;letter-spacing:.09em}
+#game .ppw-tv-frame .ppw-tv-footer{display:flex;justify-content:space-between;gap:10px;
+ font:850 9px/1.25 system-ui;border-top:1px solid var(--tv-border);
+ color:var(--tv-dim)!important;padding-top:8px;letter-spacing:.06em}
+#game .ppw-tv-frame[data-broadcast-package=primetime]{--tv-bg:linear-gradient(155deg,#143c89,#0d1643);--tv-panel:#164078;--tv-ink:#f4faff;--tv-accent:#8ce8ff;--tv-border:#6fa5ec;--tv-red:#b91c36}
+#game .ppw-tv-frame[data-broadcast-package=primetime] .ppw-tv-title{text-shadow:4px 4px 0 #d1364b}
+#game .ppw-tv-frame[data-broadcast-package=primetime] .ppw-tv-motion{background:repeating-linear-gradient(145deg,transparent 0 30px,#54b8ff14 31px 54px,transparent 54px 90px);animation:ppw-tv-drift 10s linear infinite}
+#game .ppw-tv-frame[data-broadcast-package=territory]{--tv-bg:#eaddb7;--tv-panel:#f4e4c5;--tv-ink:#3f2821;--tv-accent:#8f342d;--tv-dim:#66483c;--tv-border:#a55a48;--tv-red:#87392e;border:5px double var(--tv-border);border-radius:3px;background:repeating-linear-gradient(0deg,#f0e0bc 0 15px,#e8d6ad 16px 17px)}
+#game .ppw-tv-frame[data-broadcast-package=territory] :is(.ppw-tv-title,.ppw-tv-fighter){font-family:Georgia,serif;font-style:normal}
+#game .ppw-tv-frame[data-broadcast-package=territory] .ppw-tv-red-label{background:#923e32!important;color:#fff8e5!important}
+#game .ppw-tv-frame[data-broadcast-package=midnight]{--tv-bg:radial-gradient(ellipse at 50% 48%,#58327e,#170e34 70%);--tv-panel:#291647;--tv-ink:#f0fbff;--tv-accent:#8af8ff;--tv-dim:#e9b3ff;--tv-border:#d274eb;--tv-red:#b5235b}
+#game .ppw-tv-frame[data-broadcast-package=midnight] .ppw-tv-motion{inset:42% -70% -50%;background:linear-gradient(#f46aee66 1px,transparent 1px),linear-gradient(90deg,#5cdfff66 1px,transparent 1px);background-size:27px 27px;transform:perspective(150px) rotateX(62deg)}
+#game .ppw-tv-frame[data-broadcast-package=midnight] .ppw-tv-title{color:#95f8ff!important;text-shadow:0 0 15px #27d6f0,0 0 24px #d34db5}
+#game .ppw-tv-frame[data-broadcast-package=prizefight]{--tv-bg:linear-gradient(155deg,#fbfbf5,#dfe4e9);--tv-panel:#162235;--tv-ink:#15202c;--tv-accent:#ac2437;--tv-dim:#344253;--tv-border:#283340;--tv-red:#ae1d36;border:4px solid var(--tv-border)}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-motion::after{content:"";position:absolute;inset:26% -30% auto;height:23%;background:#cb2e43;transform:rotate(-19deg);opacity:.91}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-fighter{color:#fff!important;border-color:#b73548}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-title{font-style:normal;text-shadow:2px 2px 0 #c9cbd1}
+#game .ppw-tv-frame[data-broadcast-package=renegade]{--tv-bg:repeating-linear-gradient(-23deg,#141d19 0 28px,#27312a 29px 32px,#131b19 33px 56px);--tv-panel:#111c18;--tv-ink:#eefeaa;--tv-accent:#e3ff5a;--tv-dim:#e5ebcb;--tv-border:#dffc68;--tv-red:#bd233e}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-motion::before{content:"";position:absolute;left:-20%;width:140%;height:25%;top:45%;background:#c7f744;transform:rotate(-14deg)}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-title{font-style:italic;transform:rotate(-2deg)}
+#game .ppw-tv-frame[data-broadcast-package=prestige]{--tv-bg:radial-gradient(ellipse at 50% 40%,#654534,#201a21 70%);--tv-panel:#352a23;--tv-ink:#ffe9b7;--tv-accent:#f4cf8d;--tv-dim:#ead9bc;--tv-border:#c7a467;--tv-red:#833735;border:3px solid var(--tv-border)}
+#game .ppw-tv-frame[data-broadcast-package=prestige]::before{content:"";position:absolute;inset:8px;border:1px solid #eed69a88;pointer-events:none;border-radius:23px 23px 5px 5px}
+#game .ppw-tv-frame[data-broadcast-package=prestige] .ppw-tv-title{font-family:Georgia,serif;font-style:normal}
+#game .ppw-tv-frame[data-broadcast-package=prestige] .ppw-tv-motion{inset:-40%;background:linear-gradient(110deg,transparent 43%,#ffe6a322 50%,transparent 57%);animation:ppw-tv-sheen 10s ease-in-out infinite}
+#game .ppw-tv-frame[data-broadcast-package=booker]{--tv-bg:linear-gradient(180deg,#213a81 0 57%,#992c41 57%);--tv-panel:#dce3ee;--tv-ink:#fff4c9;--tv-accent:#ffe8a0;--tv-dim:#e7eeff;--tv-border:#bfcde0;--tv-red:#9a203a;border:6px ridge var(--tv-border);border-radius:2px}
+#game .ppw-tv-frame[data-broadcast-package=booker]::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:repeating-linear-gradient(0deg,#0000001a 0 2px,transparent 2px 5px)}
+#game .ppw-tv-frame[data-broadcast-package=booker] :is(.ppw-tv-title,.ppw-tv-fighter,.ppw-tv-lower-name){font-family:ui-monospace,"Courier New",monospace;font-style:normal}
+#game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-fighter{color:#203568!important}
+#game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-lower{--tv-panel:#e5e9ef;--tv-ink:#1a2e63;--tv-accent:#a6293e}
+#game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-motion{top:0;bottom:auto;height:12px;background:#fff9db24;animation:ppw-tv-scanner 9s linear infinite}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle]{--tv-bg:#f8f8f5;--tv-panel:#fff;--tv-ink:#151c28;--tv-accent:#ab2235;--tv-dim:#333c48;--tv-border:#252e39;--tv-red:#9c1e30}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-motion::before{content:"";position:absolute;top:35%;left:-15%;width:135%;height:20%;transform:rotate(-18deg);background:#c22c41}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{font-style:normal;text-shadow:2px 3px 0 #c7c9cb}
+#game .ppw-tv-frame[data-broadcast-package=luchafiesta]{--tv-bg:radial-gradient(circle at 45% 45%,#ff8a69,#d94186 53%,#4d2696);--tv-panel:#6c348b;--tv-ink:#fff9e0;--tv-accent:#fff1a1;--tv-dim:#ebffff;--tv-border:#ffe6a2;--tv-red:#94325d}
+#game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-motion{inset:-75%;background:repeating-conic-gradient(transparent 0 12deg,#7dffff24 13deg 22deg,transparent 22deg 31deg);animation:ppw-tv-turn 45s linear infinite}
+/* Compact in-editor graphics stay small: no portraits and no ongoing animations. */
+#game .ppw-tv-frame[data-compact=true]{aspect-ratio:auto;min-height:112px;max-width:100%;padding:10px 12px;margin:0;gap:6px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-motion{animation:none!important}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-top,
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-footer{display:none}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-title{font-size:22px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-centre{gap:7px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-fighter{font-size:14px;padding:9px 5px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-lower{padding:8px 10px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-lower-name{font-size:20px}
+#game .ppw-tv-frame[data-compact=true] .ppw-tv-red-label{font-size:9px;padding:4px 7px}
+/* Independent of the player's Results Skin: one opening above the report.
+   The close button is always a real accessible button. */
+#game .ppw-tv-opening-wrap{position:relative;max-width:600px;margin:0 auto 14px}
+#game .ppw-tv-opening-wrap .ppw-tv-frame{max-width:none}
+#game .ppw-tv-skip{position:relative;display:block;margin:6px 0 0 auto;padding:8px 11px;
+ border:1px solid #9eafc2;background:#1b2e4a;color:#fff;font:800 11px/1.3 system-ui;
+ border-radius:8px;min-height:34px}
+#game .ppw-tv-skip:focus-visible{outline:3px solid #80e7ff;outline-offset:2px}
+/* Booking's moveable labels stay text-only while inheriting the TV identity. */
+#game .ppw-card-booking[data-broadcast-package]:not([data-broadcast-package=standard]) .ppw-card-bar{
+ --tv-ribbon:#b32d42;background:var(--tv-booking-surface,#182546);
+ border-left:4px solid var(--tv-ribbon);border-bottom:1px solid var(--tv-border,#607ba6);
+ color:var(--tv-booking-ink,#fff)!important}
+#game .ppw-card-booking[data-broadcast-package]:not([data-broadcast-package=standard]) .ppw-card-bar strong,
+#game .ppw-card-booking[data-broadcast-package]:not([data-broadcast-package=standard]) .ppw-card-bar small{
+ color:var(--tv-booking-ink,#fff)!important}
+#game .ppw-card-booking[data-broadcast-package]:not([data-broadcast-package=standard]) .ppw-main-event-flag{
+ color:#fff9ef!important;background:#a4253c!important;border-color:#e58694!important}
+#game .ppw-card-booking[data-broadcast-package=territory],
+#game .ppw-card-booking[data-broadcast-package=prizefight],
+#game .ppw-card-booking[data-broadcast-package=strongstyle]{
+ --tv-booking-surface:#f0e4ce;--tv-booking-ink:#202536;--tv-border:#b06a57}
+#game .ppw-card-booking[data-broadcast-package=prizefight],
+#game .ppw-card-booking[data-broadcast-package=strongstyle]{
+ --tv-booking-surface:#f1f4f6;--tv-booking-ink:#1a2531;--tv-border:#9ba9bc}
+#game .ppw-card-booking[data-broadcast-package=midnight]{--tv-booking-surface:#2b184f;--tv-booking-ink:#f9e7ff;--tv-ribbon:#be429e}
+#game .ppw-card-booking[data-broadcast-package=renegade]{--tv-booking-surface:#212b23;--tv-booking-ink:#ecffb0;--tv-ribbon:#d6f750}
+#game .ppw-card-booking[data-broadcast-package=prestige]{--tv-booking-surface:#332823;--tv-booking-ink:#ffe9c4;--tv-ribbon:#c59a56}
+#game .ppw-card-booking[data-broadcast-package=booker]{--tv-booking-surface:#203979;--tv-booking-ink:#fff7d7;--tv-ribbon:#c72e47}
+#game .ppw-card-booking[data-broadcast-package=luchafiesta]{--tv-booking-surface:#803c8a;--tv-booking-ink:#fffbd8;--tv-ribbon:#ffe396}
+@keyframes ppw-tv-drift{to{transform:translateX(10%)}}
+@keyframes ppw-tv-sheen{0%,20%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+@keyframes ppw-tv-scanner{to{top:100%}}
+@keyframes ppw-tv-turn{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-tv-frame *,#game .ppw-tv-frame::before,#game .ppw-tv-frame::after{animation:none!important}
+}
+
+/* In-editor title/graphic disclosure keeps the running order readable and
+   completely separate from the modal match/angle authoring controls. */
+#game .ppw-card-broadcast-studio{max-width:550px;min-width:0;margin:10px auto;
+ border-radius:8px;border:1px solid #546780;background:#1d3047;padding:4px 8px}
+#game .ppw-card-broadcast-studio>summary{color:#eaf5ff;font:850 11px/1.4 system-ui;
+ cursor:pointer;padding:6px 4px;min-height:29px}
+#game .ppw-card-broadcast-studio>summary:focus-visible{outline:3px solid #8ae4ff}
+#game .ppw-card-broadcast-slot{margin:3px 10px 9px;padding:2px 7px}
+#game .ppw-card-broadcast-studio .ppw-tv-frame{margin:9px auto 5px}
+
+/* Contrast refinements: on bright/red slashes, names sit on ivory cards;
+   the VS separator stays white on a dark plate instead of red-on-red. */
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-title,
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{
+ background:#fffdf5eb;padding:6px 9px;color:#172132!important;
+ text-shadow:none;max-width:100%}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-vs,
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-vs{
+ background:#1b2634;color:#fff!important;padding:5px 6px;border-radius:3px}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-title{
+ background:#101915ef;padding:6px 9px;border-left:4px solid #e3ff5a}
+#game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-title{
+ text-shadow:3px 4px 0 #8d2a7c,0 0 11px #9c387f}

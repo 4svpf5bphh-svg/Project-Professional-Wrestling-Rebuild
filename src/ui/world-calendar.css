@@ -150,3 +150,9 @@
  background:#193e56;color:#eaf7ff;font-weight:800}
 .ppw-calendar-header>.ppw-calendar-button:last-child:focus-visible{
  outline:3px solid #f4c781;outline-offset:2px}
+
+/* Owner-only cosmetic event artwork; the normal calendar layout remains intact. */
+.ppw-calendar-event[data-animated-poster=true] .ppw-calendar-owned-poster{
+ grid-column:1/-1;grid-row:auto;width:100%;max-width:100%;min-width:0;
+}
+.ppw-calendar-event[data-animated-poster=true] .ppw-calendar-owner-mark{display:none}

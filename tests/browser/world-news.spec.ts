@@ -41,8 +41,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"},
     {year:2,week:6,id:"wild:s1",desk:"DIRT",certainty:"SPECULATION",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
-    title:"Conspiracy corner: is the coffee machine running creative?",
-    summary:"An internet theory with no evidence. The coffee machine has not responded.",
+    title:"Did Alice walk out after Fight Night? Conflicting sources",
+    summary:"One anonymous claim alleges a departure. A competing account denies it. No backstage incident has been established.",
     sourceKind:"EVENT"}]
   }});
   return route.fulfill({json:method==="overview"?overview:{}});
@@ -76,8 +76,22 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await page.getByRole("button",{name:"Dirt Sheets"}).click();
  await expect(page.getByText("Creative shake-up?")).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
- await expect(page.getByText("UNVERIFIED / INTERNET CONSPIRACY 👀")).toBeVisible();
- await expect(page.getByText(/coffee machine running creative/)).toBeVisible();
+ await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();
+ await expect(page.locator(".ppw-dirt-outlet")).toHaveCount(2);
+ await expect(page.locator(".ppw-news-dirt")).toHaveCount(1);
+ await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false}).first()).toBeVisible();
+ await expect(page.getByText(/Did Alice walk out after Fight Night/)).toBeVisible();
+ const threads=page.locator(".ppw-news-dirt .ppw-hot-tag-thread");
+ await expect(threads).toHaveCount(2);
+ await threads.first().locator("summary").click();
+ await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("HOT TAG");
+ await expect(threads.first().locator(".ppw-hot-tag-news-post")).toHaveCount(3);
+ await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("Tag in. Sound off.");
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ }
  await expect(page.locator(".ppw-news-wild-theory")).toHaveCount(1);
  await expect(page.getByText("A certified classic")).toHaveCount(0);
  await expect(page.getByText("SECRET PRIVATE CONTRACT")).toHaveCount(0);

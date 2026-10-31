@@ -26,7 +26,7 @@ export interface CalendarBooking {
  ready:boolean;
 }
 type Owner={name:string;year:number;week:number;revision:string|number;
- booking_open:boolean;cadence:number;major_interval:number|null};
+ booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
  importance:number;active:boolean;earned_prestige:number;
@@ -39,7 +39,8 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  const rows=await tx.query<Owner>([
  "SELECT p.name,w.year,w.week,w.revision,",
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
- "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval",
+ "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
+  "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster",
  "FROM ppw_worlds w JOIN ppw_promotions p ON p.world_id=w.world_id",
  "AND p.promotion_id=$2 JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
  "AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active",
@@ -185,7 +186,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
-  return {worldWeeks,bookings,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
+  return {worldWeeks,bookings,eventPosterStyle:owned.event_poster,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
    weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};

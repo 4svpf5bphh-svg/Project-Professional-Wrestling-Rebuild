@@ -6,6 +6,7 @@ import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
+import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagNewsThread,dirtSheetByline} from "../domain/hot-tag-news.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -657,8 +658,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   }else if(active==="OFFICIAL"||active==="DIRT"){
    const section=el("section","ppw-industry-list ppw-news");
    const official=active==="OFFICIAL";
+   section.classList.add(official?"ppw-news-official":"ppw-news-dirt");
    section.append(el("span","ppw-news-eyebrow",official?
-    "THE RECORD / THE RESULTS":"THE RUMOUR MILL / BEHIND THE CURTAIN"),
+    "PPW WIRE / CERTIFIED WORLD REPORTING":"THE GRAPEVINE / BEHIND THE CURTAIN"),
     el("h2","",official?"Official News":"Dirt Sheets"),
     el("p","ppw-industry-muted",official?
      "What actually happened in the wrestling world. Awards and reports come from certified completed shows.":
@@ -719,18 +721,52 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
-     "The rumour mill is unusually quiet. We suspect someone has disconnected the office coffee machine."));
+     "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
    for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
     if(index===0)item.classList.add("ppw-news-lead");
     const wild=!official&&story.id.startsWith("wild:");
+    const byline=dirtSheetByline(story.id);
     if(wild)item.classList.add("ppw-news-wild-theory");
+    if(!official){
+     item.append(el("div","ppw-dirt-outlet",byline.name),
+      el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT / FICTIONAL"));
+    }
     item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
-     wild?"UNVERIFIED / INTERNET CONSPIRACY 👀":"RUMOUR / NOT CONFIRMED"),
+     wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
      el("strong","ppw-news-story-title",story.title),
      el("p","",story.summary),
      el("small","ppw-industry-muted",story.promotionName+
       " · Year "+story.year+" · Week "+story.week));
+    if(!official)item.append(el("small","ppw-dirt-caveat",
+     "Fictional in-game wrestling reporting. Alleged backstage incidents are not established facts."));
+    // The same HOT TAG identities used for show-result reactions now have
+    // persistent-looking, locally projected threads under published stories.
+    // The thread reads only the public story and makes no new server request.
+    const thread=document.createElement("details");
+    thread.className="ppw-hot-tag-thread";
+    thread.append(el("summary","ppw-hot-tag-summary",
+     "🔥 "+HOT_TAG_NAME+" · Read the reactions"));
+    const content=el("div","ppw-hot-tag-thread-body");
+    content.append(el("div","ppw-hot-tag-brand",
+     HOT_TAG_NAME+"  /  "+HOT_TAG_TAGLINE));
+    const posts=projectHotTagNewsThread(story);
+    for(const post of posts){
+     const card=el("div","ppw-hot-tag-news-post");
+     card.append(el("span","ppw-hot-tag-avatar",post.avatar));
+     const copy=el("div","ppw-hot-tag-news-copy");
+     copy.append(el("strong","",post.displayName),
+      el("small","",post.handle+" · Fan reaction"),
+      el("p","",post.text),
+      el("span","ppw-hot-tag-news-metrics",
+       "❤️ "+post.likes.toLocaleString("en-GB")+
+       "  ·  💬 "+post.replies+"  ·  🔁 "+post.reposts));
+     card.append(copy);content.append(card);
+    }
+    content.append(el("small","ppw-hot-tag-disclaimer",
+     "HOT TAG is a simulated wrestling social network. Comments are fictional; they do not verify rumours."));
+    thread.append(content);
+    item.append(thread);
     section.append(item);
    }
    if(official){

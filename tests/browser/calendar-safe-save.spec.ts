@@ -139,3 +139,37 @@ test("Calendar prioritises announced fixtures, and empty premium view explains i
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("owned premium calendar event uses the purchased animated poster; rivals do not",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const input=route.request().postDataJSON() as {method:string};
+  methods.push(input.method);
+  if(input.method!=="calendar")throw Error("Unexpected call "+input.method);
+  return route.fulfill({json:{
+   ...calendar(4,80),eventPosterStyle:"ECLIPSE",
+   weeks:[{year:1,week:11,offset:6,shows:[cup]}],
+   worldWeeks:[{year:1,week:11,offset:6,events:[
+    {promotionId:"independent",promotionName:"Independent",seriesId:"cup",
+     name:"Indie Cup",role:"SPECIAL",eventType:"MAJOR",importance:80},
+    {promotionId:"rival",promotionName:"Rival",seriesId:"other",
+     name:"Rival Night",role:"PREMIUM",eventType:"MAJOR",importance:79}
+   ]}]
+  }});
+ });
+ await page.goto("/#/calendar");
+ await page.getByRole("button",{name:"PPVs & specials"}).click();
+ const poster=page.locator(".ppw-calendar-owned-poster");
+ await expect(poster).toHaveCount(1);
+ await expect(poster).toHaveAttribute("data-poster","eclipse");
+ await expect(poster.locator(".ppw-ep-title")).toHaveText("Indie Cup");
+ await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
+ await page.getByRole("button",{name:"Across the World"}).click();
+ await expect(page.getByText("Rival Night")).toBeVisible();
+ await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(1);
+ expect(methods).toEqual(["calendar"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

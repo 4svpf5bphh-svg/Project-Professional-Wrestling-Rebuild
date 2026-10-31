@@ -40,7 +40,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_day:number|null;venue_id:string|null;lock_ready_fingerprint:string|null;
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
- booking_open:boolean;within_window:boolean;
+ booking_open:boolean;within_window:boolean;broadcast_package:string|null;
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string};
@@ -66,6 +66,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
   "SELECT d.year,d.week,w.revision,w.seed,d.status,d.show_day,d.venue_id,",
   "d.lock_ready_fingerprint,d.show_name,d.booking_class,d.ticket_strategy,",
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
+  "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$2) AS broadcast_package,",
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
    "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
@@ -334,6 +335,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    day:show.show_day,venueId:show.venue_id,showName:show.show_name,
    promotionName:show.promotion_name,venueName:show.venue_name,
    marketName:show.market_name,bookingClass:show.booking_class,
+   broadcastPackage:show.broadcast_package,
    ticketStrategy:show.ticket_strategy,
    slots:slots.map(s=>({slotId:s.slot_id,position:s.position,
     kind:s.kind,payload:s.payload}))};

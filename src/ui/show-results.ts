@@ -23,9 +23,13 @@ import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
+import {HOT_TAG_NAME,HOT_TAG_TAGLINE} from "../domain/hot-tag-news.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
 import "./underground-zine-results-skin.css";
+import "./retro-booker-results-skin.css";
+import "./results-skin-contrast.css";
+import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -146,6 +150,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
  else if(show.resultsSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
  else if(show.resultsSkin==="UNDERGROUND_ZINE")root.dataset.resultsSkin="underground-zine";
+ else if(show.resultsSkin==="RETRO_BOOKER_02")root.dataset.resultsSkin="retro-booker-02";
  else delete root.dataset.resultsSkin;
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
@@ -160,6 +165,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  if(show.resultsSkin==="UNDERGROUND_ZINE")
   header.append(node("div","ppw-zine-station",
    "THE UNDERGROUND REPORT · ISSUE "+String(show.week).padStart(3,"0")));
+ if(show.resultsSkin==="RETRO_BOOKER_02")
+  header.append(node("div","ppw-retro-station",
+   "■ PPW BOOKER 2002  /  RESULTS.DAT  /  WEEK "+String(show.week).padStart(2,"0")));
  const titleWrap=node("div","ppw-result-title-wrap");
  append(titleWrap,
   node("span","ppw-eyebrow","PPW / RINGSIDE REPORT"+
@@ -227,12 +235,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const noise=node("section","ppw-crowd-noise ppw-pop-social");
  if(reactions.length){
   append(noise,
-   node("span","ppw-pop-kicker","THE WRESTLING INTERNET, UNFORTUNATELY"),
-   node("h2","ppw-crowd-noise-title ppw-pop-title","POP!"),
+   node("span","ppw-pop-kicker",HOT_TAG_TAGLINE),
+   node("h2","ppw-crowd-noise-title ppw-pop-title",HOT_TAG_NAME),
    node("p","ppw-crowd-noise-disclaimer",
     "Fictional in-game wrestling social media. Posts, profiles and engagement are simulated; results link to certified matches and angles."));
   const wall=node("div","ppw-crowd-noise-wall ppw-pop-timeline");
-  wall.setAttribute("aria-label","POP! fictional social timeline");
+  wall.setAttribute("aria-label","HOT TAG fictional wrestling social timeline");
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
    card.className="ppw-crowd-noise-card ppw-pop-post ppw-reaction-"+reaction.mood.toLowerCase();
@@ -473,6 +481,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   " audience response. Certified results remain unchanged."));
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
+ // A skippable television bumper, before the actual Results Skin report.
+ // The certified narrative, manager analysis and results are untouched.
+ if(show.broadcastPackage){
+  const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
+   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
+  if(opening){
+   const wrap=node("section","ppw-tv-opening-wrap");
+   const skip=node("button","ppw-tv-skip","Skip opening") as HTMLButtonElement;
+   skip.type="button";skip.onclick=()=>wrap.remove();
+   wrap.append(opening,skip);headlines.append(wrap);
+  }
+ }
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(show.resultsSkin==="TERRITORY_TV"){
@@ -496,6 +516,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","THE COMPLETE SHOW · AS IT HAPPENED"));
   full.append(station);
  }
+ if(show.resultsSkin==="RETRO_BOOKER_02"){
+  const station=node("header","ppw-retro-chapter-head");
+  station.append(node("span","ppw-retro-eyebrow","FILE 02 / COMPLETE CARD"),
+   node("h2","","MATCH RESULTS"),
+   node("p","","WRESTLERS · FINISHES · SEGMENTS"));
+  full.append(station);
+ }
  full.append(timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(show.resultsSkin==="TERRITORY_TV"){
@@ -517,6 +544,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   station.append(node("span","ppw-zine-eyebrow","THE UNDERGROUND REPORT · THE AFTERMATH"),
    node("h2","","AFTER THE BELL!"),
    node("p","","THE INTERNET REACTS · THE OFFICE ASSESSES"));
+  after.append(station);
+ }
+ if(show.resultsSkin==="RETRO_BOOKER_02"){
+  const station=node("header","ppw-retro-chapter-head");
+  station.append(node("span","ppw-retro-eyebrow","FILE 03 / POST-SHOW DESK"),
+   node("h2","","AFTER THE SHOW"),
+   node("p","","FAN CHAT · BACKSTAGE NOTES · MANAGEMENT"));
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),

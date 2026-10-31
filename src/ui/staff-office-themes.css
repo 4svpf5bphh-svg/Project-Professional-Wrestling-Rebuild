@@ -1,0 +1,276 @@
+/* Nine account-owned Staff Office styles. One CSS implementation powers the real
+   four-tab workspace and the KP preview. No scene images, generated art or polling.
+   All palettes retain high-contrast text on 320px iPhones. */
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]){
+ --so-bg:#101c28;--so-panel:#1b303c;--so-card:#142934;--so-ink:#f6f7fb;
+ --so-dim:#b9d0d9;--so-accent:#fdbb6f;--so-line:#4b707b;--so-button:#264357;
+ --so-button-ink:#f6f7fb;--so-selected:#79502e;--so-panel-ink:var(--so-ink);
+ color:var(--so-ink)!important;background:var(--so-bg)!important;
+ border:1px solid var(--so-line);border-radius:13px;
+ padding:18px 14px 95px;min-width:0;isolation:isolate;position:relative;overflow:hidden;
+ transition:background-color .22s ease,border-color .22s ease;
+}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-head{
+ position:relative;padding:13px 10px 18px;overflow:hidden;isolation:isolate}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-head h1{
+ font:950 clamp(27px,7vw,40px)/1.1 system-ui;letter-spacing:-.045em;
+ color:var(--so-ink)!important;overflow-wrap:anywhere;margin:8px 0}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-kicker,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-kicker{
+ color:var(--so-accent)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-muted,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info span,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-voice,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-scout-pick small{
+ color:var(--so-dim)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel{
+ background:var(--so-panel)!important;border:1px solid var(--so-line)!important;
+ border-radius:11px;color:var(--so-panel-ink)!important;box-shadow:none}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel h2,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel h3,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info strong,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief summary strong,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate strong{
+ color:var(--so-panel-ink)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric{
+ background:var(--so-card)!important;border:1px solid var(--so-line)!important;
+ border-radius:9px;min-width:0;box-shadow:none}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric strong{
+ color:var(--so-ink)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric small{
+ color:var(--so-accent)!important;font-size:9px;line-height:1.35}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-nav .ppw-staff-button,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-button,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-departments button{
+ background:var(--so-button)!important;border:1px solid var(--so-line)!important;
+ color:var(--so-button-ink)!important;border-radius:8px;box-shadow:none;
+ font-weight:800;min-width:0;overflow-wrap:normal}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-nav [aria-current="page"],
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-gorilla-choices [aria-pressed="true"],
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-departments [aria-pressed="true"]{
+ background:var(--so-selected)!important;border-color:var(--so-accent)!important;
+ color:var(--so-button-ink)!important;box-shadow:inset 0 0 0 1px var(--so-accent)}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) :is(button,summary,input,select):focus-visible{
+ outline:3px solid var(--so-accent)!important;outline-offset:2px}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-row,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-conversation,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-note,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-rank-item,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-manager-metrics span{
+ background:var(--so-card)!important;border:1px solid var(--so-line)!important;
+ color:var(--so-panel-ink)!important;border-radius:9px}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-dialogue{
+ background:var(--so-card)!important;border-left:3px solid var(--so-accent)!important;
+ color:var(--so-panel-ink)!important;line-height:1.65}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-voice,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info span,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate small,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle>span{
+ color:var(--so-dim)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info small,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier summary,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-conversation summary,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-note strong,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-scout-pick strong,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-agenda-item strong{
+ color:var(--so-accent)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-manager-avatar,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-rank-position{
+ background:var(--so-selected)!important;color:var(--so-button-ink)!important;
+ border:1px solid var(--so-accent)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-term,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-salary{
+ background:var(--so-card)!important;border-color:var(--so-line)!important;
+ color:var(--so-panel-ink)!important;color-scheme:normal}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-full-meeting>summary,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-buyout{
+ color:var(--so-accent)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-agenda-item p,
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier-body p{
+ color:var(--so-panel-ink)!important}
+#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle input{
+ accent-color:var(--so-accent)}
+/* The background and design accents differ, but the *same* tabs, meetings,
+   controls, nine roles, staff contracts and server-sourced advice remain. */
+#game .ppw-staff[data-staff-office-theme="gorilla-control"]{
+ --so-bg:#0c1b25;--so-panel:#172f3d;--so-card:#132b39;--so-ink:#f3f9fc;
+ --so-dim:#c2d9df;--so-accent:#ffc47b;--so-line:#487486;--so-button:#244353;
+ --so-selected:#80532c;--so-button-ink:#fff5e6;
+ background:radial-gradient(circle at 100% 0,#32546b,#0c1b25 60%)!important}
+#game .ppw-staff[data-staff-office-theme="gorilla-control"] .ppw-staff-head::after{
+ content:"●  LIVE PRODUCTION";position:absolute;right:12px;top:12px;color:#fff;
+ background:#a82e37;border:1px solid #ed7882;padding:5px 7px;
+ font:900 9px/1 system-ui;letter-spacing:.08em;animation:ppw-so-pulse 3s infinite}
+#game .ppw-staff[data-staff-office-theme="gorilla-control"] .ppw-gorilla-policy{
+ border-left:4px solid #f3b95c!important}
+#game .ppw-staff[data-staff-office-theme="territory-room"]{
+ --so-bg:#e9e0c6;--so-panel:#fff3d7;--so-card:#e4d6b5;--so-ink:#382a1e;
+ --so-dim:#514334;--so-accent:#822d22;--so-line:#ae9573;--so-button:#e2cda9;
+ --so-selected:#caa177;--so-button-ink:#38271b;
+ background:repeating-linear-gradient(0deg,#efe4c9 0 25px,#e3d5b8 26px 27px)!important;
+ border:5px double #984b39;border-radius:3px}
+#game .ppw-staff[data-staff-office-theme="territory-room"] :is(.ppw-staff-head h1,.ppw-staff-panel h2,.ppw-staff-panel h3,.ppw-staff-meeting-brief summary strong){
+ font-family:Georgia,serif!important;font-style:normal}
+#game .ppw-staff[data-staff-office-theme="territory-room"] .ppw-staff-overview-metric{
+ border-bottom:3px solid #974735!important}
+#game .ppw-staff[data-staff-office-theme="territory-room"] .ppw-staff-panel{border-width:2px!important}
+#game .ppw-staff[data-staff-office-theme="executive-suite"]{
+ --so-bg:#16151c;--so-panel:#26242d;--so-card:#1c1b24;--so-ink:#fff1d8;
+ --so-dim:#dbcaaf;--so-accent:#f0c884;--so-line:#7d694b;--so-button:#3a3040;
+ --so-selected:#775934;--so-button-ink:#fff3d6;
+ background:radial-gradient(ellipse at 90% 0,#59482c,#16151c 58%)!important}
+#game .ppw-staff[data-staff-office-theme="executive-suite"] .ppw-staff-head h1{
+ font-family:Georgia,serif!important;font-style:italic;letter-spacing:-.045em}
+#game .ppw-staff[data-staff-office-theme="executive-suite"] .ppw-staff-head::after{
+ content:"";position:absolute;inset:-65%;pointer-events:none;
+ background:linear-gradient(110deg,transparent 42%,#ffe0a21e 50%,transparent 58%);
+ animation:ppw-so-shine 10s ease-in-out infinite;z-index:0}
+#game .ppw-staff[data-staff-office-theme="executive-suite"] .ppw-staff-head>*{position:relative;z-index:1}
+#game .ppw-staff[data-staff-office-theme="executive-suite"] .ppw-staff-panel{
+ border-top:3px solid #eac27c!important}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"]{
+ --so-bg:#21376d;--so-panel:#dce4ef;--so-card:#1c3279;--so-ink:#fdf0c7;
+ --so-dim:#d3e1fc;--so-accent:#fff0a9;--so-line:#92a8c9;--so-button:#172e74;
+ --so-selected:#a62c40;--so-button-ink:#fff6d7;
+ --so-panel-ink:#172a55;
+ background:linear-gradient(#203a82 0 57%,#8c2839 57%)!important;
+ border:5px ridge #c2cbdb;border-radius:2px}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] :is(.ppw-staff-head h1,.ppw-staff-kicker,.ppw-staff-nav .ppw-staff-button,.ppw-staff-panel h2,.ppw-staff-panel h3){
+ font-family:ui-monospace,Consolas,"Courier New",monospace!important}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] .ppw-staff-panel{
+ --so-card:#e8edf3;--so-dim:#3c5373;--so-accent:#a5263d;
+ border:3px ridge #879bb9!important;border-radius:1px}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] .ppw-staff-panel :is(.ppw-staff-dossier,.ppw-staff-candidate,.ppw-staff-meeting-brief,.ppw-staff-role-row,.ppw-staff-conversation,.ppw-staff-toggle){
+ --so-card:#ebf0f7;--so-dim:#3d506b;--so-accent:#a5263d}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] .ppw-staff-panel .ppw-staff-button{
+ --so-button:#192e70;--so-button-ink:#fff6d4}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] .ppw-staff-head::after{
+ content:"";position:absolute;left:0;right:0;top:-10px;height:15px;
+ background:linear-gradient(transparent,#ffffff30,transparent);
+ animation:ppw-so-scan 12s linear infinite;pointer-events:none}
+#game .ppw-staff[data-staff-office-theme="underground-office"]{
+ --so-bg:#ede7d0;--so-panel:#fff5db;--so-card:#dfd2ab;--so-ink:#1d251f;
+ --so-dim:#4c5342;--so-accent:#385f22;--so-line:#31382d;--so-button:#242d28;
+ --so-selected:#d8f94a;--so-button-ink:#f2ffe0;
+ border:3px solid #262b24;border-radius:0;background:#eee8d1!important}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-head{
+ background:linear-gradient(166deg,#eff0d9 0 43%,#d9f644 43% 62%,#eff0d9 62%);
+ transform:none}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-head h1{
+ font-style:italic;text-shadow:2px 2px 0 #b8ba9b}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-head .ppw-staff-kicker{
+ display:inline-block;background:#e95d89;padding:4px 7px;color:#141c17!important}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-overview-metric{
+ --so-card:#202720;--so-ink:#e3ff8d;--so-accent:#d5f17e;--so-dim:#d9e5bd}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-button[aria-current="page"],
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-button[aria-pressed="true"]{
+ --so-button-ink:#1a231a}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-panel{
+ border:2px solid #242a23!important;border-radius:1px}
+#game .ppw-staff[data-staff-office-theme="creative-studio"]{
+ --so-bg:#f2f5fb;--so-panel:#fff;--so-card:#e9eef8;--so-ink:#1e3158;
+ --so-dim:#506281;--so-accent:#284bae;--so-line:#bcc9df;--so-button:#e4eafe;
+ --so-selected:#c5d4fe;--so-button-ink:#203b75;
+ background:radial-gradient(circle at 100% 0,#f9d8ed,#f3f6fb 54%)!important}
+#game .ppw-staff[data-staff-office-theme="creative-studio"] .ppw-staff-head h1{
+ color:#28418e!important}
+#game .ppw-staff[data-staff-office-theme="creative-studio"] :is(.ppw-staff-panel,.ppw-staff-overview-metric){
+ border-radius:13px!important;box-shadow:0 7px 18px #728abc1d}
+#game .ppw-staff[data-staff-office-theme="creative-studio"] .ppw-staff-head::after{
+ content:"CREATIVE";position:absolute;right:9px;top:12px;
+ background:#d93b77;color:white;padding:5px 8px;transform:rotate(3deg);
+ font:900 9px system-ui;border-radius:4px}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"]{
+ --so-bg:#172851;--so-panel:#ecf2fb;--so-card:#1c3467;--so-ink:#fff;
+ --so-dim:#c6d5ef;--so-accent:#ffdeb3;--so-line:#6a83af;
+ --so-button:#233b79;--so-selected:#bd304a;--so-button-ink:#fff;
+ --so-panel-ink:#172b53;
+ background:linear-gradient(135deg,#253e88,#121f44 72%)!important}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-head{
+ border-bottom:7px solid #c7314e}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-head h1{
+ font-style:italic;text-shadow:3px 3px 0 #ad2a4b}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-head::after{
+ content:"●  ON AIR";position:absolute;right:8px;top:12px;
+ background:#bc2945;color:#fff;padding:5px 8px;
+ font:950 9px system-ui;animation:ppw-so-pulse 3s infinite}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-panel{
+ --so-card:#f7f9fe;--so-dim:#496181;--so-accent:#b52642;
+ border-left:5px solid #cb334e!important}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-panel .ppw-staff-button{
+ --so-button:#203f7c;--so-button-ink:#fff}
+#game .ppw-staff[data-staff-office-theme="neon-control"]{
+ --so-bg:#120f2a;--so-panel:#211e46;--so-card:#191e42;--so-ink:#f8eafd;
+ --so-dim:#ddc6ef;--so-accent:#8dfcff;--so-line:#775fa9;
+ --so-button:#332c68;--so-selected:#5d367f;--so-button-ink:#fff5ff;
+ background:radial-gradient(ellipse at 50% 30%,#32215a,#120f2a 74%)!important}
+#game .ppw-staff[data-staff-office-theme="neon-control"]::before{
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+ background:linear-gradient(#b45bff0c 1px,transparent 1px),linear-gradient(90deg,#b45bff0c 1px,transparent 1px);
+ background-size:32px 32px;animation:ppw-so-neon 6s ease-in-out infinite}
+#game .ppw-staff[data-staff-office-theme="neon-control"]>*{position:relative;z-index:1}
+#game .ppw-staff[data-staff-office-theme="neon-control"] .ppw-staff-head h1{
+ color:#eac1ff!important;text-shadow:0 0 10px #9c5ddb}
+#game .ppw-staff[data-staff-office-theme="neon-control"] .ppw-staff-panel{
+ border-top:2px solid #f18cdd!important}
+#game .ppw-staff[data-staff-office-theme="neon-control"] .ppw-staff-meeting-brief .ppw-staff-dialogue{
+ border-left-color:#f18cdd!important}
+#game .ppw-staff[data-staff-office-theme="steelworks-office"]{
+ --so-bg:#212b32;--so-panel:#303b40;--so-card:#1c2a2e;--so-ink:#f8f6ec;
+ --so-dim:#d3dfe0;--so-accent:#ffc581;--so-line:#849097;--so-button:#32434c;
+ --so-selected:#825330;--so-button-ink:#fff7e4;
+ background:repeating-linear-gradient(160deg,#2c383f 0 4px,#1c282e 5px 12px)!important;
+ border:3px solid #9eabb1}
+#game .ppw-staff[data-staff-office-theme="steelworks-office"] .ppw-staff-head{
+ border-bottom:13px solid transparent;
+ border-image:repeating-linear-gradient(110deg,#ffba51 0 22px,#20262a 22px 44px) 1}
+#game .ppw-staff[data-staff-office-theme="steelworks-office"] .ppw-staff-head h1{
+ font-style:italic;text-shadow:3px 3px #46545c}
+#game .ppw-staff[data-staff-office-theme="steelworks-office"] :is(.ppw-staff-panel,.ppw-staff-overview-metric){
+ border-radius:2px!important}
+#game .ppw-staff[data-staff-office-theme="steelworks-office"] .ppw-gorilla-policy{
+ border-left:4px solid #f9b662!important}
+@keyframes ppw-so-pulse{0%,100%{opacity:1}50%{opacity:.62}}
+@keyframes ppw-so-shine{0%,20%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+@keyframes ppw-so-scan{to{top:110%}}
+@keyframes ppw-so-neon{0%,100%{opacity:.45}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-staff[data-staff-office-theme] *,
+ #game .ppw-staff[data-staff-office-theme]::before,
+ #game .ppw-staff[data-staff-office-theme]::after,
+ #game .ppw-staff[data-staff-office-theme] .ppw-staff-head::after{
+  animation:none!important;transition:none!important}
+}
+/* The shop preview shares all of the real Staff Office class selectors. */
+#game .ppw-staff.ppw-staff-theme-preview{
+ max-width:360px;width:100%;min-height:320px;max-height:none;
+ margin:0 auto!important;padding:12px 10px 14px!important;
+ border-radius:9px;overflow:hidden;pointer-events:none}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-head{padding:7px 6px 12px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-head h1{
+ font-size:clamp(24px,7vw,29px)!important;margin:3px 0 0}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-kicker{font-size:9px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-overview-grid{margin-bottom:9px;gap:5px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-overview-metric{padding:9px 5px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-overview-metric strong{font-size:16px!important}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-overview-metric small{font-size:8px!important}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-nav{margin-bottom:9px;gap:4px;grid-template-columns:repeat(4,minmax(0,1fr))}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-nav .ppw-staff-button{
+ font-size:10px;min-height:38px;padding:5px 3px;line-height:1.2}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-panel{padding:10px;margin:0}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-panel h2{font-size:17px;margin:5px 0 10px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief{padding:9px;margin:0}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief .ppw-staff-dialogue{
+ padding:9px 10px;font-size:12px;line-height:1.5;margin:10px 0 2px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-manager-avatar{
+ width:32px;height:32px;flex:0 0 32px;font-size:11px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief summary{
+ min-height:35px;display:flex;gap:7px;align-items:center}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief summary strong{
+ font-size:12px}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief summary small{
+ font-size:10px}

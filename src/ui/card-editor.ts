@@ -30,6 +30,8 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
+import {broadcastPackageClass} from "../domain/broadcast-packages.js";
+import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
@@ -425,7 +427,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   activeEditShade?.remove();activeEditShade=null;
   activePickerShade?.remove();activePickerShade=null;
   root.replaceChildren();
-  root.classList.add("ppw-editor");
+  root.classList.add("ppw-editor","ppw-card-booking");
+  root.dataset.broadcastPackage=broadcastPackageClass(view?.broadcastPackage);
   root.classList.toggle("ppw-editing-card",expanded!==null);
   const top=el("header","ppw-top");
   if(port.openPlanner)top.append(button("← Planner",()=>port.openPlanner?.(),
@@ -620,6 +623,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    root.append(continuity);
   }
+  // Opening title art is collapsible and does not affect booking or results.
+  if(view.broadcastPackage){
+   const intro=createBroadcastPackageFrame({
+    style:view.broadcastPackage,kind:"OPEN",promotion:view.promotionName,
+    show:view.showName??"Weekly show",compact:true});
+   if(intro){
+    const reveal=el("details","ppw-card-broadcast-studio");
+    reveal.append(el("summary","","View opening titles"),intro);
+    root.append(reveal);
+   }
+  }
   const list=el("section","ppw-card-list");
   let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
@@ -769,6 +783,30 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
    bar.append(arrows);card.append(bar);
+   // The booking list stays compact. Players may expand a real, text-only
+   // match/segment broadcast graphic without opening its editing form.
+   if(view.broadcastPackage){
+    const activeView=view;
+    const graphic=el("details","ppw-card-broadcast-studio ppw-card-broadcast-slot") as HTMLDetailsElement;
+    const text=m?"TV match graphic":"TV segment graphic";
+    graphic.append(el("summary","",text));
+    graphic.ontoggle=()=>{
+     if(!graphic.open||graphic.querySelector(".ppw-tv-frame"))return;
+     const preview=m?createBroadcastPackageFrame({
+      style:activeView.broadcastPackage,kind:"MATCH",promotion:activeView.promotionName,
+      show:activeView.showName??"Weekly show",compact:true,
+      sideA:m.teams[0]?.filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & "),
+      sideB:m.teams.slice(1).flat().filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")
+     }):createBroadcastPackageFrame({
+      style:activeView.broadcastPackage,kind:"SEGMENT",promotion:activeView.promotionName,
+      show:activeView.showName??"Weekly show",compact:true,
+      segmentLabel:angleName,
+      segmentPerson:segment?[...segment.actors,...segment.targets]
+       .filter((p):p is PersonPick=>p!==null).map(selectedName).join(" · "):undefined});
+     if(preview)graphic.append(preview);
+    };
+    card.append(graphic);
+   }
    // The movable card remains text-only. Portraits are reserved for the
    // completed Ringside results presentation.
    if(segment&&expanded===slotId){
@@ -1410,6 +1448,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  void load();
  return {reload:load,destroy:()=>{
   activeEditShade?.remove();activePickerShade?.remove();
-  root.replaceChildren();root.classList.remove("ppw-editor");
+  root.replaceChildren();delete root.dataset.broadcastPackage;
+   root.classList.remove("ppw-editor","ppw-card-booking");
  }};
 }

@@ -41,7 +41,7 @@ export interface PlannerVenuePressure {
 }
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;homeMarketId:string|null;
+ worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
 }
 const id=(s:unknown):s is string=>typeof s==="string"&&s.trim().length>0&&s.length<=200;
@@ -53,14 +53,15 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
- major_interval:number|null;home_market_id:string|null};
+ major_interval:number|null;home_market_id:string|null;event_poster:string|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  checkScope(s);
  const rows=await tx.query<Owner>(`
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
-  p.home_market_id FROM ppw_worlds w
+  p.home_market_id,
+   (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
  JOIN ppw_promotion_controls c ON c.world_id=w.world_id
   AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active
@@ -180,7 +181,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
-  canEdit:owned.booking_open,homeMarketId:owned.home_market_id,
+  canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
   venuePressure:pressure,
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,

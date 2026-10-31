@@ -29,11 +29,12 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    fatigue_concerns:number;active_programmes:number;
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
-   staff_aliases:Record<string,string>;
+   staff_aliases:Record<string,string>;staff_office_theme:string|null;
    featured_programme:StaffRivalryEvidence|null;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
+    (SELECT style FROM ppw_kp_staff_office_themes WHERE player_id=$2) AS staff_office_theme,
      COALESCE((SELECT jsonb_object_agg(a.staff_id,a.alias) FROM ppw_kp_staff_aliases a
       WHERE a.world_id=w.world_id AND a.promotion_id=$3
        AND a.player_id=$2),'{}'::jsonb) AS staff_aliases,
@@ -364,6 +365,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
   if(venues.length>128)throw new Error("Venue catalogue exceeds staff configuration limit");
   return {year:current.year,week:current.week,
    gorillaPolicy:current.gorilla_policy??"STICK_TO_CARD",
+   staffOfficeTheme:current.staff_office_theme,
    worldRevision:Number(current.revision),canEdit:current.can_edit,
    allowUnfinishedFallback:current.allow_unfinished_fallback===true,
    autoRenewSameTerms:current.auto_renew_same_terms===true,
