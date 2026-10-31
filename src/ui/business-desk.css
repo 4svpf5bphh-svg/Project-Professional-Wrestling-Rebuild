@@ -156,3 +156,16 @@
  background:linear-gradient(135deg,#452261,#0c5693)}
 .ppw-business-kp-crest[data-style="GOLD"]{color:#35220c;border-color:#ffeba8;
  background:linear-gradient(135deg,#fff0b7,#b98329)}
+
+/* Event finance should be readable at 320px: one named event per row.
+   The original postage-stamp bars wrapped each dollar vertically on iPhone. */
+.ppw-business-trend-scroll{overflow-x:visible;padding:8px 0}
+.ppw-business-trend-bars{display:grid;gap:8px;min-width:0}
+.ppw-business-trend-pick{display:grid;width:100%;min-width:0;min-height:58px;
+ grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;
+ text-align:left;padding:12px 14px;border-radius:11px}
+.ppw-business-trend-name{font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.ppw-business-trend-week{font-size:11px;grid-column:1;color:#bcd0df}
+.ppw-business-trend-value{grid-column:2;grid-row:1 / span 2;align-self:center;
+ font-size:clamp(13px,3.6vw,18px);text-align:right;white-space:nowrap;
+ overflow-wrap:normal;font-variant-numeric:tabular-nums}

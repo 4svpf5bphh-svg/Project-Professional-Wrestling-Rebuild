@@ -137,3 +137,45 @@
  font-size:14px;color:#fff}
 .ppw-programme-archive-card .ppw-programme-archive-beats{color:#a9d5ed}
 .ppw-programme-archive-card button{max-width:100%;white-space:normal}
+
+/* Show the next bookable storyline beat before the detail-heavy archive. */
+.ppw-programme-quick-next{padding:13px 15px;margin:12px 0;border-radius:13px;
+ border:1px solid #7891ba;background:linear-gradient(130deg,#17354a,#132334);
+ display:grid;gap:7px}
+.ppw-programme-quick-next>.ppw-programme-eyebrow{padding:0}
+.ppw-programme-quick-next>strong{font-size:16px;color:#fff0ca;line-height:1.35}
+.ppw-programme-quick-next>p{color:#d8e9f4;font-size:13px;line-height:1.55;margin:0}
+.ppw-programme-quick-next>small{color:#acc9da;font-size:11px;line-height:1.45}
+.ppw-programme-quick-next .ppw-programme-action{margin:1px 0;background:#23517b;
+ color:#f9fcff;border:1px solid #88c8e5;border-radius:10px;padding:10px}
+
+/* Clear difference between what Creative proposes, what is booked, and
+   what the already-certified historical timeline can truthfully claim. */
+.ppw-programme-upcoming{padding:10px 12px;display:grid;gap:4px;
+ background:#0a2031;border:1px solid #52748b;border-radius:9px}
+.ppw-programme-upcoming>strong{color:#b9f5df;font-size:13px}
+.ppw-programme-upcoming>span{color:#d0e1ef;font-size:12px;line-height:1.45}
+.ppw-programme-upcoming-list{font-size:12px;color:#cce2f1}
+.ppw-programme-upcoming-list summary{cursor:pointer;padding:8px 0}
+.ppw-programme-upcoming-list p{padding:7px 0;border-top:1px solid #38536a}
+
+/* Concrete booked finales are authored separately from suggested story beats. */
+.ppw-programme-finale{margin:14px 0;padding:15px;display:grid;gap:10px;
+ background:linear-gradient(120deg,#36243c,#13263a);border:1px solid #d1aa74;
+ border-radius:14px}
+.ppw-programme-finale>.ppw-programme-eyebrow{color:#ffdb9d;padding:0}
+.ppw-programme-finale>p{margin:0;font-size:12px;line-height:1.55;color:#e0dbe4}
+.ppw-programme-finale-current{font-size:15px;color:#ffdfaa}
+.ppw-programme-finale-field{display:grid;gap:6px;font-size:12px;color:#dfebf5;font-weight:750}
+.ppw-programme-finale-field select{box-sizing:border-box;min-height:44px;
+ font-size:16px;width:100%;min-width:0;background:#102a3b;color:#f9f7ff;
+ border:1px solid #7296ab;border-radius:9px;padding:8px 11px}
+.ppw-programme-finale-field select:focus-visible{outline:3px solid #9bdff6;outline-offset:2px}
+.ppw-programme-finale .ppw-programme-action{margin:0;padding:10px 12px;border-radius:10px;
+ background:#86512a;color:#fff5e7;border:1px solid #e8ae65;font-weight:800}
+.ppw-programme-finale-warning{color:#ffcfaa!important;border-left:3px solid #ffa66d;
+ padding:9px;background:#44291d}
+.ppw-programme-close-without-payoff{margin-top:14px;padding:9px;border:1px solid #426078;
+ border-radius:11px;background:#0c1c2f}
+.ppw-programme-close-without-payoff summary{cursor:pointer;color:#b9cfdf;font-size:12px;padding:8px}
+.ppw-programme-close-without-payoff .ppw-programme-action{background:#41303c;color:#fff3f4}

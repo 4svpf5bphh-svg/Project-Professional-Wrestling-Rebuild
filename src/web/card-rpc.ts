@@ -10,7 +10,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
- programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
  completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,tournamentsAsActor,createTournamentAsActor,cancelTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -363,6 +363,21 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return programmeDirectionAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,programmeId:id("programmeId"),showId:id("sourceShowId"),
    slotId:id("sourceSlotId"),choice:p.choice as import("../db/programme-workspace.js").ProgrammeDirectionChoice});
+ }
+ if(method==="planProgrammeFinale"){
+  const payoff=p.payoff;
+  if(payoff!==null&&![ "DECISIVE_MATCH","TITLE_SHOWDOWN","STIPULATION_SHOWDOWN",
+   "BETRAYAL","RECONCILIATION","FINAL_CONFRONTATION"].includes(String(payoff)))
+   throw new Error("Invalid rivalry payoff");
+  if((p.targetShowId!==null&&typeof p.targetShowId!=="string")||
+     (p.targetSlotId!==null&&typeof p.targetSlotId!=="string")||
+     payoff===undefined||p.targetShowId===undefined||p.targetSlotId===undefined)
+   throw new Error("Invalid finale target");
+  return programmeFinaleAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,programmeId:id("programmeId"),
+   showId:p.targetShowId as string|null,
+   slotId:p.targetSlotId as string|null,
+   payoff:payoff as import("../db/programme-workspace.js").ProgrammePayoff|null});
  }
  if(method==="endProgramme")return endProgrammeAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,programmeId:id("programmeId")});

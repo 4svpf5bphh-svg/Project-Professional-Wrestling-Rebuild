@@ -16,7 +16,7 @@ export function createCardClient(scope:CardSessionScope,
  if(typeof showId!=="string"||showId.length>200)
   throw new Error("Invalid optional booking draft");
  return async function call(method:string,extra:Record<string,unknown>={}){
-  if(!["overview","dismissAttention","dismissAttentionBatch","load","talent","save","ready","creativeConsent","results","programmes","startProgramme","endProgramme","chooseProgrammeDirection","standingProgrammeConsent","stables","createStable",
+  if(!["overview","dismissAttention","dismissAttentionBatch","load","talent","save","ready","creativeConsent","results","programmes","startProgramme","endProgramme","planProgrammeFinale","chooseProgrammeDirection","standingProgrammeConsent","stables","createStable",
    "addStableMember","removeStableMember","disbandStable","stableChoices",
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
    "backstageArchive","backstageDecision","resultsArchive","publicResults",

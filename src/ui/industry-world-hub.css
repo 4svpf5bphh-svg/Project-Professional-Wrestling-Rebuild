@@ -305,3 +305,15 @@
  .ppw-news-dirt>.ppw-news-story,.ppw-news-official>.ppw-news-story{padding:13px 11px}
  .ppw-hot-tag-thread-body{padding:10px}
 }
+
+/* The pale official paper has an !important paragraph colour. It must NOT
+   recolour fan posts sitting on the dark HOT TAG surface. */
+.ppw-news-official>.ppw-news-story .ppw-hot-tag-thread .ppw-hot-tag-news-copy p{
+ color:#e6ecf8!important;font:500 13px/1.52 system-ui!important}
+.ppw-news-official>.ppw-news-story .ppw-hot-tag-thread .ppw-hot-tag-news-copy strong{
+ color:#f9f7fc!important}
+.ppw-news-official>.ppw-news-story .ppw-hot-tag-thread .ppw-hot-tag-news-copy small{
+ color:#c3d0e5!important}
+.ppw-news-official>.ppw-news-story .ppw-hot-tag-thread .ppw-hot-tag-news-metrics{
+ color:#d3ddec!important}
+.ppw-hot-tag-news-copy p{font-size:13px!important}

@@ -53,7 +53,47 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
    "ACCEPTED"?", and the reconciliation succeeds":
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
  const base=planned[segment.kind];
- const summary=segment.outcome==="HAPPENS"?base+".":
+ // The authored on-screen ending changes the write-up, not simulation
+ // facts. A failed rescue must never read like the attacker was beaten.
+ const beat=segment.creativeBeat;
+ let ending="";
+ if(segment.outcome==="HAPPENS"&&beat){
+  switch(beat.kind){
+   case "INTERRUPTION":
+    ending=beat.ending==="VERBAL_EXCHANGE"?"Both sides traded words.":
+     beat.ending==="INTERRUPTER_PREVAILS"?subject+" got the last word.":
+     beat.ending==="SPEAKER_PREVAILS"?(object||"The interrupted speaker")+" got the last word.":
+     "The exchange erupted into a brawl.";break;
+   case "RESCUE":
+    ending=beat.ending==="RESCUER_STANDS_TALL"?(actors[1]??"The rescuer")+" stood tall.":
+     beat.ending==="ATTACKER_ESCAPES"?subject+" escaped before justice could be served.":
+     "The rescue was overwhelmed.";break;
+   case "POST_MATCH_ASSAULT":
+    ending=beat.ending==="ATTACKER_STANDS_TALL"?subject+" stood tall.":
+     beat.ending==="VICTIM_FIGHTS_BACK"?(object||"The victim")+" fought back.":
+     "Officials rushed in to separate them.";break;
+   case "CHALLENGE":
+    ending=beat.response==="ACCEPTED"?"The challenge was accepted.":
+     beat.response==="REFUSED"?"The challenge was refused.":
+     "No answer was given yet.";break;
+   case "CONTRACT_SIGNING":
+    ending=beat.ending==="SIGNED"?"The on-screen agreement was signed.":
+     beat.ending==="REJECTED"?"The proposed on-screen signing was rejected.":
+     beat.ending==="WALKOUT"?"The signing ended with a walkout.":
+     "The signing erupted into a brawl.";break;
+   case "INTERFERENCE":
+    ending=beat.presentation==="DISTRACTION"?
+     "A distraction disrupted the action.":
+     beat.presentation==="REFEREE_DIVERSION"?
+      "The referee's attention was diverted.":"The interference came from ringside.";break;
+   case "ATTACK":
+    ending=beat.presentation==="PULL_APART_BRAWL"?
+     "Officials had to pull the wrestlers apart.":
+     beat.presentation==="BLINDSIDE"?"The ambush came without warning.":
+     "The beatdown was sustained.";break;
+  }
+ }
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:""):
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,

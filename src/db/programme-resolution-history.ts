@@ -2,7 +2,9 @@
  * Resolves with the show's transaction. No per-programme queries; only IDs
  * linked to the settled card and a bounded ten-week history are transferred.
  */
-import {createHash} from "node:crypto";
+import {certifiedProgrammeBeatSignature} from "../domain/programme-beat-signature.js";
+import {certifiedFinaleDelivered,type ProgrammePayoff}
+ from "../domain/programme-finales.js";
 import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import {readCardParticipants} from "../domain/card-participants.js";
@@ -23,9 +25,15 @@ export async function settleCompletedProgrammeHistory(
   !Number.isSafeInteger(index)||!Number.isFinite(input.eventImportance)||
   input.eventImportance<0||input.eventImportance>100)
   throw new Error("Programme history show scope mismatch");
- const entries=await tx.query<{programme_id:string;slot_id:string;kind:string}>([
-  "SELECT a.programme_id,a.slot_id,a.kind",
+ const entries=await tx.query<{programme_id:string;slot_id:string;kind:string;
+  finale_payoff:ProgrammePayoff|null;finale_planned_week_index:number|null}>([
+  "SELECT a.programme_id,a.slot_id,a.kind,",
+  "f.payoff AS finale_payoff,f.planned_week_index AS finale_planned_week_index",
   "FROM ppw_programme_match_activities a",
+  "LEFT JOIN ppw_programme_finales f ON f.world_id=a.world_id",
+  "AND f.promotion_id=a.promotion_id AND f.programme_id=a.programme_id",
+  "AND f.show_id=a.draft_id AND f.slot_id=a.slot_id",
+  "AND f.resolved_week_index IS NULL",
   "JOIN ppw_programmes p ON p.world_id=a.world_id",
   "AND p.promotion_id=a.promotion_id AND p.programme_id=a.programme_id",
   "WHERE a.world_id=$1 AND a.promotion_id=$2 AND a.draft_id=$3",
@@ -70,8 +78,9 @@ export async function settleCompletedProgrammeHistory(
   const ids=[...new Set(readCardParticipants(payload).map(p=>p.personId))].sort();
   // Keep long tag-team wrestler identifiers off Neon wire and indexes.
   // Hashes preserve the original identical-participant repetition semantics.
-  const signature=link.kind+":"+
-   createHash("sha256").update(JSON.stringify(ids)).digest("hex");
+  const signature=certifiedProgrammeBeatSignature({
+   kind:link.kind==="MATCH"?"MATCH":"SEGMENT",personIds:ids,payload
+  });
   const quality=execution.get(link.slot_id);
   if(link.kind==="MATCH"&&(
    quality===undefined||!Number.isFinite(quality)||quality<0||quality>100))
@@ -148,5 +157,60 @@ export async function settleCompletedProgrammeHistory(
   "AND p.programme_id=x.programme_id RETURNING p.programme_id"
  ].join(" "),[input.worldId,input.promotionId,JSON.stringify(signals)]);
  if(updated.length!==signals.length)throw new Error("Programme changed during results");
+ // Finale certification belongs INSIDE this same completed-show transaction.
+ // Never close because an angle was skipped/interrupted, a match was drawn,
+ // or a previously selected segment was removed/rewritten after planning.
+ const delivered=included.flatMap(link=>{
+  if(!link.finale_payoff||link.finale_planned_week_index===null||
+   index<link.finale_planned_week_index)return [];
+  const record=records.find(r=>r.programme_id===link.programme_id&&
+   r.slot_id===link.slot_id);
+  const payload=bySlot.get(link.slot_id);
+  if(!record||!payload)return [];
+  if(!certifiedFinaleDelivered({kind:link.kind==="MATCH"?"MATCH":"SEGMENT",
+   payoff:link.finale_payoff,payload,winnerSide:record.winner_side,
+   actualFinish:resolvedMatches.get(link.slot_id)?.actualFinish??null,
+   angleHappened:link.kind==="SEGMENT"}))return [];
+  return [{programme_id:link.programme_id,show_id:input.showId,
+   slot_id:link.slot_id,payoff:link.finale_payoff,week_index:index,
+   crowd_response:record.crowd_response,winner_side:record.winner_side}];
+ });
+ if(delivered.length){
+  const settled=await tx.query<{programme_id:string}>([
+   "UPDATE ppw_programme_finales f SET resolved_week_index=x.week_index,",
+   "resolved_crowd_response=x.crowd_response,resolved_winner_side=x.winner_side",
+   "FROM jsonb_to_recordset($3::jsonb) AS x(",
+   "programme_id text,show_id text,slot_id text,payoff text,",
+   "week_index integer,crowd_response double precision,winner_side text)",
+   "WHERE f.world_id=$1 AND f.promotion_id=$2",
+   "AND f.programme_id=x.programme_id AND f.show_id=x.show_id",
+   "AND f.slot_id=x.slot_id AND f.payoff=x.payoff",
+   "AND f.resolved_week_index IS NULL RETURNING f.programme_id"
+  ].join(" "),[input.worldId,input.promotionId,JSON.stringify(delivered)]);
+  if(settled.length!==delivered.length)
+   throw new Error("Rivalry finale changed during show certification");
+  const completed=await tx.query<{programme_id:string}>([
+   "UPDATE ppw_programmes p SET status='COMPLETED',ended_week_index=$3",
+   "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
+   "AND p.programme_id=ANY($4::text[]) RETURNING p.programme_id"
+  ].join(" "),[input.worldId,input.promotionId,index,
+   delivered.map(x=>x.programme_id)]);
+  if(completed.length!==delivered.length)
+   throw new Error("Unable to close all certified rivalry finales");
+  const events=await tx.query<{programme_id:string}>([
+   "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
+   "SELECT $1,$2,$3,'PROGRAMME_FINALE_DELIVERED',",
+   "jsonb_build_object('promotionId',$4::text,",
+   "'programmeId',x.programme_id,'showId',x.show_id,",
+   "'slotId',x.slot_id,'payoff',x.payoff,",
+   "'winnerSide',x.winner_side,'crowdResponse',x.crowd_response)",
+   "FROM jsonb_to_recordset($5::jsonb) AS x(",
+   "programme_id text,show_id text,slot_id text,payoff text,",
+   "week_index integer,crowd_response double precision,winner_side text)",
+   "RETURNING (payload->>'programmeId') AS programme_id"
+  ].join(" "),[input.worldId,input.year,input.week,
+   input.promotionId,JSON.stringify(delivered)]);
+  if(events.length!==delivered.length)throw new Error("Incomplete certified finale ledger");
+ }
  return {recorded:inserted.length,programmes:updated.length};
 }

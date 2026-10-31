@@ -79,3 +79,53 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
  await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
 });
+
+test("iPhone plans and removes a real match or angle payoff without auto-ending the feud",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ let revision=4,finale:null|{showId:string;slotId:string;kind:"SEGMENT";
+  payoff:string;plannedWeekIndex:number;resolvedWeekIndex:null}=null;
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(req.method);
+  methods.push(method);
+  if(method==="planProgrammeFinale"){
+   expect(req.programmeId).toBe("joe-riddle");
+   expect(req.expectedRevision).toBe(revision);
+   if(req.payoff===null)finale=null;
+   else{
+    expect(req.targetShowId).toBe("ppv");
+    expect(req.targetSlotId).toBe("faceoff");
+    expect(req.payoff).toBe("FINAL_CONFRONTATION");
+    finale={showId:"ppv",slotId:"faceoff",kind:"SEGMENT",
+     payoff:"FINAL_CONFRONTATION",plannedWeekIndex:8,resolvedWeekIndex:null};
+   }
+   revision++;
+   return route.fulfill({json:{status:"APPLIED",result:{planned:finale!==null}}});
+  }
+  return route.fulfill({json:{year:1,week:9,worldRevision:revision,canEdit:true,
+   people:[],teams:[],championships:[],programmes:[{...programme,
+    latestFollowUp:null,finale,
+    plannedActivity:[{showId:"ppv",slotId:"faceoff",kind:"SEGMENT",
+     segmentKind:"CONFRONTATION",titleMatch:false,stipulationMatch:false,
+     year:1,week:9,showName:"Armageddon",status:"DRAFT"}]}]}});
+ });
+ await page.goto("/#/programmes");
+ await expect(page.getByText(/Not booked yet/)).toHaveCount(0);
+ await expect(page.getByText(/Already booked · Armageddon/)).toBeVisible();
+ await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
+ await page.getByRole("button",{name:"Plan on-screen finale"}).click();
+ await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
+ await expect(page.getByText(/only the certified event can end this rivalry/i)).toBeVisible();
+ await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
+ await expect(page.getByRole("heading",{name:"Recently concluded"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Remove planned finale"}).click();
+ await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
+ expect(methods).toEqual(["programmes","planProgrammeFinale","programmes",
+  "planProgrammeFinale","programmes"]);
+ expect(methods).not.toContain("save");
+ expect(methods).not.toContain("ready");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

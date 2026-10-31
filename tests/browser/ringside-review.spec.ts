@@ -594,3 +594,31 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("named Armageddon Inferno poster overrides global Results Skin and weekly TV package",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  return r.fulfill({json:method==="resultsArchive"?{
+   items:[{showId:"armageddon",year:1,week:14,showName:"Armageddon",
+    bookingClass:"PREMIUM",crowdResponse:84,matchCount:1,angleCount:1}],
+   nextCursor:null
+  }:{...show,showId:"armageddon",showName:"Armageddon",year:1,week:14,
+   promotionName:"Chaotic Wrestling Alliance",bookingClass:"PREMIUM",
+   eventPosterStyle:"INFERNO",resultsSkin:"RETRO_BOOKER_02",
+   broadcastPackage:"MIDNIGHT_FREQUENCY"}});
+ });
+ await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await expect(page.locator(".ppw-results")).toHaveAttribute("data-premium-poster","inferno");
+ await expect(page.locator(".ppw-results")).not.toHaveAttribute("data-results-skin");
+ const artwork=page.locator(".ppw-results-event-poster .ppw-event-poster");
+ await expect(artwork).toHaveAttribute("data-poster","inferno");
+ await expect(artwork.locator(".ppw-ep-title")).toHaveText("Armageddon");
+ await expect(page.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
+ await expect(page.locator(".ppw-retro-station")).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

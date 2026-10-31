@@ -49,6 +49,8 @@ export interface CompletedShowView {
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
  resultsSkin?:"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"|"RETRO_BOOKER_02"|null;
  promotionName?:string;broadcastPackage?:string|null;
+ /** Owned named PPV branding takes precedence over account-wide Results Skin. */
+ eventPosterStyle?:string|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
  gorillaLog?:GorillaShowLog|null;
 }
@@ -63,9 +65,11 @@ export async function readCompletedShowView(
  return withSqlClient(pool,async tx=>{
   const rows=await tx.query<{receipt_json:unknown;show_name:string|null;
     booking_class:"REGULAR"|"PREMIUM";results_skin:string|null;broadcast_package:string|null;
+    event_poster_style:string|null;
     promotion_name:string;staff_report:RoadAgentReport|null;
     gorilla_log:GorillaShowLog|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
+    series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
@@ -76,6 +80,9 @@ export async function readCompletedShowView(
    LEFT JOIN ppw_gorilla_show_logs gorilla
     ON gorilla.world_id=c.world_id AND gorilla.show_id=c.show_id
    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
+   LEFT JOIN ppw_kp_series_posters series_art ON
+    series_art.world_id=d.world_id AND series_art.promotion_id=d.promotion_id
+    AND series_art.series_id=d.show_series_id AND series_art.player_id=$2
    JOIN ppw_promotions identity ON identity.world_id=c.world_id
     AND identity.promotion_id=c.promotion_id
    JOIN ppw_promotion_controls p ON p.world_id=c.world_id
@@ -348,6 +355,7 @@ export async function readCompletedShowView(
   entries.sort((a,b)=>a.position-b.position);
   return {showId:input.showId,year:receipt.year,week:receipt.week,
    promotionName:rows[0]!.promotion_name,broadcastPackage:rows[0]!.broadcast_package,
+   eventPosterStyle:rows[0]!.booking_class==="PREMIUM"?rows[0]!.event_poster_style:null,
    showName:rows[0]!.show_name??(rows[0]!.booking_class==="PREMIUM"?
     "Premium event":"Weekly show"),bookingClass:rows[0]!.booking_class,
    crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,

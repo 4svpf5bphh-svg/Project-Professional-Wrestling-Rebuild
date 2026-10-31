@@ -412,12 +412,11 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     const panel=el("section","ppw-business-trend");
     panel.append(el("h3","","Event performance"),
      el("p","ppw-business-muted",
-      "Profit and loss from your latest completed events. Tap an event to see its accounts."));
+      "Every event at a glance. Select one for tickets, production, appearance fees and the full breakdown."));
     const scroll=el("div","ppw-business-trend-scroll");
     scroll.setAttribute("role","group");
     scroll.setAttribute("aria-label","Event profit and loss");
     const bars=el("div","ppw-business-trend-bars");
-    const max=Math.max(1,...events.map(s=>Math.abs(s.netResult)));
     for(const show of [...events].reverse()){
      const pick=el("button","ppw-business-trend-pick") as HTMLButtonElement;
      pick.type="button";
@@ -430,15 +429,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
        behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
        block:"center"});}
      };
-     const plot=el("span","ppw-business-trend-plot");
-     const axis=el("span","ppw-business-trend-axis");
-     const bar=el("span","ppw-business-trend-column "+
-      (show.netResult>=0?"ppw-business-trend-gain":"ppw-business-trend-loss"));
-     bar.style.height=(Math.max(5,Math.round(Math.abs(show.netResult)/max*43)))+"%";
-     plot.append(axis,bar);
-     pick.append(el("small","ppw-business-trend-value",
-      money(show.netResult)),plot,el("small","ppw-business-trend-week",
-      "Y"+show.year+" W"+show.week));
+      pick.append(el("strong","ppw-business-trend-name",show.name),
+      el("small","ppw-business-trend-week","Y"+show.year+" W"+show.week),
+      el("small","ppw-business-trend-value "+tone(show.netResult),
+       money(show.netResult)));
      bars.append(pick);
     }
     scroll.append(bars);panel.append(scroll);section.append(panel);
@@ -463,6 +457,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      const line=el("div","ppw-business-line");
      line.append(el("span","",label),el("strong","",money(n)));body.append(line);
     }
+    body.append(el("p","ppw-business-muted",
+     "Show profit or loss includes wrestler appearance fees already paid earlier in the World settlement. Cash effect shows only the amount posted when this event's remaining bills and ticket receipts settled. Use the overall weekly balance for your total company profit or loss."));
     if(port.openResults)body.append(button("Open broadcast results →",
      ()=>port.openResults?.(show.showId)));
     card.append(body);section.append(card);

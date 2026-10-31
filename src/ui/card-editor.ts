@@ -28,6 +28,7 @@ import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
+import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
@@ -605,6 +606,37 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    root.append(tournament);
   }
   root.append(toolbar);
+  // A direct bridge from Creative to the actual editor. These are draft
+  // suggestions only: the booker still casts everyone and scripts the result.
+  if(view.programmes.length){
+   const suggestions=document.createElement("details");
+   suggestions.className="ppw-card-rivalry-ideas";
+   suggestions.append(el("summary","","Book a rivalry chapter · "+view.programmes.length+
+    (view.programmes.length===1?" active feud":" active feuds")));
+   suggestions.append(el("p","ppw-muted",
+    "Choose an angle to add it with the rivalry linked. You still cast the wrestlers, choose what happens and save the card."));
+   for(const programme of view.programmes.slice(0,4)){
+    const row=el("div","ppw-card-rivalry-idea");
+    row.append(el("strong","",programme.label));
+    const options=recommendProgrammeAngles(programme).slice(0,2);
+    for(const idea of options){
+     const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
+      ()=>{
+       const id="angle-"+crypto.randomUUID();
+       const segment={...newEditorSegment(id,idea.kind),
+        programmeId:programme.programmeId,durationMinutes:idea.minutes,
+        ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
+       segments.set(id,segment);order.push(id);expanded=id;
+       markDirty();render();
+      },!mutable(),"ppw-card-rivalry-add");
+     action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
+      " for "+programme.label);
+     row.append(action,el("small","ppw-muted",idea.reason));
+    }
+    suggestions.append(row);
+   }
+   root.append(suggestions);
+  }
   const stories=view.programmes.filter(p=>p.latestFollowUp);
   if(stories.length){
    const continuity=document.createElement("details");
