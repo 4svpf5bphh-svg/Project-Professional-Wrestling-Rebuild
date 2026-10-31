@@ -145,38 +145,14 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   if(port.openAchievements)achievements.append(btn(
    "Open Trophy Room · "+view.achievements.length+" achievements →",port.openAchievements));
   root.append(achievements);
-  const shop=el("section","ppw-kp-section");
-  shop.append(el("span","ppw-kp-kicker","PERSONALISE YOUR LEGACY"),
-   el("h2","","Promotion style & prestige"),
-   el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
-  const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER"&&i.kind!=="STAFF_OFFICE_THEME"&&i.kind!=="BROADCAST_PACKAGE")){
-   const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
-   const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
-   const article=el("article","ppw-kp-item");
-   const symbol=el("span","ppw-kp-symbol",isBrand?"PPW":"★");
-   symbol.dataset.style=code;
-   const detail=el("div","ppw-kp-item-copy");
-   detail.append(el("strong","",item.label),
-    el("small","",owned?"Owned · account-wide":format(item.price)));
-   const activate=isBrand?view.activeBrand===code:
-    view.activeBadge===item.sku.replace("BADGE_","");
-   article.append(symbol,detail,
-    btn(activate?"Applied":owned?"Apply":"Unlock",
-     ()=>void run(owned?isBrand?
-      {kind:"APPLY_BRAND",sku:item.sku as "BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD",requestId:crypto.randomUUID()}:
-      {kind:"APPLY_BADGE",sku:item.sku as "BADGE_GOLD"|"BADGE_PLATINUM",requestId:crypto.randomUUID()}:
-      {kind:"BUY",sku:item.sku,requestId:crypto.randomUUID()}),
-     busy||activate||(!owned&&view.balance<item.price)));
-   list.append(article);
-  }
-  shop.append(list);root.append(shop);
+  // Legacy crest and trophy finishes retired from new purchase flows.
+  // Existing entitlements and balances stay intact.
   // Only the owner's completed shows are restyled. The World UI is unchanged.
   const resultsShop=el("section","ppw-kp-section ppw-kp-results-skins");
   resultsShop.append(el("span","ppw-kp-kicker","BROADCAST PRESENTATION"),
    el("h2","","My results skins"),
    el("p","ppw-kp-muted",
-    "Customise only your own completed show reports: headlines, Full Card, POP! and the Post-Management Brief. Booking, dashboard and match results never change."));
+    "Customise only your own completed show reports: headlines, Full Card, HOT TAG and the Post-show Brief. Booking, dashboard and match results never change."));
   const resultsSkins=view.catalogue.filter(item=>item.kind==="RESULTS_SKIN");
   for(const skin of resultsSkins){
    const isFight=skin.sku==="RESULTS_FIGHT_NIGHT";

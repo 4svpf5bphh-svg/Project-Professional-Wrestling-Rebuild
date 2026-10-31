@@ -144,3 +144,23 @@
  background:#101915ef;padding:6px 9px;border-left:4px solid #e3ff5a}
 #game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-title{
  text-shadow:3px 4px 0 #8d2a7c,0 0 11px #9c387f}
+
+/* Opaque captions prevent red text disappearing into a red stripe, or
+   lime yellow text disappearing into Renegade's highlighter stripe. */
+#game .ppw-tv-frame .ppw-tv-caption{align-self:flex-start;position:relative;z-index:2;
+ background:#16283ceF!important;color:#fff!important;padding:6px 9px;
+ text-shadow:none!important;letter-spacing:.07em}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-caption{
+ background:#111b17!important;color:#eaffaa!important}
+#game .ppw-tv-frame[data-broadcast-package=territory] .ppw-tv-caption{
+ background:#663a2e!important;color:#fff5df!important}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-motion::after{
+ height:12%;top:44%;transform:rotate(-12deg);background:#ad2b40}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle]{
+ --tv-accent:#18666e;--tv-border:#286a75;border:2px solid #1b6870}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-motion::before{
+ top:0;left:auto;right:13%;width:12%;height:100%;
+ transform:skew(-14deg);background:#c22c41}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{
+ background:#fff!important;border-left:5px solid #b8263c}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-fighter{border-bottom-color:#247b84}

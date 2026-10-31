@@ -308,10 +308,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   for(const row of entries){row.element.hidden=filter!=="ALL"&&row.type!==filter;
    row.lead.hidden=row.element.hidden;}
  };
- for(const [filter,buttonText] of [["ALL","Full show"],["MATCH","Matches"],["SEGMENT","Angles"]] as const){
+ for(const [filter,buttonText] of [["MATCH","Matches"],["SEGMENT","Angles"]] as const){
   const button=document.createElement("button");button.type="button";
   button.className="ppw-result-filter";button.textContent=buttonText;
-  button.addEventListener("click",()=>setFilter(filter));
+  button.addEventListener("click",()=>setFilter(activeFilter===filter?"ALL":filter));
   filters[filter]=button;
   append(controls,button);
  }
@@ -481,16 +481,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   " audience response. Certified results remain unchanged."));
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
- // A skippable television bumper, before the actual Results Skin report.
+ // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(show.broadcastPackage){
   const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
    promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
-   const skip=node("button","ppw-tv-skip","Skip opening") as HTMLButtonElement;
-   skip.type="button";skip.onclick=()=>wrap.remove();
-   wrap.append(opening,skip);headlines.append(wrap);
+   wrap.append(opening);headlines.append(wrap);
   }
  }
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
@@ -615,35 +613,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   };
   press.append(open,content);content.hidden=true;after.append(press);
  }
- const steps=node("nav","ppw-results-steps");
- steps.setAttribute("aria-label","Results chapters");
  const pages=[headlines,full,after];
- const labels=["Headlines & Ringside","The Full Show","Post-show Brief"];
- const tabButtons:HTMLButtonElement[]=[];
  const goButton=(label:string,dest:0|1|2)=>{
   const button=node("button","ppw-results-next",label) as HTMLButtonElement;
   button.type="button";button.onclick=()=>changePage(dest);return button;
  };
- for(const [index,label] of labels.entries()){
-  const button=goButton(label,index as 0|1|2);
-  button.className="ppw-results-step";
-  // Short, readable labels at 320px; keep the complete chapter title for
-  // accessible controls and normal-width screens without breaking words.
-  button.setAttribute("aria-label",label);
-  button.replaceChildren(
-   node("span","ppw-results-step-full",label),
-   node("span","ppw-results-step-short",["Ringside","Full show","Brief"][index]!)
-  );
-  tabButtons.push(button);steps.append(button);
- }
  headlines.append(goButton("Read the Full Show",1));
  full.append(goButton("Read Post-show Brief",2));
  after.append(goButton("Return to Headlines",0));
- root.replaceChildren(steps,...pages);
+ root.replaceChildren(...pages);
  changePage=(index:0|1|2)=>{
   for(const [i,page] of pages.entries())page.hidden=i!==index;
-  for(const [i,button] of tabButtons.entries())
-   button.setAttribute("aria-current",i===index?"step":"false");
+
   window.scrollTo({top:0,behavior:"instant"});
  };
  changePage(0);
