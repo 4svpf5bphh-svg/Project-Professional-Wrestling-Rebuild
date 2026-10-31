@@ -475,12 +475,16 @@ for(const skin of [
    await expect(names.first()).toHaveCSS("color",portraitNameColour);
    await expect(root.locator(".ppw-result-lineup .ppw-result-vs")).toHaveCSS(
     "color",vsColour);
+   const ink=skin.value==="TERRITORY_TV"?"rgb(56, 41, 30)":
+    skin.value==="FIGHT_NIGHT"?"rgb(23, 43, 60)":"rgb(240, 251, 212)";
+   const accent=skin.value==="TERRITORY_TV"?"rgb(161, 72, 41)":
+    skin.value==="FIGHT_NIGHT"?"rgb(169, 35, 60)":"rgb(226, 255, 89)";
    const rivalry=root.locator(".ppw-rivalry-at-ringside").first();
    await expect(rivalry).toBeVisible();
    await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-    .toHaveCSS("color","rgb(255, 223, 155)");
+    .toHaveCSS("color",ink);
    await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-    .toHaveCSS("color","rgb(226, 237, 245)");
+    .toHaveCSS("color",ink);
    await page.getByRole("button",{name:"Read Post-show Brief"}).click();
    const agent=root.locator(".ppw-post-show-road-agent");
    await expect(agent).toContainText("The main event delivered");
