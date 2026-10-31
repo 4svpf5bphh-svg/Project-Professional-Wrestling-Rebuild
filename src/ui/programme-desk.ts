@@ -7,6 +7,7 @@ import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
+import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
  load():Promise<ProgrammeView>;
@@ -194,6 +195,18 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    chapter.append(element("strong","",trajectory.title),
     element("p","",trajectory.summary));
    panel.append(chapter);
+   // Put the next useful booking decision BEFORE the detailed records.
+   // Only already-read programme facts contribute; no model/Neon request.
+   const ideas=recommendProgrammeAngles(p);
+   const next=element("section","ppw-programme-quick-next");
+   next.append(element("span","ppw-programme-eyebrow","NEXT CHAPTER · CREATIVE SUGGESTION"),
+    element("strong","",ideas[0]!.title+" · "+ideas[0]!.kind.replaceAll("_"," ").toLowerCase()),
+    element("p","",ideas[0]!.reason));
+   if(port.openPlanner)next.append(button("Choose a rivalry angle in the card →",
+    port.openPlanner));
+   next.append(element("small","ppw-muted",
+    "The card editor can pre-link this rivalry. You choose the wrestlers, scripted ending and final result."));
+   panel.append(next);
    // The player's decisions and the verified match record form one visible
    // narrative. No suggested outcome is booked or written to the World.
    const continuity=readProgrammeContinuity({
