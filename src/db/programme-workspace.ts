@@ -133,11 +133,13 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   type Recent={programme_id:string;show_id:string;slot_id:string;
    kind:string;week_index:number;crowd_response:number;
    winner_side:"A"|"B"|null};
+  type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
+   year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
   type Agreement={programme_id:string;person_id:string;approved:boolean;
    score:number;decided_week_index:number;expires_week_index:number;
    match_type:string;permitted_outcome:string};
   const combined=programmes.length?await tx.query<{
-   source:"ACTIVITY"|"AGREEMENT";details:Recent|Agreement
+   source:"ACTIVITY"|"AGREEMENT"|"PLANNED";details:Recent|Agreement|Planned
   }>([
    "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
    "SELECT recent.programme_id,recent.show_id,recent.slot_id,recent.kind,",
@@ -156,14 +158,28 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "expires_week_index,match_type,permitted_outcome",
    "FROM ppw_programme_creative_agreements",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY programme_id,person_id LIMIT 301) term"
-  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+   "ORDER BY programme_id,person_id LIMIT 301) term",
+   "UNION ALL",
+   "SELECT 'PLANNED'::text AS source,to_jsonb(upcoming) AS details FROM (",
+   "SELECT a.programme_id,a.draft_id,a.slot_id,a.kind,d.year,d.week,",
+   "d.show_name,d.status FROM ppw_programme_match_activities a",
+   "JOIN ppw_booking_drafts d ON d.world_id=a.world_id",
+   "AND d.promotion_id=a.promotion_id AND d.draft_id=a.draft_id",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2",
+   "AND a.programme_id=ANY($3::text[])",
+   "AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+5",
+   "AND d.status IN ('DRAFT','SUBMITTED')",
+   "ORDER BY d.year,d.week,a.programme_id,a.slot_id LIMIT 301) upcoming"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
   const recent=combined.filter(x=>x.source==="ACTIVITY")
    .map(x=>x.details as Recent);
   const agreements=combined.filter(x=>x.source==="AGREEMENT")
    .map(x=>x.details as Agreement);
+  const planned=combined.filter(x=>x.source==="PLANNED")
+   .map(x=>x.details as Planned);
   if(recent.length>500)throw new Error("Programme history view limit exceeded");
   if(agreements.length>300)throw new Error("Too many rivalry agreements");
+  if(planned.length>300)throw new Error("Too many planned rivalry chapters");
   // Roster projection includes the strongest active signed approval right,
   // so a second contract lookup is neither necessary nor permitted here.
   const fullPeople=new Set(roster.filter(x=>x.full_approval).map(x=>x.person_id));
@@ -192,6 +208,10 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
       kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response,
       winnerSide:x.winner_side??null})),
+    plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
+     .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
+      kind:x.kind,year:x.year,week:x.week,
+      showName:x.show_name??"Scheduled show",status:x.status})),
     sideA:side("A"),sideB:side("B"),
     eligibleCreativePeople:[...new Set(own.flatMap(x=>
      x.ref_kind==="PERSON"?[x.ref_id]:
