@@ -202,9 +202,10 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
   const titles=await tx.query<{
    championship_id:string;name:string;division:"SINGLES"|"TAG";
+   booking_division:"MEN"|"WOMEN"|null;
    holder_name:string|null;current_reign_id:string|null;
   }>([
-   "SELECT c.championship_id,c.name,c.division,c.current_reign_id,",
+   "SELECT c.championship_id,c.name,c.division,c.current_reign_id,c.booking_division,",
    "COALESCE(p.name,t.name) AS holder_name FROM ppw_championships c",
    "LEFT JOIN ppw_championship_reigns r ON r.world_id=c.world_id",
    "AND r.promotion_id=c.promotion_id AND r.championship_id=c.championship_id",
@@ -306,7 +307,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
    stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
    championships:titles.map(c=>({championshipId:c.championship_id,
-    name:c.name,division:c.division,holderName:c.holder_name,
+    name:c.name,division:c.division,
+    bookingDivision:c.booking_division,holderName:c.holder_name,
     vacant:c.current_reign_id===null})),
    programmes:activeProgrammes.map(p=>{
     const direction=p.follow_up&&typeof p.follow_up==="object"?
@@ -635,8 +637,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     if(new Set(titleIds).size!==titleIds.length)
      throw new Error("A title may be contested only once on a card");
     const titleRows=await tx.query<{championship_id:string;division:string;
-     person_id:string|null;team_id:string|null;champion_people:string[]}>([
-     "SELECT c.championship_id,c.division,r.person_id,r.team_id,",
+     person_id:string|null;team_id:string|null;champion_people:string[];booking_division:"MEN"|"WOMEN"|null}>([
+     "SELECT c.championship_id,c.division,c.booking_division,r.person_id,r.team_id,",
      "ARRAY(SELECT person_id FROM ppw_tag_team_members",
      "WHERE world_id=c.world_id AND team_id=r.team_id AND active",
      "ORDER BY person_id) AS champion_people",
@@ -653,6 +655,11 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     for(const m of titleMatches){
      const title=byTitle.get(m.payload.championshipId!)!;
      const layout=readCanonicalMatchLayout(m.payload);
+     const bookedDivisions=new Set(m.payload.participants.map(person=>
+      byContract.get(person.personId+"\0"+person.contractId)?.booking_division));
+     if(title.booking_division&&
+      (bookedDivisions.size!==1||!bookedDivisions.has(title.booking_division)))
+      throw new Error("This championship is restricted to its "+title.booking_division.toLowerCase()+"'s division");
      if(title.division==="SINGLES"){
       if(layout.family!=="INDIVIDUAL"||layout.sides.length<2||
        layout.sides.length>4||layout.ruleset==="ELIMINATION"||
