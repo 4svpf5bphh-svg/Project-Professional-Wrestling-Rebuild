@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {SqlRows} from "./world-operations.js";
 import {createHash} from "node:crypto";
 import {appearancesFromSlots} from "../domain/card-participants.js";
@@ -46,9 +47,10 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
-    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;
+    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;premium_only_week:boolean;
   }>(
-    `SELECT p.promotion_id,d.draft_id,d.booking_class,d.show_day,d.venue_id,
+    `SELECT p.promotion_id,(${premiumOnlyWeekSql("p")}) AS premium_only_week,
+            d.draft_id,d.booking_class,d.show_day,d.venue_id,
             (r.show_id IS NOT NULL) AS already_resolved
        FROM ppw_promotions p LEFT JOIN ppw_booking_drafts d
          ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
@@ -64,8 +66,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   );
   if(promotions.length>256) throw new Error("World has too many submitted shows for weekly inspection");
   const activePromotionIds=new Set(promotions.map(p=>p.promotion_id));
-  const regularPromotionIds=new Set(promotions.filter(p=>p.booking_class==="REGULAR")
-    .map(p=>p.promotion_id));
+  const coveredPromotionIds=new Set(promotions.filter(p=>p.booking_class==="REGULAR"||
+    (p.booking_class==="PREMIUM"&&p.premium_only_week)).map(p=>p.promotion_id));
   const slots=await tx.query<{draft_id:string;slot_id:string;position:number;kind:string;payload:unknown}>(
     `SELECT s.draft_id,s.slot_id,s.position,s.kind,s.payload FROM ppw_card_slots s
         JOIN ppw_booking_drafts d ON d.world_id=s.world_id AND d.draft_id=s.draft_id
@@ -99,7 +101,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   }>=[];
   let submittedShows=0;
   for(const id of activePromotionIds){
-    if(!regularPromotionIds.has(id))
+    if(!coveredPromotionIds.has(id))
       blockers.push({code:"MISSING_SHOW",promotionIds:[id],showIds:[]});
   }
   for(const p of promotions){

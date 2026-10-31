@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 /** Trusted, bounded World resolution with durable stage checkpoints.
  * Never player callable, never advances without audited certification.
  */
@@ -48,11 +49,12 @@ export async function inspectWorldResolutionReadiness(
    AND off_week.year=$2 AND off_week.week=$3)) AS active,
      (SELECT count(*)::integer FROM ppw_booking_drafts WHERE world_id=$1
         AND year=$2 AND week=$3 AND status='SUBMITTED') AS submitted,
-     (SELECT count(*)::integer FROM ppw_booking_drafts d
+     (SELECT count(DISTINCT d.promotion_id)::integer FROM ppw_booking_drafts d
        JOIN ppw_promotions p ON p.world_id=d.world_id
         AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
        WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
-        AND d.status='SUBMITTED' AND d.booking_class='REGULAR') AS regular_submitted,
+        AND d.status='SUBMITTED' AND (d.booking_class='REGULAR' OR
+         (d.booking_class='PREMIUM' AND ${premiumOnlyWeekSql("p")}))) AS regular_submitted,
      (SELECT eligible_promotions FROM ppw_week_resource_clearances
         WHERE world_id=$1 AND year=$2 AND week=$3) AS cleared,
      (SELECT certified_promotions FROM ppw_week_resolution_seals
