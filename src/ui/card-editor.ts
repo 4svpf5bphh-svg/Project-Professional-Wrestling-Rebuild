@@ -1086,7 +1086,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       m.format==="MULTI_TEAM"&&m.teams.every(team=>team.length===2)?"TAG":null;
     if(titleDivision){
      const choices:[string,string][]=[["","Non-title match"],
-      ...view.championships.filter(c=>c.division===titleDivision)
+      ...view.championships.filter(c=>{
+        if(c.division!==titleDivision)return false;
+        const people=m.teams.flat().filter((x):x is PersonPick=>x!==null);
+        const picked=new Set(people.map(x=>roster.get(x.personId)?.division));
+        return !c.bookingDivision||!people.length||
+         picked.size===1&&picked.has(c.bookingDivision);
+       })
        .map(c=>[c.championshipId,c.name+
         (c.vacant?" · VACANT":c.holderName?" · "+c.holderName:"")] as [string,string])];
      controls.append(field("Championship",selector(m.championshipId??"",choices,
