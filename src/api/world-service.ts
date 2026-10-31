@@ -24,8 +24,8 @@ import {readStableWorkspace,readActiveStableChoices,
  createStable,addStableMember,removeStableMember,disbandStable,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
  from "../db/stable-workspace.js";
-import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection,
- type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput} from "../db/programme-workspace.js";
+import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection,chooseProgrammeFinale,
+ type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput,type ProgrammeFinaleInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -614,6 +614,13 @@ export async function endProgrammeAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return endProgramme(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function programmeFinaleAsActor(context:WorldApiContext,
+ input:Omit<ProgrammeFinaleInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return chooseProgrammeFinale(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 export async function programmeDirectionAsActor(context:WorldApiContext,

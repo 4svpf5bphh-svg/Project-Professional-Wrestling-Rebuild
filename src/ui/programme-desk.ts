@@ -1,7 +1,7 @@
 /** Mobile PPW feud desk. Uses server-validated original programme sides.
  * No World-wide data, auto-submission, or mandatory flow.
  */
-import type {readProgrammeWorkspace,ProgrammeDirectionChoice} from "../db/programme-workspace.js";
+import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
 import {readProgrammeTrajectory} from "../domain/programme-trajectory.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
@@ -14,6 +14,8 @@ export interface ProgrammeDeskPort{
  start(input:{requestId:string;expectedRevision:number;
   sideA:ProgrammeRef[];sideB:ProgrammeRef[];championshipId:string|null}):Promise<unknown>;
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
+ planFinale(input:{requestId:string;expectedRevision:number;programmeId:string;
+  showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null}):Promise<unknown>;
  chooseDirection(input:{requestId:string;expectedRevision:number;programmeId:string;
   showId:string;slotId:string;choice:ProgrammeDirectionChoice}):Promise<unknown>;
  standingConsent(input:{requestId:string;expectedRevision:number;programmeId:string;
@@ -37,6 +39,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  const adviceOpen=new Set<string>();
+ const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}>();
  function rosterOptions(){
@@ -232,6 +235,102 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    next.append(element("small","ppw-muted",
     "Draft and confirmed cards aren't completed history. The show must resolve for the rivalry to advance."));
    panel.append(next);
+   const payoffPanel=element("section","ppw-programme-finale");
+   payoffPanel.append(element("span","ppw-programme-eyebrow","ON-SCREEN RIVALRY PAYOFF"));
+   const planned=p.plannedActivity??[];
+   const variants=(chapter:typeof planned[number]):{value:ProgrammePayoff;label:string}[]=>{
+    if(chapter.kind==="MATCH")return [
+     {value:"DECISIVE_MATCH",label:"Decisive final match"},
+     ...(chapter.titleMatch?[{value:"TITLE_SHOWDOWN" as const,
+      label:"Championship showdown"}]:[]),
+     ...(chapter.stipulationMatch?[{value:"STIPULATION_SHOWDOWN" as const,
+      label:"Final stipulation match"}]:[])];
+    if(["TURN","ATTACK","STABLE_EXIT"].includes(chapter.segmentKind??""))
+     return [{value:"BETRAYAL",label:"Betrayal / final attack"}];
+    if(chapter.segmentKind==="STABLE_RECONCILIATION")
+     return [{value:"RECONCILIATION",label:"Reconciliation"}];
+    if(["CONFRONTATION","CHALLENGE","CONTRACT_SIGNING","INTERRUPTION"]
+     .includes(chapter.segmentKind??""))
+     return [{value:"FINAL_CONFRONTATION",label:"Final confrontation"}];
+    return [];
+   };
+   const eligible=planned.filter(chapter=>variants(chapter).length>0);
+   const existing=p.finale;
+   if(existing){
+    const chosen=planned.find(x=>x.showId===existing.showId&&x.slotId===existing.slotId);
+    payoffPanel.append(element("strong","ppw-programme-finale-current",
+     existing.resolvedWeekIndex!==null?"Finale delivered":
+     "Finale planned · "+(chosen?.showName??"Previously booked show")),
+     element("p","ppw-muted",
+      existing.payoff.replaceAll("_"," ").toLowerCase()+
+      (existing.resolvedWeekIndex===null?
+       " · This rivalry remains active until the booked scene is certified.":
+       " · Certified and included in your rivalry history.")));
+    if(existing.resolvedWeekIndex===null&&!chosen)
+     payoffPanel.append(element("p","ppw-programme-finale-warning",
+      "The selected chapter is no longer booked in your next six weeks. Choose another, or remove this finale plan."));
+   }else payoffPanel.append(element("p","ppw-muted",
+    "Choose a specific booked match or angle to end this rivalry on screen. A plan alone never closes the feud."));
+   if(view.canEdit&&eligible.length){
+    const available=eligible.map(x=>({chapter:x,key:x.showId+"::"+x.slotId}));
+    const defaultChapter=available.find(x=>x.chapter.showId===existing?.showId&&
+      x.chapter.slotId===existing?.slotId)??available[0]!;
+    const prior=finaleChoices.get(p.programmeId);
+    const choice=available.find(x=>x.key===prior?.slotKey)??defaultChapter;
+    const choices=variants(choice.chapter);
+    const payoff=choices.find(x=>x.value===prior?.payoff)?.value??
+     (choices.find(x=>x.value===existing?.payoff)?.value??choices[0]!.value);
+    const edit={slotKey:choice.key,payoff};finaleChoices.set(p.programmeId,edit);
+    const chapterPicker=element("label","ppw-programme-finale-field");
+    chapterPicker.append(element("span","","Final chapter"));
+    const chapterSelect=document.createElement("select");
+    chapterSelect.setAttribute("aria-label","Choose finale chapter for "+
+      p.sideA.map(x=>x.name).join(" & ")+" vs "+p.sideB.map(x=>x.name).join(" & "));
+    for(const x of available){
+     const opt=document.createElement("option");opt.value=x.key;
+     opt.textContent=x.chapter.showName+" · Y"+x.chapter.year+
+      " W"+x.chapter.week+" · "+(x.chapter.kind==="MATCH"?"Match":
+      (x.chapter.segmentKind??"Angle").replaceAll("_"," ").toLowerCase());
+     chapterSelect.append(opt);
+    }
+    chapterSelect.value=choice.key;
+    chapterSelect.onchange=()=>{
+     const selected=available.find(x=>x.key===chapterSelect.value);
+     if(!selected)return;
+     finaleChoices.set(p.programmeId,{slotKey:selected.key,
+      payoff:variants(selected.chapter)[0]!.value});render();
+    };
+    chapterPicker.append(chapterSelect);payoffPanel.append(chapterPicker);
+    const payoffField=element("label","ppw-programme-finale-field");
+    payoffField.append(element("span","","Payoff"));
+    const payoffSelect=document.createElement("select");
+    payoffSelect.setAttribute("aria-label","Choose rivalry payoff");
+    for(const x of choices){
+     const opt=document.createElement("option");opt.value=x.value;
+     opt.textContent=x.label;payoffSelect.append(opt);
+    }
+    payoffSelect.value=payoff;
+    payoffSelect.onchange=()=>{edit.payoff=payoffSelect.value as ProgrammePayoff;};
+    payoffField.append(payoffSelect);payoffPanel.append(payoffField);
+    payoffPanel.append(button(existing?"Change finale plan":"Plan on-screen finale",()=>{
+     const chosen=available.find(x=>x.key===edit.slotKey);
+     if(!chosen)return;
+     void run(()=>port.planFinale({requestId:crypto.randomUUID(),
+      expectedRevision:view!.worldRevision,programmeId:p.programmeId,
+      showId:chosen.chapter.showId,slotId:chosen.chapter.slotId,
+      payoff:edit.payoff}),
+      "Finale planned. Only the certified event can end this rivalry.");
+    },working));
+   }else if(view.canEdit)payoffPanel.append(element("p","ppw-muted",
+    "No eligible finale booked. Add a match, confrontation, attack, turn or reconciliation to your card first."));
+   if(view.canEdit&&existing?.resolvedWeekIndex===null)
+    payoffPanel.append(button("Remove planned finale",()=>{
+     void run(()=>port.planFinale({requestId:crypto.randomUUID(),
+      expectedRevision:view!.worldRevision,programmeId:p.programmeId,
+      showId:null,slotId:null,payoff:null}),
+      "Finale plan removed. Rivalry remains active.");
+    },working));
+   panel.append(payoffPanel);
    // The player's decisions and the verified match record form one visible
    // narrative. No suggested outcome is booked or written to the World.
    const continuity=readProgrammeContinuity({
@@ -454,11 +553,17 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }
     panel.append(terms);
    }
-   panel.append(button("End programme",()=>{
+   const retire=document.createElement("details");
+   retire.className="ppw-programme-close-without-payoff";
+   retire.append(element("summary","","Close without an on-screen payoff"));
+   retire.append(element("p","ppw-muted",
+    "This archives the rivalry immediately without a final match or scene. For a satisfying ending, plan an on-screen finale instead."));
+   retire.append(button("End programme",()=>{
     void run(()=>port.end({requestId:crypto.randomUUID(),
      expectedRevision:view!.worldRevision,programmeId:p.programmeId}),
      "Rivalry concluded");
    },working||!view.canEdit));
+   panel.append(retire);
    list.append(panel);
   }
   if(!active.length)list.append(element("p","ppw-muted","No active rivalries. Start a story below."));
@@ -515,6 +620,16 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp});
     if(chapter.lastBell)archive.append(element("p","",chapter.lastBell));
     if(chapter.latestChapter)archive.append(element("p","",chapter.latestChapter));
+    if(p.finale?.resolvedWeekIndex!=null){
+     const f=p.finale;
+     const week=f.resolvedWeekIndex!;
+     const when="Year "+(Math.floor(week/52)+1)+
+      " · Week "+(week%52+1);
+     archive.append(element("p","ppw-programme-archive-payoff",
+      "ON-SCREEN PAYOFF · "+f.payoff.replaceAll("_"," ")+
+      " · "+when+
+      (f.resolvedWinnerSide?" · Side "+f.resolvedWinnerSide+" prevailed":"")));
+    }
     const last=p.recentActivity[0];
     if(last&&port.openResults)archive.append(button("Revisit the final chapter →",()=>{
      port.openResults?.(last.showId);

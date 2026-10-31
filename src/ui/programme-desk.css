@@ -158,3 +158,24 @@
 .ppw-programme-upcoming-list{font-size:12px;color:#cce2f1}
 .ppw-programme-upcoming-list summary{cursor:pointer;padding:8px 0}
 .ppw-programme-upcoming-list p{padding:7px 0;border-top:1px solid #38536a}
+
+/* Concrete booked finales are authored separately from suggested story beats. */
+.ppw-programme-finale{margin:14px 0;padding:15px;display:grid;gap:10px;
+ background:linear-gradient(120deg,#36243c,#13263a);border:1px solid #d1aa74;
+ border-radius:14px}
+.ppw-programme-finale>.ppw-programme-eyebrow{color:#ffdb9d;padding:0}
+.ppw-programme-finale>p{margin:0;font-size:12px;line-height:1.55;color:#e0dbe4}
+.ppw-programme-finale-current{font-size:15px;color:#ffdfaa}
+.ppw-programme-finale-field{display:grid;gap:6px;font-size:12px;color:#dfebf5;font-weight:750}
+.ppw-programme-finale-field select{box-sizing:border-box;min-height:44px;
+ font-size:16px;width:100%;min-width:0;background:#102a3b;color:#f9f7ff;
+ border:1px solid #7296ab;border-radius:9px;padding:8px 11px}
+.ppw-programme-finale-field select:focus-visible{outline:3px solid #9bdff6;outline-offset:2px}
+.ppw-programme-finale .ppw-programme-action{margin:0;padding:10px 12px;border-radius:10px;
+ background:#86512a;color:#fff5e7;border:1px solid #e8ae65;font-weight:800}
+.ppw-programme-finale-warning{color:#ffcfaa!important;border-left:3px solid #ffa66d;
+ padding:9px;background:#44291d}
+.ppw-programme-close-without-payoff{margin-top:14px;padding:9px;border:1px solid #426078;
+ border-radius:11px;background:#0c1c2f}
+.ppw-programme-close-without-payoff summary{cursor:pointer;color:#b9cfdf;font-size:12px;padding:8px}
+.ppw-programme-close-without-payoff .ppw-programme-action{background:#41303c;color:#fff3f4}
