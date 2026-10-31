@@ -60,6 +60,17 @@ for(const width of [320,390]){
    });
    expect(ribbon.ratio,p.label+" red banner needs at least 4.5:1 contrast, actual "+
     JSON.stringify(ribbon)).toBeGreaterThanOrEqual(4.5);
+   for(const label of [".ppw-tv-caption",".ppw-tv-broadcast-label"]){
+    const ratio=await sample.locator(label).evaluate(element=>{
+     const css=getComputedStyle(element);
+     const rgb=(value:string)=>(value.match(/[0-9.]+/g)?.slice(0,3).map(Number)??[0,0,0])
+      .map(c=>{const n=c/255;return n<=0.04045?n/12.92:Math.pow((n+.055)/1.055,2.4)});
+     const lum=(v:number[])=>v[0]!*0.2126+v[1]!*0.7152+v[2]!*0.0722;
+     const a=lum(rgb(css.color)),b=lum(rgb(css.backgroundColor));
+     return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+    });
+    expect(ratio,p.label+" "+label+" must have a legible opaque label").toBeGreaterThanOrEqual(4.5);
+   }
   }
   await shop.getByRole("button",{name:"Match graphic"}).click();
   await expect(shop.locator(".ppw-tv-fighter")).toHaveCount(2);

@@ -52,6 +52,7 @@ for(const width of [320,390]){
   });
   await page.goto("/#/kayfabe");
   const shop=page.locator(".ppw-kp-staff-themes");
+  const previewColours=new Set<string>();
   const picker=shop.getByRole("combobox",{name:"Choose Staff Office theme"});
   await expect(picker.locator("option")).toHaveCount(9);
   for(const [i,theme] of STAFF_OFFICE_THEMES.entries()){
@@ -62,7 +63,14 @@ for(const width of [320,390]){
     theme.style.toLowerCase().replaceAll("_","-"));
    await expect(sample.locator(".ppw-staff-nav .ppw-staff-button")).toHaveCount(4);
    await expect(sample.locator(".ppw-staff-meeting-brief")).toHaveCount(1);
+   // Catch the original regression: generic theme CSS wins over a specific
+   // theme and all nine previews end up with the identical navy palette.
+   const colour=await sample.evaluate(el=>getComputedStyle(el)
+    .getPropertyValue("--so-bg").trim());
+   expect(colour).not.toBe("");
+   previewColours.add(colour);
   }
+  expect(previewColours.size).toBe(9);
   await picker.selectOption("0");
   await shop.getByRole("button",{name:"Unlock"}).click();
   await expect(shop.getByRole("button",{name:"Applied"})).toBeVisible();

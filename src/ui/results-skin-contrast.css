@@ -100,3 +100,17 @@
  font-family:ui-monospace,Consolas,monospace!important;border-radius:0!important}
 #game .ppw-results[data-results-skin="underground-zine"] :is(
  .ppw-rivalry-at-ringside,.ppw-post-show-road-agent){border-radius:1px!important}
+
+/* Skin badges win over older imported results rules; style + readability
+   must match the surrounding magazine, report or retro PC interface. */
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-main-event{
+ background:#673225!important;color:#fff9d7!important;border-color:#a87f50!important;
+ font-family:Georgia,serif!important}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry .ppw-result-main-event{
+ background:#a41d35!important;color:#fff!important;border-color:#e98292!important}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry .ppw-result-main-event{
+ background:#d9ff47!important;color:#17241e!important;border-color:#17241e!important;
+ border-radius:0!important}
+#game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-entry .ppw-result-main-event{
+ background:#a62740!important;color:#fff7d7!important;border-color:#f1c8d7!important;
+ border-radius:0!important;font-family:ui-monospace,Consolas,monospace!important}
