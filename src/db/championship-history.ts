@@ -7,7 +7,8 @@ import {withSqlClient} from "./postgres.js";
 
 export interface ChampionshipCard {
  promotionId:string;championshipId:string;promotionName:string;name:string;
- division:"SINGLES"|"TAG";status:"ACTIVE"|"INACTIVE";prestige:number;
+ division:"SINGLES"|"TAG";bookingDivision?:"MEN"|"WOMEN"|null;
+ status:"ACTIVE"|"INACTIVE";prestige:number;
  /** Explicit primary/secondary hierarchy; old client fixtures may omit it. */
  titleRole?:"PRIMARY"|"SECONDARY";lastPrestigeChange?:number;
  lastContestWeekIndex?:number|null;
@@ -15,7 +16,8 @@ export interface ChampionshipCard {
  holderName:string|null;defenses:number;
 }
 export interface ChampionshipDirectory {
- worldName:string;year:number;week:number;viewerPromotionId:string;
+ worldName:string;year:number;week:number;worldRevision:number;canEdit:boolean;
+ viewerPromotionId:string;
  titles:ChampionshipCard[];
 }
 export interface ReignCursor {startWeekIndex:number;reignId:string}
@@ -33,7 +35,7 @@ const requireId=(s:string)=>{if(!validId(s))throw new Error("Invalid championshi
 const baseSelect=`
  SELECT c.promotion_id,c.championship_id,p.name AS promotion_name,
  c.name,c.division,c.status,c.prestige,c.current_reign_id,
- c.title_role,c.last_prestige_change,c.last_contest_week_index,
+ c.title_role,c.last_prestige_change,c.last_contest_week_index,c.booking_division,
  r.holder_type,COALESCE(r.person_id,r.team_id) AS holder_id,
  COALESCE(person.name,team.name) AS holder_name,
  COALESCE(r.defenses,0)::integer AS defenses
@@ -47,7 +49,8 @@ const baseSelect=`
 `;
 type TitleRow={
  promotion_id:string;championship_id:string;promotion_name:string;name:string;
- division:"SINGLES"|"TAG";status:"ACTIVE"|"INACTIVE";prestige:number;
+ division:"SINGLES"|"TAG";booking_division:"MEN"|"WOMEN"|null;
+ status:"ACTIVE"|"INACTIVE";prestige:number;
  title_role:"PRIMARY"|"SECONDARY";last_prestige_change:number;
  last_contest_week_index:number|null;
  current_reign_id:string|null;holder_type:"PERSON"|"TEAM"|null;
@@ -55,7 +58,8 @@ type TitleRow={
 };
 const card=(r:TitleRow):ChampionshipCard=>({
  promotionId:r.promotion_id,championshipId:r.championship_id,promotionName:r.promotion_name,
- name:r.name,division:r.division,status:r.status,prestige:r.prestige,
+ name:r.name,division:r.division,bookingDivision:r.booking_division,
+ status:r.status,prestige:r.prestige,
  titleRole:r.title_role,lastPrestigeChange:r.last_prestige_change,
  lastContestWeekIndex:r.last_contest_week_index,
  currentReignId:r.current_reign_id,
@@ -66,8 +70,11 @@ const card=(r:TitleRow):ChampionshipCard=>({
 async function assertController(tx:{query<T extends Record<string,unknown>>(sql:string,
  params:readonly unknown[]):Promise<readonly T[]>},
  worldId:string,playerId:string,viewerPromotionId:string){
- const owner=await tx.query<{world_name:string;year:number;week:number}>(`
- SELECT w.name AS world_name,w.year,w.week FROM ppw_worlds w
+ const owner=await tx.query<{world_name:string;year:number;week:number;
+  revision:string|number;can_edit:boolean}>(`
+ SELECT w.name AS world_name,w.year,w.week,w.revision,
+ (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
+ FROM ppw_worlds w
  JOIN ppw_memberships m ON m.world_id=w.world_id
  JOIN ppw_promotion_controls pc ON pc.world_id=w.world_id AND pc.player_id=m.player_id
  JOIN ppw_promotions p ON p.world_id=pc.world_id AND p.promotion_id=pc.promotion_id
@@ -88,6 +95,7 @@ export async function readChampionshipDirectory(pool:TransactionPool,
  c.prestige DESC,p.name,c.name,c.championship_id LIMIT 201`,[worldId]);
   if(rows.length>200)throw new Error("World championship directory exceeds safe page limit");
   return {worldName:owner.world_name,year:owner.year,week:owner.week,
+   worldRevision:Number(owner.revision),canEdit:owner.can_edit,
    viewerPromotionId,titles:rows.map(card)};
  });
 }
