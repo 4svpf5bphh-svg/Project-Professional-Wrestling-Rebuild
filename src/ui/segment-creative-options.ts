@@ -30,7 +30,9 @@ const labels:Readonly<Record<string,string>>={
  SPEAKER_PREVAILS:"Speaker gets the last word",
  RESCUER_STANDS_TALL:"Rescuer stands tall",ATTACKER_ESCAPES:"Attacker escapes",
  RESCUE_OVERWHELMED:"Rescue fails",ATTACKER_STANDS_TALL:"Attacker stands tall",
- VICTIM_FIGHTS_BACK:"Victim fights back",OFFICIALS_SEPARATE:"Officials separate them"
+ VICTIM_FIGHTS_BACK:"Victim fights back",OFFICIALS_SEPARATE:"Officials separate them",
+ DISTRACTION:"Distract the opponent",RINGSIDE_RUN_IN:"Rush the ring",
+ REFEREE_DIVERSION:"Distract the referee"
 };
 const fieldNames:Readonly<Record<string,string>>={
  purpose:"The message",format:"Interview setting",topic:"Interview subject",
