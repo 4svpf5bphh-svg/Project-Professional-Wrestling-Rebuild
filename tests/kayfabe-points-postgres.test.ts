@@ -321,6 +321,38 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,null);
   assert.ok((await readKayfabeWorkspace(db.pool,aa)).entitlements.includes(
    "STAFF_OFFICE_EXECUTIVE_SUITE"));
+    // Broadcast package selections are account-owned and never touch World
+  // match results, cards, creative behaviour or the other player's wallet.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_kp_wallets SET balance=5000 WHERE player_id=$1",[a]));
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_BROADCAST_PACKAGE",sku:"BROADCAST_PRIME_TIME_COMBAT",
+   requestId:"rival-tv"}),/Unlock this broadcast package/);
+  const prime={kind:"BUY" as const,sku:"BROADCAST_PRIME_TIME_COMBAT" as const,
+   requestId:"tv-prime-purchase"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,prime) as {price:number}).price,1500);
+  assert.equal((await applyKayfabeAction(db.pool,aa,prime)).replayed,true);
+  let tvWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(tvWallet.balance,3500);
+  assert.equal(tvWallet.activeBroadcastPackage,"PRIME_TIME_COMBAT");
+  assert.ok(tvWallet.entitlements.includes("BROADCAST_PRIME_TIME_COMBAT"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"BROADCAST_PRIME_TIME_COMBAT",
+   requestId:"tv-duplicate"}),/already own/);
+  const lucha={kind:"BUY" as const,sku:"BROADCAST_LUCHA_FIESTA" as const,
+   requestId:"tv-lucha-purchase"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,lucha) as {price:number}).price,1500);
+  tvWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(tvWallet.balance,2000);
+  assert.equal(tvWallet.activeBroadcastPackage,"LUCHA_FIESTA");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_BROADCAST_PACKAGE",sku:"BROADCAST_PRIME_TIME_COMBAT",
+   requestId:"tv-switch-back"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).balance,2000);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_BROADCAST_PACKAGE",requestId:"tv-standard"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeBroadcastPackage,null);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeBroadcastPackage,null);
     await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });

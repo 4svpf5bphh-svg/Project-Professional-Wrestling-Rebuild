@@ -35,6 +35,7 @@ for(const conflicting of [false,true]){
    showId:"weekly",year:1,week:5,worldRevision:revision,
    canEdit:true,ready:false,day:5,venueId:"arena",showName:"Weekly show",
    promotionName:"Independent",venueName:"Arena",marketName:"Home",
+   broadcastPackage:"PRIME_TIME_COMBAT",
    bookingClass:"REGULAR",ticketStrategy:"STANDARD",
    championships:[],programmes:[],programmeLinks:[],
    selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
@@ -66,6 +67,11 @@ for(const conflicting of [false,true]){
   });
   await page.goto("/#/planner");
   await page.getByRole("button",{name:"Edit card"}).click();
+  await expect(page.locator(".ppw-card-booking")).toHaveAttribute("data-broadcast-package","primetime");
+  await page.locator(".ppw-card-broadcast-slot summary").first().click();
+  await expect(page.locator(".ppw-card-broadcast-slot .ppw-tv-frame")).toHaveAttribute("data-kind","match");
+  await expect(page.locator(".ppw-card-broadcast-slot .ppw-tv-red-label")).toHaveText("UP NEXT · MATCH");
+  await page.locator(".ppw-card-broadcast-slot summary").first().click();
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
   const dialog=page.getByRole("dialog",{name:"Edit match"});
   await dialog.getByLabel("Winner").selectOption("1");

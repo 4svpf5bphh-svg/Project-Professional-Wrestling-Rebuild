@@ -122,3 +122,24 @@ test("nine Staff Office designs are account-only, selectable and never affect ga
  assert.throws(()=>validateKpAction({kind:"APPLY_STAFF_OFFICE_THEME",
   sku:"POSTER_ECLIPSE" as never,requestId:"cross-category"}),/Unknown/);
 });
+
+test("nine broadcast packages own unique cosmetic SKUs, have white-on-red labels and cost 1500 KP",async()=>{
+ const {BROADCAST_PACKAGES,broadcastPackageClass,broadcastPackageBySku}=await import(
+  "../src/domain/broadcast-packages.js");
+ assert.equal(BROADCAST_PACKAGES.length,9);
+ assert.equal(new Set(BROADCAST_PACKAGES.map(p=>p.sku)).size,9);
+ for(const p of BROADCAST_PACKAGES){
+  assert.equal(catalogueItem(p.sku)?.price,1500);
+  assert.equal(catalogueItem(p.sku)?.kind,"BROADCAST_PACKAGE");
+  assert.equal(broadcastPackageClass(p.style),p.key);
+  assert.equal(broadcastPackageBySku(p.sku)?.style,p.style);
+  assert.deepEqual(validateKpAction({kind:"APPLY_BROADCAST_PACKAGE",
+   sku:p.sku,requestId:p.sku}),
+   {kind:"APPLY_BROADCAST_PACKAGE",sku:p.sku,requestId:p.sku});
+ }
+ assert.equal(broadcastPackageClass(null),"standard");
+ assert.deepEqual(validateKpAction({kind:"CLEAR_BROADCAST_PACKAGE",requestId:"reset"}),
+  {kind:"CLEAR_BROADCAST_PACKAGE",requestId:"reset"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_BROADCAST_PACKAGE",
+  sku:"POSTER_ECLIPSE" as never,requestId:"wrong-kind"}),/Unknown/);
+});
