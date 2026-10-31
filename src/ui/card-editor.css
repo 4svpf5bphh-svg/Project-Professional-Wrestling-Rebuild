@@ -507,3 +507,19 @@ body>.ppw-card-edit-shade .ppw-match-style-fitness-row>span{
 .ppw-editor .ppw-card-grip::before{content:"";display:block;width:20px;
  height:26px;background-image:radial-gradient(circle,#f8d7a0 2px,transparent 2.5px);
  background-size:10px 9px;background-position:center;pointer-events:none}
+
+/* Feud suggestions are optional drafts with a direct, accessible booking action. */
+.ppw-card-rivalry-ideas{margin:11px 0;padding:11px 13px;
+ border:1px solid #6283ac;background:#162a3d;border-radius:13px}
+.ppw-card-rivalry-ideas>summary{color:#f3e8ff;font-weight:850;cursor:pointer;
+ min-height:42px;padding:8px 0}
+.ppw-card-rivalry-ideas>p{margin:6px 0 10px;line-height:1.45}
+.ppw-card-rivalry-idea{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:5px;padding:12px 0;border-top:1px solid #4e647e}
+.ppw-card-rivalry-idea>strong{color:#e6f7ff;font-size:13px}
+.ppw-card-rivalry-idea>small{line-height:1.4;display:block}
+.ppw-card-rivalry-add{justify-self:stretch;text-align:left;min-height:44px;
+ border:1px solid #83afdd;background:#244e70;color:#f5fbff;
+ font:750 13px system-ui;border-radius:9px;padding:9px 12px;cursor:pointer}
+.ppw-card-rivalry-add:disabled{opacity:.5}
+.ppw-card-rivalry-add:focus-visible{outline:3px solid #bdeaff;outline-offset:2px}
