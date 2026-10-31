@@ -5,6 +5,8 @@ import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
 import {staffMeetingDialogue} from "./staff-meeting-voice.js";
+import {staffOfficeThemeClass} from "../domain/staff-office-themes.js";
+import "./staff-office-themes.css";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
@@ -117,7 +119,9 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   row.append(input,el("strong","",text),el("span","",desc));return row;
  }
  function render(){
-  root.classList.add("ppw-editor","ppw-staff");root.replaceChildren();
+  root.classList.add("ppw-editor","ppw-staff");
+  root.dataset.staffOfficeTheme=staffOfficeThemeClass(view?.staffOfficeTheme);
+  root.replaceChildren();
   const header=el("header","ppw-staff-head");
   if(port.back)header.append(button("← Back",()=>port.back?.()));
   header.append(el("span","ppw-staff-kicker","THE OFFICE / BACKSTAGE"),

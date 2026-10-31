@@ -5,6 +5,8 @@ import type {readKayfabeWorkspace,KpAction} from "../db/kayfabe-points.js";
 import "./kayfabe-desk.css";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {EVENT_POSTER_SKINS,type EventPosterSku} from "../domain/event-poster-skins.js";
+import {type StaffOfficeThemeSku} from "../domain/staff-office-themes.js";
+import {createStaffOfficeThemePreview} from "./staff-office-theme-preview.js";
 import type {KpCreateStyle,KpCreateGimmick} from "../domain/kp-create-wrestler.js";
 export type KayfabeView=Awaited<ReturnType<typeof readKayfabeWorkspace>>;
 export interface KayfabePort{
@@ -25,7 +27,7 @@ const format=(n:number)=>n.toLocaleString("en-GB")+" KP";
 export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
- let createOpen=false,reviewing=false,posterIndex=0;
+ let createOpen=false,reviewing=false,posterIndex=0,staffThemeIndex=0;
  let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
  let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
  let signatureMove="",finishingMove="";
@@ -56,6 +58,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="APPLY_RESULTS_SKIN"?"Results skin applied.":
     action.kind==="APPLY_EVENT_POSTER"?"Animated event poster applied to your upcoming premium shows.":
     action.kind==="CLEAR_EVENT_POSTER"?"Standard event artwork restored.":
+    action.kind==="APPLY_STAFF_OFFICE_THEME"?"Staff Office appearance updated.":
+    action.kind==="CLEAR_STAFF_OFFICE_THEME"?"Original Staff Office appearance restored.":
     action.kind==="CLEAR_RESULTS_SKIN"?"Original PPW results appearance restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
@@ -141,7 +145,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("h2","","Promotion style & prestige"),
    el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
   const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER")){
+  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER"&&i.kind!=="STAFF_OFFICE_THEME")){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
    const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
    const article=el("article","ppw-kp-item");
@@ -248,6 +252,49 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
   }
   root.append(posterShop);
+  // Genuine themed Staff Office preview; the live screen shares these CSS rules.
+  // Only one CSS preview is mounted at once to avoid running nine animations.
+  const themeShop=el("section","ppw-kp-section ppw-kp-staff-themes");
+  themeShop.append(el("span","ppw-kp-kicker","STAFF OFFICE PRESENTATION"),
+   el("h2","","Staff Office themes"),
+   el("p","ppw-kp-muted",
+    "Nine complete cosmetic treatments for Meetings, My Staff, Contracts and Staff Market. One-time ownership, free switching, no changes to staff abilities or wages."));
+  const themes=view.catalogue.filter(i=>i.kind==="STAFF_OFFICE_THEME");
+  if(themes.length){
+   staffThemeIndex=Math.max(0,Math.min(staffThemeIndex,themes.length-1));
+   const selected=themes[staffThemeIndex]!;
+   const nav=el("div","ppw-kp-staff-theme-picker");
+   const previous=btn("← Previous",()=>{staffThemeIndex=(staffThemeIndex+themes.length-1)%themes.length;draw();},busy);
+   const next=btn("Next →",()=>{staffThemeIndex=(staffThemeIndex+1)%themes.length;draw();},busy);
+   const picker=el("select","ppw-kp-input") as HTMLSelectElement;
+   picker.setAttribute("aria-label","Choose Staff Office theme");
+   for(let i=0;i<themes.length;i++){
+    const option=el("option","",String(i+1).padStart(2,"0")+" · "+themes[i]!.label) as HTMLOptionElement;
+    option.value=String(i);picker.append(option);
+   }
+   picker.value=String(staffThemeIndex);
+   picker.onchange=()=>{staffThemeIndex=Number(picker.value);draw();};
+   nav.append(previous,picker,next);themeShop.append(nav);
+   themeShop.append(createStaffOfficeThemePreview(selected.style));
+   themeShop.append(el("small","ppw-kp-muted",
+    "Sample staff details are illustrative; the live office uses your actual workforce and figures."));
+   const owned=view.entitlements.includes(selected.sku);
+   const active=view.activeStaffOfficeTheme===selected.style;
+   const row=el("div","ppw-kp-poster-details");
+   const copy=el("div","ppw-kp-item-copy");
+   copy.append(el("strong","",selected.label),
+    el("small","",active?"Owned · applied":owned?"Owned · ready to apply":
+     "One-time "+format(selected.price)+" · account-wide"));
+   row.append(copy,btn(active?"Applied":owned?"Apply":"Unlock",
+    ()=>void run(owned?
+     {kind:"APPLY_STAFF_OFFICE_THEME",sku:selected.sku as StaffOfficeThemeSku,requestId:crypto.randomUUID()}:
+     {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
+    busy||active||(!owned&&view.balance<selected.price)));
+   themeShop.append(row);
+   if(view.activeStaffOfficeTheme)themeShop.append(btn("Use original Staff Office",
+    ()=>void run({kind:"CLEAR_STAFF_OFFICE_THEME",requestId:crypto.randomUUID()}),busy));
+  }
+  root.append(themeShop);
   const people=el("section","ppw-kp-section");
   people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),
    el("h2","","Personalise your staff"),
