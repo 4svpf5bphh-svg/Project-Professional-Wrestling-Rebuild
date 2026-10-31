@@ -225,6 +225,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     show:s.name,promotion:owner??data?.promotionName??"",compact:true});
   if(chosenArtwork){
    chosenArtwork.classList.add("ppw-calendar-owned-poster");
+   card.dataset.hasArtwork="true";
    card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(chosenArtwork);
    card.dataset.animatedPoster=String(s.eventType==="MAJOR");
   }
