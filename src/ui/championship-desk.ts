@@ -10,6 +10,8 @@ import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCur
  from "../db/championship-history.js";
 export interface ChampionshipPort extends Partial<TournamentPort> {
  loadDirectory():Promise<ChampionshipDirectory>;
+ createChampionship?(input:{requestId:string;expectedRevision:number;
+  kind:"SECONDARY_MEN"|"WOMEN_SINGLES";name:string}):Promise<unknown>;
  loadHistory(promotionId:string,championshipId:string,cursor:ReignCursor|null):Promise<ChampionshipHistory>;
  openWrestler?(id:string):void;
  openTeam?(id:string):void;
@@ -43,6 +45,64 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
      cancelTournament:port.cancelTournament!},
     ()=>void mountChampionshipDesk(root,port,onBack,initialScope));
    header.append(tourney);
+  }
+  if(port.createChampionship&&directory.canEdit){
+   const current=directory.titles.filter(x=>x.promotionId===directory.viewerPromotionId&&
+    x.status==="ACTIVE");
+   const canSecondary=!current.some(x=>x.division==="SINGLES"&&
+    x.bookingDivision==="MEN"&&x.titleRole==="SECONDARY");
+   const canWomen=!current.some(x=>x.division==="SINGLES"&&
+    x.bookingDivision==="WOMEN"&&x.titleRole==="PRIMARY");
+   const create=document.createElement("details");
+   create.className="ppw-title-new";
+   create.append(element("summary","","+ Create championship"));
+   const form=element("div","ppw-title-new-form");
+   const kind=document.createElement("select");
+   kind.setAttribute("aria-label","Championship type");
+   for(const [value,title,allowed] of [
+    ["SECONDARY_MEN","Men's secondary singles",canSecondary],
+    ["WOMEN_SINGLES","Women's singles championship",canWomen]
+   ] as const){
+    const o=document.createElement("option");
+    o.value=value;o.textContent=title;
+    o.disabled=!allowed;kind.append(o);
+   }
+   if(!canSecondary&&canWomen)kind.value="WOMEN_SINGLES";
+   const entry=document.createElement("input");
+   entry.type="text";entry.maxLength=90;entry.minLength=4;
+   entry.setAttribute("aria-label","New championship name");
+   entry.value=directory.titles.find(t=>t.promotionId===directory.viewerPromotionId)?.
+    promotionName+" "+(kind.value==="WOMEN_SINGLES"?"Women's":"Intercontinental")+
+    " Championship";
+   kind.onchange=()=>{
+    const prefix=directory.titles.find(t=>t.promotionId===directory.viewerPromotionId)?.
+     promotionName??"";
+    entry.value=prefix+" "+(kind.value==="WOMEN_SINGLES"?
+     "Women's":"Intercontinental")+" Championship";
+   };
+   const confirm=element("button","ppw-title-more","Create vacant title") as HTMLButtonElement;
+   confirm.type="button";confirm.disabled=!canSecondary&&!canWomen||current.length>=8;
+   const warning=element("p","ppw-muted",
+    "New belts start vacant. Book a valid title match to crown the first champion.");
+   const feedback=element("p","ppw-title-new-feedback");
+   confirm.onclick=async()=>{
+    if(!port.createChampionship)return;
+    confirm.disabled=true;feedback.textContent="Creating title…";
+    try{
+     const result=await port.createChampionship({requestId:crypto.randomUUID(),
+      expectedRevision:directory.worldRevision,
+      kind:kind.value as "SECONDARY_MEN"|"WOMEN_SINGLES",name:entry.value});
+     if(result&&typeof result==="object"&&"status" in result&&
+       (result as {status:unknown}).status==="STALE")
+      throw new Error("Another manager changed the World. Reload and try again.");
+     await mountChampionshipDesk(root,port,onBack,"MINE");
+    }catch(e){
+     feedback.textContent=e instanceof Error?e.message:"Could not create championship";
+     confirm.disabled=false;
+    }
+   };
+   form.append(kind,entry,warning,confirm,feedback);
+   create.append(form);header.append(create);
   }
   const search=document.createElement("input");
   search.type="search";search.placeholder="Find a belt, promotion or champion";
@@ -109,7 +169,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    const identity=element("span","ppw-belt-identity");
    identity.append(element("small","ppw-belt-title-kicker",
     family==="tag"?"TAG TEAM CHAMPIONSHIP":
-    family==="women"?"WOMEN'S CHAMPIONSHIP":
+    title.bookingDivision==="WOMEN"||family==="women"?"WOMEN'S CHAMPIONSHIP":
     family==="world"?"WORLD CHAMPIONSHIP":"CHAMPIONSHIP"));
    identity.append(element("strong","ppw-belt-name",title.name));
    const promo=element("span","ppw-belt-promotion",
