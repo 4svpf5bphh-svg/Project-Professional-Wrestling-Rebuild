@@ -168,8 +168,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   ]))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
-   programme_id:string;heat:number|null;repetition:number;label:string;follow_up:unknown}>([
-   "SELECT p.programme_id,p.heat,p.repetition,",
+   programme_id:string;heat:number|null;repetition:number;
+   activity_count:number;segment_count:number;label:string;follow_up:unknown}>([
+   "SELECT p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
    "ORDER BY r.position),'Side A') || ' vs ' ||",
@@ -196,7 +197,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "LEFT JOIN ppw_tag_teams team ON team.world_id=r.world_id",
    "AND team.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
-   "GROUP BY p.programme_id,p.heat,p.repetition",
+   "GROUP BY p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count",
    "ORDER BY p.programme_id LIMIT 101"
    ].join(" "),[id.worldId,id.promotionId]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
@@ -327,7 +328,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
         direction.laterAngleRecorded===true
       }:null;
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,
-     repetition:p.repetition,latestFollowUp};
+     repetition:p.repetition,activityCount:p.activity_count,
+     segmentCount:p.segment_count,latestFollowUp};
    }),
    programmeLinks:links.filter(x=>x.kind==="SEGMENT")
     .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
