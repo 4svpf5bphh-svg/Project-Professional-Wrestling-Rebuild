@@ -81,6 +81,11 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      beat.ending==="REJECTED"?"The proposed on-screen signing was rejected.":
      beat.ending==="WALKOUT"?"The signing ended with a walkout.":
      "The signing erupted into a brawl.";break;
+   case "INTERFERENCE":
+    ending=beat.presentation==="DISTRACTION"?
+     "A distraction disrupted the action.":
+     beat.presentation==="REFEREE_DIVERSION"?
+      "The referee's attention was diverted.":"The interference came from ringside.";break;
    case "ATTACK":
     ending=beat.presentation==="PULL_APART_BRAWL"?
      "Officials had to pull the wrestlers apart.":
