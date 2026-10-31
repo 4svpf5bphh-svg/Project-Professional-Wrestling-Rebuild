@@ -168,7 +168,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  const configured=await tx.query<{
   series_id:string;name:string;role:ShowSeries["role"];
   event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
-  importance:number;active:boolean;
+  importance:number;active:boolean;poster_style:string|null;
  }>([
   "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active,",
    "(SELECT style FROM ppw_kp_series_posters poster WHERE poster.world_id=$1",
@@ -176,12 +176,12 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    "AND poster.player_id=$3) AS poster_style",
   "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2",
   "ORDER BY series_id LIMIT 25"
- ].join(" "),[s.worldId,s.promotionId]);
+ ].join(" "),[s.worldId,s.promotionId,s.playerId]);
  if(configured.length>24)throw new Error("Planner calendar series limit exceeded");
  const scheduled:ShowSeries[]=configured.length?configured.map(x=>({
   seriesId:x.series_id,name:x.name,role:x.role,eventType:x.event_type,
   cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
-  importance:x.importance,active:x.active
+  importance:x.importance,active:x.active,posterStyle:x.poster_style
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
