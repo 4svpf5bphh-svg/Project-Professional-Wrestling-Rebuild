@@ -146,3 +146,14 @@
  .ppw-kp-staff-theme-picker{grid-template-columns:1fr 1fr}
  .ppw-kp-staff-theme-picker select{grid-column:1/-1;grid-row:1}
 }
+
+/* Single live television preview for a selectable package. */
+.ppw-kp-broadcast-shop{min-width:0;overflow:hidden}
+.ppw-kp-broadcast-picker{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px;align-items:center}
+.ppw-kp-broadcast-picker .ppw-kp-button{white-space:nowrap;min-height:42px;padding:10px 7px}
+.ppw-kp-broadcast-picker select{min-width:0;font-size:12px}
+.ppw-kp-broadcast-scenes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.ppw-kp-broadcast-scenes .ppw-kp-button{font-size:11px;min-height:46px;padding:8px 5px;line-height:1.25;white-space:normal}
+.ppw-kp-broadcast-scenes [aria-pressed=true]{border-color:#8ee8ff!important;background:#255b99!important;color:#fff!important}
+#game .ppw-kp-broadcast-showcase{max-width:430px;margin:0 auto}
+@media(max-width:370px){.ppw-kp-broadcast-picker{grid-template-columns:1fr 1fr}.ppw-kp-broadcast-picker select{grid-column:1/-1;grid-row:1}}

@@ -7,6 +7,8 @@ import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {EVENT_POSTER_SKINS,type EventPosterSku} from "../domain/event-poster-skins.js";
 import {type StaffOfficeThemeSku} from "../domain/staff-office-themes.js";
 import {createStaffOfficeThemePreview} from "./staff-office-theme-preview.js";
+import {type BroadcastPackageSku} from "../domain/broadcast-packages.js";
+import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {KpCreateStyle,KpCreateGimmick} from "../domain/kp-create-wrestler.js";
 export type KayfabeView=Awaited<ReturnType<typeof readKayfabeWorkspace>>;
 export interface KayfabePort{
@@ -27,7 +29,8 @@ const format=(n:number)=>n.toLocaleString("en-GB")+" KP";
 export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
- let createOpen=false,reviewing=false,posterIndex=0,staffThemeIndex=0;
+ let createOpen=false,reviewing=false,posterIndex=0,staffThemeIndex=0,broadcastIndex=0;
+ let broadcastScene:"OPEN"|"MATCH"|"SEGMENT"="OPEN";
  let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
  let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
  let signatureMove="",finishingMove="";
@@ -60,6 +63,8 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="CLEAR_EVENT_POSTER"?"Standard event artwork restored.":
     action.kind==="APPLY_STAFF_OFFICE_THEME"?"Staff Office appearance updated.":
     action.kind==="CLEAR_STAFF_OFFICE_THEME"?"Original Staff Office appearance restored.":
+    action.kind==="APPLY_BROADCAST_PACKAGE"?"Broadcast package applied.":
+    action.kind==="CLEAR_BROADCAST_PACKAGE"?"Standard broadcast presentation restored.":
     action.kind==="CLEAR_RESULTS_SKIN"?"Original PPW results appearance restored.":
     "Promotion crest updated.";
   }catch(e){error=e instanceof Error?e.message:"The transaction was not completed";}
@@ -145,7 +150,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    el("h2","","Promotion style & prestige"),
    el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
   const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER"&&i.kind!=="STAFF_OFFICE_THEME")){
+  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER"&&i.kind!=="STAFF_OFFICE_THEME"&&i.kind!=="BROADCAST_PACKAGE")){
    const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
    const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
    const article=el("article","ppw-kp-item");
@@ -295,6 +300,61 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     ()=>void run({kind:"CLEAR_STAFF_OFFICE_THEME",requestId:crypto.randomUUID()}),busy));
   }
   root.append(themeShop);
+  // Single real, on-demand television preview. No extra World read, video or
+  // animation loop for a nine-item catalogue.
+  const broadcastShop=el("section","ppw-kp-section ppw-kp-broadcast-shop");
+  broadcastShop.append(el("span","ppw-kp-kicker","TELEVISION IDENTITY"),
+   el("h2","","Broadcast packages"),
+   el("p","ppw-kp-muted",
+    "Nine real CSS television identities for show openings and compact match/angle graphics. Results Skins and event posters remain separate."));
+  const tvPackages=view.catalogue.filter(p=>p.kind==="BROADCAST_PACKAGE");
+  if(tvPackages.length){
+   broadcastIndex=Math.min(Math.max(0,broadcastIndex),tvPackages.length-1);
+   const selected=tvPackages[broadcastIndex]!;
+   const navigator=el("div","ppw-kp-broadcast-picker");
+   const previous=btn("← Previous",()=>{broadcastIndex=(broadcastIndex+tvPackages.length-1)%tvPackages.length;draw();},busy);
+   const next=btn("Next →",()=>{broadcastIndex=(broadcastIndex+1)%tvPackages.length;draw();},busy);
+   const picker=el("select","ppw-kp-input") as HTMLSelectElement;
+   picker.setAttribute("aria-label","Choose broadcast package");
+   for(const [i,p] of tvPackages.entries()){
+    const option=el("option","",String(i+1).padStart(2,"0")+" · "+p.label) as HTMLOptionElement;
+    option.value=String(i);picker.append(option);
+   }
+   picker.value=String(broadcastIndex);
+   picker.onchange=()=>{broadcastIndex=Number(picker.value);draw();};
+   navigator.append(previous,picker,next);broadcastShop.append(navigator);
+   const scenes=el("div","ppw-kp-broadcast-scenes");
+   for(const [label,kind] of [["Opening titles","OPEN"],["Match graphic","MATCH"],["Segment graphic","SEGMENT"]] as const){
+    const control=btn(label,()=>{broadcastScene=kind;draw();},busy);
+    control.setAttribute("aria-pressed",String(broadcastScene===kind));
+    scenes.append(control);
+   }
+   broadcastShop.append(scenes);
+   const preview=createBroadcastPackageFrame({
+    style:selected.style,kind:broadcastScene,
+    promotion:view.promotionName,show:"Ascension",
+    sideA:"Samoa Joe",sideB:"Matt Riddle",
+    segmentPerson:"Místico",segmentLabel:"SURPRISE DEBUT"});
+   if(preview){preview.classList.add("ppw-kp-broadcast-showcase");broadcastShop.append(preview);}
+   broadcastShop.append(el("small","ppw-kp-muted",
+    "Sample show and wrestler names are illustrative. Your real promotion, events and card data appear in-game."));
+   const owned=view.entitlements.includes(selected.sku);
+   const applied=view.activeBroadcastPackage===selected.style;
+   const row=el("div","ppw-kp-poster-details");
+   const copy=el("div","ppw-kp-item-copy");
+   copy.append(el("strong","",selected.label),
+    el("small","",applied?"Owned · applied":owned?"Owned · ready to apply":
+     "One-time "+format(selected.price)+" · account-wide"));
+   row.append(copy,btn(applied?"Applied":owned?"Apply":"Unlock",
+    ()=>void run(owned?
+      {kind:"APPLY_BROADCAST_PACKAGE",sku:selected.sku as BroadcastPackageSku,requestId:crypto.randomUUID()}:
+      {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
+    busy||applied||(!owned&&view.balance<selected.price)));
+   broadcastShop.append(row);
+   if(view.activeBroadcastPackage)broadcastShop.append(btn("Use standard broadcast graphics",
+    ()=>void run({kind:"CLEAR_BROADCAST_PACKAGE",requestId:crypto.randomUUID()}),busy));
+  }
+  root.append(broadcastShop);
   const people=el("section","ppw-kp-section");
   people.append(el("span","ppw-kp-kicker","STAFF IDENTITIES"),
    el("h2","","Personalise your staff"),
