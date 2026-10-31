@@ -26,8 +26,9 @@ export async function settleCompletedProgrammeHistory(
   input.eventImportance<0||input.eventImportance>100)
   throw new Error("Programme history show scope mismatch");
  const entries=await tx.query<{programme_id:string;slot_id:string;kind:string;
-  finale_payoff:ProgrammePayoff|null}>([
-  "SELECT a.programme_id,a.slot_id,a.kind,f.payoff AS finale_payoff",
+  finale_payoff:ProgrammePayoff|null;finale_planned_week_index:number|null}>([
+  "SELECT a.programme_id,a.slot_id,a.kind,",
+  "f.payoff AS finale_payoff,f.planned_week_index AS finale_planned_week_index",
   "FROM ppw_programme_match_activities a",
   "LEFT JOIN ppw_programme_finales f ON f.world_id=a.world_id",
   "AND f.promotion_id=a.promotion_id AND f.programme_id=a.programme_id",
@@ -160,7 +161,8 @@ export async function settleCompletedProgrammeHistory(
  // Never close because an angle was skipped/interrupted, a match was drawn,
  // or a previously selected segment was removed/rewritten after planning.
  const delivered=included.flatMap(link=>{
-  if(!link.finale_payoff)return [];
+  if(!link.finale_payoff||link.finale_planned_week_index===null||
+   index<link.finale_planned_week_index)return [];
   const record=records.find(r=>r.programme_id===link.programme_id&&
    r.slot_id===link.slot_id);
   const payload=bySlot.get(link.slot_id);
