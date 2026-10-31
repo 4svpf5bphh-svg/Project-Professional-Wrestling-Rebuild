@@ -94,7 +94,8 @@ for(const width of [320,390]){
   });
   for(const theme of STAFF_OFFICE_THEMES){
    activeTheme=theme.style;
-   await page.goto("/#/staff");
+   if(reads===0)await page.goto("/#/staff");
+   else await page.reload(); // A new Staff Office mount reads the newly selected theme.
    const office=page.locator(".ppw-staff").first();
    await expect(office).toHaveAttribute("data-staff-office-theme",
     theme.style.toLowerCase().replaceAll("_","-"));
