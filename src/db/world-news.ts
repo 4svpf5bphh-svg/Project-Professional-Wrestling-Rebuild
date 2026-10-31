@@ -250,7 +250,7 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    " furious, with talk of an ugly argument about the finish. A second version says everyone "+
    "left as planned and the supposed confrontation never took place. "+
    "Neither claim has been corroborated. Is this genuine dressing-room heat, a bad tip, or a work?",
-   "TITLE");
+   "EVENT");
  }else if(hot){
   const cast=storyPeople(hot.story_json).map(id=>names.get(id))
    .filter((x):x is string=>!!x);
