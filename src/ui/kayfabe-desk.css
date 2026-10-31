@@ -106,3 +106,18 @@
 .ppw-kp-zine-preview strong{font:950 italic 28px/1 system-ui;color:#1b1b1b;letter-spacing:-.065em}
 .ppw-kp-zine-sub{font:750 11px/1.45 system-ui;color:#453b34}
 .ppw-kp-results-skin-row+.ppw-kp-zine-preview{margin-top:17px}
+
+/* Retro Booker '02 — a classic desktop-app skin card, no external assets. */
+.ppw-kp-retro-preview{display:grid;gap:6px;min-width:0;overflow:hidden;
+ background:#d9e0ea;color:#142343;border:2px solid #101e43;border-radius:0;
+ box-shadow:inset 2px 2px #fff,inset -2px -2px #8999b5}
+.ppw-kp-retro-channel{display:block;padding:8px 11px;background:#163c99;color:#fff;
+ border-bottom:4px solid #c6273b;font:900 10px/1.35 ui-monospace,Consolas,monospace}
+.ppw-kp-retro-preview strong{display:block;margin:4px 11px 0;padding:10px 8px;
+ background:linear-gradient(90deg,#c82739 0 13%,#1b48b1 13%);color:#fff;
+ font:900 clamp(19px,6.5vw,29px)/1.1 ui-monospace,Consolas,monospace;
+ text-shadow:2px 2px #0d2a6c;border:2px solid #192b55;overflow-wrap:anywhere}
+.ppw-kp-retro-sub{display:block;margin:0 11px 10px;padding:7px 8px;
+ background:#edf1f7;border:1px solid #8796b1;color:#1a3159;
+ font:750 11px/1.5 ui-monospace,Consolas,monospace}
+.ppw-kp-results-skin-row+.ppw-kp-retro-preview{margin-top:17px}

@@ -168,14 +168,18 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   for(const skin of resultsSkins){
    const isFight=skin.sku==="RESULTS_FIGHT_NIGHT";
    const isZine=skin.sku==="RESULTS_UNDERGROUND_ZINE";
-   const style=isZine?"UNDERGROUND_ZINE":isFight?"FIGHT_NIGHT":"TERRITORY_TV";
-   const kind=isZine?"zine":isFight?"fight":"territory";
+   const isRetro=skin.sku==="RESULTS_RETRO_BOOKER_02";
+   const style=isRetro?"RETRO_BOOKER_02":isZine?"UNDERGROUND_ZINE":isFight?"FIGHT_NIGHT":"TERRITORY_TV";
+   const kind=isRetro?"retro":isZine?"zine":isFight?"fight":"territory";
    const preview=el("div","ppw-kp-"+kind+"-preview");
    preview.append(el("span","ppw-kp-"+kind+"-channel",
+    isRetro?"PPW BOOKER 2002 / RESULTS.EXE":
     isZine?"THE UNDERGROUND REPORT · ISSUE 001":
     isFight?"PPW / FIGHT NIGHT":"★ PPW TERRITORY TELEVISION"),
-    el("strong","",isZine?"UNDERGROUND ZINE":isFight?"FIGHT NIGHT":"TERRITORY TV"),
-    el("span","ppw-kp-"+kind+"-sub",isZine?
+    el("strong","",isRetro?"RETRO BOOKER ’02":isZine?"UNDERGROUND ZINE":isFight?"FIGHT NIGHT":"TERRITORY TV"),
+    el("span","ppw-kp-"+kind+"-sub",isRetro?
+     "Classic PC blue & red · grey menus · pixel-style headlines":
+    isZine?
      "Punk orange · black ink · off-white indie fanzine":
      isFight?"Clean white · bold black · red sports reports":
      "Vintage red · championship gold · cream reports"));

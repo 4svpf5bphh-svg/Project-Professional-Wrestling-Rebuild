@@ -47,7 +47,7 @@ export interface ShowResultEntry{
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
- resultsSkin?:"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"|null;
+ resultsSkin?:"TERRITORY_TV"|"FIGHT_NIGHT"|"UNDERGROUND_ZINE"|"RETRO_BOOKER_02"|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
  gorillaLog?:GorillaShowLog|null;
 }
@@ -346,6 +346,6 @@ export async function readCompletedShowView(
    crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
    gorillaLog:rows[0]!.gorilla_log,
-   resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"?rows[0]!.results_skin:null};
+   resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};
  });
 }
