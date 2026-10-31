@@ -121,9 +121,18 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
    " WHERE world_id=$1 AND draft_id='weekly' AND kind='MATCH'",[worldId]));
   assert.deepEqual(linkedMatch,[{programme_id:
    team.status==="APPLIED"?team.result.programmeId:""}]);
+  const pending=await readProgrammeWorkspace(db.pool,scope);
+  const currentProgrammeId=team.status==="APPLIED"?team.result.programmeId:"";
+  assert.deepEqual(pending.programmes.find(p=>p.programmeId===currentProgrammeId)?.plannedActivity,
+   [{showId:"weekly",slotId:"main",kind:"MATCH",year:1,week:1,
+    showName:"Scheduled show",status:"DRAFT"}],
+   "An actual linked drafted match must show as planned, not as certified history");
   const linkedCard=await showCardEditorAsActor(context,worldId,promotionId,"weekly");
   assert.ok(linkedCard.programmes.some(x=>x.label.includes("The Unit")));
   assert.equal((await save(4,1,"different-opponent")).status,"APPLIED");
+  const noLongerPlanned=await readProgrammeWorkspace(db.pool,scope);
+  assert.deepEqual(noLongerPlanned.programmes.find(p=>p.programmeId===currentProgrammeId)?.plannedActivity,
+   [],"Removing the feud's actual booked match must remove the planned chapter");
   const unlinked=await withWorldTransaction(db.pool,tx=>tx.query<{n:string}>(
    "SELECT count(*)::text AS n FROM ppw_programme_match_activities"+
    " WHERE world_id=$1 AND draft_id='weekly' AND kind='MATCH'",[worldId]));
