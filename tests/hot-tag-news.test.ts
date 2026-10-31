@@ -16,7 +16,8 @@ test("HOT TAG is an actual wrestling-social brand, not a new account service",()
   promotionName:"CWA",title:"Joe walked out?",summary:"Anonymous report with a competing denial."});
  assert.ok(a.every(p=>p.handle.startsWith("@")&&p.likes>=0));
  assert.ok(a.every(p=>!p.text.includes("Joe walked out")));
- assert.ok(a.some(p=>/source|work|fiction|allegation|anonymous|rumour|report|journal|heat|timeline|fake|made up|wrestling|argu/i.test(p.text)));
+ assert.equal(new Set(a.map(p=>p.text)).size,3,"Three genuine distinct fan reactions, not repeated comments");
+ assert.ok(a.some(p=>/source|version|story|work|claim|fiction|allegation|anonymous|rumour|report|journal|heat|timeline|fake|made up|wrestling|argu/i.test(p.text)));
  assert.deepEqual(dirtSheetByline(rumour.id),dirtSheetByline(rumour.id));
 });
 test("fan response varies by story and official reporting does not claim gossip is evidence",()=>{

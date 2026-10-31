@@ -61,7 +61,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  for(let i=0;i<3;i++)picks.push((seed+i*7+Math.floor(seed/73))%commentators.length);
  return picks.map((index,i)=>{
   const voice=commentators[index]!;
-  const text=reactions[(seed+i*3+Math.floor(seed/(i+3)))%reactions.length]!;
+  const text=reactions[(seed+i*3)%reactions.length]!;
   const h=stableHotTagHash(story.id+":"+voice.handle+":"+i);
   return {...voice,text,likes:26+h%950,replies:4+(h>>>7)%84,reposts:2+(h>>>12)%146};
  });
