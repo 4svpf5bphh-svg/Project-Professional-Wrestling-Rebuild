@@ -55,8 +55,8 @@ test("a ready premium-only week publishes through the same certified World Lock"
     VALUES($1,$2,$3,1,2,'DRAFT',6,$4,90,'PREMIUM','MAJOR','Armageddon','armageddon')`,
     [world,ppv,home,venue]);
    await tx.query(`INSERT INTO ppw_booking_drafts
-    (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_class)
-    VALUES($1,$2,$3,1,2,'SUBMITTED',2,$4,'REGULAR')`,
+    (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_class,event_importance,event_type)
+    VALUES($1,$2,$3,1,2,'SUBMITTED',2,$4,'REGULAR',60,'REGULAR')`,
     [world,aiShow,ai,venue]);
    await tx.query(`INSERT INTO ppw_booking_drafts
     (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,booking_class)

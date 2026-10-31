@@ -2,6 +2,7 @@
  * A World row lock guards discovery, while each existing consumption command
  * performs the authoritative contract checks and atomic decrements.
  */
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {consumeShowAppearances} from "./appearance-consumption.js";
@@ -24,8 +25,9 @@ export async function consumeWorldWeekAppearances(
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World changed during appearance resolution");
   const rows=await tx.query<{
-   promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;resolved_show_id:string|null;
-  }>(`SELECT p.promotion_id,d.draft_id,d.booking_class,r.show_id AS resolved_show_id
+   promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;resolved_show_id:string|null;premium_only_week:boolean;
+  }>(`SELECT p.promotion_id,d.draft_id,d.booking_class,r.show_id AS resolved_show_id,
+       (${premiumOnlyWeekSql("p")}) AS premium_only_week
     FROM ppw_promotions p
     LEFT JOIN ppw_booking_drafts d ON d.world_id=p.world_id
      AND d.promotion_id=p.promotion_id AND d.year=$2 AND d.week=$3
@@ -40,15 +42,18 @@ export async function consumeWorldWeekAppearances(
     ORDER BY p.promotion_id,d.booking_class DESC`,[input.worldId,input.year,input.week,weekIndex]);
   if(rows.length<1||rows.length>256||rows.some(r=>!r.draft_id))
    throw new Error("Every active promotion needs a submitted weekly show");
-  const byPromotion=new Map<string,Set<string>>();
+  const byPromotion=new Map<string,{classes:Set<string>;premiumOnlyWeek:boolean}>();
   for(const row of rows){
-   const seen=byPromotion.get(row.promotion_id)??new Set<string>();
-   if(!row.booking_class||seen.has(row.booking_class))
-    throw new Error("Duplicate submitted show class");
-   seen.add(row.booking_class);byPromotion.set(row.promotion_id,seen);
+   const state=byPromotion.get(row.promotion_id)??{
+    classes:new Set<string>(),premiumOnlyWeek:row.premium_only_week};
+   if(!row.booking_class||state.classes.has(row.booking_class)||
+      state.premiumOnlyWeek!==row.premium_only_week)
+    throw new Error("Duplicate or inconsistent submitted show class");
+   state.classes.add(row.booking_class);byPromotion.set(row.promotion_id,state);
   }
-  if([...byPromotion.values()].some(k=>!k.has("REGULAR")))
-   throw new Error("Every active promotion needs a regular weekly show");
+  if([...byPromotion.values()].some(k=>!k.classes.has("REGULAR")&&
+      !(k.premiumOnlyWeek&&k.classes.has("PREMIUM"))))
+   throw new Error("Every active promotion needs a submitted regular or valid premium-only show");
   const clearance=await tx.query<{eligible_promotions:number}>(
    "SELECT eligible_promotions FROM ppw_week_resource_clearances WHERE world_id=$1 AND year=$2 AND week=$3",
    [input.worldId,input.year,input.week]);
