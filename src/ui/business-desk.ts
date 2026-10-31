@@ -457,6 +457,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      const line=el("div","ppw-business-line");
      line.append(el("span","",label),el("strong","",money(n)));body.append(line);
     }
+    body.append(el("p","ppw-business-muted",
+     "Event result includes wrestler appearance fees already paid earlier in the World settlement. Cash effect shows only the amount posted when this event's remaining bills and ticket receipts settled. Use the overall weekly balance for your total company profit or loss."));
     if(port.openResults)body.append(button("Open broadcast results →",
      ()=>port.openResults?.(show.showId)));
     card.append(body);section.append(card);
