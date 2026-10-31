@@ -202,10 +202,35 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    next.append(element("span","ppw-programme-eyebrow","NEXT CHAPTER · CREATIVE SUGGESTION"),
     element("strong","",ideas[0]!.title+" · "+ideas[0]!.kind.replaceAll("_"," ").toLowerCase()),
     element("p","",ideas[0]!.reason));
-   if(port.openPlanner)next.append(button("Choose a rivalry angle in the card →",
+   const scheduled=p.plannedActivity?.[0];
+   const followThrough=element("div","ppw-programme-upcoming");
+   followThrough.append(element("strong","",
+    scheduled?"Already booked · "+scheduled.showName:
+     "Not booked yet · Your next chapter is open"));
+   if(scheduled)followThrough.append(element("span","",
+    "Y"+scheduled.year+" W"+scheduled.week+" · "+
+    (scheduled.kind==="MATCH"?"Match":"Angle")+" · "+
+    (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
+   else followThrough.append(element("span","",
+    "Use the suggested angle or book your own idea. Only certified shows advance the story."));
+   next.append(followThrough);
+   if((p.plannedActivity?.length??0)>1){
+    const upcoming=document.createElement("details");
+    upcoming.className="ppw-programme-upcoming-list";
+    upcoming.append(element("summary","",
+     "Other planned chapters · "+(p.plannedActivity.length-1)));
+    for(const item of p.plannedActivity.slice(1))
+     upcoming.append(element("p","",
+      item.showName+" · Y"+item.year+" W"+item.week+
+      " · "+(item.kind==="MATCH"?"Match":"Angle")+
+      " · "+(item.status==="SUBMITTED"?"Confirmed":"Draft")));
+    next.append(upcoming);
+   }
+   if(port.openPlanner)next.append(button(
+    scheduled?"Review booked rivalry chapter →":"Choose a rivalry angle in the card →",
     port.openPlanner));
    next.append(element("small","ppw-muted",
-    "The card editor can pre-link this rivalry. You choose the wrestlers, scripted ending and final result."));
+    "Draft and confirmed cards aren't completed history. The show must resolve for the rivalry to advance."));
    panel.append(next);
    // The player's decisions and the verified match record form one visible
    // narrative. No suggested outcome is booked or written to the World.
