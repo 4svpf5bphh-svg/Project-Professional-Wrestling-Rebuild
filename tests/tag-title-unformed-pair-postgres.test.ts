@@ -51,3 +51,50 @@ test("vacant tag title crowns booked winner even when neither pair existed as a 
   }).finally(()=>db.close());
  }
 });
+
+test("three competing 2-person teams can contest an inaugural tag championship",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,3),worldId="three-tag-"+randomUUID();
+ const promotionId="chaotic",showId="week15",slotId="three-way",championshipId="tag";
+ const receipt:CompletedShowReceipt={worldId,promotionId,showId,year:1,week:15,
+  resolutionId:"triple-tag",crowdResponse:85,
+  matches:[{matchId:slotId,position:0,crowdResponse:85,
+   actualFinish:"CLEAN_PIN",actualWinnerSide:"C"}],segments:[]};
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Three pair title",seed:8,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"Chaotic",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name)"+
+    " VALUES($1,'p1','One'),($1,'p2','Two'),($1,'p3','Three'),"+
+    "($1,'p4','Four'),($1,'p5','Five'),($1,'p6','Six')",[worldId]);
+   await tx.query("INSERT INTO ppw_championships("+
+    "world_id,promotion_id,championship_id,name,division,status,prestige)"+
+    " VALUES($1,$2,$3,'Chaotic Tags','TAG','ACTIVE',60)",
+    [worldId,promotionId,championshipId]);
+  });
+  const bookings=[{slotId,championshipId,sides:[
+   {sideId:"A",personIds:["p1","p2"]},
+   {sideId:"B",personIds:["p3","p4"]},
+   {sideId:"C",personIds:["p5","p6"]}
+  ]}];
+  assert.deepEqual(await withWorldTransaction(db.pool,tx=>
+   settleCanonicalTagTitleContests(tx,receipt,bookings)),{contests:1,transfers:1});
+  const winners=await withWorldTransaction(db.pool,tx=>tx.query<{members:string[]}>([
+   "SELECT array_agg(m.person_id ORDER BY m.person_id) AS members",
+   "FROM ppw_tag_team_members m JOIN ppw_championship_reigns r",
+   "ON r.world_id=m.world_id AND r.team_id=m.team_id",
+   "WHERE r.world_id=$1 AND r.championship_id=$2 AND r.status='ACTIVE'",
+   "GROUP BY r.reign_id"
+  ].join(" "),[worldId,championshipId]));
+  assert.deepEqual(winners,[{members:["p5","p6"]}]);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_championship_contests","ppw_championship_reigns",
+    "ppw_championships","ppw_ledger_events","ppw_tag_team_members",
+    "ppw_tag_teams","ppw_people","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
