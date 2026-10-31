@@ -173,3 +173,33 @@ test("owned premium calendar event uses the purchased animated poster; rivals do
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("applied weekly TV graphics fill the calendar card instead of collapsing into a 49px label",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>r.fulfill({json:{
+  ...calendar(4,80),broadcastPackage:"MIDNIGHT_FREQUENCY",
+  weeks:[{year:1,week:5,offset:0,shows:[flagship]}],worldWeeks:[]
+ }}));
+ await page.goto("/#/calendar");
+ const tile=page.locator(".ppw-calendar-event[data-has-artwork=true]").first();
+ await expect(tile).toBeVisible();
+ const graphic=tile.locator(".ppw-calendar-owned-poster.ppw-tv-frame");
+ await expect(graphic).toBeVisible();
+ await expect(graphic.locator(".ppw-tv-title")).toHaveText("Indie Weekly");
+ const sizes=await page.evaluate(()=>{
+  const tile=document.querySelector(".ppw-calendar-event[data-has-artwork=true]")!;
+  const poster=tile.querySelector(".ppw-calendar-owned-poster")!;
+  const title=poster.querySelector(".ppw-tv-title")!;
+  return {tile:tile.getBoundingClientRect().width,
+   poster:poster.getBoundingClientRect().width,
+   title:title.getBoundingClientRect().width,
+   writingMode:getComputedStyle(title).writingMode};
+ });
+ expect(sizes.tile).toBeGreaterThan(220);
+ expect(sizes.poster/sizes.tile).toBeGreaterThan(.85);
+ expect(sizes.title).toBeGreaterThan(100);
+ expect(sizes.writingMode).toBe("horizontal-tb");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
