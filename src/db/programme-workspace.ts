@@ -138,6 +138,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    kind:string;week_index:number;crowd_response:number;
    winner_side:"A"|"B"|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
+   segment_kind:string|null;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
   type Finale={programme_id:string;show_id:string;slot_id:string;
    kind:"MATCH"|"SEGMENT";payoff:ProgrammePayoff;planned_week_index:number;
@@ -170,9 +171,12 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "UNION ALL",
    "SELECT 'PLANNED'::text AS source,to_jsonb(upcoming) AS details FROM (",
    "SELECT a.programme_id,a.draft_id,a.slot_id,a.kind,d.year,d.week,",
+   "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind,",
    "d.show_name,d.status FROM ppw_programme_match_activities a",
    "JOIN ppw_booking_drafts d ON d.world_id=a.world_id",
    "AND d.promotion_id=a.promotion_id AND d.draft_id=a.draft_id",
+   "JOIN ppw_card_slots s ON s.world_id=a.world_id",
+   "AND s.draft_id=a.draft_id AND s.slot_id=a.slot_id AND s.kind=a.kind",
    "WHERE a.world_id=$1 AND a.promotion_id=$2",
    "AND a.programme_id=ANY($3::text[])",
    "AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+5",
@@ -228,7 +232,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
       winnerSide:x.winner_side??null})),
     plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
      .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
-      kind:x.kind,year:x.year,week:x.week,
+      kind:x.kind,segmentKind:x.segment_kind,year:x.year,week:x.week,
       showName:x.show_name??"Scheduled show",status:x.status})),
     finale:(()=>{
      const f=finales.find(x=>x.programme_id===p.programme_id);
