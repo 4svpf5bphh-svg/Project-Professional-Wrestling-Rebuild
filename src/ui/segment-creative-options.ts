@@ -25,7 +25,12 @@ const labels:Readonly<Record<string,string>>={
  INTRODUCTION:"Announced arrival",SURPRISE_REVEAL:"Surprise reveal",
  ESTABLISH_STAR:"Establish a new star",BUILD_EXCITEMENT:"Build anticipation",
  CREATE_MYSTERY:"Create mystery",UNSETTLE_RIVAL:"Unsettle a rival",
- REIGNITE_PROGRAMME:"Reignite a rivalry"
+ REIGNITE_PROGRAMME:"Reignite a rivalry",
+ VERBAL_EXCHANGE:"Verbal exchange",INTERRUPTER_PREVAILS:"Interrupter gets the last word",
+ SPEAKER_PREVAILS:"Speaker gets the last word",
+ RESCUER_STANDS_TALL:"Rescuer stands tall",ATTACKER_ESCAPES:"Attacker escapes",
+ RESCUE_OVERWHELMED:"Rescue fails",ATTACKER_STANDS_TALL:"Attacker stands tall",
+ VICTIM_FIGHTS_BACK:"Victim fights back",OFFICIALS_SEPARATE:"Officials separate them"
 };
 const fieldNames:Readonly<Record<string,string>>={
  purpose:"The message",format:"Interview setting",topic:"Interview subject",
