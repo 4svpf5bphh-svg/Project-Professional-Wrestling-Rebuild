@@ -622,8 +622,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     if(chapter.latestChapter)archive.append(element("p","",chapter.latestChapter));
     if(p.finale?.resolvedWeekIndex!=null){
      const f=p.finale;
-     const when="Year "+(Math.floor(f.resolvedWeekIndex/52)+1)+
-      " · Week "+(f.resolvedWeekIndex%52+1);
+     const week=f.resolvedWeekIndex!;
+     const when="Year "+(Math.floor(week/52)+1)+
+      " · Week "+(week%52+1);
      archive.append(element("p","ppw-programme-archive-payoff",
       "ON-SCREEN PAYOFF · "+f.payoff.replaceAll("_"," ")+
       " · "+when+
