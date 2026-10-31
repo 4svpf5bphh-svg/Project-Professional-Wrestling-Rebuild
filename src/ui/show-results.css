@@ -386,3 +386,25 @@
 @media(max-width:360px){.ppw-pop-social{padding:13px 10px}
  .ppw-pop-social .ppw-pop-post{padding:11px}
  .ppw-pop-avatar{width:36px;height:36px}}
+
+/* Result chapters are followed in order using bottom Next controls.
+   Full card defaults to chronological results, with two toggle filters. */
+#game .ppw-result-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#game .ppw-result-filter[aria-pressed=true]{box-shadow:inset 0 0 0 2px currentColor}
+#game .ppw-results .ppw-result-meta{justify-content:flex-start;gap:7px;min-width:0}
+#game .ppw-results .ppw-result-main-event{display:inline-flex;flex:0 1 auto;max-width:100%;
+ align-items:center;justify-content:center;white-space:normal;overflow-wrap:anywhere;
+ padding:5px 8px;font:950 10px/1.35 system-ui;letter-spacing:.035em;
+ border-radius:5px;background:#593b1c;color:#fff4cc;border:1px solid #efbd64;
+ box-shadow:none!important;text-shadow:none!important}
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-main-event{
+ background:#673225;color:#fff9d7;border:2px double #a87f50;border-radius:2px;
+ font-family:Georgia,serif}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-main-event{
+ background:#a41d35;color:#fff;border:1px solid #e98292;border-radius:2px}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-main-event{
+ background:#d9ff47;color:#17241e;border:2px solid #17241e;border-radius:0;
+ font-weight:1000;transform:rotate(-2deg)}
+#game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-main-event{
+ background:#a62740;color:#fff7d7;border:2px ridge #f1c8d7;border-radius:0;
+ font-family:ui-monospace,Consolas,monospace;letter-spacing:0}
