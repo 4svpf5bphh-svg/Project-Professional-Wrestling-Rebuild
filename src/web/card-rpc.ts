@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
  programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
- completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,tournamentsAsActor,createTournamentAsActor,cancelTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
+ completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,createChampionshipAsActor,tournamentsAsActor,createTournamentAsActor,cancelTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
  * origin, CSRF and request size before invoking. Browser-supplied actor IDs are ignored.
@@ -148,6 +148,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   throw new Error("Invalid revision");
  if(method==="cancelTournament")return cancelTournamentAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,tournamentId:id("tournamentId")});
+ if(method==="createChampionship"){
+  if(typeof p.name!=="string"||
+   !["SECONDARY_MEN","WOMEN_SINGLES"].includes(String(p.kind)))
+   throw new Error("Invalid championship creation");
+  return createChampionshipAsActor(context,{worldId,promotionId,
+   requestId,expectedRevision,name:p.name,
+   kind:p.kind as "SECONDARY_MEN"|"WOMEN_SINGLES"});
+ }
  if(method==="createTournament"){
   if(typeof p.name!=="string"||!["MEN","WOMEN"].includes(String(p.division))||
    !Array.isArray(p.entrants)||![4,8].includes(p.entrants.length)||
