@@ -240,3 +240,68 @@
  linear-gradient(120deg,#291e39,#161d32);border-color:#8d6ab0}
 .ppw-news-wild-theory .ppw-news-desk{color:#e3b7ff}
 .ppw-news-wild-theory .ppw-news-story-title{color:#fff0fc}
+
+/* Two real editorial identities in the existing News screen, not KP cosmetics.
+   Official stories use a trustworthy print wire; the Dirt Desk is a wrestling
+   gossip publication with contrasting headlines and branded HOT TAG threads. */
+.ppw-news-official>.ppw-news-eyebrow{font-size:10px;color:#b4e5f5}
+.ppw-news-official>.ppw-news-story{
+ background:linear-gradient(130deg,#f6f8fb,#e6edf3)!important;
+ border:1px solid #b9c9db!important;border-top:4px solid #276fa0!important;
+ box-shadow:0 6px 20px #0b1f3029;
+ color:#183044!important;padding:18px 16px}
+.ppw-news-official>.ppw-news-story .ppw-news-desk{color:#1f638a!important}
+.ppw-news-official>.ppw-news-story .ppw-news-story-title{
+ color:#142b42!important;font:900 clamp(17px,4.8vw,23px)/1.17 Georgia,serif!important}
+.ppw-news-official>.ppw-news-story p{color:#263c4d!important}
+.ppw-news-official>.ppw-news-story .ppw-industry-muted{color:#4c6174!important}
+.ppw-news-dirt>.ppw-news-eyebrow{color:#ffc475;font-weight:950}
+.ppw-news-dirt>.ppw-news-story{
+ background:radial-gradient(ellipse at 92% -10%,#603e6166,transparent 67%),
+ linear-gradient(150deg,#251d30,#171a29 70%)!important;
+ border:1px solid #776181!important;border-top:5px solid #e58e69!important;
+ color:#fff1e5!important;padding:19px 15px 16px;gap:10px}
+.ppw-news-dirt>.ppw-news-story.ppw-news-lead{border-top-color:#ffb974!important}
+.ppw-news-dirt .ppw-dirt-outlet{
+ font:1000 italic clamp(21px,6vw,30px)/1.07 system-ui;
+ color:#ffe6a9;letter-spacing:-.055em;text-transform:uppercase;
+ border-bottom:2px solid #b17473;padding:0 0 8px;overflow-wrap:anywhere}
+.ppw-news-dirt .ppw-dirt-byline{font:850 10px/1.4 system-ui;letter-spacing:.08em;color:#cbb7df}
+.ppw-news-dirt .ppw-news-desk{color:#ffd9a8!important}
+.ppw-news-dirt .ppw-news-story-title{
+ color:#fff7e8!important;font:1000 clamp(19px,5.7vw,27px)/1.14 system-ui!important;
+ text-transform:uppercase;letter-spacing:-.035em;overflow-wrap:anywhere}
+.ppw-news-dirt .ppw-news-story p{color:#f0dce7!important;font-size:13px;line-height:1.65}
+.ppw-news-dirt .ppw-industry-muted{color:#ddc9dd!important}
+.ppw-dirt-caveat{font:700 10px/1.5 system-ui;color:#e0bece;
+ border-left:2px solid #c88896;padding:6px 9px;background:#5e3a582b}
+.ppw-news-dirt .ppw-news-wild-theory{
+ background:radial-gradient(ellipse at 95% -10%,#75385f7f,transparent 65%),
+ linear-gradient(120deg,#291c34,#171825)!important}
+.ppw-hot-tag-thread{margin-top:5px;border:1px solid #8a6e89;
+ border-radius:11px;overflow:hidden;background:#1a1f30;color:#f6f2fb;min-width:0}
+.ppw-hot-tag-summary{font:900 12px/1.5 system-ui;letter-spacing:.025em;
+ cursor:pointer;color:#fff3ec;padding:11px 13px;min-height:42px}
+.ppw-hot-tag-summary::marker{color:#ff987b}
+.ppw-hot-tag-summary:focus-visible{outline:3px solid #ffd094;outline-offset:-3px}
+.ppw-hot-tag-thread-body{border-top:1px solid #795f82;padding:10px 12px 13px;
+ display:grid;gap:10px}
+.ppw-hot-tag-brand{font:1000 italic 14px/1.4 system-ui;color:#ff987e;
+ letter-spacing:.015em}
+.ppw-hot-tag-news-post{display:flex;align-items:flex-start;gap:9px;
+ min-width:0;border-top:1px solid #485067;padding:10px 0 2px;color:#f6f1fa}
+.ppw-hot-tag-avatar{flex:0 0 34px;width:34px;height:34px;
+ border-radius:50%;background:#363349;display:grid;place-items:center;font-size:18px}
+.ppw-hot-tag-news-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ppw-hot-tag-news-copy strong{color:#f9f7fc!important;font-size:12px}
+.ppw-hot-tag-news-copy small{color:#adb7cf!important;font-size:10px}
+.ppw-hot-tag-news-copy p{font:500 12px/1.52 system-ui!important;
+ color:#e6ecf8!important;margin:5px 0!important;overflow-wrap:anywhere}
+.ppw-hot-tag-news-metrics{color:#c7d0e3;font:800 10px system-ui}
+.ppw-hot-tag-disclaimer{color:#b7bed2;font:600 10px/1.5 system-ui}
+.ppw-news-official .ppw-hot-tag-thread{border-color:#b6c6d7;background:#192b46}
+.ppw-news-official .ppw-hot-tag-summary{color:#fff}
+@media(max-width:360px){
+ .ppw-news-dirt>.ppw-news-story,.ppw-news-official>.ppw-news-story{padding:13px 11px}
+ .ppw-hot-tag-thread-body{padding:10px}
+}
