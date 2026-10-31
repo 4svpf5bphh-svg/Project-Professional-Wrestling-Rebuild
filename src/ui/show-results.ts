@@ -28,6 +28,7 @@ import "./fight-night-results-skin.css";
 import "./underground-zine-results-skin.css";
 import "./retro-booker-results-skin.css";
 import "./results-skin-contrast.css";
+import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -479,6 +480,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   " audience response. Certified results remain unchanged."));
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
+ // A skippable television bumper, before the actual Results Skin report.
+ // The certified narrative, manager analysis and results are untouched.
+ if(show.broadcastPackage){
+  const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
+   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
+  if(opening){
+   const wrap=node("section","ppw-tv-opening-wrap");
+   const skip=node("button","ppw-tv-skip","Skip opening") as HTMLButtonElement;
+   skip.type="button";skip.onclick=()=>wrap.remove();
+   wrap.append(opening,skip);headlines.append(wrap);
+  }
+ }
  headlines.append(header,feature,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(show.resultsSkin==="TERRITORY_TV"){

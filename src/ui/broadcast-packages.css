@@ -120,3 +120,13 @@
 @media(prefers-reduced-motion:reduce){
  #game .ppw-tv-frame *,#game .ppw-tv-frame::before,#game .ppw-tv-frame::after{animation:none!important}
 }
+
+/* In-editor title/graphic disclosure keeps the running order readable and
+   completely separate from the modal match/angle authoring controls. */
+#game .ppw-card-broadcast-studio{max-width:550px;min-width:0;margin:10px auto;
+ border-radius:8px;border:1px solid #546780;background:#1d3047;padding:4px 8px}
+#game .ppw-card-broadcast-studio>summary{color:#eaf5ff;font:850 11px/1.4 system-ui;
+ cursor:pointer;padding:6px 4px;min-height:29px}
+#game .ppw-card-broadcast-studio>summary:focus-visible{outline:3px solid #8ae4ff}
+#game .ppw-card-broadcast-slot{margin:3px 10px 9px;padding:2px 7px}
+#game .ppw-card-broadcast-studio .ppw-tv-frame{margin:9px auto 5px}
