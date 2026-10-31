@@ -136,6 +136,64 @@ test("a booked programme finale cannot close a feud until its exact angle happen
     "SELECT event_type FROM ppw_ledger_events WHERE world_id=$1"+
     " AND event_type='PROGRAMME_FINALE_DELIVERED'",[worldId])),
    [{event_type:"PROGRAMME_FINALE_DELIVERED"}]);
+  // A real match finale follows the same server path. A second active
+  // programme after the completed story is legal; the result isn't invented.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[worldId]));
+  const second=await startProgramme(db.pool,{...scope,requestId:"new-programme",
+   expectedRevision:3,sideA:[{kind:"PERSON",refId:alice}],
+   sideB:[{kind:"PERSON",refId:bob}]});
+  assert.equal(second.status,"APPLIED");
+  if(second.status!=="APPLIED")throw Error("Could not start second programme");
+  const newProgramme=second.result.programmeId;
+  await withWorldTransaction(db.pool,async tx=>{
+   const pair=[
+    {personId:alice,contractId:"contract-a-"+uuid},
+    {personId:bob,contractId:"contract-b-"+uuid}];
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,"+
+    "year,week,status) VALUES($1,'final-match-show',$2,1,3,'DRAFT')",
+    [worldId,promotionId]);
+   await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)"+
+    " VALUES($1,'final-match-show','decider',0,'MATCH',$2::jsonb)",
+    [worldId,JSON.stringify({matchType:"SINGLES",
+     participants:pair,scriptedWinner:alice,plannedFinish:"CLEAN_PIN",
+     plannedLengthMinutes:17})]);
+   await tx.query("INSERT INTO ppw_programme_match_activities("+
+    "world_id,promotion_id,programme_id,draft_id,slot_id,kind)"+
+    " VALUES($1,$2,$3,'final-match-show','decider','MATCH')",
+    [worldId,promotionId,newProgramme]);
+  });
+  const finalMatchPlan=await chooseProgrammeFinale(db.pool,{...scope,
+   programmeId:newProgramme,requestId:"match-finale",expectedRevision:4,
+   showId:"final-match-show",slotId:"decider",payoff:"DECISIVE_MATCH"});
+  assert.equal(finalMatchPlan.status,"APPLIED");
+  const matchReceipt:CompletedShowReceipt={
+   worldId,promotionId,showId:"final-match-show",year:1,week:3,
+   resolutionId:"final-match-receipt",crowdResponse:83,
+   matches:[{matchId:"decider",position:0,crowdResponse:86,
+    actualFinish:"CLEAN_PIN",actualWinnerSide:"A"}],segments:[]};
+  const certifiedMatch=await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_booking_drafts SET status='SUBMITTED'"+
+    " WHERE world_id=$1 AND draft_id='final-match-show'",[worldId]);
+   await tx.query("INSERT INTO ppw_completed_shows("+
+    "world_id,promotion_id,show_id,year,week,resolution_id,"+
+    "crowd_response,receipt_json,receipt_digest)"+
+    " VALUES($1,$2,'final-match-show',1,3,$3,83,$4::jsonb,$5)",
+    [worldId,promotionId,matchReceipt.resolutionId,
+     JSON.stringify(matchReceipt),"d".repeat(64)]);
+   return settleCompletedProgrammeHistory(tx,{worldId,promotionId,
+    showId:"final-match-show",year:1,week:3,eventImportance:85,
+    matches:[{slotId:"decider",executionQuality:81}]},matchReceipt);
+  });
+  assert.deepEqual(certifiedMatch,{recorded:1,programmes:1});
+  const postMatch=await readProgrammeWorkspace(db.pool,scope);
+  const secondHistory=postMatch.programmes.find(x=>x.programmeId===newProgramme)!;
+  assert.equal(secondHistory.status,"COMPLETED");
+  assert.equal(secondHistory.matchCount,1);
+  assert.equal(secondHistory.sideAWins,1);
+  assert.equal(secondHistory.finale?.resolvedWinnerSide,"A");
+  assert.equal(secondHistory.finale?.resolvedCrowdResponse,86);
+  assert.equal(secondHistory.finale?.resolvedWeekIndex,2);
   // Duplicate show settlement cannot publish a second payoff.
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    settleCompletedProgrammeHistory(tx,{
