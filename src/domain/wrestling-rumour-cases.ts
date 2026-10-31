@@ -1,6 +1,6 @@
 import type {WorldNewsStory} from "../db/world-news.js";
 export type Veracity="SUBSTANTIATED"|"DISTORTED"|"FABRICATED";
-export interface RumourCase{
+export interface RumourCase extends Record<string,unknown>{
  case_key:string;origin_week_index:number;last_followup_week_index:number|null;
  chapter:number;veracity:Veracity;promotion_id:string;promotion_name:string;
  show_id:string;headline:string
