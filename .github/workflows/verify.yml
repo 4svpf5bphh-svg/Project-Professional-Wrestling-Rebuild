@@ -527,6 +527,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0119_animated_event_posters.sql
+      - name: Enable nine account-owned Staff Office appearances
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0120_kp_staff_office_themes.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
