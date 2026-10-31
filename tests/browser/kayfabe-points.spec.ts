@@ -67,13 +67,10 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  await page.getByRole("button",{name:"Use standard milestone frame"}).click();
  await expect(page.getByText("Standard milestone style restored.")).toBeVisible();
  await expect(page.locator(".ppw-kp-active-preview")).toHaveCount(0);
- await page.locator(".ppw-kp-item").filter({hasText:"Gold achievement display"})
-  .getByRole("button",{name:"Apply"}).click();
- await expect(page.locator(".ppw-kp-active-preview.ppw-kp-achievement-gold")).toBeVisible();
- await page.locator(".ppw-kp-item").filter({hasText:"Chrome promotion crest"})
-  .getByRole("button",{name:"Unlock"}).click();
- await expect(page.locator(".ppw-kp-symbol[data-style='CHROME']")).toBeVisible();
- await expect(page.getByText("4,800 KP",{exact:true})).toBeVisible();
+ // Obsolete crest and achievement-display items stay retired from the shop.
+ await expect(page.getByText("Gold achievement display",{exact:true})).toHaveCount(0);
+ await expect(page.getByText("Chrome promotion crest",{exact:true})).toHaveCount(0);
+ await expect(page.getByText("5,000 KP",{exact:true})).toBeVisible();
  await page.getByRole("textbox",{name:"New staff display name"}).fill("Alex Ringside");
  await page.getByRole("button",{name:/Rename/}).click();
  await expect(page.getByText("Staff display name updated.")).toBeVisible();
@@ -93,7 +90,6 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  expect(bounds).not.toBeNull();expect(bounds!.x).toBeGreaterThanOrEqual(0);
  expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
  expect(calls).toEqual(["business","kpWorkspace","kpAction","kpWorkspace",
-   "kpAction","kpWorkspace","kpAction","kpWorkspace",
    "kpAction","kpWorkspace","kpAction","kpWorkspace"]);
 });
 
