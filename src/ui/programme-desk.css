@@ -137,3 +137,14 @@
  font-size:14px;color:#fff}
 .ppw-programme-archive-card .ppw-programme-archive-beats{color:#a9d5ed}
 .ppw-programme-archive-card button{max-width:100%;white-space:normal}
+
+/* Show the next bookable storyline beat before the detail-heavy archive. */
+.ppw-programme-quick-next{padding:13px 15px;margin:12px 0;border-radius:13px;
+ border:1px solid #7891ba;background:linear-gradient(130deg,#17354a,#132334);
+ display:grid;gap:7px}
+.ppw-programme-quick-next>.ppw-programme-eyebrow{padding:0}
+.ppw-programme-quick-next>strong{font-size:16px;color:#fff0ca;line-height:1.35}
+.ppw-programme-quick-next>p{color:#d8e9f4;font-size:13px;line-height:1.55;margin:0}
+.ppw-programme-quick-next>small{color:#acc9da;font-size:11px;line-height:1.45}
+.ppw-programme-quick-next .ppw-programme-action{margin:1px 0;background:#23517b;
+ color:#f9fcff;border:1px solid #88c8e5;border-radius:10px;padding:10px}
