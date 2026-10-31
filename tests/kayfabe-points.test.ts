@@ -101,3 +101,24 @@ test("18 CSS poster styles are separate fair cosmetic entitlements",async()=>{
  assert.throws(()=>validateKpAction({kind:"APPLY_EVENT_POSTER",
   sku:"BADGE_GOLD" as never,requestId:"wrong-kind"}),/Unknown/);
 });
+
+test("nine Staff Office designs are account-only, selectable and never affect gameplay",async()=>{
+ const {STAFF_OFFICE_THEMES,staffOfficeThemeByStyle,staffOfficeThemeClass}=await import(
+  "../src/domain/staff-office-themes.js");
+ assert.equal(STAFF_OFFICE_THEMES.length,9);
+ assert.equal(new Set(STAFF_OFFICE_THEMES.map(t=>t.sku)).size,9);
+ for(const theme of STAFF_OFFICE_THEMES){
+  assert.equal(catalogueItem(theme.sku)?.price,1250);
+  assert.equal(catalogueItem(theme.sku)?.kind,"STAFF_OFFICE_THEME");
+  assert.equal(staffOfficeThemeByStyle(theme.style)?.sku,theme.sku);
+  assert.equal(staffOfficeThemeClass(theme.style),theme.style.toLowerCase().replaceAll("_","-"));
+  assert.deepEqual(validateKpAction({kind:"APPLY_STAFF_OFFICE_THEME",
+   sku:theme.sku,requestId:theme.sku}),
+   {kind:"APPLY_STAFF_OFFICE_THEME",sku:theme.sku,requestId:theme.sku});
+ }
+ assert.equal(staffOfficeThemeClass(null),"standard");
+ assert.deepEqual(validateKpAction({kind:"CLEAR_STAFF_OFFICE_THEME",requestId:"reset"}),
+  {kind:"CLEAR_STAFF_OFFICE_THEME",requestId:"reset"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_STAFF_OFFICE_THEME",
+  sku:"POSTER_ECLIPSE" as never,requestId:"cross-category"}),/Unknown/);
+});

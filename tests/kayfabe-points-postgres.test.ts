@@ -284,6 +284,43 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
    kind:"CLEAR_EVENT_POSTER",requestId:"standard-poster"});
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeEventPoster,null);
   assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeEventPoster,null);
+    // Staff Office cosmetics belong only to their paying manager. All mechanics
+  // continue to use the original nine department and staff payroll rules.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_kp_wallets SET balance=5000 WHERE player_id=$1",[a]));
+  assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,null);
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_STAFF_OFFICE_THEME",sku:"STAFF_OFFICE_GORILLA_CONTROL",requestId:"rival-office"
+  }),/Unlock this Staff Office theme/);
+  const gorilla={kind:"BUY" as const,sku:"STAFF_OFFICE_GORILLA_CONTROL" as const,
+   requestId:"first-staff-theme"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,gorilla) as {price:number}).price,1250);
+  assert.equal((await applyKayfabeAction(db.pool,aa,gorilla)).replayed,true);
+  let office=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(office.balance,3750);
+  assert.equal(office.activeStaffOfficeTheme,"GORILLA_CONTROL");
+  assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,"GORILLA_CONTROL");
+  assert.equal((await readStaffWorkspace(db.pool,bb)).staffOfficeTheme,null);
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"STAFF_OFFICE_GORILLA_CONTROL",requestId:"duplicate-office"
+  }),/already own/);
+  const executive={kind:"BUY" as const,sku:"STAFF_OFFICE_EXECUTIVE_SUITE" as const,
+   requestId:"second-staff-theme"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,executive) as {price:number}).price,1250);
+  office=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(office.balance,2500);
+  assert.equal(office.activeStaffOfficeTheme,"EXECUTIVE_SUITE");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_STAFF_OFFICE_THEME",sku:"STAFF_OFFICE_GORILLA_CONTROL",requestId:"switch-office"
+  });
+  office=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(office.balance,2500);
+  assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,"GORILLA_CONTROL");
+  await applyKayfabeAction(db.pool,aa,{kind:"CLEAR_STAFF_OFFICE_THEME",requestId:"original-office"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeStaffOfficeTheme,null);
+  assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,null);
+  assert.ok((await readKayfabeWorkspace(db.pool,aa)).entitlements.includes(
+   "STAFF_OFFICE_EXECUTIVE_SUITE"));
     await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });
