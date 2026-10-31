@@ -19,7 +19,7 @@ export function createStaffOfficeThemePreview(style:string):HTMLElement{
  }
  root.append(metrics);
  const nav=el("nav","ppw-staff-nav");
- for(const [tab,i] of ["Meetings","My Staff","Contracts","Staff Market"].entries()){
+ for(const [i,tab] of ["Meetings","My Staff","Contracts","Staff Market"].entries()){
   const b=el("span","ppw-staff-button",tab);
   b.setAttribute("aria-current",i===0?"page":"false");
   nav.append(b);
