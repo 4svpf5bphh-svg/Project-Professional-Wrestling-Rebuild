@@ -155,8 +155,9 @@ test("a booked programme finale cannot close a feud until its exact angle happen
     "ppw_contracts","ppw_people","ppw_promotion_controls",
     "ppw_memberships","ppw_promotions"
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   });
-  await db.pool.end();
+  db.close();
  }
 });
