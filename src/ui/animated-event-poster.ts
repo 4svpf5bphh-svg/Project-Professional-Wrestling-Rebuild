@@ -34,7 +34,8 @@ function decoration(root:HTMLElement,style:EventPosterStyle){
  effect.setAttribute("aria-hidden","true");
  for(let i=0;i<count;i++){
   const layer=text("span","ppw-ep-layer ppw-ep-layer-"+i,"");
-  layer.style.setProperty("--i",String(i));effect.append(layer);
+  layer.style.setProperty("--i",String(i));
+  layer.style.setProperty("--ep-left",(8+i*10)+"%");effect.append(layer);
  }
  if(style==="THUNDER_STRIKE"||style==="CIRCUIT_BREAKER"){
   const ns="http://www.w3.org/2000/svg";

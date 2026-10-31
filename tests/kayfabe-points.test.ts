@@ -83,3 +83,21 @@ test("Retro Booker 02 is a separately owned 1000 KP skin",()=>{
   sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"}),
   {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"});
 });
+
+test("18 CSS poster styles are separate fair cosmetic entitlements",async()=>{
+ const {EVENT_POSTER_SKINS,eventPosterByStyle,eventPosterBySku}=await import("../src/domain/event-poster-skins.js");
+ assert.equal(EVENT_POSTER_SKINS.length,18);
+ assert.equal(new Set(EVENT_POSTER_SKINS.map(x=>x.sku)).size,18);
+ for(const skin of EVENT_POSTER_SKINS){
+  assert.equal(catalogueItem(skin.sku)?.kind,"EVENT_POSTER");
+  assert.equal(catalogueItem(skin.sku)?.price,1250);
+  assert.equal(eventPosterByStyle(skin.style)?.sku,skin.sku);
+  assert.equal(eventPosterBySku(skin.sku)?.style,skin.style);
+  assert.deepEqual(validateKpAction({kind:"APPLY_EVENT_POSTER",
+   sku:skin.sku,requestId:skin.sku}),{kind:"APPLY_EVENT_POSTER",sku:skin.sku,requestId:skin.sku});
+ }
+ assert.deepEqual(validateKpAction({kind:"CLEAR_EVENT_POSTER",requestId:"clear-poster"}),
+  {kind:"CLEAR_EVENT_POSTER",requestId:"clear-poster"});
+ assert.throws(()=>validateKpAction({kind:"APPLY_EVENT_POSTER",
+  sku:"BADGE_GOLD" as never,requestId:"wrong-kind"}),/Unknown/);
+});

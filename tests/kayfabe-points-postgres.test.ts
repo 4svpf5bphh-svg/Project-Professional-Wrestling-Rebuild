@@ -250,6 +250,40 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   await applyKayfabeAction(db.pool,aa,{kind:"CLEAR_RESULTS_SKIN",requestId:"retro-original"});
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,null);
   assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
-  await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
+
+  // One-price-per-design, free re-selection, secure multiplayer ownership.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_kp_wallets SET balance=5000 WHERE player_id=$1",[a]));
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_EVENT_POSTER",sku:"POSTER_EMPIRE",requestId:"rival-poster"
+  }),/Unlock this poster/);
+  const stormPurchase={kind:"BUY" as const,sku:"POSTER_THUNDER_STRIKE" as const,
+   requestId:"purchase-storm"};
+  const storm=await applyKayfabeAction(db.pool,aa,stormPurchase) as {price:number};
+  assert.equal(storm.price,1250);
+  assert.equal((await applyKayfabeAction(db.pool,aa,stormPurchase)).replayed,true);
+  let posterWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(posterWallet.balance,3750);
+  assert.equal(posterWallet.activeEventPoster,"THUNDER_STRIKE");
+  assert.ok(posterWallet.entitlements.includes("POSTER_THUNDER_STRIKE"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"POSTER_THUNDER_STRIKE",requestId:"poster-duplicate"
+  }),/already own/);
+  const empirePurchase={kind:"BUY" as const,sku:"POSTER_EMPIRE" as const,
+   requestId:"purchase-empire"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,empirePurchase) as {price:number}).price,1250);
+  posterWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(posterWallet.balance,2500);
+  assert.equal(posterWallet.activeEventPoster,"EMPIRE");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_EVENT_POSTER",sku:"POSTER_THUNDER_STRIKE",requestId:"switch-storm"});
+  posterWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(posterWallet.balance,2500);
+  assert.equal(posterWallet.activeEventPoster,"THUNDER_STRIKE");
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_EVENT_POSTER",requestId:"standard-poster"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeEventPoster,null);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeEventPoster,null);
+    await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });

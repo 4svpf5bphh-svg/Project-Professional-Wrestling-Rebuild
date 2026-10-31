@@ -52,7 +52,7 @@
 .ppw-event-poster[data-poster=empire] .ppw-ep-layer{inset:-60%;background:linear-gradient(110deg,transparent 42%,#ffeeba35 50%,transparent 58%);animation:ppw-ep-sweep 9s infinite}
 .ppw-event-poster[data-poster=inferno]{--ep-accent:#ffc88e;background:radial-gradient(ellipse at 50% 95%,#b23916,#4a1d1b 54%,#180d16);border-color:#ff7846}
 .ppw-event-poster[data-poster=inferno] .ppw-ep-title{color:#ffc07e;text-shadow:0 2px 0 #b02e14,0 0 18px #e5521a}
-.ppw-event-poster[data-poster=inferno] .ppw-ep-layer{bottom:0;left:calc(8% + var(--i)*11%);width:4px;height:4px;border-radius:50%;background:#ffe2ad;box-shadow:0 0 8px 3px #e85c1d;animation:ppw-ep-rise 6s linear infinite;animation-delay:calc(var(--i)*-0.7s)}
+.ppw-event-poster[data-poster=inferno] .ppw-ep-layer{bottom:0;left:var(--ep-left);width:4px;height:4px;border-radius:50%;background:#ffe2ad;box-shadow:0 0 8px 3px #e85c1d;animation:ppw-ep-rise 6s linear infinite;animation-delay:calc(var(--i)*-0.7s)}
 .ppw-event-poster[data-poster=retro-broadcast]{--ep-accent:#ffe1a9;background:linear-gradient(#20374c,#121d33 55%,#333348);border:7px solid #515b67;border-radius:20px}
 .ppw-event-poster[data-poster=retro-broadcast]::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#02061147 0 2px,transparent 2px 5px);z-index:3;pointer-events:none}
 .ppw-event-poster[data-poster=retro-broadcast] .ppw-ep-title{font-style:normal;color:#fff2ce;text-shadow:3px 3px 0 #d45b52,5px 5px 0 #6089ac}
@@ -80,7 +80,7 @@
 .ppw-event-poster[data-poster=frozen-crown]{--ep-accent:#d9f6ff;background:radial-gradient(ellipse at 50% 27%,#6ca7d2,#244f77 56%,#0a203b);border-color:#aee6fa}
 .ppw-event-poster[data-poster=frozen-crown]::before{content:"";position:absolute;inset:18% 15%;background:#e6fbff21;clip-path:polygon(50% 0,62% 25%,83% 10%,73% 43%,100% 52%,72% 65%,78% 99%,50% 78%,19% 99%,29% 65%,0 53%,26% 41%,18% 10%,39% 25%)}
 .ppw-event-poster[data-poster=frozen-crown] .ppw-ep-title{font-family:Georgia,serif;color:#effaff;text-shadow:0 0 11px #83d9ff}
-.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-layer{left:calc(4% + var(--i)*10%);top:-5%;width:4px;height:4px;border-radius:50%;background:#e9ffff;box-shadow:0 0 5px #daffff;animation:ppw-ep-snow 8s linear infinite;animation-delay:calc(var(--i)*-0.9s)}
+.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-layer{left:var(--ep-left);top:-5%;width:4px;height:4px;border-radius:50%;background:#e9ffff;box-shadow:0 0 5px #daffff;animation:ppw-ep-snow 8s linear infinite;animation-delay:calc(var(--i)*-0.9s)}
 .ppw-event-poster[data-poster=laser-grid]{--ep-accent:#9afbf6;background:radial-gradient(ellipse at 50% 30%,#2a2862,#101435 62%,#070a1c);border-color:#59e8e8}
 .ppw-event-poster[data-poster=laser-grid]::before{content:"";position:absolute;inset:50% -55% -45%;background:linear-gradient(#44eff770 1px,transparent 1px),linear-gradient(90deg,#44eff770 1px,transparent 1px);background-size:32px 32px;transform:perspective(170px) rotateX(65deg)}
 .ppw-event-poster[data-poster=laser-grid] .ppw-ep-layer{top:0;left:50%;width:2px;height:100%;background:#ff608c;box-shadow:0 0 12px #ff608c;transform-origin:50% 0;animation:ppw-ep-beam 8s ease-in-out infinite alternate}
