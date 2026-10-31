@@ -623,11 +623,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     },!mutable());
    select.setAttribute("aria-label","Choose a rivalry to book");
    suggestions.append(field("Rivalry",select));
-   const next=selected.plannedActivity?.[0];
-   if(next)suggestions.append(el("small","ppw-muted",
-    "Already on "+next.showName+" · "+
-     (next.kind==="MATCH"?"Match":"Angle")+
-     ". You can still book another chapter if you want."));
    const choices=recommendProgrammeAngles(selected).slice(0,3);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    for(const idea of choices){
