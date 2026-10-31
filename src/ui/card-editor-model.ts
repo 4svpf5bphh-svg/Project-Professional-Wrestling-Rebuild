@@ -33,7 +33,7 @@ export const FORMATS:readonly {value:Format;label:string}[]=[
  {value:"TRIOS",label:"Trios · 3v3"},
  {value:"FOUR_V_FOUR",label:"Four on four"},
  {value:"FIVE_V_FIVE",label:"Five on five"},
- {value:"MULTI_TEAM",label:"Multi-team · 2–6 teams"},
+ {value:"MULTI_TEAM",label:"Multi-team · 2v2v2 / more"},
  {value:"BATTLE_ROYAL",label:"Battle royal · 6–30 entrants"},
 ];
 const isTeam=(format:Format)=>["TAG","TRIOS","FOUR_V_FOUR",
