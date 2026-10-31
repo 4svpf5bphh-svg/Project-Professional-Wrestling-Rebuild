@@ -33,6 +33,9 @@ test("a 3v3v3 or multi-side battle royal cannot accidentally claim a tag champio
  larger.championshipId="founding:tag";
  assert.throws(()=>buildBookedMatch(larger),/Unsupported championship format/);
  const short=newEditorMatch("battle","BATTLE_ROYAL");
+ short.teams=short.teams.map((team,i)=>team.map((_,j)=>({
+  personId:"battle-person-"+i+"-"+j,contractId:"battle-contract-"+i+"-"+j
+ })));
  short.championshipId="founding:tag";
  assert.throws(()=>buildBookedMatch(short),/Unsupported championship format/);
 });
