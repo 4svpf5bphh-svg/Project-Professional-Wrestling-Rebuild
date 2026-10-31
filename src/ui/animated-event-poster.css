@@ -1,0 +1,133 @@
+/* Same live designs in KP preview, Calendar and six-week Planner.
+   Zero remote assets; each uses CSS gradients, geometry, and optionally SVG.
+   `data-visible` pauses animation when offscreen to protect iPhone battery. */
+.ppw-event-poster{
+ --ep-primary:#fff;--ep-accent:#eec47b;
+ position:relative;isolation:isolate;box-sizing:border-box;overflow:hidden;
+ width:100%;aspect-ratio:3/4;display:flex;flex-direction:column;
+ justify-content:space-between;align-items:stretch;text-align:center;
+ padding:18px 13px 15px;color:#fff;border-radius:11px;
+ background:#101b35;border:2px solid #62718c;
+ font-family:system-ui,-apple-system,sans-serif;
+ box-shadow:inset 0 0 0 1px #ffffff20;
+}
+.ppw-event-poster *{box-sizing:border-box}
+.ppw-event-poster>.ppw-ep-top,.ppw-event-poster>.ppw-ep-middle,.ppw-event-poster>.ppw-ep-footer{position:relative;z-index:4}
+.ppw-ep-top{display:grid;gap:7px;min-width:0}
+.ppw-ep-promoter{font:950 10px/1.3 system-ui;letter-spacing:.12em;text-transform:uppercase;overflow-wrap:anywhere;color:#f8f3e9}
+.ppw-ep-type{font:850 9px/1.4 system-ui;letter-spacing:.16em;color:var(--ep-accent)}
+.ppw-ep-middle{display:grid;gap:15px;min-width:0;margin:auto 0}
+.ppw-ep-title{font:1000 italic clamp(30px,7.6vw,55px)/.93 system-ui;
+ text-transform:uppercase;letter-spacing:-.055em;color:var(--ep-primary);
+ overflow-wrap:anywhere;text-shadow:3px 4px 0 #0008;max-width:100%;
+}
+.ppw-ep-tagline{font:900 10px/1.4 system-ui;letter-spacing:.13em;color:var(--ep-accent);text-transform:uppercase}
+.ppw-ep-footer{display:grid;gap:6px;padding:11px 3px 2px;border-top:1px solid #ffffff82;
+ background:linear-gradient(0deg,#0207135a,transparent)}
+.ppw-ep-main-label{font:850 9px/1.2 system-ui;letter-spacing:.18em}
+.ppw-ep-main{font:950 12px/1.3 system-ui;text-transform:uppercase;overflow-wrap:anywhere;color:#fff}
+.ppw-ep-effects{position:absolute;inset:0;z-index:0;pointer-events:none}
+.ppw-ep-layer{position:absolute;display:block;pointer-events:none}
+.ppw-ep-effects svg{width:100%;height:100%;position:absolute;inset:0}
+.ppw-event-poster[data-visible=false] *, .ppw-event-poster[data-visible=false] *::before,.ppw-event-poster[data-visible=false] *::after{animation-play-state:paused!important}
+.ppw-event-poster[data-poster=thunder-strike]{
+ --ep-accent:#9cdefe;background:radial-gradient(ellipse at 55% 50%,#305896,#13224f 56%,#080f29);
+ border-color:#469bd9}
+.ppw-event-poster[data-poster=thunder-strike] .ppw-ep-title{color:#f1faff;text-shadow:3px 4px 0 #194b9b,0 0 17px #60bfff}
+.ppw-event-poster[data-poster=thunder-strike] .ppw-ep-effects svg path{fill:none;stroke:#caf2ff;stroke-width:2.5;filter:drop-shadow(0 0 9px #57b4ff);opacity:0;animation:ppw-ep-flash 10s infinite}
+.ppw-event-poster[data-poster=thunder-strike] .ppw-ep-effects svg path:last-child{animation-delay:4s;stroke-width:1.6}
+.ppw-event-poster[data-poster=thunder-strike] .ppw-ep-layer{inset:0;background:#b5dfff;animation:ppw-ep-skyflash 10s infinite;opacity:0}
+.ppw-event-poster[data-poster=high-noon]{--ep-accent:#fff0b6;background:radial-gradient(circle at 50% 52%,#f0ae3b,#ca4e19 53%,#591e26);border-color:#edaa58}
+.ppw-event-poster[data-poster=high-noon] .ppw-ep-layer{inset:-85%;background:repeating-conic-gradient(transparent 0deg 11deg,#fff1a15c 11deg 21deg,transparent 21deg 30deg);animation:ppw-ep-turn 40s linear infinite}
+.ppw-event-poster[data-poster=high-noon] .ppw-ep-title{font-family:Georgia,serif;font-style:normal;color:#fff0c9;text-shadow:3px 4px 0 #873011}
+.ppw-event-poster[data-poster=neon-nights]{--ep-accent:#fba7ed;background:radial-gradient(ellipse at 50% 45%,#4e2a81,#15143e 60%,#090e20);border-color:#a958ed}
+.ppw-event-poster[data-poster=neon-nights] .ppw-ep-layer{inset:34% -70% -30%;background:linear-gradient(#e756da65 1px,transparent 1px),linear-gradient(90deg,#49e6ff7d 1px,transparent 1px);background-size:35px 35px;transform:perspective(150px) rotateX(64deg);opacity:.5}
+.ppw-event-poster[data-poster=neon-nights] .ppw-ep-title{color:#89fbff;text-shadow:0 0 8px #27dafe,0 0 22px #b544d6;animation:ppw-ep-neon 5s infinite}
+.ppw-event-poster[data-poster=spotlight-showdown]{--ep-accent:#ff9aab;background:radial-gradient(ellipse at 52% 28%,#424c5d,#181a27 57%,#0a0b12);border-color:#a8acb5}
+.ppw-event-poster[data-poster=spotlight-showdown] .ppw-ep-layer{top:-15%;left:10%;width:80%;height:110%;background:linear-gradient(#ffffffa8,#ffffff13,transparent);clip-path:polygon(48% 0%,54% 0%,100% 100%,0 100%);opacity:.42;transform-origin:50% 0;animation:ppw-ep-beam 9s ease-in-out infinite alternate}
+.ppw-event-poster[data-poster=spotlight-showdown] .ppw-ep-layer-1{animation-delay:-4.5s;animation-direction:alternate-reverse}
+.ppw-event-poster[data-poster=empire]{--ep-accent:#ffe0a2;background:radial-gradient(ellipse at 50% 40%,#804037,#3c222b 58%,#140f19);border-color:#d6b36a}
+.ppw-event-poster[data-poster=empire]::before{content:"";position:absolute;inset:8px;border:1px solid #e7c277ad;border-radius:55px 55px 8px 8px}
+.ppw-event-poster[data-poster=empire] .ppw-ep-title{font-family:Georgia,serif;font-style:normal;color:#ffe0a4;text-shadow:2px 3px 0 #75432a}
+.ppw-event-poster[data-poster=empire] .ppw-ep-layer{inset:-60%;background:linear-gradient(110deg,transparent 42%,#ffeeba35 50%,transparent 58%);animation:ppw-ep-sweep 9s infinite}
+.ppw-event-poster[data-poster=inferno]{--ep-accent:#ffc88e;background:radial-gradient(ellipse at 50% 95%,#b23916,#4a1d1b 54%,#180d16);border-color:#ff7846}
+.ppw-event-poster[data-poster=inferno] .ppw-ep-title{color:#ffc07e;text-shadow:0 2px 0 #b02e14,0 0 18px #e5521a}
+.ppw-event-poster[data-poster=inferno] .ppw-ep-layer{bottom:0;left:calc(8% + var(--i)*11%);width:4px;height:4px;border-radius:50%;background:#ffe2ad;box-shadow:0 0 8px 3px #e85c1d;animation:ppw-ep-rise 6s linear infinite;animation-delay:calc(var(--i)*-0.7s)}
+.ppw-event-poster[data-poster=retro-broadcast]{--ep-accent:#ffe1a9;background:linear-gradient(#20374c,#121d33 55%,#333348);border:7px solid #515b67;border-radius:20px}
+.ppw-event-poster[data-poster=retro-broadcast]::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#02061147 0 2px,transparent 2px 5px);z-index:3;pointer-events:none}
+.ppw-event-poster[data-poster=retro-broadcast] .ppw-ep-title{font-style:normal;color:#fff2ce;text-shadow:3px 3px 0 #d45b52,5px 5px 0 #6089ac}
+.ppw-event-poster[data-poster=retro-broadcast] .ppw-ep-layer{left:0;right:0;height:18px;top:0;background:linear-gradient(transparent,#ffffff27,transparent);animation:ppw-ep-scan 9s linear infinite}
+.ppw-event-poster[data-poster=vegas-lights]{--ep-accent:#ffdda5;background:radial-gradient(ellipse at 50% 60%,#794020,#351724 68%,#130e1b);border:4px solid #dfad5c}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-title{color:#ffe6a6;text-shadow:2px 3px 0 #9c4329,0 0 18px #ffbb49}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer{background:radial-gradient(circle,#ffe89d 0 25%,transparent 29%) 0 0/24px 24px;filter:drop-shadow(0 0 5px #fbd17a);animation:ppw-ep-bulbs 2s infinite}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-0,.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-1{height:24px;left:0;right:0}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-0{top:0}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-1{bottom:0;animation-delay:-1s}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-2,.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-3{width:24px;top:0;bottom:0}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-2{left:0;animation-delay:-1s}
+.ppw-event-poster[data-poster=vegas-lights] .ppw-ep-layer-3{right:0}
+.ppw-event-poster[data-poster=eclipse]{--ep-accent:#e7c0fa;background:radial-gradient(ellipse at 50% 45%,#4b385f,#1e1738 58%,#0a0b1d);border-color:#a781c9}
+.ppw-event-poster[data-poster=eclipse] .ppw-ep-layer{top:12%;left:14%;width:72%;aspect-ratio:1;border-radius:50%;background:conic-gradient(#ffdaa8,#aa91ff,#4832ba,#f6bcad);mask-image:radial-gradient(transparent 39%,black 44% 52%,transparent 61%);-webkit-mask-image:radial-gradient(transparent 39%,black 44% 52%,transparent 61%);animation:ppw-ep-turn 33s linear infinite}
+.ppw-event-poster[data-poster=eclipse] .ppw-ep-title{font:900 normal clamp(30px,8vw,51px)/1 Georgia,serif;color:#f3e4ff;text-shadow:0 0 17px #9c79dc}
+.ppw-event-poster[data-poster=riot-signal]{--ep-accent:#eaff86;background:repeating-linear-gradient(-24deg,#151a20 0 30px,#222b30 30px 33px,#101315 34px 60px);border-color:#d5ef63}
+.ppw-event-poster[data-poster=riot-signal] .ppw-ep-layer{top:47%;left:-20%;width:140%;height:22%;background:repeating-linear-gradient(0deg,#edff5073 0 13px,#182218 13px 17px);transform:rotate(-13deg);animation:ppw-ep-jolt 7s steps(2,end) infinite}
+.ppw-event-poster[data-poster=riot-signal] .ppw-ep-middle{background:#10181bdc;border-inline:4px solid #e5fb65;padding:14px 4px;transform:rotate(1deg)}
+.ppw-event-poster[data-poster=riot-signal] .ppw-ep-title{color:#effe9d}
+.ppw-event-poster[data-poster=steelworks]{--ep-accent:#ffcb87;background:repeating-linear-gradient(155deg,#29363e 0 5px,#1a2329 8px 14px);border:3px solid #8b9aa1}
+.ppw-event-poster[data-poster=steelworks]::before{content:"";position:absolute;inset:9px;border:2px solid #879ba9}
+.ppw-event-poster[data-poster=steelworks] .ppw-ep-title{color:#e8f3f7;text-shadow:3px 4px 0 #354a59}
+.ppw-event-poster[data-poster=steelworks] .ppw-ep-layer{inset:-50%;background:linear-gradient(110deg,transparent 42%,#d4efff36 50%,transparent 57%);animation:ppw-ep-sweep 9s infinite}
+.ppw-event-poster[data-poster=frozen-crown]{--ep-accent:#d9f6ff;background:radial-gradient(ellipse at 50% 27%,#6ca7d2,#244f77 56%,#0a203b);border-color:#aee6fa}
+.ppw-event-poster[data-poster=frozen-crown]::before{content:"";position:absolute;inset:18% 15%;background:#e6fbff21;clip-path:polygon(50% 0,62% 25%,83% 10%,73% 43%,100% 52%,72% 65%,78% 99%,50% 78%,19% 99%,29% 65%,0 53%,26% 41%,18% 10%,39% 25%)}
+.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-title{font-family:Georgia,serif;color:#effaff;text-shadow:0 0 11px #83d9ff}
+.ppw-event-poster[data-poster=frozen-crown] .ppw-ep-layer{left:calc(4% + var(--i)*10%);top:-5%;width:4px;height:4px;border-radius:50%;background:#e9ffff;box-shadow:0 0 5px #daffff;animation:ppw-ep-snow 8s linear infinite;animation-delay:calc(var(--i)*-0.9s)}
+.ppw-event-poster[data-poster=laser-grid]{--ep-accent:#9afbf6;background:radial-gradient(ellipse at 50% 30%,#2a2862,#101435 62%,#070a1c);border-color:#59e8e8}
+.ppw-event-poster[data-poster=laser-grid]::before{content:"";position:absolute;inset:50% -55% -45%;background:linear-gradient(#44eff770 1px,transparent 1px),linear-gradient(90deg,#44eff770 1px,transparent 1px);background-size:32px 32px;transform:perspective(170px) rotateX(65deg)}
+.ppw-event-poster[data-poster=laser-grid] .ppw-ep-layer{top:0;left:50%;width:2px;height:100%;background:#ff608c;box-shadow:0 0 12px #ff608c;transform-origin:50% 0;animation:ppw-ep-beam 8s ease-in-out infinite alternate}
+.ppw-event-poster[data-poster=laser-grid] .ppw-ep-layer-1{background:#68eaff;box-shadow:0 0 11px #68eaff;animation-delay:-4s;animation-direction:alternate-reverse}
+.ppw-event-poster[data-poster=laser-grid] .ppw-ep-title{color:#ecffff;text-shadow:0 0 13px #45ebee,3px 3px 0 #aa3d8b}
+.ppw-event-poster[data-poster=crown-theatre]{--ep-accent:#f7cb91;background:radial-gradient(ellipse at 50% 35%,#652a38,#24121d 63%,#100a13);border-color:#d9ad68}
+.ppw-event-poster[data-poster=crown-theatre] .ppw-ep-layer{top:0;height:90%;width:38%;background:repeating-linear-gradient(90deg,#491021,#a02d41 15%,#300b19 32%,#8f2633 48%);animation:ppw-ep-curtain 7s ease-in-out infinite alternate}
+.ppw-event-poster[data-poster=crown-theatre] .ppw-ep-layer-0{left:0;clip-path:polygon(0 0,100% 0,77% 50%,94% 100%,0 100%);transform-origin:left center}
+.ppw-event-poster[data-poster=crown-theatre] .ppw-ep-layer-1{right:0;clip-path:polygon(0 0,100% 0,100% 100%,6% 100%,23% 50%);transform-origin:right center;animation-delay:-3.5s}
+.ppw-event-poster[data-poster=crown-theatre] .ppw-ep-title{font-family:Georgia,serif;font-style:normal;color:#ffe0a8;text-shadow:0 0 13px #e0ad5b}
+.ppw-event-poster[data-poster=tidal-force]{--ep-accent:#b0f4f5;background:linear-gradient(170deg,#103b50,#135673 52%,#071b35);border-color:#74d2e7}
+.ppw-event-poster[data-poster=tidal-force] .ppw-ep-layer{top:calc(38% + var(--i)*10%);left:-22%;width:145%;height:29%;background:linear-gradient(#a5f9f18a,#227fa59c);clip-path:polygon(0 55%,10% 30%,20% 20%,30% 35%,40% 60%,50% 70%,60% 53%,70% 27%,80% 22%,90% 50%,100% 70%,100% 100%,0 100%);animation:ppw-ep-tide 7s ease-in-out infinite alternate;animation-delay:calc(var(--i)*-2s)}
+.ppw-event-poster[data-poster=tidal-force] .ppw-ep-title{color:#ddffff;text-shadow:0 0 14px #5de9f3,3px 4px 0 #105675}
+.ppw-event-poster[data-poster=blood-moon]{--ep-accent:#f6afbd;background:radial-gradient(ellipse at 50% 45%,#5d1e30,#29131f 66%,#0b0b16);border-color:#d6798e}
+.ppw-event-poster[data-poster=blood-moon] .ppw-ep-layer-0{width:65%;aspect-ratio:1;left:17.5%;top:12%;border-radius:50%;background:radial-gradient(circle at 38% 35%,#efa49d,#b63c55 58%,#742136);box-shadow:0 0 27px #e24b7190;animation:ppw-ep-moon 6s infinite}
+.ppw-event-poster[data-poster=blood-moon] .ppw-ep-layer-1{inset:55% 0 0;background:#140f22;clip-path:polygon(0 70%,11% 49%,25% 63%,39% 34%,54% 62%,67% 25%,80% 54%,95% 35%,100% 44%,100% 100%,0 100%)}
+.ppw-event-poster[data-poster=blood-moon] .ppw-ep-title{font-family:Georgia,serif;color:#fff0e9;text-shadow:0 0 15px #f07683}
+.ppw-event-poster[data-poster=circuit-breaker]{--ep-accent:#96ffd1;background:radial-gradient(ellipse at 50% 40%,#21493b,#0b242a 62%,#06131a);border-color:#6aebbe}
+.ppw-event-poster[data-poster=circuit-breaker] .ppw-ep-effects svg path{stroke:#53e7bc;stroke-width:2;stroke-dasharray:15 22;fill:none;animation:ppw-ep-circuit 9s linear infinite;opacity:.75}
+.ppw-event-poster[data-poster=circuit-breaker] .ppw-ep-title{font-family:ui-monospace,Consolas,monospace;color:#d9ffee;text-shadow:0 0 12px #3feeb3}
+.ppw-event-poster[data-poster=aftershock]{--ep-accent:#ffd09e;background:radial-gradient(ellipse at 50% 43%,#874328,#402529 56%,#17111b);border-color:#f6ae65}
+.ppw-event-poster[data-poster=aftershock] .ppw-ep-layer{width:50%;aspect-ratio:1;border:3px solid #ffad6d;top:37%;left:50%;border-radius:50%;opacity:0;animation:ppw-ep-shock 6s ease-out infinite;animation-delay:calc(var(--i)*2s)}
+.ppw-event-poster[data-poster=aftershock]::before{content:"";position:absolute;bottom:15%;left:-10%;width:120%;height:17px;transform:rotate(-4deg);background:repeating-linear-gradient(115deg,#ffb345 0 21px,#1e2126 21px 43px);opacity:.65}
+.ppw-event-poster[data-poster=aftershock] .ppw-ep-title{color:#ffedc9;text-shadow:4px 4px 0 #ab432a}
+@keyframes ppw-ep-flash{0%,15%,17%,19%,100%{opacity:0}15.5%,18%{opacity:.9}16%{opacity:.16}}
+@keyframes ppw-ep-skyflash{0%,15%,17%,19%,100%{opacity:0}15.5%,18%{opacity:.12}16%{opacity:.02}}
+@keyframes ppw-ep-turn{to{transform:rotate(360deg)}}
+@keyframes ppw-ep-beam{from{transform:rotate(-26deg)}to{transform:rotate(26deg)}}
+@keyframes ppw-ep-neon{0%,100%{filter:brightness(1)}48%{filter:brightness(1.18)}50%{filter:brightness(.78)}52%{filter:brightness(1.12)}}
+@keyframes ppw-ep-sweep{0%,22%{transform:translateX(-100%)}50%,100%{transform:translateX(100%)}}
+@keyframes ppw-ep-rise{0%{transform:translateY(0);opacity:0}20%,70%{opacity:.8}100%{transform:translate(20px,-360px);opacity:0}}
+@keyframes ppw-ep-scan{to{top:100%}}
+@keyframes ppw-ep-bulbs{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes ppw-ep-jolt{0%,47%,53%,100%{translate:0}49%{translate:-7px}51%{translate:4px}}
+@keyframes ppw-ep-snow{0%{transform:translateY(0);opacity:0}15%,75%{opacity:.9}100%{transform:translate(20px,400px);opacity:0}}
+@keyframes ppw-ep-curtain{from{transform:scaleX(.92)}to{transform:scaleX(1.06)}}
+@keyframes ppw-ep-tide{from{transform:translateX(-8%)}to{transform:translateX(8%)}}
+@keyframes ppw-ep-moon{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes ppw-ep-circuit{to{stroke-dashoffset:-148}}
+@keyframes ppw-ep-shock{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{opacity:.75}100%{transform:translate(-50%,-50%) scale(2);opacity:0}}
+@media(prefers-reduced-motion:reduce){.ppw-event-poster *, .ppw-event-poster *::before,.ppw-event-poster *::after{animation:none!important}.ppw-event-poster[data-poster=thunder-strike] .ppw-ep-effects svg path{opacity:.28}.ppw-event-poster[data-poster=aftershock] .ppw-ep-layer{opacity:.15;transform:translate(-50%,-50%) scale(.9)}}
+.ppw-event-poster[data-size=compact]{aspect-ratio:auto;min-height:145px;max-height:175px;padding:11px 12px;gap:10px}
+.ppw-event-poster[data-size=compact] .ppw-ep-title{font-size:clamp(19px,5vw,30px);line-height:1}
+.ppw-event-poster[data-size=compact] .ppw-ep-middle{gap:5px}
+.ppw-event-poster[data-size=compact] .ppw-ep-tagline{font-size:8px}
+.ppw-event-poster[data-size=compact] .ppw-ep-promoter{font-size:9px}
+.ppw-event-poster[data-size=compact] .ppw-ep-type{font-size:8px}
+.ppw-event-poster[data-size=compact] .ppw-ep-footer{padding-top:5px;gap:2px}
+.ppw-event-poster[data-size=compact] .ppw-ep-main-label{font-size:8px}
+.ppw-event-poster[data-size=compact] .ppw-ep-main{font-size:10px}
