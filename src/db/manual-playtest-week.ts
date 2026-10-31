@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {lockWorldWeek} from "./world-lock.js";
@@ -23,7 +24,9 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    SELECT c.promotion_id,c.player_id,
     EXISTS(SELECT 1 FROM ppw_booking_drafts d
      WHERE d.world_id=c.world_id AND d.promotion_id=c.promotion_id
-      AND d.year=$2 AND d.week=$3 AND d.booking_class='REGULAR'
+      AND d.year=$2 AND d.week=$3
+      AND (d.booking_class='REGULAR' OR
+       (d.booking_class='PREMIUM' AND ${premiumOnlyWeekSql("p")}))
       AND (d.status='SUBMITTED' OR d.lock_ready_fingerprint IS NOT NULL)) AS ready,
     EXISTS(SELECT 1 FROM ppw_booking_drafts d
      WHERE d.world_id=c.world_id AND d.promotion_id=c.promotion_id

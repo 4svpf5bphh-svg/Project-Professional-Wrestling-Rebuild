@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 /** Resolves the canonical submitted shows for one World week.
  * Each show is independently atomic and idempotent; a failed later show
  * leaves earlier receipts intact for deterministic retry.
@@ -40,8 +41,9 @@ export async function resolveWorldWeekShows(
    [input.worldId,input.year,input.week]);
   if(world.length!==1||world[0]!.phase!=="RESOLVING")
    throw new Error("World changed during show discovery");
-  return tx.query<{promotion_id:string}>(
-   `SELECT p.promotion_id FROM ppw_promotions p
+  return tx.query<{promotion_id:string;premium_only_week:boolean}>(
+   `SELECT p.promotion_id,(${premiumOnlyWeekSql("p")}) AS premium_only_week
+      FROM ppw_promotions p
     WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
   WHERE off_week.world_id=p.world_id
    AND off_week.promotion_id=p.promotion_id
@@ -64,8 +66,9 @@ export async function resolveWorldWeekShows(
   unique.add(key);
   if(show.booking_class==="REGULAR")regular.add(show.promotion_id);
  }
- if(regular.size!==active.length)
-  throw new Error("World week incomplete: a regular show is required for every promotion");
+ if(active.some(p=>!regular.has(p.promotion_id)&&
+   !(p.premium_only_week&&unique.has(p.promotion_id+"\u0000PREMIUM"))))
+  throw new Error("World week incomplete: each promotion needs a regular show or a scheduled premium-only card");
  // Four shows per request bounds execution within Vercel's runtime budget.
  // Persisted previous receipts are immutable and need no re-scoring.
  const completed=await withWorldTransaction(pool,tx=>tx.query<{

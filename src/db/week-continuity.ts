@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {applyWorldCommand} from "./world-commands.js";
@@ -46,8 +47,10 @@ export async function inspectWeekContinuity(tx:SqlRows,worldId:string){
             FROM ppw_booking_drafts
            WHERE world_id=p.world_id AND promotion_id=p.promotion_id
              AND year=$2 AND week=$3 AND status IN ('SUBMITTED','DRAFT')
-             AND booking_class='REGULAR'
-           ORDER BY (status='SUBMITTED') DESC,revision DESC,draft_id ASC
+             AND (booking_class='REGULAR' OR
+              (booking_class='PREMIUM' AND ${premiumOnlyWeekSql("p")}))
+           ORDER BY (booking_class='REGULAR') DESC,
+             (status='SUBMITTED') DESC,revision DESC,draft_id ASC
            LIMIT 1
        ) d ON true
       WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
