@@ -10,6 +10,7 @@ export interface ShowSeries {
  /** Earned only by certified completed editions; never editable importance. */
  earnedPrestige?:number;celebratedEditions?:number;
  lastCelebratedWeekIndex?:number|null;
+ posterStyle?:string|null;
 }
 export const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 export function dateAt(index:number){

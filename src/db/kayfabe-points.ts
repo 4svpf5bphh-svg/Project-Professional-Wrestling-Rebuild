@@ -51,6 +51,8 @@ export type KpAction=
  |{kind:"CLEAR_RESULTS_SKIN";requestId:string}
  |{kind:"APPLY_EVENT_POSTER";sku:EventPosterSku;requestId:string}
  |{kind:"CLEAR_EVENT_POSTER";requestId:string}
+ |{kind:"SET_SERIES_EVENT_POSTER";seriesId:string;sku:EventPosterSku;requestId:string}
+ |{kind:"CLEAR_SERIES_EVENT_POSTER";seriesId:string;requestId:string}
  |{kind:"APPLY_STAFF_OFFICE_THEME";sku:StaffOfficeThemeSku;requestId:string}
  |{kind:"CLEAR_STAFF_OFFICE_THEME";requestId:string}
  |{kind:"APPLY_BROADCAST_PACKAGE";sku:BroadcastPackageSku;requestId:string}
@@ -80,6 +82,11 @@ export function validateKpAction(action:KpAction){
    throw new Error("Unknown Kayfabe Points item");
  }else if(action.kind==="CLEAR_BADGE"||action.kind==="CLEAR_RESULTS_SKIN"||action.kind==="CLEAR_EVENT_POSTER"||action.kind==="CLEAR_STAFF_OFFICE_THEME"||action.kind==="CLEAR_BROADCAST_PACKAGE"){
   // The standard look is always available and costs nothing.
+ }else if(action.kind==="SET_SERIES_EVENT_POSTER"||
+  action.kind==="CLEAR_SERIES_EVENT_POSTER"){
+  if(!validId(action.seriesId))throw new Error("Unknown premium event");
+  if(action.kind==="SET_SERIES_EVENT_POSTER"&&!eventPosterBySku(action.sku))
+   throw new Error("Unknown animated event poster");
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
   cleanName(action.name);
@@ -150,6 +157,12 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    FROM ppw_kp_wallets WHERE player_id=$1`,[s.playerId]);
   const items=await tx.query<{sku:string}>(`
    SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 64`,[s.playerId]);
+  const eventSeries=await tx.query<{series_id:string;name:string;poster_style:string|null}>(`
+   SELECT s.series_id,s.name,p.style AS poster_style FROM ppw_show_series s
+   LEFT JOIN ppw_kp_series_posters p ON p.world_id=s.world_id
+    AND p.promotion_id=s.promotion_id AND p.series_id=s.series_id AND p.player_id=$3
+   WHERE s.world_id=$1 AND s.promotion_id=$2 AND s.event_type='MAJOR' AND s.active
+   ORDER BY s.series_id LIMIT 25`,[s.worldId,s.promotionId,s.playerId]);
   const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
    AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
@@ -188,6 +201,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
    activeBadge:achievementData.activeBadge,
    activeEventPoster:eventPosterByStyle(money?.event_poster)?.style??null,
+   premiumEventPosters:eventSeries.map(e=>({seriesId:e.series_id,name:e.name,style:e.poster_style})),
    activeStaffOfficeTheme:staffOfficeThemeByStyle(money?.staff_office_theme)?.style??null,
    activeBroadcastPackage:broadcastPackageByStyle(money?.broadcast_package)?.style??null,
    activeResultsSkin:money?.results_skin==="TERRITORY_TV"||money?.results_skin==="FIGHT_NIGHT"||money?.results_skin==="UNDERGROUND_ZINE"||money?.results_skin==="RETRO_BOOKER_02"?money.results_skin:null,
@@ -312,6 +326,28 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
    await tx.query(`INSERT INTO ppw_kp_event_poster_styles(player_id,style) VALUES($1,$2)
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,[s.playerId,style]);
    outcome={style};
+  }else if(action.kind==="SET_SERIES_EVENT_POSTER"){
+   const owns=await tx.query<{sku:string}>(
+    "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",
+    [s.playerId,action.sku]);
+   if(!owns.length)throw new Error("Unlock this poster before assigning it to a PPV");
+   const series=await tx.query<{series_id:string}>(`
+    SELECT series_id FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2
+     AND series_id=$3 AND event_type='MAJOR' AND active LIMIT 1`,
+    [s.worldId,s.promotionId,action.seriesId]);
+   if(!series.length)throw new Error("This premium event does not exist in your promotion");
+   const style=eventPosterBySku(action.sku)!.style;
+   await tx.query(`INSERT INTO ppw_kp_series_posters(
+    world_id,promotion_id,series_id,player_id,style) VALUES($1,$2,$3,$4,$5)
+    ON CONFLICT(world_id,promotion_id,series_id)
+    DO UPDATE SET style=excluded.style,player_id=excluded.player_id`,
+    [s.worldId,s.promotionId,action.seriesId,s.playerId,style]);
+   outcome={seriesId:action.seriesId,style};
+  }else if(action.kind==="CLEAR_SERIES_EVENT_POSTER"){
+   await tx.query(`DELETE FROM ppw_kp_series_posters
+    WHERE world_id=$1 AND promotion_id=$2 AND series_id=$3 AND player_id=$4`,
+    [s.worldId,s.promotionId,action.seriesId,s.playerId]);
+   outcome={seriesId:action.seriesId,style:null};
   }else if(action.kind==="APPLY_STAFF_OFFICE_THEME"){
    const owns=await tx.query<{sku:string}>(
     "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",

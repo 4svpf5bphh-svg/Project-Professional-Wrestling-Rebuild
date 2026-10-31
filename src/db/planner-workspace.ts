@@ -29,7 +29,7 @@ export interface PlannedShow {
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
- ready:boolean;slots:number;bookingClass:"REGULAR"|"PREMIUM";showSeriesId:string|null;showName:string;
+ ready:boolean;slots:number;posterStyle?:string|null;bookingClass:"REGULAR"|"PREMIUM";showSeriesId:string|null;showName:string;
 }
 export interface PlannerWeek {
  year:number;week:number;offset:number;required:boolean;major:boolean;
@@ -41,7 +41,7 @@ export interface PlannerVenuePressure {
 }
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;
+ worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
 }
 const id=(s:unknown):s is string=>typeof s==="string"&&s.trim().length>0&&s.length<=200;
@@ -53,7 +53,7 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
- major_interval:number|null;home_market_id:string|null;event_poster:string|null};
+ major_interval:number|null;home_market_id:string|null;event_poster:string|null;broadcast_package:string|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  checkScope(s);
  const rows=await tx.query<Owner>(`
@@ -61,7 +61,9 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
   p.home_market_id,
-   (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster FROM ppw_worlds w
+   (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
+   (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package
+   FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
  JOIN ppw_promotion_controls c ON c.world_id=w.world_id
   AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active
@@ -166,22 +168,26 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  const configured=await tx.query<{
   series_id:string;name:string;role:ShowSeries["role"];
   event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
-  importance:number;active:boolean;
+  importance:number;active:boolean;poster_style:string|null;
  }>([
-  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active",
+  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active,",
+   "(SELECT style FROM ppw_kp_series_posters poster WHERE poster.world_id=$1",
+   "AND poster.promotion_id=$2 AND poster.series_id=ppw_show_series.series_id",
+   "AND poster.player_id=$3) AS poster_style",
   "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2",
   "ORDER BY series_id LIMIT 25"
- ].join(" "),[s.worldId,s.promotionId]);
+ ].join(" "),[s.worldId,s.promotionId,s.playerId]);
  if(configured.length>24)throw new Error("Planner calendar series limit exceeded");
  const scheduled:ShowSeries[]=configured.length?configured.map(x=>({
   seriesId:x.series_id,name:x.name,role:x.role,eventType:x.event_type,
   cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
-  importance:x.importance,active:x.active
+  importance:x.importance,active:x.active,posterStyle:x.poster_style
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
+   broadcastPackage:owned.broadcast_package,
   venuePressure:pressure,
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,
@@ -202,6 +208,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     scheduled:scheduled.filter(x=>seriesDue(x,index)),
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
+      posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
      showName:d.show_name??scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
       (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
      draftId:d.draft_id,year:d.year,week:d.week,status:d.status,

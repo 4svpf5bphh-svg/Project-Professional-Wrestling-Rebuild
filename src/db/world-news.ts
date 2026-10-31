@@ -7,6 +7,7 @@ import type {SqlRows} from "./world-operations.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {publishCertifiedWorldHeritage} from "./world-honours.js";
+import {continueWorldRumours} from "./world-rumour-continuity.js";
 
 type Broadcast = {
  show_id:string;promotion_id:string;promotion_name:string;show_name:string;
@@ -472,7 +473,9 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  const stages=new Map(people.filter(p=>p.career_stage!==null)
   .map(p=>[p.person_id,p.career_stage!]));
  const awards=chooseWeeklyAwards(bouts,angles,names);
- const stories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals,stages);
+ const weeklyStories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals,stages);
+ const followups=await continueWorldRumours(tx,worldId,year,week,weeklyStories);
+ const stories=[...weeklyStories,...followups];
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,

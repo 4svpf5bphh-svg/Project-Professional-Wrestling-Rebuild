@@ -67,9 +67,14 @@
 #game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-fighter{color:#203568!important}
 #game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-lower{--tv-panel:#e5e9ef;--tv-ink:#1a2e63;--tv-accent:#a6293e}
 #game .ppw-tv-frame[data-broadcast-package=booker] .ppw-tv-motion{top:0;bottom:auto;height:12px;background:#fff9db24;animation:ppw-tv-scanner 9s linear infinite}
-#game .ppw-tv-frame[data-broadcast-package=strongstyle]{--tv-bg:#f8f8f5;--tv-panel:#fff;--tv-ink:#151c28;--tv-accent:#ab2235;--tv-dim:#333c48;--tv-border:#252e39;--tv-red:#9c1e30}
-#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-motion::before{content:"";position:absolute;top:35%;left:-15%;width:135%;height:20%;transform:rotate(-18deg);background:#c22c41}
-#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{font-style:normal;text-shadow:2px 3px 0 #c7c9cb}
+/* Strong Style is a dark, austere arena scoreboard, not Prizefight's pale
+   magazine graphic. Every banner and white fighter panel has its own ink. */
+#game .ppw-tv-frame[data-broadcast-package=strongstyle]{--tv-bg:repeating-linear-gradient(90deg,#0e1119 0 31px,#191d27 32px 34px);--tv-panel:#f5f3ed;--tv-ink:#fff8ee;--tv-accent:#ffb4b8;--tv-dim:#e3e7ed;--tv-border:#b82843;--tv-red:#a91c37;border:0;border-left:10px solid #c42b43;border-radius:0}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-motion::before{content:"";position:absolute;top:-10%;left:70%;width:9%;height:130%;transform:skewX(-17deg);background:#ce3049;opacity:.5}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{font-style:normal;letter-spacing:-.075em;text-shadow:none}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-fighter{color:#131b28!important;border:2px solid #d6d4d1;border-bottom:5px solid #c42b43}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-lower-name{color:#131b28!important}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-lower-show{color:#8a2033!important}
 #game .ppw-tv-frame[data-broadcast-package=luchafiesta]{--tv-bg:radial-gradient(circle at 45% 45%,#ff8a69,#d94186 53%,#4d2696);--tv-panel:#6c348b;--tv-ink:#fff9e0;--tv-accent:#fff1a1;--tv-dim:#ebffff;--tv-border:#ffe6a2;--tv-red:#94325d}
 #game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-motion{inset:-75%;background:repeating-conic-gradient(transparent 0 12deg,#7dffff24 13deg 22deg,transparent 22deg 31deg);animation:ppw-tv-turn 45s linear infinite}
 /* Compact in-editor graphics stay small: no portraits and no ongoing animations. */
@@ -144,3 +149,34 @@
  background:#101915ef;padding:6px 9px;border-left:4px solid #e3ff5a}
 #game .ppw-tv-frame[data-broadcast-package=luchafiesta] .ppw-tv-title{
  text-shadow:3px 4px 0 #8d2a7c,0 0 11px #9c387f}
+
+/* Opaque captions prevent red text disappearing into a red stripe, or
+   lime yellow text disappearing into Renegade's highlighter stripe. */
+#game .ppw-tv-frame .ppw-tv-caption{align-self:flex-start;position:relative;z-index:2;
+ background:#16283ceF!important;color:#fff!important;padding:6px 9px;
+ text-shadow:none!important;letter-spacing:.07em}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-caption{
+ background:#111b17!important;color:#eaffaa!important}
+#game .ppw-tv-frame[data-broadcast-package=territory] .ppw-tv-caption{
+ background:#663a2e!important;color:#fff5df!important}
+#game .ppw-tv-frame[data-broadcast-package=prizefight] .ppw-tv-motion::after{
+ height:12%;top:44%;transform:rotate(-12deg);background:#ad2b40}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle]{
+ --tv-accent:#18666e;--tv-border:#286a75;border:2px solid #1b6870}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-motion::before{
+ top:0;left:auto;right:13%;width:12%;height:100%;
+ transform:skew(-14deg);background:#c22c41}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-title{
+ background:#fff!important;border-left:5px solid #b8263c}
+#game .ppw-tv-frame[data-broadcast-package=strongstyle] .ppw-tv-fighter{border-bottom-color:#247b84}
+
+/* Branding label remains readable when a red or neon stripe crosses it. */
+#game .ppw-tv-frame .ppw-tv-broadcast-label{
+ display:inline-flex;align-items:center;justify-content:center;
+ position:relative;z-index:2;max-width:40%;padding:5px 7px;
+ background:#162a39!important;color:#fff!important;border-radius:3px;
+ text-shadow:none!important;font-size:9px;overflow-wrap:anywhere}
+#game .ppw-tv-frame[data-broadcast-package=territory] .ppw-tv-broadcast-label{
+ background:#503627!important;color:#fff8dd!important}
+#game .ppw-tv-frame[data-broadcast-package=renegade] .ppw-tv-broadcast-label{
+ background:#101b15!important;color:#e9ffb1!important}

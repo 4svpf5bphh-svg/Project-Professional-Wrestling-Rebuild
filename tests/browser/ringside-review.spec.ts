@@ -58,40 +58,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"TONIGHT'S HEADLINES"})).toBeVisible();
-  const chapters=page.locator(".ppw-results-steps .ppw-results-step");
-  await expect(chapters).toHaveCount(3);
-  await expect(chapters.nth(0)).toHaveAccessibleName("Headlines & Ringside");
-  await expect(chapters.nth(1)).toHaveAccessibleName("The Full Show");
-  await expect(chapters.nth(2)).toHaveAccessibleName("Post-show Brief");
-  if(width===320){
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeVisible();
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toHaveText("Ringside");
-   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeHidden();
-   // Chromium can report button.scrollWidth for clipped internal glyph
-   // decoration even when the short visible label itself fits. Assert that
-   // the actual visible text fits its control, and the page does not scroll.
-   for(const tab of await chapters.all()){
-    const metrics=await tab.evaluate(button=>{
-     const label=button.querySelector<HTMLElement>(".ppw-results-step-short");
-     if(!label)return {name:"missing",width:0,left:0,right:0,
-      buttonLeft:0,buttonRight:0,display:"none"};
-     const buttonBox=button.getBoundingClientRect();
-     const range=document.createRange();
-     range.selectNodeContents(label);
-     const textBox=range.getBoundingClientRect();
-     return {name:label.textContent??"",width:textBox.width,
-      left:textBox.left,right:textBox.right,buttonLeft:buttonBox.left,
-      buttonRight:buttonBox.right,display:getComputedStyle(label).display};
-    });
-    const fits=metrics.width>0&&metrics.display!=="none"&&
-     metrics.left>=metrics.buttonLeft-1&&
-     metrics.right<=metrics.buttonRight+1;
-    expect(fits,JSON.stringify(metrics)).toBe(true);
-   }
-  }else{
-   await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
-   await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
-  }
+  await expect(page.locator(".ppw-results-steps")).toHaveCount(0);
+  // Editorial follows three chapters via the bottom Next actions.
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
@@ -176,7 +144,8 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  const post=page.locator(".ppw-crowd-noise-card").first();
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
@@ -212,7 +181,8 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
   await expect(page.getByRole("button",{name:"Check roster"})).toBeVisible();
@@ -281,7 +251,8 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"Post-show Brief",exact:true}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await expect(page.getByRole("heading",{name:"The Media Scrum"})).toBeVisible();
  expect(reads).toBe(0); // Results must not fetch the press session until requested.
  await page.getByRole("button",{name:"Meet the press"}).click();
@@ -504,20 +475,24 @@ for(const skin of [
    await expect(names.first()).toHaveCSS("color",portraitNameColour);
    await expect(root.locator(".ppw-result-lineup .ppw-result-vs")).toHaveCSS(
     "color",vsColour);
+   const ink=skin.value==="TERRITORY_TV"?"rgb(56, 41, 30)":
+    skin.value==="FIGHT_NIGHT"?"rgb(23, 43, 60)":"rgb(240, 251, 212)";
+   const accent=skin.value==="TERRITORY_TV"?"rgb(161, 72, 41)":
+    skin.value==="FIGHT_NIGHT"?"rgb(169, 35, 60)":"rgb(226, 255, 89)";
    const rivalry=root.locator(".ppw-rivalry-at-ringside").first();
    await expect(rivalry).toBeVisible();
    await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-    .toHaveCSS("color","rgb(255, 223, 155)");
+    .toHaveCSS("color",ink);
    await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-    .toHaveCSS("color","rgb(226, 237, 245)");
+    .toHaveCSS("color",ink);
    await page.getByRole("button",{name:"Read Post-show Brief"}).click();
    const agent=root.locator(".ppw-post-show-road-agent");
    await expect(agent).toContainText("The main event delivered");
    await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
-    "color","rgb(244, 237, 244)");
-   await expect(agent.locator("h3")).toHaveCSS("color","rgb(255, 224, 169)");
+    "color",ink);
+   await expect(agent.locator("h3")).toHaveCSS("color",accent);
    await expect(agent.locator(".ppw-road-agent-continuity")).toHaveCSS(
-    "color","rgb(223, 249, 236)");
+    "color",ink);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(1);
   });
@@ -565,9 +540,9 @@ for(const width of [320,390]){
   const rivalry=report.locator(".ppw-rivalry-at-ringside").first();
   await expect(rivalry).toBeVisible();
   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-   .toHaveCSS("color","rgb(255, 223, 155)");
+   .toHaveCSS("color","rgb(22, 44, 86)");
   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-   .toHaveCSS("color","rgb(226, 237, 245)");
+   .toHaveCSS("color","rgb(22, 44, 86)");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(report.locator(".ppw-retro-chapter-head").last()).toContainText("AFTER THE SHOW");
   await expect(report.locator(".ppw-pop-post").first()).toHaveCSS(
@@ -577,7 +552,7 @@ for(const width of [320,390]){
   const agent=report.locator(".ppw-post-show-road-agent");
   await expect(agent).toContainText("The main event delivered.");
   await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
-   "color","rgb(244, 237, 244)");
+   "color","rgb(22, 44, 86)");
   expect(resultsReads).toBe(1);expect(providerReads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
@@ -608,8 +583,8 @@ for(const width of [320,390]){
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
   await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
-  await opening.getByRole("button",{name:"Skip opening"}).click();
-  await expect(opening).toHaveCount(0);
+  await expect(opening.getByRole("button",{name:"Skip opening"})).toHaveCount(0);
+  await expect(opening).toBeVisible();
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();

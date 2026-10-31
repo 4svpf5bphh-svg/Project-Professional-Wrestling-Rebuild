@@ -157,3 +157,6 @@
 .ppw-kp-broadcast-scenes [aria-pressed=true]{border-color:#8ee8ff!important;background:#255b99!important;color:#fff!important}
 #game .ppw-kp-broadcast-showcase{max-width:430px;margin:0 auto}
 @media(max-width:370px){.ppw-kp-broadcast-picker{grid-template-columns:1fr 1fr}.ppw-kp-broadcast-picker select{grid-column:1/-1;grid-row:1}}
+
+.ppw-kp-poster-target{display:grid;gap:7px;margin:8px 0;color:#ebf0ff;font-size:12px;font-weight:850}
+.ppw-kp-poster-target select{width:100%;min-width:0;min-height:44px}

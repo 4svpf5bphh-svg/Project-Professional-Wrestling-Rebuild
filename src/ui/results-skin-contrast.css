@@ -60,3 +60,57 @@
 #game .ppw-results[data-results-skin] .ppw-post-show-brief > .ppw-road-agent-continuity{
  color:#dff9ec;background:#133340;border-left:4px solid #8ad4ba;
 }
+
+/* Consistent skin-owned insets: rivalry history & Road Agent no longer show
+   default navy panels inside different themed result reports. */
+#game .ppw-results[data-results-skin="territory-tv"]{
+ --skin-story-bg:#f2e6c9;--skin-story-card:#fff3dc;--skin-story-ink:#38291e;
+ --skin-story-accent:#a14829;--skin-story-line:#b68d69}
+#game .ppw-results[data-results-skin="fight-night"]{
+ --skin-story-bg:#f3f5f8;--skin-story-card:#e0e8f0;--skin-story-ink:#172b3c;
+ --skin-story-accent:#a9233c;--skin-story-line:#abbecd}
+#game .ppw-results[data-results-skin="underground-zine"]{
+ --skin-story-bg:#202d24;--skin-story-card:#2d3b2e;--skin-story-ink:#f0fbd4;
+ --skin-story-accent:#e2ff59;--skin-story-line:#819c64}
+#game .ppw-results[data-results-skin="retro-booker-02"]{
+ --skin-story-bg:#e8eef8;--skin-story-card:#d8e2ef;--skin-story-ink:#162c56;
+ --skin-story-accent:#a92740;--skin-story-line:#829dbd}
+#game .ppw-results[data-results-skin] .ppw-rivalry-at-ringside,
+#game .ppw-results[data-results-skin] .ppw-post-show-road-agent{
+ background:var(--skin-story-bg)!important;color:var(--skin-story-ink)!important;
+ border:2px solid var(--skin-story-line)!important;
+ border-left:5px solid var(--skin-story-accent)!important;
+ border-radius:4px!important;padding:13px 14px;box-shadow:none!important}
+#game .ppw-results[data-results-skin] .ppw-rivalry-at-ringside .ppw-eyebrow,
+#game .ppw-results[data-results-skin] .ppw-post-show-road-agent :is(.ppw-eyebrow,h3){
+ color:var(--skin-story-accent)!important}
+#game .ppw-results[data-results-skin] .ppw-ringside-rivalry-chapter{
+ background:var(--skin-story-card)!important;padding:10px;border-radius:3px;
+ border:1px solid var(--skin-story-line)!important;margin-top:8px}
+#game .ppw-results[data-results-skin] .ppw-ringside-rivalry-chapter :is(strong,p),
+#game .ppw-results[data-results-skin] .ppw-post-show-road-agent :is(
+ strong,p,.ppw-road-agent-voice,.ppw-road-agent-next,.ppw-road-agent-standout,
+ .ppw-road-agent-continuity){
+ color:var(--skin-story-ink)!important}
+#game .ppw-results[data-results-skin] .ppw-post-show-road-agent .ppw-road-agent-continuity{
+ background:var(--skin-story-card)!important;border-left:3px solid var(--skin-story-accent)!important;
+ padding:9px!important}
+#game .ppw-results[data-results-skin="retro-booker-02"] :is(
+ .ppw-rivalry-at-ringside,.ppw-post-show-road-agent){
+ font-family:ui-monospace,Consolas,monospace!important;border-radius:0!important}
+#game .ppw-results[data-results-skin="underground-zine"] :is(
+ .ppw-rivalry-at-ringside,.ppw-post-show-road-agent){border-radius:1px!important}
+
+/* Skin badges win over older imported results rules; style + readability
+   must match the surrounding magazine, report or retro PC interface. */
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-main-event{
+ background:#673225!important;color:#fff9d7!important;border-color:#a87f50!important;
+ font-family:Georgia,serif!important}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-result-entry .ppw-result-main-event{
+ background:#a41d35!important;color:#fff!important;border-color:#e98292!important}
+#game .ppw-results[data-results-skin="underground-zine"] .ppw-result-entry .ppw-result-main-event{
+ background:#d9ff47!important;color:#17241e!important;border-color:#17241e!important;
+ border-radius:0!important}
+#game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-entry .ppw-result-main-event{
+ background:#a62740!important;color:#fff7d7!important;border-color:#f1c8d7!important;
+ border-radius:0!important;font-family:ui-monospace,Consolas,monospace!important}

@@ -30,6 +30,7 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
  let view:KayfabeView|null=null,busy=false,error="",notice="";
  let name="",division:"MEN"|"WOMEN"="MEN",alias="",staffId="";
  let createOpen=false,reviewing=false,posterIndex=0,staffThemeIndex=0,broadcastIndex=0;
+ let posterTarget="ALL";
  let broadcastScene:"OPEN"|"MATCH"|"SEGMENT"="OPEN";
  let alignment:"FACE"|"HEEL"|"TWEENER"="FACE";
  let primaryStyle:KpCreateStyle="ALL_ROUNDER",gimmickId:KpCreateGimmick="AUTHENTIC";
@@ -59,7 +60,9 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     action.kind==="APPLY_BADGE"?"Milestone showcase finish applied.":
     action.kind==="CLEAR_BADGE"?"Standard milestone style restored.":
     action.kind==="APPLY_RESULTS_SKIN"?"Results skin applied.":
-    action.kind==="APPLY_EVENT_POSTER"?"Animated event poster applied to your upcoming premium shows.":
+    action.kind==="APPLY_EVENT_POSTER"?"Default premium poster applied to all uncustomised PPVs.":
+    action.kind==="SET_SERIES_EVENT_POSTER"?"This PPV now uses the selected poster.":
+    action.kind==="CLEAR_SERIES_EVENT_POSTER"?"This PPV now uses your default poster.":
     action.kind==="CLEAR_EVENT_POSTER"?"Standard event artwork restored.":
     action.kind==="APPLY_STAFF_OFFICE_THEME"?"Staff Office appearance updated.":
     action.kind==="CLEAR_STAFF_OFFICE_THEME"?"Original Staff Office appearance restored.":
@@ -145,38 +148,14 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   if(port.openAchievements)achievements.append(btn(
    "Open Trophy Room · "+view.achievements.length+" achievements →",port.openAchievements));
   root.append(achievements);
-  const shop=el("section","ppw-kp-section");
-  shop.append(el("span","ppw-kp-kicker","PERSONALISE YOUR LEGACY"),
-   el("h2","","Promotion style & prestige"),
-   el("p","ppw-kp-muted","Promotion crests change your company's branding. Gold and platinum showcase finishes personalise your earned milestone cabinet. Switch between owned finishes or return to standard at any time; no gameplay advantage."));
-  const list=el("div","ppw-kp-catalogue");
-  for(const item of view.catalogue.filter(i=>i.kind!=="RESULTS_SKIN"&&i.kind!=="EVENT_POSTER"&&i.kind!=="STAFF_OFFICE_THEME"&&i.kind!=="BROADCAST_PACKAGE")){
-   const owned=view.entitlements.includes(item.sku),isBrand=item.kind==="BRAND";
-   const code=isBrand?item.sku.replace("BRAND_",""):"BADGE";
-   const article=el("article","ppw-kp-item");
-   const symbol=el("span","ppw-kp-symbol",isBrand?"PPW":"★");
-   symbol.dataset.style=code;
-   const detail=el("div","ppw-kp-item-copy");
-   detail.append(el("strong","",item.label),
-    el("small","",owned?"Owned · account-wide":format(item.price)));
-   const activate=isBrand?view.activeBrand===code:
-    view.activeBadge===item.sku.replace("BADGE_","");
-   article.append(symbol,detail,
-    btn(activate?"Applied":owned?"Apply":"Unlock",
-     ()=>void run(owned?isBrand?
-      {kind:"APPLY_BRAND",sku:item.sku as "BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD",requestId:crypto.randomUUID()}:
-      {kind:"APPLY_BADGE",sku:item.sku as "BADGE_GOLD"|"BADGE_PLATINUM",requestId:crypto.randomUUID()}:
-      {kind:"BUY",sku:item.sku,requestId:crypto.randomUUID()}),
-     busy||activate||(!owned&&view.balance<item.price)));
-   list.append(article);
-  }
-  shop.append(list);root.append(shop);
+  // Legacy crest and trophy finishes retired from new purchase flows.
+  // Existing entitlements and balances stay intact.
   // Only the owner's completed shows are restyled. The World UI is unchanged.
   const resultsShop=el("section","ppw-kp-section ppw-kp-results-skins");
   resultsShop.append(el("span","ppw-kp-kicker","BROADCAST PRESENTATION"),
    el("h2","","My results skins"),
    el("p","ppw-kp-muted",
-    "Customise only your own completed show reports: headlines, Full Card, POP! and the Post-Management Brief. Booking, dashboard and match results never change."));
+    "Customise only your own completed show reports: headlines, Full Card, HOT TAG and the Post-show Brief. Booking, dashboard and match results never change."));
   const resultsSkins=view.catalogue.filter(item=>item.kind==="RESULTS_SKIN");
   for(const skin of resultsSkins){
    const isFight=skin.sku==="RESULTS_FIGHT_NIGHT";
@@ -239,8 +218,26 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    const preview=createAnimatedEventPoster({style:selected.style,eventName:selected.label,
     promotionName:view.promotionName});
    if(preview){preview.classList.add("ppw-kp-poster-showcase");posterShop.append(preview);}
+   const targets=[{seriesId:"ALL",name:"Default for other PPVs",style:view.activeEventPoster},
+    ...(view.premiumEventPosters??[])];
+   if(!targets.some(t=>t.seriesId===posterTarget))posterTarget="ALL";
+   const selectTarget=el("select","ppw-kp-input") as HTMLSelectElement;
+   selectTarget.setAttribute("aria-label","Choose PPV to customise");
+   for(const t of targets){
+    const option=el("option","",t.name) as HTMLOptionElement;
+    option.value=t.seriesId;selectTarget.append(option);
+   }
+   selectTarget.value=posterTarget;
+   selectTarget.onchange=()=>{posterTarget=selectTarget.value;draw();};
+   const targetLabel=el("label","ppw-kp-poster-target");
+   targetLabel.append(el("strong","","Apply this poster to"),selectTarget);
+   posterShop.append(targetLabel);
+   const chosen=targets.find(t=>t.seriesId===posterTarget)!;
+   posterShop.append(el("small","ppw-kp-muted",
+    "Current design: "+(chosen.style??"Standard artwork")+
+    ". Each PPV may use a different owned poster."));
    const owned=view.entitlements.includes(selected.sku);
-   const active=view.activeEventPoster===selected.style;
+   const active=chosen.style===selected.style;
    const detail=el("div","ppw-kp-poster-details");
    const copy=el("div","ppw-kp-item-copy");
    copy.append(el("strong","",selected.label),
@@ -249,12 +246,19 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
     el("small","","Preview title is illustrative. Actual shows display their own event names."));
    detail.append(copy,btn(active?"Applied":owned?"Apply":"Unlock",
     ()=>void run(owned?
-     {kind:"APPLY_EVENT_POSTER",sku:selected.sku as EventPosterSku,requestId:crypto.randomUUID()}:
+     posterTarget==="ALL"?{kind:"APPLY_EVENT_POSTER",sku:selected.sku as EventPosterSku,requestId:crypto.randomUUID()}:
+       {kind:"SET_SERIES_EVENT_POSTER",seriesId:posterTarget,sku:selected.sku as EventPosterSku,
+        requestId:crypto.randomUUID()}:
      {kind:"BUY",sku:selected.sku,requestId:crypto.randomUUID()}),
     busy||active||(!owned&&view.balance<selected.price)));
    posterShop.append(detail);
-   if(view.activeEventPoster)posterShop.append(btn("Use standard event artwork",
-    ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
+   if(posterTarget==="ALL"&&view.activeEventPoster)
+    posterShop.append(btn("Use standard event artwork",
+     ()=>void run({kind:"CLEAR_EVENT_POSTER",requestId:crypto.randomUUID()}),busy));
+   else if(posterTarget!=="ALL"&&chosen.style)
+    posterShop.append(btn("Restore default poster for "+chosen.name,
+     ()=>void run({kind:"CLEAR_SERIES_EVENT_POSTER",seriesId:posterTarget,
+      requestId:crypto.randomUUID()}),busy));
   }
   root.append(posterShop);
   // Genuine themed Staff Office preview; the live screen shares these CSS rules.

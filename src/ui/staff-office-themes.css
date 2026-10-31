@@ -1,7 +1,7 @@
 /* Nine account-owned Staff Office styles. One CSS implementation powers the real
    four-tab workspace and the KP preview. No scene images, generated art or polling.
    All palettes retain high-contrast text on 320px iPhones. */
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]){
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])){
  --so-bg:#101c28;--so-panel:#1b303c;--so-card:#142934;--so-ink:#f6f7fb;
  --so-dim:#b9d0d9;--so-accent:#fdbb6f;--so-line:#4b707b;--so-button:#264357;
  --so-button-ink:#f6f7fb;--so-selected:#79502e;--so-panel-ink:var(--so-ink);
@@ -10,89 +10,89 @@
  padding:18px 14px 95px;min-width:0;isolation:isolate;position:relative;overflow:hidden;
  transition:background-color .22s ease,border-color .22s ease;
 }
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-head{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-head{
  position:relative;padding:13px 10px 18px;overflow:hidden;isolation:isolate}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-head h1{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-head h1{
  font:950 clamp(27px,7vw,40px)/1.1 system-ui;letter-spacing:-.045em;
  color:var(--so-ink)!important;overflow-wrap:anywhere;margin:8px 0}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-kicker,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-kicker{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-kicker,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-meeting-brief .ppw-staff-kicker{
  color:var(--so-accent)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-muted,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info span,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-voice,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-scout-pick small{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-muted,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-role-info span,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-voice,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-scout-pick small{
  color:var(--so-dim)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-panel{
  background:var(--so-panel)!important;border:1px solid var(--so-line)!important;
  border-radius:11px;color:var(--so-panel-ink)!important;box-shadow:none}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel h2,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-panel h3,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info strong,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief summary strong,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate strong{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-panel h2,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-panel h3,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-role-info strong,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-meeting-brief summary strong,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-candidate strong{
  color:var(--so-panel-ink)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-overview-metric{
  background:var(--so-card)!important;border:1px solid var(--so-line)!important;
  border-radius:9px;min-width:0;box-shadow:none}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric strong{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-overview-metric strong{
  color:var(--so-ink)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-overview-metric small{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-overview-metric small{
  color:var(--so-accent)!important;font-size:9px;line-height:1.35}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-nav .ppw-staff-button,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-button,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-departments button{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-nav .ppw-staff-button,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-button,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-departments button{
  background:var(--so-button)!important;border:1px solid var(--so-line)!important;
  color:var(--so-button-ink)!important;border-radius:8px;box-shadow:none;
  font-weight:800;min-width:0;overflow-wrap:normal}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-nav [aria-current="page"],
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-gorilla-choices [aria-pressed="true"],
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-departments [aria-pressed="true"]{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-nav [aria-current="page"],
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-gorilla-choices [aria-pressed="true"],
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-departments [aria-pressed="true"]{
  background:var(--so-selected)!important;border-color:var(--so-accent)!important;
  color:var(--so-button-ink)!important;box-shadow:inset 0 0 0 1px var(--so-accent)}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) :is(button,summary,input,select):focus-visible{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) :is(button,summary,input,select):focus-visible{
  outline:3px solid var(--so-accent)!important;outline-offset:2px}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-row,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-conversation,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-note,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-rank-item,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-manager-metrics span{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-meeting-brief,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-role-row,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-candidate,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-dossier,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-conversation,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-note,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-rank-item,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-toggle,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-manager-metrics span{
  background:var(--so-card)!important;border:1px solid var(--so-line)!important;
  color:var(--so-panel-ink)!important;border-radius:9px}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-dialogue{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-meeting-brief .ppw-staff-dialogue{
  background:var(--so-card)!important;border-left:3px solid var(--so-accent)!important;
  color:var(--so-panel-ink)!important;line-height:1.65}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-meeting-brief .ppw-staff-voice,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info span,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-candidate small,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle>span{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-meeting-brief .ppw-staff-voice,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-role-info span,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-candidate small,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-toggle>span{
  color:var(--so-dim)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-role-info small,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier summary,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-conversation summary,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-note strong,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-scout-pick strong,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-agenda-item strong{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-role-info small,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-dossier summary,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-conversation summary,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-note strong,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-scout-pick strong,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-agenda-item strong{
  color:var(--so-accent)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-manager-avatar,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-rank-position{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-manager-avatar,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-rank-position{
  background:var(--so-selected)!important;color:var(--so-button-ink)!important;
  border:1px solid var(--so-accent)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-term,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-salary{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-term,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-salary{
  background:var(--so-card)!important;border-color:var(--so-line)!important;
  color:var(--so-panel-ink)!important;color-scheme:normal}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-full-meeting>summary,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-buyout{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-full-meeting>summary,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-buyout{
  color:var(--so-accent)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-agenda-item p,
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-dossier-body p{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-agenda-item p,
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-dossier-body p{
  color:var(--so-panel-ink)!important}
-#game .ppw-staff[data-staff-office-theme]:not([data-staff-office-theme="standard"]) .ppw-staff-toggle input{
+#game .ppw-staff:where([data-staff-office-theme]:not([data-staff-office-theme="standard"])) .ppw-staff-toggle input{
  accent-color:var(--so-accent)}
 /* The background and design accents differ, but the *same* tabs, meetings,
    controls, nine roles, staff contracts and server-sourced advice remain. */
@@ -274,3 +274,14 @@
  font-size:12px}
 #game .ppw-staff.ppw-staff-theme-preview .ppw-staff-meeting-brief summary small{
  font-size:10px}
+
+/* Preview and live office share theme variables. The old :not selector was
+   more specific than every named theme and prevented palettes from applying. */
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-preview-summary{display:flex;align-items:center;gap:8px;min-width:0}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-preview-person{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-preview-person strong{color:var(--so-panel-ink)!important;font-size:13px;overflow-wrap:anywhere}
+#game .ppw-staff.ppw-staff-theme-preview .ppw-staff-preview-person small{color:var(--so-dim)!important;font-size:10px}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-head h1{color:#1b2b21!important;text-shadow:2px 3px 0 #a6d127}
+#game .ppw-staff[data-staff-office-theme="underground-office"] .ppw-staff-nav [aria-current="page"]{color:#15261b!important;background:#d7ff46!important}
+#game .ppw-staff[data-staff-office-theme="ewr-office-2002"] .ppw-staff-panel :is(.ppw-staff-preview-person strong,.ppw-staff-preview-person small,.ppw-staff-dialogue){color:#172a55!important}
+#game .ppw-staff[data-staff-office-theme="broadcast-newsroom"] .ppw-staff-panel :is(.ppw-staff-preview-person strong,.ppw-staff-preview-person small,.ppw-staff-dialogue){color:#172a55!important}

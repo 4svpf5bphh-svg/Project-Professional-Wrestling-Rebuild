@@ -26,10 +26,10 @@ export interface CalendarBooking {
  ready:boolean;
 }
 type Owner={name:string;year:number;week:number;revision:string|number;
- booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null};
+ booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null;broadcast_package:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
- importance:number;active:boolean;earned_prestige:number;
+ importance:number;active:boolean;poster_style:string|null;earned_prestige:number;
  celebrated_editions:number;last_celebrated_week_index:number|null};
 const validId=(s:unknown):s is string=>
  typeof s==="string"&&s.trim().length>0&&s.length<=200;
@@ -40,7 +40,8 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  "SELECT p.name,w.year,w.week,w.revision,",
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
-  "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster",
+  "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
+   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package",
  "FROM ppw_worlds w JOIN ppw_promotions p ON p.world_id=w.world_id",
  "AND p.promotion_id=$2 JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
  "AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active",
@@ -53,16 +54,20 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
 async function load(tx:SqlRows,scope:CalendarScope,owned:Owner){
  const rows=await tx.query<Row>([
  "SELECT series_id,name,role,event_type,cadence_weeks,anchor_week,importance,active,",
- "earned_prestige,celebrated_editions,last_celebrated_week_index",
+ "earned_prestige,celebrated_editions,last_celebrated_week_index,",
+ "(SELECT sp.style FROM ppw_kp_series_posters sp WHERE sp.world_id=$1",
+ "AND sp.promotion_id=$2 AND sp.series_id=ppw_show_series.series_id",
+ "AND sp.player_id=$3) AS poster_style",
  "FROM ppw_show_series WHERE world_id=$1 AND promotion_id=$2 AND active",
  "ORDER BY series_id LIMIT 17"
- ].join(" "),[scope.worldId,scope.promotionId]);
+ ].join(" "),[scope.worldId,scope.promotionId,scope.playerId]);
  if(rows.length>16)throw new Error("Calendar identity limit exceeded");
  return rows.length?rows.map(r=>({seriesId:r.series_id,name:r.name,role:r.role,
   eventType:r.event_type,cadenceWeeks:r.cadence_weeks,
   anchorWeek:r.anchor_week,importance:r.importance,active:r.active,
   earnedPrestige:r.earned_prestige,celebratedEditions:r.celebrated_editions,
-  lastCelebratedWeekIndex:r.last_celebrated_week_index})):
+  lastCelebratedWeekIndex:r.last_celebrated_week_index,
+  posterStyle:r.poster_style})):
   defaults(owned.name,owned.cadence,owned.major_interval??4);
 }
 async function bootstrap(tx:SqlRows,scope:CalendarScope,owned:Owner){
@@ -101,12 +106,16 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    cadence_weeks:number|null;anchor_week:number|null;
    importance:number|null;earned_prestige:number|null;
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
-   owned_bookings:unknown;
+   poster_style:string|null;owned_bookings:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
    "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
    "s.earned_prestige,s.celebrated_editions,s.last_celebrated_week_index,",
+    "(SELECT style FROM ppw_kp_series_posters sp WHERE sp.world_id=$1",
+    "AND sp.promotion_id=$2 AND s.promotion_id=$2 AND sp.player_id=$4",
+    "AND sp.series_id=s.series_id)",
+    "AS poster_style,",
    "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
    "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
    "'draftId',d.draft_id,'year',d.year,'week',d.week,",
@@ -130,7 +139,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    "AND s.promotion_id=p.promotion_id AND s.active",
    "WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'",
    "ORDER BY p.promotion_id,s.series_id LIMIT 513"
-  ].join(" "),[scope.worldId,scope.promotionId,weekIndex(owned.year,owned.week)]);
+  ].join(" "),[scope.worldId,scope.promotionId,weekIndex(owned.year,owned.week),scope.playerId]);
   if(rows.length>512)throw new Error("World calendar would exceed the read budget");
   const rawBookings=rows.find(row=>Array.isArray(row.owned_bookings))?.owned_bookings;
   if(rawBookings!==undefined&&!Array.isArray(rawBookings))
@@ -169,7 +178,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
      anchorWeek:row.anchor_week,importance:row.importance,active:true,
      earnedPrestige:row.earned_prestige??0,
      celebratedEditions:row.celebrated_editions??0,
-     lastCelebratedWeekIndex:row.last_celebrated_week_index});
+     lastCelebratedWeekIndex:row.last_celebrated_week_index,
+     posterStyle:row.poster_style});
    else if(!promotion.series.length)
     promotion.series=defaults(row.promotion_name,row.cadence,row.major_interval??4);
   }
@@ -186,7 +196,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
-  return {worldWeeks,bookings,eventPosterStyle:owned.event_poster,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
+  return {worldWeeks,bookings,eventPosterStyle:owned.event_poster,
+    broadcastPackage:owned.broadcast_package,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
    weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};
