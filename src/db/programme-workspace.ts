@@ -8,12 +8,13 @@ import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,type ProgrammeSides}
  from "../domain/programme-lifecycle.js";
+import {eligibleProgrammePayoffs,type ProgrammePayoff}
+ from "../domain/programme-finales.js";
+export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
 export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{championshipId?:string|null};
 export type EndProgrammeInput=ProgrammeCommandInput&{programmeId:string};
-export type ProgrammePayoff="DECISIVE_MATCH"|"TITLE_SHOWDOWN"|"STIPULATION_SHOWDOWN"|
- "BETRAYAL"|"RECONCILIATION"|"FINAL_CONFRONTATION";
 export type ProgrammeFinaleInput=ProgrammeCommandInput&{programmeId:string;
  showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null};
 export type ProgrammeDirectionChoice="PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
@@ -138,7 +139,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    kind:string;week_index:number;crowd_response:number;
    winner_side:"A"|"B"|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
-   segment_kind:string|null;
+   segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
   type Finale={programme_id:string;show_id:string;slot_id:string;
    kind:"MATCH"|"SEGMENT";payoff:ProgrammePayoff;planned_week_index:number;
@@ -172,6 +173,11 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "SELECT 'PLANNED'::text AS source,to_jsonb(upcoming) AS details FROM (",
    "SELECT a.programme_id,a.draft_id,a.slot_id,a.kind,d.year,d.week,",
    "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind,",
+   "CASE WHEN a.kind='MATCH' THEN",
+   "NULLIF(s.payload->>'championshipId','') IS NOT NULL ELSE false END AS title_match,",
+   "CASE WHEN a.kind='MATCH' THEN",
+   "COALESCE(s.payload->>'stipulation','STANDARD')<>'STANDARD'",
+   "ELSE false END AS stipulation_match,",
    "d.show_name,d.status FROM ppw_programme_match_activities a",
    "JOIN ppw_booking_drafts d ON d.world_id=a.world_id",
    "AND d.promotion_id=a.promotion_id AND d.draft_id=a.draft_id",
@@ -232,7 +238,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
       winnerSide:x.winner_side??null})),
     plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
      .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
-      kind:x.kind,segmentKind:x.segment_kind,year:x.year,week:x.week,
+      kind:x.kind,segmentKind:x.segment_kind,
+      titleMatch:x.title_match,stipulationMatch:x.stipulation_match,
+      year:x.year,week:x.week,
       showName:x.show_name??"Scheduled show",status:x.status})),
     finale:(()=>{
      const f=finales.find(x=>x.programme_id===p.programme_id);
@@ -421,9 +429,10 @@ export async function chooseProgrammeFinale(pool:TransactionPool,input:Programme
      [input.worldId,input.promotionId,input.programmeId]);
    }else{
     const linked=await tx.query<{kind:"MATCH"|"SEGMENT";year:number;week:number;
-     status:string;segment_kind:string|null}>([
+     status:string;segment_kind:string|null;payload:unknown}>([
      "SELECT a.kind,d.year,d.week,d.status,",
-     "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind",
+     "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind,",
+     "s.payload",
      "FROM ppw_programme_match_activities a",
      "JOIN ppw_booking_drafts d ON d.world_id=a.world_id",
      "AND d.promotion_id=a.promotion_id AND d.draft_id=a.draft_id",
@@ -438,19 +447,8 @@ export async function chooseProgrammeFinale(pool:TransactionPool,input:Programme
     const slot=linked[0]!,scheduled=(slot.year-1)*52+slot.week-1;
     if(scheduled<currentWeek||scheduled>currentWeek+5)
      throw new Error("Choose a booked chapter within the six-week planner");
-    const matchPayoff=["DECISIVE_MATCH","TITLE_SHOWDOWN","STIPULATION_SHOWDOWN"];
-    const isMatch=slot.kind==="MATCH";
-    if(isMatch!==matchPayoff.includes(input.payoff!))
-     throw new Error("Choose a payoff appropriate to the booked match or angle");
-    if(!isMatch){
-     const allowable:Record<string,readonly string[]>={
-      BETRAYAL:["TURN","ATTACK","STABLE_EXIT"],
-      RECONCILIATION:["STABLE_RECONCILIATION"],
-      FINAL_CONFRONTATION:["CONFRONTATION","CHALLENGE","CONTRACT_SIGNING","INTERRUPTION"]
-     };
-     if(!allowable[input.payoff!]?.includes(slot.segment_kind??""))
-      throw new Error("The booked angle does not support this kind of finale");
-    }
+    if(!eligibleProgrammePayoffs(slot.kind,slot.payload).includes(input.payoff!))
+     throw new Error("The saved match or angle doesn't support this payoff");
     const saved=await tx.query<{programme_id:string}>([
      "INSERT INTO ppw_programme_finales(world_id,promotion_id,programme_id,",
      "show_id,slot_id,kind,payoff,planned_week_index)",
