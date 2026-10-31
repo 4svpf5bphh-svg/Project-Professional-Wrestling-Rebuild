@@ -13,7 +13,7 @@ function fixture(name="John Cena",id="cena-night"):CompletedShowView{
  }];
  return {showId:id,year:1,week:4,crowdResponse:87,matchCount:1,angleCount:0,entries};
 }
-test("POP! derives stable accounts and fictional engagement without network, writes or new incidents",()=>{
+test("HOT TAG derives stable accounts and fictional engagement without network, writes or new incidents",()=>{
  const s=fixture();
  const original=showReactionWire(s),before=JSON.stringify(s);
  const posts=projectPopFeed(s,original);
@@ -42,7 +42,7 @@ test("LOL CENA WINS is a permitted fan joke ONLY when he actually won",()=>{
  assert.ok(jokes.every(x=>!/CENA WINS AGAIN|streak|consecutive wins/i.test(x)),
   "A single certified finish does not prove an ongoing win streak");
 });
-test("POP! theories question reality without asserting actual backstage incidents",()=>{
+test("HOT TAG theories question reality without asserting actual backstage incidents",()=>{
  const s=fixture("Samoa Joe","heated-scenes");
  s.entries=[{slotId:"faceoff",position:0,type:"SEGMENT",headline:"Face to face",
   summary:"They confronted one another",outcome:"HAPPENS",crowdResponse:85,

@@ -92,7 +92,7 @@ for(const width of [320,390]){
    await expect(chapters.nth(0).locator(".ppw-results-step-full")).toBeVisible();
    await expect(chapters.nth(0).locator(".ppw-results-step-short")).toBeHidden();
   }
-  await expect(page.getByRole("heading",{name:"POP!"})).toBeHidden();
+  await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeHidden();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
@@ -111,7 +111,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.getByRole("heading",{name:"POP!"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
   await expect(page.locator(".ppw-pop-post .ppw-pop-avatar")).toHaveCount(2);
   await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
@@ -326,7 +326,7 @@ test("Ringside: partial cached article falls back to canonical results",async({p
 });
 
 for(const width of [320,390]){
- test(`Territory TV ${width}px: dark names on cream, readable POP, private brief and one results read`,async({page})=>{
+ test(`Territory TV ${width}px: dark names on cream, readable HOT TAG, private brief and one results read`,async({page})=>{
   await page.setViewportSize({width,height:844});
   let reads=0,editorials=0;
   await page.route("**/api/session",r=>r.fulfill({json:session}));
@@ -370,7 +370,7 @@ for(const width of [320,390]){
 }
 
 for(const width of [320,390]){
- test(`Fight Night ${width}px: official white report, black wrestler names, red accents and readable POP`,async({page})=>{
+ test(`Fight Night ${width}px: official white report, black wrestler names, red accents and readable HOT TAG`,async({page})=>{
   await page.setViewportSize({width,height:844});
   let resultsReads=0,providerReads=0;
   await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -422,7 +422,7 @@ for(const width of [320,390]){
 }
 
 for(const width of [320,390]){
- test(`Underground Zine ${width}px has dark names, readable fan POP and accurate official results`,async({page})=>{
+ test(`Underground Zine ${width}px has dark names, readable fan HOT TAG and accurate official results`,async({page})=>{
   await page.setViewportSize({width,height:844});
   let reads=0,commentaries=0;
   await page.route("**/api/session",route=>route.fulfill({json:session}));

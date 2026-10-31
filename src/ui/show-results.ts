@@ -23,6 +23,7 @@ import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
+import {HOT_TAG_NAME,HOT_TAG_TAGLINE} from "../domain/hot-tag-news.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
 import "./underground-zine-results-skin.css";
@@ -234,12 +235,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const noise=node("section","ppw-crowd-noise ppw-pop-social");
  if(reactions.length){
   append(noise,
-   node("span","ppw-pop-kicker","THE WRESTLING INTERNET, UNFORTUNATELY"),
-   node("h2","ppw-crowd-noise-title ppw-pop-title","POP!"),
+   node("span","ppw-pop-kicker",HOT_TAG_TAGLINE),
+   node("h2","ppw-crowd-noise-title ppw-pop-title",HOT_TAG_NAME),
    node("p","ppw-crowd-noise-disclaimer",
     "Fictional in-game wrestling social media. Posts, profiles and engagement are simulated; results link to certified matches and angles."));
   const wall=node("div","ppw-crowd-noise-wall ppw-pop-timeline");
-  wall.setAttribute("aria-label","POP! fictional social timeline");
+  wall.setAttribute("aria-label","HOT TAG fictional wrestling social timeline");
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
    card.className="ppw-crowd-noise-card ppw-pop-post ppw-reaction-"+reaction.mood.toLowerCase();

@@ -1,4 +1,4 @@
-/** POP! — fictional wrestling-social commentary layered over certified show reactions.
+/** HOT TAG — fictional wrestling-social commentary layered over certified show reactions.
  * Posts are local projections: never genuine accounts, stored evidence, new
  * World events, separate network requests or new simulation consequences.
  */
