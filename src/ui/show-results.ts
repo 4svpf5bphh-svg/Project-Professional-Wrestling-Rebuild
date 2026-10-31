@@ -26,6 +26,7 @@ import {projectPopFeed} from "../domain/pop-social.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
 import "./underground-zine-results-skin.css";
+import "./results-skin-contrast.css";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";

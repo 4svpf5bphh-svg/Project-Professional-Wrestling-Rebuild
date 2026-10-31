@@ -1,0 +1,62 @@
+/* Contrast-safe dark islands in optional result skins.
+   Generic skin typography colours are intended for PAPER, but were leaking into
+   navy match lineups, rivalry-history panels and staff notes on real iPhones.
+   The explicit dark-island selectors below win that cascade only in results
+   with an equipped skin; the unskinned reports and dashboards are untouched. */
+
+/* Verified participant names appear on the original navy portrait strip. */
+#game .ppw-results[data-results-skin] .ppw-result-entry .ppw-result-lineup :is(
+ .ppw-result-competitor-name,.ppw-result-team,.ppw-result-competitor,
+ .ppw-result-more){
+ color:#f7f2ec!important;text-shadow:none!important;
+}
+#game .ppw-results[data-results-skin] .ppw-result-entry .ppw-result-lineup .ppw-result-vs{
+ color:#ffb37d!important;
+}
+
+/* Story-history remains a dark, legible inset, even on cream/white paper. */
+#game .ppw-results[data-results-skin] .ppw-result-story .ppw-rivalry-at-ringside{
+ background:linear-gradient(135deg,#153449,#172238);color:#e2edf5;
+}
+#game .ppw-results[data-results-skin] .ppw-result-story .ppw-rivalry-at-ringside .ppw-eyebrow{
+ color:#8be6ff;
+}
+#game .ppw-results[data-results-skin] .ppw-result-story .ppw-rivalry-at-ringside .ppw-ringside-rivalry-chapter strong{
+ color:#ffdf9b;
+}
+#game .ppw-results[data-results-skin] .ppw-result-story .ppw-rivalry-at-ringside .ppw-ringside-rivalry-chapter p{
+ color:#e2edf5;
+}
+
+/* Road Agent and dark management inserts must never inherit the page's
+   dark-on-light text palette. */
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent{
+ background:#22283b;color:#f4edf4;border:1px solid #6d687e;
+ border-left:4px solid #f0ba68;border-radius:9px;padding:15px 13px;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent :is(
+ strong,h3,p,.ppw-road-agent-voice,.ppw-road-agent-next,.ppw-road-agent-standout){
+ color:#f4edf4;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent .ppw-eyebrow{
+ color:#ffbf82;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent h3{
+ color:#ffe0a9;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent .ppw-road-agent-continuity{
+ color:#dff9ec;background:#133340;border-left:4px solid #8ad4ba;
+}
+/* Other small dark-inset blocks in the same management report. */
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-priority{
+ color:#ecf3fb;background:#192e3c;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-priority strong{
+ color:#ffce85;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-priority p{
+ color:#ecf3fb;
+}
+#game .ppw-results[data-results-skin] .ppw-post-show-brief > .ppw-road-agent-continuity{
+ color:#dff9ec;background:#133340;border-left:4px solid #8ad4ba;
+}

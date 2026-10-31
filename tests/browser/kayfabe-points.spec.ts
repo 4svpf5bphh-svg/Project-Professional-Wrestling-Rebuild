@@ -113,20 +113,20 @@ test("Territory TV skin can be purchased once and switched off/on without a seco
    createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
     styles:[],gimmicks:[]},staffAliasPrice:350,createTalentPrice:3000,
    catalogue:[{sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",
-    price:750,kind:"RESULTS_SKIN"}]
+    price:1000,kind:"RESULTS_SKIN"}]
   }});
   if(request.method==="kpAction"){
    actions.push(String(request.kind));
    if(request.kind==="BUY"){
     expect(request.sku).toBe("RESULTS_TERRITORY_TV");
-    balance-=750;entitlements.push(request.sku!);activeResultsSkin="TERRITORY_TV";
+    balance-=1000;entitlements.push(request.sku!);activeResultsSkin="TERRITORY_TV";
    }
    if(request.kind==="CLEAR_RESULTS_SKIN")activeResultsSkin=null;
    if(request.kind==="APPLY_RESULTS_SKIN"){
     expect(entitlements).toContain("RESULTS_TERRITORY_TV");
     activeResultsSkin="TERRITORY_TV";
    }
-   return r.fulfill({json:{price:request.kind==="BUY"?750:0,balance}});
+   return r.fulfill({json:{price:request.kind==="BUY"?1000:0,balance}});
   }
   return r.fulfill({json:{}});
  });
@@ -136,12 +136,12 @@ test("Territory TV skin can be purchased once and switched off/on without a seco
  await expect(skins.getByText("TERRITORY TV",{exact:true})).toBeVisible();
  await skins.getByRole("button",{name:"Unlock"}).click();
  await expect(skins.getByText("Owned · applied to your results")).toBeVisible();
- await expect(page.getByText("1,250 KP",{exact:true})).toBeVisible();
+ await expect(page.getByText("1,000 KP",{exact:true})).toBeVisible();
  await skins.getByRole("button",{name:"Use original PPW results"}).click();
  await expect(skins.getByText("Owned · ready to apply")).toBeVisible();
  await skins.getByRole("button",{name:"Apply"}).click();
  await expect(skins.getByText("Owned · applied to your results")).toBeVisible();
- await expect(page.getByText("1,250 KP",{exact:true})).toBeVisible();
+ await expect(page.getByText("1,000 KP",{exact:true})).toBeVisible();
  expect(actions).toEqual(["BUY","CLEAR_RESULTS_SKIN","APPLY_RESULTS_SKIN"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
@@ -162,14 +162,14 @@ test("iPhone KP shop switches two independently purchased results skins, without
    createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
     styles:[],gimmicks:[]},staffAliasPrice:350,createTalentPrice:3000,
    catalogue:[{sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",
-    price:750,kind:"RESULTS_SKIN"},
+    price:1000,kind:"RESULTS_SKIN"},
     {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",
-     price:750,kind:"RESULTS_SKIN"}]
+     price:1000,kind:"RESULTS_SKIN"}]
   }});
   if(input.method==="kpAction"){
    if(input.kind==="BUY"){
     expect(entitlements).not.toContain(input.sku);
-    entitlements.push(input.sku!);charges.push(750);balance-=750;
+    entitlements.push(input.sku!);charges.push(1000);balance-=1000;
     activeResultsSkin=input.sku==="RESULTS_FIGHT_NIGHT"?"FIGHT_NIGHT":"TERRITORY_TV";
    }
    if(input.kind==="APPLY_RESULTS_SKIN"){
@@ -198,8 +198,8 @@ test("iPhone KP shop switches two independently purchased results skins, without
  await skins.getByRole("button",{name:"Use original PPW results"}).click();
  await expect(fight.getByRole("button",{name:"Apply"})).toBeVisible();
  await expect(territory.getByRole("button",{name:"Apply"})).toBeVisible();
- expect(charges).toEqual([750,750]);
- expect(balance).toBe(2500);
+ expect(charges).toEqual([1000,1000]);
+ expect(balance).toBe(2000);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -222,16 +222,16 @@ test("Three result skins: Zine joins the other two without repeat purchases or i
    createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
     styles:[],gimmicks:[]},staffAliasPrice:350,createTalentPrice:3000,
    catalogue:[{sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",
-    price:750,kind:"RESULTS_SKIN"},
+    price:1000,kind:"RESULTS_SKIN"},
     {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",
-     price:750,kind:"RESULTS_SKIN"},
+     price:1000,kind:"RESULTS_SKIN"},
     {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",
-     price:750,kind:"RESULTS_SKIN"}]
+     price:1000,kind:"RESULTS_SKIN"}]
   }});
   if(request.method==="kpAction"){
    if(request.kind==="BUY"){
     expect(entitlements).not.toContain(request.sku);
-    entitlements.push(request.sku!);charges.push(750);balance-=750;
+    entitlements.push(request.sku!);charges.push(1000);balance-=1000;
     activeResultsSkin=styles[request.sku!];
    }
    if(request.kind==="APPLY_RESULTS_SKIN"){
@@ -261,8 +261,8 @@ test("Three result skins: Zine joins the other two without repeat purchases or i
  }
  await skins.getByRole("button",{name:"Use original PPW results"}).click();
  await expect(rows.filter({hasText:"Underground Zine"}).getByRole("button",{name:"Apply"})).toBeVisible();
- expect(charges).toEqual([750,750,750]);
- expect(balance).toBe(1750);
+ expect(charges).toEqual([1000,1000,1000]);
+ expect(balance).toBe(1000);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

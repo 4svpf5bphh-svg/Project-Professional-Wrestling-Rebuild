@@ -22,9 +22,9 @@ export const KP_CATALOGUE=[
  {sku:"BRAND_GOLD",label:"Gold promotion crest",price:600,kind:"BRAND"},
  {sku:"BADGE_GOLD",label:"Gold achievement display",price:350,kind:"BADGE"},
  {sku:"BADGE_PLATINUM",label:"Platinum achievement display",price:650,kind:"BADGE"},
- {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:750,kind:"RESULTS_SKIN"},
- {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:750,kind:"RESULTS_SKIN"},
- {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:750,kind:"RESULTS_SKIN"}
+ {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:1000,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:1000,kind:"RESULTS_SKIN"},
+ {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:1000,kind:"RESULTS_SKIN"}
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
