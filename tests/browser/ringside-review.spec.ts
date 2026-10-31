@@ -540,9 +540,9 @@ for(const width of [320,390]){
   const rivalry=report.locator(".ppw-rivalry-at-ringside").first();
   await expect(rivalry).toBeVisible();
   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-   .toHaveCSS("color","rgb(255, 223, 155)");
+   .toHaveCSS("color","rgb(22, 44, 86)");
   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-   .toHaveCSS("color","rgb(226, 237, 245)");
+   .toHaveCSS("color","rgb(22, 44, 86)");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(report.locator(".ppw-retro-chapter-head").last()).toContainText("AFTER THE SHOW");
   await expect(report.locator(".ppw-pop-post").first()).toHaveCSS(
@@ -552,7 +552,7 @@ for(const width of [320,390]){
   const agent=report.locator(".ppw-post-show-road-agent");
   await expect(agent).toContainText("The main event delivered.");
   await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
-   "color","rgb(244, 237, 244)");
+   "color","rgb(22, 44, 86)");
   expect(resultsReads).toBe(1);expect(providerReads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
