@@ -167,3 +167,31 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  await expect(page.locator(".ppw-card").first()).toHaveAttribute("data-booking-slot-id","promo");
  await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
 });
+
+test("the Planner uses real booked premium event names with selected poster without extra reads",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const body=route.request().postDataJSON() as {method:string};
+  methods.push(body.method);
+  if(body.method!=="planner")throw Error("Unexpected planner call "+body.method);
+  const premium={draftId:"ppv-draft",year:1,week:1,status:"DRAFT",
+   eventType:"MAJOR",bookingClass:"PREMIUM",showSeriesId:"special",
+   showName:"Midnight Ascension",day:5,marketId:"home",venueId:"home-hall",
+   marketName:"Home market",venueName:"Town Hall",ticketStrategy:"STANDARD",
+   ready:false,slots:2};
+  const data=planner(4,false);
+  data.weeks[0]!.shows.push(premium as never);
+  return route.fulfill({json:{...data,eventPosterStyle:"AFTERSHOCK"}});
+ });
+ await page.goto("/#/planner");
+ const poster=page.locator(".ppw-event-poster");
+ await expect(poster).toHaveCount(1);
+ await expect(poster).toHaveAttribute("data-poster","aftershock");
+ await expect(poster.locator(".ppw-ep-title")).toHaveText("Midnight Ascension");
+ await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
+ expect(methods).toEqual(["planner"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
