@@ -204,19 +204,19 @@ test("iPhone KP shop switches two independently purchased results skins, without
   .toBeLessThanOrEqual(1);
 });
 
-test("Three result skins: Zine joins the other two without repeat purchases or iPhone overflow",async({page})=>{
+test("Four skins can be bought and switched independently without iPhone overflow",async({page})=>{
  await page.setViewportSize({width:320,height:844});
- let balance=4000,activeResultsSkin:string|null=null;
+ let balance=5000,activeResultsSkin:string|null=null;
  const entitlements:string[]=[],charges:number[]=[];
  const styles:Record<string,string>={
   RESULTS_TERRITORY_TV:"TERRITORY_TV",RESULTS_FIGHT_NIGHT:"FIGHT_NIGHT",
-  RESULTS_UNDERGROUND_ZINE:"UNDERGROUND_ZINE"};
+  RESULTS_UNDERGROUND_ZINE:"UNDERGROUND_ZINE",RESULTS_RETRO_BOOKER_02:"RETRO_BOOKER_02"};
  await page.route("**/api/session",route=>route.fulfill({json:{
   worldId:"world",playerId:"owner",csrfToken:"secret",overview,availablePromotions:[]}}));
  await page.route("**/api/card",route=>{
   const request=route.request().postDataJSON() as {method:string;kind?:string;sku?:string};
   if(request.method==="kpWorkspace")return route.fulfill({json:{
-   balance,lifetimeEarned:4000,lifetimeSpent:4000-balance,worldYear:1,week:5,
+   balance,lifetimeEarned:5000,lifetimeSpent:5000-balance,worldYear:1,week:5,
    promotionName:"Home",weeklyAward:100,claim:null,entitlements,
    activeBrand:null,activeBadge:null,activeResultsSkin,staff:[],achievements:[],
    createdTalent:[],createOptions:{alignments:["FACE","HEEL","TWEENER"],
@@ -226,6 +226,8 @@ test("Three result skins: Zine joins the other two without repeat purchases or i
     {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",
      price:1000,kind:"RESULTS_SKIN"},
     {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",
+     price:1000,kind:"RESULTS_SKIN"},
+    {sku:"RESULTS_RETRO_BOOKER_02",label:"Retro Booker ’02 · classic PC wrestling results",
      price:1000,kind:"RESULTS_SKIN"}]
   }});
   if(request.method==="kpAction"){
@@ -245,23 +247,23 @@ test("Three result skins: Zine joins the other two without repeat purchases or i
  });
  await page.goto("/#/kayfabe");
  const skins=page.locator(".ppw-kp-results-skins");
- for(const kind of ["territory","fight","zine"]){
+ for(const kind of ["territory","fight","zine","retro"]){
   await expect(skins.locator(".ppw-kp-"+kind+"-preview")).toBeVisible();
  }
  const rows=skins.locator(".ppw-kp-results-skin-row");
- for(const name of ["Territory TV","Fight Night","Underground Zine"]){
+ for(const name of ["Territory TV","Fight Night","Underground Zine","Retro Booker"]){
   const row=rows.filter({hasText:name});
   await row.getByRole("button",{name:"Unlock"}).click();
   await expect(row.getByRole("button",{name:"Applied"})).toBeVisible();
  }
- for(const name of ["Territory TV","Fight Night","Underground Zine"]){
+ for(const name of ["Territory TV","Fight Night","Underground Zine","Retro Booker"]){
   const row=rows.filter({hasText:name});
   await row.getByRole("button",{name:"Apply"}).click();
   await expect(row.getByRole("button",{name:"Applied"})).toBeVisible();
  }
  await skins.getByRole("button",{name:"Use original PPW results"}).click();
- await expect(rows.filter({hasText:"Underground Zine"}).getByRole("button",{name:"Apply"})).toBeVisible();
- expect(charges).toEqual([1000,1000,1000]);
+ await expect(rows.filter({hasText:"Retro Booker"}).getByRole("button",{name:"Apply"})).toBeVisible();
+ expect(charges).toEqual([1000,1000,1000,1000]);
  expect(balance).toBe(1000);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);

@@ -75,3 +75,11 @@ test("Underground Zine is a separate 1000 KP cosmetic results entitlement",()=>{
  assert.throws(()=>validateKpAction({kind:"APPLY_RESULTS_SKIN",
   sku:"BADGE_GOLD" as never,requestId:"bogus"}),/Unknown/);
 });
+
+test("Retro Booker 02 is a separately owned 1000 KP skin",()=>{
+ assert.equal(catalogueItem("RESULTS_RETRO_BOOKER_02")?.kind,"RESULTS_SKIN");
+ assert.equal(catalogueItem("RESULTS_RETRO_BOOKER_02")?.price,1000);
+ assert.deepEqual(validateKpAction({kind:"APPLY_RESULTS_SKIN",
+  sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"}),
+  {kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro"});
+});
