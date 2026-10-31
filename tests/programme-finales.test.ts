@@ -42,6 +42,19 @@ test("only a completed, still-matching scripted scene can deliver the angle payo
   kind:"SEGMENT",payoff:"RECONCILIATION",payload:angle("TURN"),
   winnerSide:null,angleHappened:true}),false);
  assert.equal(certifiedFinaleDelivered({
-  kind:"SEGMENT",payoff:"RECONCILIATION",payload:angle("STABLE_RECONCILIATION"),
+  kind:"SEGMENT",payoff:"RECONCILIATION",payload:{...angle("STABLE_RECONCILIATION"),stableDecision:"ACCEPTED"},
   winnerSide:null,angleHappened:true}),true);
+ assert.equal(certifiedFinaleDelivered({
+  kind:"SEGMENT",payoff:"RECONCILIATION",
+  payload:{...angle("STABLE_RECONCILIATION"),stableDecision:"REJECTED"},
+  winnerSide:null,angleHappened:true}),false);
+});
+
+test("DQ or injury stoppage cannot silently certify a decisive feud payoff",()=>{
+ for(const actualFinish of ["DISQUALIFICATION","INJURY_STOPPAGE"]){
+  assert.equal(certifiedFinaleDelivered({kind:"MATCH",payoff:"DECISIVE_MATCH",
+   payload:match,winnerSide:"A",angleHappened:false,actualFinish}),false);
+ }
+ assert.equal(certifiedFinaleDelivered({kind:"MATCH",payoff:"DECISIVE_MATCH",
+  payload:match,winnerSide:"B",angleHappened:false,actualFinish:"CLEAN_PIN"}),true);
 });
