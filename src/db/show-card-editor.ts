@@ -659,12 +659,13 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
        (title.person_id&&!m.payload.participants.some(x=>x.personId===title.person_id)))
        throw new Error("A singles title requires 2–4 wrestlers including its champion");
      }else if(title.division==="TAG"){
-      if(layout.family!=="TEAMS"||layout.sides.length!==2||
+      if(layout.family!=="TEAMS"||layout.sides.length<2||
+       layout.sides.length>6||
        layout.sides.some(side=>side.participants.length!==2)||
        (title.team_id&&!layout.sides.some(side=>
         side.participants.map(x=>x.personId).sort().join("|")===
         [...title.champion_people].sort().join("|"))))
-       throw new Error("A tag title requires 2v2 with the reigning team");
+       throw new Error("A tag title needs 2–6 pairs, including the reigning team");
      }else throw new Error("Unsupported championship division");
     }
    }
