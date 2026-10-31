@@ -397,11 +397,11 @@ for(const width of [320,390]){
   await expect(report.getByRole("heading",{name:"MATCH REPORT"})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
-  await expect(names.first()).toHaveCSS("color","rgb(247, 242, 236)");
+  await expect(names.first()).toHaveCSS("color","rgb(26, 30, 37)");
   await expect(report.locator(".ppw-result-match > summary")).toHaveCSS(
    "background-color","rgb(255, 255, 255)");
   await expect(report.locator(".ppw-result-vs")).toHaveCSS(
-   "color","rgb(255, 179, 125)");
+   "color","rgb(167, 30, 48)");
   await expect(report.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(report.locator(".ppw-result-verdict")).toContainText("Kenny Omega");
   await expect(report.locator(".ppw-verified-finish-details")).toHaveCount(1);
@@ -447,10 +447,10 @@ for(const width of [320,390]){
   await expect(report.getByRole("heading",{name:"EVERY BELL. EVERY BRAWL."})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
-  await expect(names.first()).toHaveCSS("color","rgb(247, 242, 236)");
+  await expect(names.first()).toHaveCSS("color","rgb(27, 27, 27)");
   await expect(report.locator(".ppw-result-match > summary")).toHaveCSS(
    "background-color","rgb(243, 238, 223)");
-  await expect(report.locator(".ppw-result-vs")).toHaveCSS("color","rgb(255, 179, 125)");
+  await expect(report.locator(".ppw-result-vs")).toHaveCSS("color","rgb(181, 71, 34)");
   await expect(report.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
   await expect(report.locator(".ppw-result-verdict").first()).toContainText("Kenny Omega");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
@@ -497,9 +497,13 @@ for(const skin of [
    const root=page.locator(`.ppw-results[data-results-skin="${skin.attribute}"]`);
    await page.getByRole("button",{name:"Read the Full Show"}).click();
    const names=root.locator(".ppw-result-lineup .ppw-result-competitor-name");
-   await expect(names.first()).toHaveCSS("color","rgb(247, 242, 236)");
+   const portraitNameColour=skin.value==="TERRITORY_TV"?"rgb(247, 242, 236)":
+    skin.value==="FIGHT_NIGHT"?"rgb(26, 30, 37)":"rgb(27, 27, 27)";
+   const vsColour=skin.value==="TERRITORY_TV"?"rgb(255, 179, 125)":
+    skin.value==="FIGHT_NIGHT"?"rgb(167, 30, 48)":"rgb(181, 71, 34)";
+   await expect(names.first()).toHaveCSS("color",portraitNameColour);
    await expect(root.locator(".ppw-result-lineup .ppw-result-vs")).toHaveCSS(
-    "color","rgb(255, 179, 125)");
+    "color",vsColour);
    const rivalry=root.locator(".ppw-rivalry-at-ringside").first();
    await expect(rivalry).toBeVisible();
    await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
