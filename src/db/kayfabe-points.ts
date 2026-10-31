@@ -2,6 +2,7 @@
  * A created wrestler enters the ordinary shared free-agent market, never the buyer's roster.
  */
 import {createHash,randomUUID} from "node:crypto";
+import {EVENT_POSTER_SKINS,EVENT_POSTER_KP_PRICE,eventPosterBySku,eventPosterByStyle,type EventPosterSku} from "../domain/event-poster-skins.js";
 import {withWorldTransaction,type TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import type {SqlRows} from "./world-operations.js";
@@ -25,7 +26,8 @@ export const KP_CATALOGUE=[
  {sku:"RESULTS_TERRITORY_TV",label:"Territory TV · vintage show results",price:1000,kind:"RESULTS_SKIN"},
  {sku:"RESULTS_FIGHT_NIGHT",label:"Fight Night · professional match reports",price:1000,kind:"RESULTS_SKIN"},
  {sku:"RESULTS_UNDERGROUND_ZINE",label:"Underground Zine · indie wrestling fanzine",price:1000,kind:"RESULTS_SKIN"},
- {sku:"RESULTS_RETRO_BOOKER_02",label:"Retro Booker ’02 · classic PC wrestling results",price:1000,kind:"RESULTS_SKIN"}
+ {sku:"RESULTS_RETRO_BOOKER_02",label:"Retro Booker ’02 · classic PC wrestling results",price:1000,kind:"RESULTS_SKIN"},
+ ...EVENT_POSTER_SKINS.map(p=>({...p,price:EVENT_POSTER_KP_PRICE,kind:"EVENT_POSTER" as const}))
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
@@ -43,6 +45,8 @@ export type KpAction=
  |{kind:"CLEAR_BADGE";requestId:string}
  |{kind:"APPLY_RESULTS_SKIN";sku:ResultsSkinSku;requestId:string}
  |{kind:"CLEAR_RESULTS_SKIN";requestId:string}
+ |{kind:"APPLY_EVENT_POSTER";sku:EventPosterSku;requestId:string}
+ |{kind:"CLEAR_EVENT_POSTER";requestId:string}
  |{kind:"RENAME_STAFF";staffId:string;name:string;requestId:string}
  |({kind:"CREATE_WRESTLER";requestId:string}&KpCreatedIdentity)
  |{kind:"COLLECT_LEGEND";legendId:string;requestId:string};
@@ -57,13 +61,14 @@ function cleanName(value:string){
 export const catalogueItem=(sku:string)=>KP_CATALOGUE.find(p=>p.sku===sku)??null;
 export function validateKpAction(action:KpAction){
  if(!action||!validId(action.requestId))throw new Error("Invalid Kayfabe request");
- if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"||action.kind==="APPLY_RESULTS_SKIN"){
+ if(action.kind==="BUY"||action.kind==="APPLY_BRAND"||action.kind==="APPLY_BADGE"||action.kind==="APPLY_RESULTS_SKIN"||action.kind==="APPLY_EVENT_POSTER"){
   const item=catalogueItem(action.sku);
   if(!item||(action.kind==="APPLY_BRAND"&&item.kind!=="BRAND")||
    (action.kind==="APPLY_BADGE"&&item.kind!=="BADGE")||
-   (action.kind==="APPLY_RESULTS_SKIN"&&item.kind!=="RESULTS_SKIN"))
+   (action.kind==="APPLY_RESULTS_SKIN"&&item.kind!=="RESULTS_SKIN")||
+    (action.kind==="APPLY_EVENT_POSTER"&&item.kind!=="EVENT_POSTER"))
    throw new Error("Unknown Kayfabe Points item");
- }else if(action.kind==="CLEAR_BADGE"||action.kind==="CLEAR_RESULTS_SKIN"){
+ }else if(action.kind==="CLEAR_BADGE"||action.kind==="CLEAR_RESULTS_SKIN"||action.kind==="CLEAR_EVENT_POSTER"){
   // The standard look is always available and costs nothing.
  }else if(action.kind==="RENAME_STAFF"){
   if(!validId(action.staffId))throw new Error("Unknown staff member");
@@ -126,12 +131,13 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
  if(!Object.values(s).every(validId))throw new Error("Invalid Kayfabe identity");
  return withSqlClient(pool,async tx=>{
   const world=await assertOwner(tx,s);
-  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string;results_skin:string|null}>(`
+  const balances=await tx.query<{balance:string;lifetime_earned:string;lifetime_spent:string;results_skin:string|null;event_poster:string|null}>(`
    SELECT balance::text,lifetime_earned::text,lifetime_spent::text,
-    (SELECT style FROM ppw_kp_results_skins WHERE player_id=$1) AS results_skin
+    (SELECT style FROM ppw_kp_results_skins WHERE player_id=$1) AS results_skin,
+    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$1) AS event_poster
    FROM ppw_kp_wallets WHERE player_id=$1`,[s.playerId]);
   const items=await tx.query<{sku:string}>(`
-   SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 20`,[s.playerId]);
+   SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 ORDER BY sku LIMIT 64`,[s.playerId]);
   const style=await tx.query<{style:string}>(`
    SELECT style FROM ppw_kp_promotion_styles WHERE world_id=$1 AND promotion_id=$2
    AND player_id=$3`,[s.worldId,s.promotionId,s.playerId]);
@@ -169,6 +175,7 @@ export async function readKayfabeWorkspace(pool:TransactionPool,s:KpScope){
     alreadyClaimed:last.claimed,dailyCapReached:last.daily_claimed}:null,
    entitlements:items.map(i=>i.sku),activeBrand:style[0]?.style??null,
    activeBadge:achievementData.activeBadge,
+   activeEventPoster:eventPosterByStyle(money?.event_poster)?.style??null,
    activeResultsSkin:money?.results_skin==="TERRITORY_TV"||money?.results_skin==="FIGHT_NIGHT"||money?.results_skin==="UNDERGROUND_ZINE"||money?.results_skin==="RETRO_BOOKER_02"?money.results_skin:null,
    staff:staff.map(x=>({staffId:x.staff_id,alias:x.alias})),
    achievements:derivePromoterAchievements(achievementData.stats).achievements,
@@ -231,6 +238,10 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     VALUES($1,$2,$3,$4) ON CONFLICT(world_id,promotion_id) DO UPDATE
     SET style=excluded.style,player_id=excluded.player_id`,
     [s.worldId,s.promotionId,s.playerId,action.sku.replace("BRAND_","")]);
+   if(item.kind==="EVENT_POSTER")await tx.query(`
+    INSERT INTO ppw_kp_event_poster_styles(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
+    [s.playerId,eventPosterBySku(action.sku)!.style]);
    if(item.kind==="RESULTS_SKIN")await tx.query(`
     INSERT INTO ppw_kp_results_skins(player_id,style) VALUES($1,$2)
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
@@ -270,6 +281,18 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
     ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,
     [s.playerId,resultsStyle(action.sku)]);
    outcome={style:resultsStyle(action.sku)};
+  }else if(action.kind==="APPLY_EVENT_POSTER"){
+   const owns=await tx.query<{sku:string}>(
+    "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2",
+    [s.playerId,action.sku]);
+   if(!owns.length)throw new Error("Unlock this poster before applying it");
+   const style=eventPosterBySku(action.sku)!.style;
+   await tx.query(`INSERT INTO ppw_kp_event_poster_styles(player_id,style) VALUES($1,$2)
+    ON CONFLICT(player_id) DO UPDATE SET style=excluded.style`,[s.playerId,style]);
+   outcome={style};
+  }else if(action.kind==="CLEAR_EVENT_POSTER"){
+   await tx.query("DELETE FROM ppw_kp_event_poster_styles WHERE player_id=$1",[s.playerId]);
+   outcome={style:null};
   }else if(action.kind==="CLEAR_RESULTS_SKIN"){
    await tx.query("DELETE FROM ppw_kp_results_skins WHERE player_id=$1",[s.playerId]);
    outcome={style:null};
