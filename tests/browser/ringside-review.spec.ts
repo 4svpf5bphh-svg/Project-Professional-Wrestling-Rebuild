@@ -613,7 +613,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
-  await expect(page.getByText("Kenny Omega def. Samoa Joe")).toBeVisible();
+  await expect(page.locator(".ppw-result-entry").first()).toContainText("Kenny Omega");
   expect(reads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

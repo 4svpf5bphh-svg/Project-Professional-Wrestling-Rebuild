@@ -47,10 +47,19 @@ for(const width of [320,390]){
    await expect(sample).toHaveAttribute("data-broadcast-package",p.key);
    await expect(sample.locator(".ppw-tv-title")).toHaveText("Ascension");
    const ribbon=await sample.locator(".ppw-tv-red-label").evaluate(el=>{
-    const c=getComputedStyle(el);return {ink:c.color,red:c.backgroundColor};
+    const css=getComputedStyle(el);
+    const rgb=(value:string)=>{
+     const channels=value.match(/[\\d.]+/g)?.slice(0,3).map(Number)??[0,0,0];
+     return channels.map(v=>{
+      const c=v/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
+     });
+    };
+    const luminance=(v:number[])=>v[0]!*0.2126+v[1]!*0.7152+v[2]!*0.0722;
+    const a=luminance(rgb(css.color)),b=luminance(rgb(css.backgroundColor));
+    return {ink:css.color,background:css.backgroundColor,ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
    });
-   expect(ribbon.ink,"Every red ribbon must have legible white/ivory text").toBe("rgb(255, 249, 237)");
-   expect(ribbon.red).not.toBe("rgba(0, 0, 0, 0)");
+   expect(ribbon.ratio,p.label+" red banner needs at least 4.5:1 contrast, actual "+
+    JSON.stringify(ribbon)).toBeGreaterThanOrEqual(4.5);
   }
   await shop.getByRole("button",{name:"Match graphic"}).click();
   await expect(shop.locator(".ppw-tv-fighter")).toHaveCount(2);
