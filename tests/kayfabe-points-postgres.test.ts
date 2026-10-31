@@ -224,6 +224,32 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
    assert.equal(owned.balance,1500);
   }
   assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
+  // Retro Booker remains an account-owned 1000 KP entitlement.
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_RETRO_BOOKER_02",requestId:"other-retro"
+  }),/Unlock this results skin/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_kp_wallets SET balance=2500 WHERE player_id=$1",[a]));
+  const retro={kind:"BUY" as const,sku:"RESULTS_RETRO_BOOKER_02" as const,
+   requestId:"retro-purchase"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,retro) as {price:number}).price,1000);
+  assert.equal((await applyKayfabeAction(db.pool,aa,retro)).replayed,true);
+  const four=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(four.balance,1500);
+  assert.equal(four.activeResultsSkin,"RETRO_BOOKER_02");
+  assert.ok(four.entitlements.includes("RESULTS_RETRO_BOOKER_02"));
+  await assert.rejects(applyKayfabeAction(db.pool,aa,{
+   kind:"BUY",sku:"RESULTS_RETRO_BOOKER_02",requestId:"retro-duplicate"
+  }),/already own/);
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_FIGHT_NIGHT",requestId:"retro-to-fight"});
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"APPLY_RESULTS_SKIN",sku:"RESULTS_RETRO_BOOKER_02",requestId:"back-to-retro"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,"RETRO_BOOKER_02");
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).balance,1500);
+  await applyKayfabeAction(db.pool,aa,{kind:"CLEAR_RESULTS_SKIN",requestId:"retro-original"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeResultsSkin,null);
+  assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeResultsSkin,null);
   await assert.rejects(readKayfabeWorkspace(db.pool,{...aa,playerId:b}),/active promotion/);
  }finally{await db.close();}
 });
