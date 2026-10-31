@@ -786,19 +786,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    // The booking list stays compact. Players may expand a real, text-only
    // match/segment broadcast graphic without opening its editing form.
    if(view.broadcastPackage){
-    const graphic=el("details","ppw-card-broadcast-studio ppw-card-broadcast-slot");
+    const activeView=view;
+    const graphic=el("details","ppw-card-broadcast-studio ppw-card-broadcast-slot") as HTMLDetailsElement;
     const text=m?"TV match graphic":"TV segment graphic";
     graphic.append(el("summary","",text));
     graphic.ontoggle=()=>{
      if(!graphic.open||graphic.querySelector(".ppw-tv-frame"))return;
      const preview=m?createBroadcastPackageFrame({
-      style:view.broadcastPackage,kind:"MATCH",promotion:view.promotionName,
-      show:view.showName??"Weekly show",compact:true,
+      style:activeView.broadcastPackage,kind:"MATCH",promotion:activeView.promotionName,
+      show:activeView.showName??"Weekly show",compact:true,
       sideA:m.teams[0]?.filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & "),
       sideB:m.teams.slice(1).flat().filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")
      }):createBroadcastPackageFrame({
-      style:view.broadcastPackage,kind:"SEGMENT",promotion:view.promotionName,
-      show:view.showName??"Weekly show",compact:true,
+      style:activeView.broadcastPackage,kind:"SEGMENT",promotion:activeView.promotionName,
+      show:activeView.showName??"Weekly show",compact:true,
       segmentLabel:angleName,
       segmentPerson:segment?[...segment.actors,...segment.targets]
        .filter((p):p is PersonPick=>p!==null).map(selectedName).join(" · "):undefined});
