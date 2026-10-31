@@ -284,6 +284,35 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
    kind:"CLEAR_EVENT_POSTER",requestId:"standard-poster"});
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeEventPoster,null);
   assert.equal((await readKayfabeWorkspace(db.pool,bb)).activeEventPoster,null);
+  // A purchased style can be assigned to a single named PPV, independent
+  // of another PPV and without charging again for a switch.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,
+    event_type,cadence_weeks,anchor_week,importance)
+   VALUES($1,'promotion-0','armageddon','Armageddon','PREMIUM','MAJOR',52,14,84),
+    ($1,'promotion-0','thunderdome','Thunderdome','PREMIUM','MAJOR',52,27,84)
+   ON CONFLICT DO NOTHING`,[world]));
+  await assert.rejects(applyKayfabeAction(db.pool,bb,{
+   kind:"SET_SERIES_EVENT_POSTER",seriesId:"armageddon",
+   sku:"POSTER_THUNDER_STRIKE",requestId:"rival-ppv"}),/Unlock this poster/);
+  const arm={kind:"SET_SERIES_EVENT_POSTER" as const,seriesId:"armageddon",
+   sku:"POSTER_EMPIRE" as const,requestId:"arm-poster"};
+  const thunder={kind:"SET_SERIES_EVENT_POSTER" as const,seriesId:"thunderdome",
+   sku:"POSTER_THUNDER_STRIKE" as const,requestId:"thunder-poster"};
+  assert.equal((await applyKayfabeAction(db.pool,aa,arm) as {price:number}).price,0);
+  assert.equal((await applyKayfabeAction(db.pool,aa,arm)).replayed,true);
+  await applyKayfabeAction(db.pool,aa,thunder);
+  const selected=(await readKayfabeWorkspace(db.pool,aa)).premiumEventPosters;
+  assert.equal(selected.find(x=>x.seriesId==="armageddon")?.style,"EMPIRE");
+  assert.equal(selected.find(x=>x.seriesId==="thunderdome")?.style,"THUNDER_STRIKE");
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).balance,2500);
+  assert.ok(!(await readKayfabeWorkspace(db.pool,bb)).premiumEventPosters
+   .some(x=>x.seriesId==="armageddon"));
+  await applyKayfabeAction(db.pool,aa,{
+   kind:"CLEAR_SERIES_EVENT_POSTER",seriesId:"thunderdome",requestId:"clear-ppv"});
+  assert.equal((await readKayfabeWorkspace(db.pool,aa)).premiumEventPosters
+   .find(x=>x.seriesId==="thunderdome")?.style,null);
+
     // Staff Office cosmetics belong only to their paying manager. All mechanics
   // continue to use the original nine department and staff payroll rules.
   await withWorldTransaction(db.pool,tx=>tx.query(
