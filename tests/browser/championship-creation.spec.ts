@@ -10,7 +10,7 @@ test("320px My Championships can create independent women's and secondary titles
  const posted:string[]=[];let revision=7;
  const titles=[
   {promotionId:"chaotic",championshipId:"world",name:"Chaotic World Championship",
-   promotionName:"Chaotic Wrestling Alliance",division:"SINGLES",bookingDivision:null,
+   promotionName:"Chaotic Wrestling Alliance",division:"SINGLES",bookingDivision:null as string|null,
    titleRole:"PRIMARY",status:"ACTIVE",prestige:50,currentReignId:null,
    holderId:null,holderType:null,holderName:null,defenses:0},
   {promotionId:"chaotic",championshipId:"tag",name:"Chaotic Tag Championship",
