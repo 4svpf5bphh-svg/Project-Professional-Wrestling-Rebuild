@@ -49,7 +49,7 @@ for(const width of [320,390]){
    const ribbon=await sample.locator(".ppw-tv-red-label").evaluate(el=>{
     const css=getComputedStyle(el);
     const rgb=(value:string)=>{
-     const channels=value.match(/[\\d.]+/g)?.slice(0,3).map(Number)??[0,0,0];
+     const channels=value.match(/[0-9.]+/g)?.slice(0,3).map(Number)??[0,0,0];
      return channels.map(v=>{
       const c=v/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
      });
