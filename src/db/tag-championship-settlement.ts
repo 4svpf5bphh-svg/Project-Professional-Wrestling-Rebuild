@@ -6,8 +6,7 @@ import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 export interface BookedTagTitle{
  slotId:string;championshipId:string;
- sides:readonly [{sideId:"A";personIds:readonly string[]},
-                 {sideId:"B";personIds:readonly string[]}];
+ sides:readonly {sideId:string;personIds:readonly string[]}[];
 }
 const sorted=(ids:readonly string[])=>[...ids].sort().join("\u0000");
 export async function settleCanonicalTagTitleContests(
@@ -20,11 +19,11 @@ export async function settleCanonicalTagTitleContests(
  const matches=bookings.map(b=>{
   const bout=completed.get(b.slotId);
   if(!b.championshipId||!b.slotId||!bout||
-    bout.actualWinnerSide!=="A"&&bout.actualWinnerSide!=="B"||
-    b.sides.length!==2||b.sides[0]?.sideId!=="A"||
-    b.sides[1]?.sideId!=="B"||
+    !b.sides.some(side=>side.sideId===bout.actualWinnerSide)||
+    b.sides.length<2||b.sides.length>6||
+    b.sides.some((side,index)=>side.sideId!==String.fromCharCode(65+index))||
     b.sides.some(s=>s.personIds.length!==2)||
-    new Set(b.sides.flatMap(x=>x.personIds)).size!==4)
+    new Set(b.sides.flatMap(x=>x.personIds)).size!==b.sides.length*2)
    throw new Error("Invalid resolved tag title bout");
   return {booking:b,bout};
  });
@@ -77,7 +76,8 @@ export async function settleCanonicalTagTitleContests(
    (!hasChampion&&(current.status!==null||current.holder_type!==null||
     current.team_id!==null)))
    throw new Error("A tag title bout needs its champions or a vacant belt");
-  const winningSide=bout.actualWinnerSide==="A"?0:1;
+  const winningSide=booking.sides.findIndex(s=>s.sideId===bout.actualWinnerSide);
+  if(winningSide<0)throw new Error("Unrecognised winning tag pair");
   let winner=ids[winningSide];
   const transfer=(!hasChampion||winner!==current.team_id)&&
     ["CLEAN_PIN","FLASH_PIN","SUBMISSION"].includes(bout.actualFinish);
