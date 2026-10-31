@@ -167,6 +167,7 @@ export async function settleCompletedProgrammeHistory(
   if(!record||!payload)return [];
   if(!certifiedFinaleDelivered({kind:link.kind==="MATCH"?"MATCH":"SEGMENT",
    payoff:link.finale_payoff,payload,winnerSide:record.winner_side,
+   actualFinish:resolvedMatches.get(link.slot_id)?.actualFinish??null,
    angleHappened:link.kind==="SEGMENT"}))return [];
   return [{programme_id:link.programme_id,show_id:input.showId,
    slot_id:link.slot_id,payoff:link.finale_payoff,week_index:index,
