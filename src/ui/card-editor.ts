@@ -123,6 +123,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=null;
+ let rivalryIdeasOpen=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -612,6 +613,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(view.programmes.length){
    const suggestions=document.createElement("details");
    suggestions.className="ppw-card-rivalry-ideas";
+   suggestions.open=rivalryIdeasOpen;
+   suggestions.ontoggle=()=>{
+    if(suggestions.isConnected)rivalryIdeasOpen=suggestions.open;
+   };
    suggestions.append(el("summary","","Book a rivalry chapter · "+view.programmes.length+
     (view.programmes.length===1?" active feud":" active feuds")));
    const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
@@ -619,7 +624,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focusedRivalryId=selected.programmeId;
    const select=selector(selected.programmeId,
     view.programmes.map(p=>[p.programmeId,p.label]),id=>{
-     focusedRivalryId=id;render();
+     focusedRivalryId=id;rivalryIdeasOpen=true;render();
     },!mutable());
    select.setAttribute("aria-label","Choose a rivalry to book");
    suggestions.append(field("Rivalry",select));
