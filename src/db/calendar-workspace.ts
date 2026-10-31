@@ -102,7 +102,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    cadence_weeks:number|null;anchor_week:number|null;
    importance:number|null;earned_prestige:number|null;
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
-   owned_bookings:unknown;
+   poster_style:string|null;owned_bookings:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
