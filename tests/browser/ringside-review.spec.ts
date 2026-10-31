@@ -489,10 +489,10 @@ for(const skin of [
    const agent=root.locator(".ppw-post-show-road-agent");
    await expect(agent).toContainText("The main event delivered");
    await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
-    "color","rgb(244, 237, 244)");
-   await expect(agent.locator("h3")).toHaveCSS("color","rgb(255, 224, 169)");
+    "color",ink);
+   await expect(agent.locator("h3")).toHaveCSS("color",accent);
    await expect(agent.locator(".ppw-road-agent-continuity")).toHaveCSS(
-    "color","rgb(223, 249, 236)");
+    "color",ink);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(1);
   });
