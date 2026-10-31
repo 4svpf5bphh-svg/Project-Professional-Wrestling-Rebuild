@@ -5,12 +5,12 @@
    with an equipped skin; the unskinned reports and dashboards are untouched. */
 
 /* Verified participant names appear on the original navy portrait strip. */
-#game .ppw-results[data-results-skin] .ppw-result-entry .ppw-result-lineup :is(
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-lineup :is(
  .ppw-result-competitor-name,.ppw-result-team,.ppw-result-competitor,
  .ppw-result-more){
  color:#f7f2ec!important;text-shadow:none!important;
 }
-#game .ppw-results[data-results-skin] .ppw-result-entry .ppw-result-lineup .ppw-result-vs{
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-result-entry .ppw-result-lineup .ppw-result-vs{
  color:#ffb37d!important;
 }
 
