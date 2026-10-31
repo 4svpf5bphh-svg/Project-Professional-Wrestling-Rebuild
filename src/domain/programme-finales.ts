@@ -33,10 +33,15 @@ export function eligibleProgrammePayoffs(kind:FinaleSlotKind,payload:unknown):re
 }
 export function certifiedFinaleDelivered(input:{
  kind:FinaleSlotKind;payoff:ProgrammePayoff;payload:unknown;
- winnerSide:"A"|"B"|null;angleHappened:boolean
+ winnerSide:"A"|"B"|null;angleHappened:boolean;actualFinish?:string|null
 }):boolean{
  if(!eligibleProgrammePayoffs(input.kind,input.payload).includes(input.payoff))
   return false;
  // A drawn decisive showdown has not delivered a decisive payoff.
- return input.kind==="MATCH"?input.winnerSide!==null:input.angleHappened;
+ if(input.kind==="MATCH")return input.winnerSide!==null&&
+  !["DISQUALIFICATION","INJURY_STOPPAGE"].includes(input.actualFinish??"");
+ if(input.payoff==="RECONCILIATION")
+  return input.angleHappened&&
+   (input.payload as {stableDecision?:unknown}).stableDecision==="ACCEPTED";
+ return input.angleHappened;
 }
