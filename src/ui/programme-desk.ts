@@ -241,8 +241,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const variants=(chapter:typeof planned[number]):{value:ProgrammePayoff;label:string}[]=>{
     if(chapter.kind==="MATCH")return [
      {value:"DECISIVE_MATCH",label:"Decisive final match"},
-     {value:"TITLE_SHOWDOWN",label:"Championship showdown"},
-     {value:"STIPULATION_SHOWDOWN",label:"Final stipulation match"}];
+     ...(chapter.titleMatch?[{value:"TITLE_SHOWDOWN" as const,
+      label:"Championship showdown"}]:[]),
+     ...(chapter.stipulationMatch?[{value:"STIPULATION_SHOWDOWN" as const,
+      label:"Final stipulation match"}]:[])];
     if(["TURN","ATTACK","STABLE_EXIT"].includes(chapter.segmentKind??""))
      return [{value:"BETRAYAL",label:"Betrayal / final attack"}];
     if(chapter.segmentKind==="STABLE_RECONCILIATION")
