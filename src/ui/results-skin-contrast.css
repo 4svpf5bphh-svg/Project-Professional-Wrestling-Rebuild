@@ -35,7 +35,7 @@
  border-left:4px solid #f0ba68;border-radius:9px;padding:15px 13px;
 }
 #game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent :is(
- strong,h3,p,.ppw-road-agent-voice,.ppw-road-agent-next,.ppw-road-agent-standout){
+ strong,p,.ppw-road-agent-voice,.ppw-road-agent-next,.ppw-road-agent-standout){
  color:#f4edf4;
 }
 #game .ppw-results[data-results-skin] .ppw-post-show-brief .ppw-post-show-road-agent .ppw-eyebrow{
