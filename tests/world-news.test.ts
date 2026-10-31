@@ -54,7 +54,7 @@ test("official stories describe events while dirt sheet claims remain explicitly
  assert.equal(new Set(out.map(x=>x.key)).size,out.length,
   "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
- assert.ok(rumour.some(x=>/not a report from backstage/.test(x.summary)));
+ assert.ok(rumour.some(x=>/not been established|has not been corroborated|not been independently verified/i.test(x.summary)));
  assert.ok(out.some(x=>/replay queue/.test(x.summary)));
  assert.ok(out.every(x=>!x.summary.includes("/100")),
   "The newspaper should not sound like a dashboard or disclose sim scales");
@@ -155,9 +155,9 @@ test("one completely invented and explicitly unverified rumour complements a rea
  assert.equal(wild?.desk,"DIRT");
  assert.ok(wild?.title);
  assert.match(wild?.summary??"",
-  /no evidence|no one has established|no backstage incident|not backstage reporting|not one detail has been corroborated|no verification|There is zero evidence/i);
+  /no independently verified|no verified backstage|no release request|no evidence|no booking refusal|no evidence|no confrontation|no backstage incident|no one has established|no booking|no one independently/i);
  assert.equal(stories.filter(x=>x.desk==="DIRT").length,2,
-  "Only one grounded rumour plus one knowingly wild fantasy per World week");
+  "At most one result-anchored report and one explicitly disputed tabloid claim per World week");
  assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
  assert.ok(!JSON.stringify(stories).includes("privatePromise"));
  assert.deepEqual(composeWorldNews([b2,b1],angles.slice().reverse(),
@@ -167,6 +167,22 @@ test("one completely invented and explicitly unverified rumour complements a rea
  assert.deepEqual(empty,[],"No show means no invented actual event or gossip");
  const only=composeWorldNews([],[],[pub("s1","human",80)],[],names);
  assert.equal(only.filter(x=>x.desk==="DIRT").length,1,
-  "Entirely speculative gossip is available even without backstage incidents");
+  "Entirely speculative wrestling gossip is possible from a certified broadcast");
  assert.ok(only.every(x=>x.certainty!=="CONFIRMED"||x.desk==="OFFICIAL"));
+});
+
+test("dirt sheet reporting remains event-linked, authored only at certification and contains no confidential data",()=>{
+ const publicShows=[pub("s1","human",88),pub("s2","ai",79)];
+ const title={...pub("s1","human"),slot_id:"m1",title_name:"World Title",
+  winner_name:"Alice",prior_reign_id:"previous"};
+ const out=composeWorldNews([b1],angles,publicShows,[title],names);
+ const dirt=out.filter(x=>x.desk==="DIRT");
+ assert.equal(dirt.length,2);
+ assert.ok(dirt.some(x=>x.key.startsWith("rumour:title:")));
+ assert.ok(dirt.every(x=>x.certainty==="SPECULATION"));
+ assert.ok(dirt.every(x=>/anonymous|alleg|whisper|account|insider|claim/i.test(x.summary)));
+ assert.ok(dirt.every(x=>/not|no |never|disagree|denie|doubt|dispute|unverified|question/i.test(x.summary)));
+ assert.ok(!/NEVER LEAK|privatePromise|HIDDEN CONTRACT/i.test(JSON.stringify(out)));
+ assert.ok(!/wellness violation|drug test|failed drug|criminal|arrested/i.test(JSON.stringify(out)));
+ assert.deepEqual(out,composeWorldNews([b1],angles,publicShows,[title],names));
 });
