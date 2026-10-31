@@ -46,8 +46,9 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
   await route.fulfill({json:req.method==="programmes"?story:{}});
  });
  await page.goto("/#/programmes");
- await expect(page.getByRole("heading",{name:"Match agreements"})).toBeVisible();
  await expect(page.getByText("Building the issue")).toBeVisible();
+ await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Match agreements"})).toBeVisible();
  // Standing terms cannot replace the long-standing rivalry dossier and
  // post-match direction choices from the original Programme desk.
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
@@ -64,6 +65,7 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  await expect(page.getByRole("heading",{name:"Active rivalries · 1"})).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes"]);
  await page.reload();
+ await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText(/Agreed · Through/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
