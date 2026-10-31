@@ -247,3 +247,38 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
  expect(methods).not.toContain("wrestlerProfile");
 });
+
+test("iPhone booker can add an unsaved feud-linked recommended angle without auto-casting",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=String(r.request().postDataJSON().method);
+  methods.push(method);
+  return r.fulfill({json:method==="planner"?planner:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmeLinks:[],
+   programmes:[{programmeId:"gunns-rivalry",label:"JapanCan vs The Gunns",
+    heat:62,repetition:36,latestFollowUp:{choice:"PURSUE_REMATCH",
+     weekIndex:3,laterMatchRecorded:false,laterAngleRecorded:false,
+     laterBeatRecorded:false}}],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+    {personId:"bob",name:"Bob",division:"MEN"}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match}]
+  }:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-rivalry-ideas summary").click();
+ await page.getByRole("button",{name:"Add challenge for JapanCan vs The Gunns"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel("Creative direction")).toHaveValue("CHALLENGE");
+ await expect(dialog.getByLabel("Storyline / programme")).toHaveValue("gunns-rivalry");
+ await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
+ expect(methods).toEqual(["planner","load"]);
+ expect(methods).not.toContain("save");
+ expect(methods).not.toContain("talent");
+});
