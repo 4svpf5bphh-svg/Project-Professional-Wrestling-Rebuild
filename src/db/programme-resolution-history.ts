@@ -2,7 +2,7 @@
  * Resolves with the show's transaction. No per-programme queries; only IDs
  * linked to the settled card and a bounded ten-week history are transferred.
  */
-import {createHash} from "node:crypto";
+import {certifiedProgrammeBeatSignature} from "../domain/programme-beat-signature.js";
 import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import {readCardParticipants} from "../domain/card-participants.js";
@@ -70,8 +70,9 @@ export async function settleCompletedProgrammeHistory(
   const ids=[...new Set(readCardParticipants(payload).map(p=>p.personId))].sort();
   // Keep long tag-team wrestler identifiers off Neon wire and indexes.
   // Hashes preserve the original identical-participant repetition semantics.
-  const signature=link.kind+":"+
-   createHash("sha256").update(JSON.stringify(ids)).digest("hex");
+  const signature=certifiedProgrammeBeatSignature({
+   kind:link.kind==="MATCH"?"MATCH":"SEGMENT",personIds:ids,payload
+  });
   const quality=execution.get(link.slot_id);
   if(link.kind==="MATCH"&&(
    quality===undefined||!Number.isFinite(quality)||quality<0||quality>100))
