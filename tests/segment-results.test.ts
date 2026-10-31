@@ -27,3 +27,29 @@ test("duplicate slots are rejected",()=>{
  const item=segment("ATTACK","HAPPENS");
  assert.throws(()=>describeShowSegments([item,item],names));
 });
+
+test("scripted interruption and rescue endings are certified distinctly",()=>{
+ const endings=[
+  {kind:"INTERRUPTION" as const,roles:[["a"],["b"]] as const,
+   ending:"SPEAKER_PREVAILS" as const,expected:/Wrestler B got the last word/},
+  {kind:"RESCUE" as const,roles:[["a","c"],["b"]] as const,
+   ending:"RESCUE_OVERWHELMED" as const,expected:/rescue was overwhelmed/},
+  {kind:"POST_MATCH_ASSAULT" as const,roles:[["a"],["b"]] as const,
+   ending:"VICTIM_FIGHTS_BACK" as const,expected:/Wrestler B fought back/}
+ ];
+ const namesWithRescuer=new Map([...names,["c","Wrestler C"]]);
+ for(const {kind,roles,ending,expected} of endings){
+  const item=buildBookedSegmentPayload({
+   slotId:"story",position:1,kind,actorIds:[...roles[0]],
+   targetIds:[...roles[1]],outcome:"HAPPENS",
+   creativeBeat:{kind,ending} as never,
+   ...(kind==="POST_MATCH_ASSAULT"?{sourceMatchSlotId:"bout"}:{})
+  },[...new Set([...roles[0],...roles[1]])].map(personId=>({
+   personId,contractId:"contract-"+personId
+  })));
+  assert.match(describeAuthoredSegment(item,namesWithRescuer).summary,expected);
+  const refused=describeAuthoredSegment({...item,outcome:"REFUSED"},namesWithRescuer);
+  assert.doesNotMatch(refused.summary,expected,
+   "An angle that did not happen cannot claim the scripted ending occurred");
+ }
+});
