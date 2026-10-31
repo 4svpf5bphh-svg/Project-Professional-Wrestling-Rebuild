@@ -296,9 +296,9 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
    requestId:"first-staff-theme"};
   assert.equal((await applyKayfabeAction(db.pool,aa,gorilla) as {price:number}).price,1250);
   assert.equal((await applyKayfabeAction(db.pool,aa,gorilla)).replayed,true);
-  let office=await readKayfabeWorkspace(db.pool,aa);
-  assert.equal(office.balance,3750);
-  assert.equal(office.activeStaffOfficeTheme,"GORILLA_CONTROL");
+  let themeWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(themeWallet.balance,3750);
+  assert.equal(themeWallet.activeStaffOfficeTheme,"GORILLA_CONTROL");
   assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,"GORILLA_CONTROL");
   assert.equal((await readStaffWorkspace(db.pool,bb)).staffOfficeTheme,null);
   await assert.rejects(applyKayfabeAction(db.pool,aa,{
@@ -307,14 +307,14 @@ test("two managers earn account KP once, purchase only cosmetics and create a sh
   const executive={kind:"BUY" as const,sku:"STAFF_OFFICE_EXECUTIVE_SUITE" as const,
    requestId:"second-staff-theme"};
   assert.equal((await applyKayfabeAction(db.pool,aa,executive) as {price:number}).price,1250);
-  office=await readKayfabeWorkspace(db.pool,aa);
-  assert.equal(office.balance,2500);
-  assert.equal(office.activeStaffOfficeTheme,"EXECUTIVE_SUITE");
+  themeWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(themeWallet.balance,2500);
+  assert.equal(themeWallet.activeStaffOfficeTheme,"EXECUTIVE_SUITE");
   await applyKayfabeAction(db.pool,aa,{
    kind:"APPLY_STAFF_OFFICE_THEME",sku:"STAFF_OFFICE_GORILLA_CONTROL",requestId:"switch-office"
   });
-  office=await readKayfabeWorkspace(db.pool,aa);
-  assert.equal(office.balance,2500);
+  themeWallet=await readKayfabeWorkspace(db.pool,aa);
+  assert.equal(themeWallet.balance,2500);
   assert.equal((await readStaffWorkspace(db.pool,aa)).staffOfficeTheme,"GORILLA_CONTROL");
   await applyKayfabeAction(db.pool,aa,{kind:"CLEAR_STAFF_OFFICE_THEME",requestId:"original-office"});
   assert.equal((await readKayfabeWorkspace(db.pool,aa)).activeStaffOfficeTheme,null);
