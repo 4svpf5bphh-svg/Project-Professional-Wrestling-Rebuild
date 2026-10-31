@@ -122,6 +122,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
+ let focusedRivalryId:string|null=null;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -606,54 +607,48 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    root.append(tournament);
   }
   root.append(toolbar);
-  // A direct bridge from Creative to the actual editor. These are draft
-  // suggestions only: the booker still casts everyone and scripts the result.
+  // One optional feud picker. It must not compete with the core Add Match /
+  // Add Angle buttons or repeat the Programme Desk's long creative reports.
   if(view.programmes.length){
    const suggestions=document.createElement("details");
    suggestions.className="ppw-card-rivalry-ideas";
    suggestions.append(el("summary","","Book a rivalry chapter · "+view.programmes.length+
     (view.programmes.length===1?" active feud":" active feuds")));
-   suggestions.append(el("p","ppw-muted",
-    "Choose an angle to add it with the rivalry linked. You still cast the wrestlers, choose what happens and save the card."));
-   for(const programme of view.programmes.slice(0,4)){
-    const row=el("div","ppw-card-rivalry-idea");
-    row.append(el("strong","",programme.label));
-    const options=recommendProgrammeAngles(programme).slice(0,2);
-    for(const idea of options){
-     const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
-      ()=>{
-       const id="angle-"+crypto.randomUUID();
-       const segment={...newEditorSegment(id,idea.kind),
-        programmeId:programme.programmeId,durationMinutes:idea.minutes,
-        ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
-       segments.set(id,segment);order.push(id);expanded=id;
-       markDirty();render();
-      },!mutable(),"ppw-card-rivalry-add");
-     action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
-      " for "+programme.label);
-     row.append(action,el("small","ppw-muted",idea.reason));
-    }
-    suggestions.append(row);
+   const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
+    view.programmes[0]!;
+   focusedRivalryId=selected.programmeId;
+   const select=selector(selected.programmeId,
+    view.programmes.map(p=>[p.programmeId,p.label]),id=>{
+     focusedRivalryId=id;render();
+    },!mutable());
+   select.setAttribute("aria-label","Choose a rivalry to book");
+   suggestions.append(field("Rivalry",select));
+   const next=selected.plannedActivity?.[0];
+   if(next)suggestions.append(el("small","ppw-muted",
+    "Already on "+next.showName+" · "+
+     (next.kind==="MATCH"?"Match":"Angle")+
+     ". You can still book another chapter if you want."));
+   const choices=recommendProgrammeAngles(selected).slice(0,3);
+   const actions=el("div","ppw-card-rivalry-shortcuts");
+   for(const idea of choices){
+    const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
+     ()=>{
+      const id="angle-"+crypto.randomUUID();
+      const segment={...newEditorSegment(id,idea.kind),
+       programmeId:selected.programmeId,durationMinutes:idea.minutes,
+       ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
+      segments.set(id,segment);order.push(id);expanded=id;
+      markDirty();render();
+     },!mutable(),"ppw-card-rivalry-add");
+    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
+     " for "+selected.label);
+    action.title=idea.title+" · "+idea.reason;
+    actions.append(action);
    }
+   suggestions.append(actions);
+   suggestions.append(el("small","ppw-muted",
+    "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
    root.append(suggestions);
-  }
-  const stories=view.programmes.filter(p=>p.latestFollowUp);
-  if(stories.length){
-   const continuity=document.createElement("details");
-   continuity.className="ppw-card-continuity";
-   const heading=el("summary","",
-    "Rivalry follow-ups · "+stories.length+" "+(stories.length===1?"story":"stories"));
-   continuity.append(heading);
-   for(const story of stories){
-    const note=story.latestFollowUp!;
-    const item=el("article","ppw-card-continuity-story");
-    item.append(el("strong","",story.label),
-     el("p","",storyDirectionHint(note,"MATCH")),
-     el("small","","After Year "+(Math.floor(note.weekIndex/52)+1)+
-      " · Week "+(note.weekIndex%52+1)));
-    continuity.append(item);
-   }
-   root.append(continuity);
   }
   // Opening title art is collapsible and does not affect booking or results.
   if(view.broadcastPackage){
