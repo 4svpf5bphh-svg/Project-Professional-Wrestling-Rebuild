@@ -224,93 +224,127 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
     "The crowd response was more restrained than the billing, leaving plenty to prove next time."),
    "EVENT");
  }
- // The rumour mill analyses public outcomes. It has no inside sources,
- // private contracts, manager conversations or knowledge of future cards.
- const rough=shows.filter(s=>Number(s.crowd_response)<50).sort((a,b)=>
-  Number(a.crowd_response)-Number(b.crowd_response)||
-  a.show_id.localeCompare(b.show_id))[0];
- if(rough)add("DIRT",rough,"crowd:"+rough.show_id,
-  "A rough night puts "+rough.promotion_name+" under the microscope",
-  rough.show_name+" struggled to win over its audience. Will the promotion change direction?"+
-  " That's speculation, not a report from backstage. But the next card might tell us plenty.",
-  "CROWD");
+ // Fictional in-universe dirt sheets are now reports with contradictory
+ // versions, editorial agendas and disputed 'inside' claims. Only confirmed
+ // PUBLIC show outcomes are inputs. No private contracts, backstage DM, future
+ // booking plans or personally sensitive allegations are ever queried.
+ // A headline is NOT evidence that a real backstage incident occurred.
  const hot=angles.filter(s=>s.authored_outcome==="HAPPENS"&&
-  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT"].includes(s.kind)&&
-  Number(s.angle_crowd)>=75).sort((a,b)=>Number(b.angle_crowd)-
+  ["TURN","ATTACK","POST_MATCH_ASSAULT","STABLE_EXIT","CONFRONTATION"].includes(s.kind)&&
+  Number(s.angle_crowd)>=65).sort((a,b)=>Number(b.angle_crowd)-
   Number(a.angle_crowd)||byId(a,b))[0];
- if(hot){
-  const cast=storyPeople(hot.story_json).map(id=>names.get(id)).filter(
-   (x):x is string=>!!x),star=cast[0]??"Someone";
-  add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
-   "The fallout from "+star+"'s "+name(hot.kind).toLowerCase(),
-   hot.promotion_name+" has given the fans something to chew over after "+
-   hot.show_name+". There could be a new rivalry in it, or it could go somewhere entirely different."+
-   " That's the fun of wrestling: the card is still the booker's to write.",
-   "ANGLE");
- }
- // "Who gets a push next?" is fair public speculation when a verified
- // emerging wrestler appeared in an exceptional completed match. It is not
- // inside knowledge of a promoter's future card or private negotiations.
  const breakout=[...bouts].filter(s=>Number(s.rating_stars)>=4.35&&
   Number.isFinite(Number(s.rating_stars))&&
   participants(s.payload).some(id=>careerStages.get(id)==="PROSPECT"&&names.has(id)))
   .sort((a,b)=>Number(b.rating_stars)-Number(a.rating_stars)||byId(a,b))[0];
- if(breakout){
+ const rough=shows.filter(s=>Number(s.crowd_response)<50).sort((a,b)=>
+  Number(a.crowd_response)-Number(b.crowd_response)||
+  a.show_id.localeCompare(b.show_id))[0];
+ const title=[...changes].sort((a,b)=>byId(a,b)).find(x=>x.winner_name?.trim());
+ if(title){
+  const champion=title.winner_name!.trim();
+  add("DIRT",title,"rumour:title:"+title.show_id+":"+title.slot_id,
+   "Backstage heat after "+champion+"'s title victory? Conflicting reports surface",
+   "The title change at "+title.show_name+" is confirmed. What happened afterwards is another matter. "+
+   "One anonymous account claims the decision left people inside "+title.promotion_name+
+   " furious, with talk of an ugly argument about the finish. A second version says everyone "+
+   "left as planned and the supposed confrontation never took place. "+
+   "Neither claim has been corroborated. Is this genuine dressing-room heat, a bad tip, or a work?",
+   "TITLE");
+ }else if(hot){
+  const cast=storyPeople(hot.story_json).map(id=>names.get(id))
+   .filter((x):x is string=>!!x);
+  const star=cast[0]??"a wrestler";
+  const other=cast[1]??"another member of the roster";
+  add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
+   "Was "+star+"'s "+name(hot.kind).toLowerCase()+" a work, or did tensions spill backstage?",
+   star+" and "+other+" were part of a confirmed on-screen incident at "+hot.show_name+
+   ". Now an anonymous account is alleging that words were exchanged afterwards in the dressing room. "+
+   "A competing account insists the performers were simply carrying out the show as intended. "+
+   "No confrontation behind the curtain has been established. "+
+   "The conflicting whispers have fans arguing over where the storyline ends.",
+   "ANGLE");
+ }else if(breakout){
   const participantId=participants(breakout.payload).find(id=>
    careerStages.get(id)==="PROSPECT"&&names.has(id));
   const wrestler=participantId?names.get(participantId):undefined;
   if(wrestler)add("DIRT",breakout,
    "rumour:breakout:"+breakout.show_id+":"+breakout.slot_id,
-   "Could "+wrestler+" be in line for a bigger opportunity?",
-   wrestler+" took part in a standout match on "+breakout.show_name+
-    ". That's the public result. Whether "+breakout.promotion_name+
-    " turns it into a bigger opportunity remains a question, not an announced plan.",
+   "Is "+wrestler+" getting a major push? Rival stories emerge after "+breakout.show_name,
+   wrestler+" appeared in a standout match at "+breakout.show_name+". "+
+   "One supposed insider says management wants a bigger spotlight for the rising name. "+
+   "Another says that is merely what fans want to believe. The performance was real; "+
+   "the creative discussions have not been independently verified. "+
+   "Whether "+breakout.promotion_name+" gives "+wrestler+
+   " a bigger opportunity remains a question, not an announced plan.",
    "MATCH");
+ }else if(rough){
+  add("DIRT",rough,"rumour:creative:"+rough.show_id,
+   "Creative meeting after "+rough.show_name+"? "+rough.promotion_name+" facing questions",
+   "The crowd response at "+rough.show_name+" was muted. "+
+   "Behind the curtain, a supposed source claims the booking team had a tense meeting "+
+   "about changes to future cards. Another account dismisses that as fans mistaking "+
+   "a disappointing show for an internal crisis. Nobody has verified that a meeting "+
+   "or dispute occurred. What is certain is how the audience reacted.",
+   "CROWD");
  }
- // The Rumour Mill also needs the gloriously unreliable *fictional* part
- // of wrestling journalism. These are explicitly invented online theories,
- // not claims that an unseen backstage event actually occurred. Never mention
- // a real person as having done something private: only an existing
- // promotion/show provides setting. Persist this once at the certified Lock.
+ // A second, independently selected tabloid claim may be entirely invented.
+ // Its certainty is always SPECULATION and even a named performer is only
+ // identified by a verified PUBLIC appearance. Serious real-world accusations
+ // (wellness failures, drugs, criminal conduct) are never invented.
  const talk=shows.slice().sort((a,b)=>a.show_id.localeCompare(b.show_id))[0];
  if(talk){
   let seed=2166136261;
-  for(const char of talk.show_id+":"+talk.promotion_id){
-   seed^=char.charCodeAt(0);seed=Math.imul(seed,16777619);
+  for(const ch of talk.show_id+":"+talk.promotion_id){
+   seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);
   }
-  const theories=[
-   ["The mystery of the missing entrance music",
-    "The wrestling internet has decided somebody at "+talk.promotion_name+
-     " is hoarding all the decent entrance themes. The alleged evidence? "+
-     "One very confident forum thread and absolutely nothing else. No one has established that this happened."],
-   ["Does the office book matches with a wheel of destiny?",
-    "A gloriously unhinged conspiracy about "+talk.promotion_name+
-     " claims the booking office contains a giant spinning wheel marked 'SURPRISE TURN'. "+
-     "There is zero evidence for this. Please do not send us pictures of wheels."],
-   ["The dressing-room coffee machine is now part of the story, apparently",
-    "Unverified online gossip insists the real power behind "+talk.promotion_name+
-     " is a temperamental coffee machine. No backstage incident has been confirmed. "+
-     "The replies are already arguing about its finishing move."],
-   ["An emergency meeting about the smoke machine? Sure, why not",
-    "Someone on the wrestling internet is insisting "+talk.promotion_name+
-     " held an emergency creative summit over the entrance smoke. "+
-     "Our evidence is a single caps-lock post. Treat this as comedy, not backstage reporting."],
-   ["Conspiracy corner: a secret sixth member of creative",
-    "A fan theory claims that "+talk.promotion_name+
-     " secretly lets a cardboard cut-out make final storyline decisions. "+
-     "Not one detail has been corroborated, but somebody has already made it a meme."],
-   ["The internet has blamed the lighting rig for everything",
-    "A very committed section of the timeline claims the lights at "+talk.show_name+
-     " were sending coded messages about future booking. "+
-     "There is no verification; the only confirmed fact is that the show took place."]
+  const appeared=[...angles.filter(a=>a.show_id===talk.show_id)
+   .flatMap(a=>storyPeople(a.story_json)),
+   ...bouts.filter(b=>b.show_id===talk.show_id)
+   .flatMap(b=>participants(b.payload))]
+   .map(id=>names.get(id)).filter((x):x is string=>!!x);
+  const lead=appeared[0]??"one of the wrestlers";
+  const second=appeared.find(p=>p!==lead)??"another performer";
+  const rumours=[
+   ["Did "+lead+" walk out after "+talk.show_name+"? Two stories, zero answers",
+    "An anonymous tip claims "+lead+" left "+talk.show_name+
+    " after a disagreement over the running order. "+
+    "Someone else familiar with the evening insists there was no walkout at all. "+
+    "There is no independently verified backstage incident. For now it's an allegation, not an established departure."],
+   ["Locker-room blow-up involving "+lead+" and "+second+"? Accounts at odds",
+    "One anonymous account claims "+lead+" and "+second+
+    " had to be separated during a heated exchange behind the curtain at "+talk.show_name+
+    ". Another says the story is a complete invention built around an ordinary conversation. "+
+    "Nobody has independently established a physical confrontation. The timeline has already picked sides."],
+   ["Creative-control dispute at "+talk.promotion_name+"? Sources disagree",
+    "A supposed insider says the office disagreed over the finish to a match on "+talk.show_name+
+    ". A second account says no argument ever took place and someone's trying to stir trouble. "+
+    "No booking refusal or real disagreement is verified. It could be bad information, "+
+    "a deliberate leak, or a publicity stunt."],
+   ["Is someone trying to leave "+talk.promotion_name+"? The rumour mill erupts",
+    "The Grapevine has heard an uncorroborated claim that a member of the roster "+
+    "has privately discussed leaving "+talk.promotion_name+
+    ". Another source denies it outright. No release request, contract dispute "+
+    "or negotiation has been verified, and no future signing should be inferred."],
+   ["Was the finish changed just before "+talk.show_name+" went live?",
+    "Online wrestling circles are circulating a claim that the final moments of "+
+    talk.show_name+" were changed shortly before airtime. One alleged source "+
+    "blames a disagreement; another says the programme ran exactly as intended. "+
+    "There is no evidence that the public result differed from the intended one."],
+   ["The backstage atmosphere at "+talk.show_name+": crisis or complete fiction?",
+    "Whispers of a divided locker room have followed "+talk.show_name+
+    ". The people claiming to know what happened disagree on almost every detail. "+
+    "There is no verified backstage dispute. It may be an ugly rumour, "+
+    "somebody working a journalist, or a misunderstanding that got out of hand."]
   ] as const;
-  const theory=theories[(seed>>>0)%theories.length]!;
-  add("DIRT",talk,"wild:"+talk.show_id,theory[0],theory[1],"EVENT");
+  const selected=rumours[(seed>>>0)%rumours.length]!;
+  add("DIRT",talk,"wild:"+talk.show_id,selected[0],selected[1],"EVENT");
  }
- // Maximum two stories per completed week: one public-result theory and
- // one openly fabricated tabloid rumour. No privacy reads or new tables.
- return [...official.slice(0,8),...dirt.filter(s=>!s.key.startsWith("wild:")).slice(0,1),
-  ...dirt.filter(s=>s.key.startsWith("wild:")).slice(0,1)];
+ // A maximum of two fictional dirt stories, persisted with official facts
+ // in the same replay-safe World Lock transaction. This is narrative colour,
+ // never an actual disciplinary event or new simulation consequence.
+ return [...official.slice(0,8),...dirt.filter(x=>!x.key.startsWith("wild:")).slice(0,1),
+  ...dirt.filter(x=>x.key.startsWith("wild:")).slice(0,1)];
 
 }
 export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:number,week:number){
