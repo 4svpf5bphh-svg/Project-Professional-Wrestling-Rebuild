@@ -170,7 +170,11 @@ export function confirmedAngleColour(entry:ShowResultEntry,showId:string):string
    const aftermath=ctx?.scene?.visual==="BLOODIED"?
     " "+whom+" was left bloodied.":
     ctx?.scene?.visual==="LEFT_LYING"?" "+whom+" was left lying.":"";
-   return who+" attacked "+whom+" "+place+"."+aftermath;
+   const opening=ctx?.scene?.location?
+    who+" attacked "+whom+" "+place+".":who+" launched an assault on "+whom+".";
+   return opening+" The cameras caught the incident as it unfolded, with "+
+    who+" unmistakably the aggressor and "+whom+" on the receiving end."+
+    aftermath;
   }
   case "TURN":return who+" completed the authored change of allegiance"+
    (ctx?.turnTargetAlignment?" toward a "+ctx.turnTargetAlignment.toLowerCase()+" presentation":"")+
