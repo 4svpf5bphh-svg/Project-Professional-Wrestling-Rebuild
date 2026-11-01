@@ -99,6 +99,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    gate_revenue:string;venue_cost:string;production_cost:string;
    travel_cost:string;appearance_fees:string;total_cost:string;
    net_result:string;incremental_cash:string;crowd_response:string|number;
+   audience_format:string|null;tv_household_rating:string|null;
+   estimated_viewers:string|null;ppv_buys:string|null;
    creative_workrate:number;creative_spectacle:number;
    creative_stars:number;creative_stories:number;
   }>(`
@@ -107,6 +109,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     e.venue_cost::text,e.production_cost::text,e.travel_cost::text,
     e.appearance_fees::text,e.total_cost::text,e.net_result::text,
     e.incremental_cash::text,cs.crowd_response,
+    e.audience_format,e.tv_household_rating::text,
+    e.estimated_viewers::text,e.ppv_buys::text,
     style.workrate AS creative_workrate,style.spectacle AS creative_spectacle,
     style.stars AS creative_stars,style.stories AS creative_stories
    FROM ppw_show_economics e JOIN ppw_completed_shows cs
@@ -217,7 +221,14 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     gateRevenue:Number(s.gate_revenue),venueCost:Number(s.venue_cost),
     productionCost:Number(s.production_cost),travelCost:Number(s.travel_cost),
     appearanceFees:Number(s.appearance_fees),totalCost:Number(s.total_cost),
-    netResult:Number(s.net_result),incrementalCash:Number(s.incremental_cash)
+    netResult:Number(s.net_result),incrementalCash:Number(s.incremental_cash),
+    audience:s.audience_format==="TV"?{format:"TV" as const,
+     householdRating:s.tv_household_rating===null?null:Number(s.tv_household_rating),
+     estimatedViewers:s.estimated_viewers===null?null:Number(s.estimated_viewers),
+     ppvBuys:null}:
+     s.audience_format==="PPV"?{format:"PPV" as const,
+      householdRating:null,estimatedViewers:null,
+      ppvBuys:s.ppv_buys===null?null:Number(s.ppv_buys)}:null
    })),
    territories:territories.map(t=>({
     marketId:t.market_id,name:t.name,awareness:t.awareness,
