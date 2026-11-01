@@ -79,7 +79,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   root.append(sums);
   // A contract decision needs the owner's actual weekly wage room, not
   // invented four-week cash scenarios or a fictitious full-roster show.
-  const plan=view.spendingPlan,actual=view.talentBudget.currentGuarantees;
+  const plan=view.spendingPlan,actual=view.talentBudget?.currentGuarantees??
+   view.summary.weeklyGuarantees;
   const guide=el("section","ppw-contract-budget");
   if(plan){
    const left=plan.weeklyWageLimit-actual;

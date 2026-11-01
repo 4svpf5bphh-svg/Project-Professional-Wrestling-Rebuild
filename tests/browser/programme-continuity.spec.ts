@@ -35,8 +35,8 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
  await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
- await page.getByRole("button",{name:"Ask Creative · what next?"}).click();
  await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Ask Creative · what next?"})).toHaveCount(0);
  await expect(page.getByText(/A newer match has taken place/)).toBeVisible();
  expect(calls).toEqual(["programmes"]); // Reading is not a booking command
 });
@@ -58,8 +58,8 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await page.getByRole("button",{name:"Ask Creative · what next?"}).click();
- await expect(page.getByText(/Give the response a moment on screen/)).toBeVisible();
+ await expect(page.getByText(/Follow through on your promise/)).toBeVisible();
+ await expect(page.getByText(/Retaliation remains unresolved/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
 
@@ -116,7 +116,7 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  });
  await page.goto("/#/programmes");
  await expect(page.getByText(/Not booked yet/)).toHaveCount(0);
- await expect(page.getByText(/Already booked · Armageddon/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-now")).toContainText("booked on Armageddon");
  await page.getByRole("button",{name:/^Finale/}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
@@ -153,7 +153,8 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await page.goto("/#/programmes");
  await expect(page.locator(".ppw-programme-switch")).toHaveCount(4);
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
- await expect(page.getByRole("button",{name:"Next chapter"})).toHaveAttribute("aria-current","page");
+ await expect(page.getByRole("button",{name:"Creative",exact:true})).toHaveAttribute("aria-current","page");
+ await expect(page.getByRole("button",{name:"Next chapter"})).toHaveCount(0);
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Finale"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Creative",exact:true})).toBeVisible();
