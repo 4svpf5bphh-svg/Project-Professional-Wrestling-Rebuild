@@ -6,6 +6,7 @@ import type {SqlRows} from "./world-operations.js";
 import {worldStaff} from "../domain/world-staff.js";
 import {staffedProductionCost} from "../domain/staff-production.js";
 import {readCardParticipants} from "../domain/card-participants.js";
+import {projectShowAudience} from "../domain/show-audience.js";
 import {originalCompetitionFactor,originalShowSettlement,
  type Competitor,type LocalAudience,
  type ShowTier,type EventType,type TicketStrategy}
@@ -137,16 +138,22 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   totalCost:original.totalCost-efficiency.saving,
   netResult:original.netResult+efficiency.saving,
   incrementalCash:original.incrementalCash+efficiency.saving};
+ const audience=projectShowAudience({tier:x.tier,eventType:x.event_type,
+  mediaReach:x.media_reach,awareness:x.awareness,liveStrength:x.live_strength,
+  loyalty:x.loyalty,wrestlingInterest:x.wrestling_interest,
+  expectedDemand,averageMatchRating:input.averageMatchRating});
  const inserted=await tx.query<{show_id:string}>(`
  INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,
   attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,
-  appearance_fees,total_cost,net_result,incremental_cash,average_match_rating)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+  appearance_fees,total_cost,net_result,incremental_cash,average_match_rating,
+  audience_format,tv_household_rating,estimated_viewers,ppv_buys)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
  RETURNING show_id`,
  [input.worldId,input.showId,input.promotionId,input.year,input.week,
   quote.attendance,quote.expectedDemand,quote.gateRevenue,quote.venueCost,
   quote.productionCost,quote.travelCost,quote.appearanceFees,quote.totalCost,
-  quote.netResult,quote.incrementalCash,input.averageMatchRating]);
+  quote.netResult,quote.incrementalCash,input.averageMatchRating,
+  audience.format,audience.householdRating,audience.estimatedViewers,audience.ppvBuys]);
  if(inserted.length!==1)throw new Error("Event economics result not recorded");
  const paid=await tx.query<{promotion_id:string}>(`
   UPDATE ppw_promotions SET cash=cash+$3
