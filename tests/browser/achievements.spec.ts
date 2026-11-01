@@ -59,7 +59,7 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await page.getByRole("button",{name:"★ KP Wallet"}).click();
   await expect(page.getByRole("heading",{name:"Kayfabe Points"})).toBeVisible();
-  expect(calls).toEqual(["achievements","kpWorkspace"]);
+  await expect.poll(()=>calls).toEqual(["achievements","kpWorkspace"]);
  });
 }
 
