@@ -1071,7 +1071,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       "Attacker first · rescuer second":"Wrestler being rescued":
       segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
-      role==="actors"?"Initiator / featured wrestler":"Target / victim";
+      role==="actors"?"Initiator / featured wrestler":
+       ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?
+        "Target / victim":"Other person involved";
      section.append(el("h3","",heading));
      for(const person of segment[role]){
       const line=el("div","ppw-elimination-row");
