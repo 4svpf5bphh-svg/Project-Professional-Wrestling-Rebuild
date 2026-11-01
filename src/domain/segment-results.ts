@@ -1,4 +1,5 @@
 import {normalizeBookedSegment} from "./segment-booking.js";
+import {angleSceneLocationPhrase} from "./angle-scene.js";
 import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segments.js";
 export interface SegmentResult{
@@ -53,25 +54,16 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
    "ACCEPTED"?", and the reconciliation succeeds":
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
  const scene=segment.scene;
- const located=scene?" "+(scene.location==="IN_RING"?"in the ring":
-  scene.location==="ENTRANCE_RAMP"?"on the entrance ramp":
-  scene.location==="BACKSTAGE"?"backstage":
-  scene.location==="LOCKER_ROOM"?"in the locker room":
-  scene.location==="PARKING_LOT"?"in the parking lot":
-  "in the office"):"";
+ const located=scene?" "+angleSceneLocationPhrase(scene.location):"";
  const visual=scene&&segment.outcome==="HAPPENS"?
-  scene.visual==="BLOODIED"?" The target was left visibly bloodied; this does not establish a medical injury.":
-  scene.visual==="LEFT_LYING"?" The target was left laid out.":
-  scene.visual==="OFFICIALS_SEPARATE"?" Officials intervened to separate the wrestlers.":
-  scene.visual==="DRIVEN_OFF"?" The aggressor was driven off.":
+  scene.visual==="BLOODIED"?(object||"The victim")+" was left bloodied.":
+  scene.visual==="LEFT_LYING"?(object||"The victim")+" was left sprawled on the floor.":
+  scene.visual==="OFFICIALS_SEPARATE"?"Officials rushed in to break it up.":
+  scene.visual==="DRIVEN_OFF"?(subject||"The attacker")+" was driven away.":
   "":"";
- const storyIntent=scene&&segment.outcome==="HAPPENS"?" The intended story was to "+({
-  BUILD_RIVALRY:"escalate the rivalry",
-  ELEVATE_INITIATOR:"elevate the initiator",
-  BUILD_TARGET_SYMPATHY:"build sympathy for the victim",
-  SET_UP_MATCH:"set up a future match",
-  MAKE_STATEMENT:"make a statement"
- } as const)[scene.purpose]+".":"";
+ const severity=scene&&segment.outcome==="HAPPENS"?
+  scene.intensity==="BRUTAL"?" The assault was especially vicious.":
+  scene.intensity==="WARNING"?" The exchange was brief but pointed.":"":"";
  const base=planned[segment.kind]+located;
  // The authored on-screen ending changes the write-up, not simulation
  // facts. A failed rescue must never read like the attacker was beaten.
@@ -109,11 +101,13 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
    case "ATTACK":
     ending=beat.presentation==="PULL_APART_BRAWL"?
      "Officials had to pull the wrestlers apart.":
-     beat.presentation==="BLINDSIDE"?"The ambush came without warning.":
+     beat.presentation==="BLINDSIDE"?"The strike came from behind. ":
+     beat.presentation==="PREMEDITATED_AMBUSH"?"The ambush had clearly been planned. ":
+     beat.presentation==="FACE_TO_FACE_ASSAULT"?"The attack came face to face. ":
      "The beatdown was sustained.";break;
   }
  }
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+visual+storyIntent:
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+(visual?" "+visual:""):
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,
