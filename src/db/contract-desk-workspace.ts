@@ -45,11 +45,18 @@ export async function readContractDesk(
    remaining_dates:number|null;expires_week_index:number;start_week_index:number;
    date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
    creative_control:string;role_expectation:string;
-   backstage_contract_request_id:string|null;
+   backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
+     EXISTS(SELECT 1 FROM ppw_contract_offers accepted
+      WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
+       AND accepted.person_id=c.person_id
+       AND accepted.source_contract_id=c.contract_id
+       AND accepted.status='ACCEPTED'
+       AND (accepted.terms->>'startWeekIndex')::integer
+           BETWEEN $3 AND c.expires_week_index+2) AS renewal_secured,
      (SELECT request_id FROM ppw_backstage_requests r
       WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
         AND r.person_id=c.person_id AND r.kind='CONTRACT'
@@ -129,11 +136,14 @@ export async function readContractDesk(
   const pendingOffers=offers.filter(o=>o.status==="PENDING");
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
-  const roster=contracts.map(c=>contractDeskEntry({
-   contractId:c.contract_id,personId:c.person_id,name:c.name,
-   family:c.family,status:c.status,remainingDates:c.remaining_dates,
-   expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex,
-  }));
+  const roster=contracts.map(c=>{
+   const entry=contractDeskEntry({
+    contractId:c.contract_id,personId:c.person_id,name:c.name,
+    family:c.family,status:c.status,remainingDates:c.remaining_dates,
+    expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex});
+   return c.renewal_secured?{...entry,expiringSoon:false,
+    needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
+  });
   const talentBudget=forecastTalentBudget(contracts.map(c=>({
     personId:c.person_id,contractId:c.contract_id,status:c.status,family:c.family,
     startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index,

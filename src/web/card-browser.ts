@@ -331,6 +331,7 @@ function businessPort(root:HTMLElement,scope:Scope,
    return {name:body.name,changed:body.changed===true};
   },
   signCommercial:input=>call("signCommercial",input),
+  setSpendingPlan:input=>call("setSpendingPlan",input),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
   openKayfabe:()=>mountKayfabeDesk(root,{

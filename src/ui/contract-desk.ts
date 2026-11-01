@@ -77,30 +77,22 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
-   // Finance snapshots are read-only; actual show charges settle elsewhere.
-   const budget=view.talentBudget;
-   if(budget){
-    const box=el("section","ppw-contract-budget");
-    box.append(el("h2","","Talent spending outlook"),
-     el("p","ppw-muted","Current cash "+money(budget.cash)+
-      " · Guaranteed talent wages "+money(budget.currentGuarantees)+"/week"),
-     el("p","ppw-muted","One full-roster show this week: "+
-      money(budget.oneShowFullRosterExposure)+" in conditional appearance fees for "+
-      budget.eligibleTalent+" eligible wrestlers."));
-    if(budget.baselineCash!==null){
-     box.append(el("p","ppw-muted","Four weeks, before future ticket income and event bills: "+
-      money(budget.baselineCash)+" cash if nobody appears, versus "+
-      money(budget.scenarioCash!)+" if every eligible wrestler appears once per week."),
-      el("small","ppw-contract-renew-hint",
-       "Illustrative only. Respects new contract start dates and remaining appearances. "+
-       "No wages or fees are charged by this projection."));
-     if(budget.scenarioCash!==null&&budget.scenarioCash<0)
-      box.append(el("p","ppw-contract-danger",
-       "Affordability warning: repeated full-roster shows could exhaust your cash."));
-    }else box.append(el("p","ppw-muted",
-      "A cash projection needs configured income and overhead figures."));
-    root.append(box);
-   }
+  // A contract decision needs the owner's actual weekly wage room, not
+  // invented four-week cash scenarios or a fictitious full-roster show.
+  const plan=view.spendingPlan,actual=view.talentBudget.currentGuarantees;
+  const guide=el("section","ppw-contract-budget");
+  if(plan){
+   const left=plan.weeklyWageLimit-actual;
+   guide.append(el("strong","","Weekly wage budget"),
+    el("p","ppw-muted",money(actual)+" committed of "+
+     money(plan.weeklyWageLimit)+" · "+(left>=0?
+     money(left)+" remaining":money(-left)+" above your chosen limit")),
+    el("small","ppw-muted",
+     "Appearance fees are separate event costs. Review your spending limits in Business → Finances."));
+  }else guide.append(el("p","ppw-muted",
+   "Weekly guarantees: "+money(actual)+
+   ". You can set a wage allowance in Business → Finances."));
+  root.append(guide);
   const helper=el("p","ppw-muted",
    "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
   root.append(helper);
