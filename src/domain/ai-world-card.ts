@@ -22,8 +22,8 @@ export interface AiCardInput{
  recentPairs?:readonly string[];
  establishedPartners?:readonly {aId:string;bId:string}[];
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
- tagTitles?:readonly {championshipId:string;holderTeamId:string;heat:number}[];
- featuredPairs?:readonly {aId:string;bId:string;kind:"PROGRAMME"|"SINGLES_TITLE";
+ tagTitles?:readonly {championshipId:string;holderTeamId:string|null;heat:number;bookingDivision?:"MEN"|"WOMEN"|null}[];
+ featuredPairs?:readonly {aId:string;bId:string;kind:"PROGRAMME"|"SINGLES_TITLE"|"VACANT_SINGLES_TITLE";
   programmeId?:string;championshipId?:string;holderId?:string;heat:number}[];
 }
 export type AiCardMatch={
@@ -170,8 +170,8 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  const featured=(input.featuredPairs??[]).filter(f=>
    f.aId&&f.bId&&f.aId!==f.bId&&isStat(f.heat)&&
    (f.kind==="PROGRAMME"?!!f.programmeId:
-    f.kind==="SINGLES_TITLE"&&!!f.championshipId&&
-       f.holderId===f.aId));
+    f.kind==="SINGLES_TITLE"?!!f.championshipId&&f.holderId===f.aId:
+     f.kind==="VACANT_SINGLES_TITLE"&&!!f.championshipId&&!f.holderId));
  if(featured.length!==(input.featuredPairs?.length??0))
   throw new Error("Invalid canonical featured programme or title");
  const byId=new Map(available.map(p=>[p.personId,p]));
@@ -179,7 +179,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    byId.has(f.aId)&&byId.has(f.bId)&&
    byId.get(f.aId)!.bookingDivision===byId.get(f.bId)!.bookingDivision)
   .sort((a,b)=>
-   (a.kind==="SINGLES_TITLE"?0:1)-(b.kind==="SINGLES_TITLE"?0:1)||
+   (a.kind!=="PROGRAMME"?0:1)-(b.kind!=="PROGRAMME"?0:1)||
    b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
  const reserve=priority[0]??null;
  const tagCandidates=(input.establishedTeams??[]).map(t=>{
@@ -191,16 +191,23 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   .sort((a,b)=>push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
    a.teamId.localeCompare(b.teamId,"en"));
  const titleCandidates=(input.tagTitles??[]).filter(t=>{
-  if(!t.championshipId||!t.holderTeamId||!isStat(t.heat))
+  if(!t.championshipId||(t.holderTeamId!==null&&!t.holderTeamId)||!isStat(t.heat)||
+    (t.bookingDivision!=null&&!["MEN","WOMEN"].includes(t.bookingDivision)))
    throw new Error("Invalid tag championship context");
   return true;
  }).sort((a,b)=>b.heat-a.heat||
   a.championshipId.localeCompare(b.championshipId,"en"));
  const eligibleTagTitle=input.eventType==="MAJOR"?
-   titleCandidates.find(t=>tagCandidates.some(x=>x.teamId===t.holderTeamId)):undefined;
- const firstTeam=eligibleTagTitle?
-  tagCandidates.find(t=>t.teamId===eligibleTagTitle.holderTeamId):tagCandidates[0];
- const secondTeam=firstTeam?tagCandidates.find(t=>t.teamId!==firstTeam.teamId&&
+    titleCandidates.find(t=>{
+     const teams=tagCandidates.filter(x=>!t.bookingDivision||
+      x.a!.bookingDivision===t.bookingDivision);
+     return t.holderTeamId?teams.some(x=>x.teamId===t.holderTeamId):teams.length>=2;
+    }):undefined;
+  const qualifiedTeams=eligibleTagTitle?.bookingDivision?
+   tagCandidates.filter(t=>t.a!.bookingDivision===eligibleTagTitle.bookingDivision):tagCandidates;
+  const firstTeam=eligibleTagTitle?.holderTeamId?
+   qualifiedTeams.find(t=>t.teamId===eligibleTagTitle.holderTeamId):qualifiedTeams[0];
+  const secondTeam=firstTeam?qualifiedTeams.find(t=>t.teamId!==firstTeam.teamId&&
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
@@ -348,10 +355,10 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    c.people.some(p=>p.personId===reserve.aId)&&
    c.people.some(p=>p.personId===reserve.bId));
   if(idx<0)throw new Error("AI singles feature displaced");
-  if(reserve.kind==="SINGLES_TITLE"||!tagChoice?.titleId)
+  if(reserve.kind!=="PROGRAMME"||!tagChoice?.titleId)
    cardEntries.push(cardEntries.splice(idx,1)[0]!);
  }
- if(tagChoice?.titleId&&reserve?.kind!=="SINGLES_TITLE"){
+ if(tagChoice?.titleId&&(!reserve||reserve.kind==="PROGRAMME")){
   const idx=cardEntries.findIndex(c=>c.tag);
   cardEntries.push(cardEntries.splice(idx,1)[0]!);
  }
@@ -397,7 +404,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
      [a.personId,b.personId].includes(reserve.bId)&&reserve.kind==="PROGRAMME"?
      {programmeId:reserve.programmeId}:{}),
    ...(reserve&&[a.personId,b.personId].includes(reserve.aId)&&
-     [a.personId,b.personId].includes(reserve.bId)&&reserve.kind==="SINGLES_TITLE"?
+     [a.personId,b.personId].includes(reserve.bId)&&reserve.kind!=="PROGRAMME"?
      {championshipId:reserve.championshipId}:{}),
   };
  });

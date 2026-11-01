@@ -32,6 +32,15 @@ type Generated={promotionId:string;showId:string;day:number;venueId:string;
   eventType:"REGULAR"|"MAJOR";importance:number;
   seriesId:string|null;showName:string|null};
 type Unfilled={promotionId:string;reason:string};
+/** Real contenders only. Reigns are awarded by certified show settlement. */
+function inauguralPair(roster:readonly AiRosterCandidate[],division:"MEN"|"WOMEN"|null){
+ const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
+ const eligible=[...roster].filter(p=>!division||p.bookingDivision===division)
+  .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
+ const first=eligible.find(p=>eligible.some(q=>q.personId!==p.personId&&q.bookingDivision===p.bookingDivision));
+ const second=first&&eligible.find(p=>p.personId!==first.personId&&p.bookingDivision===first.bookingDivision);
+ return first&&second?{aId:first.personId,bId:second.personId}:null;
+}
 
 /** A single World-locked, server-only STAFF fallback BATCH.
  * Every eligible promotion is processed in a seed-derived order to prevent
@@ -254,6 +263,11 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const rivals=context?.programmes.get(promotionId)??[];
           const titles=eventType==="MAJOR"?context?.championships.get(promotionId)??[]:[];
           const challengers=titles.flatMap(t=>{
+            if(t.holderId===null){
+              const pair=inauguralPair(roster,t.bookingDivision);
+              return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
+               championshipId:t.championshipId,heat:t.heat}]:[];
+            }
             const champ=byId.get(t.holderId);
             if(!champ)return [];
             const candidate=chooseAiTitleChallenger({
@@ -350,7 +364,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const rosterById=new Map(roster.map(p=>[p.personId,p]));
         const titleChallenges=(context?.championships.get(promotionId)??[])
          .flatMap(title=>{
-          const champion=rosterById.get(title.holderId);
+          if(title.holderId===null){
+            const pair=inauguralPair(roster,title.bookingDivision);
+            return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
+             championshipId:title.championshipId,heat:title.heat}]:[];
+           }
+           const champion=rosterById.get(title.holderId);
           if(!champion)return [];
           const challenger=roster.filter(x=>
            x.personId!==title.holderId&&
