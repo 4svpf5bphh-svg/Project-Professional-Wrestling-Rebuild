@@ -43,6 +43,16 @@ export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly Progr
    idea("VIDEO_PACKAGE","Recap the issue","Remind viewers why the rematch matters without repeating last week's encounter.",3)
   ];
  }
+ if(d?.choice==="PURSUE_REMATCH"&&
+    (d.laterMatchRecorded||d.nextMatchWeekIndex!=null)){
+  // The return bout really happened. Stop asking for the same rematch and
+  // suggest a fresh response to the certified chapter instead.
+  return [
+   idea("INTERVIEW","React to the return bout","The requested rematch happened. Let its aftermath shape the next chapter.",6),
+   idea("VIDEO_PACKAGE","Show what changed","Revisit the completed rematch before deciding whether the rivalry needs another meeting.",3),
+   idea("CONFRONTATION","A fresh reason to clash","If these rivals face off again, give them a new point of conflict and a different ending.")
+  ];
+ }
  if(p.repetition>=55){
   return [
    idea("VIDEO_PACKAGE","Refresh the story","Repeated chapters need a recap or a new perspective before more of the same.",3),
