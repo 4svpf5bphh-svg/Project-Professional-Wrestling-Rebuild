@@ -28,7 +28,7 @@ import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
-import {initialAngleScene,ANGLE_LOCATIONS,ANGLE_VISUALS,ANGLE_PURPOSES,angleSceneLabel} from "../domain/angle-scene.js";
+import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_LOCATIONS,ANGLE_VISUALS,ANGLE_INTENSITIES,ANGLE_PURPOSES,angleLocationArea,angleSceneLabel} from "../domain/angle-scene.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
@@ -938,17 +938,38 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(segment.scene){
      const scene=segment.scene;
      controls.append(el("h3","ppw-angle-workflow-title","3 · WHERE does it happen?"));
-     const permitted=segment.kind==="POST_MATCH_ASSAULT"?
-      ANGLE_LOCATIONS.filter(x=>x==="IN_RING"||x==="ENTRANCE_RAMP"):ANGLE_LOCATIONS;
-     controls.append(field("Scene location",selector(scene.location,
-      permitted.map(v=>[v,angleSceneLabel(v)]),
+     const postMatch=segment.kind==="POST_MATCH_ASSAULT";
+     const permitted=postMatch?
+      ANGLE_LOCATIONS.filter(x=>["IN_RING","RINGSIDE","ENTRANCE_RAMP"].includes(x)):
+      ANGLE_LOCATIONS;
+     const areas=(postMatch?["ARENA"]:Object.keys(ANGLE_LOCATION_AREAS)) as
+      (keyof typeof ANGLE_LOCATION_AREAS)[];
+     controls.append(field("Area",selector(angleLocationArea(scene.location),
+      areas.map(area=>[area,angleSceneLabel(area)]),
+      value=>{
+       const area=value as keyof typeof ANGLE_LOCATION_AREAS;
+       const first=ANGLE_LOCATION_AREAS[area][0];
+       editSegment(segment,{scene:{...scene,location:first}});
+      },!mutable())));
+     controls.append(field("Exact location",selector(scene.location,
+      permitted.filter(place=>angleLocationArea(place)===
+       angleLocationArea(scene.location)).map(place=>[place,angleSceneLabel(place)]),
       value=>editSegment(segment,{scene:{...scene,
        location:value as typeof scene.location}}),!mutable())));
-     if(segment.kind==="ATTACK"||segment.kind==="POST_MATCH_ASSAULT")
+     if(segment.kind==="ATTACK"||postMatch){
+      controls.append(field("Attack intensity",selector(scene.intensity??"BEATDOWN",
+       ANGLE_INTENSITIES.map(v=>[v,angleSceneLabel(v)]),
+       value=>{
+        const intensity=value as NonNullable<typeof scene.intensity>;
+        editSegment(segment,{scene:{...scene,intensity,
+         visual:intensity==="WARNING"&&scene.visual==="BLOODIED"?"NONE":scene.visual}});
+       },!mutable())));
       controls.append(field("Visible aftermath",selector(scene.visual,
-       ANGLE_VISUALS.map(v=>[v,angleSceneLabel(v)]),
+       ANGLE_VISUALS.filter(v=>scene.intensity!=="WARNING"||v!=="BLOODIED")
+        .map(v=>[v,angleSceneLabel(v)]),
        value=>editSegment(segment,{scene:{...scene,
         visual:value as typeof scene.visual}}),!mutable())));
+     }
      controls.append(el("h3","ppw-angle-workflow-title","4 · WHY is this on the show?"));
      controls.append(field("Storytelling purpose",selector(scene.purpose,
       ANGLE_PURPOSES.map(v=>[v,angleSceneLabel(v)]),
@@ -962,7 +983,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        editSegment(segment,{scene:{...scene,purpose:why},creativeBeat});
       },!mutable())));
      controls.append(el("p","ppw-angle-guidance ppw-angle-purpose-disclaimer",
-      "This is your intention—not a guaranteed rating, popularity gain, feud change or medical injury."));
+      "The intention guides Creative. The segment can leave someone bloodied on screen without automatically giving them a medical injury or guaranteed momentum."));
     }
     if(segment.kind==="POST_MATCH_ASSAULT"){
      const eligible=order.flatMap(matchSlot=>{
