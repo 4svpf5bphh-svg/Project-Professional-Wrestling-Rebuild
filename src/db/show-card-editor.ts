@@ -16,6 +16,7 @@ import {inferProgrammeMatchLinks,validateProgrammeAngleLinks} from "../domain/pr
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import type {AngleScene} from "../domain/angle-scene.js";
 import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -478,6 +479,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    ...(p.durationMinutes===undefined?{}:{durationMinutes:p.durationMinutes as number}),
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
    ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
+   ...(p.scene===undefined?{}:{scene:p.scene as AngleScene}),
    ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
