@@ -65,7 +65,7 @@ test("filmed bloodied locker-room ambush honours roles, purpose, and refusal",()
  const summary=describeAuthoredSegment(payload,names).summary;
  assert.match(summary,/Wrestler A attacks Wrestler B in the locker room/);
  assert.match(summary,/bloodied/);
- assert.match(summary,/elevate the initiator/);
+ assert.doesNotMatch(summary,/elevate the initiator|medical injury|rating score/i);
  assert.doesNotMatch(summary,/was injured|injured for|weeks out/);
  const stopped=describeAuthoredSegment({...payload,outcome:"REFUSED"},names).summary;
  assert.doesNotMatch(stopped,/bloodied|elevate the initiator/);
