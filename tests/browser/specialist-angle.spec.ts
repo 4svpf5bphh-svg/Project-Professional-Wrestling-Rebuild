@@ -282,3 +282,60 @@ test("iPhone booker can add an unsaved feud-linked recommended angle without aut
  expect(methods).not.toContain("save");
  expect(methods).not.toContain("talent");
 });
+
+
+test("iPhone books a brutal premeditated ambush outside and reopens every sub-option",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4,saveCount=0;
+ let saved:Record<string,unknown>={
+  kind:"ATTACK",outcome:"HAPPENS",actorIds:["alice"],targetIds:["bob"],
+  participants:[alice,bob],
+  creativeBeat:{kind:"ATTACK",presentation:"BLINDSIDE",objective:"GENERATE_HEAT"}
+ };
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const request=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(request.method);
+  if(method==="save"){
+   const segments=request.segments as {payload:Record<string,unknown>}[];
+   saved=segments[0]!.payload;saveCount++;revision++;
+   expect(saved.actorIds).toEqual(["alice"]);
+   expect(saved.targetIds).toEqual(["bob"]);
+   expect(saved.scene).toEqual({location:"LOADING_BAY",intensity:"BRUTAL",
+    visual:"BLOODIED",purpose:"SEEK_REVENGE"});
+   expect(saved.creativeBeat).toEqual({kind:"ATTACK",
+    presentation:"PREMEDITATED_AMBUSH",objective:"GENERATE_HEAT"});
+  }
+  const card={showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+   worldRevision:revision,day:5,venueId:"arena",showName:"Dynamite",
+   promotionName:"AEW",venueName:"Arena",marketName:"Home",
+   bookingClass:"REGULAR",ticketStrategy:"STANDARD",championships:[],
+   programmes:[],programmeLinks:[],
+   selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+    {personId:"bob",name:"Bob",division:"MEN"}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+    {slotId:"attack",kind:"SEGMENT",position:1,payload:saved}]};
+  return route.fulfill({json:method==="planner"?planner:method==="load"?card:
+   method==="save"?{status:"APPLIED",result:{performers:2}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ let dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByLabel("Attack style").selectOption("PREMEDITATED_AMBUSH");
+ await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
+ await dialog.getByLabel("Exact location").selectOption("LOADING_BAY");
+ await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
+ await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saveCount).toBe(1);
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByLabel("Area",{exact:true})).toHaveValue("OUTSIDE");
+ await expect(dialog.getByLabel("Exact location")).toHaveValue("LOADING_BAY");
+ await expect(dialog.getByLabel("Attack intensity")).toHaveValue("BRUTAL");
+ await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
+});
