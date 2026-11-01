@@ -164,8 +164,16 @@ export function confirmedAngleColour(entry:ShowResultEntry,showId:string):string
    ". A challenge is not proof that the opposition accepted.";
   case "CELEBRATION":return who+" took the celebration spot. "+
    "The recorded audience response measures how it was received.";
-  case "ATTACK":return who+" was the booked aggressor and "+whom+
-   " the target. No unrecorded injury is implied by the attack.";
+  case "ATTACK":{
+   const place=ctx?.scene?.location?{
+    IN_RING:"in the ring",ENTRANCE_RAMP:"on the ramp",BACKSTAGE:"backstage",
+    LOCKER_ROOM:"in the locker room",PARKING_LOT:"in the car park",OFFICE:"in the office"
+   }[ctx.scene.location]:"at the scene";
+   const aftermath=ctx?.scene?.visual==="BLOODIED"?
+    " The target was left bloodied on screen; this is not a medical injury.":
+    ctx?.scene?.visual==="LEFT_LYING"?" The target was left laid out.":"";
+   return who+" attacked "+whom+" "+place+"."+aftermath;
+  }
   case "TURN":return who+" completed the authored change of allegiance"+
    (ctx?.turnTargetAlignment?" toward a "+ctx.turnTargetAlignment.toLowerCase()+" presentation":"")+
    ". The player's scripted turn stands; the simulation did not choose a different outcome.";

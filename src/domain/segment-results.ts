@@ -19,7 +19,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  const labels:Record<SegmentKind,string>={
  PROMO:"In-ring promo",INTERVIEW:"Interview",CONFRONTATION:"Face to face",
  CHALLENGE:"Challenge issued",CELEBRATION:"Celebration",
- ATTACK:"Backstage attack",INTERRUPTION:"Unexpected interruption",
+ ATTACK:"Ambush / assault",INTERRUPTION:"Unexpected interruption",
  RESCUE:"A timely rescue",POST_MATCH_ASSAULT:"Post-match assault",
  TURN:"A change of allegiance",
  CONTRACT_SIGNING:"Contract signing",INTERFERENCE:"Outside interference",
@@ -52,7 +52,27 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  STABLE_RECONCILIATION:`${subject} attempts to reconcile with ${object}${segment.stableDecision===
    "ACCEPTED"?", and the reconciliation succeeds":
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
- const base=planned[segment.kind];
+ const scene=segment.scene;
+ const located=scene?" "+(scene.location==="IN_RING"?"in the ring":
+  scene.location==="ENTRANCE_RAMP"?"on the entrance ramp":
+  scene.location==="BACKSTAGE"?"backstage":
+  scene.location==="LOCKER_ROOM"?"in the locker room":
+  scene.location==="PARKING_LOT"?"in the parking lot":
+  "in the office"):"";
+ const visual=scene&&segment.outcome==="HAPPENS"?
+  scene.visual==="BLOODIED"?" The target was left visibly bloodied; this does not establish a medical injury.":
+  scene.visual==="LEFT_LYING"?" The target was left laid out.":
+  scene.visual==="OFFICIALS_SEPARATE"?" Officials intervened to separate the wrestlers.":
+  scene.visual==="DRIVEN_OFF"?" The aggressor was driven off.":
+  "":"";
+ const purpose=scene&&segment.outcome==="HAPPENS"?" The intended story was to "+({
+  BUILD_RIVALRY:"escalate the rivalry",
+  ELEVATE_INITIATOR:"elevate the initiator",
+  BUILD_TARGET_SYMPATHY:"build sympathy for the victim",
+  SET_UP_MATCH:"set up a future match",
+  MAKE_STATEMENT:"make a statement"
+ } as const)[scene.purpose]+".":"";
+ const base=planned[segment.kind]+located;
  // The authored on-screen ending changes the write-up, not simulation
  // facts. A failed rescue must never read like the attacker was beaten.
  const beat=segment.creativeBeat;
@@ -93,7 +113,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "The beatdown was sustained.";break;
   }
  }
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:""):
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+visual+purpose:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,

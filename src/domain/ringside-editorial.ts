@@ -338,7 +338,14 @@ memorable exchange or counter and the decisive finish where verified.
 Let crowd atmosphere and match quality shape how enthusiastically you write.
 For strong/important bouts use ONE OR TWO PARAGRAPHS, normally 90–150 words
 (total, separated by a blank line). For squashes or poor short bouts 55–100
-words is enough. Angles get 35–85 words and actual character, but no invented
+words is enough. When an angle has a verified scene object, honour the named initiator and
+target, filmed location, visible aftermath and storytelling purpose.
+BLOODIED is an on-screen scripted appearance, NOT a certified medical injury.
+A purpose like ELEVATE_INITIATOR or BUILD_RIVALRY does not prove popularity,
+heat or momentum changed. Never relocate a locker-room ambush to the ring,
+reverse victim and attacker, or add a lasting injury. REFUSED or INTERRUPTED
+outcomes must not claim the planned aftermath occurred.
+Angles get 35–85 words and actual character, but no invented
 direct quotes. ANGLES ARE NOT MATCHES: distinguish solo celebrations, spoken
 interviews, challenges, contract signings and video packages from actual
 attacks, confrontations or bouts. A solo celebration concerns the entrance,

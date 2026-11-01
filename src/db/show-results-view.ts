@@ -15,6 +15,7 @@ import {describeMatchFinish} from "../domain/show-match-story.js";
 import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+import {isAngleScene,type AngleScene} from "../domain/angle-scene.js";
 import {parseVerifiedProgrammeBroadcast,type VerifiedProgrammeBroadcast}
  from "../domain/verified-programme-broadcast.js";
 import {projectVerifiedBroadcastFallout,type BroadcastFallout,
@@ -30,6 +31,7 @@ export interface CompletedAngleContext{
  actorNames:string[];targetNames:string[];
  videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
  turnTargetAlignment:string|null;
+ scene:AngleScene|null;
 }
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
@@ -336,6 +338,7 @@ export async function readCompletedShowView(
    const decision=story?.stableDecision??angle.stableDecision;
    const segmentContext:CompletedAngleContext={
     actorNames,targetNames,
+    scene:angle.scene===undefined?null:isAngleScene(angle.scene,segment.kind)?angle.scene:null,
     videoPurpose:typeof angle.videoPurpose==="string"?angle.videoPurpose:null,
     stableDecision:decision==="ACCEPTED"||decision==="REJECTED"?decision:null,
     turnTargetAlignment:typeof angle.turnTargetAlignment==="string"?
