@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {ANGLE_LOCATION_AREAS,angleLocationArea,angleSceneLocationPhrase,
- initialAngleScene,isAngleScene} from "../src/domain/angle-scene.js";
+ initialAngleScene,isAngleScene,angleLocationsFor,anglePurposesFor} from "../src/domain/angle-scene.js";
 import {isSegmentCreativeBeat} from "../src/domain/segment-creative-beats.js";
 import {normalizeBookedSegment} from "../src/domain/segment-booking.js";
 test("precise arena, backstage and outdoor locations have distinct scenes",()=>{
@@ -45,3 +45,31 @@ test("post-match action remains attached to the arena",()=>{
  assert.equal(isAngleScene({...initialAngleScene("POST_MATCH_ASSAULT"),
   location:"STREET_ENTRANCE"},"POST_MATCH_ASSAULT"),false);
 });
+
+test("every supported angle has meaningful What, Where and Why choices",async()=>{
+ const {ANGLE_TYPES,newEditorSegment} = await import("../src/ui/card-segment-model.js");
+ const {angleLocationsFor,anglePurposesFor} = await import("../src/domain/angle-scene.js");
+ const {initialCreativeBeat} = await import("../src/domain/segment-creative-beats.js");
+ for(const {value:kind} of ANGLE_TYPES){
+  const angle=newEditorSegment("one",kind);
+  const beat=initialCreativeBeat(kind);
+  assert.ok(beat,kind+" needs a directed What");
+  assert.ok(angle.scene,kind+" needs a scene");
+  assert.ok(anglePurposesFor(kind).length>=4,kind+" needs varied motivations");
+  assert.ok(anglePurposesFor(kind).includes(angle.scene!.purpose));
+  assert.ok(angleLocationsFor(kind).includes(angle.scene!.location));
+  assert.ok(isAngleScene(angle.scene,kind));
+  assert.ok(isSegmentCreativeBeat(beat,kind));
+ }
+});
+test("specialist choices preserve original role and scripted-effect limits",()=>{
+ const {angleLocationsFor,anglePurposesFor} = requireNoop();
+ assert.ok(!angleLocationsFor("POST_MATCH_ASSAULT").includes("HOTEL_LOBBY"));
+ assert.ok(angleLocationsFor("INTERVIEW").includes("INTERVIEW_AREA"));
+ assert.ok(angleLocationsFor("VIDEO_PACKAGE").includes("PRODUCTION_AREA"));
+ assert.ok(anglePurposesFor("STABLE_RECONCILIATION").includes("REPAIR_ALLIANCE"));
+ assert.ok(isAngleScene({location:"IN_RING",visual:"NONE",purpose:"MAKE_STATEMENT"},"VIDEO_PACKAGE"));
+});
+function requireNoop(){
+ return {angleLocationsFor,anglePurposesFor};
+}

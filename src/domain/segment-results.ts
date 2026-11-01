@@ -1,5 +1,5 @@
 import {normalizeBookedSegment} from "./segment-booking.js";
-import {angleSceneLocationPhrase} from "./angle-scene.js";
+import {angleSceneLocationPhrase,initialAngleScene,angleSceneLabel} from "./angle-scene.js";
 import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segments.js";
 export interface SegmentResult{
@@ -54,7 +54,9 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
    "ACCEPTED"?", and the reconciliation succeeds":
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
  const scene=segment.scene;
- const located=scene?" "+angleSceneLocationPhrase(scene.location):"";
+ const located=scene?(segment.kind==="VIDEO_PACKAGE"?
+  " with footage filmed "+angleSceneLocationPhrase(scene.location):
+  " "+angleSceneLocationPhrase(scene.location)):"";
  const visual=scene&&segment.outcome==="HAPPENS"?
   scene.visual==="BLOODIED"?(object||"The victim")+" was left bloodied.":
   scene.visual==="LEFT_LYING"?(object||"The victim")+" was left sprawled on the floor.":
@@ -98,6 +100,29 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "A distraction disrupted the action.":
      beat.presentation==="REFEREE_DIVERSION"?
       "The referee's attention was diverted.":"The interference came from ringside.";break;
+   case "TURN":
+    ending=beat.presentation==="REJECT_OLD_SELF"?"They publicly rejected their old identity.":
+     beat.presentation==="TAUNT_CROWD"?"The crowd got a hostile response.":
+     beat.presentation==="NEW_ATTITUDE"?"Their change in attitude was plain to see.":
+     "They made their position clear.";break;
+   case "VIDEO_PACKAGE":
+    ending=beat.presentation==="DARK_TEASER"?"The footage left more questions than answers.":
+     beat.presentation==="SPOKEN_MESSAGE"?"A direct-to-camera message carried the package.":
+     beat.presentation==="BACKSTAGE_FOOTAGE"?"Backstage footage drove the story.":
+     beat.presentation==="FEUD_HIGHLIGHTS"?"The rivals' history was the focus.":
+     "Career highlights filled the screen.";break;
+   case "STABLE_INVITATION":
+    ending=beat.approach==="HARD_ULTIMATUM"?"The offer came with an ultimatum.":
+     beat.approach==="BACKSTAGE_PITCH"?"The pitch was made behind the scenes.":
+     "The offer was made in full view of the crowd.";break;
+   case "STABLE_EXIT":
+    ending=beat.departure==="EXPULSION_SCENE"?"The expulsion was staged for the cameras.":
+     beat.departure==="PUBLIC_DENUNCIATION"?"The split was denounced in public.":
+     "The departure played out as a walkout.";break;
+   case "STABLE_RECONCILIATION":
+    ending=beat.approach==="PUBLIC_APOLOGY"?"The apology was public.":
+     beat.approach==="PRIVATE_MEETING"?"The conversation took place away from the crowd.":
+     "An olive branch was extended.";break;
    case "ATTACK":
     ending=beat.presentation==="PULL_APART_BRAWL"?
      "Officials had to pull the wrestlers apart.":
@@ -107,7 +132,9 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "The beatdown was sustained.";break;
   }
  }
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+(visual?" "+visual:""):
+ const intention=scene&&scene.purpose!==initialAngleScene(segment.kind).purpose?
+  " It was a bid to "+angleSceneLabel(scene.purpose).toLowerCase().replace(/[.!]$/,"")+".":"";
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+(visual?" "+visual:"")+intention:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,
