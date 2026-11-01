@@ -523,7 +523,7 @@ export async function saveCardEditorAsActor(context:WorldApiContext,
  * The controller and current World revision are rechecked on the server.
  */
 export async function requestMatchConsentAsActor(context:WorldApiContext,
- input:WorldMutationInput & {promotionId:string;showId:string;slotId:string;personId:string}){
+ input:WorldMutationInput & {promotionId:string;showId:string;slotId:string;personId:string;proposedMatch?:unknown}){
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.showId,"show");
  validate(input.slotId,"match");validate(input.personId,"wrestler");

@@ -400,7 +400,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="creativeConsent")return requestMatchConsentAsActor(context,{
   worldId,promotionId,showId,requestId,expectedRevision,
-  slotId:id("slotId"),personId:id("personId")});
+  slotId:id("slotId"),personId:id("personId"),
+   ...(p.proposedMatch===undefined?{}:{proposedMatch:p.proposedMatch})});
  if(method==="ready")return markPreparedShowReadyAsActor(context,{
   worldId,promotionId,showId,requestId,expectedRevision,confirmReadyToRun:true});
  throw new Error("Unknown booking action");
