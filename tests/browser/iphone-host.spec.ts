@@ -935,10 +935,13 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
- await page.getByRole("button",{name:"Rematch",exact:true}).click();
+ await page.locator(".ppw-programme-booking-idea")
+  .filter({hasText:"Raise the cost of another loss"})
+  .getByRole("button",{name:"Choose this direction"}).click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Rematch",exact:true})).toHaveAttribute("aria-pressed","true");
- await page.getByRole("button",{name:"Let it stand"}).click();
+ await page.locator(".ppw-programme-booking-idea")
+  .filter({hasText:"Change course deliberately"})
+  .getByRole("button",{name:"Choose this direction"}).click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
@@ -1890,6 +1893,7 @@ for(const width of [320,390]){
   await expect(modal).toBeVisible();
   expect(profileReads).toBe(1);
   expect(careerReads).toBe(0);
+  await modal.getByRole("button",{name:"Career",exact:true}).click();
   await modal.locator("summary.ppw-profile-career-trigger").click();
   await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
   await expect(modal.locator(".ppw-career-form-chip")).toHaveText(["W","W","L","W","L"]);

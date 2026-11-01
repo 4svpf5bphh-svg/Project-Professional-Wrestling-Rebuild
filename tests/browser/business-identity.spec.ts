@@ -117,6 +117,9 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
  await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
  await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
  await page.getByRole("button",{name:"Save spending plan"}).click();
+ await expect.poll(()=>methods.includes("setSpendingPlan"),{
+  message:"Save should issue an authenticated non-debiting World command"
+ }).toBe(true);
  await expect.poll(()=>saved!==null).toBe(true);
  expect(plan).toEqual({weeklyWageLimit:75000,showTalentLimit:150000,
   cashReserve:2000000});
