@@ -37,7 +37,12 @@ test("browser cannot edit medical winners, forge fields or book unsupported comb
  assert.throws(()=>normalizeBookableMatch({...royal,interference:{
   personId:"outsider",aidedSide:"A",plannedOutcome:"SUCCESS"}}),/spots/);
  const teams=make(3,2,false);
- assert.throws(()=>normalizeBookableMatch({...teams,championshipId:"belt"}),/championship/);
+ const multiTeamTitle=normalizeBookableMatch({...teams,championshipId:"belt"});
+ assert.equal(multiTeamTitle.championshipId,"belt");
+ assert.equal(multiTeamTitle.sides.length,3);
+ // Tag belts support several pairs, not arbitrary three-person trios.
+ const trios=make(2,3,false);
+ assert.throws(()=>normalizeBookableMatch({...trios,championshipId:"belt"}),/championship/);
  const one=make(2,1,false);
  assert.throws(()=>normalizeBookableMatch({...one,sides:[
   {sideId:"A",participants:[person(0)]},
