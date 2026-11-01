@@ -193,3 +193,13 @@
 .ppw-business-breakdown>summary{cursor:pointer;min-height:44px;border-radius:10px;
  background:#1d3850;border:1px solid #55758b;padding:13px;font-weight:800}
 .ppw-business-breakdown>.ppw-business-panel{margin:7px 0}
+
+/* Certified TV ratings/PPV audience stay separate from event cash. */
+.ppw-business-audience-mini{color:#bdf6f0;font-size:12px;font-weight:800}
+.ppw-business-audience-report{padding:12px;margin:12px 0;border:1px solid #4d7293;border-radius:12px}
+.ppw-business-audience-trend{display:flex;gap:7px;overflow-x:auto;padding:8px 1px;max-width:100%}
+.ppw-business-audience-tile{min-width:82px;max-width:122px;display:flex;
+ flex-direction:column;gap:5px;align-items:center;padding:11px 7px;
+ border-radius:10px;background:#163149;border:1px solid #3c647c;text-align:center}
+.ppw-business-audience-tile strong{font-size:22px;color:#f8e4b4}
+.ppw-business-audience-tile small{font-size:10px;color:#b3ccdd}
