@@ -632,7 +632,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
       expiresWeekIndex:c.expires_week_index??-1,
       currentWeekIndex:week}).available)
      throw new Error((c?.name??"This wrestler")+
-       " is not eligible under the saved contract for Week "+show.week+
+       " lacks current contract rights for Week "+show.week+
        ". Re-select them in the talent picker to use a current signed agreement.");
    }
    for(const m of matches){
