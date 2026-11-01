@@ -499,13 +499,15 @@ function openWrestlerDossier(root:HTMLElement,scope:Scope,
  overlay.scrollTop=0;
  const close=()=>{
   overlay.remove();
-  if(previouslyFocused?.isConnected)previouslyFocused.focus();
+  if(previouslyFocused?.isConnected)previouslyFocused.focus({preventScroll:true});
  };
  overlay.addEventListener("keydown",event=>{
   if(event.key==="Escape"){event.preventDefault();event.stopPropagation();close();}
  });
- root.append(overlay);
- mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
+ // Portal outside transformed and scrolled ancestors so iOS Safari's
+  // fixed-position dossier remains visible and independently scrollable.
+  document.body.append(overlay);
+  mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
   personId,close);
  overlay.focus({preventScroll:true});
  overlay.scrollTop=0;

@@ -6,7 +6,7 @@ import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
-import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
+import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
 
 export interface GenerateStaffFallbackCardsInput{
@@ -32,6 +32,7 @@ type Generated={promotionId:string;showId:string;day:number;venueId:string;
   eventType:"REGULAR"|"MAJOR";importance:number;
   seriesId:string|null;showName:string|null};
 type Unfilled={promotionId:string;reason:string};
+type AiFeaturedPair=NonNullable<AiCardInput["featuredPairs"]>[number];
 /** Real contenders only. Reigns are awarded by certified show settlement. */
 function inauguralPair(roster:readonly AiRosterCandidate[],division:"MEN"|"WOMEN"|null){
  const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
@@ -262,7 +263,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
           const titles=eventType==="MAJOR"?context?.championships.get(promotionId)??[]:[];
-          const challengers=titles.flatMap(t=>{
+          const challengers=titles.flatMap<AiFeaturedPair>(t=>{
             if(t.holderId===null){
               const pair=inauguralPair(roster,t.bookingDivision);
               return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
@@ -363,7 +364,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         // title challenge, not merely rebrand an ordinary television card.
         const rosterById=new Map(roster.map(p=>[p.personId,p]));
         const titleChallenges=(context?.championships.get(promotionId)??[])
-         .flatMap(title=>{
+         .flatMap<AiFeaturedPair>(title=>{
           if(title.holderId===null){
             const pair=inauguralPair(roster,title.bookingDivision);
             return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,

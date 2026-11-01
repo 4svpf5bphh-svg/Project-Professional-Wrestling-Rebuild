@@ -182,7 +182,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   loading=true;render();
   try{
    view=await port.load();
-   matches=new Map();segments=new Map();
+    // A new World week may activate signed renewals; discard stale contract IDs.
+    roster.clear();
+    matches=new Map();segments=new Map();
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")

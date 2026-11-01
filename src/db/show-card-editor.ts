@@ -396,7 +396,9 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
     "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
     "AND target.parent_promotion_id=c.promotion_id))",
-    "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
+    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
+     "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
     "($4::text,$6::text,$7::text))",
     "ORDER BY p.name,p.person_id,c.contract_id LIMIT $8"
@@ -621,7 +623,9 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
       startWeekIndex:c.start_week_index??undefined,
       expiresWeekIndex:c.expires_week_index??-1,
       currentWeekIndex:week}).available)
-     throw new Error("Booked wrestler lacks current contract rights");
+     throw new Error((c?.name??"This wrestler")+
+       " is not eligible under the saved contract for Week "+show.week+
+       ". Re-select them in the talent picker to use a current signed agreement.");
    }
    for(const m of matches){
     const divisions=new Set(m.payload.participants.map(x=>
