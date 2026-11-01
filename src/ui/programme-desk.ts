@@ -245,7 +245,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(scheduled)followThrough.append(element("span","",
     "Y"+scheduled.year+" W"+scheduled.week+" · "+
     (scheduled.kind==="MATCH"?"Match":"Angle")+" · "+
-    (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
+    (nextBooked.status==="SUBMITTED"?"Confirmed card":"Draft card")));
    else followThrough.append(element("span","",
     "Use the suggested angle or book your own idea. Only certified shows advance the story."));
    next.append(followThrough);
@@ -592,12 +592,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    },working||!view.canEdit));
    historyLane.append(retire);
    const current=element("div","ppw-programme-now");
-   const scheduled=p.plannedActivity?.[0];
-   current.append(element("strong","",scheduled?
-    "Next: "+(scheduled.kind==="MATCH"?"match":"angle")+" booked on "+scheduled.showName:
+   const nextBooked=p.plannedActivity?.[0];
+   current.append(element("strong","",nextBooked?
+    "Next: "+(nextBooked.kind==="MATCH"?"match":"angle")+" booked on "+nextBooked.showName:
     "Next chapter is yours to book"));
-   if(scheduled)current.append(element("span","",
-    "Year "+scheduled.year+" · Week "+scheduled.week+" · "+
+   if(nextBooked)current.append(element("span","",
+    "Year "+nextBooked.year+" · Week "+nextBooked.week+" · "+
      (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
    panel.append(current);
    const views=[
