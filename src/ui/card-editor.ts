@@ -100,6 +100,8 @@ function numberField(value:number,min:number,max:number,
  return input;
 }
 function field(label:string,control:HTMLElement){
+ // Explicit accessible name survives nested option text and re-rendered iPhone dialogs.
+ control.setAttribute("aria-label",label);
  const wrapper=el("label","ppw-field");
  wrapper.append(el("span","",label),control);return wrapper;
 }
