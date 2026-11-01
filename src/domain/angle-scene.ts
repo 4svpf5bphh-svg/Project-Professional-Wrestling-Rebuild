@@ -47,6 +47,7 @@ export function isAngleScene(value:unknown,kind:string):value is AngleScene{
  if(s.intensity!==undefined&&(!physical.has(kind as SegmentKind)||
   !ANGLE_INTENSITIES.includes(s.intensity as NonNullable<AngleScene["intensity"]>)))return false;
  if(!physical.has(kind as SegmentKind)&&s.visual!=="NONE")return false;
+ if(s.intensity==="WARNING"&&s.visual==="BLOODIED")return false;
  if(kind==="POST_MATCH_ASSAULT"&&
   !["IN_RING","RINGSIDE","ENTRANCE_RAMP"].includes(String(s.location)))return false;
  return true;
@@ -70,3 +71,18 @@ const names:Record<string,string>={
  TARGET_CHAMPIONSHIP:"Send a title warning"
 };
 export function angleSceneLabel(value:string){return names[value]??value;}
+
+/** Natural on-air scene placement, never technical field labels. */
+export function angleSceneLocationPhrase(place:AngleLocation):string{
+ const phrases:Record<AngleLocation,string>={
+  IN_RING:"in the ring",RINGSIDE:"at ringside",
+  ENTRANCE_RAMP:"on the entrance ramp",CROWD_BARRICADE:"by the crowd barricade",
+  BACKSTAGE:"backstage",HALLWAY:"in the backstage corridor",
+  LOCKER_ROOM:"in the locker room",GORILLA_POSITION:"at gorilla position",
+  INTERVIEW_AREA:"in the interview area",PRODUCTION_AREA:"in the production area",
+  OFFICE:"in the management office",PARKING_LOT:"in the arena car park",
+  LOADING_BAY:"at the loading bay",OUTSIDE_ARENA:"outside the arena",
+  STREET_ENTRANCE:"at the street entrance"
+ };
+ return phrases[place];
+}
