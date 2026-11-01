@@ -65,7 +65,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
   scene.visual==="OFFICIALS_SEPARATE"?" Officials intervened to separate the wrestlers.":
   scene.visual==="DRIVEN_OFF"?" The aggressor was driven off.":
   "":"";
- const purpose=scene&&segment.outcome==="HAPPENS"?" The intended story was to "+({
+ const storyIntent=scene&&segment.outcome==="HAPPENS"?" The intended story was to "+({
   BUILD_RIVALRY:"escalate the rivalry",
   ELEVATE_INITIATOR:"elevate the initiator",
   BUILD_TARGET_SYMPATHY:"build sympathy for the victim",
@@ -113,7 +113,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "The beatdown was sustained.";break;
   }
  }
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+visual+purpose:
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+visual+storyIntent:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,

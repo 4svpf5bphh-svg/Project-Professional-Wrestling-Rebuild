@@ -31,7 +31,7 @@ export interface CompletedAngleContext{
  actorNames:string[];targetNames:string[];
  videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
  turnTargetAlignment:string|null;
- scene:AngleScene|null;
+ scene?:AngleScene|null;
 }
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";

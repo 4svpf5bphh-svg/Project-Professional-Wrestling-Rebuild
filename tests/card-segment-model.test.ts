@@ -178,3 +178,25 @@ test("a complete two-person tag team can turn together while scripted direction 
  assert.equal(saved.turnTargetAlignment,"FACE");
  assert.deepEqual(buildEditorSegment(restoreEditorSegment("team-turn",saved)),saved);
 });
+
+test("Who What Where Why choices survive save and reopen without changing consequences",()=>{
+ let model=newEditorSegment("ambush","ATTACK");
+ model=addSegmentPerson(model,"actors",{personId:"joe",contractId:"joe-deal"});
+ model=addSegmentPerson(model,"targets",{personId:"mistico",contractId:"mistico-deal"});
+ model.creativeBeat={kind:"ATTACK",presentation:"BLINDSIDE",objective:"ESCALATE_RIVALRY"};
+ model.scene={location:"LOCKER_ROOM",visual:"BLOODIED",purpose:"BUILD_RIVALRY"};
+ model.programmeId="heat-joe-mistico";
+ const saved=buildEditorSegment(model);
+ assert.equal(saved.scene?.location,"LOCKER_ROOM");
+ assert.equal(saved.scene?.visual,"BLOODIED");
+ assert.deepEqual(saved.actorIds,["joe"]);
+ assert.deepEqual(saved.targetIds,["mistico"]);
+ assert.deepEqual(buildEditorSegment(restoreEditorSegment("ambush",saved)),saved);
+});
+test("legacy authored angle without scene may still be opened",()=>{
+ const draft={kind:"ATTACK",actorIds:["a"],targetIds:["b"],outcome:"HAPPENS",
+  participants:[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}]};
+ const edited=restoreEditorSegment("old",draft);
+ assert.equal(edited.scene?.location,"BACKSTAGE");
+ assert.equal(edited.outcome,"HAPPENS");
+});

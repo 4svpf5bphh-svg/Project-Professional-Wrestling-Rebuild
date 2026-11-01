@@ -53,3 +53,20 @@ test("scripted interruption and rescue endings are certified distinctly",()=>{
    "An angle that did not happen cannot claim the scripted ending occurred");
  }
 });
+
+test("filmed bloodied locker-room ambush honours roles, purpose, and refusal",()=>{
+ const scene={location:"LOCKER_ROOM" as const,visual:"BLOODIED" as const,
+  purpose:"ELEVATE_INITIATOR" as const};
+ const payload=buildBookedSegmentPayload({
+  slotId:"joe-ambush",position:1,kind:"ATTACK",actorIds:["a"],targetIds:["b"],
+  outcome:"HAPPENS",creativeBeat:{kind:"ATTACK",
+   presentation:"BLINDSIDE",objective:"GENERATE_HEAT"},scene
+ },people);
+ const summary=describeAuthoredSegment(payload,names).summary;
+ assert.match(summary,/Wrestler A attacks Wrestler B in the locker room/);
+ assert.match(summary,/bloodied/);
+ assert.match(summary,/elevate the initiator/);
+ assert.doesNotMatch(summary,/was injured|injured for|weeks out/);
+ const stopped=describeAuthoredSegment({...payload,outcome:"REFUSED"},names).summary;
+ assert.doesNotMatch(stopped,/bloodied|elevate the initiator/);
+});
