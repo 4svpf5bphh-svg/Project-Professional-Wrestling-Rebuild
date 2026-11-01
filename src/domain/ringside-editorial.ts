@@ -3,7 +3,7 @@ import type {CompletedShowView} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v5";
+export const RINGSIDE_PROMPT_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 export interface RingsideCopy{
@@ -339,7 +339,15 @@ Let crowd atmosphere and match quality shape how enthusiastically you write.
 For strong/important bouts use ONE OR TWO PARAGRAPHS, normally 90–150 words
 (total, separated by a blank line). For squashes or poor short bouts 55–100
 words is enough. Angles get 35–85 words and actual character, but no invented
-direct quotes. A dull angle can be described with less ceremony. Opening and
+direct quotes. ANGLES ARE NOT MATCHES: distinguish solo celebrations, spoken
+interviews, challenges, contract signings and video packages from actual
+attacks, confrontations or bouts. A solo celebration concerns the entrance,
+audience, personality and victory: no arm drags, finishers, locks, strikes,
+opponents or combat choreography. Only a booked physical altercation may
+feature offensive wrestling moves between verified people involved.
+Never invent an attacker or a target. Do not write clunky negative statements
+like "no opponent entered", "there was no altercation", "it was not a match"
+or "no move was performed". Simply narrate the confirmed scene naturally. A dull angle can be described with less ceremony. Opening and
 closing are one or two concise sentences each; do not repeat individual finishes.
 
 All RECORDS are authoritative: participant identities, match format, winner,

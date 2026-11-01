@@ -107,7 +107,11 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    root.append(credit);
   }
 
-  const attrs=section("Performance & standing");
+  // The wrestler card already carries headline stats. Full attributes are
+  // available on demand instead of repeating them on a huge mobile page.
+  const attrs=document.createElement("details");
+  attrs.className="ppw-profile-section ppw-profile-attributes";
+  attrs.append(el("summary","","Full scouting attributes"));
   if(view.medicalWeeksRemaining!=null)
   root.append(el("p","ppw-profile-message",
    "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+
