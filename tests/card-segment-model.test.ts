@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment}
+import {ANGLE_TYPES,newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment}
  from "../src/ui/card-segment-model.js";
 test("author-owned confrontation survives editor roundtrip",()=>{
  let s=newEditorSegment("fight","CONFRONTATION");

@@ -63,13 +63,10 @@ test("every supported angle has meaningful What, Where and Why choices",async()=
  }
 });
 test("specialist choices preserve original role and scripted-effect limits",()=>{
- const {angleLocationsFor,anglePurposesFor} = requireNoop();
+
  assert.ok(!angleLocationsFor("POST_MATCH_ASSAULT").includes("HOTEL_LOBBY"));
  assert.ok(angleLocationsFor("INTERVIEW").includes("INTERVIEW_AREA"));
  assert.ok(angleLocationsFor("VIDEO_PACKAGE").includes("PRODUCTION_AREA"));
  assert.ok(anglePurposesFor("STABLE_RECONCILIATION").includes("REPAIR_ALLIANCE"));
  assert.ok(isAngleScene({location:"IN_RING",visual:"NONE",purpose:"MAKE_STATEMENT"},"VIDEO_PACKAGE"));
 });
-function requireNoop(){
- return {angleLocationsFor,anglePurposesFor};
-}

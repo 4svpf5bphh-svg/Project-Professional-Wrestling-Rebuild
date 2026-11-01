@@ -132,8 +132,12 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "The beatdown was sustained.";break;
   }
  }
+ const intentDescription=scene?.purpose==="ELEVATE_INITIATOR"?
+  "make the aggressor look dangerous":scene?.purpose==="BUILD_CHARACTER"?
+   "show another side of the performer":scene?.purpose==="BUILD_RIVALRY"?
+    "raise tensions between the rivals":scene?angleSceneLabel(scene.purpose).toLowerCase():"";
  const intention=scene&&scene.purpose!==initialAngleScene(segment.kind).purpose?
-  " It was a bid to "+angleSceneLabel(scene.purpose).toLowerCase().replace(/[.!]$/,"")+".":"";
+  " The intention was to "+intentDescription.replace(/[.!]$/,"")+".":"";
  const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+(visual?" "+visual:"")+intention:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;

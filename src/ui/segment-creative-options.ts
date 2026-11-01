@@ -5,7 +5,7 @@ const labels:Readonly<Record<string,string>>={
  STATEMENT_OF_INTENT:"Statement of intent",BOAST:"Boast to the crowd",
  RALLY_FANS:"Rally the fans",AIR_GRIEVANCE:"Air a grievance",
  ISSUE_WARNING:"Issue a warning",PROMISE_VICTORY:"Promise victory",
- TAUNT_RIVALS:"Mock the competition",EXPLAIN_ACTIONS:"Explain recent actions",
+ EXPLAIN_ACTIONS:"Explain recent actions",
  BACKSTAGE:"Backstage",SIT_DOWN:"Sit-down",
  IN_RING:"In the ring",CAREER_STORY:"Career story",
  RIVALRY_PRESSURE:"Rivalry pressure",RECENT_FORM:"Recent form",
