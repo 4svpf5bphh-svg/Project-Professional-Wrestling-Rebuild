@@ -17,6 +17,7 @@ export interface SettleShowInput{worldId:string;promotionId:string;showId:string
 export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowInput){
  const rows=await tx.query<{
   seed:string|number;market_id:string|null;show_day:number|null;event_type:EventType|null;
+  booking_class:"REGULAR"|"PREMIUM";
   booking_expected_demand:number|null;booking_ticket_yield:string|null;
   booking_snapshot_fingerprint:string|null;
   ticket_strategy:TicketStrategy|null;promotion_id:string;
@@ -27,7 +28,7 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   awareness:number|null;live_strength:number|null;loyalty:number|null;
   resource_charged:boolean;show_completed:boolean;production_staff_id:string|null;
  }>(`
- SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,
+ SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,d.booking_class,
   d.booking_expected_demand,d.booking_ticket_yield::text,
   d.booking_snapshot_fingerprint,
   p.promotion_id,p.home_market_id,p.tier,p.media_reach,
@@ -138,7 +139,8 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   totalCost:original.totalCost-efficiency.saving,
   netResult:original.netResult+efficiency.saving,
   incrementalCash:original.incrementalCash+efficiency.saving};
- const audience=projectShowAudience({tier:x.tier,eventType:x.event_type,
+ const audience=projectShowAudience({tier:x.tier,
+  eventType:x.booking_class==="PREMIUM"?"MAJOR":"REGULAR",
   mediaReach:x.media_reach,awareness:x.awareness,liveStrength:x.live_strength,
   loyalty:x.loyalty,wrestlingInterest:x.wrestling_interest,
   expectedDemand,averageMatchRating:input.averageMatchRating});
