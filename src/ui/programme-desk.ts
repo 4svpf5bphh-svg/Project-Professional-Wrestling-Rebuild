@@ -647,6 +647,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     if(createDetails.isConnected)creationOpen=createDetails.open;
    };
    const title=element("summary","","+ Start a new rivalry");
+   // Record the open state before a selection re-renders the creation form.
+   // Native details.toggle is asynchronous and may not fire until after the
+   // original element has been detached on the first roster selection.
+   title.onclick=()=>{creationOpen=!createDetails.open;};
    createDetails.append(title,creation);
    root.append(createDetails);
   }
