@@ -70,6 +70,8 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await expect(dialog.getByLabel("The message")).toBeVisible();
  // Direct authoring now needs no intermediate switch.
  await dialog.getByLabel("The message").selectOption("AIR_GRIEVANCE");
+ await dialog.getByLabel("The message").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-promo-what.png",animations:"disabled"});
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -241,6 +243,11 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  await page.getByRole("dialog",{name:"Choose wrestler"}).locator(".ppw-wrestler-card").first().click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("Alice",{exact:true})).toBeVisible();
+ await dialog.getByLabel("How the turn is shown").selectOption("REJECT_OLD_SELF");
+ await dialog.getByLabel("How the turn is shown").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-turn-what.png",animations:"disabled"});
+ await dialog.getByLabel("Storytelling purpose").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-turn-where-why.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
@@ -331,6 +338,10 @@ test("iPhone books a brutal premeditated ambush outside and reopens every sub-op
  await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
  await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
  await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await dialog.getByLabel("Attack style").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-attack-what.png",animations:"disabled"});
+ await dialog.getByLabel("Storytelling purpose").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-attack-where-why.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();

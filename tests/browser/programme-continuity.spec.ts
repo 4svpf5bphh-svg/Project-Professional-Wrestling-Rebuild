@@ -161,6 +161,7 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await page.getByRole("button",{name:"Manage Booker 2 vs Rival 2"}).click();
  await expect(page.locator(".ppw-programme-broadcast")).toContainText("Booker 2");
  await expect(page.locator(".ppw-programme-broadcast")).not.toContainText("Booker 1");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-programmes-creative.png",fullPage:true,animations:"disabled"});
  expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
