@@ -200,3 +200,27 @@ test("legacy authored angle without scene may still be opened",()=>{
  assert.equal(edited.scene?.location,"BACKSTAGE");
  assert.equal(edited.outcome,"HAPPENS");
 });
+
+test("every angle can save and reopen its Who What Where Why choices",async()=>{
+ const {SEGMENT_BOOKING_RULES}=await import("../src/domain/segment-booking.js");
+ const {angleLocationsFor,anglePurposesFor}=await import("../src/domain/angle-scene.js");
+ for(const {value:kind} of ANGLE_TYPES){
+  const segment=newEditorSegment("complete-"+kind,kind);
+  const rules=SEGMENT_BOOKING_RULES[kind];
+  for(let i=0;i<rules.minActors;i++)
+   segment.actors.push({personId:"a"+i,contractId:"c-a"+i});
+  for(let i=0;i<rules.minTargets;i++)
+   segment.targets.push({personId:"t"+i,contractId:"c-t"+i});
+  if(kind==="POST_MATCH_ASSAULT")segment.sourceMatchSlotId="match-before";
+  if(kind.startsWith("STABLE_"))segment.stableId="faction";
+  if(kind==="STABLE_INVITATION"||kind==="STABLE_RECONCILIATION")segment.stableDecision="REJECTED";
+  assert.ok(segment.creativeBeat,kind+" missing What");
+  assert.ok(segment.scene,kind+" missing Where/Why");
+  assert.ok(angleLocationsFor(kind).includes(segment.scene!.location));
+  assert.ok(anglePurposesFor(kind).includes(segment.scene!.purpose));
+  const saved=buildEditorSegment(segment);
+  assert.deepEqual(saved.scene,segment.scene);
+  assert.deepEqual(saved.creativeBeat,segment.creativeBeat);
+  assert.deepEqual(buildEditorSegment(restoreEditorSegment(segment.slotId,saved)),saved);
+ }
+});

@@ -70,3 +70,22 @@ test("filmed bloodied locker-room ambush honours roles, purpose, and refusal",()
  const stopped=describeAuthoredSegment({...payload,outcome:"REFUSED"},names).summary;
  assert.doesNotMatch(stopped,/bloodied|elevate the initiator/);
 });
+
+test("video, turn and faction What choices are expressed only when the scene happens",()=>{
+ const samples=[
+  {kind:"VIDEO_PACKAGE",beat:{kind:"VIDEO_PACKAGE",presentation:"DARK_TEASER"},check:/more questions than answers/},
+  {kind:"TURN",beat:{kind:"TURN",presentation:"REJECT_OLD_SELF"},check:/rejected their old identity/},
+  {kind:"STABLE_EXIT",beat:{kind:"STABLE_EXIT",departure:"PUBLIC_DENUNCIATION"},check:/denounced in public/}
+ ] as const;
+ for(const sample of samples){
+  const item=buildBookedSegmentPayload({
+   slotId:sample.kind,position:0,kind:sample.kind,outcome:"HAPPENS",
+   actorIds:["a"],targetIds:[],durationMinutes:5,
+   ...(sample.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{}),
+   ...(sample.kind==="STABLE_EXIT"?{stableId:"stable"}:{}),
+   creativeBeat:sample.beat
+  },[{personId:"a",contractId:"a-contract"}]);
+  assert.match(describeAuthoredSegment(item,names).summary,sample.check);
+  assert.doesNotMatch(describeAuthoredSegment({...item,outcome:"INTERRUPTED"},names).summary,sample.check);
+ }
+});
