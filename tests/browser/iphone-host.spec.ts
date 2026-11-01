@@ -1413,9 +1413,9 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
  await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
- await dialog.getByLabel("The intention").selectOption("ESCALATE_RIVALRY");
+ await dialog.getByLabel("Storytelling purpose").selectOption("BUILD_RIVALRY");
  await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
- await expect(dialog.getByLabel("The intention")).toHaveValue("ESCALATE_RIVALRY");
+ await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("BUILD_RIVALRY");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
