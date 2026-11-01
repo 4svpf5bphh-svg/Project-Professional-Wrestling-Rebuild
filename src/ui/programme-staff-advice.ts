@@ -74,7 +74,7 @@ export function suggestProgrammeAdvice(p:ProgrammeAdviceEvidence):ProgrammeAdvic
   .includes(p.directionStatus);
  const title=p.championshipId!==null;
  const heavy=p.repetition>=55;
- const options:ProgrammeAdvice["options"]=[];
+ const options:Array<ProgrammeAdvice["options"][number]>=[];
  if(p.activityCount===0){
   options.push({choice:"PLAN_RETALIATION",label:"Establish the issue",
    plan:a+" and "+b+" have no certified conflict yet. Introduce what each wants in an authored interview or challenge; decide who responds."});
