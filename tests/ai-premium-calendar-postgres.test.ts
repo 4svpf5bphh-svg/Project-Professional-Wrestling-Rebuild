@@ -78,3 +78,61 @@ test("AI WWE books Royal Rumble independently alongside Raw and preserves import
   }).finally(()=>db.close());
  }
 });
+
+test("AI promotions nominate real title contenders on inaugural television before any champion exists",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="ai-inaugural-"+randomUUID(),db=postgresPool(url!,4);
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,160));
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
+   [world]));
+  const before=await withWorldTransaction(db.pool,tx=>tx.query<{reigns:string}>(
+   "SELECT count(*)::text AS reigns FROM ppw_championship_reigns WHERE world_id=$1",
+   [world]));
+  assert.equal(before[0]!.reigns,"0","An inaugural champion must come from a certified match");
+  assert.equal((await lockWorldWeek(db.pool,{
+   worldId:world,requestId:"lock",expectedRevision:0})).status,"APPLIED");
+  assert.equal((await recordWeekContinuity(db.pool,{
+   worldId:world,requestId:"continuity",expectedRevision:1})).status,"APPLIED");
+  assert.equal((await finalizePreparedWorldShows(db.pool,{
+   worldId:world,requestId:"finalize",expectedRevision:2})).status,"APPLIED");
+  assert.equal((await beginWorldResolution(db.pool,{
+   worldId:world,requestId:"begin",expectedRevision:3})).status,"APPLIED");
+  const generated=await generateWeekStaffFallbackCards(db.pool,{
+   worldId:world,requestId:"generate",expectedRevision:4});
+  assert.equal(generated.status,"APPLIED");
+  const eligible=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;championship_id:string;finish:string;show_id:string}>([
+   "SELECT d.promotion_id,s.payload->>'championshipId' AS championship_id,",
+   "s.payload->>'plannedFinish' AS finish,d.draft_id AS show_id",
+   "FROM ppw_card_slots s JOIN ppw_booking_drafts d",
+   "ON d.world_id=s.world_id AND d.draft_id=s.draft_id",
+   "WHERE s.world_id=$1 AND s.payload ? 'championshipId'",
+   "ORDER BY d.promotion_id,d.draft_id,s.slot_id LIMIT 100"
+  ].join(" "),[world]));
+  assert.ok(eligible.length>0,"Vacant belts should have genuine AI title bouts on scheduled TV");
+  assert.ok(eligible.every(c=>c.finish==="CLEAN_PIN"));
+  assert.ok(eligible.every(c=>c.championship_id==="founding:singles"||
+   c.championship_id==="founding:tag"));
+  const stillVacant=await withWorldTransaction(db.pool,tx=>tx.query<{reigns:string}>(
+   "SELECT count(*)::text AS reigns FROM ppw_championship_reigns WHERE world_id=$1",
+   [world]));
+  assert.equal(stillVacant[0]!.reigns,"0","AI booking does not fabricate championship reigns");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of [
+    "ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_participants","ppw_programmes",
+    "ppw_championship_reigns","ppw_championships",
+    "ppw_tag_team_members","ppw_tag_teams","ppw_ledger_events",
+    "ppw_week_staff_fallback_runs","ppw_week_prepared_finalizations",
+    "ppw_week_continuity_assessments","ppw_command_receipts","ppw_card_slots",
+    "ppw_booking_drafts","ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_show_series","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
