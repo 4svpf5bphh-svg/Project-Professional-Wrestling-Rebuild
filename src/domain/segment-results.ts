@@ -18,7 +18,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  const subject=actors.join(" & ")||"The promotion";
  const object=targets.join(" & ");
  const labels:Record<SegmentKind,string>={
- PROMO:"In-ring promo",INTERVIEW:"Interview",CONFRONTATION:"Face to face",
+ PROMO:"Promo",INTERVIEW:"Interview",CONFRONTATION:"Face to face",
  CHALLENGE:"Challenge issued",CELEBRATION:"Celebration",
  ATTACK:"Ambush / assault",INTERRUPTION:"Unexpected interruption",
  RESCUE:"A timely rescue",POST_MATCH_ASSAULT:"Post-match assault",
@@ -28,11 +28,11 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  STABLE_INVITATION:"Stable invitation",STABLE_EXIT:"Stable tension",STABLE_RECONCILIATION:"Stable reconciliation"};
  const purpose=segment.videoPurpose?segment.videoPurpose.replaceAll("_"," ").toLowerCase():"";
  const planned:Record<SegmentKind,string>={
- PROMO:`${subject} addresses the crowd`,
+ PROMO:`${subject} delivers a promo`,
  INTERVIEW:`${subject} is interviewed`,
  CONFRONTATION:`${subject} confronts ${object}`,
  CHALLENGE:`${subject} challenges ${object}`,
- CELEBRATION:`${subject} celebrates in the ring`,
+ CELEBRATION:`${subject} stages a celebration`,
  ATTACK:`${subject} attacks ${object}`,
  INTERRUPTION:`${subject} interrupts ${object}`,
  RESCUE:`${actors[0]??"An attacker"} assaults ${object} before ${actors[1]??"a rescuer"} intervenes`,
@@ -73,6 +73,49 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  let ending="";
  if(segment.outcome==="HAPPENS"&&beat){
   switch(beat.kind){
+   case "PROMO":
+    ending=beat.purpose==="BOAST"?"The speech was an unapologetic boast.":
+     beat.purpose==="RALLY_FANS"?"The message was an appeal to the fans.":
+     beat.purpose==="AIR_GRIEVANCE"?"The grievances were laid bare.":
+     beat.purpose==="ISSUE_WARNING"?"The promo ended on a warning.":
+     beat.purpose==="PROMISE_VICTORY"?"A victory was boldly promised.":
+     beat.purpose==="TAUNT_RIVALS"?"The competition came in for ridicule.":
+     beat.purpose==="EXPLAIN_ACTIONS"?"They offered an explanation for recent actions.":
+     "The wrestler set out their intentions.";break;
+   case "INTERVIEW": {
+    const topics:Record<typeof beat.topic,string>={
+     CAREER_STORY:"their career",RIVALRY_PRESSURE:"rivalry pressure",
+     RECENT_FORM:"recent performances",NEXT_STEPS:"what comes next",
+     TITLE_AMBITIONS:"title ambitions",FACTION_FUTURE:"the faction's future"};
+    const responses:Record<typeof beat.response,string>={
+     CANDID:"spoke candidly",EVASIVE:"dodged the difficult questions",
+     DEFIANT:"refused to back down",WALKOUT:"walked out of the interview",
+     EMOTIONAL:"became visibly emotional",SARCASTIC:"answered with sarcasm"};
+    ending="The conversation focused on "+topics[beat.topic]+". "+subject+
+     " "+responses[beat.response]+".";break;
+   }
+   case "CELEBRATION":{
+    const occasions:Record<typeof beat.occasion,string>={
+     FAN_APPRECIATION:"thanking the fans",SELF_CORONATION:"a self-coronation",
+     RIVALRY_TAUNT:"mocking a rival",FACTION_UNITY:"a show of faction unity",
+     PERSONAL_MILESTONE:"a personal milestone"};
+    const ends:Record<typeof beat.ending,string>={
+     SALUTE_CROWD:"saluted the crowd",POSE:"struck a pose",
+     TAUNT_RIVALS:"taunted the competition",WALK_OFF:"walked away"};
+    ending="The occasion was "+occasions[beat.occasion]+". They "+
+     ends[beat.ending]+".";break;
+   }
+   case "CONFRONTATION":
+    ending=beat.ending==="STAREDOWN"?"Neither side broke the stare.":
+     beat.ending==="INITIATOR_BACKS_DOWN"?subject+" backed away.":
+     beat.ending==="TARGET_BACKS_DOWN"?(object||"The rival")+" backed away.":
+     beat.ending==="RELUCTANT_HANDSHAKE"?"An uneasy handshake ended the encounter.":
+     beat.ending==="VERBAL_WARNING"?"A pointed verbal warning was delivered.":
+     "The confrontation turned into a shoving match.";break;
+   case "DEBUT":
+    ending=beat.presentation==="SURPRISE_REVEAL"?
+     "The arrival caught the crowd by surprise.":
+     "The newcomer was formally introduced.";break;
    case "INTERRUPTION":
     ending=beat.ending==="VERBAL_EXCHANGE"?"Both sides traded words.":
      beat.ending==="INTERRUPTER_PREVAILS"?subject+" got the last word.":
@@ -129,6 +172,8 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      beat.presentation==="BLINDSIDE"?"The strike came from behind. ":
      beat.presentation==="PREMEDITATED_AMBUSH"?"The ambush had clearly been planned. ":
      beat.presentation==="FACE_TO_FACE_ASSAULT"?"The attack came face to face. ":
+     beat.presentation==="SURPRISE_RUN_IN"?"A surprise run-in sparked the assault.":
+     beat.presentation==="TARGETED_BEATDOWN"?"The attackers focused their punishment on the victim.":
      "The beatdown was sustained.";break;
   }
  }
@@ -138,7 +183,11 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
     "raise tensions between the rivals":scene?angleSceneLabel(scene.purpose).toLowerCase():"";
  const intention=scene&&scene.purpose!==initialAngleScene(segment.kind).purpose?
   " The intention was to "+intentDescription.replace(/[.!]$/,"")+".":"";
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+(visual?" "+visual:"")+intention:
+ const repeatedSeparation=scene?.visual==="OFFICIALS_SEPARATE"&&
+  ((beat?.kind==="POST_MATCH_ASSAULT"&&beat.ending==="OFFICIALS_SEPARATE")||
+   (beat?.kind==="ATTACK"&&beat.presentation==="PULL_APART_BRAWL"));
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+
+  (!repeatedSeparation&&visual?" "+visual:"")+intention:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,

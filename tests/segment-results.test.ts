@@ -89,3 +89,23 @@ test("video, turn and faction What choices are expressed only when the scene hap
   assert.doesNotMatch(describeAuthoredSegment({...item,outcome:"INTERRUPTED"},names).summary,sample.check);
  }
 });
+
+test("promos, interviews, celebrations, confrontations and debuts honour selected What",()=>{
+ const samples=[
+  {kind:"PROMO" as const,beat:{kind:"PROMO" as const,purpose:"PROMISE_VICTORY" as const},actors:["a"],targets:[],text:/victory was boldly promised/},
+  {kind:"INTERVIEW" as const,beat:{kind:"INTERVIEW" as const,format:"BACKSTAGE" as const,topic:"TITLE_AMBITIONS" as const,response:"SARCASTIC" as const},actors:["a"],targets:[],text:/title ambitions.*sarcasm/},
+  {kind:"CELEBRATION" as const,beat:{kind:"CELEBRATION" as const,occasion:"FACTION_UNITY" as const,ending:"POSE" as const},actors:["a"],targets:[],text:/faction unity.*pose/},
+  {kind:"CONFRONTATION" as const,beat:{kind:"CONFRONTATION" as const,ending:"RELUCTANT_HANDSHAKE" as const},actors:["a"],targets:["b"],text:/uneasy handshake/},
+  {kind:"DEBUT" as const,beat:{kind:"DEBUT" as const,presentation:"SURPRISE_REVEAL" as const,objective:"CREATE_MYSTERY" as const},actors:["a"],targets:[],text:/crowd by surprise/}
+ ];
+ for(const sample of samples){
+  const personIds=[...sample.actors,...sample.targets];
+  const payload=buildBookedSegmentPayload({
+   slotId:sample.kind,position:0,kind:sample.kind,outcome:"HAPPENS",
+   actorIds:sample.actors,targetIds:sample.targets,creativeBeat:sample.beat
+  },personIds.map(personId=>({personId,contractId:"deal-"+personId})));
+  const happened=describeAuthoredSegment(payload,names).summary;
+  assert.match(happened,sample.text);
+  assert.doesNotMatch(describeAuthoredSegment({...payload,outcome:"REFUSED"},names).summary,sample.text);
+ }
+});
