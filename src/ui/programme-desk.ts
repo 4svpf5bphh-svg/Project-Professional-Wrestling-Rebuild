@@ -410,6 +410,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    // Optional creative guidance from the already-loaded immutable rivalry
    // record. Nothing is auto-booked or requested from the model.
+    const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
+    b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
+    b.slotId.localeCompare(a.slotId))[0];
    const advice=element("section","ppw-programme-staff");
    // Creative is a workspace, not a separate gated request.
    advice.append(element("span","ppw-programme-eyebrow","CREATIVE MEETING"));
@@ -423,7 +426,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      sideAName:p.sideA.map(x=>x.name).join(" & "),
      sideBName:p.sideB.map(x=>x.name).join(" & "),
      direction:p.latestFollowUp?.choice??null,directionStatus:continuity.directionKind,
-     recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null});
+     recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null,
+     recentWinnerSide:latestMatch?.winnerSide??null});
     const sheet=element("div","ppw-programme-staff-note");
     sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
      element("h3","",note.headline),
@@ -435,6 +439,16 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     for(const idea of note.options){
      const item=element("article","ppw-programme-booking-idea");
      item.append(element("strong","",idea.label),element("p","",idea.plan));
+     if(latestMatch&&view.canEdit){
+      const active=p.latestFollowUp?.choice===idea.choice&&
+       p.latestFollowUp.showId===latestMatch.showId&&
+       p.latestFollowUp.slotId===latestMatch.slotId;
+      const choose=button(active?"Direction recorded":"Choose this direction",
+       ()=>void saveDirection(p.programmeId,latestMatch.showId,
+        latestMatch.slotId,idea.choice),working||active);
+      choose.setAttribute("aria-pressed",String(active));
+      item.append(choose);
+     }
      ideas.append(item);
     }
     sheet.append(element("span","ppw-programme-eyebrow","POSSIBLE DIRECTIONS"),ideas);
@@ -442,9 +456,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     advice.append(sheet);
    }
    creativeLane.append(advice);
-   const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
-    b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
-    b.slotId.localeCompare(a.slotId))[0];
+
    if(latestMatch||p.latestFollowUp){
     const direction=element("section","ppw-programme-next");
     direction.append(element("span","ppw-programme-eyebrow","YOUR RESPONSE TO THE LAST MATCH"),
@@ -478,26 +490,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       " since your decision. "+(continuity.suggestion??"Choose a relevant next card.")));
     }else direction.append(element("p","ppw-programme-direction-note",
      "Your choice becomes a continuing creative thread; a future certified chapter records whether you followed through."));
-    if(latestMatch&&view.canEdit){
-     const choices=element("div","ppw-programme-directions");
-     for(const [choice,title,note] of [
-      ["PURSUE_REMATCH","Rematch","Set up a return bout"],
-      ["PLAN_RETALIATION","Retaliation","Build toward a confrontation"],
-      ["LET_STAND","Let it stand","Leave the finish as it was"]
-     ] as const){
-      const active=p.latestFollowUp?.choice===choice&&
-       p.latestFollowUp.showId===latestMatch.showId&&
-       p.latestFollowUp.slotId===latestMatch.slotId;
-      const pick=button(title,()=>void saveDirection(p.programmeId,
-       latestMatch.showId,latestMatch.slotId,choice),working);
-      pick.setAttribute("aria-pressed",String(active));
-      pick.title=note;
-      choices.append(pick);
-     }
-     direction.append(choices);
-    }else if(latestMatch&&!view.canEdit)
-     direction.append(element("p","ppw-programme-direction-note",
-      "The card deadline has passed. Creative decisions reopen next week."));
+    // Direction choices live in Creative above. Do not repeat them here.
     direction.append(element("small","ppw-muted",
      "No bout or angle is booked for you. Choose and save the actual card separately."));
     if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));

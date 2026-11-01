@@ -227,3 +227,11 @@
  background:#102c42;padding:12px 13px;margin:12px 0;border-radius:9px}
 .ppw-programme-now strong{font-size:13px;color:#eaf7ff}
 .ppw-programme-now span{font-size:11px;color:#b9cde2}
+
+/* Creative choices save the existing certified post-match direction. */
+.ppw-programme-booking-idea .ppw-programme-action{
+ width:100%;min-height:44px;margin:10px 0 0;white-space:normal;
+ font-size:12px;line-height:1.35;border-radius:9px;background:#244d66;
+ border:1px solid #7cc4df;color:#f3f8ff}
+.ppw-programme-booking-idea .ppw-programme-action[aria-pressed=true]{
+ background:#215743;border-color:#95e6bc;color:#caffdd}
