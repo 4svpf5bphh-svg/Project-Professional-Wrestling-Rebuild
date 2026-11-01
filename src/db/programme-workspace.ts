@@ -48,14 +48,27 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    ended_week_index:number|null;direction_choice:ProgrammeDirectionChoice|null;
    direction_show_id:string|null;direction_slot_id:string|null;
    direction_week_index:number|null;
-   next_match_week_index:number|null;next_angle_week_index:number|null}>([
+   next_match_week_index:number|null;next_angle_week_index:number|null;
+   wrestler_changes:{personId:string;name:string;beforePopularity:number|null;
+    beforeMomentum:number|null;afterPopularity:number|null;afterMomentum:number|null}[]}>([
    "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
    "started_week_index,ended_week_index,activity_count,match_count,",
    "segment_count,side_a_wins,side_b_wins,draws,",
    "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
    "direction.slot_id AS direction_slot_id,direction.chosen_week_index AS direction_week_index,",
    "follow_up.match_week AS next_match_week_index,",
-   "follow_up.angle_week AS next_angle_week_index",
+   "follow_up.angle_week AS next_angle_week_index,",
+   "coalesce((SELECT jsonb_agg(jsonb_build_object(",
+   "'personId',base.person_id,'name',person.name,",
+   "'beforePopularity',base.start_popularity,'beforeMomentum',base.start_momentum,",
+   "'afterPopularity',person.popularity,'afterMomentum',person.momentum)",
+   "ORDER BY person.name,base.person_id)",
+   "FROM ppw_programme_talent_baselines base",
+   "JOIN ppw_people person ON person.world_id=base.world_id",
+   "AND person.person_id=base.person_id",
+   "WHERE base.world_id=programme.world_id",
+   "AND base.promotion_id=programme.promotion_id",
+   "AND base.programme_id=programme.programme_id),'[]'::jsonb) AS wrestler_changes",
    "FROM ppw_programmes programme",
    "LEFT JOIN LATERAL (SELECT d.choice,d.show_id,d.slot_id,d.chosen_week_index",
    "FROM ppw_programme_postshow_directions d",
@@ -224,6 +237,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
     championshipId:p.championship_id,
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
+    wrestlerChanges:p.status==="COMPLETED"?p.wrestler_changes:[],
     latestFollowUp:p.direction_choice===null?null:{
      choice:p.direction_choice,showId:p.direction_show_id!,
      slotId:p.direction_slot_id!,weekIndex:p.direction_week_index!,
@@ -359,6 +373,14 @@ export async function startProgramme(pool:TransactionPool,input:StartProgrammeIn
     "jsonb_to_recordset($4::jsonb) AS x(person_id text,side text) RETURNING person_id"
    ].join(" "),[input.worldId,input.promotionId,programmeId,JSON.stringify(represented)]);
    if(attached.length!==unique.length)throw new Error("Incomplete programme wrestler sides");
+   const snapshots=await tx.query<{person_id:string}>(`
+    INSERT INTO ppw_programme_talent_baselines
+     (world_id,promotion_id,programme_id,person_id,start_popularity,start_momentum)
+    SELECT $1,$2,$3,p.person_id,p.popularity,p.momentum
+    FROM ppw_people p WHERE p.world_id=$1 AND p.person_id=ANY($4::text[])
+    RETURNING person_id
+   `,[input.worldId,input.promotionId,programmeId,unique]);
+   if(snapshots.length!==unique.length)throw new Error("Incomplete feud starting attributes");
    await tx.query([
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
     "VALUES($1,$2,$3,'PROGRAMME_STARTED',",

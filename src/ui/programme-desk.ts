@@ -7,6 +7,7 @@ import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
+import {evaluateProgrammeReview} from "../domain/programme-review.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
@@ -672,6 +673,25 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       "Closed · Year "+(Math.floor(p.endedWeekIndex/52)+1)+
       " Week "+(p.endedWeekIndex%52+1)));
     archive.append(heading);
+    const rating=evaluateProgrammeReview({heat:p.heat,
+     repetition:p.repetition,matchCount:p.matchCount,
+     segmentCount:p.segmentCount,finaleCompleted:p.finale?.resolvedWeekIndex!=null,
+     finaleCrowd:p.finale?.resolvedCrowdResponse??null});
+    archive.append(element("div","ppw-programme-feud-review",
+     "FEUD REVIEW · "+rating.grade+" · "+rating.verdict));
+    if((p.wrestlerChanges?.length??0)>0){
+     const impact=element("div","ppw-programme-impact");
+     for(const person of p.wrestlerChanges){
+      const change=(before:number|null,after:number|null)=>before===null||after===null?
+       "Not recorded":before+" → "+after+" ("+(after-before>=0?"+":"")+
+        Math.round(after-before)+")";
+      impact.append(element("p","",
+       person.name+" · Popularity "+change(person.beforePopularity,person.afterPopularity)+
+       " · Momentum "+change(person.beforeMomentum,person.afterMomentum)));
+     }
+     archive.append(impact);
+    }else archive.append(element("small","ppw-muted",
+     "Starting wrestler attributes were not recorded for this older feud."));
     archive.append(element("p","ppw-programme-archive-score",
      aName+" "+p.sideAWins+" — "+p.sideBWins+" "+bName+
      (p.draws?" · "+p.draws+" draw"+(p.draws===1?"":"s"):"")),
