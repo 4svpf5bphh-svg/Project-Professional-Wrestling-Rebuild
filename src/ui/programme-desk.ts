@@ -245,7 +245,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(scheduled)followThrough.append(element("span","",
     "Y"+scheduled.year+" W"+scheduled.week+" · "+
     (scheduled.kind==="MATCH"?"Match":"Angle")+" · "+
-    (nextBooked.status==="SUBMITTED"?"Confirmed card":"Draft card")));
+    (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
    else followThrough.append(element("span","",
     "Use the suggested angle or book your own idea. Only certified shows advance the story."));
    next.append(followThrough);
@@ -598,7 +598,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     "Next chapter is yours to book"));
    if(nextBooked)current.append(element("span","",
     "Year "+nextBooked.year+" · Week "+nextBooked.week+" · "+
-     (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
+     (nextBooked.status==="SUBMITTED"?"Confirmed card":"Draft card")));
    panel.append(current);
    const views=[
     {key:"CREATIVE",label:"Creative",node:creativeLane},
