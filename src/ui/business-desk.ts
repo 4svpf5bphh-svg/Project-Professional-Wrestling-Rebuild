@@ -522,6 +522,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("span","ppw-business-muted","Y"+show.year+" W"+show.week+
       " · "+show.attendance.toLocaleString("en-GB")+" attended"),
      el("b",tone(show.netResult),money(show.netResult)));
+    if(show.audience?.format==="TV"&&show.audience.householdRating!==null){
+     summary.append(el("span","ppw-business-audience-mini",
+      show.audience.householdRating.toFixed(1)+" TV rating"));
+    }else if(show.audience?.format==="PPV"&&show.audience.ppvBuys!==null){
+     summary.append(el("span","ppw-business-audience-mini",
+      show.audience.ppvBuys.toLocaleString("en-GB")+" PPV buys"));
+    }
     card.append(summary);
     const body=el("div","ppw-business-show-detail");
     for(const [label,n] of [
@@ -547,6 +554,33 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    section.append(el("h2","","Broadcasting & sponsorship"),
     el("p","ppw-business-muted",
      "Your shows earn their audience. Commercial partners offer real weekly terms; contracts last until expiry and do not automatically renew."));
+   const tv=view.shows.filter(show=>show.audience?.format==="TV"&&
+    show.audience.householdRating!==null);
+   const ppvs=view.shows.filter(show=>show.audience?.format==="PPV"&&
+    show.audience.ppvBuys!==null);
+   if(tv.length||ppvs.length){
+    const audience=el("section","ppw-business-audience-report");
+    audience.append(el("h3","","Broadcast audience"));
+    if(tv.length){
+     audience.append(el("p","ppw-business-muted",
+      "Household television rating · recent certified weekly shows"));
+     const trend=el("div","ppw-business-audience-trend");
+     for(const show of [...tv].reverse()){
+      const tile=el("div","ppw-business-audience-tile");
+      tile.append(el("small","","Y"+show.year+" W"+show.week),
+       el("strong","",show.audience!.householdRating!.toFixed(1)),
+       el("small","",show.name));trend.append(tile);
+     }
+     audience.append(trend);
+    }
+    if(ppvs.length){
+     const latest=ppvs[0]!;
+     audience.append(el("p","ppw-business-muted",
+      latest.name+" · "+latest.audience!.ppvBuys!.toLocaleString("en-GB")+
+       " estimated PPV purchases"));
+    }
+    section.append(audience);
+   }
    const active=view.commercialAgreements;
    if(active.length)section.append(el("h3","","Current agreements"));
    for(const deal of active){
