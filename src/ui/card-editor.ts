@@ -707,17 +707,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
    root.append(suggestions);
   }
-  // Opening title art is collapsible and does not affect booking or results.
-  if(view.broadcastPackage){
-   const intro=createBroadcastPackageFrame({
-    style:view.broadcastPackage,kind:"OPEN",promotion:view.promotionName,
-    show:view.showName??"Weekly show",compact:true});
-   if(intro){
-    const reveal=el("details","ppw-card-broadcast-studio");
-    reveal.append(el("summary","","View opening titles"),intro);
-    root.append(reveal);
-   }
-  }
   const list=el("section","ppw-card-list");
   let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
@@ -730,8 +719,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const label=el("div","");
    if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
    const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
-   const anglePeople=segment?[...segment.actors,...segment.targets]
-    .map(person=>selectedName(person)).slice(0,3).join(" · "):"";
+   const anglePeople=segment?[
+    segment.actors.length?"Featuring: "+segment.actors.map(p=>selectedName(p)).join(", "):"",
+    segment.targets.length?"With: "+segment.targets.map(p=>selectedName(p)).join(", "):""
+   ].filter(Boolean).join(" · "):"";
    const angleDetails=segment?creativeSummary(segment.creativeBeat):"";
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):angleName),

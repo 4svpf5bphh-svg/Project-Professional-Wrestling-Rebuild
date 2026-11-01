@@ -39,7 +39,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  let selectedProgrammeId:string|null=null;
- let activeLane:"NEXT"|"FINALE"|"HISTORY"|"CREATIVE"="NEXT";
+ let activeLane:"FINALE"|"HISTORY"|"CREATIVE"="CREATIVE";
  let creationOpen=false;
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
@@ -158,8 +158,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     planned?"Booked · "+planned.showName:
     item.repetition>=55?"Needs a fresh beat":"Next chapter open";
    const pick=button(name+" · Heat "+(item.heat??"—")+" · "+note,()=>{
-    selectedProgrammeId=item.programmeId;activeLane="NEXT";
-    adviceOpen.clear();render();
+    selectedProgrammeId=item.programmeId;activeLane="CREATIVE";render();
    },working);
    pick.className="ppw-programme-switch";
    pick.setAttribute("aria-pressed",String(item.programmeId===selectedProgrammeId));
@@ -411,14 +410,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    // Optional creative guidance from the already-loaded immutable rivalry
    // record. Nothing is auto-booked or requested from the model.
    const advice=element("section","ppw-programme-staff");
-   const ask=button(adviceOpen.has(p.programmeId)?"Hide creative notes":"Ask Creative · what next?",()=>{
-    if(adviceOpen.has(p.programmeId))adviceOpen.delete(p.programmeId);
-    else adviceOpen.add(p.programmeId);
-    render();
-   });
-   ask.setAttribute("aria-expanded",String(adviceOpen.has(p.programmeId)));
-   advice.append(ask);
-   if(adviceOpen.has(p.programmeId)){
+   // Creative is a workspace, not a separate gated request.
+   advice.append(element("span","ppw-programme-eyebrow","CREATIVE MEETING"));
+   {
     const latest=[...p.recentActivity].sort((a,b)=>
      b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId))[0];
     const note=suggestProgrammeAdvice({heat:p.heat,repetition:p.repetition,
@@ -430,7 +424,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      direction:p.latestFollowUp?.choice??null,directionStatus:continuity.directionKind,
      recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null});
     const sheet=element("div","ppw-programme-staff-note");
-    sheet.append(element("span","ppw-programme-eyebrow","CREATIVE DESK · OPTIONAL"),
+    sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
      element("h3","",note.headline),
      element("p","",note.observation),
      element("p","ppw-programme-staff-suggestion",
@@ -442,7 +436,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      item.append(element("strong","",idea.label),element("p","",idea.plan));
      ideas.append(item);
     }
-    sheet.append(element("span","ppw-programme-eyebrow","THREE NEXT-CARD OPTIONS"),ideas);
+    sheet.append(element("span","ppw-programme-eyebrow","POSSIBLE DIRECTIONS"),ideas);
     if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
     advice.append(sheet);
    }
@@ -452,7 +446,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     b.slotId.localeCompare(a.slotId))[0];
    if(latestMatch||p.latestFollowUp){
     const direction=element("section","ppw-programme-next");
-    direction.append(element("span","ppw-programme-eyebrow","AFTER THE BELL"),
+    direction.append(element("span","ppw-programme-eyebrow","YOUR RESPONSE TO THE LAST MATCH"),
      element("h3","","Where does this rivalry go next?"));
     if(p.latestFollowUp){
      if(continuity.directionHeadline){
@@ -597,11 +591,19 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      "Rivalry concluded");
    },working||!view.canEdit));
    historyLane.append(retire);
+   const current=element("div","ppw-programme-now");
+   const scheduled=p.plannedActivity?.[0];
+   current.append(element("strong","",scheduled?
+    "Next: "+(scheduled.kind==="MATCH"?"match":"angle")+" booked on "+scheduled.showName:
+    "Next chapter is yours to book"));
+   if(scheduled)current.append(element("span","",
+    "Year "+scheduled.year+" · Week "+scheduled.week+" · "+
+     (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
+   panel.append(current);
    const views=[
-    {key:"NEXT",label:"Next chapter",node:nextLane},
+    {key:"CREATIVE",label:"Creative",node:creativeLane},
     {key:"FINALE",label:p.finale?"Finale ●":"Finale",node:finaleLane},
-    {key:"HISTORY",label:"History",node:historyLane},
-    {key:"CREATIVE",label:"Creative",node:creativeLane}
+    {key:"HISTORY",label:"History",node:historyLane}
    ] as const;
    const tabs=element("nav","ppw-programme-view-tabs");
    tabs.setAttribute("aria-label","Rivalry workspace");
