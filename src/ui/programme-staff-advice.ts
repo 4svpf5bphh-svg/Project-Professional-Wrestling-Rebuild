@@ -11,6 +11,7 @@ export interface ProgrammeAdviceEvidence{
  sideBWins:number;
  championshipId:string|null;
  recentKind:"MATCH"|"SEGMENT"|null;
+ recentWinnerSide?:"A"|"B"|null;
  sideAName?:string;sideBName?:string;
  direction?:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND"|null;
  directionStatus?:string;
@@ -19,7 +20,7 @@ export interface ProgrammeAdvice{
  headline:string;
  observation:string;
  suggestion:string;
- options:readonly {label:string;plan:string}[];
+ options:readonly {label:string;plan:string;choice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND"}[];
 }
 function baseProgrammeAdvice(p:ProgrammeAdviceEvidence){
  const gap=Math.abs(p.sideAWins-p.sideBWins);
@@ -58,23 +59,66 @@ function baseProgrammeAdvice(p:ProgrammeAdviceEvidence){
   suggestion:"Use your next show to develop the characters, then give the rivalry an appropriate in-ring destination."};
 }
 
-/** Three next-card alternatives grounded in the actual rivalry, not a booked outcome. */
+/** A few distinct decisions, based only on certified facts: not invented
+ * backstage motives or three generic segments for every rivalry. The mapped
+ * direction is the existing authoritative post-match consent decision. */
 export function suggestProgrammeAdvice(p:ProgrammeAdviceEvidence):ProgrammeAdvice{
  const original=baseProgrammeAdvice(p);
  const a=p.sideAName?.trim()||"Side A",b=p.sideBName?.trim()||"Side B";
- const person=p.sideAWins>p.sideBWins?b:p.sideBWins>p.sideAWins?a:b;
- const opponent=person===a?b:a;
- const interview={label:"Interview · 6 minutes",
-  plan:"On the next show, interview "+person+" about "+(p.matchCount?"their last match with ":"their issue with ")+
-   opponent+". Invite the other side to answer; decide whether to issue a challenge."};
- const confrontation={label:"Confrontation · 5 minutes",
-  plan:"Book "+a+" and "+b+" for a face-to-face on the next card. Let one issue a specific challenge and the other accept, reject or walk out. No result is predetermined."};
- const match={label:"Rivalry match · 12–15 minutes",
-  plan:"Book an eligible match between "+a+" and "+b+" after checking dates and approvals. Choose the stipulation and winner yourself."+
-   (p.championshipId?" Verify championship eligibility before adding the title.":"")};
- let options=[interview,confrontation,match];
- if(p.direction==="PURSUE_REMATCH"&&p.directionStatus!=="REMATCH_HELD")options=[match,interview,confrontation];
- else if(p.direction==="PLAN_RETALIATION"&&p.directionStatus!=="ANGLE_AFTER_RETALIATION")options=[confrontation,interview,match];
- else if(p.recentKind==="SEGMENT"&&p.repetition<65)options=[match,interview,confrontation];
+ const leading=p.sideAWins>p.sideBWins?a:p.sideBWins>p.sideAWins?b:null;
+ const trailing=leading===a?b:leading===b?a:null;
+ const latestWinner=p.recentWinnerSide==="A"?a:p.recentWinnerSide==="B"?b:null;
+ const challenger=trailing??(latestWinner===a?b:latestWinner===b?a:a);
+ const dominant=leading??latestWinner??(challenger===a?b:a);
+ const live=p.directionStatus&&["PENDING_REMATCH","PENDING_RETALIATION","BUILDING_REMATCH"]
+  .includes(p.directionStatus);
+ const title=p.championshipId!==null;
+ const heavy=p.repetition>=55;
+ const options:Array<ProgrammeAdvice["options"][number]>=[];
+ if(p.activityCount===0){
+  options.push({choice:"PLAN_RETALIATION",label:"Establish the issue",
+   plan:a+" and "+b+" have no certified conflict yet. Introduce what each wants in an authored interview or challenge; decide who responds."});
+  options.push({choice:"PURSUE_REMATCH",label:"Let the ring tell the story",
+   plan:"Book "+a+" against "+b+" if they are eligible. The verified outcome will give the rivalry its first concrete direction."});
+  options.push({choice:"LET_STAND",label:"Build anticipation",
+   plan:"Keep "+a+" and "+b+" apart while developing their characters. A future meeting should have a reason."});
+ }else if(live){
+  options.push({choice:p.direction!,label:"Follow through on your promise",
+   plan:p.direction==="PURSUE_REMATCH"?
+    "You promised a rematch. Give "+a+" and "+b+" a real booking, with a new reason for the result to matter.":
+    "Retaliation remains unresolved. Give "+challenger+" a specific response to "+dominant+" before adding another ordinary bout."});
+  options.push({choice:"LET_STAND",label:"Change course deliberately",
+   plan:"The current direction has not happened yet. You can let the outcome stand, but the rivalry may lose its immediate momentum."});
+  options.push({choice:"PLAN_RETALIATION",label:"Escalate the stakes",
+   plan:"Use an actual booked scene involving "+a+" and "+b+" to sharpen the conflict. Do not invent attacks or acceptances."});
+ }else if(heavy){
+  options.push({choice:"LET_STAND",label:"Give the rivalry breathing room",
+   plan:a+" and "+b+" have repeated this story often. Separate them for a show, and return only with a genuinely different issue."});
+  options.push({choice:"PLAN_RETALIATION",label:"Change the type of conflict",
+   plan:"If "+challenger+" has something unresolved with "+dominant+", try an authored character scene rather than another straightforward rematch."});
+  options.push({choice:"PURSUE_REMATCH",label:"Make the next meeting decisive",
+   plan:"Only revisit "+a+" versus "+b+" with specific stakes, such as a suitable stipulation or planned finale."});
+ }else if(title){
+  options.push({choice:"PURSUE_REMATCH",label:"Put the championship at stake",
+   plan:"If booking eligibility allows, build "+a+" versus "+b+" towards a genuine title contest, not a fictional title change."});
+  options.push({choice:"PLAN_RETALIATION",label:"Make the challenger earn it",
+   plan:challenger+" could demand another opportunity. An actual challenge or qualifying match must establish the case before "+dominant+" agrees."});
+  options.push({choice:"LET_STAND",label:"Protect the title picture",
+   plan:"Delay another contest between "+a+" and "+b+" until the story gives the championship a fresh reason to be defended."});
+ }else if(leading){
+  options.push({choice:"PLAN_RETALIATION",label:"Give "+trailing+" an answer",
+   plan:leading+" is ahead "+p.sideAWins+"–"+p.sideBWins+" in certified matches. Let "+trailing+" respond with a credible, bookable challenge or character change."});
+  options.push({choice:"PURSUE_REMATCH",label:"Raise the cost of another loss",
+   plan:"A rematch between "+a+" and "+b+" needs stakes for the trailing side. Decide how another defeat would change the rivalry."});
+  options.push({choice:"LET_STAND",label:"Let the result mean something",
+   plan:"Keep "+leading+"'s advantage on the record. The other wrestler can pursue a different path before returning."});
+ }else{
+  options.push({choice:"PURSUE_REMATCH",label:"Break the deadlock",
+   plan:"Neither "+a+" nor "+b+" has control of the rivalry. A decisive match can change that, with a winner and finish you author."});
+  options.push({choice:"PLAN_RETALIATION",label:"Bring the personalities forward",
+   plan:"Explore what "+a+" and "+b+" disagree about, using an authored segment with a concrete outcome—not another generic face-off."});
+  options.push({choice:"LET_STAND",label:"Hold a bigger confrontation",
+   plan:"Let the unresolved issue simmer while "+a+" and "+b+" build their own momentum elsewhere."});
+ }
  return {...original,options};
 }

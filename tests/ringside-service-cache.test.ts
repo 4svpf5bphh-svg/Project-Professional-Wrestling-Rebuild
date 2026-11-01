@@ -14,7 +14,7 @@ const fixture=(mode:"ready"|"no-key"|"denied"|"cooldown")=>{
    assert.match(sql,/JOIN ppw_memberships/);
    assert.match(sql,/r.prompt_version=\$6 AND r.state='READY'/);
    assert.match(sql,/ORDER BY CASE WHEN r.prompt_version=\$6 THEN 0 ELSE 1 END/);
-   assert.deepEqual(params,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,"ringside-v5","ringside-v4"]);
+   assert.deepEqual(params,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,"ringside-v6","ringside-v4"]);
    const result=mode==="denied"?[]:mode==="ready"?
     [{state:"READY",model:"openai/gpt-oss-120b",report_json:review,attempts:1}]:
     mode==="cooldown"?

@@ -535,3 +535,10 @@ body>.ppw-card-edit-shade .ppw-match-style-fitness-row>span{
  padding:7px 4px;overflow-wrap:break-word}
 @media(max-width:360px){.ppw-card-rivalry-shortcuts{
  grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Clear Who / What / Where / Why structure for on-screen angles. */
+.ppw-angle-workflow-title{grid-column:1/-1;margin:14px 0 3px;
+ padding:10px 12px;border-radius:9px;font-size:13px;letter-spacing:.07em;
+ background:#173a56;color:#a9efff;border-left:3px solid #c956d8}
+.ppw-angle-purpose-disclaimer{grid-column:1/-1;color:#bed4e0;
+ font-size:11px;line-height:1.55}

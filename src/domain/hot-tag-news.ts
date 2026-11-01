@@ -42,7 +42,6 @@ export function dirtSheetByline(id:string){
  */
 export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  const seed=stableHotTagHash([story.id,story.year,story.week,story.desk].join(":"));
- const headline=story.title.trim().slice(0,105);
  const text=(story.title+" "+story.summary).toLowerCase();
  const rumour=story.desk==="DIRT";
  const kind=rumour?"RUMOUR":
@@ -148,15 +147,14 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  const used=new Set<number>();
  return [0,1,2].map(i=>{
   // Unique commenters and reactions per article, with different choices on
-  // adjacent stories. Include source title in one post to avoid generic feeds.
+  // adjacent stories. React to the event, not the article headline.
   const identity=(seed+i*5+Math.floor(seed/67))%commentators.length;
   const voice=commentators[identity]!;
   let index=(seed+i*3+Math.floor(seed/19))%pool.length;
   while(used.has(index))index=(index+1)%pool.length;
   used.add(index);
   const message=pool[index]!;
-  const postText=i===1 && headline.length>0?
-   "“"+headline+"” — "+message:message;
+  const postText=message;
   const h=stableHotTagHash(story.id+":"+voice.handle+":"+i);
   return {...voice,text:postText,likes:26+h%950,
    replies:4+(h>>>7)%84,reposts:2+(h>>>12)%146};

@@ -12,11 +12,12 @@ test("specialist fields enforce original-main choices and exclusive kind",()=>{
   assert.ok(creativeSummary(beat));
   assert.equal(creativeFields(kind).length,Object.keys(beat).length-1);
   assert.equal(isSegmentCreativeBeat({...beat,extra:"mystery"},kind),false);
-  assert.equal(isSegmentCreativeBeat(beat,"TURN"),false);
+  assert.equal(isSegmentCreativeBeat(beat,kind==="TURN"?"PROMO":"TURN"),false);
   for(const key of Object.keys(beat).filter(k=>k!=="kind"))
    assert.equal(isSegmentCreativeBeat({...beat,[key]:"NOT_AN_OPTION"},kind),false);
  }
- assert.equal(initialCreativeBeat("VIDEO_PACKAGE"),null);
+ assert.equal(initialCreativeBeat("VIDEO_PACKAGE")?.kind,"VIDEO_PACKAGE");
+ assert.equal(initialCreativeBeat("STABLE_EXIT")?.kind,"STABLE_EXIT");
 });
 
 test("interruption, rescue and post-match endings cannot be forged or mixed",()=>{

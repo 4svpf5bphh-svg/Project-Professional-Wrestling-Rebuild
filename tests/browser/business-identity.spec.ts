@@ -45,6 +45,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await expect(page.getByText(/Based in Territory 0/)).toBeVisible();
  // Actual currency values must stay visible inside the iPhone viewport.
  // This covers the finance screenshot regression, not only the data payload.
+ await page.getByText("View weekly income and commitments").click();
  const figures=page.locator(".ppw-business-line>strong");
  await expect(figures).toHaveCount(6);
  const amounts=await figures.allTextContents();
@@ -78,4 +79,51 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  await page.getByRole("button",{name:"Finances"}).click();
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
  expect(methods).toEqual(["business"]);
+});
+
+test("iPhone owner adjusts allocation without spending bank cash or inventing a show",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const methods:string[]=[];
+ let saved:Record<string,unknown>|null=null,revision=4;
+ let plan:{weeklyWageLimit:number;showTalentLimit:number;cashReserve:number}|null=null;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const req=r.request().postDataJSON() as Record<string,unknown>;
+  const method=String(req.method);methods.push(method);
+  if(method==="setSpendingPlan"){
+   expect(req.playerId).toBeUndefined();
+   expect(req.expectedRevision).toBe(revision);
+   saved=req;plan={weeklyWageLimit:Number(req.weeklyWageLimit),
+    showTalentLimit:Number(req.showTalentLimit),cashReserve:Number(req.cashReserve)};
+   revision++;
+   return r.fulfill({json:{status:"APPLIED",result:{saved:true}}});
+  }
+  return r.fulfill({json:{
+   name:"Home",tier:"LOCAL",year:1,week:5,worldRevision:revision,
+   phase:"OPEN",cash:5000000,debt:0,homeMarketName:"Territory 0",
+   mediaReach:70,financialDistress:"HEALTHY",
+   weeklyMediaIncome:300000,weeklySponsorIncome:25000,
+   weeklyFixedOverhead:60000,weeklyGuarantees:15000,weeklyStaffPayroll:0,
+   recurringMargin:250000,lastWeeklyNet:null,runwayWeeks:null,spendingPlan:plan,
+   shows:[],standing:null,rollingFourWeeks:{income:0,spending:0,net:0,
+    byCategory:[]},recentTransactions:[],territories:[],
+   commercialOffers:[],commercialAgreements:[]
+  }});
+ });
+ await page.goto("/#/business");
+ await expect(page.getByRole("heading",{name:"Set your spending limits"})).toBeVisible();
+ await page.getByRole("spinbutton",{name:"Weekly wrestler wages"}).fill("75000");
+ await page.getByRole("spinbutton",{name:"Talent per show"}).fill("150000");
+ await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
+ await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
+ await page.getByRole("button",{name:"Save spending plan"}).click();
+ await expect.poll(()=>methods.includes("setSpendingPlan"),{
+  message:"Save should issue an authenticated non-debiting World command"
+ }).toBe(true);
+ await expect.poll(()=>saved!==null).toBe(true);
+ expect(plan).toEqual({weeklyWageLimit:75000,showTalentLimit:150000,
+  cashReserve:2000000});
+ await expect(page.getByText("Your spending allocations are saved.")).toBeVisible();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-finance-spending-plan.png",fullPage:true,animations:"disabled"});
+ expect(methods).toEqual(["business","setSpendingPlan","business"]);
 });

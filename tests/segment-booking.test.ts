@@ -67,3 +67,18 @@ test("the three new original-main angles require exact roles and scripted ending
   creativeBeat:{kind:"POST_MATCH_ASSAULT",ending:"OFFICIALS_SEPARATE"}
  },people),/Invalid authored segment/);
 });
+
+test("angle scene cannot forge medical consequences or nonsensical settings",()=>{
+ const base=make("ATTACK",["a"],["b"]);
+ const good={location:"LOCKER_ROOM" as const,visual:"BLOODIED" as const,purpose:"BUILD_RIVALRY" as const};
+ assert.deepEqual(normalizeBookedSegment({...base,scene:good},known).scene,good);
+ for(const invalid of [
+  {...good,extra:"wrestler injured 12 weeks"},
+  {...good,visual:"MEDICALLY_INJURED"},
+  {...good,location:"BOILER_ROOM_BEHIND_THE_MOON"},
+  {...good,purpose:"GRANT_100_HEAT"}
+ ])assert.throws(()=>normalizeBookedSegment({...base,scene:invalid as never},known));
+ assert.throws(()=>normalizeBookedSegment({
+  ...make("TURN",["a"],[]),scene:good
+ },known));
+});

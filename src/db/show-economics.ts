@@ -6,6 +6,7 @@ import type {SqlRows} from "./world-operations.js";
 import {worldStaff} from "../domain/world-staff.js";
 import {staffedProductionCost} from "../domain/staff-production.js";
 import {readCardParticipants} from "../domain/card-participants.js";
+import {projectShowAudience} from "../domain/show-audience.js";
 import {originalCompetitionFactor,originalShowSettlement,
  type Competitor,type LocalAudience,
  type ShowTier,type EventType,type TicketStrategy}
@@ -16,6 +17,7 @@ export interface SettleShowInput{worldId:string;promotionId:string;showId:string
 export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowInput){
  const rows=await tx.query<{
   seed:string|number;market_id:string|null;show_day:number|null;event_type:EventType|null;
+  booking_class:"REGULAR"|"PREMIUM";
   booking_expected_demand:number|null;booking_ticket_yield:string|null;
   booking_snapshot_fingerprint:string|null;
   ticket_strategy:TicketStrategy|null;promotion_id:string;
@@ -26,7 +28,7 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   awareness:number|null;live_strength:number|null;loyalty:number|null;
   resource_charged:boolean;show_completed:boolean;production_staff_id:string|null;
  }>(`
- SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,
+ SELECT w.seed,d.market_id,d.show_day,d.event_type,d.ticket_strategy,d.booking_class,
   d.booking_expected_demand,d.booking_ticket_yield::text,
   d.booking_snapshot_fingerprint,
   p.promotion_id,p.home_market_id,p.tier,p.media_reach,
@@ -137,16 +139,23 @@ export async function settleCompletedShowEconomics(tx:SqlRows,input:SettleShowIn
   totalCost:original.totalCost-efficiency.saving,
   netResult:original.netResult+efficiency.saving,
   incrementalCash:original.incrementalCash+efficiency.saving};
+ const audience=projectShowAudience({tier:x.tier,
+  eventType:x.booking_class==="PREMIUM"?"MAJOR":"REGULAR",
+  mediaReach:x.media_reach,awareness:x.awareness,liveStrength:x.live_strength,
+  loyalty:x.loyalty,wrestlingInterest:x.wrestling_interest,
+  expectedDemand,averageMatchRating:input.averageMatchRating});
  const inserted=await tx.query<{show_id:string}>(`
  INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,
   attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,
-  appearance_fees,total_cost,net_result,incremental_cash,average_match_rating)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+  appearance_fees,total_cost,net_result,incremental_cash,average_match_rating,
+  audience_format,tv_household_rating,estimated_viewers,ppv_buys)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
  RETURNING show_id`,
  [input.worldId,input.showId,input.promotionId,input.year,input.week,
   quote.attendance,quote.expectedDemand,quote.gateRevenue,quote.venueCost,
   quote.productionCost,quote.travelCost,quote.appearanceFees,quote.totalCost,
-  quote.netResult,quote.incrementalCash,input.averageMatchRating]);
+  quote.netResult,quote.incrementalCash,input.averageMatchRating,
+  audience.format,audience.householdRating,audience.estimatedViewers,audience.ppvBuys]);
  if(inserted.length!==1)throw new Error("Event economics result not recorded");
  const paid=await tx.query<{promotion_id:string}>(`
   UPDATE ppw_promotions SET cash=cash+$3

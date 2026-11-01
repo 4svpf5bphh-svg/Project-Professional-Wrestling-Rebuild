@@ -2,6 +2,7 @@
  * deliberately separate: simulation must not choose a scripted outcome.
  */
 import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../../domain/segment-creative-beats.js";
+import {isAngleScene,type AngleScene} from "../../domain/angle-scene.js";
 export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"INTERRUPTION"|"RESCUE"|"POST_MATCH_ASSAULT"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
  "DEBUT"|"VIDEO_PACKAGE"|"STABLE_INVITATION"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
 export type VideoPurpose="DEBUT_HYPE"|"RETURN_HYPE"|"WRESTLER_HYPE"|
@@ -16,6 +17,8 @@ export interface AuthoredSegment {
  videoPurpose?:VideoPurpose;
  /** Absent on historical generic angles; no unscripted response is fabricated. */
  creativeBeat?:SegmentCreativeBeat;
+ /** Booker-selected filmed scene; no automatic injuries or guaranteed score boost. */
+ scene?:AngleScene;
  /** Post-match angle must reference an earlier match in this same card. */
  sourceMatchSlotId?:string;
  /** Optional for historical turns. New authored turns may choose a definite alignment. */
@@ -45,6 +48,7 @@ export function validateAuthoredSegments(
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
    (s.creativeBeat!==undefined&&!isSegmentCreativeBeat(s.creativeBeat,s.kind))||
+   (s.scene!==undefined&&!isAngleScene(s.scene,s.kind))||
    (["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)&&!s.creativeBeat)||
    (s.kind==="POST_MATCH_ASSAULT"?
      (typeof s.sourceMatchSlotId!=="string"||!s.sourceMatchSlotId.trim()||

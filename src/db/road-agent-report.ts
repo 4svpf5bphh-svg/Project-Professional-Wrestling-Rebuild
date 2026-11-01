@@ -26,7 +26,19 @@ export async function recordRoadAgentReport(tx:SqlRows,seed:string|number,
  const agent=members[0]!.staff_id?
   worldStaff(seed,members[0]!.legacy?[members[0]!.staff_id!]:[]).find(s=>s.staffId===members[0]!.staff_id)??null:null;
  if(agent&&agent.role!=="ROAD_AGENT")throw new Error("Invalid employed Road Agent");
- const report=deriveRoadAgentReport(receipt,facts,agent);
+ // Resolve the actual talent on this finished card once. The report must
+ // never call its main event only "the closing bout" if we know who worked it.
+ const peopleIds=[...new Set(facts.flatMap(f=>f.personIds??[]))];
+ if(peopleIds.length>200)throw new Error("Road Agent talent limit exceeded");
+ const people=peopleIds.length?await tx.query<{person_id:string;name:string}>(`
+  SELECT person_id,name FROM ppw_people
+  WHERE world_id=$1 AND person_id=ANY($2::text[]) LIMIT 201
+ `,[receipt.worldId,peopleIds]):[];
+ const names=new Map(people.map(p=>[p.person_id,p.name]));
+ const report=deriveRoadAgentReport(receipt,facts.map(f=>({
+  ...f,participantNames:(f.personIds??[]).map(id=>names.get(id)).filter(
+   (name):name is string=>typeof name==="string")
+ })),agent);
  const inserted=await tx.query<{show_id:string}>(`
   INSERT INTO ppw_staff_show_reports
    (world_id,show_id,promotion_id,staff_id,reporter_name,analysis_json)

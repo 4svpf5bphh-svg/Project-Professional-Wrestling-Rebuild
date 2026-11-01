@@ -284,7 +284,15 @@ export async function readPlayerWorldOverview(
         AND c.start_week_index<=((w.year-1)*52+w.week-1)
         AND c.expires_week_index>=((w.year-1)*52+w.week-1)
         AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0)
-          OR c.expires_week_index<=((w.year-1)*52+w.week+1))
+          OR (c.expires_week_index<=((w.year-1)*52+w.week+1)
+           AND NOT EXISTS(SELECT 1 FROM ppw_contract_offers accepted
+            WHERE accepted.world_id=c.world_id
+             AND accepted.promotion_id=c.promotion_id
+             AND accepted.person_id=c.person_id
+             AND accepted.source_contract_id=c.contract_id
+             AND accepted.status='ACCEPTED'
+             AND (accepted.terms->>'startWeekIndex')::integer
+                  BETWEEN ((w.year-1)*52+w.week-1) AND c.expires_week_index+2)))
        ORDER BY priority,c.expires_week_index,c.contract_id LIMIT 5
       ) relevant
      ) AS contract_alerts,

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment}
+import {ANGLE_TYPES,newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment}
  from "../src/ui/card-segment-model.js";
 test("author-owned confrontation survives editor roundtrip",()=>{
  let s=newEditorSegment("fight","CONFRONTATION");
@@ -177,4 +177,50 @@ test("a complete two-person tag team can turn together while scripted direction 
  assert.deepEqual(saved.actorIds,["a","b"]);
  assert.equal(saved.turnTargetAlignment,"FACE");
  assert.deepEqual(buildEditorSegment(restoreEditorSegment("team-turn",saved)),saved);
+});
+
+test("Who What Where Why choices survive save and reopen without changing consequences",()=>{
+ let model=newEditorSegment("ambush","ATTACK");
+ model=addSegmentPerson(model,"actors",{personId:"joe",contractId:"joe-deal"});
+ model=addSegmentPerson(model,"targets",{personId:"mistico",contractId:"mistico-deal"});
+ model.creativeBeat={kind:"ATTACK",presentation:"BLINDSIDE",objective:"ESCALATE_RIVALRY"};
+ model.scene={location:"LOCKER_ROOM",visual:"BLOODIED",purpose:"BUILD_RIVALRY"};
+ model.programmeId="heat-joe-mistico";
+ const saved=buildEditorSegment(model);
+ assert.equal(saved.scene?.location,"LOCKER_ROOM");
+ assert.equal(saved.scene?.visual,"BLOODIED");
+ assert.deepEqual(saved.actorIds,["joe"]);
+ assert.deepEqual(saved.targetIds,["mistico"]);
+ assert.deepEqual(buildEditorSegment(restoreEditorSegment("ambush",saved)),saved);
+});
+test("legacy authored angle without scene may still be opened",()=>{
+ const draft={kind:"ATTACK",actorIds:["a"],targetIds:["b"],outcome:"HAPPENS",
+  participants:[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}]};
+ const edited=restoreEditorSegment("old",draft);
+ assert.equal(edited.scene?.location,"BACKSTAGE");
+ assert.equal(edited.outcome,"HAPPENS");
+});
+
+test("every angle can save and reopen its Who What Where Why choices",async()=>{
+ const {SEGMENT_BOOKING_RULES}=await import("../src/domain/segment-booking.js");
+ const {angleLocationsFor,anglePurposesFor}=await import("../src/domain/angle-scene.js");
+ for(const {value:kind} of ANGLE_TYPES){
+  const segment=newEditorSegment("complete-"+kind,kind);
+  const rules=SEGMENT_BOOKING_RULES[kind];
+  for(let i=0;i<rules.minActors;i++)
+   segment.actors.push({personId:"a"+i,contractId:"c-a"+i});
+  for(let i=0;i<rules.minTargets;i++)
+   segment.targets.push({personId:"t"+i,contractId:"c-t"+i});
+  if(kind==="POST_MATCH_ASSAULT")segment.sourceMatchSlotId="match-before";
+  if(kind.startsWith("STABLE_"))segment.stableId="faction";
+  if(kind==="STABLE_INVITATION"||kind==="STABLE_RECONCILIATION")segment.stableDecision="REJECTED";
+  assert.ok(segment.creativeBeat,kind+" missing What");
+  assert.ok(segment.scene,kind+" missing Where/Why");
+  assert.ok(angleLocationsFor(kind).includes(segment.scene!.location));
+  assert.ok(anglePurposesFor(kind).includes(segment.scene!.purpose));
+  const saved=buildEditorSegment(segment);
+  assert.deepEqual(saved.scene,segment.scene);
+  assert.deepEqual(saved.creativeBeat,segment.creativeBeat);
+  assert.deepEqual(buildEditorSegment(restoreEditorSegment(segment.slotId,saved)),saved);
+ }
 });

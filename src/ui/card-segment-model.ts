@@ -5,11 +5,12 @@ import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose}
  from "../simulation/legacy/show-segments.js";
 import {initialCreativeBeat,isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import {initialAngleScene,isAngleScene,type AngleScene} from "../domain/angle-scene.js";
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
  outcome:SegmentOutcome;durationMinutes:number;videoPurpose:VideoPurpose;programmeId:string|null;
- creativeBeat:SegmentCreativeBeat|null;sourceMatchSlotId:string|null;
+ creativeBeat:SegmentCreativeBeat|null;scene:AngleScene|null;sourceMatchSlotId:string|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
 }
@@ -35,7 +36,7 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
 export const LIMITED_ACTORS=new Set<SegmentKind>(["DEBUT","INTERRUPTION","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
-  creativeBeat:initialCreativeBeat(kind),sourceMatchSlotId:null,
+  creativeBeat:initialCreativeBeat(kind),scene:initialAngleScene(kind),sourceMatchSlotId:null,
   turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
@@ -57,6 +58,9 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   creativeBeat:p.creativeBeat===undefined?null:
    isSegmentCreativeBeat(p.creativeBeat,kind)?p.creativeBeat:
     (()=>{throw new Error("Invalid scripted angle direction")})(),
+  scene:p.scene===undefined?initialAngleScene(kind):
+   isAngleScene(p.scene,kind)?p.scene:
+    (()=>{throw new Error("Invalid authored angle scene")})(),
   stableId:typeof p.stableId==="string"&&p.stableId.trim()?p.stableId:null,
   stableDecision:p.stableDecision==="ACCEPTED"||p.stableDecision==="REJECTED"?
    p.stableDecision:null,
@@ -98,6 +102,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,durationMinutes:s.durationMinutes,
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
+  ...(s.scene?{scene:s.scene}:{}),
   ...(s.kind==="POST_MATCH_ASSAULT"&&s.sourceMatchSlotId?
    {sourceMatchSlotId:s.sourceMatchSlotId}:{}),
   ...(s.stableId?{stableId:s.stableId}:{}),

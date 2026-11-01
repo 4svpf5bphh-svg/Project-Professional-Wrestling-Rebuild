@@ -4,6 +4,7 @@
  * card, resolved receipt, verified medical evidence or title contest ledger.
  */
 import type {ShowResultEntry} from "../db/show-results-view.js";
+import {angleSceneLocationPhrase} from "./angle-scene.js";
 export type BroadcastTone="RED_HOT"|"OVER"|"MIXED"|"FLAT";
 export interface BroadcastReview{
  tone:BroadcastTone;reaction:string;recap:string;verdict:string;
@@ -164,8 +165,17 @@ export function confirmedAngleColour(entry:ShowResultEntry,showId:string):string
    ". A challenge is not proof that the opposition accepted.";
   case "CELEBRATION":return who+" took the celebration spot. "+
    "The recorded audience response measures how it was received.";
-  case "ATTACK":return who+" was the booked aggressor and "+whom+
-   " the target. No unrecorded injury is implied by the attack.";
+  case "ATTACK":{
+   const place=ctx?.scene?.location?angleSceneLocationPhrase(ctx.scene.location):"at the scene";
+   const aftermath=ctx?.scene?.visual==="BLOODIED"?
+    " "+whom+" was left bloodied.":
+    ctx?.scene?.visual==="LEFT_LYING"?" "+whom+" was left lying.":"";
+   const opening=ctx?.scene?.location?
+    who+" attacked "+whom+" "+place+".":who+" launched an assault on "+whom+".";
+   return opening+" The cameras caught the incident as it unfolded, with "+
+    who+" unmistakably the aggressor and "+whom+" on the receiving end."+
+    aftermath;
+  }
   case "TURN":return who+" completed the authored change of allegiance"+
    (ctx?.turnTargetAlignment?" toward a "+ctx.turnTargetAlignment.toLowerCase()+" presentation":"")+
    ". The player's scripted turn stands; the simulation did not choose a different outcome.";

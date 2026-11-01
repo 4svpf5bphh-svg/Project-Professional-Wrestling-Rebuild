@@ -15,6 +15,7 @@ import {describeMatchFinish} from "../domain/show-match-story.js";
 import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
+import {isAngleScene,type AngleScene} from "../domain/angle-scene.js";
 import {parseVerifiedProgrammeBroadcast,type VerifiedProgrammeBroadcast}
  from "../domain/verified-programme-broadcast.js";
 import {projectVerifiedBroadcastFallout,type BroadcastFallout,
@@ -30,6 +31,7 @@ export interface CompletedAngleContext{
  actorNames:string[];targetNames:string[];
  videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
  turnTargetAlignment:string|null;
+ scene?:AngleScene|null;
 }
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
@@ -52,6 +54,8 @@ export interface CompletedShowView {
  /** Owned named PPV branding takes precedence over account-wide Results Skin. */
  eventPosterStyle?:string|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
+ audience?:{format:"TV"|"PPV";householdRating:number|null;
+  estimatedViewers:number|null;ppvBuys:number|null}|null;
  gorillaLog?:GorillaShowLog|null;
 }
 const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
@@ -66,11 +70,15 @@ export async function readCompletedShowView(
   const rows=await tx.query<{receipt_json:unknown;show_name:string|null;
     booking_class:"REGULAR"|"PREMIUM";results_skin:string|null;broadcast_package:string|null;
     event_poster_style:string|null;
+    audience_format:string|null;tv_household_rating:string|null;
+    estimated_viewers:string|null;ppv_buys:string|null;
     promotion_name:string;staff_report:RoadAgentReport|null;
     gorilla_log:GorillaShowLog|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
+    economics.audience_format,economics.tv_household_rating::text,
+    economics.estimated_viewers::text,economics.ppv_buys::text,
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
    LEFT JOIN ppw_kp_results_skins skin ON skin.player_id=$2
@@ -80,6 +88,8 @@ export async function readCompletedShowView(
    LEFT JOIN ppw_gorilla_show_logs gorilla
     ON gorilla.world_id=c.world_id AND gorilla.show_id=c.show_id
    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
+   LEFT JOIN ppw_show_economics economics ON economics.world_id=c.world_id
+    AND economics.show_id=c.show_id AND economics.promotion_id=c.promotion_id
    LEFT JOIN ppw_kp_series_posters series_art ON
     series_art.world_id=d.world_id AND series_art.promotion_id=d.promotion_id
     AND series_art.series_id=d.show_series_id AND series_art.player_id=$2
@@ -336,6 +346,7 @@ export async function readCompletedShowView(
    const decision=story?.stableDecision??angle.stableDecision;
    const segmentContext:CompletedAngleContext={
     actorNames,targetNames,
+    scene:angle.scene===undefined?null:isAngleScene(angle.scene,segment.kind)?angle.scene:null,
     videoPurpose:typeof angle.videoPurpose==="string"?angle.videoPurpose:null,
     stableDecision:decision==="ACCEPTED"||decision==="REJECTED"?decision:null,
     turnTargetAlignment:typeof angle.turnTargetAlignment==="string"?
@@ -358,7 +369,15 @@ export async function readCompletedShowView(
    eventPosterStyle:rows[0]!.booking_class==="PREMIUM"?rows[0]!.event_poster_style:null,
    showName:rows[0]!.show_name??(rows[0]!.booking_class==="PREMIUM"?
     "Premium event":"Weekly show"),bookingClass:rows[0]!.booking_class,
-   crowdResponse:receipt.crowdResponse,matchCount:receipt.matches.length,
+   crowdResponse:receipt.crowdResponse,
+   audience:rows[0]!.audience_format==="TV"?{format:"TV",
+    householdRating:rows[0]!.tv_household_rating===null?null:Number(rows[0]!.tv_household_rating),
+    estimatedViewers:rows[0]!.estimated_viewers===null?null:Number(rows[0]!.estimated_viewers),
+    ppvBuys:null}:
+    rows[0]!.audience_format==="PPV"?{format:"PPV",
+     householdRating:null,estimatedViewers:null,
+     ppvBuys:rows[0]!.ppv_buys===null?null:Number(rows[0]!.ppv_buys)}:null,
+   matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
    gorillaLog:rows[0]!.gorilla_log,
    resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};

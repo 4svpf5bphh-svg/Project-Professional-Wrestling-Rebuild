@@ -1,5 +1,7 @@
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
 import {commercialCompanyName,COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
+import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
+ from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
@@ -7,6 +9,7 @@ export interface BusinessPort{
  load():Promise<BusinessView>;
  renamePromotion?(name:string):Promise<{name:string;changed:boolean}>;
  signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
+ setSpendingPlan?(input:PromotionSpendingPlan&{requestId:string;expectedRevision:number}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
  openKayfabe?():void;
  restructure?(input:{requestId:string;expectedRevision:number}):
@@ -33,6 +36,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
   commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false;
+ let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
@@ -84,6 +88,22 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    }
   }catch(e){error=e instanceof Error?e.message:"Restructuring was not applied";}
   finally{rescueBusy=false;draw();}
+ }
+ async function saveSpendingPlan(){
+  if(!view||!port.setSpendingPlan||!spendingDraft||spendingBusy)return;
+  const plan=spendingDraft;
+  try{assessPromotionSpendingPlan(plan,{cash:view.cash,
+   weeklyGuarantees:view.weeklyGuarantees});}
+  catch(e){error=e instanceof Error?e.message:"Invalid spending allocations";draw();return;}
+  spendingBusy=true;error="";spendingNotice="";draw();
+  try{
+   const r=await port.setSpendingPlan({...plan,requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision}) as {status?:string};
+   if(r.status==="STALE")throw new Error("The World changed. Review your limits again.");
+   spendingDraft=null;
+   await refresh();spendingNotice="Your spending allocations are saved.";
+  }catch(e){error=e instanceof Error?e.message:"Spending plan was not saved";}
+  finally{spendingBusy=false;draw();}
  }
  function metric(caption:string,value:string,additional=""){
   const card=el("div","ppw-business-metric");
@@ -151,6 +171,60 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
+   // Owner budgeting is independent of actual settlement, contracts and cash.
+   const regularCosts=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
+    view.weeklyStaffPayroll;
+   const suggestion:PromotionSpendingPlan={
+    weeklyWageLimit:Math.ceil(Math.max(1000,view.weeklyGuarantees*1.35)/1000)*1000,
+    showTalentLimit:Math.ceil(Math.max(1000,(view.shows[0]?.appearanceFees??0)*1.25)/1000)*1000,
+    cashReserve:Math.ceil(Math.max(regularCosts*8,view.cash*0.2)/1000)*1000};
+   const plan=spendingDraft??view.spendingPlan??suggestion;
+   spendingDraft={...plan};
+   const budget=el("section","ppw-business-budget");
+   budget.append(el("span","ppw-business-kicker","YOUR MONEY / YOUR RULES"),
+    el("h2","","Set your spending limits"),
+    el("p","ppw-business-muted",
+     "Protect working capital and decide how much to commit to talent. Limits guide your decisions; they do not move cash or cancel a booking."));
+   const bank=el("div","ppw-business-budget-bank");
+   bank.append(el("span","","Cash in the bank"),el("strong","",money(view.cash)));
+   budget.append(bank);
+   const fields=el("div","ppw-business-budget-fields");
+   const preview=el("div","ppw-business-budget-preview");
+   const save=button("Save spending plan",()=>void saveSpendingPlan());
+   const refreshPreview=()=>{
+    try{
+     const check=assessPromotionSpendingPlan(spendingDraft!,{
+      cash:view!.cash,weeklyGuarantees:view!.weeklyGuarantees});
+     preview.textContent="Weekly wages: "+money(view!.weeklyGuarantees)+
+      " committed · "+(check.wageRoom>=0?money(check.wageRoom)+" available":
+      money(-check.wageRoom)+" over your limit")+
+      " · "+money(check.unreservedCash)+" cash above reserve.";
+     preview.dataset.risk=String(check.wageRoom<0||check.reserveAtRisk);
+     save.disabled=spendingBusy;
+    }catch{preview.textContent="Enter non-negative amounts up to $1 billion.";save.disabled=true;}
+   };
+   for(const [label,key,help] of [
+    ["Weekly wrestler wages","weeklyWageLimit","Guaranteed contract wages only"],
+    ["Talent per show","showTalentLimit","Appearance-fee allowance per event"],
+    ["Cash reserve","cashReserve","Money you intend to keep available"]
+   ] as const){
+    const field=el("label","ppw-business-budget-field");
+    field.append(el("span","",label),el("small","",help));
+    const input=document.createElement("input");input.type="number";
+    input.min="0";input.max="1000000000";input.step="1000";
+    input.inputMode="numeric";input.value=String(plan[key]);
+    input.setAttribute("aria-label",label);
+    input.oninput=()=>{spendingDraft={...spendingDraft!,[key]:Number(input.value)};
+     spendingNotice="";refreshPreview();};
+    input.disabled=spendingBusy;field.append(input);fields.append(field);
+   }
+   budget.append(fields,preview);
+   if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
+    "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
+   if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
+   if(port.setSpendingPlan)budget.append(save);
+   refreshPreview();
+   root.append(budget);
    // Context from the existing workspace, never a projection of future
    // bookings, ticket sales or the next World settlement.
    const overview=el("section","ppw-business-pulse");
@@ -216,7 +290,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("strong",tone(view.recurringMargin??0),
      view.recurringMargin===null?"Not configured":money(view.recurringMargin)));
    flow.append(total);
-   root.append(flow);
+   const breakdown=document.createElement("details");
+   breakdown.className="ppw-business-breakdown";
+   breakdown.append(el("summary","","View weekly income and commitments"),flow);
+   root.append(breakdown);
    if(view.recurringMargin!==null){
     const resilience=el("section","ppw-business-panel");
     resilience.append(el("h2","","Trading position"),
@@ -445,6 +522,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("span","ppw-business-muted","Y"+show.year+" W"+show.week+
       " · "+show.attendance.toLocaleString("en-GB")+" attended"),
      el("b",tone(show.netResult),money(show.netResult)));
+    if(show.audience?.format==="TV"&&show.audience.householdRating!==null){
+     summary.append(el("span","ppw-business-audience-mini",
+      show.audience.householdRating.toFixed(1)+" TV rating"));
+    }else if(show.audience?.format==="PPV"&&show.audience.ppvBuys!==null){
+     summary.append(el("span","ppw-business-audience-mini",
+      show.audience.ppvBuys.toLocaleString("en-GB")+" PPV buys"));
+    }
     card.append(summary);
     const body=el("div","ppw-business-show-detail");
     for(const [label,n] of [
@@ -470,6 +554,33 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    section.append(el("h2","","Broadcasting & sponsorship"),
     el("p","ppw-business-muted",
      "Your shows earn their audience. Commercial partners offer real weekly terms; contracts last until expiry and do not automatically renew."));
+   const tv=view.shows.filter(show=>show.audience?.format==="TV"&&
+    show.audience.householdRating!==null);
+   const ppvs=view.shows.filter(show=>show.audience?.format==="PPV"&&
+    show.audience.ppvBuys!==null);
+   if(tv.length||ppvs.length){
+    const audience=el("section","ppw-business-audience-report");
+    audience.append(el("h3","","Broadcast audience"));
+    if(tv.length){
+     audience.append(el("p","ppw-business-muted",
+      "Household television rating · recent certified weekly shows"));
+     const trend=el("div","ppw-business-audience-trend");
+     for(const show of [...tv].reverse()){
+      const tile=el("div","ppw-business-audience-tile");
+      tile.append(el("small","","Y"+show.year+" W"+show.week),
+       el("strong","",show.audience!.householdRating!.toFixed(1)),
+       el("small","",show.name));trend.append(tile);
+     }
+     audience.append(trend);
+    }
+    if(ppvs.length){
+     const latest=ppvs[0]!;
+     audience.append(el("p","ppw-business-muted",
+      latest.name+" · "+latest.audience!.ppvBuys!.toLocaleString("en-GB")+
+       " estimated PPV purchases"));
+    }
+    section.append(audience);
+   }
    const active=view.commercialAgreements;
    if(active.length)section.append(el("h3","","Current agreements"));
    for(const deal of active){

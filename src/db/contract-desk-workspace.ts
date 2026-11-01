@@ -14,10 +14,15 @@ export async function readContractDesk(
   const auth=await tx.query<{year:number;week:number;
    revision:string|number;can_edit:boolean;cash:string;
     weekly_media_income:string|null;weekly_sponsor_income:string|null;
-    weekly_fixed_overhead:string|null;staff_payroll:string}>(`
+    weekly_fixed_overhead:string|null;staff_payroll:string;
+    plan_weekly_wage_limit:string|null;
+    plan_show_talent_limit:string|null;plan_cash_reserve:string|null}>(`
    SELECT w.year,w.week,w.revision,p.cash::text,
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,
+     plan.weekly_wage_limit::text AS plan_weekly_wage_limit,
+     plan.show_talent_limit::text AS plan_show_talent_limit,
+     plan.cash_reserve::text AS plan_cash_reserve,
      COALESCE((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
       WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
       AND e.start_week_index<=(w.year-1)*52+w.week-1
@@ -27,6 +32,8 @@ export async function readContractDesk(
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
    JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+   LEFT JOIN ppw_promotion_spending_plans plan
+    ON plan.world_id=p.world_id AND plan.promotion_id=p.promotion_id
    WHERE w.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3
      AND c.active AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`,
    [worldId,playerId,promotionId]);
@@ -38,11 +45,18 @@ export async function readContractDesk(
    remaining_dates:number|null;expires_week_index:number;start_week_index:number;
    date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
    creative_control:string;role_expectation:string;
-   backstage_contract_request_id:string|null;
+   backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
+     EXISTS(SELECT 1 FROM ppw_contract_offers accepted
+      WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
+       AND accepted.person_id=c.person_id
+       AND accepted.source_contract_id=c.contract_id
+       AND accepted.status='ACCEPTED'
+       AND (accepted.terms->>'startWeekIndex')::integer
+           BETWEEN $3 AND c.expires_week_index+2) AS renewal_secured,
      (SELECT request_id FROM ppw_backstage_requests r
       WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
         AND r.person_id=c.person_id AND r.kind='CONTRACT'
@@ -122,11 +136,14 @@ export async function readContractDesk(
   const pendingOffers=offers.filter(o=>o.status==="PENDING");
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
-  const roster=contracts.map(c=>contractDeskEntry({
-   contractId:c.contract_id,personId:c.person_id,name:c.name,
-   family:c.family,status:c.status,remainingDates:c.remaining_dates,
-   expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex,
-  }));
+  const roster=contracts.map(c=>{
+   const entry=contractDeskEntry({
+    contractId:c.contract_id,personId:c.person_id,name:c.name,
+    family:c.family,status:c.status,remainingDates:c.remaining_dates,
+    expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex});
+   return c.renewal_secured?{...entry,expiringSoon:false,
+    needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
+  });
   const talentBudget=forecastTalentBudget(contracts.map(c=>({
     personId:c.person_id,contractId:c.contract_id,status:c.status,family:c.family,
     startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index,
@@ -143,6 +160,10 @@ export async function readContractDesk(
   return {
    currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
     talentBudget,
+    spendingPlan:auth[0]!.plan_weekly_wage_limit===null?null:{
+     weeklyWageLimit:Number(auth[0]!.plan_weekly_wage_limit),
+     showTalentLimit:Number(auth[0]!.plan_show_talent_limit),
+     cashReserve:Number(auth[0]!.plan_cash_reserve)},
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),

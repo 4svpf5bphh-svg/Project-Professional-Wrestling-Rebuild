@@ -935,10 +935,13 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
- await page.getByRole("button",{name:"Rematch",exact:true}).click();
+ await page.locator(".ppw-programme-booking-idea")
+  .filter({hasText:"Raise the cost of another loss"})
+  .getByRole("button",{name:"Choose this direction"}).click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Rematch",exact:true})).toHaveAttribute("aria-pressed","true");
- await page.getByRole("button",{name:"Let it stand"}).click();
+ await page.locator(".ppw-programme-booking-idea")
+  .filter({hasText:"Change course deliberately"})
+  .getByRole("button",{name:"Choose this direction"}).click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
@@ -1410,9 +1413,9 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
  await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
- await dialog.getByLabel("The intention").selectOption("ESCALATE_RIVALRY");
+ await dialog.getByLabel("Storytelling purpose").selectOption("BUILD_RIVALRY");
  await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
- await expect(dialog.getByLabel("The intention")).toHaveValue("ESCALATE_RIVALRY");
+ await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("BUILD_RIVALRY");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -1890,6 +1893,7 @@ for(const width of [320,390]){
   await expect(modal).toBeVisible();
   expect(profileReads).toBe(1);
   expect(careerReads).toBe(0);
+  await modal.getByRole("button",{name:"Career",exact:true}).click();
   await modal.locator("summary.ppw-profile-career-trigger").click();
   await expect(modal.getByRole("heading",{name:"The last five matches"})).toBeVisible();
   await expect(modal.locator(".ppw-career-form-chip")).toHaveText(["W","W","L","W","L"]);
