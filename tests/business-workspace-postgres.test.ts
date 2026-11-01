@@ -73,6 +73,26 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(actorRead.homeMarketName,"Territory 0");
   assert.equal(actorRead.mediaReach,90);
   assert.deepEqual(actorRead.standing,business.standing);
+  // The spending plan is an owner-scoped World command, not an invoice.
+  const savedPlan=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},
+   "setSpendingPlan",{worldId:world,promotionId:promotion,
+    requestId:"owner-spending-plan",expectedRevision:business.worldRevision,
+    weeklyWageLimit:75000,showTalentLimit:150000,cashReserve:2000000}) as
+    {status:string};
+  assert.equal(savedPlan.status,"APPLIED");
+  const afterPlan=await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner});
+  assert.deepEqual(afterPlan.spendingPlan,{
+   weeklyWageLimit:75000,showTalentLimit:150000,cashReserve:2000000});
+  assert.equal(afterPlan.cash,business.cash,"Allocating money does not debit the bank");
+  await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId:"intruder"}},
+   "setSpendingPlan",{worldId:world,promotionId:promotion,
+    requestId:"intruder-spending-plan",expectedRevision:afterPlan.worldRevision,
+    weeklyWageLimit:0,showTalentLimit:0,cashReserve:0}),
+    /Only your promotion|access denied|not accessible|not owned/i);
+  assert.deepEqual((await readBusinessWorkspace(db.pool,{
+   worldId:world,promotionId:promotion,playerId:owner})).spendingPlan,
+   afterPlan.spendingPlan,"Rival requests cannot change another manager's budgets");
   // A historical World without a verified record must never get invented scores.
   await withWorldTransaction(db.pool,tx=>tx.query(
    "DELETE FROM ppw_promotion_standings WHERE world_id=$1 AND promotion_id=$2",
@@ -197,7 +217,7 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_completed_show_matches","ppw_card_slots",
     "ppw_show_economics","ppw_completed_shows",
-    "ppw_booking_drafts","ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_booking_drafts","ppw_promotion_spending_plans","ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
     "ppw_promotion_controls","ppw_memberships","ppw_contracts",
     "ppw_championships","ppw_people","ppw_venues",

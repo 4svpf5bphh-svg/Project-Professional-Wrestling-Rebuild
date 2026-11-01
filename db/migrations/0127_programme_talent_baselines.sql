@@ -7,5 +7,7 @@ CREATE TABLE IF NOT EXISTS ppw_programme_talent_baselines(
  person_id text NOT NULL,
  start_popularity double precision,
  start_momentum double precision,
+ end_popularity double precision,
+ end_momentum double precision,
  PRIMARY KEY(world_id,promotion_id,programme_id,person_id)
 );

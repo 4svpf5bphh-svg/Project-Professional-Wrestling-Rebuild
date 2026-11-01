@@ -61,7 +61,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "coalesce((SELECT jsonb_agg(jsonb_build_object(",
    "'personId',base.person_id,'name',person.name,",
    "'beforePopularity',base.start_popularity,'beforeMomentum',base.start_momentum,",
-   "'afterPopularity',person.popularity,'afterMomentum',person.momentum)",
+   "'afterPopularity',base.end_popularity,'afterMomentum',base.end_momentum)",
    "ORDER BY person.name,base.person_id)",
    "FROM ppw_programme_talent_baselines base",
    "JOIN ppw_people person ON person.world_id=base.world_id",
@@ -408,6 +408,17 @@ export async function endProgramme(pool:TransactionPool,input:EndProgrammeInput)
     "RETURNING programme_id,heat,repetition"
    ].join(" "),[input.worldId,input.promotionId,input.programmeId,week]);
    if(ended.length!==1)throw new Error("Only an active promotion rivalry may be ended");
+   // Freeze the review when the feud actually ends. Future unrelated
+   // matches must not rewrite historical wrestler development.
+   await tx.query(`
+    UPDATE ppw_programme_talent_baselines baseline
+    SET end_popularity=person.popularity,end_momentum=person.momentum
+    FROM ppw_people person
+    WHERE baseline.world_id=$1 AND baseline.promotion_id=$2
+     AND baseline.programme_id=$3 AND person.world_id=baseline.world_id
+     AND person.person_id=baseline.person_id
+     AND baseline.end_popularity IS NULL AND baseline.end_momentum IS NULL
+   `,[input.worldId,input.promotionId,input.programmeId]);
    // Administrative retirement has no fictional on-air payoff. Remove any
    // outstanding plan rather than leaving a false promise in the archive.
    await tx.query("DELETE FROM ppw_programme_finales"+
