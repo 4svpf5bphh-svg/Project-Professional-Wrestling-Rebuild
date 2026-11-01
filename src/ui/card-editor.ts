@@ -31,6 +31,7 @@ import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
+import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
@@ -109,7 +110,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
-  division:string|null;alignment?:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
+  division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
@@ -201,7 +202,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const old=roster.get(member.personId);
      roster.set(member.personId,{...old,personId:member.personId,
       contractId:member.contractId,name:member.name,
-      division:old?.division??null,available:true,reason:"AVAILABLE"});
+      division:old?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:member.appearanceFee});
     }
    }
    for(const bout of view.tournamentBouts??[]){
@@ -209,13 +211,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const old=roster.get(side.personId);
      roster.set(side.personId,{...old,personId:side.personId,
       contractId:side.contractId,name:side.name,
-      division:old?.division??null,available:true,reason:"AVAILABLE"});
+      division:old?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:side.appearanceFee});
     }
    }
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
     roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
-     division:p.division,alignment:p.alignment??prior?.alignment??null,contractId:prior?.contractId??"",
+     division:p.division,alignment:p.alignment??prior?.alignment??null,
+     contractId:p.contractId??prior?.contractId??"",appearanceFee:p.appearanceFee,
      available:prior?.available??false,reason:prior?.reason??"BOOKED",
      inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
      stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
@@ -564,6 +568,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     "Over the TV limit — shorten your booking to save.":
     "Very little time left for entrances, breaks and commentary."));
   root.append(airtime);
+   const participation=[
+    ...[...matches.values()].flatMap(m=>[
+     ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
+     ...(m.interference?[m.interference.personId]:[])
+    ]),
+    ...[...segments.values()].flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
+   ];
+   const feeEstimate=forecastCardAppearanceFees(participation,roster);
+   if(feeEstimate.performers){
+    const costs=el("section","ppw-card-airtime ppw-card-appearance-cost");
+    costs.append(el("strong","","CONDITIONAL APPEARANCE COST · "+
+     "$"+Math.round(feeEstimate.amount).toLocaleString("en-GB")),
+     el("small","",feeEstimate.performers+" unique booked wrestlers · "+
+      (feeEstimate.complete?"All appearance fees known":feeEstimate.unknown+" fees still unknown")+
+      ". Each wrestler counts once across matches, angles and run-ins. "+
+      "Not yet charged; actual fees settle when this show takes place."));
+    root.append(costs);
+   }
   const toolbar=el("div","ppw-toolbar");
   const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
    v=>{formatChoice=v as Format;render();},!mutable());
