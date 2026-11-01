@@ -197,7 +197,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   return true;
  }).sort((a,b)=>b.heat-a.heat||
   a.championshipId.localeCompare(b.championshipId,"en"));
- const inauguralWeek=((input.year-1)*52+input.week-1)%4===0;
+ // An established hot rivalry should not lose its weekly headline (or
+  // established tag-team showcase) to an inaugural belt scheduling pass.
+  const hotProgramme=(input.featuredPairs??[]).some(f=>
+    f.kind==="PROGRAMME"&&f.heat>=85);
+  const inauguralWeek=((input.year-1)*52+input.week-1)%4===0&&!hotProgramme;
   const eligibleTagTitle=(input.eventType==="MAJOR"||inauguralWeek)?
     titleCandidates.find(t=>{
      if(input.eventType!=="MAJOR"&&t.holderTeamId!==null)return false;

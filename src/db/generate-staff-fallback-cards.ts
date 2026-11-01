@@ -265,7 +265,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           // Crown legitimate vacant titles on periodic TV if the AI's optional PPV
            // is unstaffable. Existing champions defend at major events.
            const titles=(context?.championships.get(promotionId)??[]).filter(t=>
-            eventType==="MAJOR"||(t.holderId===null&&weekIndex%4===0));
+            eventType==="MAJOR"||(t.holderId===null&&weekIndex%4===0&&
+             !rivals.some(r=>r.heat>=85)));
           const challengers=titles.flatMap<AiFeaturedPair>(t=>{
             if(t.holderId===null){
               const pair=inauguralPair(roster,t.bookingDivision);

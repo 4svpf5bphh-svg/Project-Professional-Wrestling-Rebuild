@@ -259,3 +259,19 @@ test("AI inaugural singles title plans a winner-producing clean finish",()=>{
  if(card.status==="READY")
   assert.equal(card.matches.find(m=>m.championshipId==="vacant-singles")?.plannedFinish,"CLEAN_PIN");
 });
+
+test("hot active TV rivalry is not displaced by an optional inaugural tag title",()=>{
+ const card=chooseAiWorldCard({...base,eventType:"REGULAR",week:1,
+  featuredPairs:[{kind:"PROGRAMME",aId:"talent-01",bId:"talent-02",
+   programmeId:"important-feud",heat:96}],
+  establishedTeams:[{teamId:"team-a",aId:"talent-04",bId:"talent-05"},
+   {teamId:"team-b",aId:"talent-07",bId:"talent-08"}],
+  tagTitles:[{championshipId:"vacant-tag",holderTeamId:null,heat:88}]
+ });
+ assert.equal(card.status,"READY");
+ if(card.status==="READY"){
+  assert.equal(card.matches.some(m=>m.championshipId==="vacant-tag"),false);
+  assert.deepEqual(card.matches.at(-1)?.participants.map(p=>p.personId).sort(),
+   ["talent-01","talent-02"]);
+ }
+});
