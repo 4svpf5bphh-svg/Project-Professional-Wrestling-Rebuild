@@ -444,3 +444,76 @@ test("a confirmed four-match three-angle card can be recast, saved and reconfirm
   assert.equal((await showCardEditorAsActor(context,world,promotion,show)).ready,true);
  }finally{await db.close();}
 });
+
+test("renewed signed agreements are immediately bookable in next week's preplanned card",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,3),key=randomUUID(),world="renewal-picker-"+key;
+ const player="booker-"+key,outsider="rival-"+key,promotion="local",show="future-show";
+ const context={pool:db.pool,actor:{playerId:player}};
+ const make=(aContract:string)=>({
+  matchType:"SINGLES",family:"INDIVIDUAL",
+  sides:[{sideId:"A",participants:[{personId:"austin",contractId:aContract}]},
+   {sideId:"B",participants:[{personId:"bob",contractId:"bob-current"}]}],
+  participants:[{personId:"austin",contractId:aContract},
+   {personId:"bob",contractId:"bob-current"}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+  plannedLengthMinutes:18
+ });
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Signed renewal CI",seed:15,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promotion,name:"Local",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[player,outsider]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",[world,player,outsider]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'market','Market',65,70,90)",[world]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Arena','market')",[world]);
+   for(const person of ["austin","bob"])
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division) VALUES($1,$2,$3,'MEN')",[world,person,person]);
+   for(const [id,person,start,end,status] of [
+    ["austin-expired","austin",0,0,"SIGNED"],
+    ["austin-renewed","austin",1,14,"SIGNED"],
+    ["bob-current","bob",0,52,"SIGNED"]
+   ] as const)
+    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,start_week_index,remaining_dates,expires_week_index,appearance_fee) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE',$5,$6,9,$7,9000)",[
+     world,id,person,promotion,status,start,end
+    ]);
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class) VALUES($1,$2,$3,1,2,'DRAFT',3,'hall','market','REGULAR')",[world,show,promotion]);
+  });
+  const talent=await cardTalentAsActor(context,world,promotion,show,"austin",null,40);
+  assert.equal(talent.talent.length,1,"Future-card picker must not offer expired old agreements");
+  assert.equal(talent.talent[0]!.contractId,"austin-renewed");
+  assert.equal(talent.talent[0]!.available,true);
+  await assert.rejects(saveCardEditorAsActor(context,{
+   worldId:world,promotionId:promotion,showId:show,
+   requestId:"old-contract",expectedRevision:0,
+   matches:[{slotId:"main",payload:make("austin-expired")}],
+   runningOrder:["main"]
+  }),/contract rights.*Week 2/i);
+  const saved=await saveCardEditorAsActor(context,{
+   worldId:world,promotionId:promotion,showId:show,
+   requestId:"renewal-booking",expectedRevision:0,
+   matches:[{slotId:"main",payload:make("austin-renewed")}],
+   runningOrder:["main"]
+  });
+  assert.equal(saved.status,"APPLIED");
+  const view=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(view.slots.length,1);
+  assert.ok(view.selectedPeople.some(p=>p.personId==="austin"&&
+   p.contractId==="austin-renewed"),"Reload must use the current signed renewal");
+  await assert.rejects(cardTalentAsActor({
+   pool:db.pool,actor:{playerId:outsider}
+  },world,promotion,show,"austin",null,40),/access|owner|promotion|controller/i);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_programme_match_activities","ppw_card_slots",
+    "ppw_booking_drafts","ppw_command_receipts","ppw_ledger_events",
+    "ppw_promotion_talent_trust","ppw_contracts","ppw_promotion_controls",
+    "ppw_memberships","ppw_venues","ppw_people","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[player,outsider]]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

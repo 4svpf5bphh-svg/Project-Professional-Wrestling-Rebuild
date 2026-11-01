@@ -133,8 +133,9 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
    call("ready",{requestId,expectedRevision}),
-  requestCreativeConsent:({requestId,expectedRevision,slotId,personId})=>
-   call("creativeConsent",{requestId,expectedRevision,slotId,personId}),
+  requestCreativeConsent:({requestId,expectedRevision,slotId,personId,proposedMatch})=>
+   call("creativeConsent",{requestId,expectedRevision,slotId,personId,
+    ...(proposedMatch===undefined?{}:{proposedMatch})}),
   openPlanner:()=>{
    if(onReturnToPlanner){onReturnToPlanner();return;}
    // A reminder can enter directly at #/planner/card. Leaving that
@@ -173,6 +174,8 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
+  createChampionship:({requestId,expectedRevision,name,kind})=>
+   call("createChampionship",{requestId,expectedRevision,name,kind}),
   loadTournaments:()=>call("tournaments"),
   createTournament:({requestId,expectedRevision,name,division,entrants,championshipId})=>
    call("createTournament",{requestId,expectedRevision,name,division,entrants,championshipId}),
@@ -497,13 +500,15 @@ function openWrestlerDossier(root:HTMLElement,scope:Scope,
  overlay.scrollTop=0;
  const close=()=>{
   overlay.remove();
-  if(previouslyFocused?.isConnected)previouslyFocused.focus();
+  if(previouslyFocused?.isConnected)previouslyFocused.focus({preventScroll:true});
  };
  overlay.addEventListener("keydown",event=>{
   if(event.key==="Escape"){event.preventDefault();event.stopPropagation();close();}
  });
- root.append(overlay);
- mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
+ // Portal outside transformed and scrolled ancestors so iOS Safari's
+  // fixed-position dossier remains visible and independently scrollable.
+  document.body.append(overlay);
+  mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
   personId,close);
  overlay.focus({preventScroll:true});
  overlay.scrollTop=0;

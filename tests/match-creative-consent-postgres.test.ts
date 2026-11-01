@@ -140,3 +140,100 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   }).finally(()=>db.close());
  }
 });
+
+test("unsaved tournament match can obtain exact creative consent without a fake feud or card save",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,3),suffix=randomUUID();
+ const world="unsaved-consent-"+suffix,player="owner-"+suffix,outsider="outsider-"+suffix;
+ const promotion="local",show="weekly",tournament="contenders";
+ const context={pool:db.pool,actor:{playerId:player}};
+ const alice={personId:"alice",contractId:"deal-alice"};
+ const bob={personId:"bob",contractId:"deal-bob"};
+ const match=(opponent=bob,finish="CLEAN_PIN")=>({
+  matchType:"SINGLES",family:"INDIVIDUAL",
+  sides:[{sideId:"A",participants:[alice]},{sideId:"B",participants:[opponent]}],
+  participants:[alice,opponent],scriptedWinnerSide:"A",plannedFinish:finish,
+  intent:"COMPETITIVE",plannedLengthMinutes:18,
+  tournamentId:tournament,tournamentBoutNo:1
+ });
+ const input={worldId:world,promotionId:promotion,showId:show};
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Draft consent CI",seed:99,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promotion,name:"Contenders",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[player,outsider]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",[world,player,outsider]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[world,player,promotion]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'market','Market',65,75,100)",[world]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id) VALUES($1,'hall','Arena','market')",[world]);
+   for(const person of ["alice","bob","gamma","delta"]){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,morale,fatigue,contract_priorities) VALUES($1,$2,$3,'MEN',95,0,$4::jsonb)",[
+     world,person,person,JSON.stringify({money:40,role:50,prestige:50,schedule:45,loyalty:99,exposure:50})
+    ]);
+    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index,creative_control,role_expectation) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',8,52,$5,'MAIN_EVENT')",[
+     world,"deal-"+person,person,promotion,person==="alice"?"FULL_APPROVAL":"NONE"
+    ]);
+   }
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','market','REGULAR')",[world,show,promotion]);
+   await tx.query("INSERT INTO ppw_tournaments(world_id,promotion_id,tournament_id,name,division,status,created_week_index,entrants_count) VALUES($1,$2,$3,'Contenders','MEN','ACTIVE',0,4)",[world,promotion,tournament]);
+   await tx.query("INSERT INTO ppw_tournament_bouts(world_id,promotion_id,tournament_id,bout_no,person_a,person_b) VALUES($1,$2,$3,1,'alice','bob'),($1,$2,$3,2,'gamma','delta')",[world,promotion,tournament]);
+   await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition) VALUES($1,$2,'unrelated','ACTIVE',60,0)",[world,promotion]);
+   await tx.query("INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,side,position,ref_kind,ref_id) VALUES($1,$2,'unrelated','A',0,'PERSON','gamma'),($1,$2,'unrelated','B',0,'PERSON','bob')",[world,promotion]);
+  });
+  await assert.rejects(requestMatchConsentAsActor(context,{
+   ...input,slotId:"fixture",personId:"alice",requestId:"wrong-bracket",
+   expectedRevision:0,proposedMatch:match({personId:"gamma",contractId:"deal-gamma"})
+  }),/tournament|bracket/i);
+  await assert.rejects(requestMatchConsentAsActor({
+   pool:db.pool,actor:{playerId:outsider}
+  },{...input,slotId:"fixture",personId:"alice",requestId:"not-owner",
+   expectedRevision:0,proposedMatch:match()
+  }),/access|show|owner|available|open/i);
+  const asked=await requestMatchConsentAsActor(context,{
+   ...input,slotId:"fixture",personId:"alice",requestId:"draft-approval",
+   expectedRevision:0,proposedMatch:match()
+  });
+  assert.equal(asked.status,"APPLIED");
+  if(asked.status==="APPLIED")assert.equal(asked.result.decision,"APPROVED");
+  const beforeSave=await withWorldTransaction(db.pool,tx=>tx.query<{total:string}>(
+   "SELECT count(*)::text AS total FROM ppw_card_slots WHERE world_id=$1 AND draft_id=$2",
+   [world,show]));
+  assert.equal(beforeSave[0]!.total,"0","A consent request must never save the card");
+  const stale=await requestMatchConsentAsActor(context,{
+   ...input,slotId:"fixture",personId:"alice",requestId:"stale-approval",
+   expectedRevision:0,proposedMatch:match()
+  });
+  assert.equal(stale.status,"STALE");
+  const saved=await saveCardEditorAsActor(context,{
+   ...input,requestId:"book-fixture",expectedRevision:1,
+   matches:[{slotId:"fixture",payload:match()}],
+   segments:[],runningOrder:["fixture"]
+  });
+  assert.equal(saved.status,"APPLIED");
+  const view=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(view.slots.length,1);
+  assert.deepEqual(view.programmeLinks,[],"Tournament fixture must not join Riddle's unrelated feud");
+  assert.equal(view.creativeConcerns.find(c=>c.personId==="alice")?.decision,"APPROVED");
+  const confirmed=await markPreparedShowReadyAsActor(context,{
+   ...input,requestId:"confirm",expectedRevision:2,confirmReadyToRun:true
+  });
+  assert.equal(confirmed.status,"APPLIED");
+  const unchanged=await withWorldTransaction(db.pool,tx=>tx.query<{winner_person_id:string|null}>(
+   "SELECT winner_person_id FROM ppw_tournament_bouts WHERE world_id=$1 AND promotion_id=$2 AND tournament_id=$3 AND bout_no=1",
+   [world,promotion,tournament]));
+  assert.equal(unchanged[0]!.winner_person_id,null,"Consent and booking do not fabricate results");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_match_creative_consents","ppw_programme_match_activities",
+    "ppw_programme_side_refs","ppw_programmes","ppw_tournament_bouts",
+    "ppw_tournaments","ppw_card_slots","ppw_booking_drafts",
+    "ppw_command_receipts","ppw_ledger_events","ppw_promotion_talent_trust",
+    "ppw_contracts","ppw_promotion_controls","ppw_memberships",
+    "ppw_venues","ppw_people","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[player,outsider]]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

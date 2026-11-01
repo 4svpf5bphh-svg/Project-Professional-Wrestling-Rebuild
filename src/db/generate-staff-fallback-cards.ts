@@ -6,7 +6,7 @@ import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
-import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch} from "../domain/ai-world-card.js";
+import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
 
 export interface GenerateStaffFallbackCardsInput{
@@ -32,6 +32,16 @@ type Generated={promotionId:string;showId:string;day:number;venueId:string;
   eventType:"REGULAR"|"MAJOR";importance:number;
   seriesId:string|null;showName:string|null};
 type Unfilled={promotionId:string;reason:string};
+type AiFeaturedPair=NonNullable<AiCardInput["featuredPairs"]>[number];
+/** Real contenders only. Reigns are awarded by certified show settlement. */
+function inauguralPair(roster:readonly AiRosterCandidate[],division:"MEN"|"WOMEN"|null){
+ const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
+ const eligible=[...roster].filter(p=>!division||p.bookingDivision===division)
+  .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
+ const first=eligible.find(p=>eligible.some(q=>q.personId!==p.personId&&q.bookingDivision===p.bookingDivision));
+ const second=first&&eligible.find(p=>p.personId!==first.personId&&p.bookingDivision===first.bookingDivision);
+ return first&&second?{aId:first.personId,bId:second.personId}:null;
+}
 
 /** A single World-locked, server-only STAFF fallback BATCH.
  * Every eligible promotion is processed in a seed-derived order to prevent
@@ -252,8 +262,17 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const roster=aiRoster.get(promotionId)??[];
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
-          const titles=eventType==="MAJOR"?context?.championships.get(promotionId)??[]:[];
-          const challengers=titles.flatMap(t=>{
+          // Crown legitimate vacant titles on periodic TV if the AI's optional PPV
+           // is unstaffable. Existing champions defend at major events.
+           const titles=(context?.championships.get(promotionId)??[]).filter(t=>
+            eventType==="MAJOR"||(t.holderId===null&&weekIndex%4===0&&
+             !rivals.some(r=>r.heat>=85)));
+          const challengers=titles.flatMap<AiFeaturedPair>(t=>{
+            if(t.holderId===null){
+              const pair=inauguralPair(roster,t.bookingDivision);
+              return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
+               championshipId:t.championshipId,heat:t.heat}]:[];
+            }
             const champ=byId.get(t.holderId);
             if(!champ)return [];
             const candidate=chooseAiTitleChallenger({
@@ -349,8 +368,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         // title challenge, not merely rebrand an ordinary television card.
         const rosterById=new Map(roster.map(p=>[p.personId,p]));
         const titleChallenges=(context?.championships.get(promotionId)??[])
-         .flatMap(title=>{
-          const champion=rosterById.get(title.holderId);
+         .flatMap<AiFeaturedPair>(title=>{
+          if(title.holderId===null){
+            const pair=inauguralPair(roster,title.bookingDivision);
+            return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
+             championshipId:title.championshipId,heat:title.heat}]:[];
+           }
+           const champion=rosterById.get(title.holderId);
           if(!champion)return [];
           const challenger=roster.filter(x=>
            x.personId!==title.holderId&&

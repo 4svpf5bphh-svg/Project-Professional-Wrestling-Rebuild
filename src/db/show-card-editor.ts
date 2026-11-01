@@ -43,8 +43,8 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  booking_open:boolean;within_window:boolean;broadcast_package:string|null;
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
-  personA:{personId:string;name:string;contractId:string};
-  personB:{personId:string;name:string;contractId:string}}[]};
+  personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
+  personB:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string}}[]};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
@@ -56,8 +56,8 @@ type ContractRow={person_id:string;contract_id:string;name:string|null;
  identity_exists:boolean;identity_name:string|null;identity_gimmick:string|null;
  identity_style:string|null;identity_signature:string|null;identity_finisher:string|null;
  status:string|null;start_week_index:number|null;expires_week_index:number|null;
- med:number|null;
- remaining_dates:number|null;exclusive_elsewhere:boolean};
+ med:number|null;appearance_fee:string|null;creative_control:string|null;
+  remaining_dates:number|null;exclusive_elsewhere:boolean};
 async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
  includeTournament=false):Promise<ShowRow>{
  if(![id.worldId,id.playerId,id.promotionId,id.showId].every(validId))
@@ -79,14 +79,16 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
        THEN bookable.championship_id ELSE NULL END,
     'entrantsCount',bookable.entrants_count,
     'personA',jsonb_build_object('personId',bookable.person_a,
-      'name',bookable.name_a,'contractId',bookable.contract_a),
+      'name',bookable.name_a,'contractId',bookable.contract_a,'appearanceFee',bookable.fee_a,'creativeControl',bookable.creative_a),
     'personB',jsonb_build_object('personId',bookable.person_b,
-      'name',bookable.name_b,'contractId',bookable.contract_b)
+      'name',bookable.name_b,'contractId',bookable.contract_b,'appearanceFee',bookable.fee_b,'creativeControl',bookable.creative_b)
    )), '[]'::jsonb)
    FROM (
     SELECT t.tournament_id,t.name AS tournament_name,b.bout_no,
      t.entrants_count,t.championship_id,b.person_a,b.person_b,a.name AS name_a,
-     z.name AS name_b,ca.contract_id AS contract_a,cb.contract_id AS contract_b
+     z.name AS name_b,ca.contract_id AS contract_a,cb.contract_id AS contract_b,
+     ca.appearance_fee AS fee_a,cb.appearance_fee AS fee_b,
+     ca.creative_control AS creative_a,cb.creative_control AS creative_b
     FROM ppw_tournament_bouts b
     JOIN ppw_tournaments t ON t.world_id=b.world_id
      AND t.promotion_id=b.promotion_id
@@ -96,7 +98,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
     JOIN ppw_people z ON z.world_id=b.world_id
      AND z.person_id=b.person_b AND z.status='ACTIVE'
     JOIN LATERAL (
-     SELECT c.contract_id FROM ppw_contracts c
+     SELECT c.contract_id,c.appearance_fee::double precision,c.creative_control FROM ppw_contracts c
      WHERE c.world_id=b.world_id AND c.promotion_id=b.promotion_id
       AND c.person_id=b.person_a AND c.status='SIGNED'
       AND c.start_week_index<=(d.year-1)*52+d.week-1
@@ -106,7 +108,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       c.contract_id LIMIT 1
     ) ca ON TRUE
     JOIN LATERAL (
-     SELECT c.contract_id FROM ppw_contracts c
+     SELECT c.contract_id,c.appearance_fee::double precision,c.creative_control FROM ppw_contracts c
      WHERE c.world_id=b.world_id AND c.promotion_id=b.promotion_id
       AND c.person_id=b.person_b AND c.status='SIGNED'
       AND c.start_week_index<=(d.year-1)*52+d.week-1
@@ -168,8 +170,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   ]))];
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
-   programme_id:string;heat:number|null;repetition:number;label:string;follow_up:unknown}>([
-   "SELECT p.programme_id,p.heat,p.repetition,",
+   programme_id:string;heat:number|null;repetition:number;
+   activity_count:number;segment_count:number;label:string;follow_up:unknown}>([
+   "SELECT p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
    "ORDER BY r.position),'Side A') || ' vs ' ||",
@@ -196,15 +199,16 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "LEFT JOIN ppw_tag_teams team ON team.world_id=r.world_id",
    "AND team.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
-   "GROUP BY p.programme_id,p.heat,p.repetition",
+   "GROUP BY p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count",
    "ORDER BY p.programme_id LIMIT 101"
    ].join(" "),[id.worldId,id.promotionId]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
   const titles=await tx.query<{
    championship_id:string;name:string;division:"SINGLES"|"TAG";
+   booking_division:"MEN"|"WOMEN"|null;
    holder_name:string|null;current_reign_id:string|null;
   }>([
-   "SELECT c.championship_id,c.name,c.division,c.current_reign_id,",
+   "SELECT c.championship_id,c.name,c.division,c.current_reign_id,c.booking_division,",
    "COALESCE(p.name,t.name) AS holder_name FROM ppw_championships c",
    "LEFT JOIN ppw_championship_reigns r ON r.world_id=c.world_id",
    "AND r.promotion_id=c.promotion_id AND r.championship_id=c.championship_id",
@@ -224,14 +228,19 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const selectedPeople=personIds.length?await tx.query<{
    person_id:string;name:string;booking_division:string|null;
    in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
-   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;alignment:string|null}>(
+   stamina:number|null;safety:number|null;fatigue:number|null;wear:number|null;alignment:string|null;appearance_fee:string|null;contract_id:string|null;creative_control:string|null}>(
     "SELECT p.person_id,p.name,p.booking_division,p.in_ring_quality,p.match_craft,"+
     "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,"+
-    "COALESCE(a.alignment,p.default_alignment) AS alignment FROM ppw_people p"+
+    "COALESCE(a.alignment,p.default_alignment) AS alignment,rights.appearance_fee,rights.contract_id,rights.creative_control FROM ppw_people p"+
     " LEFT JOIN ppw_promotion_wrestler_alignments a ON a.world_id=p.world_id"+
     " AND a.person_id=p.person_id AND a.promotion_id=$3"+
+    " LEFT JOIN LATERAL (SELECT c.appearance_fee::text,c.contract_id,c.creative_control"+
+    " FROM ppw_contracts c WHERE c.world_id=p.world_id AND c.person_id=p.person_id"+
+    " AND c.promotion_id=$3 AND c.status='SIGNED' AND c.start_week_index<=$4"+
+    " AND c.expires_week_index>=$4 AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)"+
+    " ORDER BY c.start_week_index DESC,c.contract_id LIMIT 1) rights ON TRUE"+
     " WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])",
-    [id.worldId,personIds,id.promotionId]):[];
+    [id.worldId,personIds,id.promotionId,(show.year-1)*52+show.week-1]):[];
   // One bounded, show-week-specific lookup populates team shortcuts. Only
   // complete two-person teams with two valid signed appearance rights are
   // offered; final card save still independently validates all contracts.
@@ -239,7 +248,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   // have exact membership and show-week appearance rights. Do not add an
   // extra SQL query for every new group type: booking is a hot mobile path.
   const bookableUnits=await tx.query<{kind:"TEAM"|"TRIO";unit_id:string;
-   name:string;members:{personId:string;contractId:string;name:string}[]}>([
+   name:string;members:{personId:string;contractId:string;name:string;appearanceFee:number;creativeControl:string}[]}>([
    "WITH units AS (",
    "SELECT 'TEAM'::text AS kind,t.world_id,t.team_id AS unit_id,t.name,",
    "array_agg(m.person_id ORDER BY m.person_id) AS person_ids",
@@ -256,11 +265,11 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "GROUP BY t.world_id,t.trio_id,t.name HAVING count(*)=3",
    "), eligible AS (",
    "SELECT u.kind,u.unit_id,u.name,u.person_ids,person.person_id,",
-   "person.name AS wrestler_name,rights.contract_id",
+   "person.name AS wrestler_name,rights.contract_id,rights.appearance_fee,rights.creative_control",
    "FROM units u JOIN LATERAL unnest(u.person_ids) m(person_id) ON TRUE",
    "JOIN ppw_people person ON person.world_id=u.world_id",
    "AND person.person_id=m.person_id AND person.status='ACTIVE'",
-   "JOIN LATERAL (SELECT c.contract_id FROM ppw_contracts c",
+   "JOIN LATERAL (SELECT c.contract_id,c.appearance_fee::double precision,c.creative_control FROM ppw_contracts c",
    "WHERE c.world_id=u.world_id AND c.person_id=m.person_id",
    "AND c.promotion_id=$2 AND c.status='SIGNED'",
    "AND c.start_week_index<=$3 AND c.expires_week_index>=$3",
@@ -277,7 +286,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "AND absence.cleared_week_index>$3)",
    ")",
    "SELECT kind,unit_id,name,jsonb_agg(jsonb_build_object(",
-   "'personId',person_id,'contractId',contract_id,'name',wrestler_name)",
+   "'personId',person_id,'contractId',contract_id,'name',wrestler_name,'appearanceFee',appearance_fee,'creativeControl',creative_control)",
    "ORDER BY person_id) AS members",
    "FROM eligible GROUP BY kind,unit_id,name,person_ids",
    "HAVING count(*)=cardinality(person_ids)",
@@ -304,9 +313,12 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
    inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,presentation:p.presentation,
-   stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear})),
+    stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear,
+    appearanceFee:p.appearance_fee===null?null:Number(p.appearance_fee),contractId:p.contract_id,
+    creativeControl:p.creative_control})),
    championships:titles.map(c=>({championshipId:c.championship_id,
-    name:c.name,division:c.division,holderName:c.holder_name,
+    name:c.name,division:c.division,
+    bookingDivision:c.booking_division,holderName:c.holder_name,
     vacant:c.current_reign_id===null})),
    programmes:activeProgrammes.map(p=>{
     const direction=p.follow_up&&typeof p.follow_up==="object"?
@@ -325,7 +337,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
         direction.laterAngleRecorded===true
       }:null;
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,
-     repetition:p.repetition,latestFollowUp};
+     repetition:p.repetition,activityCount:p.activity_count,
+     segmentCount:p.segment_count,latestFollowUp};
    }),
    programmeLinks:links.filter(x=>x.kind==="SEGMENT")
     .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
@@ -352,7 +365,7 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
   const show=await readShowScope(tx,id);
   const week=(show.year-1)*52+show.week-1;
   const rows=await tx.query<ContractRow>([
-    "SELECT c.person_id,c.contract_id,p.name,p.booking_division,",
+    "SELECT c.person_id,c.contract_id,c.appearance_fee::text,c.creative_control,p.name,p.booking_division,",
     "p.popularity,p.recognition,p.momentum,p.in_ring_quality,p.match_craft,",
     "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,",
     "p.default_alignment,aligned.alignment AS active_alignment,",
@@ -363,10 +376,6 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "identity.persona->'signatureMoves'->0->>'name' AS identity_signature,",
     "identity.persona->'finishingMoves'->0->>'name' AS identity_finisher,",
     "p.status AS person_status,c.family,c.status,c.start_week_index,",
-    "(SELECT a.cleared_week_index FROM ppw_medical_absences a",
-    "WHERE a.world_id=p.world_id AND a.person_id=p.person_id",
-    "AND a.status='ACTIVE' AND a.injured_week_index<$5",
-    "AND a.cleared_week_index>$5) AS med,",
     "c.expires_week_index,c.remaining_dates,",
     "(SELECT a.cleared_week_index FROM ppw_medical_absences a",
     "WHERE a.world_id=p.world_id AND a.person_id=p.person_id",
@@ -392,7 +401,9 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
     "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
     "AND target.parent_promotion_id=c.promotion_id))",
-    "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
+    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
+     "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
     "($4::text,$6::text,$7::text))",
     "ORDER BY p.name,p.person_id,c.contract_id LIMIT $8"
@@ -426,7 +437,9 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
       c.exclusive_elsewhere?"EXCLUSIVE_ELSEWHERE":rights.reason,
     medicalWeeksRemaining:c.med===null?null:
       c.med-week,
-     remainingDates:c.remaining_dates,expiresWeekIndex:c.expires_week_index};
+     remainingDates:c.remaining_dates,expiresWeekIndex:c.expires_week_index,
+     appearanceFee:c.appearance_fee===null?null:Number(c.appearance_fee),
+     creativeControl:c.creative_control};
   });
   const last=page.at(-1);
   return {talent,cursor:rows.length>limit&&last?{
@@ -617,7 +630,9 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
       startWeekIndex:c.start_week_index??undefined,
       expiresWeekIndex:c.expires_week_index??-1,
       currentWeekIndex:week}).available)
-     throw new Error("Booked wrestler lacks current contract rights");
+     throw new Error((c?.name??"This wrestler")+
+       " lacks current contract rights for Week "+show.week+
+       ". Re-select them in the talent picker to use a current signed agreement.");
    }
    for(const m of matches){
     const divisions=new Set(m.payload.participants.map(x=>
@@ -635,8 +650,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     if(new Set(titleIds).size!==titleIds.length)
      throw new Error("A title may be contested only once on a card");
     const titleRows=await tx.query<{championship_id:string;division:string;
-     person_id:string|null;team_id:string|null;champion_people:string[]}>([
-     "SELECT c.championship_id,c.division,r.person_id,r.team_id,",
+     person_id:string|null;team_id:string|null;champion_people:string[];booking_division:"MEN"|"WOMEN"|null}>([
+     "SELECT c.championship_id,c.division,c.booking_division,r.person_id,r.team_id,",
      "ARRAY(SELECT person_id FROM ppw_tag_team_members",
      "WHERE world_id=c.world_id AND team_id=r.team_id AND active",
      "ORDER BY person_id) AS champion_people",
@@ -653,18 +668,24 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     for(const m of titleMatches){
      const title=byTitle.get(m.payload.championshipId!)!;
      const layout=readCanonicalMatchLayout(m.payload);
+     const bookedDivisions=new Set(m.payload.participants.map(person=>
+      byContract.get(person.personId+"\0"+person.contractId)?.booking_division));
+     if(title.booking_division&&
+      (bookedDivisions.size!==1||!bookedDivisions.has(title.booking_division)))
+      throw new Error("This championship is restricted to its "+title.booking_division.toLowerCase()+"'s division");
      if(title.division==="SINGLES"){
       if(layout.family!=="INDIVIDUAL"||layout.sides.length<2||
        layout.sides.length>4||layout.ruleset==="ELIMINATION"||
        (title.person_id&&!m.payload.participants.some(x=>x.personId===title.person_id)))
        throw new Error("A singles title requires 2–4 wrestlers including its champion");
      }else if(title.division==="TAG"){
-      if(layout.family!=="TEAMS"||layout.sides.length!==2||
+      if(layout.family!=="TEAMS"||layout.sides.length<2||
+       layout.sides.length>6||
        layout.sides.some(side=>side.participants.length!==2)||
        (title.team_id&&!layout.sides.some(side=>
         side.participants.map(x=>x.personId).sort().join("|")===
         [...title.champion_people].sort().join("|"))))
-       throw new Error("A tag title requires 2v2 with the reigning team");
+       throw new Error("A tag title needs 2–6 pairs, including the reigning team");
      }else throw new Error("Unsupported championship division");
     }
    }
@@ -695,6 +716,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     personIds:s.payload.participants.map(p=>p.personId)
    })),programmePeople.map(p=>({programmeId:p.programme_id,personId:p.person_id,side:p.side})));
    const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
+     // Tournament brackets are independent of unrelated active feuds.
+     if(m.payload.tournamentId)return [];
     const layout=readCanonicalMatchLayout(m.payload);
     return layout.sides.length===2?[{
      slotId:m.slotId,sideA:layout.sides[0]!.participants.map(p=>p.personId),

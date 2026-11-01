@@ -881,6 +881,7 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
  expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(0);
+ await page.getByText("+ Start a new rivalry",{exact:true}).click();
  const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
  await selectors.nth(0).selectOption("PERSON:alice");
  await selectors.nth(1).selectOption("PERSON:bob");
@@ -932,6 +933,7 @@ test("Post-show creative direction follows the latest completed rivalry match wi
   }:{}});
  });
  await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
  await page.getByRole("button",{name:"Rematch",exact:true}).click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
@@ -1879,7 +1881,8 @@ for(const width of [320,390]){
     method==="wrestlerCareer"?career:{}});
   });
   await page.goto("/#/programmes");
-  const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
+  await page.getByText("+ Start a new rivalry",{exact:true}).click();
+ const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
   await selectors.nth(0).selectOption("PERSON:alice");
   await selectors.nth(1).selectOption("PERSON:bob");
   await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();

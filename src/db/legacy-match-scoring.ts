@@ -605,23 +605,21 @@ export async function previewArchivedShowMatchScoresInTransaction(
     const tagTitleBookings=matches.flatMap((slot,index)=>{
       const payload=slot.payload as Record<string,unknown>;
       if(payload.championshipId===undefined ||
-        requireSupportedScoringLayout(layouts[index]!)!=="TAG")return [];
+        !["TAG","MULTI_TEAM"].includes(requireSupportedScoringLayout(layouts[index]!)))return [];
       if(typeof payload.championshipId!=="string"||
         !payload.championshipId||payload.championshipId.length>200)
        throw new Error("Invalid canonical tag championship");
       const layout=layouts[index]!;
-      if(layout.sides[0]!.participants.length!==2)
-        throw new Error("Only a 2v2 title uses an existing tag-team reign; larger-team titles need their own identity");
+      if(layout.sides.length<2||layout.sides.length>6||
+         layout.sides.some(side=>side.participants.length!==2))
+        throw new Error("A tag title requires 2–6 verified pairs");
       return [{slotId:slot.slot_id,championshipId:payload.championshipId,
        sides:layout.sides.map(side=>({sideId:side.sideId,
-        personIds:side.participants.map(x=>x.personId)})) as
-          [{sideId:"A";personIds:string[]},{sideId:"B";personIds:string[]}]}];
+        personIds:side.participants.map(x=>x.personId)}))}];
     });
     const titleBookings=matches.flatMap((slot,index)=>{
       const kind=requireSupportedScoringLayout(layouts[index]!);
       if(kind==="TAG"||kind==="MULTI_TEAM"){
-       if((matches[index]!.payload as Record<string,unknown>).championshipId!==undefined &&
-        kind==="MULTI_TEAM")throw new Error("Multi-team title rules not yet supported");
        return [];
       }
       const payload=slot.payload as Record<string,unknown>;

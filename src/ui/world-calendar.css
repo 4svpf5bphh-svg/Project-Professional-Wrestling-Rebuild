@@ -156,3 +156,31 @@
  grid-column:1/-1;grid-row:auto;width:100%;max-width:100%;min-width:0;
 }
 .ppw-calendar-event[data-animated-poster=true] .ppw-calendar-owner-mark{display:none}
+
+/* Applied show graphics are a FULL-WIDTH calendar element, never the old
+   49px emblem grid cell. This also fixes vertical letter wrapping on iPhone. */
+.ppw-calendar-event[data-has-artwork=true]{
+ display:flex;flex-direction:column;align-items:stretch;gap:9px;
+ min-width:0;padding:12px;overflow:hidden}
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-owned-poster{
+ display:flex;flex-direction:column;box-sizing:border-box;
+ width:100%;min-width:0;max-width:100%;flex:0 0 auto;
+ overflow:hidden;writing-mode:horizontal-tb;white-space:normal}
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-event-emblem,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-event-copy,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-owner-mark{display:none}
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-booked-state,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-unbooked-state,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-booked-place,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-button{
+ align-self:flex-start;max-width:100%}
+.ppw-calendar-event[data-has-artwork=true]>.ppw-tv-frame,
+.ppw-calendar-event[data-has-artwork=true]>.ppw-event-poster{
+ max-height:230px;min-height:160px;aspect-ratio:auto}
+.ppw-calendar-event[data-has-artwork=true] .ppw-tv-title{
+ overflow-wrap:break-word;word-break:normal;writing-mode:horizontal-tb}
+@media(max-width:370px){
+ .ppw-calendar-event[data-has-artwork=true]{padding:8px}
+ .ppw-calendar-event[data-has-artwork=true]>.ppw-tv-frame,
+ .ppw-calendar-event[data-has-artwork=true]>.ppw-event-poster{min-height:150px}
+}

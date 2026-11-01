@@ -523,3 +523,15 @@ body>.ppw-card-edit-shade .ppw-match-style-fitness-row>span{
  font:750 13px system-ui;border-radius:9px;padding:9px 12px;cursor:pointer}
 .ppw-card-rivalry-add:disabled{opacity:.5}
 .ppw-card-rivalry-add:focus-visible{outline:3px solid #bdeaff;outline-offset:2px}
+
+/* The booking editor must be a card, not another creative report. */
+.ppw-card-rivalry-ideas{display:block;margin:8px 0;padding:9px 12px}
+.ppw-card-rivalry-ideas>summary{min-height:45px;font-size:14px}
+.ppw-card-rivalry-ideas .ppw-field{margin:5px 0;max-width:100%}
+.ppw-card-rivalry-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:7px;margin:10px 0}
+.ppw-card-rivalry-shortcuts .ppw-card-rivalry-add{
+ justify-self:stretch;min-height:44px;text-align:center;font-size:11px;
+ padding:7px 4px;overflow-wrap:break-word}
+@media(max-width:360px){.ppw-card-rivalry-shortcuts{
+ grid-template-columns:repeat(2,minmax(0,1fr))}}

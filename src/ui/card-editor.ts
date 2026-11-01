@@ -31,6 +31,7 @@ import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
+import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
@@ -46,7 +47,7 @@ export interface CardEditorPort{
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
-  slotId:string;personId:string}):Promise<unknown>;
+  slotId:string;personId:string;proposedMatch?:unknown}):Promise<unknown>;
  /** Notify the host only when the active editor has locally unsaved authorship. */
  onDraftChange?(dirty:boolean):void;
  openPlanner?():void;
@@ -109,7 +110,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
-  division:string|null;alignment?:string|null;available:boolean;reason:string}&Partial<ConditionSnapshot>>();
+  division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null;creativeControl?:string|null}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
@@ -122,6 +123,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoices:{stableId:string;name:string}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
+ let focusedRivalryId:string|null=null;
+ let rivalryIdeasOpen=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -180,7 +183,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   loading=true;render();
   try{
    view=await port.load();
-   matches=new Map();segments=new Map();
+    // A new World week may activate signed renewals; discard stale contract IDs.
+    roster.clear();
+    matches=new Map();segments=new Map();
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
@@ -197,7 +202,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const old=roster.get(member.personId);
      roster.set(member.personId,{...old,personId:member.personId,
       contractId:member.contractId,name:member.name,
-      division:old?.division??null,available:true,reason:"AVAILABLE"});
+      division:old?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:member.appearanceFee,creativeControl:member.creativeControl});
     }
    }
    for(const bout of view.tournamentBouts??[]){
@@ -205,13 +211,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const old=roster.get(side.personId);
      roster.set(side.personId,{...old,personId:side.personId,
       contractId:side.contractId,name:side.name,
-      division:old?.division??null,available:true,reason:"AVAILABLE"});
+      division:old?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:side.appearanceFee,creativeControl:side.creativeControl});
     }
    }
    for(const p of view.selectedPeople){
     const prior=roster.get(p.personId);
     roster.set(p.personId,{...prior,personId:p.personId,name:p.name,
-     division:p.division,alignment:p.alignment??prior?.alignment??null,contractId:prior?.contractId??"",
+     division:p.division,alignment:p.alignment??prior?.alignment??null,
+     contractId:p.contractId??prior?.contractId??"",appearanceFee:p.appearanceFee,
+     creativeControl:p.creativeControl,
      available:prior?.available??false,reason:prior?.reason??"BOOKED",
      inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
      stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
@@ -363,7 +372,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const existing=roster.get(person.personId);
     roster.set(person.personId,{...existing,personId:person.personId,
      name:person.name,division:person.division,alignment:person.alignment??existing?.alignment??null,
-     contractId:existing?.contractId??"",
+     contractId:person.contractId??existing?.contractId??"",
+     appearanceFee:person.appearanceFee??existing?.appearanceFee,
+     creativeControl:person.creativeControl??existing?.creativeControl,
      available:existing?.available??false,
      reason:existing?.reason??"BOOKED",
      inRingQuality:person.inRingQuality,matchCraft:person.matchCraft,
@@ -398,6 +409,36 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    else success=response.result?.decision==="DECLINED"?
     "The wrestler declined these terms. You can change the proposed match.":
     "The wrestler has agreed to the match as written.";
+  }catch(e){error=errorText(e);}
+  finally{saving=false;render();}
+ }
+ async function requestDraftAgreement(m:EditorMatch,personId:string){
+  if(!view||!dirty||!mutable()||view.ready||!port.requestCreativeConsent)return;
+  if(!matchCastingReadiness(m).complete){
+   error="Complete the match before requesting approval.";render();return;
+  }
+  let proposedMatch:ReturnType<typeof buildBookedMatch>;
+  try{proposedMatch=buildBookedMatch(m);}
+  catch(e){error=errorText(e);render();return;}
+  saving=true;error="";success="";render();
+  try{
+   const response=await port.requestCreativeConsent({
+    slotId:m.slotId,personId,proposedMatch,requestId:crypto.randomUUID(),
+    expectedRevision:view.worldRevision
+   }) as {status?:string;result?:{decision?:string}};
+   // The consent command advances the World revision. Preserve the complete
+   // unsaved booking, including unrelated segments, on a revision refresh.
+   needsRevisionRefresh=true;await refreshRevisionKeepingDraft();
+   if(response.status==="STALE")
+    error="The World changed. Your draft is intact; review before asking again.";
+   else if(response.status!=="APPLIED"&&response.status!=="REPLAYED")
+    error="Agreement was not confirmed. Your draft is preserved.";
+   else{
+    error="";
+    success=response.result?.decision==="DECLINED"?
+     "Wrestler declined this exact script. Try another finish or opponent.":
+     "Wrestler agreed to this draft. Save the exact match to keep approval.";
+   }
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -560,6 +601,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     "Over the TV limit — shorten your booking to save.":
     "Very little time left for entrances, breaks and commentary."));
   root.append(airtime);
+   const participation=[
+    ...[...matches.values()].flatMap(m=>[
+     ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
+     ...(m.interference?[m.interference.personId]:[])
+    ]),
+    ...[...segments.values()].flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
+   ];
+   const feeEstimate=forecastCardAppearanceFees(participation,roster);
+   if(feeEstimate.performers){
+    const costs=el("section","ppw-card-airtime ppw-card-appearance-cost");
+    costs.append(el("strong","","CONDITIONAL APPEARANCE COST · "+
+     "$"+Math.round(feeEstimate.amount).toLocaleString("en-GB")),
+     el("small","",feeEstimate.performers+" unique booked wrestlers · "+
+      (feeEstimate.complete?"All appearance fees known":feeEstimate.unknown+" fees still unknown")+
+      ". Each wrestler counts once across matches, angles and run-ins. "+
+      "Not yet charged; actual fees settle when this show takes place."));
+    root.append(costs);
+   }
   const toolbar=el("div","ppw-toolbar");
   const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
    v=>{formatChoice=v as Format;render();},!mutable());
@@ -606,54 +665,47 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    root.append(tournament);
   }
   root.append(toolbar);
-  // A direct bridge from Creative to the actual editor. These are draft
-  // suggestions only: the booker still casts everyone and scripts the result.
+  // One optional feud picker. It must not compete with the core Add Match /
+  // Add Angle buttons or repeat the Programme Desk's long creative reports.
   if(view.programmes.length){
    const suggestions=document.createElement("details");
    suggestions.className="ppw-card-rivalry-ideas";
+   suggestions.open=rivalryIdeasOpen;
+   suggestions.ontoggle=()=>{
+    if(suggestions.isConnected)rivalryIdeasOpen=suggestions.open;
+   };
    suggestions.append(el("summary","","Book a rivalry chapter · "+view.programmes.length+
     (view.programmes.length===1?" active feud":" active feuds")));
-   suggestions.append(el("p","ppw-muted",
-    "Choose an angle to add it with the rivalry linked. You still cast the wrestlers, choose what happens and save the card."));
-   for(const programme of view.programmes.slice(0,4)){
-    const row=el("div","ppw-card-rivalry-idea");
-    row.append(el("strong","",programme.label));
-    const options=recommendProgrammeAngles(programme).slice(0,2);
-    for(const idea of options){
-     const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
-      ()=>{
-       const id="angle-"+crypto.randomUUID();
-       const segment={...newEditorSegment(id,idea.kind),
-        programmeId:programme.programmeId,durationMinutes:idea.minutes,
-        ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
-       segments.set(id,segment);order.push(id);expanded=id;
-       markDirty();render();
-      },!mutable(),"ppw-card-rivalry-add");
-     action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
-      " for "+programme.label);
-     row.append(action,el("small","ppw-muted",idea.reason));
-    }
-    suggestions.append(row);
+   const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
+    view.programmes[0]!;
+   focusedRivalryId=selected.programmeId;
+   const select=selector(selected.programmeId,
+    view.programmes.map(p=>[p.programmeId,p.label]),id=>{
+     focusedRivalryId=id;rivalryIdeasOpen=true;render();
+    },!mutable());
+   select.setAttribute("aria-label","Choose a rivalry to book");
+   suggestions.append(field("Rivalry",select));
+   const choices=recommendProgrammeAngles(selected).slice(0,3);
+   const actions=el("div","ppw-card-rivalry-shortcuts");
+   for(const idea of choices){
+    const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
+     ()=>{
+      const id="angle-"+crypto.randomUUID();
+      const segment={...newEditorSegment(id,idea.kind),
+       programmeId:selected.programmeId,durationMinutes:idea.minutes,
+       ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
+      segments.set(id,segment);order.push(id);expanded=id;
+      markDirty();render();
+     },!mutable(),"ppw-card-rivalry-add");
+    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
+     " for "+selected.label);
+    action.title=idea.title+" · "+idea.reason;
+    actions.append(action);
    }
+   suggestions.append(actions);
+   suggestions.append(el("small","ppw-muted",
+    "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
    root.append(suggestions);
-  }
-  const stories=view.programmes.filter(p=>p.latestFollowUp);
-  if(stories.length){
-   const continuity=document.createElement("details");
-   continuity.className="ppw-card-continuity";
-   const heading=el("summary","",
-    "Rivalry follow-ups · "+stories.length+" "+(stories.length===1?"story":"stories"));
-   continuity.append(heading);
-   for(const story of stories){
-    const note=story.latestFollowUp!;
-    const item=el("article","ppw-card-continuity-story");
-    item.append(el("strong","",story.label),
-     el("p","",storyDirectionHint(note,"MATCH")),
-     el("small","","After Year "+(Math.floor(note.weekIndex/52)+1)+
-      " · Week "+(note.weekIndex%52+1)));
-    continuity.append(item);
-   }
-   root.append(continuity);
   }
   // Opening title art is collapsible and does not affect booking or results.
   if(view.broadcastPackage){
@@ -1057,6 +1109,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
      body.append(review);
     }
+    // A fully cast draft can be discussed before Save Card. No approval
+    // is assumed: the server checks the contract, proposed slot and signature.
+    if(dirty&&view.canEdit&&!view.ready&&port.requestCreativeConsent&&
+      matchCastingReadiness(m).complete){
+     const actions=el("section","ppw-card-match-consents");
+     const offered=new Set<string>();
+     for(const [sideNo,side] of m.teams.entries())for(const wrestler of side){
+      if(!wrestler||offered.has(wrestler.personId))continue;
+      const person=roster.get(wrestler.personId);
+      const requires=person?.creativeControl==="FULL_APPROVAL"||
+       person?.creativeControl==="PROTECTED_FINISHES"&&sideNo!==m.winnerSide&&
+       ["CLEAN_PIN","SUBMISSION"].includes(m.plannedFinish);
+      if(!requires)continue;
+      offered.add(wrestler.personId);
+      actions.append(button("Ask "+(person?.name??wrestler.personId)+" about this draft",
+       ()=>void requestDraftAgreement(m,wrestler.personId),saving,"ppw-card-creative-ask"));
+     }
+     if(offered.size)body.append(actions);
+    }
      const controls=el("div","ppw-control-grid");
     controls.append(field("Winner",selector(String(m.winnerSide),
      m.teams.map((_,index)=>[String(index),m.format==="BATTLE_ROYAL"?
@@ -1087,17 +1158,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        v=>edit(m,{cheatingWrestlerId:v||undefined}),!mutable())));
     }
     const titleDivision=["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(m.format)?
-     "SINGLES":m.format==="TAG"?"TAG":null;
+     "SINGLES":m.format==="TAG"||
+      m.format==="MULTI_TEAM"&&m.teams.every(team=>team.length===2)?"TAG":null;
     if(titleDivision){
      const choices:[string,string][]=[["","Non-title match"],
-      ...view.championships.filter(c=>c.division===titleDivision)
+      ...view.championships.filter(c=>{
+        if(c.division!==titleDivision)return false;
+        const people=m.teams.flat().filter((x):x is PersonPick=>x!==null);
+        const picked=new Set(people.map(x=>roster.get(x.personId)?.division));
+        return !c.bookingDivision||!people.length||
+         picked.size===1&&picked.has(c.bookingDivision);
+       })
        .map(c=>[c.championshipId,c.name+
         (c.vacant?" · VACANT":c.holderName?" · "+c.holderName:"")] as [string,string])];
      controls.append(field("Championship",selector(m.championshipId??"",choices,
       value=>edit(m,{championshipId:value||undefined}),!mutable())));
     }else if(m.championshipId){
      controls.append(el("p","ppw-alert ppw-error",
-      "Championships require 2–4 singles wrestlers or a 2v2 tag match. Remove the title before saving."));
+      "Championships require 2–4 singles wrestlers or teams of two in a tag match. Remove the title before saving."));
     }
     controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));

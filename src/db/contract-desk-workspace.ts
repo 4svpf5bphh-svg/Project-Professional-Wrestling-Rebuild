@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
+import {forecastTalentBudget} from "../domain/talent-budget.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
 
 /** One consistent World-clock snapshot, including pending negotiations.
@@ -11,8 +12,16 @@ export async function readContractDesk(
  if(!worldId||!playerId||!promotionId)throw new Error("Invalid contract desk identity");
  return withSqlClient(pool,async tx=>{
   const auth=await tx.query<{year:number;week:number;
-   revision:string|number;can_edit:boolean}>(`
-   SELECT w.year,w.week,w.revision,
+   revision:string|number;can_edit:boolean;cash:string;
+    weekly_media_income:string|null;weekly_sponsor_income:string|null;
+    weekly_fixed_overhead:string|null;staff_payroll:string}>(`
+   SELECT w.year,w.week,w.revision,p.cash::text,
+     p.weekly_media_income::text,p.weekly_sponsor_income::text,
+     p.weekly_fixed_overhead::text,
+     COALESCE((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
+      WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
+      AND e.start_week_index<=(w.year-1)*52+w.week-1
+      AND e.expires_week_index>=(w.year-1)*52+w.week-1),0)::text AS staff_payroll,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -118,10 +127,22 @@ export async function readContractDesk(
    family:c.family,status:c.status,remainingDates:c.remaining_dates,
    expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex,
   }));
-  const pendingIds=new Set(requests.map(q=>q.contract_id));
+  const talentBudget=forecastTalentBudget(contracts.map(c=>({
+    personId:c.person_id,contractId:c.contract_id,status:c.status,family:c.family,
+    startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index,
+    remainingDates:c.remaining_dates,weeklyGuarantee:Number(c.weekly_guarantee),
+    appearanceFee:Number(c.appearance_fee)
+   })),currentWeekIndex,{
+    cash:Number(auth[0]!.cash),staffPayroll:Number(auth[0]!.staff_payroll),
+    weeklyMediaIncome:auth[0]!.weekly_media_income===null?null:Number(auth[0]!.weekly_media_income),
+    weeklySponsorIncome:auth[0]!.weekly_sponsor_income===null?null:Number(auth[0]!.weekly_sponsor_income),
+    weeklyFixedOverhead:auth[0]!.weekly_fixed_overhead===null?null:Number(auth[0]!.weekly_fixed_overhead)
+   });
+   const pendingIds=new Set(requests.map(q=>q.contract_id));
   const renewalIds=new Set(renewals.map(q=>q.contract_id));
   return {
    currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
+    talentBudget,
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
@@ -153,7 +174,7 @@ export async function readContractDesk(
     backstageContractDiscussions:contracts.filter(c=>c.backstage_contract_request_id!==null).length,
     pendingNegotiations:requests.length,
     pendingRenewals:renewals.length,pendingOffers:pendingOffers.length,
-    weeklyGuarantees:contracts.reduce((sum,c)=>sum+Number(c.weekly_guarantee),0),
+    weeklyGuarantees:talentBudget.currentGuarantees,
    },
   };
  });

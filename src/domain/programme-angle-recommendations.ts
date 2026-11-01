@@ -6,7 +6,9 @@
 import type {SegmentKind} from "../simulation/legacy/show-segments.js";
 import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
 export interface ProgrammeAngleContext{
- heat:number|null;repetition:number;
+ heat:number|null;repetition:number;activityCount?:number;segmentCount?:number;
+ programmeId?:string;championshipId?:string|null;
+ recentActivity?:readonly {kind:string}[];
  latestFollowUp?:{choice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
   laterMatchRecorded?:boolean;laterAngleRecorded?:boolean;
   nextMatchWeekIndex?:number|null;nextAngleWeekIndex?:number|null}|null;
@@ -22,10 +24,15 @@ export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly Progr
  const d=p.latestFollowUp;
  if(d?.choice==="PLAN_RETALIATION"&&
     !d.laterAngleRecorded&&d.nextAngleWeekIndex==null){
-  return [
-   idea("CONFRONTATION","Demand an answer","Someone still owes a response after the last match. Set the face-to-face outcome yourself."),
-   idea("ATTACK","Escalate the feud","A deliberate ambush raises the stakes without another straight rematch."),
-   idea("INTERVIEW","Explain the grievance","Let the injured party speak before deciding whether the rivalry turns physical.",6)
+  const hot=p.repetition>=30||(p.segmentCount??0)>=3;
+  return hot?[
+   idea("ATTACK","Strike back","The previous response is overdue. A booked ambush can change the stakes without another rematch."),
+   idea("INTERVIEW","Air the grievance","Make the retaliation personal before anyone throws a punch.",6),
+   idea("CONFRONTATION","Demand an answer","Put both sides face to face and script who stands tall.")
+  ]:[
+   idea("CONFRONTATION","Demand an answer","A direct response is due. Choose how the confrontation ends."),
+   idea("ATTACK","Escalate the feud","A deliberate ambush raises the stakes without another rematch."),
+   idea("INTERVIEW","Explain the grievance","Let the injured party explain what comes next.",6)
   ];
  }
  if(d?.choice==="PURSUE_REMATCH"&&
@@ -34,6 +41,16 @@ export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly Progr
    idea("CHALLENGE","Call for the rematch","Put the requested return bout on the record. A challenge is not a booked match."),
    idea("CONTRACT_SIGNING","Agree the stakes","Have both sides publicly agree to terms before you book the actual match.",7),
    idea("VIDEO_PACKAGE","Recap the issue","Remind viewers why the rematch matters without repeating last week's encounter.",3)
+  ];
+ }
+ if(d?.choice==="PURSUE_REMATCH"&&
+    (d.laterMatchRecorded||d.nextMatchWeekIndex!=null)){
+  // The return bout really happened. Stop asking for the same rematch and
+  // suggest a fresh response to the certified chapter instead.
+  return [
+   idea("INTERVIEW","React to the return bout","The requested rematch happened. Let its aftermath shape the next chapter.",6),
+   idea("VIDEO_PACKAGE","Show what changed","Revisit the completed rematch before deciding whether the rivalry needs another meeting.",3),
+   idea("CONFRONTATION","A fresh reason to clash","If these rivals face off again, give them a new point of conflict and a different ending.")
   ];
  }
  if(p.repetition>=55){
@@ -57,9 +74,13 @@ export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly Progr
    idea("VIDEO_PACKAGE","Introduce the stakes","Help fans recognise the participants and their reason to fight.",3)
   ];
  }
- return [
-  idea("CONFRONTATION","Raise the tension","The audience knows the issue. Give the next encounter a meaningful twist."),
-  idea("CHALLENGE","Set a destination","A public challenge gives the next meeting something to build toward."),
-  idea("INTERVIEW","Explore a motive","Use an interview to explain what each side wants from this feud.",6)
+ const choices=[
+  idea("CHALLENGE","Set a destination","Give the next match a clear objective instead of another generic confrontation."),
+  idea("INTERVIEW","Explore a motive","Let someone explain why this fight matters now.",6),
+  idea("CONFRONTATION","Raise the tension","A face-to-face can change the direction if it ends differently from before.")
  ];
+ const lastKind=p.recentActivity?.[0]?.kind;
+ const offset=((p.activityCount??0)+(p.segmentCount??0)+
+  (lastKind==="SEGMENT"?1:0))%choices.length;
+ return [...choices.slice(offset),...choices.slice(0,offset)];
 }

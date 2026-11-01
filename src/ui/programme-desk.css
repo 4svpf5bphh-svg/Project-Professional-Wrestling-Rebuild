@@ -179,3 +179,42 @@
  border-radius:11px;background:#0c1c2f}
 .ppw-programme-close-without-payoff summary{cursor:pointer;color:#b9cfdf;font-size:12px;padding:8px}
 .ppw-programme-close-without-payoff .ppw-programme-action{background:#41303c;color:#fff3f4}
+
+/* A feud manager, not a page of repeated reports. One focus, four jobs. */
+.ppw-programme-desk .ppw-programme-list{display:grid;gap:12px}
+.ppw-programme-desk .ppw-programme-switcher{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin:0 0 7px}
+.ppw-programme-switch{box-sizing:border-box;width:100%;min-width:0;
+ background:#132b3f;border:1px solid #4b708c;border-radius:10px;
+ color:#dcecf8;padding:11px 13px;text-align:left;line-height:1.45;
+ font:750 13px system-ui;min-height:45px}
+.ppw-programme-switch[aria-pressed=true]{
+ background:linear-gradient(100deg,#633385,#194a66);color:#fff6df;
+ border:2px solid #dbab64;box-shadow:inset 3px 0 #f2b25d}
+.ppw-programme-focused{min-width:0;overflow:hidden}
+.ppw-programme-view-tabs{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:5px;border-radius:13px;margin:13px 0 8px;padding:4px;
+ background:#112c3d;border:1px solid #4a728f}
+.ppw-programme-view-tab{box-sizing:border-box;min-width:0;min-height:46px;
+ border:0;border-radius:9px;background:transparent;color:#c1d7e6;
+ font:850 clamp(10px,2.8vw,13px)/1.2 system-ui;padding:7px 3px}
+.ppw-programme-view-tab[aria-current=page]{
+ background:#7443a0;color:#fff;border:1px solid #e2b4ed}
+.ppw-programme-lane{min-width:0;display:grid;gap:12px;align-content:start}
+.ppw-programme-lane>.ppw-programme-quick-next,
+.ppw-programme-lane>.ppw-programme-finale,
+.ppw-programme-lane>.ppw-programme-staff{margin:0;max-width:100%}
+.ppw-programme-desk .ppw-programme-broadcast{margin-top:6px}
+.ppw-programme-desk .ppw-programme-signals{margin-top:9px}
+.ppw-programme-create-fold{background:#122737;border:1px solid #4a7791;
+ border-radius:13px;margin:15px 0;overflow:hidden}
+.ppw-programme-create-fold>summary{cursor:pointer;min-height:48px;
+ display:flex;align-items:center;padding:12px 15px;font-size:15px;
+ font-weight:850;color:#e9f5ff}
+.ppw-programme-create-fold>.ppw-programme-create{
+ border:none;margin:0;padding:12px}
+@media(max-width:365px){
+ .ppw-programme-view-tabs{gap:2px;padding:3px}
+ .ppw-programme-view-tab{font-size:10px}
+}

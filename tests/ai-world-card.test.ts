@@ -203,3 +203,75 @@ test("quarterly headline objectives change the story but never force a human car
  assert.equal(ppv.matches.at(-1)?.intent,"EPIC");
  assert.equal(ppv.matches.at(-1)?.mainEvent,true);
 });
+
+// A vacant belt is awarded only by the real, certified bout outcome.
+test("vacant singles title features actual eligible inaugural contestants",()=>{
+ const featuredPairs=[{kind:"VACANT_SINGLES_TITLE" as const,
+  aId:"talent-01",bId:"talent-02",championshipId:"vacant-belt",heat:90}];
+ const result=chooseAiWorldCard({...base,eventType:"MAJOR",featuredPairs});
+ assert.equal(result.status,"READY");
+ if(result.status!=="READY")return;
+ assert.equal(result.matches.at(-1)?.championshipId,"vacant-belt");
+ assert.deepEqual(result.matches.at(-1)?.participants.map(p=>p.personId).sort(),
+  ["talent-01","talent-02"]);
+ assert.deepEqual(result,chooseAiWorldCard({...base,eventType:"MAJOR",
+  featuredPairs,roster:[...roster].reverse()}));
+});
+test("vacant tag belt uses authentic teams but active title demands its holders",()=>{
+ const teams=[{teamId:"a",aId:"talent-01",bId:"talent-02"},
+  {teamId:"b",aId:"talent-04",bId:"talent-05"}];
+ const booked=chooseAiWorldCard({...base,eventType:"MAJOR",
+  establishedTeams:teams,tagTitles:[{championshipId:"vacant-tag",holderTeamId:null,heat:95}]});
+ assert.equal(booked.status,"READY");
+ if(booked.status==="READY"){
+  assert.equal(booked.matches.at(-1)?.matchType,"TAG");
+  assert.equal(booked.matches.at(-1)?.championshipId,"vacant-tag");
+ }
+ const blocked=chooseAiWorldCard({...base,eventType:"MAJOR",
+  establishedTeams:teams,tagTitles:[{championshipId:"held-tag",holderTeamId:"absent",heat:95}]});
+ if(blocked.status==="READY")assert.ok(blocked.matches.every(x=>x.championshipId!=="held-tag"));
+});
+
+test("inaugural tag title is eligible for scheduled TV but held belt defences remain major",()=>{
+ const teams=[{teamId:"a",aId:"talent-01",bId:"talent-02"},
+  {teamId:"b",aId:"talent-04",bId:"talent-05"}];
+ const args={...base,eventType:"REGULAR" as const,week:1,establishedTeams:teams};
+ const inaugural=chooseAiWorldCard({...args,tagTitles:[{
+  championshipId:"vacant-tag",holderTeamId:null,heat:95
+ }]});
+ assert.equal(inaugural.status,"READY");
+ if(inaugural.status==="READY"){
+  const match=inaugural.matches.find(m=>m.championshipId==="vacant-tag");
+  assert.equal(match?.matchType,"TAG");
+  assert.equal(match?.plannedFinish,"CLEAN_PIN");
+ }
+ const defense=chooseAiWorldCard({...args,tagTitles:[{
+  championshipId:"held-tag",holderTeamId:"a",heat:95
+ }]});
+ if(defense.status==="READY")assert.ok(defense.matches.every(m=>m.championshipId!=="held-tag"));
+});
+test("AI inaugural singles title plans a winner-producing clean finish",()=>{
+ const card=chooseAiWorldCard({...base,eventType:"REGULAR",featuredPairs:[{
+  kind:"VACANT_SINGLES_TITLE",aId:"talent-01",bId:"talent-02",
+  championshipId:"vacant-singles",heat:90
+ }]});
+ assert.equal(card.status,"READY");
+ if(card.status==="READY")
+  assert.equal(card.matches.find(m=>m.championshipId==="vacant-singles")?.plannedFinish,"CLEAN_PIN");
+});
+
+test("hot active TV rivalry is not displaced by an optional inaugural tag title",()=>{
+ const card=chooseAiWorldCard({...base,eventType:"REGULAR",week:1,
+  featuredPairs:[{kind:"PROGRAMME",aId:"talent-01",bId:"talent-02",
+   programmeId:"important-feud",heat:96}],
+  establishedTeams:[{teamId:"team-a",aId:"talent-04",bId:"talent-05"},
+   {teamId:"team-b",aId:"talent-07",bId:"talent-08"}],
+  tagTitles:[{championshipId:"vacant-tag",holderTeamId:null,heat:88}]
+ });
+ assert.equal(card.status,"READY");
+ if(card.status==="READY"){
+  assert.equal(card.matches.some(m=>m.championshipId==="vacant-tag"),false);
+  assert.deepEqual(card.matches.at(-1)?.participants.map(p=>p.personId).sort(),
+   ["talent-01","talent-02"]);
+ }
+});

@@ -223,3 +223,18 @@
 #game .ppw-championship-desk .ppw-belt-card{border-left:4px solid #e7c17d;
  background:linear-gradient(135deg,#29293f,#121d30)}
 #game .ppw-championship-desk .ppw-belt-tag{border-left-color:#8ed0f3}
+
+/* Optional, self-service title additions without a whole new admin screen. */
+.ppw-title-new{margin:12px 0;background:#162e42;
+ border:1px solid #6a93b0;border-radius:14px;overflow:hidden}
+.ppw-title-new>summary{padding:12px 15px;min-height:46px;
+ cursor:pointer;display:flex;align-items:center;color:#fff2d1;font-weight:850}
+.ppw-title-new-form{display:grid;gap:10px;padding:14px}
+.ppw-title-new-form select,.ppw-title-new-form input{
+ box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+ border:1px solid #7daec3;background:#0c2236;color:#f3faff;
+ border-radius:9px;font:600 16px system-ui;padding:8px 11px}
+.ppw-title-new-form .ppw-title-more{margin:0;background:#73519d;
+ border-color:#e6b4d8;color:#fff;font-weight:850}
+.ppw-title-new-form .ppw-muted{font-size:12px;line-height:1.5;margin:0}
+.ppw-title-new-feedback{color:#f9c9b8;font-size:13px}

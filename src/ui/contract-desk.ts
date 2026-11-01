@@ -77,6 +77,30 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
+   // Finance snapshots are read-only; actual show charges settle elsewhere.
+   const budget=view.talentBudget;
+   if(budget){
+    const box=el("section","ppw-contract-budget");
+    box.append(el("h2","","Talent spending outlook"),
+     el("p","ppw-muted","Current cash "+money(budget.cash)+
+      " · Guaranteed talent wages "+money(budget.currentGuarantees)+"/week"),
+     el("p","ppw-muted","One full-roster show this week: "+
+      money(budget.oneShowFullRosterExposure)+" in conditional appearance fees for "+
+      budget.eligibleTalent+" eligible wrestlers."));
+    if(budget.baselineCash!==null){
+     box.append(el("p","ppw-muted","Four weeks, before future ticket income and event bills: "+
+      money(budget.baselineCash)+" cash if nobody appears, versus "+
+      money(budget.scenarioCash!)+" if every eligible wrestler appears once per week."),
+      el("small","ppw-contract-renew-hint",
+       "Illustrative only. Respects new contract start dates and remaining appearances. "+
+       "No wages or fees are charged by this projection."));
+     if(budget.scenarioCash!==null&&budget.scenarioCash<0)
+      box.append(el("p","ppw-contract-danger",
+       "Affordability warning: repeated full-roster shows could exhaust your cash."));
+    }else box.append(el("p","ppw-muted",
+      "A cash projection needs configured income and overhead figures."));
+    root.append(box);
+   }
   const helper=el("p","ppw-muted",
    "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
   root.append(helper);
@@ -301,13 +325,26 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       signingBonus:c.signingBonus
      };
      const panel=el("div","ppw-contract-renegotiate-fields");
+      const quote=el("p","ppw-contract-renew-hint");
+      const updateQuote=()=>{
+       const guaranteeDifference=draft.weeklyGuarantee-c.weeklyGuarantee;
+       const appearanceDifference=draft.appearanceFee-c.appearanceFee;
+       quote.textContent="Next term: "+money(draft.weeklyGuarantee)+"/week ("+
+        (guaranteeDifference>=0?"+":"")+money(guaranteeDifference)+
+        " per week versus current), "+money(draft.appearanceFee)+
+        " per appearance ("+(appearanceDifference>=0?"+":"")+
+        money(appearanceDifference)+"), "+money(draft.signingBonus)+
+        " signing bonus if agreed. This is a future replacement contract, "+
+        "not a second simultaneous wage bill.";
+      };
+      updateQuote();
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
       min:number,max:number,disabled=false)=>{
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
       input.setAttribute("aria-label",name+" for "+c.name);
-      input.oninput=()=>{if(input.value!=="")draft[key]=Number(input.value);
+      input.oninput=()=>{if(input.value!==""){draft[key]=Number(input.value);updateQuote();}
        if(key==="termWeeks"){
         if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
         else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
@@ -338,7 +375,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(panel);
+     negotiate.append(panel,quote);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");

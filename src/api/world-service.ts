@@ -9,6 +9,8 @@ import {readTagTeamWorkspace,createTagTeam,nameTagTeam,createTrio,
  from "../db/tag-team-workspace.js";
 import {readChampionshipDirectory,readChampionshipHistory,type ReignCursor}
  from "../db/championship-history.js";
+import {createPromotionChampionship,type CreateChampionshipInput}
+ from "../db/championship-management.js";
 import type { TransactionPool } from "../db/transaction.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {readPublicCompletedShow} from "../db/public-completed-show.js";
@@ -521,7 +523,7 @@ export async function saveCardEditorAsActor(context:WorldApiContext,
  * The controller and current World revision are rechecked on the server.
  */
 export async function requestMatchConsentAsActor(context:WorldApiContext,
- input:WorldMutationInput & {promotionId:string;showId:string;slotId:string;personId:string}){
+ input:WorldMutationInput & {promotionId:string;showId:string;slotId:string;personId:string;proposedMatch?:unknown}){
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.showId,"show");
  validate(input.slotId,"match");validate(input.personId,"wrestler");
@@ -551,6 +553,12 @@ export async function createTournamentAsActor(context:WorldApiContext,
 export async function championshipsAsActor(context:WorldApiContext,
  worldId:string,promotionId:string){
  return readChampionshipDirectory(context.pool,worldId,context.actor.playerId,promotionId);
+}
+export async function createChampionshipAsActor(context:WorldApiContext,
+ input:Omit<CreateChampionshipInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return createPromotionChampionship(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function championshipHistoryAsActor(context:WorldApiContext,
  worldId:string,promotionId:string,titlePromotionId:string,
