@@ -183,6 +183,19 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
   node("span","ppw-result-score-label","CROWD / 100"));
  append(header,append(node("div","ppw-result-hero-main"),titleWrap));
+ if(show.audience){
+  const report=show.audience,block=node("div","ppw-result-broadcast-audience");
+  if(report.format==="TV"&&report.householdRating!==null&&report.estimatedViewers!==null)
+   append(block,node("span","ppw-result-audience-label","TV RATING"),
+    node("strong","",report.householdRating.toFixed(1)),
+    node("small","","Approx. "+report.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+  else if(report.format==="PPV"&&report.ppvBuys!==null)
+   append(block,node("span","ppw-result-audience-label","PPV BUYS"),
+    node("strong","",report.ppvBuys.toLocaleString("en-GB")),
+    node("small","","Estimated purchases"));
+  if(block.childElementCount)header.append(block);
+ }
+
  const firstMoment=showBroadcastHighlights(show.entries)[0];
  if(firstMoment)header.append(node("p","ppw-result-lead",firstMoment.headline));
  const pulseRow=node("div","ppw-result-pulse");
