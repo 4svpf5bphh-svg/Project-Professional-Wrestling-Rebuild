@@ -231,3 +231,31 @@ test("vacant tag belt uses authentic teams but active title demands its holders"
   establishedTeams:teams,tagTitles:[{championshipId:"held-tag",holderTeamId:"absent",heat:95}]});
  if(blocked.status==="READY")assert.ok(blocked.matches.every(x=>x.championshipId!=="held-tag"));
 });
+
+test("inaugural tag title is eligible for scheduled TV but held belt defences remain major",()=>{
+ const teams=[{teamId:"a",aId:"talent-01",bId:"talent-02"},
+  {teamId:"b",aId:"talent-04",bId:"talent-05"}];
+ const args={...base,eventType:"REGULAR" as const,week:1,establishedTeams:teams};
+ const inaugural=chooseAiWorldCard({...args,tagTitles:[{
+  championshipId:"vacant-tag",holderTeamId:null,heat:95
+ }]});
+ assert.equal(inaugural.status,"READY");
+ if(inaugural.status==="READY"){
+  const match=inaugural.matches.find(m=>m.championshipId==="vacant-tag");
+  assert.equal(match?.matchType,"TAG");
+  assert.equal(match?.plannedFinish,"CLEAN_PIN");
+ }
+ const defense=chooseAiWorldCard({...args,tagTitles:[{
+  championshipId:"held-tag",holderTeamId:"a",heat:95
+ }]});
+ if(defense.status==="READY")assert.ok(defense.matches.every(m=>m.championshipId!=="held-tag"));
+});
+test("AI inaugural singles title plans a winner-producing clean finish",()=>{
+ const card=chooseAiWorldCard({...base,eventType:"REGULAR",featuredPairs:[{
+  kind:"VACANT_SINGLES_TITLE",aId:"talent-01",bId:"talent-02",
+  championshipId:"vacant-singles",heat:90
+ }]});
+ assert.equal(card.status,"READY");
+ if(card.status==="READY")
+  assert.equal(card.matches.find(m=>m.championshipId==="vacant-singles")?.plannedFinish,"CLEAN_PIN");
+});

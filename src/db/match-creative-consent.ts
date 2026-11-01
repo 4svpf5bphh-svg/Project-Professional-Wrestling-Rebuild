@@ -102,7 +102,7 @@ export async function requestMatchCreativeConsent(pool:TransactionPool,input:{
     "AND d.status='DRAFT' AND d.lock_ready_fingerprint IS NULL",
     "AND w.phase='OPEN' AND w.next_lock_at>clock_timestamp()"
    ].join(" "),[input.worldId,input.promotionId,input.showId,input.playerId]);
-   if(drafts.length!==1)throw new Error("This show is not open for wrestler approvals");
+   if(drafts.length!==1)throw new Error("This show card is not open for wrestler agreements");
     const showWeek=(drafts[0]!.year-1)*52+drafts[0]!.week-1;
     // The unsaved script is validated but not booked; authorization is bound
     // to an exact slot/person/contract/script fingerprint at final confirmation.

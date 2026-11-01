@@ -136,18 +136,33 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["FULL_APPROVAL","Full approval"]
   ] as const,draft.creative,next=>{draft.creative=next;pendingKey="";}));
   const fields=el("div","ppw-directory-offer-fields");
+   const quote=el("p","ppw-directory-muted ppw-directory-offer-quote");
+   const updateQuote=()=>{
+    const weeks=draft.family==="ONE_OFF"?1:draft.weeks;
+    const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
+    const appearance=draft.family==="EXCLUSIVE"?0:draft.appearance;
+    const dates=draft.family==="ONE_OFF"?1:draft.family==="EXCLUSIVE"?0:draft.dates;
+    quote.textContent="If accepted: "+money(guarantee)+"/week guaranteed ("+
+     money(guarantee*weeks)+" over "+weeks+" weeks), "+
+     money(draft.bonus)+" signing bonus"+
+     (draft.family==="EXCLUSIVE"?". No per-appearance fee.":
+      ", plus "+money(appearance)+" only when booked ("+
+      money(appearance*dates)+" if all "+dates+" dates are used).")+
+     " These are future liabilities, not charges for submitting the offer.";
+   };
+   updateQuote();
   if(draft.family!=="ONE_OFF")numbers(fields,"Weeks (1–52)",
-   draft.weeks,1,52,n=>{draft.weeks=n;pendingKey="";});
+   draft.weeks,1,52,n=>{draft.weeks=n;pendingKey="";updateQuote();});
   if(draft.family==="LIMITED_NON_EXCLUSIVE")
    numbers(fields,"Purchased dates",draft.dates,1,104,
-    n=>{draft.dates=n;pendingKey="";});
+    n=>{draft.dates=n;pendingKey="";updateQuote();});
   if(draft.family!=="ONE_OFF")numbers(fields,"Weekly guarantee ($)",
-   draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";});
+   draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";updateQuote();});
   if(draft.family!=="EXCLUSIVE")numbers(fields,"Appearance fee ($)",
-   draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";});
+   draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
-   n=>{draft.bonus=n;pendingKey="";});
-  editor.append(fields,btn(sending?"Sending…":"Submit offer",
+   n=>{draft.bonus=n;pendingKey="";updateQuote();});
+  editor.append(fields,quote,btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
   return editor;
  }

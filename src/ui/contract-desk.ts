@@ -325,13 +325,26 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       signingBonus:c.signingBonus
      };
      const panel=el("div","ppw-contract-renegotiate-fields");
+      const quote=el("p","ppw-contract-renew-hint");
+      const updateQuote=()=>{
+       const guaranteeDifference=draft.weeklyGuarantee-c.weeklyGuarantee;
+       const appearanceDifference=draft.appearanceFee-c.appearanceFee;
+       quote.textContent="Next term: "+money(draft.weeklyGuarantee)+"/week ("+
+        (guaranteeDifference>=0?"+":"")+money(guaranteeDifference)+
+        " per week versus current), "+money(draft.appearanceFee)+
+        " per appearance ("+(appearanceDifference>=0?"+":"")+
+        money(appearanceDifference)+"), "+money(draft.signingBonus)+
+        " signing bonus if agreed. This is a future replacement contract, "+
+        "not a second simultaneous wage bill.";
+      };
+      updateQuote();
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
       min:number,max:number,disabled=false)=>{
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
       input.setAttribute("aria-label",name+" for "+c.name);
-      input.oninput=()=>{if(input.value!=="")draft[key]=Number(input.value);
+      input.oninput=()=>{if(input.value!==""){draft[key]=Number(input.value);updateQuote();}
        if(key==="termWeeks"){
         if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
         else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
@@ -362,7 +375,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(panel);
+     negotiate.append(panel,quote);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");

@@ -197,8 +197,10 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   return true;
  }).sort((a,b)=>b.heat-a.heat||
   a.championshipId.localeCompare(b.championshipId,"en"));
- const eligibleTagTitle=input.eventType==="MAJOR"?
+ const inauguralWeek=((input.year-1)*52+input.week-1)%4===0;
+  const eligibleTagTitle=(input.eventType==="MAJOR"||inauguralWeek)?
     titleCandidates.find(t=>{
+     if(input.eventType!=="MAJOR"&&t.holderTeamId!==null)return false;
      const teams=tagCandidates.filter(x=>!t.bookingDivision||
       x.a!.bookingDivision===t.bookingDivision);
      return t.holderTeamId?teams.some(x=>x.teamId===t.holderTeamId):teams.length>=2;
@@ -212,7 +214,8 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
  const tagChoice=firstTeam&&secondTeam?{first:firstTeam,second:secondTeam,
-  titleId:eligibleTagTitle?.championshipId??null}:null;
+  titleId:eligibleTagTitle?.championshipId??null,
+   inaugural:eligibleTagTitle?.holderTeamId===null}:null;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
  // Keep recognisable headliners, but rotate credible undercard opportunities.
@@ -390,7 +393,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
     scriptedWinnerSide:winnerSide,
     scriptedWinner:winnerSide==="A"?t1a!.personId:t2a!.personId,
     bookingDivision:t1a!.bookingDivision,intent,
-    plannedFinish:finish(intent,finalRng.next()),
+    plannedFinish:tagChoice?.inaugural?"CLEAN_PIN":finish(intent,finalRng.next()),
     plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
     ...(tagChoice?.titleId?{championshipId:tagChoice.titleId}:{})};
   }
@@ -398,7 +401,10 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    participants:[{personId:a.personId,contractId:a.contractId},
     {personId:b.personId,contractId:b.contractId}],
    scriptedWinner:fav.personId,bookingDivision:a.bookingDivision,
-   intent,plannedFinish:finish(intent,finalRng.next()),
+    intent,plannedFinish:reserve?.kind==="VACANT_SINGLES_TITLE"&&
+      [a.personId,b.personId].includes(reserve.aId)&&
+      [a.personId,b.personId].includes(reserve.bId)?"CLEAN_PIN":
+      finish(intent,finalRng.next()),
    plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
    ...(reserve&&[a.personId,b.personId].includes(reserve.aId)&&
      [a.personId,b.personId].includes(reserve.bId)&&reserve.kind==="PROGRAMME"?
