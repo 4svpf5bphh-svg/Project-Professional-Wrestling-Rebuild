@@ -4,6 +4,7 @@
  * card, resolved receipt, verified medical evidence or title contest ledger.
  */
 import type {ShowResultEntry} from "../db/show-results-view.js";
+import {angleSceneLocationPhrase} from "./angle-scene.js";
 export type BroadcastTone="RED_HOT"|"OVER"|"MIXED"|"FLAT";
 export interface BroadcastReview{
  tone:BroadcastTone;reaction:string;recap:string;verdict:string;
@@ -165,13 +166,10 @@ export function confirmedAngleColour(entry:ShowResultEntry,showId:string):string
   case "CELEBRATION":return who+" took the celebration spot. "+
    "The recorded audience response measures how it was received.";
   case "ATTACK":{
-   const place=ctx?.scene?.location?{
-    IN_RING:"in the ring",ENTRANCE_RAMP:"on the ramp",BACKSTAGE:"backstage",
-    LOCKER_ROOM:"in the locker room",PARKING_LOT:"in the car park",OFFICE:"in the office"
-   }[ctx.scene.location]:"at the scene";
+   const place=ctx?.scene?.location?angleSceneLocationPhrase(ctx.scene.location):"at the scene";
    const aftermath=ctx?.scene?.visual==="BLOODIED"?
-    " The target was left bloodied on screen; this is not a medical injury.":
-    ctx?.scene?.visual==="LEFT_LYING"?" The target was left laid out.":"";
+    " "+whom+" was left bloodied.":
+    ctx?.scene?.visual==="LEFT_LYING"?" "+whom+" was left lying.":"";
    return who+" attacked "+whom+" "+place+"."+aftermath;
   }
   case "TURN":return who+" completed the authored change of allegiance"+
