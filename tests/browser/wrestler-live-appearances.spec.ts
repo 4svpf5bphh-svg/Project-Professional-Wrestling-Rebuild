@@ -85,6 +85,28 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await card.getByRole("button",{name:"Wrestler profile →"}).click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
+  // Regression: a portalled dossier must start inside the iPhone viewport
+  // and offer an independently reachable scroll surface at either size.
+  for(const width of [320,390]){
+   await page.setViewportSize({width,height:844});
+   const layout=await dialog.evaluate(node=>{
+    const el=node as HTMLElement,box=el.getBoundingClientRect();
+    const atStart=el.scrollTop;
+    el.scrollTop=el.scrollHeight-el.clientHeight;
+    const bottom=el.scrollTop;
+    el.scrollTop=0;
+    return {top:box.top,bottom:box.bottom,atStart,bottomScroll:bottom,
+     clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,
+     parent:el.parentElement?.tagName};
+   });
+   expect(layout.parent).toBe("BODY");
+   expect(layout.top).toBeGreaterThanOrEqual(-1);
+   expect(layout.bottom).toBeLessThanOrEqual(845);
+   expect(layout.atStart).toBe(0);
+   expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
+   expect(layout.bottomScroll).toBeGreaterThan(200);
+  }
+  await page.setViewportSize({width:390,height:844});
  expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(0);
  await dialog.locator("details.ppw-profile-career > summary").click();
  await expect(dialog.getByRole("heading",{name:"On-screen appearances"})).toBeVisible();
