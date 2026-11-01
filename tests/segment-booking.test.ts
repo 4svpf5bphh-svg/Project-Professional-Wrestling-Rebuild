@@ -70,7 +70,7 @@ test("the three new original-main angles require exact roles and scripted ending
 
 test("angle scene cannot forge medical consequences or nonsensical settings",()=>{
  const base=make("ATTACK",["a"],["b"]);
- const good={location:"LOCKER_ROOM",visual:"BLOODIED",purpose:"BUILD_RIVALRY"};
+ const good={location:"LOCKER_ROOM" as const,visual:"BLOODIED" as const,purpose:"BUILD_RIVALRY" as const};
  assert.deepEqual(normalizeBookedSegment({...base,scene:good},known).scene,good);
  for(const invalid of [
   {...good,extra:"wrestler injured 12 weeks"},
