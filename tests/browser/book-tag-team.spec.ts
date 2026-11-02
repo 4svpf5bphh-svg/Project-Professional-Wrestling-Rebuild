@@ -170,7 +170,7 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
- await expect(page.locator(".ppw-card-lineup").first()).toContainText("Iron Man Match");
+ await expect(page.locator(".ppw-card-bar strong").first()).toContainText("Iron Man Match");
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByLabel("Stipulation")).toHaveValue("IRON_MAN");
