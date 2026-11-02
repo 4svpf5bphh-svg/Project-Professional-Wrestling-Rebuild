@@ -21,14 +21,16 @@ test("historical angles without timing default to five minutes and remain editab
  assert.equal(restored.durationMinutes,5);
  assert.equal(buildEditorSegment(restored).durationMinutes,5);
 });
-test("angles reject unsafe airtime and a one-person promo may not target a rival",()=>{
+test("angles reject unsafe airtime while a named promo target remains bookable",()=>{
  const base={slotId:"promo",position:0,kind:"PROMO" as const,
   actorIds:["a"],targetIds:[] as string[],outcome:"HAPPENS" as const};
  const cast=[{personId:"a",contractId:"a-contract"}];
  for(const durationMinutes of [0,31,1.5,Number.NaN])
   assert.throws(()=>buildBookedSegmentPayload({...base,durationMinutes},cast),
    /Invalid authored segment/);
- assert.throws(()=>buildBookedSegmentPayload({...base,targetIds:["b"]},
-  [...cast,{personId:"b",contractId:"b-contract"}]),/Invalid segment booking roles/);
+ const targeted=buildBookedSegmentPayload({...base,targetIds:["b"]},
+  [...cast,{personId:"b",contractId:"b-contract"}]);
+ assert.deepEqual(targeted.targetIds,["b"]);
+ assert.deepEqual(targeted.actorIds,["a"]);
  assert.equal(buildBookedSegmentPayload({...base,durationMinutes:30},cast).durationMinutes,30);
 });
