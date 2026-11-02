@@ -27,6 +27,8 @@ export function appearancesFromSlots(payloads:readonly unknown[]):BookedAppearan
   // Old historical interference without an agreement stays readable.
   return payloads.flatMap(payload=>{
     const cast=readCardParticipants(payload),spot=readBookedInterference(payload);
+    // Pre-recorded video does not require an in-person appearance or use a date.
+    if((payload as Record<string,unknown>).kind==="VIDEO_PACKAGE")return [];
     return spot?.contractId?[...cast,{
       personId:spot.personId,contractId:spot.contractId
     }]:cast;

@@ -611,7 +611,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Unlock each Special Moment with Kayfabe Points before booking it");
    }
    const appearances=uniqueShowAppearances([
-    ...booked,...runIns,...segments.flatMap(s=>readCardParticipants(s.payload))]);
+    ...booked,...runIns,...segments.filter(s=>s.payload.kind!=="VIDEO_PACKAGE")
+     .flatMap(s=>readCardParticipants(s.payload))]);
    if(appearances.length>100)throw new Error("Show exceeds 100 unique wrestlers");
    const ids=appearances.map(p=>p.personId),contracts=appearances.map(p=>p.contractId);
    const week=(show.year-1)*52+show.week-1;

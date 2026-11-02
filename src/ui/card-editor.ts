@@ -652,7 +652,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
      ...(m.interference?[m.interference.personId]:[])
     ]),
-    ...[...segments.values()].flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
+    ...[...segments.values()].filter(s=>s.kind!=="VIDEO_PACKAGE")
+     .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
    ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
    if(feeEstimate.performers){
@@ -661,7 +662,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      "$"+Math.round(feeEstimate.amount).toLocaleString("en-GB")),
      el("small","",feeEstimate.performers+" unique booked wrestlers · "+
       (feeEstimate.complete?"All appearance fees known":feeEstimate.unknown+" fees still unknown")+
-      ". Each wrestler counts once across matches, angles and run-ins. "+
+      ". Each wrestler counts once across live matches, angles and run-ins. "+
+      "Pre-recorded videos never spend appearance fees or contract dates. "+
       "Not yet charged; actual fees settle when this show takes place."));
     root.append(costs);
    }
