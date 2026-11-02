@@ -207,7 +207,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const save=button("Save spending plan",()=>void saveSpendingPlan());
    const refreshPreview=()=>{
     try{
-     const check=assessPromotionSpendingPlan(spendingDraft!,{
+     const check=assessPromotionSpendingPlan(spendingDraft??plan,{
       cash:view!.cash,weeklyGuarantees:view!.weeklyGuarantees});
      preview.textContent="Weekly wages: "+money(view!.weeklyGuarantees)+
       " committed · "+(check.wageRoom>=0?money(check.wageRoom)+" available":

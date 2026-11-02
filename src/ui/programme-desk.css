@@ -286,3 +286,13 @@
  .ppw-programme-desk .ppw-programme-view-tabs>.ppw-programme-view-tab{
   font-size:12px;padding:9px 1px}
 }
+
+/* The app's premium global masthead can enlarge and italicise h1.
+   At 320px "Programmes" must remain one complete, readable word. */
+.ppw-programme-desk>.ppw-top>h1{
+ display:block;width:100%;max-width:100%;min-width:0;
+ font-size:clamp(22px,7vw,29px)!important;
+ font-style:normal!important;letter-spacing:-.035em!important;
+ line-height:1.15!important;white-space:nowrap!important;
+ overflow-wrap:normal!important;word-break:normal!important;
+ text-transform:none!important}
