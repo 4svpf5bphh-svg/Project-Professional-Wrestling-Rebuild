@@ -1,6 +1,6 @@
 /** Private promotion business desk. Original resolved finances only: current
  * canonical balances, paid commitments, settled show receipts and local market
- * strength. Three bounded SQL reads, no cloned finance snapshots or World blob.
+ * strength. Four bounded SQL reads, no cloned finance snapshots or World blob.
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
