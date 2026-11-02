@@ -681,6 +681,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const id="angle-"+crypto.randomUUID();
    segments.set(id,newEditorSegment(id));
    order.push(id);expanded=id;markDirty();render();
+   if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
   },!mutable(),"ppw-add-angle"));
   const tournamentFixtures=(view.tournamentBouts??[]).filter(b=>
    ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
@@ -801,6 +802,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    bar.append(button(expanded===slotId?"▴":"▾",()=>{
     expanded=expanded===slotId?null:slotId;render();
+    if(segment&&expanded===slotId&&specialOwned===null&&port.specialMoments)
+     void loadSpecialMoments();
    },false,"ppw-expand"),label);
    const arrows=el("div","ppw-actions");
    arrows.setAttribute("role","group");
@@ -961,7 +964,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         segment.targets.slice(0,1):segment.targets});
     };
     const goal=angleGoalFor(segment.kind);
-    controls.append(el("h3","ppw-angle-workflow-title","2 · WHAT happens?"));
+    controls.append(el("h3","ppw-angle-workflow-title","2 · What happens?"));
     controls.append(field("Creative direction",selector(goal,
      ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
       setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
@@ -1100,7 +1103,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       }:beat;
       editSegment(segment,{scene:{...scene,location:place},creativeBeat:nextBeat});
      };
-     controls.append(el("h3","ppw-angle-workflow-title","3 · WHERE does it happen?"));
+     controls.append(el("h3","ppw-angle-workflow-title","3 · Where does it happen?"));
      // New scenes use appropriate places. Previously saved locations stay
      // available to edit; changing the angle type starts a fresh scene.
      const selectedSpecial=segment.specialMoment?
@@ -1141,7 +1144,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        value=>editSegment(segment,{scene:{...scene,
         visual:value as typeof scene.visual}}),!mutable())));
      }
-     controls.append(el("h3","ppw-angle-workflow-title","4 · WHY is this on the show?"));
+     controls.append(el("h3","ppw-angle-workflow-title","4 · Why is this on the show?"));
      const suggestedPurposes=anglePurposesFor(segment.kind);
      const purposes=suggestedPurposes.includes(scene.purpose)?suggestedPurposes:
       [...suggestedPurposes,scene.purpose];
@@ -1165,26 +1168,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       "This is the booker's intention, not a guaranteed reaction or result."));
     }
     if(view.programmes.length)
-     controls.append(field("Storyline / programme",selector(segment.programmeId??"",
+     body.append(field("Storyline (optional)",selector(segment.programmeId??"",
       [["","None"],...view.programmes.map(p=>[
        p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
       v=>editSegment(segment,{programmeId:v||null}),!mutable())));
     const linked=view.programmes.find(p=>p.programmeId===segment.programmeId);
-    if(linked)controls.append(el("p","ppw-angle-guidance",
-     "Feature at least one wrestler from this rivalry. The story will only advance when its own wrestlers take part."));
+
     if(linked?.latestFollowUp){
      const followUp=el("p","ppw-card-angle-continuity",
       storyDirectionHint(linked.latestFollowUp,"SEGMENT"));
-     controls.append(followUp);
+     body.append(followUp);
     }
     if(!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
       "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
-    const direction=el("p","ppw-angle-guidance");
-    direction.append(el("strong","",ANGLE_STORY_GOALS.find(x=>x.value===goal)!.label+" / "),
-     el("span","",angleDirection(segment.kind)));
-    body.append(direction);
-    body.append(el("h3","ppw-angle-workflow-title","1 · WHO is involved?"));
+
+    body.append(el("h3","ppw-angle-workflow-title","1 · Who is involved?"));
     for(const role of ["actors","targets"] as const){
      if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
      const section=el("div","ppw-side");
@@ -1221,7 +1220,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       },!mutable()||segment.actors.length+segment.targets.length>=30||
        (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
        (role==="targets"&&["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
-        segment.targets.length>=1)));
+        segment.targets.length>=1),"ppw-angle-cast-button"));
      // Existing 2v2/3v3 units are already available from the card projection.
      // Faction members are looked up once, only if the user requests them.
      // Whole-unit shortcuts are for ensemble scenes, not individual

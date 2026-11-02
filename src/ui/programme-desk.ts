@@ -386,27 +386,32 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     (p.championshipId?" · Championship stakes":"")));
    if(p.recentActivity.length){
     const history=document.createElement("details");
-    const header=document.createElement("summary");
-    header.textContent="Recent show history · "+p.recentActivity.length;
-    history.append(header);
+    history.className="ppw-programme-history-timeline";
+    history.append(element("summary","","Story timeline · "+p.recentActivity.length+" certified chapters"));
+    const entries=element("div","ppw-programme-timeline");
     for(const activity of p.recentActivity){
-     const week=Math.floor(activity.weekIndex/52)+1;
-     const number=activity.weekIndex%52+1;
+     const year=Math.floor(activity.weekIndex/52)+1;
+     const week=activity.weekIndex%52+1;
      const item=element("div","ppw-programme-history-entry");
-     item.append(element("span","ppw-muted",
-      "Year "+week+" · Week "+number+" · "+
-      (activity.kind==="MATCH"?"Match":"Angle")+" · Crowd "+
-      Math.round(activity.crowdResponse)+
-      (activity.kind==="MATCH"&&activity.winnerSide==="A"?
-       " · "+p.sideA.map(x=>x.name).join(" & ")+" won":
-       activity.kind==="MATCH"&&activity.winnerSide==="B"?
-       " · "+p.sideB.map(x=>x.name).join(" & ")+" won":"")));
-     if(port.openResults)item.append(button("Open show results",()=>{
-      port.openResults?.(activity.showId);
-     },working));
-     history.append(item);
+     const details=element("div","ppw-programme-history-detail");
+     const type=activity.kind==="MATCH"?"Match":(activity.segmentKind??"Angle")
+      .replaceAll("_"," ").toLowerCase();
+     const result=activity.kind==="MATCH"?(activity.winnerSide==="A"?
+      p.sideA.map(x=>x.name).join(" & ")+" won":activity.winnerSide==="B"?
+      p.sideB.map(x=>x.name).join(" & ")+" won":"Match completed"):
+      type.charAt(0).toUpperCase()+type.slice(1);
+     details.append(element("small","","YEAR "+year+" · WEEK "+week),
+      element("strong","",result),element("span","",
+       (activity.kind==="MATCH"?"Match":type)+
+       (activity.sceneLocation?" · "+activity.sceneLocation.replaceAll("_"," ").toLowerCase():"")+
+       " · Crowd "+Math.round(activity.crowdResponse)));
+     item.append(details);
+     if(port.openResults){const open=button("View show",()=>port.openResults?.(activity.showId),working);
+      open.setAttribute("aria-label","View show for Year "+year+" Week "+week);
+      item.append(open);}
+     entries.append(item);
     }
-    historyLane.append(history);
+    history.append(entries);historyLane.append(history);
    }
    // Optional creative guidance from the already-loaded immutable rivalry
    // record. Nothing is auto-booked or requested from the model.
