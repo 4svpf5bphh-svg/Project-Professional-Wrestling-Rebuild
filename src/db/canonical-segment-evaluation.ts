@@ -9,6 +9,7 @@ import {validateAuthoredSegments,type AuthoredSegment}
  from "../simulation/legacy/show-segments.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import type {AngleScene} from "../domain/angle-scene.js";
 import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import type {SegmentCrowdContext}
  from "../simulation/legacy/segment-crowd.js";
@@ -71,6 +72,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     outcome:p.outcome as AuthoredSegment["outcome"],
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
     ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
+    ...(p.scene===undefined?{}:{scene:p.scene as AngleScene}),
     ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
     ...(p.turnTargetAlignment===undefined?{}:{
      turnTargetAlignment:p.turnTargetAlignment as AuthoredSegment["turnTargetAlignment"]}),

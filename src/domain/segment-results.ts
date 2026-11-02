@@ -28,8 +28,8 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  STABLE_INVITATION:"Stable invitation",STABLE_EXIT:"Stable tension",STABLE_RECONCILIATION:"Stable reconciliation"};
  const purpose=segment.videoPurpose?segment.videoPurpose.replaceAll("_"," ").toLowerCase():"";
  const planned:Record<SegmentKind,string>={
- PROMO:`${subject} delivers a promo`,
- INTERVIEW:`${subject} is interviewed`,
+ PROMO:`${subject} delivers a promo${object?" aimed at "+object:""}`,
+ INTERVIEW:`${subject} is interviewed${object?" about "+object:""}`,
  CONFRONTATION:`${subject} confronts ${object}`,
  CHALLENGE:`${subject} challenges ${object}`,
  CELEBRATION:`${subject} stages a celebration`,
@@ -55,7 +55,8 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};
  const scene=segment.scene;
  const located=scene?(segment.kind==="VIDEO_PACKAGE"?
-  " with footage filmed "+angleSceneLocationPhrase(scene.location):
+  scene.location==="VIDEO_SCREEN"?" on the arena screens":
+   " with footage filmed "+angleSceneLocationPhrase(scene.location):
   " "+angleSceneLocationPhrase(scene.location)):"";
  const visual=scene&&segment.outcome==="HAPPENS"?
   scene.visual==="BLOODIED"?(object||"The victim")+" was left bloodied.":
@@ -81,12 +82,15 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      beat.purpose==="PROMISE_VICTORY"?"A victory was boldly promised.":
      beat.purpose==="TAUNT_RIVALS"?"The competition came in for ridicule.":
      beat.purpose==="EXPLAIN_ACTIONS"?"They offered an explanation for recent actions.":
+     beat.purpose==="CALL_OUT_RIVAL"?"A rival was called out by name.":
+     beat.purpose==="REVEAL_SECRET"?"A secret was aired in front of everyone.":
      "The wrestler set out their intentions.";break;
    case "INTERVIEW": {
     const topics:Record<typeof beat.topic,string>={
      CAREER_STORY:"their career",RIVALRY_PRESSURE:"rivalry pressure",
      RECENT_FORM:"recent performances",NEXT_STEPS:"what comes next",
-     TITLE_AMBITIONS:"title ambitions",FACTION_FUTURE:"the faction's future"};
+     TITLE_AMBITIONS:"title ambitions",FACTION_FUTURE:"the faction's future",
+     ADDRESS_ALLEGATION:"an allegation"};
     const responses:Record<typeof beat.response,string>={
      CANDID:"spoke candidly",EVASIVE:"dodged the difficult questions",
      DEFIANT:"refused to back down",WALKOUT:"walked out of the interview",
@@ -147,6 +151,10 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
     ending=beat.presentation==="REJECT_OLD_SELF"?"They publicly rejected their old identity.":
      beat.presentation==="TAUNT_CROWD"?"The crowd got a hostile response.":
      beat.presentation==="NEW_ATTITUDE"?"Their change in attitude was plain to see.":
+     beat.presentation==="BETRAY_PARTNER"?"A partner was betrayed in plain sight.":
+     beat.presentation==="SAVE_ENEMY"?"A former enemy received an unexpected rescue.":
+     beat.presentation==="ATTACK_ALLY"?"A trusted ally was attacked.":
+     beat.presentation==="REFUSE_HELP"?"An ally was left to fend for themselves.":
      "They made their position clear.";break;
    case "VIDEO_PACKAGE":
     ending=beat.presentation==="DARK_TEASER"?"The footage left more questions than answers.":
@@ -160,6 +168,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      "The offer was made in full view of the crowd.";break;
    case "STABLE_EXIT":
     ending=beat.departure==="EXPULSION_SCENE"?"The expulsion was staged for the cameras.":
+     beat.departure==="BEATDOWN"?"The split ended in a vicious beatdown.":
      beat.departure==="PUBLIC_DENUNCIATION"?"The split was denounced in public.":
      "The departure played out as a walkout.";break;
    case "STABLE_RECONCILIATION":
@@ -173,7 +182,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      beat.presentation==="PREMEDITATED_AMBUSH"?"The ambush had clearly been planned. ":
      beat.presentation==="FACE_TO_FACE_ASSAULT"?"The attack came face to face. ":
      beat.presentation==="SURPRISE_RUN_IN"?"A surprise run-in sparked the assault.":
-     beat.presentation==="TARGETED_BEATDOWN"?"The attackers focused their punishment on the victim.":
+     beat.presentation==="WEAPON_ASSAULT"?"A weapon was used in the assault.":
      "The beatdown was sustained.";break;
   }
  }

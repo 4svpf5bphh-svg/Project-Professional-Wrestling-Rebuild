@@ -55,7 +55,7 @@ export function validateAuthoredSegments(
       s.sourceMatchSlotId.length>200||s.sourceMatchSlotId===s.slotId):
       s.sourceMatchSlotId!==undefined)||
    (s.kind==="RESCUE"&&(s.actorIds.length!==2||s.targetIds.length!==1))||
-   (["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)&&
+   (s.kind==="POST_MATCH_ASSAULT"&&
     (s.actorIds.length!==1||s.targetIds.length!==1))||
    (s.stableDecision!==undefined&&(
     !["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)||

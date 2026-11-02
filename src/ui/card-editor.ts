@@ -65,7 +65,8 @@ export interface CardEditorPort{
  openWorkingConnections?():void;
  openPersona?():void;
  openProfile?(personId:string,holder:HTMLElement,onClose:()=>void):void;
- stableChoices?():Promise<{stableId:string;name:string}[]>;
+ stableChoices?():Promise<{stableId:string;name:string;members?:{
+  personId:string;contractId:string;name:string}[]}[]>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
  const node=document.createElement(tag);
@@ -123,7 +124,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
  let needsRevisionRefresh=false;
- let stableChoices:{stableId:string;name:string}[]|null=null;
+ let stableChoices:{stableId:string;name:string;members?:{
+  personId:string;contractId:string;name:string}[]}[]|null=null;
  let stableChoicesLoading=false;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=null;
@@ -159,6 +161,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   try{setMatch(match.slotId,assignBookedTeam(match,side,team.members));}
   catch(e){error=errorText(e);render();}
  }
+ function castAngleGroup(segment:EditorSegment,role:"actors"|"targets",choice:string){
+  const groups=[
+   ...(view?.bookableTeams??[]).map(t=>({id:"team:"+t.teamId,members:t.members})),
+   ...(view?.bookableTrios??[]).map(t=>({id:"trio:"+t.trioId,members:t.members})),
+   ...(stableChoices??[]).map(t=>({id:"stable:"+t.stableId,members:t.members??[]}))
+  ];
+  const group=groups.find(g=>g.id===choice);
+  if(!group||!group.members.length)return;
+  try{
+   let next=segment;
+   for(const member of group.members){
+    if(next[role].some(p=>p.personId===member.personId))continue;
+    next=addSegmentPerson(next,role,{personId:member.personId,contractId:member.contractId});
+    if(!roster.has(member.personId))
+     roster.set(member.personId,{personId:member.personId,contractId:member.contractId,
+      name:member.name,division:null,available:true,reason:"AVAILABLE"});
+   }
+   editSegment(segment,{[role]:next[role]});
+  }catch(err){error=errorText(err);render();}
+ }
  function selectTeamForTurn(segment:EditorSegment,teamId:string){
   const team=eligibleTeams().find(x=>x.teamId===teamId);
   if(!team)return;
@@ -186,6 +208,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   loading=true;render();
   try{
    view=await port.load();
+   stableChoices=null;
     // A new World week may activate signed renewals; discard stale contract IDs.
     roster.clear();
     matches=new Map();segments=new Map();
@@ -305,8 +328,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  async function loadStableChoices(){
   if(stableChoices!==null||stableChoicesLoading||!port.stableChoices)return;
   stableChoicesLoading=true;
-  try{stableChoices=await port.stableChoices();}
-  catch(e){error=errorText(e);stableChoices=[];}
+  try{
+   stableChoices=await port.stableChoices();
+   for(const stable of stableChoices)for(const member of stable.members??[]){
+    const old=roster.get(member.personId);
+    roster.set(member.personId,{...old,personId:member.personId,
+     name:member.name,contractId:member.contractId,
+     division:old?.division??null,available:true,reason:"AVAILABLE"});
+   }
+  }catch(e){error=errorText(e);stableChoices=[];}
   finally{stableChoicesLoading=false;render();}
  }
  function editSegment(s:EditorSegment,patch:Partial<EditorSegment>){
@@ -906,7 +936,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        segment.stableDecision:null,
       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
        (kind==="RESCUE"||kind==="TURN")?segment.actors.slice(0,2):segment.actors,
-      targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
+      targets:["CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
        []:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
         segment.targets.slice(0,1):segment.targets});
     };
@@ -1005,7 +1035,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const areas=Object.keys(ANGLE_LOCATION_AREAS).filter(area=>
       permitted.some(place=>angleLocationArea(place)===area)) as
        (keyof typeof ANGLE_LOCATION_AREAS)[];
-     controls.append(field(segment.kind==="VIDEO_PACKAGE"?"Footage area":"Area",
+     if(segment.kind==="VIDEO_PACKAGE"&&scene.location==="VIDEO_SCREEN")
+      controls.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
+       "Broadcast on the arena screens and television. Select the footage style under What."));
+     else controls.append(field("Area",
       selector(angleLocationArea(scene.location),
        areas.map(area=>[area,angleSceneLabel(area)]),
        value=>{
@@ -1013,7 +1046,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const first=permitted.find(place=>angleLocationArea(place)===area)!;
         editSegment(segment,{scene:{...scene,location:first}});
        },!mutable())));
-     controls.append(field("Exact location",selector(scene.location,
+     if(segment.kind!=="VIDEO_PACKAGE"||scene.location!=="VIDEO_SCREEN")
+      controls.append(field("Exact location",selector(scene.location,
       permitted.filter(place=>angleLocationArea(place)===
        angleLocationArea(scene.location)).map(place=>[place,angleSceneLabel(place)]),
       value=>editSegment(segment,{scene:{...scene,
@@ -1085,6 +1119,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
       role==="actors"?"Initiator / featured wrestler":
+       ["PROMO","INTERVIEW"].includes(segment.kind)?"Wrestler being discussed (optional)":
        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?
         "Target / victim":"Other person involved";
      section.append(el("h3","",heading));
@@ -1109,6 +1144,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
        (role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
         segment.targets.length>=1)));
+     // Existing 2v2/3v3 units are already available from the card projection.
+     // Faction members are looked up once, only if the user requests them.
+     const groupRole=role==="actors"?
+      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
+      !["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind);
+     if(groupRole){
+      const groups=[
+       ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),
+       ...(view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name]),
+       ...(stableChoices??[]).filter(t=>(t.members?.length??0)>0)
+        .map(t=>["stable:"+t.stableId,"Faction · "+t.name])
+      ];
+      if(groups.length)section.append(field("Cast a team, trio or faction",
+       selector("",[["","Choose a group"],...groups],v=>
+        castAngleGroup(segment,role,v),!mutable())));
+      if(stableChoices===null&&port.stableChoices)
+       section.append(button(stableChoicesLoading?"Loading factions…":
+        "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading));
+     }
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));
      body.append(section);

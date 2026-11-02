@@ -5,7 +5,8 @@ const labels:Readonly<Record<string,string>>={
  STATEMENT_OF_INTENT:"Statement of intent",BOAST:"Boast to the crowd",
  RALLY_FANS:"Rally the fans",AIR_GRIEVANCE:"Air a grievance",
  ISSUE_WARNING:"Issue a warning",PROMISE_VICTORY:"Promise victory",
- EXPLAIN_ACTIONS:"Explain recent actions",
+ EXPLAIN_ACTIONS:"Explain recent actions",CALL_OUT_RIVAL:"Call out a rival",
+ REVEAL_SECRET:"Reveal a secret",ADDRESS_ALLEGATION:"Address an allegation",
  BACKSTAGE:"Backstage",SIT_DOWN:"Sit-down",
  IN_RING:"In the ring",CAREER_STORY:"Career story",
  RIVALRY_PRESSURE:"Rivalry pressure",RECENT_FORM:"Recent form",
@@ -26,7 +27,7 @@ const labels:Readonly<Record<string,string>>={
  LEFT_OPEN:"No answer yet",BLINDSIDE:"Blindside strike",
  PREMEDITATED_AMBUSH:"Planned ambush",FACE_TO_FACE_ASSAULT:"Face-to-face assault",
  BEATDOWN:"Sustained beatdown",PULL_APART_BRAWL:"Pull-apart brawl",
- SURPRISE_RUN_IN:"Surprise run-in",TARGETED_BEATDOWN:"Focused beatdown",
+ SURPRISE_RUN_IN:"Surprise run-in",WEAPON_ASSAULT:"Weapon assault",
  GENERATE_HEAT:"Stoke hostility",BUILD_SYMPATHY:"Rally sympathy",
  ESCALATE_RIVALRY:"Escalate the feud",SIGNED:"Papers signed",
  REJECTED:"Signing rejected",BRAWL:"Signing erupts into a brawl",
@@ -41,6 +42,8 @@ const labels:Readonly<Record<string,string>>={
  VICTIM_FIGHTS_BACK:"Victim fights back",OFFICIALS_SEPARATE:"Officials separate them",
  DISTRACTION:"Distract the opponent",RINGSIDE_RUN_IN:"Rush the ring",
  REFEREE_DIVERSION:"Distract the referee",
+ BETRAY_PARTNER:"Betray a partner",SAVE_ENEMY:"Save an enemy",
+ ATTACK_ALLY:"Attack an ally",REFUSE_HELP:"Refuse to help an ally",
  PUBLIC_DECLARATION:"Public declaration",REJECT_OLD_SELF:"Reject their old persona",
  TAUNT_CROWD:"Turn on the crowd",NEW_ATTITUDE:"Show a changed attitude",
  CAREER_HIGHLIGHTS:"Career highlights",BACKSTAGE_FOOTAGE:"Behind-the-scenes footage",
@@ -71,7 +74,9 @@ export function creativeFields(kind:string):readonly {
    "Attack style":name==="presentation"&&kind==="VIDEO_PACKAGE"?
     "Footage style":name==="presentation"&&kind==="TURN"?
      "How the turn is shown":fieldNames[name]??name,options:values.map(value=>({
-   value,label:creativeLabel(value)
+   value,label:value==="BRAWL"&&kind==="INTERRUPTION"?
+   "The interruption erupts into a brawl":value==="BEATDOWN"&&kind==="STABLE_EXIT"?
+    "Expulsion ends in a beatdown":creativeLabel(value)
   }))
  }));
 }
