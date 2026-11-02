@@ -1026,6 +1026,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     if(segment.scene){
      const scene=segment.scene;
+     // Interview presentation follows its actual stage rather than exposing a
+     // second contradictory "Interview setting" picker under What.
+     const moveScene=(place:typeof scene.location)=>{
+      const beat=segment.creativeBeat;
+      const nextBeat=segment.kind==="INTERVIEW"&&beat?.kind==="INTERVIEW"?{
+       ...beat,format:(place==="IN_RING"?"IN_RING":
+        ["OFFICE","HOTEL_LOBBY"].includes(place)?"SIT_DOWN":"BACKSTAGE") as typeof beat.format
+      }:beat;
+      editSegment(segment,{scene:{...scene,location:place},creativeBeat:nextBeat});
+     };
      controls.append(el("h3","ppw-angle-workflow-title","3 · WHERE does it happen?"));
      // New scenes use appropriate places. Previously saved locations stay
      // available to edit; changing the angle type starts a fresh scene.
@@ -1044,14 +1054,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        value=>{
         const area=value as keyof typeof ANGLE_LOCATION_AREAS;
         const first=permitted.find(place=>angleLocationArea(place)===area)!;
-        editSegment(segment,{scene:{...scene,location:first}});
+        moveScene(first);
        },!mutable())));
      if(segment.kind!=="VIDEO_PACKAGE"||scene.location!=="VIDEO_SCREEN")
       controls.append(field("Exact location",selector(scene.location,
       permitted.filter(place=>angleLocationArea(place)===
        angleLocationArea(scene.location)).map(place=>[place,angleSceneLabel(place)]),
-      value=>editSegment(segment,{scene:{...scene,
-       location:value as typeof scene.location}}),!mutable())));
+      value=>moveScene(value as typeof scene.location),!mutable())));
      if(segment.kind==="ATTACK"||segment.kind==="POST_MATCH_ASSAULT"){
       controls.append(field("Attack intensity",selector(scene.intensity??"BEATDOWN",
        ANGLE_INTENSITIES.map(v=>[v,angleSceneLabel(v)]),

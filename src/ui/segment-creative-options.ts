@@ -69,7 +69,8 @@ export function creativeFields(kind:string):readonly {
 }[]{
  if(!supportsCreativeBeat(kind))return [];
  const fields=CREATIVE_BEAT_FIELDS[kind] as Record<string,readonly string[]>;
- return Object.entries(fields).map(([name,values])=>({
+ return Object.entries(fields).filter(([name])=>
+  kind!=="INTERVIEW"||name!=="format").map(([name,values])=>({
   name,label:name==="presentation"&&kind==="ATTACK"?
    "Attack style":name==="presentation"&&kind==="VIDEO_PACKAGE"?
     "Footage style":name==="presentation"&&kind==="TURN"?

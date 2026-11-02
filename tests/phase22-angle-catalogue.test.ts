@@ -51,3 +51,19 @@ test("new exit beatdown and surprise-betrayal direction are properly authored",(
  assert.ok(creativeFields("INTERRUPTION").some(f=>f.options.some(x=>
   x.value==="BRAWL"&&/interruption/i.test(x.label))));
 });
+
+test("specific on-screen betrayals and faction beatdowns require a real victim",()=>{
+ let turn=newEditorSegment("turn","TURN");
+ turn=addSegmentPerson(turn,"actors",{personId:"joe",contractId:"joe-deal"});
+ turn.creativeBeat={kind:"TURN",presentation:"BETRAY_PARTNER"};
+ assert.throws(()=>buildEditorSegment(turn),/Invalid authored segment/);
+ turn=addSegmentPerson(turn,"targets",{personId:"partner",contractId:"partner-deal"});
+ assert.ok(buildEditorSegment(turn).targetIds.includes("partner"));
+ let exit=newEditorSegment("exit","STABLE_EXIT");
+ exit=addSegmentPerson(exit,"actors",{personId:"leader",contractId:"leader-deal"});
+ exit.stableId="stable";
+ exit.creativeBeat={kind:"STABLE_EXIT",departure:"BEATDOWN"};
+ assert.throws(()=>buildEditorSegment(exit),/Invalid authored segment/);
+ exit=addSegmentPerson(exit,"targets",{personId:"member",contractId:"member-deal"});
+ assert.deepEqual(buildEditorSegment(exit).targetIds,["member"]);
+});
