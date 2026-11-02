@@ -66,7 +66,7 @@ test("specialist choices preserve original role and scripted-effect limits",()=>
 
  assert.ok(!angleLocationsFor("POST_MATCH_ASSAULT").includes("HOTEL_LOBBY"));
  assert.ok(angleLocationsFor("INTERVIEW").includes("INTERVIEW_AREA"));
- assert.ok(angleLocationsFor("VIDEO_PACKAGE").includes("PRODUCTION_AREA"));
+ assert.deepEqual(angleLocationsFor("VIDEO_PACKAGE"),["VIDEO_SCREEN"]);
  assert.ok(anglePurposesFor("STABLE_RECONCILIATION").includes("REPAIR_ALLIANCE"));
  assert.ok(isAngleScene({location:"IN_RING",visual:"NONE",purpose:"MAKE_STATEMENT"},"VIDEO_PACKAGE"));
 });

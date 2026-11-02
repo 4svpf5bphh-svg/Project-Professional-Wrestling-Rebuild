@@ -41,3 +41,18 @@ test("an invitation that occurs but is refused, or has no scripted answer, never
  assert.deepEqual(stableStoryFollowThrough({stables,roster,recent:[b]}),[]);
  assert.deepEqual(stableStoryFollowThrough({stables,roster,recent:[c]}),[]);
 });
+
+test("a certified expulsion unresolved by settlement keeps the actual victim as follow-through subject",()=>{
+ const pending=stableStoryFollowThrough({stables,roster,recent:[{
+  ...story("expel","STABLE_EXIT","HAPPENS",8,"a"),
+  story:{stableId:"one",stableDeparture:"BEATDOWN",
+   actorIds:["leader"],targetIds:["a"]}
+ }]});
+ assert.deepEqual(pending.map(x=>[x.personId,x.action,x.status]),[["a","REMOVE","READY"]]);
+ const neverMember=stableStoryFollowThrough({stables,roster,recent:[{
+  ...story("expel","STABLE_EXIT","HAPPENS",8,"b"),
+  story:{stableId:"one",stableDeparture:"EXPULSION_SCENE",
+   actorIds:["leader"],targetIds:["b"]}
+ }]});
+ assert.deepEqual(neverMember,[]);
+});

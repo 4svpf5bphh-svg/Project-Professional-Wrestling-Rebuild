@@ -6,6 +6,7 @@ export interface SegmentResult{
  slotId:string;position:number;kind:SegmentKind;outcome:SegmentOutcome;
  headline:string;summary:string;actorIds:readonly string[];targetIds:readonly string[];
  stableId?:string;stableDecision?:"ACCEPTED"|"REJECTED";
+ stableDeparture?:"WALKOUT"|"EXPULSION_SCENE"|"PUBLIC_DENUNCIATION"|"BEATDOWN";
 }
 /** Narrative is a deterministic presentation of the author's locked decision.
  * No random success, rejection, membership change or alignment change.
@@ -207,7 +208,9 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
   outcome:segment.outcome,headline:labels[segment.kind],summary,
   actorIds:[...segment.actorIds],targetIds:[...segment.targetIds],
   ...(segment.stableId?{stableId:segment.stableId}:{}),
-  ...(segment.stableDecision?{stableDecision:segment.stableDecision}:{})};
+  ...(segment.stableDecision?{stableDecision:segment.stableDecision}:{}),
+  ...(segment.creativeBeat?.kind==="STABLE_EXIT"?
+   {stableDeparture:segment.creativeBeat.departure}:{})};
 }
 export function describeShowSegments(
  segments:readonly AuthoredSegment[],names:ReadonlyMap<string,string>,

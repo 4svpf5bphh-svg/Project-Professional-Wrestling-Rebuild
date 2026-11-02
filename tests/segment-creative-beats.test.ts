@@ -10,7 +10,8 @@ test("specialist fields enforce original-main choices and exclusive kind",()=>{
   assert.ok(beat);
   assert.equal(isSegmentCreativeBeat(beat,kind),true);
   assert.ok(creativeSummary(beat));
-  assert.equal(creativeFields(kind).length,Object.keys(beat).length-1);
+  assert.equal(creativeFields(kind).length,Object.keys(beat).length-
+   (kind==="INTERVIEW"?2:1));
   assert.equal(isSegmentCreativeBeat({...beat,extra:"mystery"},kind),false);
   assert.equal(isSegmentCreativeBeat(beat,kind==="TURN"?"PROMO":"TURN"),false);
   for(const key of Object.keys(beat).filter(k=>k!=="kind"))

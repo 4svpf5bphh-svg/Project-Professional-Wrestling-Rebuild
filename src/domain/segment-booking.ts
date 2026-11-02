@@ -4,8 +4,8 @@ import type {AngleScene} from "./angle-scene.js";
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
- PROMO:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
- INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ PROMO:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
+ INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  CONFRONTATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  CHALLENGE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},

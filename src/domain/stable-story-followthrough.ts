@@ -31,10 +31,10 @@ export function stableStoryFollowThrough(input:{
   if(!event.story||typeof event.story!=="object"||Array.isArray(event.story))continue;
   const p=event.story as Record<string,unknown>;
   if(typeof p.stableId!=="string"||!stables.has(p.stableId))continue;
-  const beat=p.creativeBeat&&typeof p.creativeBeat==="object"&&!Array.isArray(p.creativeBeat)?
-   p.creativeBeat as Record<string,unknown>:null;
+  // Completed-show story_json is a certified summary, not the original
+  // booking payload. Preserve departure intent explicitly in that summary.
   const expelled=event.kind==="STABLE_EXIT"&&
-   ["EXPULSION_SCENE","BEATDOWN"].includes(String(beat?.departure));
+   ["EXPULSION_SCENE","BEATDOWN"].includes(String(p.stableDeparture));
   const who=event.kind==="STABLE_EXIT"&&!expelled?
    (Array.isArray(p.actorIds)&&p.actorIds.length?p.actorIds[0]:null):
    Array.isArray(p.targetIds)?p.targetIds[0]:null;
