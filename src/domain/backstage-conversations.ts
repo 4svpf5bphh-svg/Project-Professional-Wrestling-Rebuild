@@ -50,6 +50,7 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  observedAbsentWeeks?:number|null;observedLosses?:number|null;
  relevantTitle?:string|null;
  careerStage?:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null;
+ createdWeekIndex?:number|null;
 },requestId=""){
  // Pure, deterministic conversational inflection; never generate a new
  // message just because a wrestler thread is reopened.
@@ -171,8 +172,54 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
     "That shot at "+title+" wasn't enough. I want to work my way back.",
     "These are the years I need to make count. "+title+" is still on my mind."]
   }:{};
- if(careerVoices[kind])return careerVoices[kind]![voice]!;
- if(alternatives[kind])return alternatives[kind]![voice]!;
+ // An existing conversation must always reopen with exactly the same words.
+ // Only requests created from Year 1 Week 19 onwards use the wider voice bank.
+ const newConversation=Number.isSafeInteger(evidence?.createdWeekIndex)&&
+  evidence!.createdWeekIndex!>=18;
+ const extra:Partial<Record<BackstageKind,string[]>>={
+  CONTRACT:[
+   "I need to plan the next few months. Am I still part of this place?",
+   "I'd like a straight answer on my future before the clock runs out.",
+   "There's still work I want to do here. Can we talk proper terms?"],
+  MORALE:[
+   "I don't need every main event. I need to feel there's a plan for me.",
+   "I'm showing up every week, but I'm not feeling heard. What changes?",
+   "I can keep my head down, or we can actually talk about this."],
+  CREATIVE:[
+   "I've got a character the crowd hasn't seen yet. Give me a chance to pitch it.",
+   "Can I do something more interesting than stand there and nod?",
+   "Give me five minutes and a microphone. I want to earn that moment."],
+  PARTNERSHIP:[
+   "I know "+partner+" and I can put on a great match. That doesn't mean we're clicking backstage.",
+   "We can work professionally, but things with "+partner+" have become tense. Can you help?",
+   "It's not about splitting the team. It's about how "+partner+" and I work together."],
+  BOOKING_OMISSION:[
+   "I didn't sign up to become a permanent observer. Give me something useful.",
+   "If you're not using me, can you at least tell me what I'm working towards?",
+   "I'm fresh, I'm ready, and I'm watching everyone else get the call."],
+  LOSS_STREAK:[
+   "I can take a loss. I can't sell a story that goes nowhere every week.",
+   "Putting people over is one thing. Becoming everyone's warm-up act is another.",
+   "Give these defeats some meaning or the crowd will stop caring."],
+  ROLE_USAGE:[
+   "We agreed I'd be featured. I'm asking what that promise means now.",
+   "I'm delivering what I signed up for. Are we keeping our side of the deal?",
+   "I don't need a guaranteed win, but I do need the opportunity we discussed."],
+  MOMENTUM:[
+   "I'm not looking for a shortcut. I need something worth building on.",
+   "The reactions have cooled off. Can we give the crowd a reason to care?",
+   "Let me wrestle my way out of this slump."],
+  TITLE_AMBITION:[
+   "That title opportunity is still on my mind. What's my route back?",
+   "I can earn another chance. Just tell me what the climb looks like.",
+   "I'm not demanding a belt. I'm asking for a path to compete for it."]
+ };
+ const standard=careerVoices[kind]??alternatives[kind];
+ if(standard){
+  if(!newConversation)return standard[voice]!;
+  const expanded=[...standard,...(extra[kind]??[])];
+  return expanded[Math.abs(hash)%expanded.length]!;
+ }
  switch(kind){
   case "CONTRACT":return "My deal is nearly up. Can we talk about what happens next?";
   case "MORALE":return "I'm not happy with how things are going. I need to feel valued.";
