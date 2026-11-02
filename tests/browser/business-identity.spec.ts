@@ -124,6 +124,10 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
  expect(plan).toEqual({weeklyWageLimit:75000,showTalentLimit:150000,
   cashReserve:2000000});
  await expect(page.getByText("Your spending allocations are saved.")).toBeVisible();
+ await expect(page.getByRole("spinbutton",{name:"Weekly wrestler wages"})).toHaveValue("75000");
+ await expect(page.getByRole("spinbutton",{name:"Talent per show"})).toHaveValue("150000");
+ await expect(page.getByRole("spinbutton",{name:"Cash reserve"})).toHaveValue("2000000");
+ await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-finance-spending-plan.png",fullPage:true,animations:"disabled"});
  expect(methods).toEqual(["business","setSpendingPlan","business"]);
 });

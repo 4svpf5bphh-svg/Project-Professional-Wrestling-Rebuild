@@ -158,6 +158,15 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Finale"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Creative",exact:true})).toBeVisible();
+ for(const name of ["Creative","Finale","History"]){
+  const tab=page.getByRole("button",{name,exact:true});
+  await expect(tab).toBeVisible();
+  const clipped=await tab.evaluate(el=>el.scrollWidth>el.clientWidth+1);
+  expect(clipped,"Full "+name+" tab text must fit on iPhone").toBe(false);
+ }
+ const heading=page.getByRole("heading",{name:"Programmes"});
+ await expect(heading).toBeVisible();
+ expect(await heading.evaluate(el=>el.scrollWidth>el.clientWidth+1)).toBe(false);
  await page.getByRole("button",{name:"Manage Booker 2 vs Rival 2"}).click();
  await expect(page.locator(".ppw-programme-broadcast")).toContainText("Booker 2");
  await expect(page.locator(".ppw-programme-broadcast")).not.toContainText("Booker 1");

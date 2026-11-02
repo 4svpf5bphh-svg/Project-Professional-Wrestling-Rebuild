@@ -96,14 +96,29 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    weeklyGuarantees:view.weeklyGuarantees});}
   catch(e){error=e instanceof Error?e.message:"Invalid spending allocations";draw();return;}
   spendingBusy=true;error="";spendingNotice="";draw();
+  let accepted=false;
   try{
    const r=await port.setSpendingPlan({...plan,requestId:crypto.randomUUID(),
     expectedRevision:view.worldRevision}) as {status?:string};
    if(r.status==="STALE")throw new Error("The World changed. Review your limits again.");
-   spendingDraft=null;
-   await refresh();spendingNotice="Your spending allocations are saved.";
-  }catch(e){error=e instanceof Error?e.message:"Spending plan was not saved";}
-  finally{spendingBusy=false;draw();}
+   if(r.status!=="APPLIED"&&r.status!=="REPLAYED")
+    throw new Error("Spending plan was not confirmed. Please review before retrying.");
+   accepted=true;
+   // A confirmed save is not enough: read back the authoritative figures.
+   // Rendering must not re-create a draft from stale suggestions mid-refresh.
+   const latest=await port.load();
+   const saved=latest.spendingPlan;
+   if(!saved||saved.weeklyWageLimit!==plan.weeklyWageLimit||
+    saved.showTalentLimit!==plan.showTalentLimit||
+    saved.cashReserve!==plan.cashReserve)
+    throw new Error("The saved figures were not confirmed on refresh.");
+   view=latest;spendingDraft=null;error="";
+   spendingNotice="Your spending allocations are saved.";
+  }catch(e){
+   error=accepted?
+    "The server accepted your spending plan, but the refreshed values could not be verified. Reload Business before submitting again.":
+    e instanceof Error?e.message:"Spending plan was not saved";
+  }finally{spendingBusy=false;draw();}
  }
  function metric(caption:string,value:string,additional=""){
   const card=el("div","ppw-business-metric");
@@ -179,7 +194,6 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     showTalentLimit:Math.ceil(Math.max(1000,(view.shows[0]?.appearanceFees??0)*1.25)/1000)*1000,
     cashReserve:Math.ceil(Math.max(regularCosts*8,view.cash*0.2)/1000)*1000};
    const plan=spendingDraft??view.spendingPlan??suggestion;
-   spendingDraft={...plan};
    const budget=el("section","ppw-business-budget");
    budget.append(el("span","ppw-business-kicker","YOUR MONEY / YOUR RULES"),
     el("h2","","Set your spending limits"),

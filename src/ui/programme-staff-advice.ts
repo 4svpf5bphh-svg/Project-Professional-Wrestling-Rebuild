@@ -107,18 +107,18 @@ export function suggestProgrammeAdvice(p:ProgrammeAdviceEvidence):ProgrammeAdvic
    plan:"Delay another contest between "+a+" and "+b+" until the story gives the championship a fresh reason to be defended."});
  }else if(leading){
   options.push({choice:"PLAN_RETALIATION",label:"Give "+trailing+" an answer",
-   plan:leading+" is ahead "+p.sideAWins+"–"+p.sideBWins+" in certified matches. Let "+trailing+" respond with a credible, bookable challenge or character change."});
+   plan:leading+" leads "+p.sideAWins+"–"+p.sideBWins+". "+trailing+" can call out the winner or change their approach."});
   options.push({choice:"PURSUE_REMATCH",label:"Raise the cost of another loss",
-   plan:"A rematch between "+a+" and "+b+" needs stakes for the trailing side. Decide how another defeat would change the rivalry."});
+   plan:"Make the next "+a+" vs "+b+" match count. What would "+trailing+" risk in another defeat?"});
   options.push({choice:"LET_STAND",label:"Let the result mean something",
-   plan:"Keep "+leading+"'s advantage on the record. The other wrestler can pursue a different path before returning."});
+   plan:"Let "+leading+"'s advantage stand. "+trailing+" takes a different route before returning."});
  }else{
   options.push({choice:"PURSUE_REMATCH",label:"Break the deadlock",
-   plan:"Neither "+a+" nor "+b+" has control of the rivalry. A decisive match can change that, with a winner and finish you author."});
+   plan:"Break the stalemate with "+a+" vs "+b+". You decide who wins and how."});
   options.push({choice:"PLAN_RETALIATION",label:"Bring the personalities forward",
-   plan:"Explore what "+a+" and "+b+" disagree about, using an authored segment with a concrete outcome—not another generic face-off."});
+   plan:"Give "+a+" and "+b+" a specific grievance: an interview, accusation or scripted interruption."});
   options.push({choice:"LET_STAND",label:"Hold a bigger confrontation",
-   plan:"Let the unresolved issue simmer while "+a+" and "+b+" build their own momentum elsewhere."});
+   plan:"Keep "+a+" and "+b+" apart while the unresolved tension grows."});
  }
  return {...original,options};
 }

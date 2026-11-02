@@ -542,3 +542,24 @@ body>.ppw-card-edit-shade .ppw-match-style-fitness-row>span{
  background:#173a56;color:#a9efff;border-left:3px solid #c956d8}
 .ppw-angle-purpose-disclaimer{grid-column:1/-1;color:#bed4e0;
  font-size:11px;line-height:1.55}
+
+/* Phase 22 iPhone editing: scripted labels need the full available width.
+   The running-order cards stay compact and touch targets stay at least 44px. */
+body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field select{
+ width:100%;min-width:0;max-width:100%;font-size:16px!important;
+ text-overflow:ellipsis;line-height:1.3}
+@media(max-width:480px){
+ body>.ppw-card-edit-shade .ppw-angle-controls{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 9px}
+ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field{grid-column:1/-1}
+ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field:has(>select[aria-label="Creative direction"]),
+ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field:has(>select[aria-label="Angle type"]){
+  grid-column:auto}
+ body>.ppw-card-edit-shade .ppw-angle-workflow-title{
+  margin:10px 0 1px;padding:8px 10px;letter-spacing:.04em;font-size:12px}
+}
+@media(max-width:345px){
+ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field:has(>select[aria-label="Creative direction"]),
+ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field:has(>select[aria-label="Angle type"]){
+  grid-column:1/-1}
+}

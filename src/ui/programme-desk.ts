@@ -431,10 +431,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const sheet=element("div","ppw-programme-staff-note");
     sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
      element("h3","",note.headline),
-     element("p","",note.observation),
-     element("p","ppw-programme-staff-suggestion",
-      note.suggestion),
-     element("small","ppw-muted","From this rivalry's existing verified record. You control the booking."));
+     element("p","ppw-programme-staff-observation",note.observation));
+    const reasoning=document.createElement("details");
+    reasoning.className="ppw-programme-rationale";
+    reasoning.append(element("summary","","Why Creative suggests these"),
+     element("p","",note.suggestion));
+    sheet.append(reasoning);
     const ideas=element("div","ppw-programme-booking-ideas");
     for(const idea of note.options){
      const item=element("article","ppw-programme-booking-idea");
@@ -451,7 +453,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      }
      ideas.append(item);
     }
-    sheet.append(element("span","ppw-programme-eyebrow","POSSIBLE DIRECTIONS"),ideas);
+    sheet.append(element("span","ppw-programme-eyebrow","THREE DIFFERENT PATHS"),ideas);
     if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
     advice.append(sheet);
    }

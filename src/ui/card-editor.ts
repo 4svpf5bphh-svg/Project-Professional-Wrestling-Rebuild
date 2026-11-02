@@ -891,7 +891,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
     body.append(el("p","ppw-booking-hint",readiness.hint));
-    const controls=el("div","ppw-control-grid");
+    const controls=el("div","ppw-control-grid ppw-angle-controls");
     const setAngle=(kind:EditorSegment["kind"])=>{
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
       void loadStableChoices();

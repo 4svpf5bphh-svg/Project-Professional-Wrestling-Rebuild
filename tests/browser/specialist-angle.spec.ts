@@ -338,6 +338,12 @@ test("iPhone books a brutal premeditated ambush outside and reopens every sub-op
  await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
  await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
  await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await expect(dialog.getByLabel("Attack style")).toHaveValue("PREMEDITATED_AMBUSH");
+ await expect(dialog.getByLabel("Exact location")).toHaveValue("LOADING_BAY");
+ for(const label of ["Attack style","Exact location","Storytelling purpose"]){
+  const box=await dialog.getByLabel(label).boundingBox();
+  expect(box?.width??0,"Mobile "+label+" must have room for chosen text").toBeGreaterThan(190);
+ }
  await dialog.getByLabel("Attack style").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-attack-what.png",animations:"disabled"});
  await dialog.getByLabel("Storytelling purpose").scrollIntoViewIfNeeded();
