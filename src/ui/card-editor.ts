@@ -1158,9 +1158,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         segment.targets.length>=1)));
      // Existing 2v2/3v3 units are already available from the card projection.
      // Faction members are looked up once, only if the user requests them.
-     const groupRole=role==="actors"?
+     // Whole-unit shortcuts are for ensemble scenes, not individual
+     // membership commands: faction invitation/exit/reconciliation settle
+     // one authored wrestler per story beat.
+     const ensemble=!["STABLE_INVITATION","STABLE_EXIT",
+      "STABLE_RECONCILIATION"].includes(segment.kind);
+     const groupRole=ensemble&&(role==="actors"?
       SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
-      !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind);
+      !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind));
      if(groupRole){
       const groups=[
        ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),

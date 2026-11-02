@@ -244,10 +244,13 @@ export async function disbandStable(pool:TransactionPool,input:DisbandStableInpu
 export async function readActiveStableChoices(pool:TransactionPool,s:StableScope){
  return withSqlClient(pool,async tx=>{
   const auth=await controlledPromotion(tx,s);
-  const rows=await tx.query<{stable_id:string;name:string}>([
-   "SELECT stable_id,name FROM ppw_stables WHERE world_id=$1",
-   "AND promotion_id=$2 AND status='ACTIVE'",
-   "ORDER BY name,stable_id LIMIT 101"
+  const rows=await tx.query<{stable_id:string;name:string;active_count:number}>([
+   "SELECT s.stable_id,s.name,(SELECT count(*)::integer",
+   "FROM ppw_stable_memberships m WHERE m.world_id=s.world_id",
+   "AND m.promotion_id=s.promotion_id AND m.stable_id=s.stable_id",
+   "AND m.active) AS active_count FROM ppw_stables s WHERE s.world_id=$1",
+   "AND s.promotion_id=$2 AND s.status='ACTIVE'",
+   "ORDER BY s.name,s.stable_id LIMIT 101"
   ].join(" "),[s.worldId,s.promotionId]);
   if(rows.length>100)throw new Error("Too many active stables");
   if(!rows.length)return [];
@@ -271,7 +274,11 @@ export async function readActiveStableChoices(pool:TransactionPool,s:StableScope
   ].join(" "),[s.worldId,s.promotionId,rows.map(x=>x.stable_id),week]);
   if(members.length>1200)throw new Error("Too many faction appearances");
   return rows.map(x=>({stableId:x.stable_id,name:x.name,
-   members:members.filter(m=>m.stable_id===x.stable_id)
-    .map(m=>({personId:m.person_id,name:m.name,contractId:m.contract_id}))}));
+   // Never silently cast half a faction when a member lacks appearance rights.
+   members:(()=>{
+    const eligible=members.filter(m=>m.stable_id===x.stable_id);
+    return eligible.length===x.active_count?
+     eligible.map(m=>({personId:m.person_id,name:m.name,contractId:m.contract_id})):[];
+   })()}));
  });
 }
