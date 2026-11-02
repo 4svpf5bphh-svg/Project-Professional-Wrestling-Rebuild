@@ -936,11 +936,11 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
  await page.locator(".ppw-programme-booking-idea")
-  .filter({hasText:"Earn another match"})
+  .filter({hasText:"Raise the cost of another loss"})
   .getByRole("button",{name:"Choose direction"}).click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
  await page.locator(".ppw-programme-booking-idea")
-  .filter({hasText:"Let the result stand"})
+  .filter({hasText:"Let the result mean something"})
   .getByRole("button",{name:"Choose direction"}).click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);

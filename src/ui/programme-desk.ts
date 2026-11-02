@@ -438,11 +438,21 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      element("h3","",note.headline),
      element("p","ppw-programme-staff-observation",note.observation));
     const ideas=element("div","ppw-programme-booking-ideas");
-    const paths=[
-     {choice:"PURSUE_REMATCH" as const,label:"Earn another match",plan:"Book a rematch when the rivalry gives it meaning."},
-     {choice:"PLAN_RETALIATION" as const,label:"Escalate the issue",plan:"Book a real confrontation or retaliation."},
-     {choice:"LET_STAND" as const,label:"Let the result stand",plan:"Move forward without promising a rematch."}
-    ];
+    // Independently derive the possible branches from the verified story,
+    // not the selected creative response. Saving one direction cannot mutate
+    // the other option labels or their explanations.
+    const paths=suggestProgrammeAdvice({
+     heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
+     matchCount:p.matchCount,segmentCount:p.segmentCount,
+     sideAWins:p.sideAWins,sideBWins:p.sideBWins,
+     championshipId:p.championshipId,
+     sideAName:p.sideA.map(x=>x.name).join(" & "),
+     sideBName:p.sideB.map(x=>x.name).join(" & "),
+     direction:null,directionStatus:"NONE",
+     recentKind:latest?.kind==="MATCH"?"MATCH":
+      latest?.kind==="SEGMENT"?"SEGMENT":null,
+     recentWinnerSide:latestMatch?.winnerSide??null
+    }).options;
     for(const idea of paths){
      const item=element("article","ppw-programme-booking-idea");
      item.append(element("strong","",idea.label),element("p","",idea.plan));

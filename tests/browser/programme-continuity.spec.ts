@@ -58,7 +58,7 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText("Escalate the issue")).toBeVisible();
+ await expect(page.getByText(/Give Matt Riddle an answer/)).toBeVisible();
  await expect(page.getByText(/An answer is still due/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
