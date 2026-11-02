@@ -86,7 +86,8 @@ export async function readWrestlerDirectory(
    seed:string|number;can_edit:boolean;
     cash:string;weekly_media_income:string|null;weekly_sponsor_income:string|null;
     weekly_fixed_overhead:string|null;active_guarantees:string;staff_payroll:string;
-    plan_wage_limit:string|null;plan_cash_reserve:string|null}>(`
+    plan_wage_limit:string|null;plan_cash_reserve:string|null;
+    has_talent_manager:boolean}>(`
    SELECT w.year,w.week,w.revision,w.seed,
     owner.cash::text,owner.weekly_media_income::text,owner.weekly_sponsor_income::text,
     owner.weekly_fixed_overhead::text,
@@ -102,6 +103,12 @@ export async function readWrestlerDirectory(
       AND employee.expires_week_index>=(w.year-1)*52+w.week-1) AS staff_payroll,
     plan.weekly_wage_limit::text AS plan_wage_limit,
     plan.cash_reserve::text AS plan_cash_reserve,
+    EXISTS(SELECT 1 FROM ppw_staff_employments adviser
+     WHERE adviser.world_id=w.world_id AND adviser.promotion_id=owner.promotion_id
+     AND adviser.role='TALENT_MANAGER' AND adviser.status='ACTIVE'
+     AND adviser.start_week_index<=(w.year-1)*52+w.week-1
+     AND adviser.expires_week_index>=(w.year-1)*52+w.week-1)
+     AS has_talent_manager,
     (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
@@ -227,6 +234,7 @@ export async function readWrestlerDirectory(
    currentWeekIndex:now,worldRevision:Number(auth[0]!.revision),
    canEdit:auth[0]!.can_edit,view:f.view,offset:f.offset,
    offerBudget:f.view==="MARKET"?{
+    hasTalentManager:auth[0]!.has_talent_manager,
     cash:Number(auth[0]!.cash),
     weeklyIncome:auth[0]!.weekly_media_income===null||
      auth[0]!.weekly_sponsor_income===null?null:

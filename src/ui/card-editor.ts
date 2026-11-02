@@ -35,6 +35,8 @@ import {recommendProgrammeAngles} from "../domain/programme-angle-recommendation
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
+import {matchStaffNotes,angleStaffNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
+import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
@@ -137,6 +139,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let rivalryIdeasOpen=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
+ const openAdvisorNotes=new Set<string>();
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
  const mutable=()=>view?.canEdit===true&&!saving;
@@ -144,6 +147,43 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const matchLabel=(m:EditorMatch)=>bookedMatchHeadline(m,selectedName);
  const eligibleTeams=()=>view?.bookableTeams??[];
  const eligibleTrios=()=>view?.bookableTrios??[];
+ const team=()=>new Set<StaffRole>((view?.advisers??[]).map(x=>x.role as StaffRole));
+ const advisorPeople=():AdvisorPerson[]=>[...roster.values()].map(x=>({
+  personId:x.personId,name:x.name??x.personId,inRingQuality:x.inRingQuality,
+  matchCraft:x.matchCraft,presentation:x.presentation,stamina:x.stamina,
+  safety:x.safety,fatigue:x.fatigue,wear:x.wear
+ }));
+ function slotNotes(slotId:string):StaffNote[]{
+  const match=matches.get(slotId),segment=segments.get(slotId);
+  if(match)return matchStaffNotes(match,advisorPeople(),team());
+  if(!segment)return [];
+  const cast=view?.programmes.find(p=>p.programmeId===segment.programmeId)?.cast??[];
+  return angleStaffNotes(segment,advisorPeople(),team(),cast.map(p=>p.personId));
+ }
+ function advicePanel(slotId:string,notes:StaffNote[]){
+  const block=el("details","ppw-card-advisor-notes") as HTMLDetailsElement;
+  block.open=openAdvisorNotes.has(slotId);
+  block.ontoggle=()=>{if(block.open)openAdvisorNotes.add(slotId);
+   else openAdvisorNotes.delete(slotId);};
+  const urgent=notes.filter(x=>x.level==="WATCH").length;
+  block.dataset.level=urgent?"watch":"info";
+  block.append(el("summary","",urgent?
+   "Crew advice · "+urgent+" concern"+(urgent===1?"":"s"):
+   "Crew advice · "+notes.length+" note"+(notes.length===1?"":"s")));
+  const list=el("div","ppw-card-advisor-list");
+  for(const n of notes){
+   const row=el("div","ppw-card-advisor-row");
+   row.dataset.level=n.level;
+   row.append(el("span","ppw-card-advisor-role",
+    n.role==="HOUSE"?"HOUSE SAFETY":n.role.replaceAll("_"," ")),
+    el("strong","",n.title),el("p","",n.message));
+   list.append(row);
+  }
+  list.append(el("small","ppw-muted",
+   "Based on known roster condition and your draft. Not a guaranteed result or an instruction to change the card."));
+  block.append(list);return block;
+ }
+
  function selectTrioForMatch(match:EditorMatch,side:number,trioId:string){
   const trio=eligibleTrios().find(t=>t.trioId===trioId);
   if(!trio||match.format!=="TRIOS")return;
@@ -570,6 +610,29 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    el("span","",castReady+" / "+order.length+" ready to book"),
    el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
   root.append(summary);
+  // One optional crew checklist for the card; no floating controls or extra RPC.
+  const allNotes=order.flatMap(id=>slotNotes(id).map(n=>({id,n})));
+  if(allNotes.length){
+   const compact=el("details","ppw-card-crew-strip") as HTMLDetailsElement;
+   compact.open=openAdvisorNotes.has("overview");
+   compact.ontoggle=()=>{if(compact.open)openAdvisorNotes.add("overview");
+    else openAdvisorNotes.delete("overview");};
+   const urgent=allNotes.filter(x=>x.n.level==="WATCH").length;
+   compact.append(el("summary","",
+    urgent?"Your crew spotted "+urgent+" booking concern"+(urgent===1?"":"s"):
+     "Crew check · "+allNotes.length+" available notes"));
+   const content=el("div","ppw-card-crew-list");
+   for(const item of allNotes.filter(x=>x.n.level==="WATCH").slice(0,5)){
+    const slot=order.indexOf(item.id)+1;
+    content.append(button("Slot "+slot+" · "+item.n.title,()=>{
+     expanded=item.id;openAdvisorNotes.add(item.id);render();
+    }));
+   }
+   if(!urgent)content.append(el("p","ppw-muted",
+    "No urgent concerns from available staff. Open a match or angle for their notes."));
+   compact.append(content);root.append(compact);
+  }
+
   const concerns=view.creativeConcerns??[];
   if(concerns.length){
    const desk=el("section","ppw-card-creative");
@@ -1157,6 +1220,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
       "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
 
+    const angleNotes=slotNotes(slotId);
+    if(angleNotes.length)body.append(advicePanel(slotId,angleNotes));
     body.append(el("h3","ppw-angle-workflow-title","1 · Who is involved?"));
     for(const role of ["actors","targets"] as const){
      if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
@@ -1233,6 +1298,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
+    const matchNotes=slotNotes(slotId);
+    if(matchNotes.length)body.append(advicePanel(slotId,matchNotes));
     if(m.tournamentId){
      const bracket=view.tournamentBouts?.find(b=>
       b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);

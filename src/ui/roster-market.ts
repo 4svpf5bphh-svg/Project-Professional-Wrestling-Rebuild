@@ -5,6 +5,8 @@ import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import type {StaffRole} from "../domain/world-staff.js";
 export type WrestlerDirectoryData=Awaited<ReturnType<typeof readWrestlerDirectory>>;
 export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
@@ -138,6 +140,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const fields=el("div","ppw-directory-offer-fields");
    const quote=el("p","ppw-directory-muted ppw-directory-offer-quote");
    const affordability=el("section","ppw-directory-affordability");
+   const adviser=el("details","ppw-directory-adviser") as HTMLDetailsElement;
+   adviser.append(el("summary","","Talent Manager · contract advice"));
+   const adviserContents=el("div","ppw-directory-adviser-content");
+   adviser.append(adviserContents);
    const updateQuote=()=>{
     const weeks=draft.family==="ONE_OFF"?1:draft.weeks;
     const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
@@ -184,6 +190,29 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      }else affordability.dataset.risk="false";
      affordability.append(el("small","ppw-directory-muted",
       "Before ticket sales, show costs and other variable liabilities. Approval and negotiated terms remain uncertain."));
+     adviserContents.replaceChildren();
+     if(company.hasTalentManager){
+      const messages=contractStaffNotes({
+       weeklyGuarantee:guarantee,weeks,appearanceFee:appearance,dates,
+       signingBonus:draft.bonus,cash:company.cash,cashReserve:company.cashReserve,
+       weeklyGuarantees:company.weeklyGuarantees,
+       wageLimit:company.weeklyWageLimit,recurringMargin:baseline
+      },new Set<StaffRole>(["TALENT_MANAGER"]));
+      const concerns=messages.filter(x=>x.level==="WATCH").length;
+      adviser.firstElementChild!.textContent=concerns?
+       "Talent Manager · "+concerns+" concern"+(concerns===1?"":"s"):
+       "Talent Manager · offer advice";
+      for(const m of messages){
+       const item=el("div","ppw-directory-adviser-note");
+       item.dataset.level=m.level;
+       item.append(el("strong","",m.title),el("p","",m.message));
+       adviserContents.append(item);
+      }
+     }else{
+      adviser.firstElementChild!.textContent="Your finance checklist";
+      adviserContents.append(el("p","ppw-directory-muted",
+       "This is a projection of current costs. Hire a Talent Manager to get additional contract guidance and renewal support."));
+     }
     }
    };
    updateQuote();
@@ -198,7 +227,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  editor.append(fields,quote,affordability);
+  editor.append(fields,quote,affordability,adviser);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));

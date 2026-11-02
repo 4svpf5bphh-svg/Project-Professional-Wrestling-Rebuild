@@ -162,3 +162,16 @@
 @media(max-width:375px){.ppw-directory-affordability-row{
  grid-template-columns:1fr;gap:2px}
  .ppw-directory-affordability-row>strong{text-align:left}}
+
+/* Talent Manager sits beside the actual offer, not in a second staff screen. */
+.ppw-directory-adviser{border:1px solid #496984;background:#14263c;
+ border-radius:12px;margin:12px 0;overflow:hidden;color:#dbeaf3}
+.ppw-directory-adviser>summary{padding:12px 13px;font-weight:800;font-size:13px;
+ color:#ffe0a0;cursor:pointer}
+.ppw-directory-adviser>summary:focus-visible{outline:2px solid #9adbe9;outline-offset:-3px}
+.ppw-directory-adviser-content{padding:0 12px 12px;display:grid;gap:8px}
+.ppw-directory-adviser-note{border-left:3px solid #77d1bb;background:#102032;
+ border-radius:7px;padding:9px 11px;min-width:0}
+.ppw-directory-adviser-note[data-level="WATCH"]{border-color:#ffa95b}
+.ppw-directory-adviser-note strong{font-size:13px;color:#ffe9bb}
+.ppw-directory-adviser-note p{font-size:12px;line-height:1.45;margin:4px 0 0;color:#d5e3eb}

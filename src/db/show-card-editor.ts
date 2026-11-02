@@ -43,6 +43,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean;within_window:boolean;broadcast_package:string|null;
+ advisers?:{role:string;staffId:string}[];
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
@@ -72,6 +73,13 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
    "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
+   ...(includeTournament?[
+    "COALESCE((SELECT jsonb_agg(jsonb_build_object('role',e.role,'staffId',e.staff_id)",
+    "ORDER BY e.role) FROM ppw_staff_employments e",
+    "WHERE e.world_id=d.world_id AND e.promotion_id=d.promotion_id",
+    "AND e.status='ACTIVE' AND e.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,"
+   ]:[]),
    ...(includeTournament?[`
    (SELECT coalesce(jsonb_agg(jsonb_build_object(
     'tournamentId',bookable.tournament_id,
@@ -333,6 +341,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    teamId:t.unit_id,name:t.name,members:t.members})),
    bookableTrios:bookableTrios.map(t=>({
     trioId:t.unit_id,name:t.name,members:t.members})),
+   advisers:show.advisers??[],
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),

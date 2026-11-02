@@ -214,6 +214,18 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    contract.append(el("p","ppw-profile-muted",
     "Creative control · "+wrestlerLabel(c.creativeControl)+
     " · Weekly guarantee $"+Number(c.weeklyGuarantee??0).toLocaleString("en-GB")));
+   // Signed now does not imply eligibility on a future card.
+   // Bookers need the actual last World week, especially for purchased dates.
+   if(c.expiresWeekIndex-view.currentWeekIndex<=3){
+    const finalYear=Math.floor(c.expiresWeekIndex/52)+1;
+    const finalWeek=c.expiresWeekIndex%52+1;
+    contract.append(el("p","ppw-profile-contract-expiry",
+     "Your agreement covers shows through Year "+finalYear+" Week "+finalWeek+
+     ". A card after this week requires a new contract"+
+     (c.remainingDates!==null&&c.remainingDates>0?
+      "; "+c.remainingDates+" unused appearance dates do not extend the agreement.":".")
+    ));
+   }
    if(view.onYourRoster&&port.openContracts)contract.append(button(
     "Manage contract",()=>port.openContracts?.()));
   }else contract.append(el("p","ppw-profile-muted",
