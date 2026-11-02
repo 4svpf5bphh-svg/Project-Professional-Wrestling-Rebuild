@@ -42,10 +42,6 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
    notes.push(note("ROAD_AGENT","WATCH","Protect the match structure",
     craftConcern.map(p=>p.name).join(", ")+
     " may need help carrying a long, intricate bout. A shorter or simpler structure is worth considering."));
-  if(match.format==="SINGLES"&&cast.length===2)
-   notes.push(note("ROAD_AGENT","INFO","Chemistry is not guaranteed",
-    "Different ring skills can complement each other. Actual chemistry must come from "+
-    "recorded work together; skill ratings alone cannot prove they will click."));
  }
  if(staffed.has("MEDICAL")&&poorCondition.length)
   notes.push(note("MEDICAL","WATCH","Watch cumulative wear",

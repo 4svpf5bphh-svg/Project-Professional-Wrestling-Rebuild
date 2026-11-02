@@ -36,8 +36,8 @@ test("do not invent chemistry, injuries or hired advisers from missing data",()=
  assert.deepEqual(noCrew,[]);
  const hired=matchStaffNotes(match,[{personId:"a",name:"One"},
   {personId:"b",name:"Two"}],new Set<StaffRole>(["ROAD_AGENT"]));
- assert.ok(hired.every(x=>!x.message.toLowerCase().includes("bad chemistry")));
- assert.ok(hired.some(x=>x.message.includes("cannot prove")));
+ assert.deepEqual(hired,[],
+  "Without trustworthy evidence, a road agent does not manufacture chemistry commentary");
 });
 
 test("creative checks that a chapter involves at least one actual storyline wrestler",()=>{
