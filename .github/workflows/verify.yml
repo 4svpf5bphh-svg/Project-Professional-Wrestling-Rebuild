@@ -563,6 +563,12 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0128_certified_broadcast_audience.sql
+      - name: Verify audience migration is retry-safe before release
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0128_certified_broadcast_audience.sql
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -tAc "SELECT CASE WHEN count(*)=1 THEN 1 ELSE 1/0 END FROM pg_constraint WHERE conrelid='public.ppw_show_economics'::regclass AND conname='ppw_audience_values_valid'"
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
