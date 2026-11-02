@@ -432,29 +432,25 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
      element("h3","",note.headline),
      element("p","ppw-programme-staff-observation",note.observation));
-    const reasoning=document.createElement("details");
-    reasoning.className="ppw-programme-rationale";
-    reasoning.append(element("summary","","Why Creative suggests these"),
-     element("p","",note.suggestion));
-    sheet.append(reasoning);
     const ideas=element("div","ppw-programme-booking-ideas");
-    for(const idea of note.options){
+    const paths=[
+     {choice:"PURSUE_REMATCH" as const,label:"Earn another match",plan:"Book a rematch when the rivalry gives it meaning."},
+     {choice:"PLAN_RETALIATION" as const,label:"Escalate the issue",plan:"Book a real confrontation or retaliation."},
+     {choice:"LET_STAND" as const,label:"Let the result stand",plan:"Move forward without promising a rematch."}
+    ];
+    for(const idea of paths){
      const item=element("article","ppw-programme-booking-idea");
      item.append(element("strong","",idea.label),element("p","",idea.plan));
      if(latestMatch&&view.canEdit){
-      const active=p.latestFollowUp?.choice===idea.choice&&
-       p.latestFollowUp.showId===latestMatch.showId&&
-       p.latestFollowUp.slotId===latestMatch.slotId;
-      const choose=button(active?"Direction recorded":"Choose this direction",
-       ()=>void saveDirection(p.programmeId,latestMatch.showId,
-        latestMatch.slotId,idea.choice),working||active);
-      choose.setAttribute("aria-pressed",String(active));
-      item.append(choose);
+      const active=p.latestFollowUp?.choice===idea.choice&&p.latestFollowUp?.showId===latestMatch.showId&&p.latestFollowUp?.slotId===latestMatch.slotId;
+      const choose=button(active?"Direction recorded":"Choose direction",()=>void saveDirection(p.programmeId,latestMatch.showId,latestMatch.slotId,idea.choice),working||active);
+      choose.setAttribute("aria-pressed",String(active));item.append(choose);
      }
      ideas.append(item);
     }
-    sheet.append(element("span","ppw-programme-eyebrow","THREE DIFFERENT PATHS"),ideas);
-    if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
+    sheet.append(element("span","ppw-programme-eyebrow","OPTIONAL NEXT CHAPTER"),ideas);
+    sheet.append(element("small","ppw-muted","Your intention, not an automatic booking. The choices stay stable after saving."));
+    if(port.openPlanner)sheet.append(button("Book the next chapter →",port.openPlanner));
     advice.append(sheet);
    }
    creativeLane.append(advice);
@@ -672,8 +668,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      repetition:p.repetition,matchCount:p.matchCount,
      segmentCount:p.segmentCount,finaleCompleted:p.finale?.resolvedWeekIndex!=null,
      finaleCrowd:p.finale?.resolvedCrowdResponse??null});
-    archive.append(element("div","ppw-programme-feud-review",
-     "FEUD REVIEW · "+rating.grade+" · "+rating.verdict));
+    const stars=Math.max(0,Math.min(5,Math.round(rating.score/20)));
+    const review=element("div","ppw-programme-feud-review");
+    const graphic=element("strong","ppw-programme-feud-stars","★".repeat(stars)+"☆".repeat(5-stars));
+    graphic.setAttribute("aria-label",stars+" out of five stars");
+    review.append(graphic,element("span","",stars+"/5 · Grade "+rating.grade),element("small","",rating.verdict));
+    archive.append(review);
     if((p.wrestlerChanges?.length??0)>0){
      const impact=element("div","ppw-programme-impact");
      for(const person of p.wrestlerChanges){

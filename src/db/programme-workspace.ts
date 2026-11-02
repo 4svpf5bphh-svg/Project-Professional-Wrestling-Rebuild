@@ -150,7 +150,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   // workspace statement. No extra SQL read when opening a Programme.
   type Recent={programme_id:string;show_id:string;slot_id:string;
    kind:string;week_index:number;crowd_response:number;
-   winner_side:"A"|"B"|null};
+   winner_side:"A"|"B"|null;segment_kind:string|null;scene_location:string|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
    segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
@@ -166,13 +166,17 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   }>([
    "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
    "SELECT recent.programme_id,recent.show_id,recent.slot_id,recent.kind,",
-   "recent.week_index,recent.crowd_response,recent.winner_side",
+   "recent.week_index,recent.crowd_response,recent.winner_side,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->>'kind' ELSE NULL END AS segment_kind,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->'scene'->>'location' ELSE NULL END AS scene_location",
    "FROM unnest($3::text[]) AS target(programme_id)",
    "CROSS JOIN LATERAL (SELECT programme_id,show_id,slot_id,kind,",
    "week_index,crowd_response,winner_side",
    "FROM ppw_programme_resolved_activities",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=target.programme_id",
    "ORDER BY week_index DESC,show_id DESC,slot_id DESC LIMIT 5) recent",
+   "LEFT JOIN ppw_card_slots scene ON scene.world_id=$1 AND scene.draft_id=recent.show_id",
+   "AND scene.slot_id=recent.slot_id AND scene.kind='SEGMENT'",
    "ORDER BY recent.programme_id,recent.week_index DESC,",
    "recent.show_id DESC,recent.slot_id DESC LIMIT 501) activity",
    "UNION ALL",
@@ -249,7 +253,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     recentActivity:recent.filter(x=>x.programme_id===p.programme_id)
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
       kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response,
-      winnerSide:x.winner_side??null})),
+      winnerSide:x.winner_side??null,segmentKind:x.segment_kind??null,
+      sceneLocation:x.scene_location??null})),
     plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
      .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
       kind:x.kind,segmentKind:x.segment_kind,

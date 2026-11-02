@@ -296,3 +296,16 @@
  line-height:1.15!important;white-space:nowrap!important;
  overflow-wrap:normal!important;word-break:normal!important;
  text-transform:none!important}
+
+/* Phase 23: one clear creative decision, compact concluded-feud scorecard. */
+.ppw-programme-feud-review{display:grid;grid-template-columns:auto 1fr;align-items:center;
+ gap:2px 12px;margin:12px 0;padding:12px;background:#102e42;border:1px solid #6486a5;
+ border-radius:12px}
+.ppw-programme-feud-stars{font-size:clamp(18px,5vw,27px);line-height:1.2;
+ color:#f7d276;letter-spacing:1px;white-space:nowrap;grid-row:span 2}
+.ppw-programme-feud-review>span{font-size:16px;font-weight:850;color:#fff1d4}
+.ppw-programme-feud-review>small{font-size:12px;color:#c8ddef;line-height:1.4}
+.ppw-programme-booking-idea{min-width:0}
+.ppw-programme-booking-idea .ppw-programme-action[aria-pressed=true]{background:#246549;color:#d1ffea}
+@media(max-width:375px){.ppw-programme-feud-review{grid-template-columns:1fr}
+ .ppw-programme-feud-stars{grid-row:auto}}
