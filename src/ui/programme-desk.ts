@@ -683,7 +683,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      repetition:p.repetition,matchCount:p.matchCount,
      segmentCount:p.segmentCount,finaleCompleted:p.finale?.resolvedWeekIndex!=null,
      finaleCrowd:p.finale?.resolvedCrowdResponse??null});
-    const stars=Math.max(0,Math.min(5,Math.round(rating.score/20)));
+    const stars=Math.max(1,Math.min(5,Math.round(rating.score/20)));
     const review=element("div","ppw-programme-feud-review");
     const graphic=element("strong","ppw-programme-feud-stars","★".repeat(stars)+"☆".repeat(5-stars));
     graphic.setAttribute("aria-label",stars+" out of five stars");

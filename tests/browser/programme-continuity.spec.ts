@@ -79,6 +79,7 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await archive.locator("summary").click();
  await expect(archive.getByText("Samoa Joe 2 — 1 Matt Riddle")).toBeVisible();
  await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
+ await expect(archive.locator(".ppw-programme-feud-stars")).toHaveAttribute("aria-label",/out of five stars/);
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
  await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
 });
