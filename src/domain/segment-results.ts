@@ -182,6 +182,7 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
      beat.presentation==="PREMEDITATED_AMBUSH"?"The ambush had clearly been planned. ":
      beat.presentation==="FACE_TO_FACE_ASSAULT"?"The attack came face to face. ":
      beat.presentation==="SURPRISE_RUN_IN"?"A surprise run-in sparked the assault.":
+     beat.presentation==="TARGETED_BEATDOWN"?"The assailants singled out their victim for targeted punishment.":
      beat.presentation==="WEAPON_ASSAULT"?"A weapon was used in the assault.":
      "The beatdown was sustained.";break;
   }
