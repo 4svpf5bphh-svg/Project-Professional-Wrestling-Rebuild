@@ -116,7 +116,7 @@ test("interruption, rescue and post-match assault retain explicitly directed rol
   else scene=addSegmentPerson(scene,"actors",actor("extra"));
   scene=addSegmentPerson(scene,"targets",actor("victim"));
   if(kind==="INTERRUPTION")
-   scene=addSegmentPerson(scene,"targets",actor("extra"));
+   scene=addSegmentPerson(scene,"targets",actor("target-partner"));
   else assert.throws(()=>addSegmentPerson(scene,"targets",actor("extra")),/capacity/);
   if(kind==="POST_MATCH_ASSAULT"){
    assert.throws(()=>buildEditorSegment(scene),/Invalid authored segment/);
