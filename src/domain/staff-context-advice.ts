@@ -101,10 +101,13 @@ export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  if(room!==null&&room<0)notes.push(note("TALENT_MANAGER","WATCH",
   "This would exceed your wage plan",
   "Your guaranteed payroll would be above the limit you've set. "+
-  "Consider fewer weeks, smaller guarantees or adjusting the plan."));
+  "Consider a guarantee no higher than $"+Math.max(0,input.wageLimit!-input.weeklyGuarantees).toLocaleString("en-GB")+
+  " per week to stay within your current allowance. Acceptance is not guaranteed."));
  if(input.cashReserve!==null&&input.cash-input.signingBonus<input.cashReserve)
   notes.push(note("TALENT_MANAGER","WATCH","Signing bonus reaches your reserve",
-   "The immediate bonus would take your cash below your chosen safety buffer."));
+   "Keeping your existing reserve would mean a signing bonus of no more than $"+
+    Math.max(0,input.cash-input.cashReserve!).toLocaleString("en-GB")+
+    ". You can still choose different terms."));
  if(input.recurringMargin!==null&&input.recurringMargin-input.weeklyGuarantee<0)
   notes.push(note("TALENT_MANAGER","WATCH","Fixed costs exceed recurring income",
    "This is before ticket sales and variable show costs. The offer increases financial pressure."));

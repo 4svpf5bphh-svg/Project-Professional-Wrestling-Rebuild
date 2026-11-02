@@ -23,6 +23,7 @@ import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {creativeReviewsInTransaction} from "./match-creative-consent.js";
+import {worldStaff} from "../domain/world-staff.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
@@ -169,6 +170,7 @@ function boundedSlots(slots:readonly SlotRow[]){
 export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdentity){
  return withSqlClient(pool,async tx=>{
   const show=await readShowScope(tx,id,true);
+  const staffNames=new Map(worldStaff(show.seed).map(member=>[member.staffId,member.name]));
   const slots=boundedSlots(await tx.query<SlotRow>(
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
    " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
@@ -208,20 +210,20 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "LEFT JOIN ppw_card_slots scene ON scene.world_id=last.world_id",
    "AND scene.draft_id=last.show_id AND scene.slot_id=last.slot_id",
    "AND scene.kind='SEGMENT'",
-   "WHERE last.world_id=p.world_id AND last.promotion_id=p.promotion_id",
+   "WHERE last.world_id=$1 AND last.promotion_id=$2",
    "AND last.programme_id=p.programme_id",
    "ORDER BY last.week_index DESC,last.show_id DESC,last.slot_id DESC LIMIT 1)",
    "AS last_chapter,",
    "coalesce((SELECT jsonb_agg(DISTINCT jsonb_build_object('personId',chapter_cast.person_id,'name',person2.name))",
    "FROM (SELECT ref.ref_id AS person_id FROM ppw_programme_side_refs ref",
-   "WHERE ref.world_id=p.world_id AND ref.promotion_id=p.promotion_id",
+   "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
    "AND ref.programme_id=p.programme_id AND ref.ref_kind='PERSON'",
    "UNION ALL SELECT member.person_id FROM ppw_programme_side_refs ref",
    "JOIN ppw_tag_team_members member ON member.world_id=ref.world_id",
    "AND member.team_id=ref.ref_id AND member.active",
-   "WHERE ref.world_id=p.world_id AND ref.promotion_id=p.promotion_id",
+   "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
    "AND ref.programme_id=p.programme_id AND ref.ref_kind='TEAM') chapter_cast",
-   "JOIN ppw_people person2 ON person2.world_id=p.world_id",
+   "JOIN ppw_people person2 ON person2.world_id=$1",
    "AND person2.person_id=chapter_cast.person_id),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
    "ON r.world_id=p.world_id AND r.promotion_id=p.promotion_id",
@@ -341,7 +343,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    teamId:t.unit_id,name:t.name,members:t.members})),
    bookableTrios:bookableTrios.map(t=>({
     trioId:t.unit_id,name:t.name,members:t.members})),
-   advisers:show.advisers??[],
+   advisers:(show.advisers??[]).map(member=>({...member,
+    name:staffNames.get(member.staffId)??null})),
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),

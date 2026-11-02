@@ -174,8 +174,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   for(const n of notes){
    const row=el("div","ppw-card-advisor-row");
    row.dataset.level=n.level;
+   const colleague=view?.advisers?.find(member=>member.role===n.role);
    row.append(el("span","ppw-card-advisor-role",
-    n.role==="HOUSE"?"HOUSE SAFETY":n.role.replaceAll("_"," ")),
+    n.role==="HOUSE"?"HOUSE SAFETY":
+    (colleague?.name?colleague.name+" · ":"")+n.role.replaceAll("_"," ")),
     el("strong","",n.title),el("p","",n.message));
    list.append(row);
   }
