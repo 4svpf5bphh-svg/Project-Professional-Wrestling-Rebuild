@@ -1340,15 +1340,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),
      v=>setMatch(slotId,changeMatchStipulation(m,v as MatchStipulation)),!mutable())));
     const stip=m.stipulation??"STANDARD";
-    if(stip!=="STANDARD"){
+    const impact=stip==="STANDARD"?null:(()=>{
      const detail=MATCH_STIPULATIONS.find(x=>x.value===stip)!;
      const safety=stipulationInjuryRisk(stip);
      const risk=safety>=1.3?"HIGH":safety>=1.15?"ELEVATED":"MODERATE";
      const note=el("p","ppw-angle-guidance ppw-stipulation-impact",
       detail.summary+" · "+risk+" injury exposure"+
       " · Performance depends on wrestler suitability, fitness and match length. No automatic star bonus.");
-     controls.append(note);
-    }
+     return note;
+    })();
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
@@ -1386,6 +1386,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Minutes",numberField(m.plannedLengthMinutes,
      stipulationMinimumMinutes(m.stipulation??"STANDARD"),60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
+    if(impact)controls.append(impact);
     body.append(controls);
     if(m.format==="SINGLES"||m.format==="TAG"){
      const run=document.createElement("details");run.className="ppw-run-in";

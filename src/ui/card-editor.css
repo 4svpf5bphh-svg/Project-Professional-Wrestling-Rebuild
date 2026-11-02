@@ -581,3 +581,10 @@ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field select{
  .ppw-angle-controls .ppw-special-shop .ppw-special-shop-button{
   flex-basis:100%;max-height:none}
 }
+
+/* The risk brief belongs underneath the matched winner/intent,
+   stipulation/finish and championship/minutes pairs, not as a tall grid cell. */
+.ppw-control-grid>.ppw-stipulation-impact{
+ grid-column:1/-1;align-self:start;min-width:0;margin:0;
+ padding:10px 12px;line-height:1.5;border-radius:10px;
+ border:1px solid rgba(79,172,209,.24);background:rgba(15,53,77,.55)}

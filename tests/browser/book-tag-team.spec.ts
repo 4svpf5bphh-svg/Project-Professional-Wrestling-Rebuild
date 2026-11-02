@@ -164,6 +164,11 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await expect(dialog.getByLabel("Finish")).toHaveValue("MOST_FALLS");
  await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
  await expect(dialog).toContainText("Performance depends on wrestler suitability");
+ const selectBox=await dialog.getByLabel("Stipulation").boundingBox();
+ const noteBox=await dialog.locator(".ppw-stipulation-impact").boundingBox();
+ expect(selectBox).not.toBeNull();expect(noteBox).not.toBeNull();
+ expect(selectBox!.height).toBeLessThan(75);
+ expect(noteBox!.width).toBeGreaterThan(285);
  await dialog.getByLabel("Stipulation").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-iron-man-booking-390.png",
   animations:"disabled"});
