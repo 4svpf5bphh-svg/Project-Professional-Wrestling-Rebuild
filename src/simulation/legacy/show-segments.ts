@@ -77,7 +77,8 @@ export function validateAuthoredSegments(
     ["BETRAY_PARTNER","SAVE_ENEMY","ATTACK_ALLY","REFUSE_HELP"]
      .includes(s.creativeBeat.presentation)&&s.targetIds.length===0)||
    (s.kind==="STABLE_EXIT"&&s.creativeBeat?.kind==="STABLE_EXIT"&&
-    s.creativeBeat.departure==="BEATDOWN"&&s.targetIds.length===0)||
+    ["EXPULSION_SCENE","BEATDOWN"].includes(s.creativeBeat.departure)&&
+    s.targetIds.length===0)||
    (s.kind==="DEBUT"&&s.actorIds.length!==1)||
    (["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&s.targetIds.length===0))
    throw new Error("Invalid authored segment");

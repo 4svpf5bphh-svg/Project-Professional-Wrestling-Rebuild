@@ -49,7 +49,10 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  STABLE_INVITATION:`${subject} invites ${object} to join the stable${segment.stableDecision===
    "ACCEPTED"?", and the invitation is accepted":
    segment.stableDecision==="REJECTED"?", but the invitation is rejected":""}`,
- STABLE_EXIT:`${subject} leaves the stable`,
+ STABLE_EXIT:segment.creativeBeat?.kind==="STABLE_EXIT"&&
+  ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure)?
+   `${object} is expelled from the stable by ${subject}`:
+   `${subject} leaves the stable`,
  STABLE_RECONCILIATION:`${subject} attempts to reconcile with ${object}${segment.stableDecision===
    "ACCEPTED"?", and the reconciliation succeeds":
    segment.stableDecision==="REJECTED"?", but the offer is rejected":""}`};

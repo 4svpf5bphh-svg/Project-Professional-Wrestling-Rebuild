@@ -75,3 +75,16 @@ test("full faction and conflicting membership do not rewrite a resolved result",
   segment("STABLE_RECONCILIATION","HAPPENS","ACCEPTED")]),
  {joined:0,left:0,skipped:1});
 });
+
+test("an on-screen faction beatdown expels the named target, not the faction leader",async()=>{
+ const db=fake({members:[{stable_id:"stable",person_id:"leader"},
+  {stable_id:"stable",person_id:"prospect"}],count:2});
+ const base=segment("STABLE_EXIT","HAPPENS",undefined,"expulsion");
+ const physical={...base,segment:{...base.segment,
+  creativeBeat:{kind:"STABLE_EXIT" as const,departure:"BEATDOWN" as const}}};
+ const result=await settleCertifiedStableStories(db.tx,scope,[physical]);
+ assert.deepEqual(result,{joined:0,left:1,skipped:0});
+ const update=db.calls.findIndex(x=>x.includes("UPDATE ppw_stable_memberships"));
+ const moves=JSON.parse(db.params[update]![3] as string);
+ assert.equal(moves[0].personId,"prospect");
+});

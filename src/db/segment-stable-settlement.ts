@@ -19,7 +19,10 @@ export async function settleCertifiedStableStories(
   if(add&&segment.stableDecision!=="ACCEPTED")continue;
   // The leaving wrestler is the on-screen subject; optional targets
   // may be the former colleagues on the receiving end of a beatdown.
-  const personId=add?segment.targetIds[0]:segment.actorIds[0];
+  const expelled=segment.kind==="STABLE_EXIT"&&
+   segment.creativeBeat?.kind==="STABLE_EXIT"&&
+   ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure);
+  const personId=add||expelled?segment.targetIds[0]:segment.actorIds[0];
   if(!personId)continue;
   candidates.push({stableId:segment.stableId,personId,slotId:segment.slotId,
    kind:segment.kind,action:add?"ADD":"REMOVE"});

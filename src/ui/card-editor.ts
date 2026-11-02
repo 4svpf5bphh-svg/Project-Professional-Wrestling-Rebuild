@@ -1128,6 +1128,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
       role==="actors"?"Initiator / featured wrestler":
+       segment.kind==="STABLE_EXIT"&&segment.creativeBeat?.kind==="STABLE_EXIT"&&
+        ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure)?
+         "Member being expelled":
        ["PROMO","INTERVIEW"].includes(segment.kind)?"Wrestler being discussed (optional)":
        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?
         "Target / victim":"Other person involved";

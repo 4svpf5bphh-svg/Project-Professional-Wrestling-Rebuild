@@ -31,7 +31,11 @@ export function stableStoryFollowThrough(input:{
   if(!event.story||typeof event.story!=="object"||Array.isArray(event.story))continue;
   const p=event.story as Record<string,unknown>;
   if(typeof p.stableId!=="string"||!stables.has(p.stableId))continue;
-  const who=event.kind==="STABLE_EXIT"?
+  const beat=p.creativeBeat&&typeof p.creativeBeat==="object"&&!Array.isArray(p.creativeBeat)?
+   p.creativeBeat as Record<string,unknown>:null;
+  const expelled=event.kind==="STABLE_EXIT"&&
+   ["EXPULSION_SCENE","BEATDOWN"].includes(String(beat?.departure));
+  const who=event.kind==="STABLE_EXIT"&&!expelled?
    (Array.isArray(p.actorIds)&&p.actorIds.length?p.actorIds[0]:null):
    Array.isArray(p.targetIds)?p.targetIds[0]:null;
   if(typeof who!=="string"||!who)continue;
