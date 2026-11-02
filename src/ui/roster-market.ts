@@ -151,7 +151,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       money(appearance*dates)+" if all "+dates+" dates are used).")+
      " These are future liabilities, not charges for submitting the offer. "+
      (draft.family==="LIMITED_NON_EXCLUSIVE"?
-      (dates>weeks?"Warning: "+dates+" purchased dates cannot all fit inside "+weeks+" weeks. ":"")+
+      (dates>weeks?"To use every purchased date, you may need more than one eligible show in some weeks. ":"")+
       "Unused dates expire with the contract. ":"")+
      "Compare the offer with your wage allowance and cash reserve in Business → Finances.";
     affordability.replaceChildren();
