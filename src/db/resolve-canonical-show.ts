@@ -12,6 +12,7 @@ import {describeAuthoredSegment} from "../domain/segment-results.js";
 import {authoredConsequenceIntents} from "../domain/segment-consequences.js";
 import {settleCompletedProgrammeHistory} from "./programme-resolution-history.js";
 import {settleCanonicalAuthoredTurns} from "./segment-alignment-settlement.js";
+import {settleCertifiedStableStories} from "./segment-stable-settlement.js";
 import {assembleArchivedShowResolution}
  from "../simulation/assemble-archived-show-resolution.js";
 import {recordCompletedShowInTransaction}
@@ -80,6 +81,7 @@ export async function resolveCanonicalShow(
      slotId:p.slotId,executionQuality:p.score.executionQuality})),
    },receipt);
    await settleCanonicalAuthoredTurns(tx,input,segments);
+   await settleCertifiedStableStories(tx,input,segments);
    if(projection.titleBookings.length)
     await settleCanonicalSinglesTitleContests(tx,receipt,projection.titleBookings);
    if(projection.tagTitleBookings.length)

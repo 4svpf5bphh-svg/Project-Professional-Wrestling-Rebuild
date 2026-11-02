@@ -1,6 +1,6 @@
-/** Follow-through for actual completed faction angles.
- * Original PPW design: scripted exit/invitation/reconciliation does not
- * automatically edit stable membership. Online participation grants choice.
+/** Follow-through for legacy and blocked certified faction decisions.
+ * Successful recent angles now update membership in the resolver transaction.
+ * An unapplied historical/blocked decision stays visible for manual repair.
  */
 export interface StableStoryFact{
  showId:string;slotId:string;weekIndex:number;kind:string;outcome:string;
@@ -31,9 +31,12 @@ export function stableStoryFollowThrough(input:{
   if(!event.story||typeof event.story!=="object"||Array.isArray(event.story))continue;
   const p=event.story as Record<string,unknown>;
   if(typeof p.stableId!=="string"||!stables.has(p.stableId))continue;
-  const who=event.kind==="STABLE_EXIT"?
-   (Array.isArray(p.targetIds)&&p.targetIds.length?p.targetIds[0]:
-    Array.isArray(p.actorIds)?p.actorIds[0]:null):
+  // Completed-show story_json is a certified summary, not the original
+  // booking payload. Preserve departure intent explicitly in that summary.
+  const expelled=event.kind==="STABLE_EXIT"&&
+   ["EXPULSION_SCENE","BEATDOWN"].includes(String(p.stableDeparture));
+  const who=event.kind==="STABLE_EXIT"&&!expelled?
+   (Array.isArray(p.actorIds)&&p.actorIds.length?p.actorIds[0]:null):
    Array.isArray(p.targetIds)?p.targetIds[0]:null;
   if(typeof who!=="string"||!who)continue;
   const key=JSON.stringify([p.stableId,who]);

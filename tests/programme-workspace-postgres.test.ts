@@ -36,6 +36,7 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
      [worldId,"contract-"+i+"-"+id,people[i]!,promotionId]);
    }
    await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'duo','The Unit','ACTIVE')",[worldId]);
+   await tx.query("UPDATE ppw_people SET popularity=44,momentum=8 WHERE world_id=$1 AND person_id=ANY($2::text[])",[worldId,people.slice(0,2)]);
    for(const x of people.slice(2))await tx.query(
     "INSERT INTO ppw_tag_team_members(world_id,team_id,person_id,active) VALUES($1,'duo',$2,true)",
     [worldId,x]);
@@ -78,6 +79,9 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   await assert.rejects(readProgrammeWorkspace(db.pool,intruder),/not accessible/);
   await assert.rejects(startProgramme(db.pool,{...intruder,requestId:"intruder",
    expectedRevision:2,sideA:[alice],sideB:[bob]}),/not accessible/);
+  // Simulate real career progress over the feud, before its conclusion.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET popularity=58,momentum=19 WHERE world_id=$1 AND person_id=ANY($2::text[])",[worldId,people.slice(0,2)]));
   const finish=await endProgramme(db.pool,{...scope,requestId:"end",
    expectedRevision:2,programmeId:one.result.programmeId});
   assert.equal(finish.status,"APPLIED");
@@ -86,6 +90,15 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
   view=await readProgrammeWorkspace(db.pool,scope);
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.status,"COMPLETED");
   assert.equal(view.programmes.find(p=>p.programmeId===one.result.programmeId)?.endedWeekIndex,0);
+  const frozen=view.programmes.find(p=>p.programmeId===one.result.programmeId)?.wrestlerChanges??[];
+  assert.equal(frozen.length,2);
+  assert.ok(frozen.every(x=>x.beforePopularity===44&&x.afterPopularity===58&&
+   x.beforeMomentum===8&&x.afterMomentum===19));
+  // New results earned after this feud ended do not rewrite its outcome.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET popularity=77,momentum=31 WHERE world_id=$1 AND person_id=ANY($2::text[])",[worldId,people.slice(0,2)]));
+  assert.deepEqual((await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===one.result.programmeId)?.wrestlerChanges,frozen);
   const meter=new MeasuredQuerySession("feud-desk-active-and-concluded");
   const scoped:TransactionPool={async connect(){
    const connection=await db.pool.connect();

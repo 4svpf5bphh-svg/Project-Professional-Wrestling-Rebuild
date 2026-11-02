@@ -7,7 +7,7 @@ import {isBookableMatchFinish} from "../simulation/legacy/match-finishes.js";
 import {normalizeMatchStyle} from "../simulation/legacy/match-style.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readMatchStipulation,permittedStipulationFinishes,
- defaultStipulationFinish,type MatchStipulation} from "./match-stipulations.js";
+ defaultStipulationFinish,stipulationMinimumMinutes,type MatchStipulation} from "./match-stipulations.js";
 
 const intents=new Set(["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
  "HIGH_RISK","STORY","PROTECTIVE","EPIC"]);
@@ -47,6 +47,9 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
  if(typeof intent!=="string"||!intents.has(intent))
   throw new Error("Invalid match intent");
  const stipulation=readMatchStipulation(raw.stipulation,format);
+ if(length<stipulationMinimumMinutes(stipulation))
+  throw new Error("This stipulation needs at least "+
+   stipulationMinimumMinutes(stipulation)+" minutes");
  if(layout.family==="TEAMS"&&layout.sides[0]!.participants.length>2&&
   !["STANDARD","HARDCORE"].includes(stipulation))
   throw new Error("Only standard or hardcore rules support large teams");

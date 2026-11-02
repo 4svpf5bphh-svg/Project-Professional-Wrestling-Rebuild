@@ -47,6 +47,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
  root.scrollTop=0;
  if(!root.classList.contains("ppw-profile-overlay"))window.scrollTo(0,0);
  let view:View|null=null,loading=false,saving=false,error="",success="";
+ let activeTab:"OVERVIEW"|"CAREER"|"CHARACTER"|"CONTRACT"="OVERVIEW";
  let career:CareerView|null=null,careerLoading=false,careerError="";
  const names=(moves:View["persona"]["signatureMoves"])=>moves.map(m=>m.name).join("\n");
  async function load(){
@@ -107,7 +108,36 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    root.append(credit);
   }
 
-  const attrs=section("Performance & standing");
+  // The opening identity card is always visible. Full details are tabs,
+  // not a ten-screen-long list beneath duplicated attributes.
+  const nav=el("nav","ppw-profile-tabs");
+  nav.setAttribute("aria-label","Wrestler dossier sections");
+  const switches:{key:typeof activeTab;button:HTMLButtonElement}[]=[];
+  const sections=(key:typeof activeTab,node:HTMLElement)=>{
+   node.dataset.profileTab=key;node.hidden=key!==activeTab;root.append(node);
+  };
+  for(const [key,label] of [
+   ["OVERVIEW","Overview"],["CAREER","Career"],
+   ["CHARACTER","Character"],["CONTRACT","Contract"]
+  ] as const){
+   const pick=button(label,()=>{
+    activeTab=key;
+    for(const section of root.querySelectorAll<HTMLElement>("[data-profile-tab]"))
+     section.hidden=section.dataset.profileTab!==key;
+    for(const sw of switches)
+     sw.button.setAttribute("aria-current",sw.key===key?"page":"false");
+    root.scrollTop=0;
+   });
+   pick.className="ppw-profile-tab";
+   pick.setAttribute("aria-current",key===activeTab?"page":"false");
+   switches.push({key,button:pick});nav.append(pick);
+  }
+  root.append(nav);
+  // The wrestler card already carries headline stats. Full attributes are
+  // available on demand instead of repeating them on a huge mobile page.
+  const attrs=document.createElement("details");
+  attrs.className="ppw-profile-section ppw-profile-attributes";
+  attrs.append(el("summary","","Full scouting attributes"));
   if(view.medicalWeeksRemaining!=null)
   root.append(el("p","ppw-profile-message",
    "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+
@@ -122,7 +152,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    ["Stamina",view.stamina],["Safety",view.safety],
    ["Morale",view.morale],["Fatigue",view.fatigue],["Wear",view.wear]
   ] as const)grid.append(stat(label,number));
-  attrs.append(grid);root.append(attrs);
+  attrs.append(grid);sections("OVERVIEW",attrs);
   const character=section("Character & repertoire",
    "Their character follows them between promotions. Any change needs the wrestler's approval.");
   character.append(el("p","ppw-profile-info",
@@ -170,7 +200,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
      "Editing is closed until next week."));
   if(view.onYourRoster&&port.openBackstage)character.append(button(
    "Discuss a gimmick change in Backstage",()=>port.openBackstage?.(personId)));
-  root.append(character);
+  sections("CHARACTER",character);
   const contract=section("Contract & availability");
   const ownContract=view.contracts.find(c=>c.isYours);
   if(ownContract){
@@ -194,7 +224,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     "Also appearing for · "+other.map(c=>c.promotion+" ("+
      wrestlerLabel(c.family)+")").join(" · ")));
   }
-  root.append(contract);
+  sections("CONTRACT",contract);
   const connections=section("Alliances & chemistry");
   const list=(title:string,values:string[])=>{
    const wrap=el("div","ppw-profile-affiliation");
@@ -206,7 +236,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   if(view.connections.length)
    connections.append(list("Working relationships",view.connections.map(r=>
     r.name+" · Trust "+fmt(r.professionalTrust)+" · Familiarity "+fmt(r.familiarity))));
-  root.append(connections);
+  sections("OVERVIEW",connections);
   const history=section("Career & character timeline");
   history.append(el("p","ppw-profile-info","Career stage · "+
    wrestlerLabel(view.careerStage)+" · "+
@@ -233,7 +263,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   }
   if(!view.history.length)history.append(el("p","ppw-profile-muted",
    "No earlier character changes on record."));
-  root.append(history);
+  sections("CAREER",history);
 
   // Career is consciously absent from the basic dossier response:
   // an explicit open triggers three indexed SQL reads once, not a load per card.
@@ -474,7 +504,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   drilldown.addEventListener("toggle",()=>{
    if(drilldown.open){if(!career&&!careerLoading)void loadCareer();else paintCareer();}
   });
-  root.append(drilldown);
+  sections("CAREER",drilldown);
  }
  void load();return {reload:load};
 }

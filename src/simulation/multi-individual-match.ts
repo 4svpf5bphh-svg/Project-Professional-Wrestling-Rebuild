@@ -8,6 +8,7 @@ import {scoreArchivedFieldBeforeInjuriesWithRng,type ScoredWrestler}
  from "./legacy/match-scoring.js";
 import type {MatchIntent} from "./legacy/types.js";
 import type {MatchFinish} from "./legacy/match-finishes.js";
+import type {MatchStipulation} from "../domain/match-stipulations.js";
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const round1=(n:number)=>Math.round(n*10)/10;
 const round2=(n:number)=>Math.round(n*100)/100;
@@ -17,6 +18,7 @@ export interface MultiIndividualInput{
  worldSeed:string;matchId:string;order:number;eventImportance:number;
  intent:MatchIntent;plannedFinish:MatchFinish;plannedLengthMinutes:number;
  injuryRateMultiplier:number;mediaReach:number;isMainEvent:boolean;
+ stipulation?:MatchStipulation;
 }
 export function simulateMultiIndividualMatch(input:MultiIndividualInput){
  const {layout}=input;
@@ -41,6 +43,7 @@ export function simulateMultiIndividualMatch(input:MultiIndividualInput){
   eventImportance:input.eventImportance,intent:input.intent,
   style:null,plannedFinish:layout.sides.length>4?"CLEAN_PIN":input.plannedFinish,
   plannedLengthMinutes:input.plannedLengthMinutes,chemistryModifier:0,people,
+  stipulation:input.stipulation,
  });
  const injuries: {personId:string;severity:"MINOR"|"MODERATE"|"MAJOR"|"SEVERE";
   weeksOut:number}[]=[];

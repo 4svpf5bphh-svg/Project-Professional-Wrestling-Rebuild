@@ -22,6 +22,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
    last_weekly_net:string|null;runway_weeks:number|null;
    financial_distress:string|null;guarantees:string;staff_payroll:string;
+   spending_plan:{weeklyWageLimit:number;showTalentLimit:number;cashReserve:number}|null;
    standing_prestige:number|null;standing_fan:number|null;
    standing_business:number|null;standing_talent:number|null;
    standing_year:number|null;
@@ -47,6 +48,10 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.talent_reputation AS standing_talent,
      standing.last_evaluated_year AS standing_year,
      financial.finance_event_count,financial.finance_categories,financial.finance_recent,
+     CASE WHEN plan.world_id IS NULL THEN NULL ELSE jsonb_build_object(
+      'weeklyWageLimit',plan.weekly_wage_limit::double precision,
+      'showTalentLimit',plan.show_talent_limit::double precision,
+      'cashReserve',plan.cash_reserve::double precision) END AS spending_plan,
      COALESCE((SELECT jsonb_agg(to_jsonb(agreement)) FROM (
       SELECT d.deal_id AS "dealId",d.kind,d.offer_code AS "offerCode",
        d.agreed_income::double precision AS "weeklyIncome",
@@ -76,6 +81,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     AND p.lifecycle='ACTIVE'
    LEFT JOIN ppw_promotion_standings standing
     ON standing.world_id=p.world_id AND standing.promotion_id=p.promotion_id
+   LEFT JOIN ppw_promotion_spending_plans plan
+    ON plan.world_id=p.world_id AND plan.promotion_id=p.promotion_id
    ${recentFinanceSql}
    WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
   if(rows.length!==1)throw new Error("Business access denied");
@@ -92,6 +99,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    gate_revenue:string;venue_cost:string;production_cost:string;
    travel_cost:string;appearance_fees:string;total_cost:string;
    net_result:string;incremental_cash:string;crowd_response:string|number;
+   audience_format:string|null;tv_household_rating:string|null;
+   estimated_viewers:string|null;ppv_buys:string|null;
    creative_workrate:number;creative_spectacle:number;
    creative_stars:number;creative_stories:number;
   }>(`
@@ -100,6 +109,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     e.venue_cost::text,e.production_cost::text,e.travel_cost::text,
     e.appearance_fees::text,e.total_cost::text,e.net_result::text,
     e.incremental_cash::text,cs.crowd_response,
+    e.audience_format,e.tv_household_rating::text,
+    e.estimated_viewers::text,e.ppv_buys::text,
     style.workrate AS creative_workrate,style.spectacle AS creative_spectacle,
     style.stars AS creative_stars,style.stories AS creative_stories
    FROM ppw_show_economics e JOIN ppw_completed_shows cs
@@ -198,6 +209,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     weeklyMedia+weeklySponsor-weeklyOverhead-guarantees-staffPayroll,
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
+   spendingPlan:w.spending_plan,
    commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
@@ -209,7 +221,14 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     gateRevenue:Number(s.gate_revenue),venueCost:Number(s.venue_cost),
     productionCost:Number(s.production_cost),travelCost:Number(s.travel_cost),
     appearanceFees:Number(s.appearance_fees),totalCost:Number(s.total_cost),
-    netResult:Number(s.net_result),incrementalCash:Number(s.incremental_cash)
+    netResult:Number(s.net_result),incrementalCash:Number(s.incremental_cash),
+    audience:s.audience_format==="TV"?{format:"TV" as const,
+     householdRating:s.tv_household_rating===null?null:Number(s.tv_household_rating),
+     estimatedViewers:s.estimated_viewers===null?null:Number(s.estimated_viewers),
+     ppvBuys:null}:
+     s.audience_format==="PPV"?{format:"PPV" as const,
+      householdRating:null,estimatedViewers:null,
+      ppvBuys:s.ppv_buys===null?null:Number(s.ppv_buys)}:null
    })),
    territories:territories.map(t=>({
     marketId:t.market_id,name:t.name,awareness:t.awareness,

@@ -430,3 +430,12 @@
 @media(max-width:380px){
  .ppw-results-event-poster .ppw-event-poster{min-height:215px;aspect-ratio:4/3}
 }
+
+/* Small certified broadcast reach figure, not another row of buttons. */
+.ppw-result-broadcast-audience{display:flex;flex-wrap:wrap;align-items:baseline;
+ gap:8px;max-width:100%;padding:9px 13px;margin:7px 0;
+ border-left:3px solid #81dce1;background:#102f40;border-radius:9px}
+.ppw-result-broadcast-audience strong{font-size:25px;color:#f5e7bd;line-height:1.1}
+.ppw-result-broadcast-audience small,.ppw-result-audience-label{
+ font-size:11px;color:#bed6e2}
+.ppw-result-audience-label{font-weight:850;letter-spacing:.1em}

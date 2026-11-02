@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {normalizeBookableMatch} from "../src/domain/bookable-match.js";
 import {compatibleStipulations,permittedStipulationFinishes,
  readMatchStipulation,stipulationScoringFinish,stipulationInjuryRisk,
+ stipulationExecutionFit,stipulationMinimumMinutes,
  isSpecialStipulationFinish} from "../src/domain/match-stipulations.js";
 import {verifyResolvedSinglesEvidence}
  from "../src/domain/verified-match-evidence.js";
@@ -19,7 +20,7 @@ const singles={
  plannedLengthMinutes:20,intent:"COMPETITIVE"
 };
 test("all stipulated match families reject incompatible formats and preserve old rules",()=>{
- assert.equal(compatibleStipulations("SINGLES").length,8);
+ assert.equal(compatibleStipulations("SINGLES").length,15);
  assert.deepEqual(compatibleStipulations("BATTLE_ROYAL"),["STANDARD"]);
  assert.deepEqual(compatibleStipulations("MULTI_TEAM"),["STANDARD"]);
  assert.equal(compatibleStipulations("TAG").includes("LAST_MAN_STANDING"),false);
@@ -82,4 +83,51 @@ test("special finishes are proxies for scoring but authoritative for evidence an
  assert.throws(()=>verifyResolvedSinglesEvidence({
   participants:["alpha","bravo"],scriptedWinner:"alpha",plannedFinish:"RETRIEVAL"
  },{actualWinner:"alpha",actualFinish:"CLEAN_PIN"}),/not supported/);
+});
+
+test("expanded gimmick matches have actual distinct winning conditions and length rules",()=>{
+ const sample=[
+  ["IRON_MAN","MOST_FALLS",30,"SINGLES"],
+  ["TWO_OUT_OF_THREE","SECOND_FALL",15,"TAG"],
+  ["FALLS_COUNT_ANYWHERE","CLEAN_PIN",3,"FOUR_WAY"],
+  ["I_QUIT","VERBAL_SURRENDER",10,"SINGLES"],
+  ["FIRST_BLOOD","FIRST_BLOOD",3,"SINGLES"],
+  ["BACKSTAGE_BRAWL","CLEAN_PIN",3,"TAG"],
+  ["CASKET","CASKET_CLOSE",3,"SINGLES"]
+ ] as const;
+ for(const [stip,finish,min,format] of sample){
+  assert.ok(compatibleStipulations(format).includes(stip));
+  assert.equal(stipulationMinimumMinutes(stip),min);
+  const booked=normalizeBookableMatch({...singles,stipulation:stip,
+   plannedLengthMinutes:Math.max(min,20),plannedFinish:finish});
+  assert.equal(booked.plannedFinish,finish);
+  assert.equal(booked.stipulation,stip);
+  assert.equal(booked.scriptedWinner,"alpha");
+ }
+ assert.throws(()=>normalizeBookableMatch({...singles,stipulation:"IRON_MAN",
+  plannedLengthMinutes:20,plannedFinish:"MOST_FALLS"}),/at least 30/);
+ assert.throws(()=>normalizeBookableMatch({...singles,stipulation:"TWO_OUT_OF_THREE",
+  plannedLengthMinutes:10,plannedFinish:"SECOND_FALL"}),/at least 15/);
+ assert.throws(()=>normalizeBookableMatch({...singles,stipulation:"I_QUIT",
+  plannedFinish:"CLEAN_PIN"}),/finish is not legal/);
+ for(const finish of ["MOST_FALLS","SECOND_FALL","FIRST_BLOOD"])
+  assert.equal(stipulationScoringFinish(finish),"CLEAN_PIN");
+ assert.equal(stipulationScoringFinish("VERBAL_SURRENDER"),"SUBMISSION");
+ assert.ok(stipulationInjuryRisk("BACKSTAGE_BRAWL")>
+  stipulationInjuryRisk("TWO_OUT_OF_THREE"));
+ assert.equal(readMatchStipulation("IRON_MAN","SINGLES"),"IRON_MAN");
+ assert.throws(()=>readMatchStipulation("FIRST_BLOOD","TRIPLE_THREAT"),/not permitted/);
+});
+test("gimmick upside is skill-dependent, not an unconditional star bonus",()=>{
+ const profile={inRing:86,craft:85,presentation:81,stamina:88,safety:88,
+  fatigue:8,length:35,intent:"TECHNICAL"};
+ const strong=stipulationExecutionFit("IRON_MAN",profile);
+ const weak=stipulationExecutionFit("IRON_MAN",{
+  ...profile,inRing:29,craft:27,stamina:31,fatigue:85});
+ assert.ok(strong>0);
+ assert.ok(weak<0);
+ assert.ok(strong>weak);
+ assert.equal(stipulationExecutionFit("STANDARD",profile),0);
+ assert.ok(stipulationExecutionFit("LADDER",profile)<=5);
+ assert.ok(stipulationExecutionFit("TLC",{...profile,stamina:35,fatigue:95})<strong);
 });

@@ -4,6 +4,7 @@
  */
 import type {MatchIntent,MatchStyleProfile} from "./types.js";
 import type {MatchFinish} from "./match-finishes.js";
+import {stipulationExecutionFit,type MatchStipulation} from "../../domain/match-stipulations.js";
 import {DeterministicRng,deterministicSeedFromText} from "./rng.js";
 import {evaluateMatchStyleExecution,type MatchStyleExecutionEvaluation,type MatchStyleSkillProfile} from "./match-style.js";
 type ScoringMatch={intent:MatchIntent;style?:MatchStyleProfile};
@@ -17,6 +18,8 @@ export interface ScoringInput {
   plannedFinish:MatchFinish;plannedLengthMinutes:number;
   /** The existing singles compatibility/familiarity modifier, NOT random noise. */
   chemistryModifier:number;
+  /** Optional: original standard matches keep their exact scoring and RNG. */
+  stipulation?:MatchStipulation;
   people:readonly [ScoredWrestler,ScoredWrestler];
 }
 export interface PreliminaryMatchScore {
@@ -159,6 +162,10 @@ export function scoreArchivedFieldBeforeInjuriesWithRng(
   const averageFatigue=sideAverage(p=>p.fatigue);
   const averageStar=sideAverage(p=>(p.popularity+p.recognition+p.momentum)/3);
   const chemistry=input.chemistryModifier;
+  const stipulationFit=stipulationExecutionFit(input.stipulation??"STANDARD",{
+   inRing:averageRing,craft:averageCraft,presentation:averagePresentation,
+   stamina:averageStamina,safety:averageSafety,fatigue:averageFatigue,
+   length:input.plannedLengthMinutes,intent:input.intent});
   const styleEvaluation=match.style===undefined?null:evaluateMatchStyleExecution(
     match.style,{
       inRingQuality:averageRing,matchCraft:averageCraft,
@@ -178,6 +185,7 @@ export function scoreArchivedFieldBeforeInjuriesWithRng(
         + averagePresentation * 0.08
         + 8
         + chemistry
+        + stipulationFit
         + intentBonus
         + finishExecution
         + staminaFit
@@ -193,6 +201,7 @@ export function scoreArchivedFieldBeforeInjuriesWithRng(
         + averageSafety * 0.03
         + 7
         + chemistry
+        + stipulationFit
         + styleEvaluation.realizedUpside
         - styleEvaluation.difficultyPenalty
         + finishExecution

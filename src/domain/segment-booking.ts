@@ -1,15 +1,17 @@
 import {validateAuthoredSegments,type AuthoredSegment,type SegmentKind,type VideoPurpose,type SegmentOutcome} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "./segment-creative-beats.js";
+import type {AngleScene} from "./angle-scene.js";
+import type {SpecialMomentSku} from "./special-moments.js";
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
- PROMO:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
- INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ PROMO:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
+ INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  CONFRONTATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  CHALLENGE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
- CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  ATTACK:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
- INTERRUPTION:{minActors:1,minTargets:1,maxActors:1,allowTargets:true,purposes:[]},
+ INTERRUPTION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  RESCUE:{minActors:2,minTargets:1,maxActors:2,allowTargets:true,purposes:[]},
  POST_MATCH_ASSAULT:{minActors:1,minTargets:1,maxActors:1,allowTargets:true,purposes:[]},
  TURN:{minActors:1,minTargets:0,maxActors:2,allowTargets:true,purposes:[]},
@@ -25,7 +27,8 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;durationMinutes?:number;videoPurpose?:VideoPurpose;
- creativeBeat?:SegmentCreativeBeat;sourceMatchSlotId?:string;
+ creativeBeat?:SegmentCreativeBeat;scene?:AngleScene;specialMoment?:SpecialMomentSku;
+ sourceMatchSlotId?:string;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";
 }

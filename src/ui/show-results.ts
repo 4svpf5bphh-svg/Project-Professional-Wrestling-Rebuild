@@ -38,7 +38,6 @@ import {shortResultColour} from "../domain/show-result-colour.js";
 import {broadcastShowPulse,broadcastTone,reviewCompletedEntry}
  from "../domain/show-broadcast-review.js";
 
-type ResultFilter="ALL"|"MATCH"|"SEGMENT";
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,x=>x.toUpperCase());
 function finishLabel(entry:ShowResultEntry):string{
@@ -184,6 +183,19 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
   node("span","ppw-result-score-label","CROWD / 100"));
  append(header,append(node("div","ppw-result-hero-main"),titleWrap));
+ if(show.audience){
+  const report=show.audience,block=node("div","ppw-result-broadcast-audience");
+  if(report.format==="TV"&&report.householdRating!==null&&report.estimatedViewers!==null)
+   append(block,node("span","ppw-result-audience-label","TV RATING"),
+    node("strong","",report.householdRating.toFixed(1)),
+    node("small","","Approx. "+report.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+  else if(report.format==="PPV"&&report.ppvBuys!==null)
+   append(block,node("span","ppw-result-audience-label","PPV BUYS"),
+    node("strong","",report.ppvBuys.toLocaleString("en-GB")),
+    node("small","","Estimated purchases"));
+  if(block.childElementCount)header.append(block);
+ }
+
  const firstMoment=showBroadcastHighlights(show.entries)[0];
  if(firstMoment)header.append(node("p","ppw-result-lead",firstMoment.headline));
  const pulseRow=node("div","ppw-result-pulse");
@@ -302,26 +314,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  }
  const timeline=node("section","ppw-result-timeline");
  append(timeline,node("h2","ppw-broadcast-section-title","THE FULL SHOW"));
- const controls=node("div","ppw-result-filters");
- const filters:Record<ResultFilter,HTMLButtonElement>={} as Record<ResultFilter,HTMLButtonElement>;
  const entries:({element:HTMLElement;lead:HTMLElement;type:ShowResultEntry["type"]})[]=[];
- let activeFilter:ResultFilter="ALL";
- const setFilter=(filter:ResultFilter)=>{
-  activeFilter=filter;
-  for(const key of Object.keys(filters) as ResultFilter[]){
-   filters[key].setAttribute("aria-pressed",String(key===filter));
-  }
-  for(const row of entries){row.element.hidden=filter!=="ALL"&&row.type!==filter;
-   row.lead.hidden=row.element.hidden;}
- };
- for(const [filter,buttonText] of [["MATCH","Matches"],["SEGMENT","Angles"]] as const){
-  const button=document.createElement("button");button.type="button";
-  button.className="ppw-result-filter";button.textContent=buttonText;
-  button.addEventListener("click",()=>setFilter(activeFilter===filter?"ALL":filter));
-  filters[filter]=button;
-  append(controls,button);
- }
- append(timeline,controls);
+ // Single chronological narrative: highlights always reveal their verified card slot.
+ const setFilter=(_filter:"ALL")=>{};
  if(!show.entries.length)append(timeline,node("p","ppw-muted","There are no recorded card items."));
  for(const [index,entry] of show.entries.entries()){
   const review=reviewCompletedEntry(entry,show.showId);
@@ -402,7 +397,6 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   entries.push({element:details,lead,type:entry.type});
   append(timeline,lead,details);
  }
- setFilter("ALL");
  // Re-rendering the report is fully client-side; caller controls the show scope.
  const report=show.staffReport;
  const management=node("section","ppw-post-show-brief");

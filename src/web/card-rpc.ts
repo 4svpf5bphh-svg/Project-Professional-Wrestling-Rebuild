@@ -3,6 +3,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
+ spendingPlanAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
@@ -212,6 +213,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="restructurePromotion")
   return restructurePromotionAsActor(context,{worldId,promotionId,requestId,expectedRevision});
+ if(method==="setSpendingPlan"){
+  const values=[p.weeklyWageLimit,p.showTalentLimit,p.cashReserve];
+  if(values.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||
+   v<0||v>1000000000))throw new Error("Invalid spending allocations");
+  return spendingPlanAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,weeklyWageLimit:p.weeklyWageLimit as number,
+   showTalentLimit:p.showTalentLimit as number,cashReserve:p.cashReserve as number});
+ }
  if(method==="signCommercial")
   return signCommercialDealAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,offerCode:id("offerCode")});

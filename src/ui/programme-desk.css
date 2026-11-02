@@ -218,3 +218,81 @@
  .ppw-programme-view-tabs{gap:2px;padding:3px}
  .ppw-programme-view-tab{font-size:10px}
 }
+
+/* Phase 22: three clear jobs, readable iPhone buttons, no word splitting. */
+.ppw-programme-view-tabs{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-programme-view-tab{font-size:clamp(12px,3vw,15px);white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis;min-height:48px;padding:8px 4px}
+.ppw-programme-now{display:grid;gap:5px;border-left:3px solid #83e1e8;
+ background:#102c42;padding:12px 13px;margin:12px 0;border-radius:9px}
+.ppw-programme-now strong{font-size:13px;color:#eaf7ff}
+.ppw-programme-now span{font-size:11px;color:#b9cde2}
+
+/* Creative choices save the existing certified post-match direction. */
+.ppw-programme-booking-idea .ppw-programme-action{
+ width:100%;min-height:44px;margin:10px 0 0;white-space:normal;
+ font-size:12px;line-height:1.35;border-radius:9px;background:#244d66;
+ border:1px solid #7cc4df;color:#f3f8ff}
+.ppw-programme-booking-idea .ppw-programme-action[aria-pressed=true]{
+ background:#215743;border-color:#95e6bc;color:#caffdd}
+
+/* 320px iPhone: prevent wrapped header and truncated Creative/Finale/History
+   buttons. Shared .ppw-editor button padding was overriding tab padding. */
+.ppw-programme-desk{width:100%;min-width:0}
+.ppw-programme-desk>.ppw-top{
+ display:flex;flex-wrap:wrap;gap:8px 10px;min-width:0}
+.ppw-programme-desk>.ppw-top>span,
+.ppw-programme-desk>.ppw-top>h1,
+.ppw-programme-desk>.ppw-top>p{
+ flex:0 0 100%;min-width:0}
+.ppw-programme-desk>.ppw-top>h1{
+ font-size:clamp(24px,8vw,31px);line-height:1.12;
+ overflow-wrap:normal;word-break:normal;white-space:nowrap}
+.ppw-programme-desk .ppw-programme-view-tabs{
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px}
+.ppw-programme-desk .ppw-programme-view-tabs>.ppw-programme-view-tab{
+ box-sizing:border-box;width:100%;min-width:0;
+ padding:9px 2px;min-height:46px;font-size:12px;
+ overflow:visible;text-overflow:clip;white-space:nowrap}
+.ppw-programme-desk .ppw-programme-staff-note{
+ min-width:0;display:grid;gap:7px}
+.ppw-programme-desk .ppw-programme-staff-note>h3{
+ margin:0;font-size:18px;line-height:1.3}
+.ppw-programme-desk .ppw-programme-staff-observation{
+ margin:0;font-size:13px;line-height:1.45}
+.ppw-programme-rationale{border-top:1px solid #526078;
+ margin:2px 0 4px;padding-top:5px}
+.ppw-programme-rationale>summary{
+ cursor:pointer;color:#a9dfff;font-size:12px;font-weight:750;
+ padding:8px 0;min-height:38px}
+.ppw-programme-rationale>p{
+ margin:2px 0 9px;font-size:12px;line-height:1.5;color:#d1e0e9}
+.ppw-programme-desk .ppw-programme-booking-ideas{
+ display:grid;gap:8px;min-width:0}
+.ppw-programme-desk .ppw-programme-booking-idea{
+ min-width:0;display:grid;gap:4px;
+ padding:10px 11px;margin:0;
+ background:#0d2438;border:1px solid #4c6981;border-radius:11px}
+.ppw-programme-desk .ppw-programme-booking-idea>strong{
+ font-size:13px;line-height:1.3;color:#f5e6be}
+.ppw-programme-desk .ppw-programme-booking-idea>p{
+ margin:0;font-size:12px;line-height:1.45;color:#c4deef}
+.ppw-programme-desk .ppw-programme-booking-idea .ppw-programme-action{
+ margin:4px 0 0;min-height:44px}
+@media(max-width:365px){
+ .ppw-programme-desk .ppw-programme-card{padding:11px}
+ .ppw-programme-desk .ppw-programme-broadcast{gap:5px}
+ .ppw-programme-desk .ppw-programme-view-tabs{gap:3px;padding:3px}
+ .ppw-programme-desk .ppw-programme-view-tabs>.ppw-programme-view-tab{
+  font-size:12px;padding:9px 1px}
+}
+
+/* The app's premium global masthead can enlarge and italicise h1.
+   At 320px "Programmes" must remain one complete, readable word. */
+.ppw-programme-desk>.ppw-top>h1{
+ display:block;width:100%;max-width:100%;min-width:0;
+ font-size:clamp(22px,7vw,29px)!important;
+ font-style:normal!important;letter-spacing:-.035em!important;
+ line-height:1.15!important;white-space:nowrap!important;
+ overflow-wrap:normal!important;word-break:normal!important;
+ text-transform:none!important}

@@ -763,8 +763,6 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
        "  ·  💬 "+post.replies+"  ·  🔁 "+post.reposts));
      card.append(copy);content.append(card);
     }
-    content.append(el("small","ppw-hot-tag-disclaimer",
-     "HOT TAG is a simulated wrestling social network. Comments are fictional; they do not verify rumours."));
     thread.append(content);
     item.append(thread);
     section.append(item);

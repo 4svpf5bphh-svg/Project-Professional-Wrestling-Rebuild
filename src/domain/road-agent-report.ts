@@ -42,8 +42,16 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   "was worth watching again":bestCrowd>=70?"got the room on its side":"showed promise";
  const finalMatch=matches.reduce((max,item)=>Math.max(max,item.m.position),-1);
  const opener=matches.reduce((min,item)=>Math.min(min,item.m.position),Infinity);
- const place=best?.m.position===finalMatch?"the closing bout":
-  best?.m.position===opener?"the opener":"a match in the middle of the card";
+ const identify=(match:typeof matches[number]|undefined,fallback:string)=>{
+  const names=match?.f.participantNames?.filter(Boolean)??[];
+  return names.length>=2?names.join(" vs ")+" ("+fallback+")":fallback;
+ };
+ const place=best?.m.position===finalMatch?
+  identify(best,"the closing bout"):best?.m.position===opener?
+  identify(best,"the opener"):identify(best,"a match in the middle of the card");
+ const bestDetail=best?" The "+best.f.actualMinutes+"-minute bout earned "+
+  best.f.ratingStars.toFixed(2)+" stars.":"";
+
  const bestFinish=best?.m.actualFinish??null;
  const finishPoint=bestFinish==="SUBMISSION"?"The submission was a decisive finish.":
   bestFinish==="INJURY_STOPPAGE"?
@@ -78,8 +86,11 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
     (a.f.actualMinutes-a.f.plannedMinutes!)||
     a.m.position-b.m.position)
   .find(x=>x.f.actualMinutes-x.f.plannedMinutes!>=5);
- const boutName=(position:number)=>position===opener?"the opener":
-  position===finalMatch?"the closing match":"the match at slot "+(position+1);
+ const boutName=(position:number)=>{
+  const fallback=position===opener?"the opener":
+   position===finalMatch?"the closing match":"the match at slot "+(position+1);
+  return identify(matches.find(x=>x.m.position===position),fallback);
+ };
  const worstLabel=poorExecution?boutName(poorExecution.m.position):"the match";
  const concern=injuries>0?
   (voice==="FRANK"?"First priority: we've got an injury to deal with. ":
@@ -128,6 +139,6 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   voice==="LOYAL"?"Credit where it's due":
   bestCrowd>=75?"A show to build on":"A few notes before next week";
  return {reporter,staffId:agent?.staffId??null,
-  headline,praise,concern,recommendation:recommendation+parting,
+  headline,praise:praise+bestDetail,concern,recommendation:recommendation+parting,
   strongestMatchId:best?.m.matchId??null,reviewedMatches:matches.length};
 }

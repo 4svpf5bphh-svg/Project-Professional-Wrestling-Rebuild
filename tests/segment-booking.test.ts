@@ -59,11 +59,29 @@ test("the three new original-main angles require exact roles and scripted ending
   assert.deepEqual(scene.creativeBeat,choice.creativeBeat);
   assert.throws(()=>normalizeBookedSegment({...full,creativeBeat:undefined},people));
   assert.throws(()=>normalizeBookedSegment({...full,targetIds:[]},people));
-  assert.throws(()=>normalizeBookedSegment({...full,actorIds:["attacker","rescuer","victim"]},people));
+  if(choice.kind!=="INTERRUPTION")
+   assert.throws(()=>normalizeBookedSegment({...full,actorIds:["attacker","rescuer","victim"]},people));
+  else assert.deepEqual(normalizeBookedSegment({...full,
+   actorIds:["attacker","rescuer"]},people).actorIds,["attacker","rescuer"]);
  }
  assert.throws(()=>normalizeBookedSegment({
   slotId:"angle",position:2,kind:"POST_MATCH_ASSAULT",outcome:"HAPPENS",
   actorIds:["attacker"],targetIds:["victim"],
   creativeBeat:{kind:"POST_MATCH_ASSAULT",ending:"OFFICIALS_SEPARATE"}
  },people),/Invalid authored segment/);
+});
+
+test("angle scene cannot forge medical consequences or nonsensical settings",()=>{
+ const base=make("ATTACK",["a"],["b"]);
+ const good={location:"LOCKER_ROOM" as const,visual:"BLOODIED" as const,purpose:"BUILD_RIVALRY" as const};
+ assert.deepEqual(normalizeBookedSegment({...base,scene:good},known).scene,good);
+ for(const invalid of [
+  {...good,extra:"wrestler injured 12 weeks"},
+  {...good,visual:"MEDICALLY_INJURED"},
+  {...good,location:"BOILER_ROOM_BEHIND_THE_MOON"},
+  {...good,purpose:"GRANT_100_HEAT"}
+ ])assert.throws(()=>normalizeBookedSegment({...base,scene:invalid as never},known));
+ assert.throws(()=>normalizeBookedSegment({
+  ...make("TURN",["a"],[]),scene:good
+ },known));
 });

@@ -41,8 +41,23 @@ test("Creative proposes specific named matches and segments without imposing res
  assert.equal(note.options.length,3);
  assert.match(note.options[0]!.plan,/Samoa Joe/);
  assert.match(note.options[0]!.plan,/Matt Riddle/);
- assert.match(note.options.map(o=>o.label).join(" "),/Interview/);
- assert.match(note.options.map(o=>o.label).join(" "),/Confrontation/);
- assert.match(note.options.map(o=>o.label).join(" "),/match/);
+ assert.match(note.options.map(o=>o.label).join(" "),/answer|stakes|escalate|rematch|response/i);
+ assert.ok(note.options.some(o=>o.choice==="PLAN_RETALIATION"));
+ assert.ok(new Set(note.options.map(o=>o.choice)).size>=2);
  assert.doesNotMatch(JSON.stringify(note.options),/guaranteed outcome|winner will/i);
+});
+
+test("Creative makes different bookings for title stakes, lopsided results and tired feuds",()=>{
+ const a=suggestProgrammeAdvice({...base,championshipId:"world",
+  sideAName:"Místico",sideBName:"Joe"});
+ const b=suggestProgrammeAdvice({...base,sideAWins:4,sideBWins:0,
+  sideAName:"Místico",sideBName:"Joe"});
+ const c=suggestProgrammeAdvice({...base,repetition:90,
+  sideAName:"Místico",sideBName:"Joe"});
+ assert.match(a.options[0]!.plan,/title contest/);
+ assert.match(b.options[0]!.plan,/Joe/);
+ assert.match(c.options[0]!.plan,/repeated this story/);
+ assert.notDeepEqual(a.options,b.options);
+ assert.notDeepEqual(b.options,c.options);
+ assert.ok([a,b,c].every(n=>n.options.every(o=>o.plan.includes("Místico")||o.plan.includes("Joe"))));
 });

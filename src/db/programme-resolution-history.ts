@@ -197,6 +197,18 @@ export async function settleCompletedProgrammeHistory(
    delivered.map(x=>x.programme_id)]);
   if(completed.length!==delivered.length)
    throw new Error("Unable to close all certified rivalry finales");
+  // A completed feud is an immutable historical snapshot: later bookings
+  // may change these wrestlers, but never retroactively change its grade.
+  await tx.query(`
+   UPDATE ppw_programme_talent_baselines baseline
+   SET end_popularity=person.popularity,end_momentum=person.momentum
+   FROM ppw_people person
+   WHERE baseline.world_id=$1 AND baseline.promotion_id=$2
+    AND baseline.programme_id=ANY($3::text[])
+    AND person.world_id=baseline.world_id
+    AND person.person_id=baseline.person_id
+    AND baseline.end_popularity IS NULL AND baseline.end_momentum IS NULL
+  `,[input.worldId,input.promotionId,delivered.map(x=>x.programme_id)]);
   const events=await tx.query<{programme_id:string}>([
    "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
    "SELECT $1,$2,$3,'PROGRAMME_FINALE_DELIVERED',",

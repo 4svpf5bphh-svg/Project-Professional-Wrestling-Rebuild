@@ -15,10 +15,9 @@ test("HOT TAG is an actual wrestling-social brand, not a new account service",()
  assert.deepEqual(rumour,{id:"wild:s1",year:1,week:12,desk:"DIRT",
   promotionName:"CWA",title:"Joe walked out?",summary:"Anonymous report with a competing denial."});
  assert.ok(a.every(p=>p.handle.startsWith("@")&&p.likes>=0));
- // A quoted headline is not confirmation: all rumour responses stay framed
- // as uncertainty and no fan post is promoted to a certified World event.
+ // Fans react in their own words, never mechanically echoing the news title.
  assert.ok(a.every(p=>!p.text.includes("Confirmed: Joe walked out")));
- assert.ok(a.some(p=>p.text.includes("Joe walked out?")));
+ assert.ok(a.every(p=>!p.text.includes("“Joe walked out?”")));
  assert.equal(new Set(a.map(p=>p.text)).size,3,"Three genuine distinct fan reactions, not repeated comments");
  assert.ok(a.some(p=>/source|version|story|work|claim|fiction|allegation|anonymous|rumour|report|journal|heat|timeline|fake|made up|wrestling|argu/i.test(p.text)));
  assert.deepEqual(dirtSheetByline(rumour.id),dirtSheetByline(rumour.id));
@@ -51,4 +50,12 @@ test("official comments respond differently to challenges, title changes and deb
  assert.ok(threads[0]!.some(x=>/challenge|answer|fight|face.to.face|mic|match/i.test(x.text)));
  assert.ok(threads[1]!.some(x=>/title|championship|belt|division|finish/i.test(x.text)));
  assert.ok(threads[2]!.some(x=>/debut|arriv|roster|signing|first impression/i.test(x.text)));
+});
+
+test("official headline is not fed back verbatim as a fan's dialogue",()=>{
+ const headline="WrestleMania takes centre stage";
+ const posts=projectHotTagNewsThread({...rumour,
+  desk:"OFFICIAL",title:headline,summary:"WWE held its premium event"});
+ assert.equal(posts.length,3);
+ assert.ok(posts.every(p=>!p.text.includes(headline)));
 });

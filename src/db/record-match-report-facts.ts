@@ -12,6 +12,8 @@ export interface RecordedMatchReportFact{
  plannedMinutes?:number;
  chemistryModifier:number;finishCheaterPersonId:string|null;
  linkedProgrammes:number|null;programmeSignal:string|null;
+ /** Resolution-time talent identities; not persisted or inferred from news. */
+ personIds?:string[];participantNames?:string[];
  injuries:{personId:string;severity:string;weeksOut:number}[];
 }
 export function deriveCompletedMatchReportFacts(
@@ -58,7 +60,7 @@ export function deriveCompletedMatchReportFacts(
    p.plannedFinish;
   const recordedCheater=["DISQUALIFICATION","FOREIGN_OBJECT"].includes(actualFinish)?
    p.finishCheaterId:null;
-  return {matchId:p.slotId,ratingStars:score.criticalRatingStars,
+  return {matchId:p.slotId,personIds:[...p.personIds],ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
    chemistryModifier:p.chemistryModifier,
    finishCheaterPersonId:recordedCheater,

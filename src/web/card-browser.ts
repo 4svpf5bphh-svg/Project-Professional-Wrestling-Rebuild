@@ -129,6 +129,12 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
+  specialMoments:async()=>{
+   const data=await call("kpWorkspace") as {entitlements:string[]};
+   return data.entitlements;
+  },
+  openKayfabe:navigate("kayfabe",()=>
+   mountKayfabePage(root,scope,()=>mountCardEditor(root,port))),
   save:({requestId,expectedRevision,matches,segments,runningOrder})=>
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>
@@ -331,6 +337,7 @@ function businessPort(root:HTMLElement,scope:Scope,
    return {name:body.name,changed:body.changed===true};
   },
   signCommercial:input=>call("signCommercial",input),
+  setSpendingPlan:input=>call("setSpendingPlan",{...input}),
   previewRestructure:()=>call("previewRestructure"),
   restructure:input=>call("restructurePromotion",input),
   openKayfabe:()=>mountKayfabeDesk(root,{
@@ -473,15 +480,11 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  });
  if(onBack){
   const back=document.createElement("button");
-  back.type="button";back.textContent="← Back to "+backLabel;
+  back.type="button";back.textContent="← Back";
   back.className="ppw-programme-action";back.onclick=onBack;
   root.prepend(back);
  }
- const archive=document.createElement("button");
- archive.type="button";archive.textContent="View all results";
- archive.className="ppw-programme-action";
- archive.onclick=()=>{void mountResultsArchivePage(root,scope,onBack);};
- root.prepend(archive);
+
 }
 
 /** A modal dossier preserves the working card, negotiation or rivalry underneath.

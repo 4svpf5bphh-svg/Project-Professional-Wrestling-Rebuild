@@ -243,13 +243,42 @@ export async function disbandStable(pool:TransactionPool,input:DisbandStableInpu
 /** Load only on request while editing a faction angle, not on every card read. */
 export async function readActiveStableChoices(pool:TransactionPool,s:StableScope){
  return withSqlClient(pool,async tx=>{
-  await controlledPromotion(tx,s);
-  const rows=await tx.query<{stable_id:string;name:string}>([
-   "SELECT stable_id,name FROM ppw_stables WHERE world_id=$1",
-   "AND promotion_id=$2 AND status='ACTIVE'",
-   "ORDER BY name,stable_id LIMIT 101"
+  const auth=await controlledPromotion(tx,s);
+  const rows=await tx.query<{stable_id:string;name:string;active_count:number}>([
+   "SELECT s.stable_id,s.name,(SELECT count(*)::integer",
+   "FROM ppw_stable_memberships m WHERE m.world_id=s.world_id",
+   "AND m.promotion_id=s.promotion_id AND m.stable_id=s.stable_id",
+   "AND m.active) AS active_count FROM ppw_stables s WHERE s.world_id=$1",
+   "AND s.promotion_id=$2 AND s.status='ACTIVE'",
+   "ORDER BY s.name,s.stable_id LIMIT 101"
   ].join(" "),[s.worldId,s.promotionId]);
   if(rows.length>100)throw new Error("Too many active stables");
-  return rows.map(x=>({stableId:x.stable_id,name:x.name}));
+  if(!rows.length)return [];
+  // One bounded query, only when the card author opens faction shortcuts.
+  // Reuse actual show-week contract rights rather than inventing roster picks.
+  const week=auth.weekIndex;
+  const members=await tx.query<{stable_id:string;person_id:string;
+   name:string;contract_id:string}>([
+   "SELECT m.stable_id,p.person_id,p.name,rights.contract_id",
+   "FROM ppw_stable_memberships m",
+   "JOIN ppw_people p ON p.world_id=m.world_id AND p.person_id=m.person_id",
+   "JOIN LATERAL (SELECT c.contract_id FROM ppw_contracts c",
+   "WHERE c.world_id=m.world_id AND c.person_id=m.person_id",
+   "AND c.promotion_id=m.promotion_id AND c.status='SIGNED'",
+   "AND c.start_week_index<=$4 AND c.expires_week_index>=$4",
+   "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+   "ORDER BY c.start_week_index DESC,c.contract_id LIMIT 1) rights ON TRUE",
+   "WHERE m.world_id=$1 AND m.promotion_id=$2 AND m.active",
+   "AND p.status='ACTIVE' AND m.stable_id=ANY($3::text[])",
+   "ORDER BY m.stable_id,p.name,p.person_id LIMIT 1201"
+  ].join(" "),[s.worldId,s.promotionId,rows.map(x=>x.stable_id),week]);
+  if(members.length>1200)throw new Error("Too many faction appearances");
+  return rows.map(x=>({stableId:x.stable_id,name:x.name,
+   // Never silently cast half a faction when a member lacks appearance rights.
+   members:(()=>{
+    const eligible=members.filter(m=>m.stable_id===x.stable_id);
+    return eligible.length===x.active_count?
+     eligible.map(m=>({personId:m.person_id,name:m.name,contractId:m.contract_id})):[];
+   })()}));
  });
 }

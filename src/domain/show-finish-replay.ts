@@ -31,6 +31,11 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
   RETRIEVAL:{title:"REACHING FOR GLORY",description:"The decisive climb ended with the suspended prize retrieved. This was a win above the canvas, not a pinfall.",tone:"CLEAN"},
   TABLE_BREAK:{title:"CRASH THROUGH THE TABLE",description:"The opponent was driven through a table, fulfilling the stipulated win condition. No three-count necessary.",tone:"CLEAN"},
   TEN_COUNT:{title:"TEN — AND IT'S OVER",description:"One wrestler remained standing while the opponent could not answer the referee's ten-count.",tone:"CLEAN"},
+  MOST_FALLS:{title:"TIME'S UP — MOST FALLS WINS",description:"The time-limit bell sounded and the wrestler with the most falls took the decision.",tone:"CLEAN"},
+  SECOND_FALL:{title:"TWO FALLS TO SETTLE IT",description:"The decisive second fall settled the best-of-three contest.",tone:"CLEAN"},
+  VERBAL_SURRENDER:{title:"THE WORDS NOBODY WANTED TO SAY",description:"The opponent was forced to say 'I quit'. No pinfall was involved.",tone:"CLEAN"},
+  FIRST_BLOOD:{title:"THE FIRST SIGN OF BLOOD",description:"The first-blood condition was met, giving the winner the official decision.",tone:"CLEAN"},
+  CASKET_CLOSE:{title:"THE LID SLAMS SHUT",description:"The opponent was placed inside the casket and its lid closed, meeting the stipulation.",tone:"CLEAN"},
  };
  const match=finishes[method];
  const injury=entry.fallout?.injuries.find(x=>x.stoppage);

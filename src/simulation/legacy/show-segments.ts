@@ -2,6 +2,8 @@
  * deliberately separate: simulation must not choose a scripted outcome.
  */
 import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../../domain/segment-creative-beats.js";
+import {isAngleScene,type AngleScene} from "../../domain/angle-scene.js";
+import {isSpecialMomentForScene,type SpecialMomentSku} from "../../domain/special-moments.js";
 export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"INTERRUPTION"|"RESCUE"|"POST_MATCH_ASSAULT"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
  "DEBUT"|"VIDEO_PACKAGE"|"STABLE_INVITATION"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
 export type VideoPurpose="DEBUT_HYPE"|"RETURN_HYPE"|"WRESTLER_HYPE"|
@@ -16,6 +18,10 @@ export interface AuthoredSegment {
  videoPurpose?:VideoPurpose;
  /** Absent on historical generic angles; no unscripted response is fabricated. */
  creativeBeat?:SegmentCreativeBeat;
+ /** Booker-selected filmed scene; no automatic injuries or guaranteed score boost. */
+ scene?:AngleScene;
+ /** An unlocked, precisely staged spectacle (no automatic scoring bonus). */
+ specialMoment?:SpecialMomentSku;
  /** Post-match angle must reference an earlier match in this same card. */
  sourceMatchSlotId?:string;
  /** Optional for historical turns. New authored turns may choose a definite alignment. */
@@ -45,13 +51,16 @@ export function validateAuthoredSegments(
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
    (s.creativeBeat!==undefined&&!isSegmentCreativeBeat(s.creativeBeat,s.kind))||
+   (s.scene!==undefined&&!isAngleScene(s.scene,s.kind))||
+   (s.specialMoment!==undefined&&!isSpecialMomentForScene(
+    s.specialMoment,s.kind,s.scene?.location,s.targetIds.length))||
    (["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)&&!s.creativeBeat)||
    (s.kind==="POST_MATCH_ASSAULT"?
      (typeof s.sourceMatchSlotId!=="string"||!s.sourceMatchSlotId.trim()||
       s.sourceMatchSlotId.length>200||s.sourceMatchSlotId===s.slotId):
       s.sourceMatchSlotId!==undefined)||
    (s.kind==="RESCUE"&&(s.actorIds.length!==2||s.targetIds.length!==1))||
-   (["INTERRUPTION","POST_MATCH_ASSAULT"].includes(s.kind)&&
+   (s.kind==="POST_MATCH_ASSAULT"&&
     (s.actorIds.length!==1||s.targetIds.length!==1))||
    (s.stableDecision!==undefined&&(
     !["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)||
@@ -69,6 +78,12 @@ export function validateAuthoredSegments(
    (["ATTACK","CONFRONTATION","CHALLENGE"].includes(s.kind)&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="INTERFERENCE"&&(s.actorIds.length===0||s.targetIds.length===0))||
    (s.kind==="TURN"&&(s.actorIds.length<1||s.actorIds.length>2))||
+   (s.kind==="TURN"&&s.creativeBeat?.kind==="TURN"&&
+    ["BETRAY_PARTNER","SAVE_ENEMY","ATTACK_ALLY","REFUSE_HELP"]
+     .includes(s.creativeBeat.presentation)&&s.targetIds.length===0)||
+   (s.kind==="STABLE_EXIT"&&s.creativeBeat?.kind==="STABLE_EXIT"&&
+    ["EXPULSION_SCENE","BEATDOWN"].includes(s.creativeBeat.departure)&&
+    s.targetIds.length===0)||
    (s.kind==="DEBUT"&&s.actorIds.length!==1)||
    (["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&s.targetIds.length===0))
    throw new Error("Invalid authored segment");

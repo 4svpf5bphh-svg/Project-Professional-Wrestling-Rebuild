@@ -22,12 +22,15 @@ import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {MATCH_STIPULATIONS,compatibleStipulations,
- permittedStipulationFinishes,type MatchStipulation}
+ permittedStipulationFinishes,stipulationInjuryRisk,
+ stipulationMinimumMinutes,type MatchStipulation}
  from "../domain/match-stipulations.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
+import {SPECIAL_MOMENTS,specialMomentBySku} from "../domain/special-moments.js";
+import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,angleLocationsFor,anglePurposesFor,angleLocationArea,angleSceneLabel} from "../domain/angle-scene.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
@@ -64,7 +67,10 @@ export interface CardEditorPort{
  openWorkingConnections?():void;
  openPersona?():void;
  openProfile?(personId:string,holder:HTMLElement,onClose:()=>void):void;
- stableChoices?():Promise<{stableId:string;name:string}[]>;
+ specialMoments?():Promise<readonly string[]>;
+ openKayfabe?():void;
+ stableChoices?():Promise<{stableId:string;name:string;members?:{
+  personId:string;contractId:string;name:string}[]}[]>;
 }
 const el=(tag:string,className="",label?:string):HTMLElement=>{
  const node=document.createElement(tag);
@@ -99,6 +105,8 @@ function numberField(value:number,min:number,max:number,
  return input;
 }
 function field(label:string,control:HTMLElement){
+ // Explicit accessible name survives nested option text and re-rendered iPhone dialogs.
+ control.setAttribute("aria-label",label);
  const wrapper=el("label","ppw-field");
  wrapper.append(el("span","",label),control);return wrapper;
 }
@@ -120,8 +128,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
  let needsRevisionRefresh=false;
- let stableChoices:{stableId:string;name:string}[]|null=null;
+ let stableChoices:{stableId:string;name:string;members?:{
+  personId:string;contractId:string;name:string}[]}[]|null=null;
  let stableChoicesLoading=false;
+ let specialOwned:readonly string[]|null=null,specialBusy=false;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=null;
  let rivalryIdeasOpen=false;
@@ -156,6 +166,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   try{setMatch(match.slotId,assignBookedTeam(match,side,team.members));}
   catch(e){error=errorText(e);render();}
  }
+ function castAngleGroup(segment:EditorSegment,role:"actors"|"targets",choice:string){
+  const groups=[
+   ...(view?.bookableTeams??[]).map(t=>({id:"team:"+t.teamId,members:t.members})),
+   ...(view?.bookableTrios??[]).map(t=>({id:"trio:"+t.trioId,members:t.members})),
+   ...(stableChoices??[]).map(t=>({id:"stable:"+t.stableId,members:t.members??[]}))
+  ];
+  const group=groups.find(g=>g.id===choice);
+  if(!group||!group.members.length)return;
+  try{
+   let next=segment;
+   for(const member of group.members){
+    if(next[role].some(p=>p.personId===member.personId))continue;
+    next=addSegmentPerson(next,role,{personId:member.personId,contractId:member.contractId});
+    if(!roster.has(member.personId))
+     roster.set(member.personId,{personId:member.personId,contractId:member.contractId,
+      name:member.name,division:null,available:true,reason:"AVAILABLE"});
+   }
+   editSegment(segment,{[role]:next[role]});
+  }catch(err){error=errorText(err);render();}
+ }
  function selectTeamForTurn(segment:EditorSegment,teamId:string){
   const team=eligibleTeams().find(x=>x.teamId===teamId);
   if(!team)return;
@@ -183,6 +213,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   loading=true;render();
   try{
    view=await port.load();
+   stableChoices=null;
+   specialOwned=null;
     // A new World week may activate signed renewals; discard stale contract IDs.
     roster.clear();
     matches=new Map();segments=new Map();
@@ -302,9 +334,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  async function loadStableChoices(){
   if(stableChoices!==null||stableChoicesLoading||!port.stableChoices)return;
   stableChoicesLoading=true;
-  try{stableChoices=await port.stableChoices();}
-  catch(e){error=errorText(e);stableChoices=[];}
+  try{
+   stableChoices=await port.stableChoices();
+   for(const stable of stableChoices)for(const member of stable.members??[]){
+    const old=roster.get(member.personId);
+    roster.set(member.personId,{...old,personId:member.personId,
+     name:member.name,contractId:member.contractId,
+     division:old?.division??null,available:true,reason:"AVAILABLE"});
+   }
+  }catch(e){error=errorText(e);stableChoices=[];}
   finally{stableChoicesLoading=false;render();}
+ }
+ async function loadSpecialMoments(){
+  if(specialOwned!==null||specialBusy||!port.specialMoments)return;
+  specialBusy=true;render();
+  try{specialOwned=await port.specialMoments();error="";}
+  catch(e){error=errorText(e);}
+  finally{specialBusy=false;render();}
  }
  function editSegment(s:EditorSegment,patch:Partial<EditorSegment>){
   segments.set(s.slotId,{...s,...patch});markDirty();render();
@@ -707,17 +753,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
    root.append(suggestions);
   }
-  // Opening title art is collapsible and does not affect booking or results.
-  if(view.broadcastPackage){
-   const intro=createBroadcastPackageFrame({
-    style:view.broadcastPackage,kind:"OPEN",promotion:view.promotionName,
-    show:view.showName??"Weekly show",compact:true});
-   if(intro){
-    const reveal=el("details","ppw-card-broadcast-studio");
-    reveal.append(el("summary","","View opening titles"),intro);
-    root.append(reveal);
-   }
-  }
   const list=el("section","ppw-card-list");
   let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
@@ -730,14 +765,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const label=el("div","");
    if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
    const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
-   const anglePeople=segment?[...segment.actors,...segment.targets]
-    .map(person=>selectedName(person)).slice(0,3).join(" · "):"";
-   const angleDetails=segment?creativeSummary(segment.creativeBeat):"";
+   const anglePeople=segment?[
+    segment.actors.length?"Featuring: "+segment.actors.map(p=>selectedName(p)).join(", "):"",
+    segment.targets.length?"With: "+segment.targets.map(p=>selectedName(p)).join(", "):""
+   ].filter(Boolean).join(" · "):"";
+   const selectedSpectacle=segment?.specialMoment?
+    specialMomentBySku(segment.specialMoment):null;
+   const angleDetails=segment?[
+    ...(selectedSpectacle?["SPECIAL · "+selectedSpectacle.label]:[]),
+    creativeSummary(segment.creativeBeat)].filter(Boolean).join(" · "):"";
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):angleName),
     ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]),
     el("small","ppw-card-lineup",m?matchSubtitle(m):
-      [anglePeople,angleDetails].filter(Boolean).join(" · ")||
+      [anglePeople,segment?.scene?angleSceneLabel(segment.scene.location):"",angleDetails].filter(Boolean).join(" · ")||
        "Choose the wrestlers for this moment"));
    const status=m?matchCastingReadiness(m):segment?angleCastingReadiness(segment):null;
    if(status){
@@ -897,13 +938,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
     body.append(el("p","ppw-booking-hint",readiness.hint));
-    const controls=el("div","ppw-control-grid");
+    const controls=el("div","ppw-control-grid ppw-angle-controls");
     const setAngle=(kind:EditorSegment["kind"])=>{
      if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind))
       void loadStableChoices();
      editSegment(segment,{kind,
       creativeBeat:segment.kind===kind?segment.creativeBeat:
        initialCreativeBeat(kind),
+      scene:segment.kind===kind?segment.scene:initialAngleScene(kind),
+      specialMoment:segment.kind===kind?segment.specialMoment:null,
       sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
@@ -911,11 +954,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        segment.stableDecision:null,
       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
        (kind==="RESCUE"||kind==="TURN")?segment.actors.slice(0,2):segment.actors,
-      targets:["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
+      targets:["CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
        []:["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(kind)?
         segment.targets.slice(0,1):segment.targets});
     };
     const goal=angleGoalFor(segment.kind);
+    controls.append(el("h3","ppw-angle-workflow-title","2 · WHAT happens?"));
     controls.append(field("Creative direction",selector(goal,
      ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
       setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
@@ -932,6 +976,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(supportsCreativeBeat(segment.kind)){
      const beat=segment.creativeBeat??initialCreativeBeat(segment.kind)!;
      for(const option of creativeFields(segment.kind)){
+      if(segment.kind==="ATTACK"&&option.name==="objective")continue;
       const value=(beat as unknown as Record<string,string>)[option.name]??"";
       controls.append(field(option.label,selector(value,
        option.options.map(x=>[x.value,x.label]),
@@ -940,42 +985,49 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        } as SegmentCreativeBeat}),!mutable())));
      }
     }
-    if(segment.kind==="POST_MATCH_ASSAULT"){
-     const eligible=order.flatMap(matchSlot=>{
-      const match=matches.get(matchSlot);
-      if(!match)return [];
-      return [[matchSlot,matchLabel(match)] as [string,string]];
-     });
-     controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
-      [["",eligible.length?"Choose the match":"Add a match for this angle"],
-       ...eligible],value=>{
-        const next=value?attachPostMatchAngle(order,slotId,value):null;
-        const selected=value?matches.get(value):null;
-        const candidates=new Set(selected?.teams.flat().flatMap(p=>p?[p.personId]:[])??[]);
-        segments.set(slotId,{...segment,sourceMatchSlotId:value||null,
-         targets:value?segment.targets.filter(p=>candidates.has(p.personId)):
-          segment.targets});
-        if(next)order=next;
-        markDirty();render();
-       },!mutable())));
-      controls.append(el("p","ppw-angle-guidance",
-       "Selecting a match moves this angle immediately after it. If the victim did not compete in that match, choose a new victim."));
-     if(!eligible.some(([id])=>id===segment.sourceMatchSlotId))
-      controls.append(el("p","ppw-angle-guidance",
-       "Choose a wrestler who appeared in the selected match."));
-    }
-    if(view.programmes.length)
-     controls.append(field("Storyline / programme",selector(segment.programmeId??"",
-      [["","None"],...view.programmes.map(p=>[
-       p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
-      v=>editSegment(segment,{programmeId:v||null}),!mutable())));
-    const linked=view.programmes.find(p=>p.programmeId===segment.programmeId);
-    if(linked)controls.append(el("p","ppw-angle-guidance",
-     "Feature at least one wrestler from this rivalry. The story will only advance when its own wrestlers take part."));
-    if(linked?.latestFollowUp){
-     const followUp=el("p","ppw-card-angle-continuity",
-      storyDirectionHint(linked.latestFollowUp,"SEGMENT"));
-     controls.append(followUp);
+    const availableSpectacles=SPECIAL_MOMENTS.filter(x=>x.kind===segment.kind);
+    if(availableSpectacles.length){
+     controls.append(el("h3","ppw-angle-workflow-title","SPECIAL MOMENT · OPTIONAL"));
+     if(specialOwned===null){
+      controls.append(button(specialBusy?"Checking your unlocks…":
+       "Browse Special Moments",()=>void loadSpecialMoments(),
+       !mutable()||specialBusy||!port.specialMoments));
+      if(segment.specialMoment){
+       const existing=specialMomentBySku(segment.specialMoment);
+       controls.append(el("p","ppw-angle-guidance",
+        "Booked stunt: "+(existing?.label??"Unknown spectacle")));
+      }
+     }else{
+      const owned=new Set(specialOwned);
+      const choices:[string,string][]=[["","Ordinary angle · no spectacle"],
+       ...availableSpectacles.map(x=>[x.sku,
+        owned.has(x.sku)?"✓ "+x.label+" · unlocked":
+         "🔒 "+x.label+" · "+x.price+" KP"] as [string,string])];
+      const chooser=selector(segment.specialMoment??"",choices,next=>{
+       const chosen=specialMomentBySku(next);
+       if(chosen&&!owned.has(chosen.sku)){
+        error="Unlock "+chosen.label+" in Kayfabe Points before booking.";
+        render();return;
+       }
+       const scene=segment.scene??initialAngleScene(segment.kind);
+       editSegment(segment,{specialMoment:chosen?.sku??null,
+        scene:chosen?{...scene,location:
+         (chosen.locations as readonly string[]).includes(scene.location)?
+          scene.location:chosen.locations[0]}:scene});
+      },!mutable());
+      for(const opt of Array.from(chooser.options))
+       if(opt.value&&!owned.has(opt.value))opt.disabled=true;
+      controls.append(field("Special Moment",chooser));
+      if(availableSpectacles.some(x=>!owned.has(x.sku))){
+       const shop=el("div","ppw-special-shop");
+       shop.append(el("p","ppw-angle-guidance",
+        "Unlock spectacles through Kayfabe Points. No automatic rating bonus."));
+       if(port.openKayfabe)shop.append(button("Visit KP shop",
+        ()=>{if(dirty){error="Save your card before opening Kayfabe Points.";render();}
+         else port.openKayfabe?.();},!mutable(),"ppw-special-shop-button"));
+       controls.append(shop);
+      }
+     }
     }
     if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(segment.kind)){
      if(stableChoices===null&&!stableChoicesLoading)void loadStableChoices();
@@ -1010,7 +1062,119 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      controls.append(field("Video purpose",selector(segment.videoPurpose,
       VIDEO_PURPOSES.map(v=>[v,nice(v)]),
       v=>editSegment(segment,{videoPurpose:v as EditorSegment["videoPurpose"]}),!mutable())));
-    body.append(controls);
+    if(segment.kind==="POST_MATCH_ASSAULT"){
+     const eligible=order.flatMap(matchSlot=>{
+      const match=matches.get(matchSlot);
+      if(!match)return [];
+      return [[matchSlot,matchLabel(match)] as [string,string]];
+     });
+     controls.append(field("After which match?",selector(segment.sourceMatchSlotId??"",
+      [["",eligible.length?"Choose the match":"Add a match for this angle"],
+       ...eligible],value=>{
+        const next=value?attachPostMatchAngle(order,slotId,value):null;
+        const selected=value?matches.get(value):null;
+        const candidates=new Set(selected?.teams.flat().flatMap(p=>p?[p.personId]:[])??[]);
+        segments.set(slotId,{...segment,sourceMatchSlotId:value||null,
+         targets:value?segment.targets.filter(p=>candidates.has(p.personId)):
+          segment.targets});
+        if(next)order=next;
+        markDirty();render();
+       },!mutable())));
+      controls.append(el("p","ppw-angle-guidance",
+       "Selecting a match moves this angle immediately after it. If the victim did not compete in that match, choose a new victim."));
+     if(!eligible.some(([id])=>id===segment.sourceMatchSlotId))
+      controls.append(el("p","ppw-angle-guidance",
+       "Choose a wrestler who appeared in the selected match."));
+    }
+    if(segment.scene){
+     const scene=segment.scene;
+     // Interview presentation follows its actual stage rather than exposing a
+     // second contradictory "Interview setting" picker under What.
+     const moveScene=(place:typeof scene.location)=>{
+      const beat=segment.creativeBeat;
+      const nextBeat=segment.kind==="INTERVIEW"&&beat?.kind==="INTERVIEW"?{
+       ...beat,format:(place==="IN_RING"?"IN_RING":
+        ["OFFICE","HOTEL_LOBBY"].includes(place)?"SIT_DOWN":"BACKSTAGE") as typeof beat.format
+      }:beat;
+      editSegment(segment,{scene:{...scene,location:place},creativeBeat:nextBeat});
+     };
+     controls.append(el("h3","ppw-angle-workflow-title","3 · WHERE does it happen?"));
+     // New scenes use appropriate places. Previously saved locations stay
+     // available to edit; changing the angle type starts a fresh scene.
+     const selectedSpecial=segment.specialMoment?
+      specialMomentBySku(segment.specialMoment):null;
+     const suggestedLocations=selectedSpecial?.locations??angleLocationsFor(segment.kind);
+     const permitted=(suggestedLocations as readonly string[]).includes(scene.location)?
+      suggestedLocations:[...suggestedLocations,scene.location];
+     const areas=Object.keys(ANGLE_LOCATION_AREAS).filter(area=>
+      permitted.some(place=>angleLocationArea(place)===area)) as
+       (keyof typeof ANGLE_LOCATION_AREAS)[];
+     if(segment.kind==="VIDEO_PACKAGE"&&scene.location==="VIDEO_SCREEN")
+      controls.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
+       "Broadcast on the arena screens and television. Select the footage style under What."));
+     else controls.append(field("Area",
+      selector(angleLocationArea(scene.location),
+       areas.map(area=>[area,angleSceneLabel(area)]),
+       value=>{
+        const area=value as keyof typeof ANGLE_LOCATION_AREAS;
+        const first=permitted.find(place=>angleLocationArea(place)===area)!;
+        moveScene(first);
+       },!mutable())));
+     if(segment.kind!=="VIDEO_PACKAGE"||scene.location!=="VIDEO_SCREEN")
+      controls.append(field("Exact location",selector(scene.location,
+      permitted.filter(place=>angleLocationArea(place)===
+       angleLocationArea(scene.location)).map(place=>[place,angleSceneLabel(place)]),
+      value=>moveScene(value as typeof scene.location),!mutable())));
+     if(segment.kind==="ATTACK"||segment.kind==="POST_MATCH_ASSAULT"){
+      controls.append(field("Attack intensity",selector(scene.intensity??"BEATDOWN",
+       ANGLE_INTENSITIES.map(v=>[v,angleSceneLabel(v)]),
+       value=>{
+        const intensity=value as NonNullable<typeof scene.intensity>;
+        editSegment(segment,{scene:{...scene,intensity,
+         visual:intensity==="WARNING"&&scene.visual==="BLOODIED"?"NONE":scene.visual}});
+       },!mutable())));
+      controls.append(field("Visible aftermath",selector(scene.visual,
+       ANGLE_VISUALS.filter(v=>scene.intensity!=="WARNING"||v!=="BLOODIED")
+        .map(v=>[v,angleSceneLabel(v)]),
+       value=>editSegment(segment,{scene:{...scene,
+        visual:value as typeof scene.visual}}),!mutable())));
+     }
+     controls.append(el("h3","ppw-angle-workflow-title","4 · WHY is this on the show?"));
+     const suggestedPurposes=anglePurposesFor(segment.kind);
+     const purposes=suggestedPurposes.includes(scene.purpose)?suggestedPurposes:
+      [...suggestedPurposes,scene.purpose];
+     controls.append(field("Storytelling purpose",selector(scene.purpose,
+      purposes.map(v=>[v,angleSceneLabel(v)]),
+      value=>{
+       const why=value as typeof scene.purpose;
+       const beat=segment.creativeBeat;
+       const creativeBeat=beat?.kind==="ATTACK"?{...beat,objective:
+        (why==="BUILD_TARGET_SYMPATHY"?"BUILD_SYMPATHY":
+         why==="BUILD_RIVALRY"?"ESCALATE_RIVALRY":"GENERATE_HEAT") as
+          typeof beat.objective}:
+        beat?.kind==="DEBUT"?{...beat,objective:
+         (why==="BUILD_ANTICIPATION"?"BUILD_EXCITEMENT":
+          why==="UNSETTLE_RIVAL"?"UNSETTLE_RIVAL":
+          why==="INTRODUCE_WRESTLER"?"ESTABLISH_STAR":"CREATE_MYSTERY") as
+           typeof beat.objective}:beat;
+       editSegment(segment,{scene:{...scene,purpose:why},creativeBeat});
+      },!mutable())));
+     controls.append(el("p","ppw-angle-guidance ppw-angle-purpose-disclaimer",
+      "This is the booker's intention, not a guaranteed reaction or result."));
+    }
+    if(view.programmes.length)
+     controls.append(field("Storyline / programme",selector(segment.programmeId??"",
+      [["","None"],...view.programmes.map(p=>[
+       p.programmeId,p.label+" · Heat "+(p.heat??"—")])],
+      v=>editSegment(segment,{programmeId:v||null}),!mutable())));
+    const linked=view.programmes.find(p=>p.programmeId===segment.programmeId);
+    if(linked)controls.append(el("p","ppw-angle-guidance",
+     "Feature at least one wrestler from this rivalry. The story will only advance when its own wrestlers take part."));
+    if(linked?.latestFollowUp){
+     const followUp=el("p","ppw-card-angle-continuity",
+      storyDirectionHint(linked.latestFollowUp,"SEGMENT"));
+     controls.append(followUp);
+    }
     if(!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
       "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
@@ -1018,6 +1182,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     direction.append(el("strong","",ANGLE_STORY_GOALS.find(x=>x.value===goal)!.label+" / "),
      el("span","",angleDirection(segment.kind)));
     body.append(direction);
+    body.append(el("h3","ppw-angle-workflow-title","1 · WHO is involved?"));
     for(const role of ["actors","targets"] as const){
      if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
      const section=el("div","ppw-side");
@@ -1026,7 +1191,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       "Attacker first · rescuer second":"Wrestler being rescued":
       segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
-      role==="actors"?"On-screen talent / initiators":"Targets / rivals";
+      role==="actors"?"Initiator / featured wrestler":
+       segment.kind==="STABLE_EXIT"&&segment.creativeBeat?.kind==="STABLE_EXIT"&&
+        ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure)?
+         "Member being expelled":
+       ["PROMO","INTERVIEW"].includes(segment.kind)?"Wrestler being discussed (optional)":
+       ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?
+        "Target / victim":"Other person involved";
      section.append(el("h3","",heading));
      for(const person of segment[role]){
       const line=el("div","ppw-elimination-row");
@@ -1047,12 +1218,37 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        chooseSegmentTalent(slotId,role);
       },!mutable()||segment.actors.length+segment.targets.length>=30||
        (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
-       (role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
+       (role==="targets"&&["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
         segment.targets.length>=1)));
+     // Existing 2v2/3v3 units are already available from the card projection.
+     // Faction members are looked up once, only if the user requests them.
+     // Whole-unit shortcuts are for ensemble scenes, not individual
+     // membership commands: faction invitation/exit/reconciliation settle
+     // one authored wrestler per story beat.
+     const ensemble=!["STABLE_INVITATION","STABLE_EXIT",
+      "STABLE_RECONCILIATION"].includes(segment.kind);
+     const groupRole=ensemble&&(role==="actors"?
+      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
+      !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind));
+     if(groupRole){
+      const groups=[
+       ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),
+       ...(view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name]),
+       ...(stableChoices??[]).filter(t=>(t.members?.length??0)>0)
+        .map(t=>["stable:"+t.stableId,"Faction · "+t.name])
+      ];
+      if(groups.length)section.append(field("Cast a team, trio or faction",
+       selector("",[["","Choose a group"],...groups],v=>
+        castAngleGroup(segment,role,v),!mutable())));
+      if(stableChoices===null&&port.stableChoices)
+       section.append(button(stableChoicesLoading?"Loading factions…":
+        "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading));
+     }
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));
      body.append(section);
     }
+    body.append(controls);
     body.append(button("Remove angle",()=>{
      segments.delete(slotId);order=order.filter(x=>x!==slotId);
      expanded=null;markDirty();render();
@@ -1143,6 +1339,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      compatibleStipulations(simFormat).map(code=>[
       code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),
      v=>setMatch(slotId,changeMatchStipulation(m,v as MatchStipulation)),!mutable())));
+    const stip=m.stipulation??"STANDARD";
+    const impact=stip==="STANDARD"?null:(()=>{
+     const detail=MATCH_STIPULATIONS.find(x=>x.value===stip)!;
+     const safety=stipulationInjuryRisk(stip);
+     const risk=safety>=1.3?"HIGH":safety>=1.15?"ELEVATED":"MODERATE";
+     const note=el("p","ppw-angle-guidance ppw-stipulation-impact",
+      detail.summary+" · "+risk+" injury exposure"+
+      " · Performance depends on wrestler suitability, fitness and match length. No automatic star bonus.");
+     return note;
+    })();
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
@@ -1177,8 +1383,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      controls.append(el("p","ppw-alert ppw-error",
       "Championships require 2–4 singles wrestlers or teams of two in a tag match. Remove the title before saving."));
     }
-    controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
+    controls.append(field("Minutes",numberField(m.plannedLengthMinutes,
+     stipulationMinimumMinutes(m.stipulation??"STANDARD"),60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
+    if(impact)controls.append(impact);
     body.append(controls);
     if(m.format==="SINGLES"||m.format==="TAG"){
      const run=document.createElement("details");run.className="ppw-run-in";
