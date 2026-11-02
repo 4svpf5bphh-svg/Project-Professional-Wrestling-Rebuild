@@ -46,7 +46,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  // Actual currency values must stay visible inside the iPhone viewport.
  // This covers the finance screenshot regression, not only the data payload.
  await page.getByText("View weekly income and commitments").click();
- const figures=page.locator(".ppw-business-line>strong");
+ const figures=page.locator(".ppw-business-breakdown .ppw-business-line>strong");
  await expect(figures).toHaveCount(6);
  const amounts=await figures.allTextContents();
  expect(amounts).toContain("US$300,000");

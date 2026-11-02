@@ -123,7 +123,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
-  division:"ALL"|"MEN"|"WOMEN"}|null=null;
+  division:"ALL"|"MEN"|"WOMEN";showOther?:boolean}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
@@ -329,7 +329,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
   picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
-  render();void findTalent("");
+  const linked=view?.programmes.find(p=>p.programmeId===segments.get(slotId)?.programmeId);
+  picker.showOther=!linked||!linked.cast?.length;
+  render();if(!linked)void findTalent("");
  }
  async function loadStableChoices(){
   if(stableChoices!==null||stableChoicesLoading||!port.stableChoices)return;
@@ -723,7 +725,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    suggestions.ontoggle=()=>{
     if(suggestions.isConnected)rivalryIdeasOpen=suggestions.open;
    };
-   suggestions.append(el("summary","","Book a rivalry chapter · "+view.programmes.length+
+   suggestions.append(el("summary","","Ongoing storylines · "+view.programmes.length+
     (view.programmes.length===1?" active feud":" active feuds")));
    const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
     view.programmes[0]!;
@@ -734,6 +736,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     },!mutable());
    select.setAttribute("aria-label","Choose a rivalry to book");
    suggestions.append(field("Rivalry",select));
+   if(selected.lastChapter){const h=selected.lastChapter;
+    suggestions.append(el("p","ppw-card-story-recap",
+     "Previously: Year "+(Math.floor(h.weekIndex/52)+1)+" Week "+(h.weekIndex%52+1)+
+     " · "+(h.segmentKind??h.kind).replaceAll("_"," ").toLowerCase()+
+     " · Crowd "+Math.round(h.crowd)));}
    const choices=recommendProgrammeAngles(selected).slice(0,3);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    for(const idea of choices){
@@ -1640,6 +1647,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    heading.append(el("h2","",current.role==="RUN_IN"?"Choose a run-in wrestler":"Choose wrestler"),
     button("×",()=>{picker=null;render();}));
    sheet.append(heading);
+   const focusedStory=(current.role==="actors"||current.role==="targets")?
+    view?.programmes.find(x=>x.programmeId===segments.get(current.slotId)?.programmeId):null;
+   if(focusedStory&&!current.showOther){
+    const storyBox=el("section","ppw-picker-storyline");
+    storyBox.append(el("strong","","CAST FROM YOUR STORYLINE"),
+     el("p","ppw-muted","Choose a name to check their availability for this show's date."));
+    for(const person of [...(focusedStory.cast??[])].sort((a,b)=>a.name.localeCompare(b.name)))
+     storyBox.append(button(person.name,()=>void findTalent(person.name),false,"ppw-picker-story-person"));
+    storyBox.append(button("Search everyone instead",()=>{
+     current.showOther=true;void findTalent("");
+    },false,"ppw-picker-story-other"));
+    sheet.append(storyBox);
+   }
    const form=document.createElement("form");form.className="ppw-search";
    const search=document.createElement("input");
    search.type="search";search.placeholder="Search your roster";
@@ -1676,7 +1696,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     matchForPicker?assignedIds(matchForPicker):[],
     sceneForPicker?[...sceneForPicker.actors,...sceneForPicker.targets].map(p=>p.personId):[]);
    const sorted=current.items
-    .filter(p=>current.division==="ALL"||p.division===current.division)
+    .filter(p=>(!focusedStory||current.showOther||
+     focusedStory.cast?.some(member=>member.personId===p.personId))&&
+     (current.division==="ALL"||p.division===current.division))
     .sort((a,b)=>{
      const unavailable=(p:TalentPage["talent"][number])=>
       Number(!p.available||takenIds.has(p.personId)&&

@@ -241,7 +241,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.min="0";input.max="1000000000";input.step="1000";
     input.inputMode="numeric";input.value=String(plan[key]);
     input.setAttribute("aria-label",label);
-    input.oninput=()=>{spendingDraft={...spendingDraft!,[key]:Number(input.value)};
+    input.oninput=()=>{spendingDraft={...(spendingDraft??plan),[key]:Number(input.value)};
      spendingNotice="";refreshPreview();};
     input.disabled=spendingBusy;field.append(input);fields.append(field);
    }
@@ -256,14 +256,15 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const projections:{weekly:number;fee:number;bonus:number}={weekly:0,fee:0,bonus:0};
    const update=()=>{
     const baseline=receipts-costs;
-    const wageRoom=plan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
+    const activePlan=spendingDraft??plan;
+    const wageRoom=activePlan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
     const remainingCash=view!.cash-projections.bonus;
     status.textContent="After signing: "+money(baseline-projections.weekly)+
      "/week before shows · "+(wageRoom>=0?money(wageRoom)+" under":"Over by "+money(-wageRoom)+" on")+
      " your wage limit · "+money(remainingCash)+" cash after the bonus. "+
      (projections.fee>0?money(projections.fee)+" more each show you book them.":"No extra appearance fee.")+
-     (remainingCash<plan.cashReserve?" Your planned cash reserve would be breached.":"");
-    status.dataset.risk=String(wageRoom<0||remainingCash<plan.cashReserve||baseline-projections.weekly<0);
+     (remainingCash<activePlan.cashReserve?" Your planned cash reserve would be breached.":"");
+    status.dataset.risk=String(wageRoom<0||remainingCash<activePlan.cashReserve||baseline-projections.weekly<0);
    };
    for(const [label,key] of [["Weekly guarantee","weekly"],["Appearance fee per show","fee"],["Signing bonus","bonus"]] as const){
     const field=el("label","ppw-business-budget-field");
@@ -639,14 +640,14 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    comparison.append(el("h3","","How the industry is performing"),
     el("p","ppw-business-muted","Latest certified TV episode per promotion from the last six weeks. Ratings are household estimates, not crowd scores."));
    const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-   const rivals=view.competitorBroadcasts;
+   const rivals=view.competitorBroadcasts??[];
    if(!rivals.length)comparison.append(el("p","ppw-business-muted","No competitor TV broadcasts have certified yet."));
    for(const episode of rivals.slice(0,15)){
     const row=el("article","ppw-business-broadcast-row");
     if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
     const info=el("div","");
     info.append(el("strong","",episode.name+(episode.isYours?" · YOUR SHOW":"")),
-     el("span","",episode.showName+" · "+(days[episode.day??-1]??"Broadcast day unavailable")+
+     el("span","",episode.showName+" · "+(days[(episode.day??0)-1]??"Broadcast day unavailable")+
       " · Y"+episode.year+" W"+episode.week),
      el("small","",episode.networkOfferCode?
       commercialCompanyName(episode.networkOfferCode):"No broadcast partner recorded"));

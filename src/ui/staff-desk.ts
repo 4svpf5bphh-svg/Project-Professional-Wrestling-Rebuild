@@ -42,7 +42,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let days=new Set<number>(),venues=new Set<string>(),requestId="";
  let department:StaffRole="ROAD_AGENT",termWeeks:52|104=52;
  let confirming="",renewing="";
- let pane:"MEETINGS"|"TEAM"|"CONTRACTS"|"MARKET"="MEETINGS";
+ let pane:"MEETINGS"|"TEAM"|"MARKET"="MEETINGS";
  const offers=new Map<string,number>();
  const hydrate=(v:StaffView)=>{
   view=v;fallback=v.allowUnfinishedFallback;logistics=v.allowLogisticsFallback;
@@ -254,7 +254,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("span","",member?
      member.personality+" · "+member.specialism+" · "+money(member.weeklySalary)+"/wk":
      "Basic cover · no weekly staff wage"));
-   if(member&&pane!=="CONTRACTS")detail.append(el("span","",
+   if(member)detail.append(el("span","",
     "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
     "  ·  RELIABILITY "+member.reliability+
     "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
@@ -264,7 +264,6 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     money(member.buyoutCost)+" buyout"));
    item.append(detail);
    if(member){
-    {
     const actions=el("div","ppw-staff-actions");
     if(member.weeksRemaining<=13){
      if(renewing===member.employmentId){
@@ -285,7 +284,6 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     }else actions.append(button("Release",()=>{confirming=member.employmentId;render();},
      saving||!view.canEdit));
     item.append(actions);
-    }
     item.append(staffDossier(member));
    }else item.append(button("Recruit",()=>{
     department=role;pane="MARKET";render();
@@ -293,16 +291,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    teamRows.append(item);
   }
   team.append(teamRows);
-  if(pane==="CONTRACTS"){
-   team.classList.add("ppw-staff-contract-ledger");
-   team.querySelector("h2")!.textContent="Contract decisions";
-   team.querySelector(".ppw-staff-muted")!.textContent=
-    "Employed staff only. Renewals and buyouts have real weekly payroll consequences; vacancies are managed under My Staff.";
-   team.insertBefore(el("p","ppw-staff-contract-total",
-    view.employees.length+" active agreements · "+money(view.weeklyPayroll)+"/week committed"),
-    teamRows);
-  }
-  if(pane==="TEAM"||pane==="CONTRACTS")root.append(team);
+  if(pane==="TEAM")root.append(team);
   const market=el("section","ppw-staff-panel ppw-staff-market");
   market.id="ppw-staff-market";
   market.append(el("span","ppw-staff-kicker","SHARED WORLD TALENT"),

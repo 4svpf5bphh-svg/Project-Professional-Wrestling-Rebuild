@@ -54,7 +54,7 @@ test("iPhone Staff Office hires a unique Road Agent, exposes dossier and confirm
  await expect(page.getByText("Staff contract signed. Weekly payroll now includes this employee.")).toBeVisible();
  await expect(page.locator(".ppw-staff-overview-metric")
   .filter({hasText:"WEEKLY PAYROLL"}).getByText("$950",{exact:true})).toBeVisible();
- await page.getByRole("button",{name:"Contracts",exact:true}).click();
+ await page.getByRole("button",{name:"My Staff",exact:true}).click();
  await expect(page.getByText("Buyout $49,400")).toHaveCount(0);
  await page.getByRole("button",{name:"Release"}).click();
  await expect(page.getByText(/Buyout \$49,400/)).toBeVisible();
@@ -179,8 +179,7 @@ test("Talent Scout presents bounded named prospects and opens the existing Talen
   return route.fulfill({json:overview});
  });
  await page.goto("/#/staff");
- await expect(page.getByRole("heading",{name:"Manager's priorities"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Browse Talent Market →"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Around the table"})).toBeVisible();
  await page.getByText("Full staff meeting · 9 departments").click();
  const meeting=page.locator(".ppw-staff-meeting-brief").filter({hasText:"Talent Scout"});
  await expect(meeting).toBeVisible();

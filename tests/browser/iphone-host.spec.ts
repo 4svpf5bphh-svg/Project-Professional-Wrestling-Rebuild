@@ -936,12 +936,12 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
  await page.locator(".ppw-programme-booking-idea")
-  .filter({hasText:"Raise the cost of another loss"})
-  .getByRole("button",{name:"Choose this direction"}).click();
+  .filter({hasText:"Earn another match"})
+  .getByRole("button",{name:"Choose direction"}).click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
  await page.locator(".ppw-programme-booking-idea")
-  .filter({hasText:"Change course deliberately"})
-  .getByRole("button",{name:"Choose this direction"}).click();
+  .filter({hasText:"Let the result stand"})
+  .getByRole("button",{name:"Choose direction"}).click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
@@ -1339,7 +1339,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
- expect(methods).toEqual(["planner","load","save","load"]);
+ expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const matchup=page.getByRole("dialog",{name:"Edit match"});
  await expect(matchup.getByText(/Crowd roles|clear favourite and antagonist/)).toHaveCount(0);
@@ -1355,7 +1355,7 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await expect(orphan.getByText("This angle needs a target.")).toBeVisible();
  await orphan.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
- expect(methods).toEqual(["planner","load","save","load"]);
+ expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);
 });
 
 test("iPhone scripts and reopens a specialist attack with one card save",async({page})=>{

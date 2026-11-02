@@ -89,7 +89,7 @@ for(const width of [320,390]){
  });
 }
 for(const width of [320,390]){
- test("all four real Staff Office tabs respect the paid look and fit "+width+"px",async({page})=>{
+ test("all three Staff Office tabs respect the paid look and fit "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
   let activeTheme:string="GORILLA_CONTROL";
   let reads=0;
@@ -109,8 +109,8 @@ for(const width of [320,390]){
     theme.style.toLowerCase().replaceAll("_","-"));
    await expect(office.getByRole("heading",{name:"Staff Office"})).toBeVisible();
    await expect(office.locator(".ppw-staff-overview-metric")).toHaveCount(3);
-   await expect(office.locator(".ppw-staff-nav .ppw-staff-button")).toHaveCount(4);
-   for(const tab of ["Meetings","My Staff","Contracts","Staff Market"]){
+   await expect(office.locator(".ppw-staff-nav .ppw-staff-button")).toHaveCount(3);
+   for(const tab of ["Meetings","My Staff","Staff Market"]){
     await office.getByRole("button",{name:tab,exact:true}).click();
     await expect(office.getByRole("button",{name:tab,exact:true}))
      .toHaveAttribute("aria-current","page");
