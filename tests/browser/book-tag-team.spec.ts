@@ -137,3 +137,44 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("iPhone books an Iron Man match with legal fall finish, minimum airtime and explicit injury warning",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4,saved:Record<string,unknown>={...fallback};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const req=r.request().postDataJSON() as {method:string;matches?:{payload:Record<string,unknown>}[]};
+  if(req.method==="save"){
+   saved=req.matches![0]!.payload;revision++;
+   expect(saved.stipulation).toBe("IRON_MAN");
+   expect(saved.plannedFinish).toBe("MOST_FALLS");
+   expect(saved.plannedLengthMinutes).toBe(30);
+  }
+  return r.fulfill({json:req.method==="planner"?planner:
+   req.method==="load"?{...cardBase,worldRevision:revision,
+    slots:[{slotId:"opening",kind:"MATCH",position:0,payload:saved}]}:
+   req.method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ let dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByLabel("Stipulation").selectOption("IRON_MAN");
+ dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog.getByLabel("Finish")).toHaveValue("MOST_FALLS");
+ await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
+ await expect(dialog).toContainText("Performance depends on wrestler suitability");
+ await dialog.getByLabel("Stipulation").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-iron-man-booking-390.png",
+  animations:"disabled"});
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ await expect(page.locator(".ppw-card-lineup").first()).toContainText("Iron Man Match");
+ await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog.getByLabel("Stipulation")).toHaveValue("IRON_MAN");
+ await dialog.getByLabel("Stipulation").selectOption("FALLS_COUNT_ANYWHERE");
+ await expect(dialog.getByLabel("Finish")).toHaveValue("CLEAN_PIN");
+ await expect(dialog).toContainText("HIGH injury exposure");
+});

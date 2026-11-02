@@ -61,7 +61,7 @@ test("conditional gimmick execution shifts star opportunity without blocking fiv
  const old=scoreArchivedSinglesBeforeInjuries({...base,
   plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"STANDARD"});
  assert.deepEqual(control,old);
- const strong=scoreArchivedSinglesBeforeInjuries({...base,
+ const strongResult=scoreArchivedSinglesBeforeInjuries({...base,
   plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"IRON_MAN"});
  const weak=scoreArchivedSinglesBeforeInjuries({...base,
   plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"IRON_MAN",
@@ -69,7 +69,7 @@ test("conditional gimmick execution shifts star opportunity without blocking fiv
    inRingQuality:27,matchCraft:24,stamina:28},fatigue:90},
    {...skilled,skills:{...skilled.skills,
     inRingQuality:28,matchCraft:26,stamina:30},fatigue:90}]});
- assert.ok(strong.executionQuality>control.executionQuality);
- assert.ok(weak.executionQuality<strong.executionQuality);
- assert.ok(strong.criticalRatingStars<=5);
+ assert.ok(strongResult.executionQuality>control.executionQuality);
+ assert.ok(weak.executionQuality<strongResult.executionQuality);
+ assert.ok(strongResult.criticalRatingStars<=5);
 });
