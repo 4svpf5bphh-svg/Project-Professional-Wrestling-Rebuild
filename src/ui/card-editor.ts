@@ -1000,7 +1000,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const owned=new Set(specialOwned);
       const choices:[string,string][]=[["","Ordinary angle · no spectacle"],
        ...availableSpectacles.map(x=>[x.sku,
-        (owned.has(x.sku)?"✓ ":"🔒 ")+x.label+" · "+x.price+" KP"] as [string,string])];
+        owned.has(x.sku)?"✓ "+x.label+" · unlocked":
+         "🔒 "+x.label+" · "+x.price+" KP"] as [string,string])];
       const chooser=selector(segment.specialMoment??"",choices,next=>{
        const chosen=specialMomentBySku(next);
        if(chosen&&!owned.has(chosen.sku)){
@@ -1017,11 +1018,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(opt.value&&!owned.has(opt.value))opt.disabled=true;
       controls.append(field("Special Moment",chooser));
       if(availableSpectacles.some(x=>!owned.has(x.sku))){
-       controls.append(el("p","ppw-angle-guidance",
-        "Unlock spectacles through Kayfabe Points. A spectacular stunt does not guarantee a great segment."));
-       if(port.openKayfabe)controls.append(button("Go to Special Moments shop",
+       const shop=el("div","ppw-special-shop");
+       shop.append(el("p","ppw-angle-guidance",
+        "Unlock spectacles through Kayfabe Points. No automatic rating bonus."));
+       if(port.openKayfabe)shop.append(button("Visit KP shop",
         ()=>{if(dirty){error="Save your card before opening Kayfabe Points.";render();}
-         else port.openKayfabe?.();},!mutable()));
+         else port.openKayfabe?.();},!mutable(),"ppw-special-shop-button"));
+       controls.append(shop);
       }
      }
     }

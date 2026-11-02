@@ -62,6 +62,12 @@ test("iPhone Kayfabe Points shows cosmetic catalogue, secure account actions and
  await expect(page.getByRole("heading",{name:"Create a Wrestler"})).toBeVisible();
  await expect(page.getByText("free-agent market",{exact:false}).first()).toBeVisible();
  await expect(page.getByText("First Bell")).toBeVisible();
+ const specials=page.locator(".ppw-kp-special-moments");
+ await expect(specials.getByRole("heading",{name:"Unlock Special Moments"})).toBeVisible();
+ await expect(specials.locator(".ppw-kp-moment")).toHaveCount(8);
+ await specials.scrollIntoViewIfNeeded();
+ await specials.screenshot({path:"test-results/presentation-screenshots/phase22-kp-special-moments-390.png",
+  animations:"disabled"});
  await expect(page.getByText("Active gold milestone frame")).toBeVisible();
  await expect(page.locator(".ppw-kp-active-preview.ppw-kp-achievement-gold")).toBeVisible();
  await page.getByRole("button",{name:"Use standard milestone frame"}).click();

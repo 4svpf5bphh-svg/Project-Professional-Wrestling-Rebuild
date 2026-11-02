@@ -563,3 +563,21 @@ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field select{
  body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field:has(>select[aria-label="Angle type"]){
   grid-column:1/-1}
 }
+
+/* A special unlock belongs to one compact full-width row on the iPhone.
+   Don't let the grid stretch its link into a huge grey square. */
+.ppw-angle-controls .ppw-special-shop{
+ grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;
+ gap:8px 10px;min-width:0;padding:4px 0 10px}
+.ppw-angle-controls .ppw-special-shop>.ppw-angle-guidance{
+ flex:1 1 175px;margin:0}
+.ppw-angle-controls .ppw-special-shop .ppw-special-shop-button{
+ flex:0 1 auto;align-self:center;justify-self:start;
+ width:auto;height:auto;min-height:44px;max-height:56px;
+ padding:8px 13px;border:1px solid #5baad3;border-radius:10px;
+ color:#edf8ff;background:#143750;
+ font-size:12px;font-weight:750;white-space:normal}
+@media(max-width:365px){
+ .ppw-angle-controls .ppw-special-shop .ppw-special-shop-button{
+  flex-basis:100%;max-height:none}
+}
