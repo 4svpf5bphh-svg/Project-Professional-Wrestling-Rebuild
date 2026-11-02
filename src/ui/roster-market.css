@@ -144,3 +144,21 @@
  background:linear-gradient(115deg,#643e8a,#382d67)!important;
  color:#f6e9ff!important;border-color:#d6a7fc!important;
 }
+
+/* Phase 23: a contract offer is a company budget decision, not isolated numbers. */
+.ppw-directory-affordability{display:grid;gap:9px;padding:13px;margin:12px 0;
+ border:1px solid #4e8297;border-radius:12px;background:#102c3d;min-width:0}
+.ppw-directory-affordability:empty{display:none}
+.ppw-directory-affordability>strong{font-size:16px;color:#fbe7b3}
+.ppw-directory-affordability-row{display:grid;grid-template-columns:minmax(0,1fr) auto;
+ gap:9px;align-items:baseline;border-bottom:1px solid #38566a;padding:6px 0}
+.ppw-directory-affordability-row>span{font-size:12px;line-height:1.4;color:#bbd6e2}
+.ppw-directory-affordability-row>strong{font-size:13px;text-align:right;
+ white-space:normal;color:#effaff;font-variant-numeric:tabular-nums}
+.ppw-directory-affordability[data-risk=true]{border-color:#d18f6b}
+.ppw-directory-affordability-warning{background:#442e34;color:#ffe2bb;
+ border-left:3px solid #f4ac77;padding:10px;border-radius:7px;margin:0;
+ font-size:12px;line-height:1.45}
+@media(max-width:375px){.ppw-directory-affordability-row{
+ grid-template-columns:1fr;gap:2px}
+ .ppw-directory-affordability-row>strong{text-align:left}}

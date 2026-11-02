@@ -137,6 +137,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   ] as const,draft.creative,next=>{draft.creative=next;pendingKey="";}));
   const fields=el("div","ppw-directory-offer-fields");
    const quote=el("p","ppw-directory-muted ppw-directory-offer-quote");
+   const affordability=el("section","ppw-directory-affordability");
    const updateQuote=()=>{
     const weeks=draft.family==="ONE_OFF"?1:draft.weeks;
     const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
@@ -153,6 +154,37 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       (dates>weeks?"Warning: "+dates+" purchased dates cannot all fit inside "+weeks+" weeks. ":"")+
       "Unused dates expire with the contract. ":"")+
      "Compare the offer with your wage allowance and cash reserve in Business → Finances.";
+    affordability.replaceChildren();
+    const company=view?.offerBudget;
+    if(company){
+     affordability.append(el("strong","","What this does to your company"));
+     const reservedCash=company.cash-draft.bonus;
+     const wageRoom=company.weeklyWageLimit===null?null:
+      company.weeklyWageLimit-company.weeklyGuarantees-guarantee;
+     const baseline=company.weeklyIncome===null||company.weeklyOverhead===null?null:
+      company.weeklyIncome-company.weeklyOverhead-
+      company.weeklyGuarantees-company.weeklyStaffPayroll;
+     const postMargin=baseline===null?null:baseline-guarantee;
+     const lines:[string,string][]=[
+      ["Cash if accepted (after signing bonus)",money(reservedCash)],
+      ["Weekly guarantees after signing",money(company.weeklyGuarantees+guarantee)],
+      ["Room under your weekly wage allowance",wageRoom===null?
+       "No spending plan set":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
+      ["Recurring weekly margin after signing",postMargin===null?
+       "Not yet configured":money(postMargin)],
+      ["Extra appearance cost when booked",money(appearance)+" per show"]
+     ];
+     for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
+      row.append(el("span","",title),el("strong","",value));affordability.append(row);}
+     if(wageRoom!==null&&wageRoom<0||company.cashReserve!==null&&
+      reservedCash<company.cashReserve||postMargin!==null&&postMargin<0){
+      affordability.dataset.risk="true";
+      affordability.append(el("p","ppw-directory-affordability-warning",
+       "This offer would exceed at least one of your chosen limits or your recurring income. It is not blocked, but review affordability before submitting."));
+     }else affordability.dataset.risk="false";
+     affordability.append(el("small","ppw-directory-muted",
+      "Before ticket sales, show costs and other variable liabilities. Approval and negotiated terms remain uncertain."));
+    }
    };
    updateQuote();
   if(draft.family!=="ONE_OFF")numbers(fields,"Weeks (1–52)",
@@ -166,7 +198,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  editor.append(fields,quote);
+  editor.append(fields,quote,affordability);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
