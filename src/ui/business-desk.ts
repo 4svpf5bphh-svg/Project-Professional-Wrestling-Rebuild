@@ -202,6 +202,19 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const bank=el("div","ppw-business-budget-bank");
    bank.append(el("span","","Cash in the bank"),el("strong","",money(view.cash)));
    budget.append(bank);
+   const compass=el("section","ppw-business-compass");
+   compass.append(el("h3","","What the company can afford"),
+    el("p","ppw-business-muted","These are guaranteed weekly commitments, before uncertain ticket sales and show costs."));
+   const costs=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+view.weeklyStaffPayroll;
+   const receipts=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
+   for(const [label,value] of [
+    ["Guaranteed broadcast + sponsor income",receipts],
+    ["Overhead + talent + staff each week",-costs],
+    ["Recurring room before live shows",receipts-costs]
+   ] as const){const line=el("div","ppw-business-line");
+    line.append(el("span","",label),el("strong",tone(value),money(value)));compass.append(line);}
+   if(port.openContracts)compass.append(button("Review wrestler contracts →",()=>port.openContracts?.()));
+   budget.append(compass);
    const fields=el("div","ppw-business-budget-fields");
    const preview=el("div","ppw-business-budget-preview");
    const save=button("Save spending plan",()=>void saveSpendingPlan());
@@ -233,6 +246,33 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.disabled=spendingBusy;field.append(input);fields.append(field);
    }
    budget.append(fields,preview);
+   const scenario=document.createElement("details");
+   scenario.className="ppw-business-signing-check";
+   scenario.append(el("summary","","Can I afford another wrestler?"));
+   scenario.append(el("p","ppw-business-muted",
+    "Try proposed terms here before offering a contract. This is a comparison, not an offer or guaranteed acceptance."));
+   const inputs=el("div","ppw-business-signing-inputs");
+   const status=el("p","ppw-business-signing-result");
+   const projections:{weekly:number;fee:number;bonus:number}={weekly:0,fee:0,bonus:0};
+   const update=()=>{
+    const baseline=receipts-costs;
+    const wageRoom=plan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
+    const remainingCash=view!.cash-projections.bonus;
+    status.textContent="After signing: "+money(baseline-projections.weekly)+
+     "/week before shows · "+(wageRoom>=0?money(wageRoom)+" under":"Over by "+money(-wageRoom)+" on")+
+     " your wage limit · "+money(remainingCash)+" cash after the bonus. "+
+     (projections.fee>0?money(projections.fee)+" more each show you book them.":"No extra appearance fee.")+
+     (remainingCash<plan.cashReserve?" Your planned cash reserve would be breached.":"");
+    status.dataset.risk=String(wageRoom<0||remainingCash<plan.cashReserve||baseline-projections.weekly<0);
+   };
+   for(const [label,key] of [["Weekly guarantee","weekly"],["Appearance fee per show","fee"],["Signing bonus","bonus"]] as const){
+    const field=el("label","ppw-business-budget-field");
+    field.append(el("span","",label));const input=document.createElement("input");
+    input.type="number";input.inputMode="numeric";input.min="0";input.max="1000000000";input.value="0";
+    input.oninput=()=>{projections[key]=Math.max(0,Number(input.value)||0);update();};
+    field.append(input);inputs.append(field);
+   }
+   scenario.append(inputs,status);budget.append(scenario);update();
    if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
     "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
@@ -595,6 +635,28 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     }
     section.append(audience);
    }
+   const comparison=el("section","ppw-business-broadcast-comparison");
+   comparison.append(el("h3","","How the industry is performing"),
+    el("p","ppw-business-muted","Latest certified TV episode per promotion from the last six weeks. Ratings are household estimates, not crowd scores."));
+   const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+   const rivals=view.competitorBroadcasts;
+   if(!rivals.length)comparison.append(el("p","ppw-business-muted","No competitor TV broadcasts have certified yet."));
+   for(const episode of rivals.slice(0,15)){
+    const row=el("article","ppw-business-broadcast-row");
+    if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
+    const info=el("div","");
+    info.append(el("strong","",episode.name+(episode.isYours?" · YOUR SHOW":"")),
+     el("span","",episode.showName+" · "+(days[episode.day??-1]??"Broadcast day unavailable")+
+      " · Y"+episode.year+" W"+episode.week),
+     el("small","",episode.networkOfferCode?
+      commercialCompanyName(episode.networkOfferCode):"No broadcast partner recorded"));
+    const numbers=el("div","ppw-business-broadcast-numbers");
+    numbers.append(el("strong","",episode.householdRating.toFixed(1)),
+     el("small","",episode.estimatedViewers===null?"Viewers unreported":
+      episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+    row.append(info,numbers);comparison.append(row);
+   }
+   section.append(comparison);
    const active=view.commercialAgreements;
    if(active.length)section.append(el("h3","","Current agreements"));
    for(const deal of active){

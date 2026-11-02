@@ -199,3 +199,11 @@
  margin:12px 0 6px;overflow-wrap:anywhere}
 .ppw-staff-meeting-brief .ppw-staff-voice{display:block;text-align:right;
  font-size:12px;font-weight:750;color:#c1d5e0;margin:0 0 11px}
+
+/* Phase 23: contract controls and the dossier belong to one employee card. */
+.ppw-staff-team-list .ppw-staff-actions{display:flex;flex-wrap:wrap;gap:8px;
+ margin-top:9px;min-width:0}
+.ppw-staff-team-list .ppw-staff-actions button{min-height:44px;max-width:100%}
+.ppw-staff-team-list .ppw-staff-dossier{margin-top:9px}
+.ppw-staff-meeting-context{margin:9px 12px;padding:10px 12px;border-left:3px solid #80dece;
+ border-radius:8px;background:#123447;color:#d9f3f4;font-size:13px;line-height:1.45}
