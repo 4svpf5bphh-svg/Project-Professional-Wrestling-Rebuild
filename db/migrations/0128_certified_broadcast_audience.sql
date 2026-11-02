@@ -7,7 +7,7 @@ ALTER TABLE ppw_show_economics
  ADD COLUMN IF NOT EXISTS ppv_buys bigint;
 -- A partial/retried release must not fail after the columns have been added.
 -- Scope the existence check to this table, not just a global constraint name.
-DO $
+DO $ppw_audience$
 BEGIN
  IF NOT EXISTS (
   SELECT 1 FROM pg_constraint
@@ -23,4 +23,4 @@ BEGIN
    OR (audience_format='PPV' AND ppv_buys>=0
     AND tv_household_rating IS NULL AND estimated_viewers IS NULL));
  END IF;
-END $;
+END $ppw_audience$;
