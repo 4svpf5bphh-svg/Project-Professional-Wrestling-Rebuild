@@ -1142,13 +1142,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        chooseSegmentTalent(slotId,role);
       },!mutable()||segment.actors.length+segment.targets.length>=30||
        (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
-       (role==="targets"&&["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
+       (role==="targets"&&["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind)&&
         segment.targets.length>=1)));
      // Existing 2v2/3v3 units are already available from the card projection.
      // Faction members are looked up once, only if the user requests them.
      const groupRole=role==="actors"?
       SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
-      !["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind);
+      !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind);
      if(groupRole){
       const groups=[
        ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),

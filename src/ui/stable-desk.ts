@@ -1,5 +1,6 @@
 /** Mobile faction desk from original PPW, not a tag-team editor.
- * Every membership change is explicit and World-authoritative.
+ * Certified authored membership decisions settle automatically at World resolution.
+ * Manual tools remain for corrections or off-screen changes.
  */
 import type {readStableWorkspace} from "../db/stable-workspace.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -64,7 +65,7 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
   header.append(el("span","ppw-eyebrow","THE LOCKER ROOM / FACTIONS"),
    el("h1","","Stables"),
    el("p","ppw-muted",
-    "Build your factions and settle who belongs. On-screen breakups and reunions are yours to make official."));
+    "Build your factions and manage off-screen changes. Successful booked joins and exits take effect when their show is certified."));
   root.append(header);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
@@ -73,7 +74,7 @@ export function mountStableDesk(root:HTMLElement,port:StableDeskPort,onBack?:()=
    const follow=el("section","ppw-stable-followthrough");
    follow.append(el("h2","","Storyline follow-through"));
    follow.append(el("p","ppw-muted",
-    "These angles already happened on-screen. You choose when to change the roster."));
+    "These older or conflicted on-screen decisions still need roster follow-through. Successful new decisions apply automatically at show resolution."));
    for(const task of view.storyFollowThrough){
     const card=el("article","ppw-stable-task");
     const desc=task.action==="ADD"?"Invite into":"Remove from";

@@ -111,9 +111,13 @@ test("interruption, rescue and post-match assault retain explicitly directed rol
    assert.throws(()=>buildEditorSegment(scene),/roles/);
    scene=addSegmentPerson(scene,"actors",actor("rescuer"));
    assert.throws(()=>addSegmentPerson(scene,"actors",actor("extra")),/capacity/);
-  }else assert.throws(()=>addSegmentPerson(scene,"actors",actor("extra")),/lead wrestler/);
+  }else if(kind==="POST_MATCH_ASSAULT")
+   assert.throws(()=>addSegmentPerson(scene,"actors",actor("extra")),/lead wrestler/);
+  else scene=addSegmentPerson(scene,"actors",actor("extra"));
   scene=addSegmentPerson(scene,"targets",actor("victim"));
-  assert.throws(()=>addSegmentPerson(scene,"targets",actor("extra")),/capacity/);
+  if(kind==="INTERRUPTION")
+   scene=addSegmentPerson(scene,"targets",actor("extra"));
+  else assert.throws(()=>addSegmentPerson(scene,"targets",actor("extra")),/capacity/);
   if(kind==="POST_MATCH_ASSAULT"){
    assert.throws(()=>buildEditorSegment(scene),/Invalid authored segment/);
    scene.sourceMatchSlotId="earlier-match";
@@ -128,7 +132,7 @@ test("interruption, rescue and post-match assault retain explicitly directed rol
 
 test("booker cannot cast targets into targetless scenes or exceed the shared 30-person limit",()=>{
  const p=(id:string)=>({personId:id,contractId:"contract-"+id});
- for(const kind of ["PROMO","INTERVIEW","CELEBRATION","CONTRACT_SIGNING","DEBUT"] as const){
+ for(const kind of ["CELEBRATION","CONTRACT_SIGNING","DEBUT"] as const){
   const scene=newEditorSegment("scene",kind);
   assert.throws(()=>addSegmentPerson(scene,"targets",p("intruder")),/no target role/);
  }

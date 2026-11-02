@@ -243,7 +243,7 @@ export async function disbandStable(pool:TransactionPool,input:DisbandStableInpu
 /** Load only on request while editing a faction angle, not on every card read. */
 export async function readActiveStableChoices(pool:TransactionPool,s:StableScope){
  return withSqlClient(pool,async tx=>{
-  await controlledPromotion(tx,s);
+  const auth=await controlledPromotion(tx,s);
   const rows=await tx.query<{stable_id:string;name:string}>([
    "SELECT stable_id,name FROM ppw_stables WHERE world_id=$1",
    "AND promotion_id=$2 AND status='ACTIVE'",
@@ -253,7 +253,7 @@ export async function readActiveStableChoices(pool:TransactionPool,s:StableScope
   if(!rows.length)return [];
   // One bounded query, only when the card author opens faction shortcuts.
   // Reuse actual show-week contract rights rather than inventing roster picks.
-  const week=(await controlledPromotion(tx,s)).weekIndex;
+  const week=auth.weekIndex;
   const members=await tx.query<{stable_id:string;person_id:string;
    name:string;contract_id:string}>([
    "SELECT m.stable_id,p.person_id,p.name,rights.contract_id",

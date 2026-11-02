@@ -59,7 +59,10 @@ test("the three new original-main angles require exact roles and scripted ending
   assert.deepEqual(scene.creativeBeat,choice.creativeBeat);
   assert.throws(()=>normalizeBookedSegment({...full,creativeBeat:undefined},people));
   assert.throws(()=>normalizeBookedSegment({...full,targetIds:[]},people));
-  assert.throws(()=>normalizeBookedSegment({...full,actorIds:["attacker","rescuer","victim"]},people));
+  if(choice.kind!=="INTERRUPTION")
+   assert.throws(()=>normalizeBookedSegment({...full,actorIds:["attacker","rescuer","victim"]},people));
+  else assert.deepEqual(normalizeBookedSegment({...full,
+   actorIds:["attacker","rescuer"]},people).actorIds,["attacker","rescuer"]);
  }
  assert.throws(()=>normalizeBookedSegment({
   slotId:"angle",position:2,kind:"POST_MATCH_ASSAULT",outcome:"HAPPENS",
