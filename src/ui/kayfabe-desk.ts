@@ -203,10 +203,10 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
    const owned=view.entitlements.includes(moment.sku);
    const item=el("article","ppw-kp-moment");
    item.append(el("strong","",moment.label),
-    el("small","","For "+moment.kind.replaceAll("_"," ").toLowerCase()+" · "+format(moment.price)+" KP"),
+    el("small","","For "+moment.kind.replaceAll("_"," ").toLowerCase()+" · "+format(moment.price)),
     el("p","ppw-kp-muted",moment.description));
    item.append(btn(owned?"Unlocked":view.balance<moment.price?
-    "Need "+format(moment.price-view.balance)+" KP":"Unlock · "+format(moment.price)+" KP",
+    "Need "+format(moment.price-view.balance)+" KP":"Unlock · "+format(moment.price),
     ()=>void run({kind:"BUY",sku:moment.sku,requestId:crypto.randomUUID()}),
     busy||owned||view.balance<moment.price));
    moments.append(item);
