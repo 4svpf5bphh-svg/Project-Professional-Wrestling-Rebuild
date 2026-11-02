@@ -35,6 +35,7 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
   SECOND_FALL:{title:"TWO FALLS TO SETTLE IT",description:"The decisive second fall settled the best-of-three contest.",tone:"CLEAN"},
   VERBAL_SURRENDER:{title:"THE WORDS NOBODY WANTED TO SAY",description:"The opponent was forced to say 'I quit'. No pinfall was involved.",tone:"CLEAN"},
   FIRST_BLOOD:{title:"THE FIRST SIGN OF BLOOD",description:"The first-blood condition was met, giving the winner the official decision.",tone:"CLEAN"},
+  CASKET_CLOSE:{title:"THE LID SLAMS SHUT",description:"The opponent was placed inside the casket and its lid closed, meeting the stipulation.",tone:"CLEAN"},
  };
  const match=finishes[method];
  const injury=entry.fallout?.injuries.find(x=>x.stoppage);

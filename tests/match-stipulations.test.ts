@@ -93,7 +93,7 @@ test("expanded gimmick matches have actual distinct winning conditions and lengt
   ["I_QUIT","VERBAL_SURRENDER",10,"SINGLES"],
   ["FIRST_BLOOD","FIRST_BLOOD",3,"SINGLES"],
   ["BACKSTAGE_BRAWL","CLEAN_PIN",3,"TAG"],
-  ["LUMBERJACK","CLEAN_PIN",3,"TAG"]
+  ["CASKET","CASKET_CLOSE",3,"SINGLES"]
  ] as const;
  for(const [stip,finish,min,format] of sample){
   assert.ok(compatibleStipulations(format).includes(stip));

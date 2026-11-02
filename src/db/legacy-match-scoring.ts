@@ -372,7 +372,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
       const elevated=stipulated==="STANDARD"?null:(()=>{
        const style=baseline.style;
        const technical=["SUBMISSION","IRON_MAN","TWO_OUT_OF_THREE",
-        "LUMBERJACK"].includes(stipulated);
+        ].includes(stipulated);
        const risk=technical?3:
         stipulated==="TLC"?35:stipulated==="LADDER"?25:
         stipulated==="BACKSTAGE_BRAWL"?30:18;

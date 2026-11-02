@@ -17,11 +17,11 @@ export const MATCH_STIPULATIONS=[
  {value:"I_QUIT",label:"I Quit Match",summary:"Victory only when an opponent verbally surrenders."},
  {value:"FIRST_BLOOD",label:"First Blood",summary:"The first wrestler made to bleed loses."},
  {value:"BACKSTAGE_BRAWL",label:"Backstage Brawl",summary:"A dangerous fight through the backstage area."},
- {value:"LUMBERJACK",label:"Lumberjack Match",summary:"Surrounding wrestlers keep competitors in the ring."}
+ {value:"CASKET",label:"Casket Match",summary:"Victory comes by placing an opponent inside a casket and closing the lid."}
 ] as const;
 export type MatchStipulation=typeof MATCH_STIPULATIONS[number]["value"];
 export type StipulatedWinMethod="RETRIEVAL"|"TABLE_BREAK"|"TEN_COUNT"|
- "MOST_FALLS"|"SECOND_FALL"|"VERBAL_SURRENDER"|"FIRST_BLOOD";
+ "MOST_FALLS"|"SECOND_FALL"|"VERBAL_SURRENDER"|"FIRST_BLOOD"|"CASKET_CLOSE";
 const allowed:Record<MatchStipulation,readonly string[]>={
  STANDARD:[],
  HARDCORE:["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH","FOREIGN_OBJECT"],
@@ -32,7 +32,7 @@ const allowed:Record<MatchStipulation,readonly string[]>={
  FALLS_COUNT_ANYWHERE:["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"],
  I_QUIT:["VERBAL_SURRENDER"],FIRST_BLOOD:["FIRST_BLOOD"],
  BACKSTAGE_BRAWL:["CLEAN_PIN","SUBMISSION","PROTECTED_FINISH"],
- LUMBERJACK:["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"]
+ CASKET:["CASKET_CLOSE"]
 };
 const singleOrTag=new Set(["SINGLES","TAG"]);
 const field=new Set(["SINGLES","TAG","TRIPLE_THREAT","FOUR_WAY"]);
@@ -51,7 +51,7 @@ export function compatibleStipulations(format:string):MatchStipulation[]{
   value==="I_QUIT"&&format==="SINGLES"||
   value==="FIRST_BLOOD"&&format==="SINGLES"||
   value==="BACKSTAGE_BRAWL"&&singleOrTag.has(format)||
-  value==="LUMBERJACK"&&singleOrTag.has(format)).map(x=>x.value);
+  value==="CASKET"&&format==="SINGLES").map(x=>x.value);
 }
 export function readMatchStipulation(value:unknown,format:string):MatchStipulation{
  const actual=value===undefined?"STANDARD":value;
@@ -81,11 +81,12 @@ export function defaultStipulationFinish(value:MatchStipulation):string{
   value==="IRON_MAN"?"MOST_FALLS":
   value==="TWO_OUT_OF_THREE"?"SECOND_FALL":
   value==="I_QUIT"?"VERBAL_SURRENDER":
-  value==="FIRST_BLOOD"?"FIRST_BLOOD":"CLEAN_PIN";
+  value==="FIRST_BLOOD"?"FIRST_BLOOD":
+  value==="CASKET"?"CASKET_CLOSE":"CLEAN_PIN";
 }
 export function stipulationScoringFinish(finish:string):string{
  return ["RETRIEVAL","TABLE_BREAK","TEN_COUNT","MOST_FALLS",
-  "SECOND_FALL","FIRST_BLOOD"].includes(finish)?"CLEAN_PIN":
+  "SECOND_FALL","FIRST_BLOOD","CASKET_CLOSE"].includes(finish)?"CLEAN_PIN":
   finish==="VERBAL_SURRENDER"?"SUBMISSION":finish;
 }
 export function stipulationInjuryRisk(value:MatchStipulation):number{
@@ -93,13 +94,13 @@ export function stipulationInjuryRisk(value:MatchStipulation):number{
   STANDARD:1,HARDCORE:1.22,STEEL_CAGE:1.18,LADDER:1.35,
   TABLES:1.25,TLC:1.48,LAST_MAN_STANDING:1.2,SUBMISSION:1.05,
   IRON_MAN:1.16,TWO_OUT_OF_THREE:1.09,FALLS_COUNT_ANYWHERE:1.3,
-  I_QUIT:1.25,FIRST_BLOOD:1.22,BACKSTAGE_BRAWL:1.37,LUMBERJACK:1.12
+  I_QUIT:1.25,FIRST_BLOOD:1.22,BACKSTAGE_BRAWL:1.37,CASKET:1.23
  };
  return risk[value];
 }
 export function isSpecialStipulationFinish(value:string):value is StipulatedWinMethod{
  return ["RETRIEVAL","TABLE_BREAK","TEN_COUNT","MOST_FALLS",
-  "SECOND_FALL","VERBAL_SURRENDER","FIRST_BLOOD"].includes(value);
+  "SECOND_FALL","VERBAL_SURRENDER","FIRST_BLOOD","CASKET_CLOSE"].includes(value);
 }
 
 /** Different matches reward different strengths. Never grant a fixed
@@ -122,7 +123,7 @@ export function stipulationExecutionFit(stip:MatchStipulation,context:{
   SUBMISSION:technical,IRON_MAN:technical*.6+c.stamina*.4,
   TWO_OUT_OF_THREE:technical,FALLS_COUNT_ANYWHERE:physical,
   I_QUIT:showmanship*.5+physical*.5,FIRST_BLOOD:physical,
-  BACKSTAGE_BRAWL:physical,LUMBERJACK:technical*.65+showmanship*.35
+  BACKSTAGE_BRAWL:physical,CASKET:showmanship*.65+physical*.35
  };
  const fit=fits[stip];
  const suitedIntent=

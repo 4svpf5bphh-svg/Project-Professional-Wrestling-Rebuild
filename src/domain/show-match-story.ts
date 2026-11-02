@@ -26,6 +26,7 @@ export function describeMatchFinish(input:{
   SECOND_FALL:"The winner secured the required second fall.",
   VERBAL_SURRENDER:"The opponent verbally surrendered to end the match.",
   FIRST_BLOOD:"The match ended when the first bleeding opponent was declared the loser.",
+  CASKET_CLOSE:"The casket lid was closed on the defeated opponent.",
  };
  const base=descriptions[finish]??"The bout reached its official finish: "+
   finish.toLowerCase().replaceAll("_"," ")+".";
