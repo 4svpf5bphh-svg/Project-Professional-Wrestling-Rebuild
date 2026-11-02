@@ -245,6 +245,16 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      chips.append(el("small","ppw-contract-danger","EXPIRING"));
     summary.append(chips);card.append(summary);
     const body=el("div","ppw-contract-details");
+    if(c.remainingDates!==null&&c.remainingDates>0&&c.weeksRemaining<=4){
+     const finalYear=Math.floor(c.expiresWeekIndex/52)+1;
+     const finalWeek=c.expiresWeekIndex%52+1;
+     const warning=el("p","ppw-contract-renew-hint",
+      c.weeksRemaining===0?"This agreement has expired despite unused appearance dates.":
+      "Signed through Year "+finalYear+" Week "+finalWeek+" only. "+
+      c.remainingDates+" unused dates do NOT extend the expiry. "+
+      (c.weeksRemaining===1?"Next week's show requires a new agreement.":"Renew before booking shows beyond that week."));
+     body.append(warning);
+    }
     body.append(el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
      " · Appearance "+money(c.appearanceFee)),
      el("p","ppw-muted","Role: "+title(c.roleExpectation)+

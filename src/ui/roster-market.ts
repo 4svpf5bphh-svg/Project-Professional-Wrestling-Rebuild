@@ -148,7 +148,11 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      (draft.family==="EXCLUSIVE"?". No per-appearance fee.":
       ", plus "+money(appearance)+" only when booked ("+
       money(appearance*dates)+" if all "+dates+" dates are used).")+
-     " These are future liabilities, not charges for submitting the offer.";
+     " These are future liabilities, not charges for submitting the offer. "+
+     (draft.family==="LIMITED_NON_EXCLUSIVE"?
+      (dates>weeks?"Warning: "+dates+" purchased dates cannot all fit inside "+weeks+" weeks. ":"")+
+      "Unused dates expire with the contract. ":"")+
+     "Compare the offer with your wage allowance and cash reserve in Business → Finances.";
    };
    updateQuote();
   if(draft.family!=="ONE_OFF")numbers(fields,"Weeks (1–52)",
@@ -162,7 +166,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  editor.append(fields,quote,btn(sending?"Sending…":"Submit offer",
+  editor.append(fields,quote);
+  if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
+  editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
   return editor;
  }

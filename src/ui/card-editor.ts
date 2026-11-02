@@ -951,7 +951,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       creativeBeat:segment.kind===kind?segment.creativeBeat:
        initialCreativeBeat(kind),
       scene:segment.kind===kind?segment.scene:initialAngleScene(kind),
-      specialMoment:segment.kind===kind?segment.specialMoment:null,
+      specialMoment:null,
       sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
@@ -968,13 +968,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Creative direction",selector(goal,
      ANGLE_STORY_GOALS.map(x=>[x.value,x.label]),value=>
       setAngle(firstAngleFor(value as AngleGoal)),!mutable())));
-    // A dedicated wrestler turn already defines its angle type.
-    // Show the second selector only where it offers a real choice.
-    if(anglesForGoal(goal).length>1)
-     controls.append(field("Angle type",selector(segment.kind,
-      ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value))
-       .map(x=>[x.value,x.label]),value=>
-       setAngle(value as EditorSegment["kind"]),!mutable())));
+    // Unlocked special moments live alongside ordinary angle types.
+    const usual=ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value));
+    const unlocked=SPECIAL_MOMENTS.filter(x=>specialOwned?.includes(x.sku)&&
+     anglesForGoal(goal).includes(x.kind));
+    if(usual.length>1||unlocked.length){
+     const options:[string,string][]=[...usual.map(x=>[x.value,x.label] as [string,string]),
+      ...unlocked.map(x=>[x.sku,"★ "+x.label] as [string,string])];
+     controls.append(field("Angle type",selector(segment.specialMoment??segment.kind,
+      options,value=>{
+       const moment=specialMomentBySku(value);
+       if(moment){const scene=segment.kind===moment.kind?
+        segment.scene??initialAngleScene(moment.kind):initialAngleScene(moment.kind);
+        editSegment(segment,{kind:moment.kind,specialMoment:moment.sku,
+         scene:{...scene,location:moment.locations[0]},
+         creativeBeat:initialCreativeBeat(moment.kind)});
+       }else setAngle(value as EditorSegment["kind"]);
+      },!mutable())));
+    }
      controls.append(field("Angle duration (minutes)",selector(String(segment.durationMinutes),
      [2,3,4,5,6,8,10,12,15,20,25,30].map(n=>[String(n),n+" min"]),
      value=>editSegment(segment,{durationMinutes:Number(value)}),!mutable())));
@@ -988,50 +999,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        next=>editSegment(segment,{creativeBeat:{
         ...beat,[option.name]:next
        } as SegmentCreativeBeat}),!mutable())));
-     }
-    }
-    const availableSpectacles=SPECIAL_MOMENTS.filter(x=>x.kind===segment.kind);
-    if(availableSpectacles.length){
-     controls.append(el("h3","ppw-angle-workflow-title","SPECIAL MOMENT · OPTIONAL"));
-     if(specialOwned===null){
-      controls.append(button(specialBusy?"Checking your unlocks…":
-       "Browse Special Moments",()=>void loadSpecialMoments(),
-       !mutable()||specialBusy||!port.specialMoments));
-      if(segment.specialMoment){
-       const existing=specialMomentBySku(segment.specialMoment);
-       controls.append(el("p","ppw-angle-guidance",
-        "Booked stunt: "+(existing?.label??"Unknown spectacle")));
-      }
-     }else{
-      const owned=new Set(specialOwned);
-      const choices:[string,string][]=[["","Ordinary angle · no spectacle"],
-       ...availableSpectacles.map(x=>[x.sku,
-        owned.has(x.sku)?"✓ "+x.label+" · unlocked":
-         "🔒 "+x.label+" · "+x.price+" KP"] as [string,string])];
-      const chooser=selector(segment.specialMoment??"",choices,next=>{
-       const chosen=specialMomentBySku(next);
-       if(chosen&&!owned.has(chosen.sku)){
-        error="Unlock "+chosen.label+" in Kayfabe Points before booking.";
-        render();return;
-       }
-       const scene=segment.scene??initialAngleScene(segment.kind);
-       editSegment(segment,{specialMoment:chosen?.sku??null,
-        scene:chosen?{...scene,location:
-         (chosen.locations as readonly string[]).includes(scene.location)?
-          scene.location:chosen.locations[0]}:scene});
-      },!mutable());
-      for(const opt of Array.from(chooser.options))
-       if(opt.value&&!owned.has(opt.value))opt.disabled=true;
-      controls.append(field("Special Moment",chooser));
-      if(availableSpectacles.some(x=>!owned.has(x.sku))){
-       const shop=el("div","ppw-special-shop");
-       shop.append(el("p","ppw-angle-guidance",
-        "Unlock spectacles through Kayfabe Points. No automatic rating bonus."));
-       if(port.openKayfabe)shop.append(button("Visit KP shop",
-        ()=>{if(dirty){error="Save your card before opening Kayfabe Points.";render();}
-         else port.openKayfabe?.();},!mutable(),"ppw-special-shop-button"));
-       controls.append(shop);
-      }
      }
     }
     if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(segment.kind)){
