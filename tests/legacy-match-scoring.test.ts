@@ -54,3 +54,22 @@ test("scoring never fabricates missing skills, audience data or impossible show 
   assert.throws(()=>scoreArchivedSinglesBeforeInjuries({...base,eventImportance:105}),/Invalid match scoring context/);
   assert.throws(()=>scoreArchivedSinglesBeforeInjuries({...base,chemistryModifier:Infinity}),/Invalid match scoring context/);
 });
+
+test("conditional gimmick execution shifts star opportunity without blocking five-star technical wrestling",()=>{
+ const control=scoreArchivedSinglesBeforeInjuries({...base,
+  plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN"});
+ const old=scoreArchivedSinglesBeforeInjuries({...base,
+  plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"STANDARD"});
+ assert.deepEqual(control,old);
+ const strong=scoreArchivedSinglesBeforeInjuries({...base,
+  plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"IRON_MAN"});
+ const weak=scoreArchivedSinglesBeforeInjuries({...base,
+  plannedLengthMinutes:35,plannedFinish:"CLEAN_PIN",stipulation:"IRON_MAN",
+  people:[{...strong,skills:{...strong.skills,
+   inRingQuality:27,matchCraft:24,stamina:28},fatigue:90},
+   {...skilled,skills:{...skilled.skills,
+    inRingQuality:28,matchCraft:26,stamina:30},fatigue:90}]});
+ assert.ok(strong.executionQuality>control.executionQuality);
+ assert.ok(weak.executionQuality<strong.executionQuality);
+ assert.ok(strong.criticalRatingStars<=5);
+});

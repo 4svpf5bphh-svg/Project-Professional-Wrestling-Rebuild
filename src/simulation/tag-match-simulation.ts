@@ -8,6 +8,7 @@ import {scoreArchivedFieldBeforeInjuriesWithRng,type ScoredWrestler,
  type ScoringInput} from "./legacy/match-scoring.js";
 import type {MatchIntent} from "./legacy/types.js";
 import type {MatchFinish} from "./legacy/match-finishes.js";
+import type {MatchStipulation} from "../domain/match-stipulations.js";
 import type {InjuryResolutionPreview,InjuryRecordPreview} from "./legacy/match-injuries.js";
 import {previewArchivedInterference,type BookedInterference,
  type InterfererReadiness} from "./legacy/match-interference.js";
@@ -16,6 +17,7 @@ export interface TagSimulationInput{
  worldSeed:string;matchId:string;order:number;eventImportance:number;
  intent:MatchIntent;plannedFinish:MatchFinish;plannedLengthMinutes:number;
  chemistryModifier:number;injuryRateMultiplier:number;
+ stipulation?:MatchStipulation;
  mediaReach:number;isMainEvent:boolean;
  interference?:BookedInterference|null;interferer?:InterfererReadiness|null;
 }
@@ -59,7 +61,7 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
   worldSeed:input.worldSeed,matchId:input.matchId,order:input.order,
   eventImportance:input.eventImportance,intent:input.intent,style:null,
   plannedFinish:input.plannedFinish,plannedLengthMinutes:input.plannedLengthMinutes,
-  chemistryModifier:input.chemistryModifier,
+  chemistryModifier:input.chemistryModifier,stipulation:input.stipulation,
   people:teams.map(average) as [ScoredWrestler,ScoredWrestler],
  };
  const {score,rng}=scoreArchivedFieldBeforeInjuriesWithRng(scoring);

@@ -8,7 +8,7 @@ import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
  type MatchStyleDimension,type MatchStyleProfile} from "../simulation/legacy/match-style.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {readBookedInterference,type BookedInterference} from "../simulation/legacy/match-interference.js";
-import {readMatchStipulation,defaultStipulationFinish,stipulationLabel,
+import {readMatchStipulation,defaultStipulationFinish,stipulationMinimumMinutes,stipulationLabel,
  type MatchStipulation} from "../domain/match-stipulations.js";
 export type Format="SINGLES"|"TRIPLE_THREAT"|"FOUR_WAY"|"TAG"|"TRIOS"|
  "FOUR_V_FOUR"|"FIVE_V_FIVE"|"MULTI_TEAM"|"BATTLE_ROYAL";
@@ -118,7 +118,9 @@ export function changeMatchStipulation(match:EditorMatch,
  stipulation:MatchStipulation):EditorMatch{
  readMatchStipulation(stipulation,match.format==="TRIOS"||
   match.format==="FOUR_V_FOUR"||match.format==="FIVE_V_FIVE"?"TAG":match.format);
- return {...match,stipulation,plannedFinish:defaultStipulationFinish(stipulation),
+ return {...match,stipulation,
+  plannedLengthMinutes:Math.max(match.plannedLengthMinutes,stipulationMinimumMinutes(stipulation)),
+  plannedFinish:defaultStipulationFinish(stipulation),
   cheatingWrestlerId:undefined,
   ...(stipulation==="STANDARD"||stipulation==="HARDCORE"?{}:{interference:undefined})};
 }

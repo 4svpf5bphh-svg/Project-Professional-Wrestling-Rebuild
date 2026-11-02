@@ -22,7 +22,8 @@ import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {MATCH_STIPULATIONS,compatibleStipulations,
- permittedStipulationFinishes,type MatchStipulation}
+ permittedStipulationFinishes,stipulationInjuryRisk,
+ stipulationMinimumMinutes,type MatchStipulation}
  from "../domain/match-stipulations.js";
 import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
@@ -1338,6 +1339,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      compatibleStipulations(simFormat).map(code=>[
       code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),
      v=>setMatch(slotId,changeMatchStipulation(m,v as MatchStipulation)),!mutable())));
+    const stip=m.stipulation??"STANDARD";
+    if(stip!=="STANDARD"){
+     const detail=MATCH_STIPULATIONS.find(x=>x.value===stip)!;
+     const safety=stipulationInjuryRisk(stip);
+     const risk=safety>=1.3?"HIGH":safety>=1.15?"ELEVATED":"MODERATE";
+     const note=el("p","ppw-angle-guidance ppw-stipulation-impact",
+      detail.summary+" · "+risk+" injury exposure"+
+      " · Performance depends on wrestler suitability, fitness and match length. No automatic star bonus.");
+     controls.append(note);
+    }
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
@@ -1372,7 +1383,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      controls.append(el("p","ppw-alert ppw-error",
       "Championships require 2–4 singles wrestlers or teams of two in a tag match. Remove the title before saving."));
     }
-    controls.append(field("Minutes",numberField(m.plannedLengthMinutes,3,60,
+    controls.append(field("Minutes",numberField(m.plannedLengthMinutes,
+     stipulationMinimumMinutes(m.stipulation??"STANDARD"),60,
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     body.append(controls);
     if(m.format==="SINGLES"||m.format==="TAG"){

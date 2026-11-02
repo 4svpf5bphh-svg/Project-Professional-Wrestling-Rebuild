@@ -9,7 +9,7 @@ import {simulateMultiIndividualMatch} from "../simulation/multi-individual-match
 import {isBookableMatchFinish,type MatchFinish} from "../simulation/legacy/match-finishes.js";
 import {normalizeMatchStyle} from "../simulation/legacy/match-style.js";
 import {readMatchStipulation,permittedStipulationFinishes,stipulationScoringFinish,
- stipulationInjuryRisk} from "../domain/match-stipulations.js";
+ stipulationInjuryRisk,stipulationMinimumMinutes} from "../domain/match-stipulations.js";
 import type {MatchIntent} from "../simulation/legacy/types.js";
 import {adaptBookedSinglesMatch,type WrestlerSimReadiness}
   from "../simulation/booked-match-adapter.js";
@@ -237,7 +237,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
          "HIGH_RISK","STORY","PROTECTIVE","EPIC"].includes(String(intent))||
           !permittedStipulationFinishes(stip,format).includes(String(finish))||
           raw.interference!==undefined||raw.style!==undefined||
-          typeof length!=="number"||!Number.isInteger(length)||length<3||length>60)
+          typeof length!=="number"||!Number.isInteger(length)||
+          length<stipulationMinimumMinutes(stip)||length>60)
          throw new Error("Unsupported multi-person intent, finish, run-in or length");
         const ids=layout.participants.map(x=>x.personId);
         if(new Set(ids.map(id=>divisions.get(id))).size!==1)
@@ -250,7 +251,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
           layout,wrestlers:talent,worldSeed:String(show.seed),
           matchId:`${input.showId}:${slot.slot_id}`,
           order:index+1,eventImportance:show.event_importance!,
-          intent:intent as MatchIntent,plannedFinish:
+          intent:intent as MatchIntent,stipulation:stip,plannedFinish:
            scoringFinish as "CLEAN_PIN"|"FLASH_PIN"|"SUBMISSION"|"PROTECTED_FINISH",
           plannedLengthMinutes:length,
           injuryRateMultiplier:Math.min(10,Number(show.injury_rate_multiplier)*
@@ -290,7 +291,8 @@ export async function previewArchivedShowMatchScoresInTransaction(
           !permittedStipulationFinishes(stipulated,format).includes(authoredFinish)||
           !isBookableMatchFinish(plannedFinish)||
           typeof length!=="number"||!Number.isInteger(length)||
-          length<3||length>60||raw.style!==undefined)
+          length<stipulationMinimumMinutes(stipulated)||length>60||
+          raw.style!==undefined)
           throw new Error("Unsupported tag match intent, duration, finish or style");
         let modifier=0;
         for(const side of layout.sides){
@@ -336,7 +338,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
           eventImportance:show.event_importance!,
           intent:intent as MatchIntent,plannedFinish,
           plannedLengthMinutes:length,chemistryModifier:modifier,
-          injuryRateMultiplier:Math.min(10,rate*stipulationInjuryRisk(stipulated)),
+          stipulation:stipulated,injuryRateMultiplier:Math.min(10,rate*stipulationInjuryRisk(stipulated)),
           mediaReach:show.media_reach,
           isMainEvent:index===matches.length-1,
           interference:interruption,
@@ -369,14 +371,17 @@ export async function previewArchivedShowMatchScoresInTransaction(
        {...raw,plannedFinish:scoringFinish},readiness);
       const elevated=stipulated==="STANDARD"?null:(()=>{
        const style=baseline.style;
-       const risk=stipulated==="SUBMISSION"?4:
-        stipulated==="TLC"?35:stipulated==="LADDER"?25:18;
-       const intensity=stipulated==="SUBMISSION"?3:
+       const technical=["SUBMISSION","IRON_MAN","TWO_OUT_OF_THREE",
+        "LUMBERJACK"].includes(stipulated);
+       const risk=technical?3:
+        stipulated==="TLC"?35:stipulated==="LADDER"?25:
+        stipulated==="BACKSTAGE_BRAWL"?30:18;
+       const intensity=technical?2:
         stipulated==="TLC"?20:stipulated==="LADDER"?15:10;
        return normalizeMatchStyle({...style,
         risk:Math.min(100,style.risk+risk),
         intensity:Math.min(100,style.intensity+intensity),
-        technical:stipulated==="SUBMISSION"?
+        technical:technical?
          Math.min(100,style.technical+15):style.technical});
       })();
       const match=elevated?adaptBookedSinglesMatch(
@@ -403,6 +408,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
         intent:match.intent,style:match.explicitStyle?match.style:null,
         plannedFinish:match.plannedFinish,
         plannedLengthMinutes:match.plannedLengthMinutes,chemistryModifier,
+        stipulation:stipulated,
         people:[talent.get(match.personIds[0])!,talent.get(match.personIds[1])!] as
           [ScoredWrestler,ScoredWrestler],
       };
