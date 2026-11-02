@@ -129,6 +129,12 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
+  specialMoments:async()=>{
+   const data=await call("kpWorkspace") as {entitlements:string[]};
+   return data.entitlements;
+  },
+  openKayfabe:navigate("kayfabe",()=>
+   mountKayfabePage(root,scope,()=>mountCardEditor(root,port))),
   save:({requestId,expectedRevision,matches,segments,runningOrder})=>
    call("save",{requestId,expectedRevision,matches,segments,runningOrder}),
   confirmReady:({requestId,expectedRevision})=>

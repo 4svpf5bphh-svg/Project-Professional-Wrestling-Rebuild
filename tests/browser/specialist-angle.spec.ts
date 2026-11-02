@@ -359,3 +359,61 @@ test("iPhone books a brutal premeditated ambush outside and reopens every sub-op
  await expect(dialog.getByLabel("Attack intensity")).toHaveValue("BRUTAL");
  await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
 });
+
+test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible arena location",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let saved:Record<string,unknown>={
+  kind:"INTERRUPTION",outcome:"HAPPENS",actorIds:["alice"],targetIds:["bob"],
+  participants:[alice,bob],
+  creativeBeat:{kind:"INTERRUPTION",ending:"INTERRUPTER_PREVAILS"}
+ };
+ const methods:string[]=[];let revision=4;
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON() as Record<string,unknown>;
+  const method=String(req.method);methods.push(method);
+  if(method==="save"){
+   const segments=req.segments as {payload:Record<string,unknown>}[];
+   saved=segments[0]!.payload;revision++;
+   expect(saved.specialMoment).toBe("MOMENT_VEHICLE_HOSING");
+   expect((saved.scene as {location:string}).location).toBe("RINGSIDE");
+  }
+  return route.fulfill({json:
+   method==="planner"?planner:
+   method==="kpWorkspace"?{entitlements:["MOMENT_VEHICLE_HOSING"]}:
+   method==="load"?{
+    showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+    day:5,venueId:"arena",showName:"Dynamite",promotionName:"AEW",
+    venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+    ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+    selectedPeople:[{personId:"alice",name:"Alice",division:"MEN"},
+     {personId:"bob",name:"Bob",division:"MEN"}],
+    slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+     {slotId:"stunt",kind:"SEGMENT",position:1,payload:saved}]
+   }:
+   method==="save"?{status:"APPLIED",result:{performers:2}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ let dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByRole("button",{name:"Browse Special Moments"}).click();
+ await expect(dialog.getByLabel("Special Moment")).toBeVisible();
+ await expect(dialog.getByLabel("Special Moment").locator("option:disabled")).toHaveCount(1);
+ await dialog.getByLabel("Special Moment").selectOption("MOMENT_VEHICLE_HOSING");
+ await expect(dialog.getByLabel("Exact location")).toHaveValue("RINGSIDE");
+ await expect(dialog.getByLabel("Exact location").locator("option",{hasText:"Arena car park"})).toHaveCount(0);
+ await dialog.getByLabel("Special Moment").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase22-special-moment-390.png",
+  fullPage:true,animations:"disabled"});
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ await expect(page.locator(".ppw-card-lineup").filter({hasText:"Vehicle hosedown"})).toBeVisible();
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByRole("button",{name:"Browse Special Moments"}).click();
+ await expect(dialog.getByLabel("Special Moment")).toHaveValue("MOMENT_VEHICLE_HOSING");
+ expect(methods.filter(x=>x==="kpWorkspace")).toHaveLength(2);
+ expect(methods.filter(x=>x==="save")).toHaveLength(1);
+});

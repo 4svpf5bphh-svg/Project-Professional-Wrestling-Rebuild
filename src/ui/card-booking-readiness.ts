@@ -4,6 +4,7 @@
 import {buildBookedMatch,type EditorMatch} from "./card-editor-model.js";
 import type {EditorSegment} from "./card-segment-model.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
+import {specialMomentBySku} from "../domain/special-moments.js";
 export interface SlotReadiness{complete:boolean;label:string;hint:string}
 export function matchCastingReadiness(match:EditorMatch):SlotReadiness{
  const total=match.teams.reduce((n,side)=>n+side.length,0);
@@ -39,10 +40,20 @@ export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
  const all=[...angle.actors,...angle.targets].map(x=>x.personId);
  if(new Set(all).size!==all.length)
   return {complete:false,label:"DUPLICATE WRESTLER",hint:"Give every performer just one part in this angle."};
- if(["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(angle.kind)&&
-  (targets!==1||actors!==rules.maxActors||!angle.creativeBeat))
+ if(["RESCUE","POST_MATCH_ASSAULT"].includes(angle.kind)&&
+  (targets!==1||actors!==rules.maxActors||!angle.creativeBeat)||
+  angle.kind==="INTERRUPTION"&&!angle.creativeBeat)
   return {complete:false,label:"FINISH THE SCENE",
    hint:"Choose the complete cast and how the confrontation ends."};
+ const spectacle=angle.specialMoment;
+ if(spectacle){
+  const moment=specialMomentBySku(spectacle);
+  if(!moment||moment.kind!==angle.kind||!angle.scene||
+   !(moment.locations as readonly string[]).includes(angle.scene.location)||
+   moment.needsTarget&&targets===0)
+   return {complete:false,label:"CHECK SPECIAL MOMENT",
+    hint:"Choose the required target and a suitable location for the spectacle."};
+ }
  if(angle.kind==="POST_MATCH_ASSAULT"&&!angle.sourceMatchSlotId)
   return {complete:false,label:"CHOOSE THE BOUT",
    hint:"Link the assault to an earlier match on this card."};

@@ -6,6 +6,7 @@ import {EVENT_POSTER_SKINS,EVENT_POSTER_KP_PRICE,eventPosterBySku,eventPosterByS
 import {STAFF_OFFICE_THEMES,STAFF_OFFICE_THEME_KP_PRICE,staffOfficeThemeBySku,staffOfficeThemeByStyle,type StaffOfficeThemeSku} from "../domain/staff-office-themes.js";
 import {BROADCAST_PACKAGES,BROADCAST_PACKAGE_KP_PRICE,broadcastPackageBySku,broadcastPackageByStyle,type BroadcastPackageSku} from "../domain/broadcast-packages.js";
 import {withWorldTransaction,type TransactionPool} from "./transaction.js";
+import {SPECIAL_MOMENTS} from "../domain/special-moments.js";
 import {withSqlClient} from "./postgres.js";
 import type {SqlRows} from "./world-operations.js";
 import {createKpWrestlerPersona,validateKpCreatedIdentity,kpWrestlerCreateOptions,
@@ -31,7 +32,8 @@ export const KP_CATALOGUE=[
  {sku:"RESULTS_RETRO_BOOKER_02",label:"Retro Booker ’02 · classic PC wrestling results",price:1000,kind:"RESULTS_SKIN"},
  ...EVENT_POSTER_SKINS.map(p=>({...p,price:EVENT_POSTER_KP_PRICE,kind:"EVENT_POSTER" as const})),
  ...STAFF_OFFICE_THEMES.map(t=>({...t,price:STAFF_OFFICE_THEME_KP_PRICE,kind:"STAFF_OFFICE_THEME" as const})),
- ...BROADCAST_PACKAGES.map(p=>({...p,price:BROADCAST_PACKAGE_KP_PRICE,kind:"BROADCAST_PACKAGE" as const}))
+ ...BROADCAST_PACKAGES.map(p=>({...p,price:BROADCAST_PACKAGE_KP_PRICE,kind:"BROADCAST_PACKAGE" as const})),
+ ...SPECIAL_MOMENTS.map(p=>({...p,kind:"SPECIAL_MOMENT" as const}))
 ] as const;
 type BrandSku="BRAND_CHROME"|"BRAND_NEON"|"BRAND_GOLD";
 type BadgeSku="BADGE_GOLD"|"BADGE_PLATINUM";
@@ -257,7 +259,7 @@ export async function applyKayfabeAction(pool:TransactionPool,s:KpScope,action:K
    const exists=await tx.query<{sku:string}>(`
     SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=$2`,
     [s.playerId,action.sku]);
-   if(exists.length)throw new Error("You already own this style");
+   if(exists.length)throw new Error("You already own this unlock");
    price=item.price;
    await tx.query(`INSERT INTO ppw_kp_entitlements(player_id,sku) VALUES($1,$2)`,
     [s.playerId,action.sku]);

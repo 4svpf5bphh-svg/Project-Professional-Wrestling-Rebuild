@@ -28,6 +28,7 @@ import {storyDirectionHint} from "./story-direction-hint.js";
 import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
  from "../domain/segment-creative-beats.js";
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
+import {SPECIAL_MOMENTS,specialMomentBySku} from "../domain/special-moments.js";
 import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,angleLocationsFor,anglePurposesFor,angleLocationArea,angleSceneLabel} from "../domain/angle-scene.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
@@ -65,6 +66,8 @@ export interface CardEditorPort{
  openWorkingConnections?():void;
  openPersona?():void;
  openProfile?(personId:string,holder:HTMLElement,onClose:()=>void):void;
+ specialMoments?():Promise<readonly string[]>;
+ openKayfabe?():void;
  stableChoices?():Promise<{stableId:string;name:string;members?:{
   personId:string;contractId:string;name:string}[]}[]>;
 }
@@ -127,6 +130,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoices:{stableId:string;name:string;members?:{
   personId:string;contractId:string;name:string}[]}[]|null=null;
  let stableChoicesLoading=false;
+ let specialOwned:readonly string[]|null=null,specialBusy=false;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=null;
  let rivalryIdeasOpen=false;
@@ -209,6 +213,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   try{
    view=await port.load();
    stableChoices=null;
+   specialOwned=null;
     // A new World week may activate signed renewals; discard stale contract IDs.
     roster.clear();
     matches=new Map();segments=new Map();
@@ -338,6 +343,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
   }catch(e){error=errorText(e);stableChoices=[];}
   finally{stableChoicesLoading=false;render();}
+ }
+ async function loadSpecialMoments(){
+  if(specialOwned!==null||specialBusy||!port.specialMoments)return;
+  specialBusy=true;render();
+  try{specialOwned=await port.specialMoments();error="";}
+  catch(e){error=errorText(e);}
+  finally{specialBusy=false;render();}
  }
  function editSegment(s:EditorSegment,patch:Partial<EditorSegment>){
   segments.set(s.slotId,{...s,...patch});markDirty();render();
@@ -756,7 +768,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     segment.actors.length?"Featuring: "+segment.actors.map(p=>selectedName(p)).join(", "):"",
     segment.targets.length?"With: "+segment.targets.map(p=>selectedName(p)).join(", "):""
    ].filter(Boolean).join(" · "):"";
-   const angleDetails=segment?creativeSummary(segment.creativeBeat):"";
+   const selectedSpectacle=segment?.specialMoment?
+    specialMomentBySku(segment.specialMoment):null;
+   const angleDetails=segment?[
+    ...(selectedSpectacle?["SPECIAL · "+selectedSpectacle.label]:[]),
+    creativeSummary(segment.creativeBeat)].filter(Boolean).join(" · "):"";
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
     el("strong","",m?matchLabel(m):angleName),
     ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]),
@@ -929,6 +945,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       creativeBeat:segment.kind===kind?segment.creativeBeat:
        initialCreativeBeat(kind),
       scene:segment.kind===kind?segment.scene:initialAngleScene(kind),
+      specialMoment:segment.kind===kind?segment.specialMoment:null,
       sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
@@ -965,6 +982,47 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        next=>editSegment(segment,{creativeBeat:{
         ...beat,[option.name]:next
        } as SegmentCreativeBeat}),!mutable())));
+     }
+    }
+    const availableSpectacles=SPECIAL_MOMENTS.filter(x=>x.kind===segment.kind);
+    if(availableSpectacles.length){
+     controls.append(el("h3","ppw-angle-workflow-title","SPECIAL MOMENT · OPTIONAL"));
+     if(specialOwned===null){
+      controls.append(button(specialBusy?"Checking your unlocks…":
+       "Browse Special Moments",()=>void loadSpecialMoments(),
+       !mutable()||specialBusy||!port.specialMoments));
+      if(segment.specialMoment){
+       const existing=specialMomentBySku(segment.specialMoment);
+       controls.append(el("p","ppw-angle-guidance",
+        "Booked stunt: "+(existing?.label??"Unknown spectacle")));
+      }
+     }else{
+      const owned=new Set(specialOwned);
+      const choices:[string,string][]=[["","Ordinary angle · no spectacle"],
+       ...availableSpectacles.map(x=>[x.sku,
+        (owned.has(x.sku)?"✓ ":"🔒 ")+x.label+" · "+x.price+" KP"] as [string,string])];
+      const chooser=selector(segment.specialMoment??"",choices,next=>{
+       const chosen=specialMomentBySku(next);
+       if(chosen&&!owned.has(chosen.sku)){
+        error="Unlock "+chosen.label+" in Kayfabe Points before booking.";
+        render();return;
+       }
+       const scene=segment.scene??initialAngleScene(segment.kind);
+       editSegment(segment,{specialMoment:chosen?.sku??null,
+        scene:chosen?{...scene,location:
+         (chosen.locations as readonly string[]).includes(scene.location)?
+          scene.location:chosen.locations[0]}:scene});
+      },!mutable());
+      for(const opt of Array.from(chooser.options))
+       if(opt.value&&!owned.has(opt.value))opt.disabled=true;
+      controls.append(field("Special Moment",chooser));
+      if(availableSpectacles.some(x=>!owned.has(x.sku))){
+       controls.append(el("p","ppw-angle-guidance",
+        "Unlock spectacles through Kayfabe Points. A spectacular stunt does not guarantee a great segment."));
+       if(port.openKayfabe)controls.append(button("Go to Special Moments shop",
+        ()=>{if(dirty){error="Save your card before opening Kayfabe Points.";render();}
+         else port.openKayfabe?.();},!mutable()));
+      }
      }
     }
     if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(segment.kind)){
@@ -1039,9 +1097,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      controls.append(el("h3","ppw-angle-workflow-title","3 · WHERE does it happen?"));
      // New scenes use appropriate places. Previously saved locations stay
      // available to edit; changing the angle type starts a fresh scene.
-     const suggestedLocations=angleLocationsFor(segment.kind);
-     const permitted=suggestedLocations.includes(scene.location)?suggestedLocations:
-      [...suggestedLocations,scene.location];
+     const selectedSpecial=segment.specialMoment?
+      specialMomentBySku(segment.specialMoment):null;
+     const suggestedLocations=selectedSpecial?.locations??angleLocationsFor(segment.kind);
+     const permitted=(suggestedLocations as readonly string[]).includes(scene.location)?
+      suggestedLocations:[...suggestedLocations,scene.location];
      const areas=Object.keys(ANGLE_LOCATION_AREAS).filter(area=>
       permitted.some(place=>angleLocationArea(place)===area)) as
        (keyof typeof ANGLE_LOCATION_AREAS)[];

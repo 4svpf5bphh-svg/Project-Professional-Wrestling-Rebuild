@@ -16,6 +16,7 @@ import {inferProgrammeMatchLinks,validateProgrammeAngleLinks} from "../domain/pr
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
+import {specialMomentBySku,type SpecialMomentSku} from "../domain/special-moments.js";
 import type {AngleScene} from "../domain/angle-scene.js";
 import {validatePostMatchLinks} from "../domain/post-match-links.js";
 import {contractAvailability} from "../domain/contract-availability.js";
@@ -480,6 +481,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
    ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
    ...(p.scene===undefined?{}:{scene:p.scene as AngleScene}),
+   ...(p.specialMoment===undefined?{}:{specialMoment:p.specialMoment as SpecialMomentSku}),
    ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
    ...(p.turnTargetAlignment===undefined?{}:{
     turnTargetAlignment:p.turnTargetAlignment as "FACE"|"HEEL"|"TWEENER"}),
@@ -591,6 +593,22 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     ].join(" "),[input.worldId,input.promotionId,stableIds]);
     if(active.length!==stableIds.length)
      throw new Error("Faction angle must refer to an active owned stable");
+   }
+   // A purchased spectacle is account-owned, not promotion-owned. Verify
+   // entitlements inside the same authoritative card-save transaction.
+   // Generic angles take no extra Neon read.
+   const moments=[...new Set(segments.flatMap(s=>
+    s.payload&&typeof s.payload==="object"&&!Array.isArray(s.payload)&&
+    typeof (s.payload as {specialMoment?:unknown}).specialMoment==="string"?
+     [(s.payload as {specialMoment:string}).specialMoment]:[]))];
+   if(moments.length){
+    if(moments.length>8||moments.some(s=>!specialMomentBySku(s)))
+     throw new Error("Unknown Special Moment");
+    const owned=await tx.query<{sku:string}>(
+     "SELECT sku FROM ppw_kp_entitlements WHERE player_id=$1 AND sku=ANY($2::text[])",
+     [input.playerId,moments]);
+    if(owned.length!==moments.length)
+     throw new Error("Unlock each Special Moment with Kayfabe Points before booking it");
    }
    const appearances=uniqueShowAppearances([
     ...booked,...runIns,...segments.flatMap(s=>readCardParticipants(s.payload))]);

@@ -132,7 +132,7 @@ test("interruption, rescue and post-match assault retain explicitly directed rol
 
 test("booker cannot cast targets into targetless scenes or exceed the shared 30-person limit",()=>{
  const p=(id:string)=>({personId:id,contractId:"contract-"+id});
- for(const kind of ["CELEBRATION","CONTRACT_SIGNING","DEBUT"] as const){
+ for(const kind of ["CONTRACT_SIGNING","DEBUT"] as const){
   const scene=newEditorSegment("scene",kind);
   assert.throws(()=>addSegmentPerson(scene,"targets",p("intruder")),/no target role/);
  }

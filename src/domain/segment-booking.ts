@@ -1,6 +1,7 @@
 import {validateAuthoredSegments,type AuthoredSegment,type SegmentKind,type VideoPurpose,type SegmentOutcome} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "./segment-creative-beats.js";
 import type {AngleScene} from "./angle-scene.js";
+import type {SpecialMomentSku} from "./special-moments.js";
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
@@ -8,7 +9,7 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  INTERVIEW:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  CONFRONTATION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  CHALLENGE:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
- CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:false,purposes:[]},
+ CELEBRATION:{minActors:1,minTargets:0,maxActors:20,allowTargets:true,purposes:[]},
  ATTACK:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  INTERRUPTION:{minActors:1,minTargets:1,maxActors:20,allowTargets:true,purposes:[]},
  RESCUE:{minActors:2,minTargets:1,maxActors:2,allowTargets:true,purposes:[]},
@@ -26,7 +27,8 @@ export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
 export interface SegmentBookingInput{
  slotId:string;position:number;kind:SegmentKind;actorIds:readonly string[];
  targetIds:readonly string[];outcome:SegmentOutcome;durationMinutes?:number;videoPurpose?:VideoPurpose;
- creativeBeat?:SegmentCreativeBeat;scene?:AngleScene;sourceMatchSlotId?:string;
+ creativeBeat?:SegmentCreativeBeat;scene?:AngleScene;specialMoment?:SpecialMomentSku;
+ sourceMatchSlotId?:string;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";
 }

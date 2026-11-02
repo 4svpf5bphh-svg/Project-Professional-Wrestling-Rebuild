@@ -8,6 +8,7 @@ import {EVENT_POSTER_SKINS,type EventPosterSku} from "../domain/event-poster-ski
 import {type StaffOfficeThemeSku} from "../domain/staff-office-themes.js";
 import {createStaffOfficeThemePreview} from "./staff-office-theme-preview.js";
 import {type BroadcastPackageSku} from "../domain/broadcast-packages.js";
+import {SPECIAL_MOMENTS} from "../domain/special-moments.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {KpCreateStyle,KpCreateGimmick} from "../domain/kp-create-wrestler.js";
 export type KayfabeView=Awaited<ReturnType<typeof readKayfabeWorkspace>>;
@@ -192,6 +193,25 @@ export function mountKayfabeDesk(root:HTMLElement,port:KayfabePort){
   if(view.activeResultsSkin)resultsShop.append(btn("Use original PPW results",()=>void run({
    kind:"CLEAR_RESULTS_SKIN",requestId:crypto.randomUUID()}),busy));
   root.append(resultsShop);
+  const momentsShop=el("section","ppw-kp-section ppw-kp-special-moments");
+  momentsShop.append(el("span","ppw-kp-kicker","BOOKER'S SPECTACLES"),
+   el("h2","","Unlock Special Moments"),
+   el("p","ppw-kp-muted",
+    "Buy an extravagant on-screen stunt once, then use it in the matching angle in Edit Card. Unlocking changes your creative choices, never the match result or rating."));
+  const moments=el("div","ppw-kp-moment-list");
+  for(const moment of SPECIAL_MOMENTS){
+   const owned=view.entitlements.includes(moment.sku);
+   const item=el("article","ppw-kp-moment");
+   item.append(el("strong","",moment.label),
+    el("small","","For "+moment.kind.replaceAll("_"," ").toLowerCase()+" · "+format(moment.price)+" KP"),
+    el("p","ppw-kp-muted",moment.description));
+   item.append(btn(owned?"Unlocked":view.balance<moment.price?
+    "Need "+format(moment.price-view.balance)+" KP":"Unlock · "+format(moment.price)+" KP",
+    ()=>void run({kind:"BUY",sku:moment.sku,requestId:crypto.randomUUID()}),
+    busy||owned||view.balance<moment.price));
+   moments.append(item);
+  }
+  momentsShop.append(moments);root.append(momentsShop);
   // Keep just ONE animated preview in the DOM: 18 designs, one lightweight
   // player-controlled animation at a time, no image assets or repeated reads.
   const posterShop=el("section","ppw-kp-section ppw-kp-event-posters");

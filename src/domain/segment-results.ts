@@ -1,10 +1,12 @@
 import {normalizeBookedSegment} from "./segment-booking.js";
+import {specialMomentNarrative,specialMomentBySku} from "./special-moments.js";
 import {angleSceneLocationPhrase,initialAngleScene,angleSceneLabel} from "./angle-scene.js";
 import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segments.js";
 export interface SegmentResult{
  slotId:string;position:number;kind:SegmentKind;outcome:SegmentOutcome;
  headline:string;summary:string;actorIds:readonly string[];targetIds:readonly string[];
+ specialMoment?:import("./special-moments.js").SpecialMomentSku;
  stableId?:string;stableDecision?:"ACCEPTED"|"REJECTED";
  stableDeparture?:"WALKOUT"|"EXPULSION_SCENE"|"PUBLIC_DENUNCIATION"|"BEATDOWN";
 }
@@ -200,13 +202,17 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  const repeatedSeparation=scene?.visual==="OFFICIALS_SEPARATE"&&
   ((beat?.kind==="POST_MATCH_ASSAULT"&&beat.ending==="OFFICIALS_SEPARATE")||
    (beat?.kind==="ATTACK"&&beat.presentation==="PULL_APART_BRAWL"));
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+severity+
+ const spectacle=segment.specialMoment?specialMomentBySku(segment.specialMoment):null;
+ const spectacular=segment.outcome==="HAPPENS"&&spectacle?
+  " "+specialMomentNarrative(spectacle.sku,subject,object):"";
+ const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+spectacular+severity+
   (!repeatedSeparation&&visual?" "+visual:"")+intention:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
  return {slotId:segment.slotId,position:segment.position,kind:segment.kind,
   outcome:segment.outcome,headline:labels[segment.kind],summary,
   actorIds:[...segment.actorIds],targetIds:[...segment.targetIds],
+  ...(segment.specialMoment?{specialMoment:segment.specialMoment}:{}),
   ...(segment.stableId?{stableId:segment.stableId}:{}),
   ...(segment.stableDecision?{stableDecision:segment.stableDecision}:{}),
   ...(segment.creativeBeat?.kind==="STABLE_EXIT"?
