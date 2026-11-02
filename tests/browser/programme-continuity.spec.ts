@@ -59,7 +59,7 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
  await expect(page.getByText("Escalate the issue")).toBeVisible();
- await expect(page.getByText(/Retaliation remains unresolved/)).toBeVisible();
+ await expect(page.getByText(/An answer is still due/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
 

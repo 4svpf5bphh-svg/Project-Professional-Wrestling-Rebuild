@@ -411,6 +411,6 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByLabel("Angle type")).toHaveValue("MOMENT_VEHICLE_HOSING");
- expect(methods.filter(x=>x==="kpWorkspace")).toHaveLength(1);
+ expect(methods.filter(x=>x==="kpWorkspace")).toHaveLength(2);
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
 });

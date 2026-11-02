@@ -143,7 +143,40 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "I'll judge it on where the story goes next. ❤️"
   ]
  };
- const pool=reactions[kind];
+ // Previously published fan threads stay unchanged. New episodes get
+ // additional fictional voices without new requests, timers or Neon writes.
+ const expanded:Record<typeof kind,string[]>={
+  RUMOUR:["Somebody's cousin's barber has become an anonymous source. 😂",
+   "Six theories and not one screenshot. That's wrestling journalism for you. 👀",
+   "The conspiracy board has sixteen strings and zero evidence. 🧵",
+   "The story's unverified, but the comments are an absolute car crash. 🍿"],
+  CHALLENGE:["Sign the match or stop posting the graphics. 🖊️",
+   "One challenge and wrestling Twitter has booked a trilogy. 😂",
+   "The microphone won round one. Now ring the bell. 🎤",
+   "This better lead somewhere other than stare-down number seventeen. 💀"],
+  TITLE:["The belt has become the main character and I'm here for it. 🏆",
+   "Every locker room just developed a sudden interest in rankings. 👀",
+   "Actual stakes? In THIS economy? Beautiful. 😂",
+   "That championship discussion is about to get unbelievably petty. 🍿"],
+  TURN:["The friendship montage has just become a betrayal montage. 💀",
+   "I will never trust another suspiciously long handshake. 🤝",
+   "Someone get the replay team. We're checking every old promo. 📼",
+   "One turn and the comments have changed sides four times. 😂"],
+  DEBUT:["Thirty fantasy opponents announced before their first entrance. 😂",
+   "The entrance is cool. Now give them a proper first story. 🔥",
+   "This has officially broken the imaginary power rankings. 👀",
+   "A new era has apparently begun. Again. 🍿"],
+  ATTACK:["Arena security might be the least effective faction in wrestling. 😂",
+   "That escalated faster than a contract negotiation. 😳",
+   "The next promo needs an explanation, not just threatening music. 🎤",
+   "Forget the rematch. I need to see the fallout first. 🍿"],
+  OTHER:["The discourse entered overtime before the show even ended. 😂",
+   "I'm going to need a recap, a replay and probably a flow chart. 📼",
+   "My timeline has opinions. None of them agree. 👀",
+   "Professional wrestling remains the strangest thing I voluntarily watch. 💀"]
+ };
+ const pool=story.year>1||story.week>=19?
+  [...reactions[kind],...expanded[kind]]:reactions[kind];
  const used=new Set<number>();
  return [0,1,2].map(i=>{
   // Unique commenters and reactions per article, with different choices on
