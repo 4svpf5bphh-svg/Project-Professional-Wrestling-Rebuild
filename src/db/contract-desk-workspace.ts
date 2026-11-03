@@ -172,6 +172,7 @@ export async function readContractDesk(
      cashReserve:Number(auth[0]!.plan_cash_reserve)},
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
+    startWeekIndex:cost.start_week_index,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
