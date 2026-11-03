@@ -65,9 +65,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const label=el("label","ppw-directory-field",caption);
   const input=document.createElement("input");
   input.type="number";input.inputMode="numeric";input.min=String(min);
-  input.max=String(max);input.value=String(initial);
+  input.max=String(max);input.step="1";input.value=String(initial);
   input.setAttribute("aria-label",caption);
-  input.onchange=()=>onchange(Number(input.value));
+  // Whole weeks/dates and non-negative costs: do not crash the live
+  // calculator while a mobile number field is being edited.
+  input.onchange=()=>{
+   const raw=Number(input.value);
+   const valid=Number.isFinite(raw)?
+    Math.min(max,Math.max(min,Math.round(raw))):min;
+   input.value=String(valid);onchange(valid);
+  };
   label.append(input);box.append(label);
  };
  const selection=<T extends string>(caption:string,options:readonly (readonly [T,string])[],

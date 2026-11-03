@@ -272,12 +272,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     status.replaceChildren();
     status.append(el("strong","ppw-business-fullterm-cost",
      "Planned full-term cost · "+money(forecast.plannedFullTermCost)));
-    const costs=el("span","ppw-business-fullterm-detail",
+    const breakdownText=el("span","ppw-business-fullterm-detail",
      money(forecast.guaranteedWages)+" wages across "+projections.weeks+
      " weeks + "+money(forecast.plannedAppearanceFees)+" across "+
      projections.dates+" planned appearances + "+
      money(projections.bonus)+" one-time bonus.");
-    status.append(costs,el("span","ppw-business-fullterm-detail",
+    status.append(breakdownText,el("span","ppw-business-fullterm-detail",
      "Average planned cost: "+money(forecast.averageWeeklyCost)+"/week. "+
      "After signing bonus: "+money(remainingCash)+" cash; "+
      (wageRoom>=0?money(wageRoom)+" wage headroom.":money(-wageRoom)+
