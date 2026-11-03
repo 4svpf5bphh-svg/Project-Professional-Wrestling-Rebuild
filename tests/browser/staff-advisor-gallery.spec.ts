@@ -75,6 +75,9 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  const input=page.getByLabel("Weekly guarantee ($)");
  await input.fill("18000");
  await input.press("Tab");
+ // Standard offers begin on the 52-week preset; manually changing dates
+ // is deliberately an advanced action, not a missing contract capability.
+ await page.locator(".ppw-directory-advanced-terms > summary").click();
  await page.getByLabel("Weeks (1–52)").fill("10");
  await page.getByLabel("Purchased dates").fill("5");
  await page.getByLabel("Appearance fee ($)").fill("9000");

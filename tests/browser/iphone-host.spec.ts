@@ -518,8 +518,9 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await expect(page.locator(".ppw-card-list .ppw-card-body")).toHaveCount(0);
  const finish=focused.getByLabel("Finish");
  await finish.selectOption("FOREIGN_OBJECT");
- await page.getByLabel("Who uses the foreign object?").selectOption("alice");
- await page.locator(".ppw-run-in summary").click();
+ await focused.locator(".ppw-guide-extra > summary").click();
+ await focused.getByLabel("Who uses the foreign object?").selectOption("alice");
+ await focused.locator(".ppw-run-in > summary").click();
  await page.getByRole("button",{name:"Choose run-in wrestler"}).click();
  await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
  await page.locator(".ppw-sheet .ppw-wrestler-card").first().click();
@@ -1354,10 +1355,10 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const orphan=page.getByRole("dialog",{name:"Edit angle"});
  await expect(orphan.getByLabel("After which match?")).toHaveValue("");
+ await expect(orphan.getByText(/Choose the preceding match, then cast/)).toBeVisible();
+ await orphan.getByLabel("After which match?").selectOption("opener");
  await expect(orphan.getByText("Choose a wrestler who appeared in the selected match."))
   .toBeVisible();
- await orphan.getByLabel("After which match?").selectOption("opener");
- await expect(orphan.getByText("This angle needs a target.")).toBeVisible();
  await orphan.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);

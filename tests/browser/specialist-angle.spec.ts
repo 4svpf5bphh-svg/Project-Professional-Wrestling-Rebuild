@@ -236,7 +236,7 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("Creative direction").selectOption("TURN");
  await expect(dialog.getByLabel("Creative direction")).toHaveValue("TURN");
- await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveCount(0);
+ await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("TURN");
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
  await page.getByRole("dialog",{name:"Choose wrestler"}).locator(".ppw-wrestler-card").first().click();
