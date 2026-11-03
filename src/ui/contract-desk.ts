@@ -4,6 +4,8 @@
 import type {readContractDesk} from "../db/contract-desk-workspace.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import {contractStaffNotes} from "../domain/staff-context-advice.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface ContractDeskPort{
@@ -20,6 +22,38 @@ const el=(tag:string,cls="",text="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;};
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
 const title=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/(^|\s)\S/g,v=>v.toUpperCase());
+function packageCost(terms:{termWeeks:number;dateEntitlement:number;family:string;
+ weeklyGuarantee:number;appearanceFee:number;signingBonus:number}){
+ return forecastContractCost({weeks:terms.termWeeks,
+  dates:terms.family==="EXCLUSIVE"?0:terms.dateEntitlement,
+  weeklyGuarantee:terms.weeklyGuarantee,appearanceFee:terms.appearanceFee,
+  signingBonus:terms.signingBonus});
+}
+function packageQuote(target:HTMLElement,terms:{termWeeks:number;dateEntitlement:number;family:string;
+ weeklyGuarantee:number;appearanceFee:number;signingBonus:number}){
+ target.replaceChildren();
+ try{
+  const cost=packageCost(terms);
+  target.append(el("small","ppw-contract-quote-eyebrow","POTENTIAL FULL-TERM COST"),
+   el("strong","ppw-contract-quote-total",money(cost.plannedFullTermCost)));
+  const parts=el("div","ppw-contract-quote-breakdown");
+  for(const [name,value] of [
+   ["Guaranteed wages",cost.guaranteedWages],
+   ["Appearance fees · "+cost.dates+" dates",cost.plannedAppearanceFees],
+   ["Signing bonus",cost.oneTimeBonus],
+   ["Average if all dates used",cost.averageWeeklyCost]
+  ] as const){
+   const row=el("div","ppw-contract-quote-row");
+   row.append(el("span","",name),el("strong","",money(value)+
+    (name.startsWith("Average")?"/week":"")));
+   parts.append(row);
+  }
+  target.append(parts,el("small","ppw-contract-quote-context",
+   "Appearance fees depend on dates actually worked. This is not an upfront charge."));
+ }catch{target.append(el("small","ppw-contract-quote-context",
+  "Enter valid term, dates and payment amounts to calculate the package."));}
+}
+
 const btn=(value:string,click:()=>void,disabled=false)=>{
  const x=el("button","ppw-contract-button",value) as HTMLButtonElement;
  x.type="button";x.disabled=disabled;x.onclick=click;return x;};
@@ -95,9 +129,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    "Weekly guarantees: "+money(actual)+
    ". You can set a wage allowance in Business → Finances."));
   root.append(guide);
-  const helper=el("p","ppw-muted",
-   "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
-  root.append(helper);
+  // Offer-response timing belongs inside individual pending decisions, not an
+  // always-visible paragraph above every contract.
+
   if(!view.canEdit)root.append(el("p","ppw-alert",
    "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
@@ -141,6 +175,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      typeof t.signingBonus==="number"&&t.signingBonus>0?money(t.signingBonus)+" signing bonus":null
     ].filter(Boolean).join(" · ");
     if(terms)copy.append(el("span","ppw-contract-offer-terms",terms));
+    if([t.termWeeks,t.dateEntitlement,t.weeklyGuarantee,
+     t.appearanceFee,t.signingBonus].every(n=>typeof n==="number"&&Number.isFinite(n))&&t.family){
+     const cost=packageCost(t as OfferTerms);
+     copy.append(el("strong","ppw-contract-offer-value",
+      "Potential full-term cost · "+money(cost.plannedFullTermCost)));
+    }
     if(port.openWrestler)copy.append(btn("View wrestler dossier ↗",
      ()=>port.openWrestler?.(o.person_id)));
     row.append(copy,btn("Withdraw offer",()=>void action("offer:"+o.offer_id,m=>
@@ -257,7 +297,13 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       (c.weeksRemaining===1?"Next week's show requires a new agreement.":"Renew before booking shows beyond that week."));
      body.append(warning);
     }
-    body.append(el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
+    const originalPackage=packageCost({
+     family:c.family,termWeeks:Math.max(1,c.expiresWeekIndex-c.startWeekIndex+1),
+     dateEntitlement:c.dateEntitlement??0,
+     weeklyGuarantee:c.weeklyGuarantee,appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
+    body.append(el("strong","ppw-contract-current-value",
+     "Signed deal · "+money(originalPackage.plannedFullTermCost)+" full-term potential"),
+     el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
      " · Appearance "+money(c.appearanceFee)),
      el("p","ppw-muted","Role: "+title(c.roleExpectation)+
      " · Creative control: "+title(c.creativeControl)));
@@ -329,20 +375,45 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
      };
+     const quote=el("section","ppw-contract-cost-quote");
+     const managerNote=el("div","ppw-contract-manager-take");
      const panel=el("div","ppw-contract-renegotiate-fields");
-      const quote=el("p","ppw-contract-renew-hint");
-      const updateQuote=()=>{
-       const guaranteeDifference=draft.weeklyGuarantee-c.weeklyGuarantee;
-       const appearanceDifference=draft.appearanceFee-c.appearanceFee;
-       quote.textContent="Next term: "+money(draft.weeklyGuarantee)+"/week ("+
-        (guaranteeDifference>=0?"+":"")+money(guaranteeDifference)+
-        " per week versus current), "+money(draft.appearanceFee)+
-        " per appearance ("+(appearanceDifference>=0?"+":"")+
-        money(appearanceDifference)+"), "+money(draft.signingBonus)+
-        " signing bonus if agreed. This is a future replacement contract, "+
-        "not a second simultaneous wage bill.";
-      };
-      updateQuote();
+     const updateQuote=()=>{
+      packageQuote(quote,draft);
+      managerNote.replaceChildren();
+      if(!view?.hasTalentManager)return;
+      const replacementPayroll=Math.max(0,view.summary.weeklyGuarantees-c.weeklyGuarantee);
+      const notes=contractStaffNotes({
+       weeklyGuarantee:draft.weeklyGuarantee,weeks:draft.termWeeks,
+       appearanceFee:draft.appearanceFee,
+       dates:draft.family==="EXCLUSIVE"?0:draft.dateEntitlement,
+       signingBonus:draft.signingBonus,cash:view.talentBudget.cash,
+       cashReserve:view.spendingPlan?.cashReserve??null,
+       weeklyGuarantees:replacementPayroll,
+       wageLimit:view.spendingPlan?.weeklyWageLimit??null,
+       recurringMargin:null
+      },new Set(["TALENT_MANAGER"]));
+      const urgent=notes.find(n=>n.level==="WATCH");
+      const cost=packageCost(draft);
+      const prev=packageCost({
+       family:c.family,termWeeks:draft.termWeeks,
+       dateEntitlement:draft.family==="EXCLUSIVE"?0:
+        Math.min(draft.termWeeks,c.dateEntitlement??0),
+       weeklyGuarantee:c.weeklyGuarantee,
+       appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
+      const delta=cost.plannedFullTermCost-prev.plannedFullTermCost;
+      const assessment=urgent?.message??(delta>0?
+       "On equivalent terms this proposal adds "+money(delta)+
+       " in potential spending. Make sure the wrestler's planned role justifies it.":
+       delta<0?"This package reduces potential cost by "+money(-delta)+
+       " versus equivalent current rates. Consider whether the new terms still secure the dates you need.":
+       "The proposed package matches the current rates for an equivalent term. "+
+       "Confirm that the purchased dates fit your show plans before offering.");
+      managerNote.append(el("strong","","Talent Manager · Deal assessment"),
+       el("p","",assessment));
+      managerNote.dataset.level=urgent?"watch":"info";
+     };
+     updateQuote();
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
       min:number,max:number,disabled=false)=>{
       const label=el("label","",name),input=document.createElement("input");
@@ -380,7 +451,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(panel,quote);
+     negotiate.append(quote,managerNote,panel);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");
