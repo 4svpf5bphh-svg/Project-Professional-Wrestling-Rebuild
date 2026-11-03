@@ -224,7 +224,7 @@ test("a wrestler dossier opens their own active feud rather than the first unrel
  await expect(dialog).toBeVisible();
  await dialog.locator(".ppw-profile-manage-more > summary").click();
  await dialog.getByRole("button",{name:"Manage programmes"}).click();
- await expect(page).toHaveURL(/#\\/programmes$/);
+ await expect(page).toHaveURL(/#\/programmes$/);
  await expect(dialog).toHaveCount(0);
  await expect(page.locator(".ppw-programme-card")).toContainText("Samoa Joe");
  await expect(page.locator(".ppw-programme-card")).not.toContainText("Other Wrestler");
