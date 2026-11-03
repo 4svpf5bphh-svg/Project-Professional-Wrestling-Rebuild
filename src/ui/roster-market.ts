@@ -257,10 +257,15 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      const reservedCash=company.cash-draft.bonus;
      // Conditional appearance fees are a potential full-term cost, not
      // a charge at signing. Compare only this proposed deal to today's bank.
-     const cashOnly=company.cash-projection.plannedFullTermCost;
+     const existing=company.signedRosterExposure;
+     const includesRoster=typeof existing==="number"&&Number.isFinite(existing);
+     const cashOnly=company.cash-(includesRoster?existing:0)-
+      projection.plannedFullTermCost;
      const coverage=el("div","ppw-directory-cash-only");
      coverage.dataset.coverage=cashOnly>=0?"covered":"gap";
-     coverage.append(el("span","","Cash-only outlook · all dates used"),
+     coverage.append(el("span","",includesRoster?
+      "Cash-only outlook · signed roster + this offer":
+      "Cash-only outlook · this offer only"),
       el("strong","",cashOnly>=0?money(cashOnly)+" left":
        money(-cashOnly)+" short"));
      affordability.append(coverage);
@@ -292,8 +297,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      affordability.append(el("small","ppw-directory-muted",
       "Recurring margin excludes future ticket sales and appearance fees. The "+
       "full-term forecast above includes every purchased date. Cash-only "+
-      "outlook covers this offer, not existing roster costs, other expenses "+
-      "or future income."));
+      "outlook includes remaining signed roster costs when available; it "+
+      "excludes pending offers, other running costs and future income."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({

@@ -208,6 +208,8 @@ test("PostgreSQL: a signed one-night guest is bookable only in the next World we
    await createWorld(tx,{id:world,name:"One night",seed:45,rulesetVersion:"test"});
    await addPromotion(tx,world,{id:promotion,name:"Chaotic Wrestling Alliance",
     tier:"INDEPENDENT"});
+   await tx.query("UPDATE ppw_promotions SET media_reach=90 WHERE world_id=$1",
+    [world]);
    await tx.query("UPDATE ppw_worlds SET offer_acceptance_threshold=0 WHERE world_id=$1",
     [world]);
    await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,recognition,popularity,
