@@ -85,6 +85,10 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await card.getByRole("button",{name:"Wrestler profile →"}).click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
+ await expect(dialog.getByRole("button",{name:"Open show planner"})).toBeVisible();
+ await expect(dialog.getByRole("button",{name:"Talk in Backstage"})).toBeVisible();
+ await expect(dialog.getByText(/actual show week/)).toHaveCount(0);
   // The compact Overview may fit without scrolling. The detail tabs must
   // remain reachable, and tall Career must own the iOS scroll viewport.
   for(const width of [320,390]){

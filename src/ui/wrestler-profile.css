@@ -168,3 +168,25 @@ body:has(.ppw-profile-overlay){overflow:hidden}
  color:#fff;border-color:#e4a2dc}
 .ppw-wrestler-profile>[data-profile-tab][hidden]{display:none!important}
 .ppw-profile-tabs button:focus-visible{outline:2px solid #9eeafc;outline-offset:2px}
+
+/* Phase 24: compact management cockpit, no new stats or world reads. */
+.ppw-profile-manage{padding:14px;margin:12px 0 14px;border-radius:17px;
+ border:1px solid #7582d5;background:linear-gradient(135deg,#2b2555,#172d4b);
+ min-width:0}
+.ppw-profile-manage h2{font-size:19px;line-height:1.2;margin:5px 0 9px;color:#fff}
+.ppw-profile-manage-status{display:block;color:#a8f2dc;font-size:14px;line-height:1.35}
+.ppw-profile-manage[data-status="MEDICAL"] .ppw-profile-manage-status,
+.ppw-profile-manage[data-status="NO_DATES"] .ppw-profile-manage-status{
+ color:#ffd3a0}
+.ppw-profile-manage-note,.ppw-profile-manage-contract{font-size:12px;
+ color:#e3e7f5;line-height:1.45;margin:7px 0}
+.ppw-profile-manage-contract{color:#f5d9a1;font-weight:800}
+.ppw-profile-manage-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin-top:11px}
+.ppw-profile-manage .ppw-profile-manage-button{width:100%;margin:0;min-height:46px;
+ text-align:center;font-size:12px;line-height:1.35;padding:10px 8px}
+.ppw-profile-manage-more{margin-top:11px;border-top:1px solid #4a5c91;padding-top:10px}
+.ppw-profile-manage-more summary{font-size:12px;color:#d7e9ff;
+ min-height:44px;display:flex;align-items:center;font-weight:850;cursor:pointer}
+@media(max-width:360px){.ppw-profile-manage{padding:11px}
+ .ppw-profile-manage-actions{grid-template-columns:1fr}}
