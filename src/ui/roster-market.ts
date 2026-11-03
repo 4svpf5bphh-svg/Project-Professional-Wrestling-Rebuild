@@ -69,12 +69,17 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   input.setAttribute("aria-label",caption);
   // Whole weeks/dates and non-negative costs: do not crash the live
   // calculator while a mobile number field is being edited.
-  input.onchange=()=>{
+  const apply=(final:boolean)=>{
+   // A cleared field is temporary while typing; clamp on blur.
+   if(!input.value.trim()&&!final)return;
    const raw=Number(input.value);
    const valid=Number.isFinite(raw)?
     Math.min(max,Math.max(min,Math.round(raw))):min;
-   input.value=String(valid);onchange(valid);
+   if(final)input.value=String(valid);
+   onchange(valid);
   };
+  input.oninput=()=>apply(false);
+  input.onchange=()=>apply(true);
   label.append(input);box.append(label);
  };
  const selection=<T extends string>(caption:string,options:readonly (readonly [T,string])[],

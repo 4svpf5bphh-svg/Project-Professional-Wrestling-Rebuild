@@ -81,6 +81,9 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.getByLabel("Signing bonus ($)").fill("3000");
  await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("45,000");
  await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("228,000");
+ await mkdir(folder,{recursive:true});
+ await page.locator(".ppw-directory-contract-estimate").scrollIntoViewIfNeeded();
+ await page.screenshot({path:folder+"/phase23-contract-full-term-390.png"});
  const notes=page.locator(".ppw-directory-adviser");
  await expect(notes).toBeVisible();
  await notes.locator("summary").click();

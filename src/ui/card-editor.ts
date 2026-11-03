@@ -1306,7 +1306,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         castAngleGroup(segment,role,v),!mutable())));
       if(stableChoices===null&&port.stableChoices)
        section.append(button(stableChoicesLoading?"Loading factions…":
-        "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading));
+        "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading,
+        "ppw-angle-cast-faction"));
      }
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));

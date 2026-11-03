@@ -686,3 +686,26 @@ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field select{
 .ppw-card-advisor-item[open] .ppw-card-advisor-item-heading::after{content:"⌄"}
 .ppw-card-advisor-explanation{font-size:12px;line-height:1.5;
  color:#d0e1ec;padding:1px 12px 11px;margin:0}
+
+/* Angle casting: full-width thumb targets rather than grey inline mini-buttons. */
+.ppw-card-body .ppw-side{min-width:0;display:grid;gap:6px}
+.ppw-card-body .ppw-side .ppw-angle-cast-button{
+ display:block;width:100%;min-height:43px;margin:5px 0;
+ padding:9px 12px;text-align:center;white-space:normal;
+ border:1px solid #6fd0e9;border-radius:9px;
+ background:#21506a;color:#f5fbff;font-size:13px;font-weight:800;
+ line-height:1.45;cursor:pointer
+}
+.ppw-card-body .ppw-side .ppw-angle-cast-button:disabled{opacity:.48;cursor:not-allowed}
+.ppw-card-body .ppw-side .ppw-angle-cast-faction{
+ display:block;width:100%;min-height:38px;margin:0;
+ padding:8px 12px;text-align:center;white-space:normal;
+ border:1px solid #456f84;border-radius:8px;
+ background:#152d40;color:#bce9f0;font-size:12px;font-weight:750
+}
+.ppw-card-body .ppw-side .ppw-elimination-row{display:flex;align-items:center;
+ gap:8px;justify-content:space-between;min-width:0;overflow-wrap:anywhere}
+.ppw-card-body .ppw-side .ppw-elimination-row>button{
+ flex:0 0 34px;width:34px;min-height:34px;border-radius:8px;
+ border:1px solid #54738a;background:#233d54;color:#e7f5ff;font-size:18px
+}
