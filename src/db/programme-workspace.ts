@@ -150,7 +150,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   // workspace statement. No extra SQL read when opening a Programme.
   type Recent={programme_id:string;show_id:string;slot_id:string;
    kind:string;week_index:number;crowd_response:number;
-   winner_side:"A"|"B"|null;segment_kind:string|null;scene_location:string|null};
+   winner_side:"A"|"B"|null;segment_kind:string|null;scene_location:string|null;
+   scene_intensity:string|null;scene_visual:string|null;angle_outcome:string|null;
+   turn_alignment:string|null;stable_decision:string|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
    segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
@@ -168,7 +170,12 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "SELECT recent.programme_id,recent.show_id,recent.slot_id,recent.kind,",
    "recent.week_index,recent.crowd_response,recent.winner_side,",
    "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->>'kind' ELSE NULL END AS segment_kind,",
-   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->'scene'->>'location' ELSE NULL END AS scene_location",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->'scene'->>'location' ELSE NULL END AS scene_location,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->'scene'->>'intensity' ELSE NULL END AS scene_intensity,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->'scene'->>'visual' ELSE NULL END AS scene_visual,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->>'outcome' ELSE NULL END AS angle_outcome,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->>'turnTargetAlignment' ELSE NULL END AS turn_alignment,",
+   "CASE WHEN recent.kind='SEGMENT' THEN scene.payload->>'stableDecision' ELSE NULL END AS stable_decision",
    "FROM unnest($3::text[]) AS target(programme_id)",
    "CROSS JOIN LATERAL (SELECT programme_id,show_id,slot_id,kind,",
    "week_index,crowd_response,winner_side",
@@ -254,7 +261,10 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      .slice(0,5).map(x=>({showId:x.show_id,slotId:x.slot_id,
       kind:x.kind,weekIndex:x.week_index,crowdResponse:x.crowd_response,
       winnerSide:x.winner_side??null,segmentKind:x.segment_kind??null,
-      sceneLocation:x.scene_location??null})),
+      sceneLocation:x.scene_location??null,
+      sceneIntensity:x.scene_intensity??null,sceneVisual:x.scene_visual??null,
+      angleOutcome:x.angle_outcome??null,turnAlignment:x.turn_alignment??null,
+      stableDecision:x.stable_decision??null})),
     plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
      .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
       kind:x.kind,segmentKind:x.segment_kind,

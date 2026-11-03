@@ -86,7 +86,7 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await dialog.getByLabel("Winner").selectOption("1");
  await dialog.getByLabel("Minutes").fill("22");
  await dialog.getByLabel("Minutes").press("Tab");
- await dialog.locator(".ppw-guide-extra summary").click();
+ await dialog.locator(".ppw-guide-extra > summary").click();
  await dialog.getByLabel("Intent").selectOption("EPIC");
  await dialog.getByRole("button",{name:"Finish editing"}).click();
 
@@ -110,5 +110,5 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await dialog.getByRole("button",{name:"Quick Book"}).click();
  await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
- await expect(dialog.getByText("Samoa Joe")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-context")).toContainText("Samoa Joe");
 });

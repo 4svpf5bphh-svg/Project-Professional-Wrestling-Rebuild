@@ -3,6 +3,7 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import {projectShowBreakdown} from "./show-breakdown.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
@@ -530,7 +531,68 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","WRESTLERS · FINISHES · SEGMENTS"));
   full.append(station);
  }
- full.append(timeline);
+ // A second reading mode for the same completed show: compact certified
+ // rundown vs existing immersive narrative. No extra API or World query.
+ const breakdown=node("section","ppw-show-breakdown");
+ breakdown.append(node("h2","ppw-broadcast-section-title","SHOW BREAKDOWN"),
+  node("p","ppw-muted","Every match and angle, in running order. Tap any chapter to read its full broadcast."));
+ const breakdownRows=projectShowBreakdown(show.entries);
+ const portraitJobs:{card:HTMLElement;entry:ShowResultEntry}[]=[];
+ const breakdownSwitch=node("div","ppw-show-breakdown-switch");
+ breakdownSwitch.setAttribute("role","group");
+ breakdownSwitch.setAttribute("aria-label","Full show display");
+ const narrativeButton=node("button","ppw-show-breakdown-toggle","Broadcast play-by-play") as HTMLButtonElement;
+ const rundownButton=node("button","ppw-show-breakdown-toggle","Show Breakdown") as HTMLButtonElement;
+ narrativeButton.type="button";rundownButton.type="button";
+ const setBreakdown=(compact:boolean)=>{
+  breakdown.hidden=!compact;timeline.hidden=compact;
+  // Portraits are created only while browsing the breakdown. Keeping a
+  // hidden second copy would duplicate wrestler content for screen readers,
+  // needlessly allocate images and break the original broadcast view.
+  for(const job of portraitJobs){
+   const existing=job.card.querySelector(".ppw-breakdown-portraits");
+   if(compact&&!existing){
+    const strip=matchPortraits(job.entry);
+    if(strip){strip.classList.add("ppw-breakdown-portraits");job.card.append(strip);}
+   }else if(!compact)existing?.remove();
+  }
+  narrativeButton.setAttribute("aria-pressed",String(!compact));
+  rundownButton.setAttribute("aria-pressed",String(compact));
+ };
+ narrativeButton.onclick=()=>setBreakdown(false);
+ rundownButton.onclick=()=>setBreakdown(true);
+ breakdownSwitch.append(narrativeButton,rundownButton);
+ for(const entry of breakdownRows){
+  const real=show.entries.find(x=>x.slotId===entry.slotId)!;
+  const card=node("article","ppw-breakdown-card");
+  card.dataset.kind=entry.kind;card.dataset.slotId=entry.slotId;
+  const meta=node("div","ppw-breakdown-meta");
+  meta.append(node("strong","","#"+(entry.position+1)+" · "+entry.kind),
+   node("span","","CROWD "+Math.round(entry.crowd)+"/100"));
+  if(entry.stars!==null)meta.append(node("span","ppw-breakdown-stars",
+   "★ "+entry.stars.toFixed(2)+"/5"));
+  if(entry.minutes!==null)meta.append(node("span","",entry.minutes+" MIN"));
+  card.append(meta,node("h3","",entry.headline),
+   node("p","ppw-breakdown-cast",entry.participants));
+  if(real.matchContext?.sideParticipants?.length)portraitJobs.push({card,entry:real});
+  const facts=node("div","ppw-breakdown-facts");
+  if(entry.winner)facts.append(node("strong","","WINNER · "+entry.winner));
+  facts.append(node("span","","RESULT · "+finishLabel(real)));
+  for(const moment of entry.keyMoments)facts.append(node("small","",moment));
+  card.append(facts);
+  const open=node("button","ppw-breakdown-open","Read the full chapter") as HTMLButtonElement;
+  open.type="button";
+  open.setAttribute("aria-label","Read full chapter for slot "+(entry.position+1));
+  open.onclick=()=>{
+   setBreakdown(false);
+   const target=storyLinks.get(entry.slotId);
+   if(target instanceof HTMLDetailsElement)target.open=true;
+   target?.scrollIntoView({block:"start",behavior:"instant"});
+  };
+  card.append(open);breakdown.append(card);
+ }
+ setBreakdown(false);
+ full.append(breakdownSwitch,breakdown,timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(effectiveSkin==="TERRITORY_TV"){
   const station=node("header","ppw-territory-chapter-head");

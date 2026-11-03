@@ -78,6 +78,14 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-verified-finish-details")).toBeVisible();
   await expect(page.locator(".ppw-result-lineup .ppw-result-competitor")).toHaveCount(2);
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
+  await page.getByRole("button",{name:"Show Breakdown",exact:true}).click();
+  await expect(page.locator(".ppw-breakdown-card")).toHaveCount(2);
+  await expect(page.locator(".ppw-breakdown-card").first()).toContainText("★ 4.50/5");
+  await expect(page.locator(".ppw-breakdown-card").first()).toContainText("WINNER · Kenny Omega");
+  await expect(page.locator(".ppw-breakdown-portraits .ppw-result-competitor")).toHaveCount(2);
+  await page.getByRole("button",{name:"Read full chapter for slot 1"}).click();
+  await expect(page.locator(".ppw-show-breakdown")).toBeHidden();
+  await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
   await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);

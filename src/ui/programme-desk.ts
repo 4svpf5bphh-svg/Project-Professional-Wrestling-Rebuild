@@ -9,6 +9,7 @@ import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-se
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {evaluateProgrammeReview} from "../domain/programme-review.js";
 import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
+import {describeProgrammeChapter} from "./programme-chapter-summary.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
  load():Promise<ProgrammeView>;
@@ -205,6 +206,38 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     "STORIES IN MOTION · "+(heat===null?"AWAITING FIRST CROWD REACTION":
      heat>=75?"HOT PROGRAMME":heat>=45?"BUILDING MOMENTUM":"STORY DEVELOPING")),
     header,pulse);
+   // An at-a-glance rivalry briefing, before choosing a management tab.
+   // Everything comes from the existing certified workspace projection.
+   const glance=element("section","ppw-programme-glance");
+   const currentIndex=(view.year-1)*52+view.week-1;
+   const ageNow=p.startedWeekIndex===null?null:Math.max(0,currentIndex-p.startedWeekIndex);
+   const latestBeat=p.recentActivity[0];
+   const latestMatch=p.recentActivity.find(x=>x.kind==="MATCH");
+   const sideAName=p.sideA.map(x=>x.name).join(" & ");
+   const sideBName=p.sideB.map(x=>x.name).join(" & ");
+   const latestLabel=latestBeat?describeProgrammeChapter(latestBeat,sideAName,sideBName):null;
+   glance.append(element("span","ppw-programme-eyebrow","AT A GLANCE"));
+   const glanceFacts=element("div","ppw-programme-glance-facts");
+   glanceFacts.append(element("span","",ageNow===null?"Rivalry age unknown":
+    ageNow===0?"Started this week":ageNow+" weeks active"),
+    element("span","",p.championshipId?"Championship stakes":"Personal rivalry"));
+   glance.append(glanceFacts);
+   if(latestBeat&&latestLabel){
+    const latest=element("div","ppw-programme-glance-chapter");
+    const y=Math.floor(latestBeat.weekIndex/52)+1,w=latestBeat.weekIndex%52+1;
+    latest.append(element("small","","LAST CERTIFIED CHAPTER · Y"+y+" W"+w),
+     element("strong","",latestLabel.headline),
+     element("span","",latestLabel.detail));
+    glance.append(latest);
+   }else glance.append(element("p","ppw-muted","No completed chapters yet."));
+   if(latestMatch){
+    const outcome=describeProgrammeChapter(latestMatch,sideAName,sideBName);
+    glance.append(element("small","ppw-programme-glance-lastbell",
+     "LATEST MATCH · "+outcome.headline));
+   }
+   if(port.openPlanner&&view.canEdit)glance.append(button(
+    "Book the next chapter →",()=>port.openPlanner?.()));
+   panel.append(glance);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
     [p.sideA.map(x=>x.name).join(" & ")+" WINS",p.sideAWins],
@@ -394,17 +427,11 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      const week=activity.weekIndex%52+1;
      const item=element("div","ppw-programme-history-entry");
      const details=element("div","ppw-programme-history-detail");
-     const type=activity.kind==="MATCH"?"Match":(activity.segmentKind??"Angle")
-      .replaceAll("_"," ").toLowerCase();
-     const result=activity.kind==="MATCH"?(activity.winnerSide==="A"?
-      p.sideA.map(x=>x.name).join(" & ")+" won":activity.winnerSide==="B"?
-      p.sideB.map(x=>x.name).join(" & ")+" won":"Match completed"):
-      type.charAt(0).toUpperCase()+type.slice(1);
+     const chapter=describeProgrammeChapter(activity,sideAName,sideBName);
+     item.dataset.chapter=chapter.kind;
      details.append(element("small","","YEAR "+year+" · WEEK "+week),
-      element("strong","",result),element("span","",
-       (activity.kind==="MATCH"?"Match":type)+
-       (activity.sceneLocation?" · "+activity.sceneLocation.replaceAll("_"," ").toLowerCase():"")+
-       " · Crowd "+Math.round(activity.crowdResponse)));
+      element("strong","",chapter.headline),element("span","",
+       chapter.detail+" · Crowd "+Math.round(activity.crowdResponse)));
      item.append(details);
      if(port.openResults){const open=button("View show",()=>port.openResults?.(activity.showId),working);
       open.setAttribute("aria-label","View show for Year "+year+" Week "+week);
