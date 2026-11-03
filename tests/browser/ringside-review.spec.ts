@@ -97,6 +97,8 @@ for(const width of [320,390]){
    await expect(page.locator(".ppw-pop-post .ppw-pop-copy").first())
     .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"The night in numbers"})).toBeVisible();
+  await expect(page.locator(".ppw-manager-snapshot-fact").first()).toContainText("4.50★");
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);

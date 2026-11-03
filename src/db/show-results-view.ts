@@ -57,6 +57,10 @@ export interface CompletedShowView {
  audience?:{format:"TV"|"PPV";householdRating:number|null;
   estimatedViewers:number|null;ppvBuys:number|null}|null;
  gorillaLog?:GorillaShowLog|null;
+ /** Certified event P&L; appearance fees were charged separately during World resolution. */
+ economics?:{attendance:number;gateRevenue:string;venueCost:string;
+  productionCost:string;travelCost:string;appearanceFees:string;
+  totalCost:string;netResult:string;incrementalCash:string}|null;
 }
 const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
@@ -73,12 +77,20 @@ export async function readCompletedShowView(
     audience_format:string|null;tv_household_rating:string|null;
     estimated_viewers:string|null;ppv_buys:string|null;
     promotion_name:string;staff_report:RoadAgentReport|null;
-    gorilla_log:GorillaShowLog|null}>(`
+    gorilla_log:GorillaShowLog|null;
+    attendance:number|null;gate_revenue:string|null;venue_cost:string|null;
+    production_cost:string|null;travel_cost:string|null;
+    appearance_fees:string|null;total_cost:string|null;
+    net_result:string|null;incremental_cash:string|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
     economics.audience_format,economics.tv_household_rating::text,
     economics.estimated_viewers::text,economics.ppv_buys::text,
+    economics.attendance,economics.gate_revenue::text,economics.venue_cost::text,
+    economics.production_cost::text,economics.travel_cost::text,
+    economics.appearance_fees::text,economics.total_cost::text,
+    economics.net_result::text,economics.incremental_cash::text,
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
    LEFT JOIN ppw_kp_results_skins skin ON skin.player_id=$2
@@ -377,6 +389,17 @@ export async function readCompletedShowView(
     rows[0]!.audience_format==="PPV"?{format:"PPV",
      householdRating:null,estimatedViewers:null,
      ppvBuys:rows[0]!.ppv_buys===null?null:Number(rows[0]!.ppv_buys)}:null,
+   economics:rows[0]!.attendance===null?null:{
+    attendance:rows[0]!.attendance!,
+    gateRevenue:rows[0]!.gate_revenue!,
+    venueCost:rows[0]!.venue_cost!,
+    productionCost:rows[0]!.production_cost!,
+    travelCost:rows[0]!.travel_cost!,
+    appearanceFees:rows[0]!.appearance_fees!,
+    totalCost:rows[0]!.total_cost!,
+    netResult:rows[0]!.net_result!,
+    incrementalCash:rows[0]!.incremental_cash!
+   },
    matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
    gorillaLog:rows[0]!.gorilla_log,
