@@ -123,3 +123,21 @@
 .ppw-contract-button{background:#244562;border-color:#6a88ae;color:#f2f6ff;
  font-weight:750}
 .ppw-contract-button:focus-visible{outline:2px solid #8ce8ff;outline-offset:2px}
+
+/* Phase 25: preset renewals, with bespoke contracts one disclosure away. */
+.ppw-contract-term-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-contract-term-choice{display:flex;flex-direction:column;gap:4px;
+ justify-content:center;text-align:center!important;padding:9px 5px!important;
+ border-radius:12px;min-height:65px;background:#20354e!important;
+ border:1px solid #6b83a5!important;color:#f4f7ff!important}
+.ppw-contract-term-choice>small{font-size:10px;font-weight:600;line-height:1.35;color:#c0dcf0}
+.ppw-contract-term-choice[aria-pressed=true]{background:linear-gradient(135deg,#96397e,#6d42bc)!important;
+ border:2px solid #f2a8dc!important}
+.ppw-contract-term-advanced{background:#13283d;border:1px solid #456581;
+ border-radius:10px;padding:0 11px}
+.ppw-contract-term-advanced>summary{min-height:44px;display:flex;align-items:center;
+ font-size:12px;font-weight:850;color:#a3dffa;cursor:pointer}
+.ppw-contract-term-advanced>.ppw-contract-renegotiate-fields{margin-bottom:12px}
+.ppw-contract-quote-guaranteed{font-weight:750;color:#b2f0d8;font-size:12px}
+@media(max-width:350px){.ppw-contract-term-presets{grid-template-columns:1fr}
+ .ppw-contract-term-choice{min-height:46px}}

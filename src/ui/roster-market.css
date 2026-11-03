@@ -195,3 +195,25 @@
  white-space:nowrap;font-weight:800;font-variant-numeric:tabular-nums}
 .ppw-directory-contract-assumption{font-size:11px;line-height:1.45;
  color:#a8cede;margin:10px 0 0}
+
+/* Phase 25: standard lengths first, exact duration remains optional. */
+.ppw-directory-term-menu{display:grid;gap:9px;padding:9px 0}
+.ppw-directory-term-menu>strong{font-size:14px;color:#ffe4b0}
+.ppw-directory-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ppw-directory-presets>.ppw-directory-preset{display:flex;flex-direction:column;
+ align-items:flex-start;justify-content:center;gap:5px;min-height:68px;
+ border:1px solid #687ea1;border-radius:11px;background:#24334e;color:#fff7fc;
+ font-size:14px;font-weight:850;line-height:1.2}
+.ppw-directory-presets>.ppw-directory-preset small{font-size:11px;font-weight:600;
+ color:#c5e1ef;line-height:1.35}
+.ppw-directory-presets>.ppw-directory-preset-active{border:2px solid #ffb9e5;
+ background:linear-gradient(115deg,#993984,#6542a9);box-shadow:inset 0 0 0 1px #d892de}
+.ppw-directory-advanced-terms{display:grid;gap:10px;background:#14263c;
+ border:1px solid #4f728d;border-radius:12px;padding:8px 12px}
+.ppw-directory-advanced-terms>summary{min-height:43px;display:flex;align-items:center;
+ cursor:pointer;color:#b9eaff;font-weight:850;font-size:12px}
+.ppw-directory-advanced-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:10px;margin:7px 0}
+.ppw-directory-guaranteed{font-size:12px;color:#a8f1d0;font-weight:750;line-height:1.4}
+@media(max-width:360px){.ppw-directory-presets{grid-template-columns:1fr}
+ .ppw-directory-advanced-fields{grid-template-columns:1fr}}
