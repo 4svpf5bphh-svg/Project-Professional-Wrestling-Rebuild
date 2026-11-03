@@ -49,6 +49,17 @@ import "../ui/card-editor.css";
 type Scope=CardSessionScope;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
+// Private, one-use route from a wrestler dossier to a genuine unfinished card.
+// No show ID is guessed and no booking permission is assumed from the dossier.
+export type FocusedBookingWrestler={personId:string;name:string};
+let pendingBookingFocus:({worldId:string;promotionId:string}&FocusedBookingWrestler)|null=null;
+export function clearBookingFocus(){pendingBookingFocus=null;}
+export function consumeBookingFocus(worldId:string,promotionId:string):FocusedBookingWrestler|null{
+ const focus=pendingBookingFocus;
+ pendingBookingFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?
+  {personId:focus.personId,name:focus.name}:null;
+}
 export function consumeProgrammeFocus():string|null{
  const focus=pendingProgrammeFocusPersonId;
  pendingProgrammeFocusPersonId=null;
@@ -120,7 +131,8 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
 export function mountBookingPage(root:HTMLElement,scope:Scope,
  onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void,
  onNavigate?:(section:HostSection)=>void,
- focusProgrammeId?:string,focusProgrammeIdeaKind?:string){
+ focusProgrammeId?:string,focusProgrammeIdeaKind?:string,
+ focusWrestler?:FocusedBookingWrestler){
  const call=createCardClient(scope);
  const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -136,6 +148,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   onDraftChange,
   focusProgrammeId,
   focusProgrammeIdeaKind:focusProgrammeIdeaKind as CardEditorPort["focusProgrammeIdeaKind"],
+  focusWrestler,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
@@ -389,6 +402,14 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
   openPlanner:()=>openWorkspace("planner"),
+  openBooking:(personId,name)=>{
+   // Direct card navigation never bypasses the planner's actual draft lookup.
+   if(scope.showId)return;
+   if(root.classList.contains("ppw-profile-overlay"))onBack();
+   pendingBookingFocus={worldId:scope.worldId,promotionId:scope.promotionId,
+    personId,name};
+   window.location.hash=plannerCardHash;
+  },
   openProgrammes:personId=>{
    if(window.location.hash!==hostSectionHash("programmes"))
     pendingProgrammeFocusPersonId=personId;

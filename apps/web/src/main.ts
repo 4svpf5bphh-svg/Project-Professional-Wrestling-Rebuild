@@ -3,7 +3,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,mountAchievementsPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
- mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus}
+ mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
+ consumeBookingFocus,clearBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
@@ -241,6 +242,7 @@ function renderSection(){
  const section=readHostSection(location.hash);
  if(section==="admin"&&!session.canManualAdvance){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
+ if(section!=="card"&&section!=="planner")clearBookingFocus();
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
  pendingBackstagePersonId=null;
  clearLegendRevealPortal();
@@ -318,7 +320,8 @@ function renderSection(){
      dirty=>{
       if(view.isConnected&&readHostSection(location.hash)==="card"&&
        activeBooking?.showId===showId)bookingDirty=dirty;
-     },section=>openSection(section));
+     },section=>openSection(section),undefined,undefined,
+     consumeBookingFocus(scope.worldId,scope.promotionId)??undefined);
    }
    break;
   }

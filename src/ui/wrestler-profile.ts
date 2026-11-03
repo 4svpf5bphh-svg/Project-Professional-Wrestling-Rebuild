@@ -22,6 +22,7 @@ export interface WrestlerProfilePort{
  openBackstage?(personId:string):void;
  openContracts?(personId:string):void;
  openPlanner?():void;
+ openBooking?(personId:string,name:string):void;
  openProgrammes?(personId:string):void;
  openTagTeams?():void;
  openStables?():void;
@@ -139,6 +140,8 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    control.classList.add("ppw-profile-manage-button");
    actions.append(control);
   };
+  if(view.onYourRoster&&view.canEdit&&status.kind==="SIGNED"&&port.openBooking)
+   action("Book on this week's show",()=>port.openBooking?.(personId,view!.name));
   if(view.onYourRoster&&port.openPlanner)
    action("Open show planner",()=>port.openPlanner?.());
   if(view.onYourRoster&&port.openBackstage)

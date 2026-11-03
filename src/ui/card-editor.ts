@@ -53,6 +53,8 @@ export interface CardEditorPort{
  /** Transient on-page focus from the Programme Desk, not a saved game command. */
  focusProgrammeId?:string;
  focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
+ /** One-shot dossier route. Must re-check signed rights for the selected show. */
+ focusWrestler?:{personId:string;name:string};
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
   matches:{slotId:string;payload:unknown}[];
@@ -141,6 +143,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   personId:string;contractId:string;name:string}[]}[]|null=null;
  let stableChoicesLoading=false;
  let specialOwned:readonly string[]|null=null,specialBusy=false;
+ let focusedPerson=port.focusWrestler??null,focusBusy=false;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=port.focusProgrammeId??null;
  let rivalryIdeasOpen=Boolean(port.focusProgrammeId);
@@ -369,6 +372,40 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   picker={slotId,side,member,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
   render();
   void findTalent("");
+ }
+ async function startFocusedBooking(kind:"MATCH"|"ANGLE"){
+  if(!focusedPerson||!view?.canEdit||saving||focusBusy)return;
+  const person=focusedPerson;
+  focusBusy=true;error="";render();
+  try{
+   // A dossier describes today's World, not necessarily the show's week.
+   // The canonical show-scoped talent RPC verifies exact signed rights.
+   const result=await port.talent(person.name,null);
+   const eligible=result.talent.find(p=>p.personId===person.personId);
+   if(!eligible||!eligible.available){
+    error=person.name+" cannot be booked for this show's week. Check "+
+     "contract dates, medical clearance and the show schedule.";
+    return;
+   }
+   if(kind==="MATCH"&&[...matches.values()].some(m=>
+    assignedIds(m).includes(person.personId))){
+    error=person.name+" is already in a match on this card.";
+    return;
+   }
+   const pick={personId:eligible.personId,contractId:eligible.contractId};
+   roster.set(eligible.personId,{...eligible});
+   const id=(kind==="MATCH"?"match-":"angle-")+crypto.randomUUID();
+   if(kind==="MATCH"){
+    matches.set(id,assignPerformer(newEditorMatch(id,"SINGLES"),0,0,pick));
+   }else{
+    // A promo starts with a verified speaker; the booker still scripts it.
+    segments.set(id,addSegmentPerson(newEditorSegment(id,"PROMO"),"actors",pick));
+   }
+   focusedPerson=null;order.push(id);expanded=id;
+   slotBookingSteps.set(id,"CAST");
+   resetGuideScroll=true;markDirty();
+  }catch(e){error=errorText(e);}
+  finally{focusBusy=false;render();}
  }
  function chooseTalent(p:TalentPage["talent"][number]){
   if(!picker||!p.available)return;
@@ -662,6 +699,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    " · "+missing+" slot"+(missing===1?" needs":"s need")+" attention":
    dirty?" · Save before confirming":" · Finish casting to continue"));
   root.append(state);
+  if(focusedPerson){
+   const focus=el("section","ppw-card-wrestler-focus");
+   focus.append(el("span","ppw-eyebrow","FROM THE WRESTLER DOSSIER"),
+    el("strong","",focusedPerson.name),
+    el("p","","Choose a match or a promo. The wrestler's actual show-week "+
+     "availability is checked before creating an unsaved slot."));
+   const actions=el("div","ppw-card-wrestler-actions");
+   actions.append(button(focusBusy?"Checking wrestler…":"Start a match",()=>{
+    void startFocusedBooking("MATCH");
+   },!mutable()||focusBusy,"ppw-primary"),
+    button("Start a promo",()=>void startFocusedBooking("ANGLE"),
+     !mutable()||focusBusy));
+   focus.append(actions);root.append(focus);
+  }
   // One concise crew shortcut; individual notes live inside the relevant slot.
   const allNotes=order.flatMap(id=>slotNotes(id).map(n=>({id,n})));
   if(allNotes.some(item=>item.n.level==="WATCH")){
