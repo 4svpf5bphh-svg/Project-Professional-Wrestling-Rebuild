@@ -202,7 +202,8 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
-  await expect(page.locator(".ppw-next-show-evidence")).toHaveCount(3);
+  await expect(page.locator(".ppw-next-show-actions .ppw-next-show-evidence")).toHaveCount(3);
+  await expect(page.getByRole("button",{name:"Open wrestler dossier"})).toBeVisible();
   await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   expect(reads).toBe(1);
@@ -661,7 +662,7 @@ test("post-show evidence links reopen the certified match, without a second resu
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
- await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(2);
+ await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(3);
  await expect(page.locator(".ppw-road-agent-observation").first()).toContainText("Medical comes first");
  await expect(page.locator(".ppw-road-agent-observation").nth(1)).toContainText("10 minutes");
  await page.locator(".ppw-next-show-choice").first()
@@ -671,4 +672,33 @@ test("post-show evidence links reopen the certified match, without a second resu
  expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
+});
+
+test("post-show direct wrestler dossier keeps the completed broadcast cached",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let resultsReads=0,profileReads=0;
+ const completed={...show,entries:[{
+  ...show.entries[0],
+  fallout:{...show.entries[0]!.fallout,
+   injuries:[{personName:"Samoa Joe",severity:"MODERATE",weeksOut:3,stoppage:false}]}
+ },show.entries[1]]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  if(method==="results")resultsReads++;
+  if(method==="wrestlerProfile")profileReads++;
+  return r.fulfill({json:method==="resultsArchive"?
+   {items:[{showId:"omega-night",year:1,week:4,
+    showName:"Dynamite",crowdResponse:84,matchCount:1,angleCount:1}],
+    nextCursor:null}:method==="wrestlerProfile"?{error:"Dossier unavailable in fixture"}:completed});
+ });
+ await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+ await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+ await page.locator(".ppw-next-show-choice").first()
+  .getByRole("button",{name:"Open wrestler dossier"}).click();
+ await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
+ expect(resultsReads).toBe(1);expect(profileReads).toBe(1);
 });

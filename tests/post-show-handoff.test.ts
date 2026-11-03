@@ -28,6 +28,8 @@ test("medical, title and cooling rivalry get exactly three historic, truthful ro
  assert.ok(advice.standout?.includes("verified stars"));
  assert.deepEqual(advice.actions.slice(0,3).map(x=>x.evidenceSlotId),["a","a","a"]);
  assert.equal(advice.actions[3]!.evidenceSlotId,undefined);
+ assert.equal(advice.actions[0]!.personId,undefined,
+  "Do not guess identities absent from older completed receipts");
 });
 test("hot rivalries take priority over generic standout while free booking stays optional",()=>{
  const advice=postShowHandoff(view([match("a","HOT_PROGRAMME",4.8)]));
@@ -54,4 +56,25 @@ test("old injury, production and title evidence never claim the current World st
  assert.equal(actions[0]?.destination,"staff");
  assert.equal(actions[1]?.destination,"planner");
  assert.ok(actions.every(a=>!a.detail.includes("currently injured")));
+});
+
+test("dossier route requires exactly one matching certified wrestler identity",()=>{
+ const one=match("main",null,4.8);
+ one.matchContext={format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:18,
+  sides:[["Kenny Omega"],["Samoa Joe"]],winnerNames:["Kenny Omega"],
+  sideParticipants:[[{personId:"omega",name:"Kenny Omega"}],
+   [{personId:"joe",name:"Samoa Joe"}]],championshipContested:true};
+ one.fallout!.injuries=[{personName:"Samoa Joe",severity:"MINOR",weeksOut:2,stoppage:false}];
+ one.fallout!.title={name:"World Title",winnerName:"Kenny Omega",
+  priorHolderName:"Samoa Joe",changed:true};
+ const actions=postShowHandoff(view([one])).actions;
+ assert.equal(actions[0]?.personId,"joe");
+ assert.equal(actions[1]?.personId,"omega");
+ const ambiguous=match("dup",null,2.8);
+ ambiguous.matchContext={...one.matchContext,
+  sideParticipants:[[{personId:"other",name:"Samoa Joe"}],
+   [{personId:"joe",name:"Samoa Joe"}]]};
+ ambiguous.fallout!.injuries=[{personName:"Samoa Joe",severity:"MINOR",
+  weeksOut:2,stoppage:false}];
+ assert.equal(postShowHandoff(view([ambiguous])).actions[0]?.personId,undefined);
 });

@@ -473,6 +473,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
+  openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   mediaScrum:{
    read:()=>scrumRequest(scope,{action:"READ"}),
    answer:(questionId,answerIndex)=>scrumRequest(scope,{

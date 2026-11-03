@@ -130,12 +130,13 @@ export async function mountShowResults(root:HTMLElement,port:{
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
  mediaScrum?:MediaScrumPort;
  openNext?:(section:NextStepDestination)=>void;
+ openWrestler?:(personId:string)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext,port.mediaScrum);
+  renderBroadcast(root,show,port.openNext,port.mediaScrum,port.openWrestler);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review&&
@@ -149,7 +150,8 @@ export async function mountShowResults(root:HTMLElement,port:{
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
- openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
+ openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
+ openWrestler?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
  const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
  const effectiveSkin=poster?null:show.resultsSkin;
@@ -491,6 +493,11 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     detail?.scrollIntoView({block:"start",behavior:"instant"});
    };
    actionRow.append(source);
+  }
+  if(task.personId&&openWrestler){
+   const profile=node("button","ppw-next-show-evidence","Open wrestler dossier") as HTMLButtonElement;
+   profile.type="button";profile.onclick=()=>openWrestler(task.personId!);
+   actionRow.append(profile);
   }
   if(openNext){
    const control=node("button","ppw-next-show-route",task.action) as HTMLButtonElement;
