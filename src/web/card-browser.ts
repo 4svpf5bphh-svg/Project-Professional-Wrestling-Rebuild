@@ -47,6 +47,13 @@ import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 type Scope=CardSessionScope;
+// Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
+let pendingProgrammeFocusPersonId:string|null=null;
+export function consumeProgrammeFocus():string|null{
+ const focus=pendingProgrammeFocusPersonId;
+ pendingProgrammeFocusPersonId=null;
+ return focus;
+}
 /** One permanent iPhone-first entrance to every completed workspace.
  * Navigating does not advance simulation or create a new World.
  */
@@ -382,7 +389,11 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
   openPlanner:()=>openWorkspace("planner"),
-  openProgrammes:()=>openWorkspace("programmes"),
+  openProgrammes:personId=>{
+   if(window.location.hash!==hostSectionHash("programmes"))
+    pendingProgrammeFocusPersonId=personId;
+   openWorkspace("programmes");
+  },
   openTagTeams:()=>openWorkspace("teams"),
   openStables:()=>openWorkspace("stables")
  };
@@ -570,12 +581,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
     programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
  };
 }
-export function mountProgrammePage(root:HTMLElement,scope:Scope){
+export function mountProgrammePage(root:HTMLElement,scope:Scope,
+ focusPersonId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
-  ()=>mountProgrammePage(root,scope));};
+  ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
-  ()=>{void mountResultsArchivePage(root,scope,()=>mountProgrammePage(root,scope));}));
+  ()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountProgrammePage(root,scope,focusPersonId));}),undefined,focusPersonId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,

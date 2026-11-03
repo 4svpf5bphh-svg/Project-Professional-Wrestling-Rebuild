@@ -178,3 +178,57 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("a wrestler dossier opens their own active feud rather than the first unrelated rivalry",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const calls:string[]=[];
+ const dossier={personId:"joe",name:"Samoa Joe",division:"MEN",status:"ACTIVE",
+  careerStage:"REGULAR",popularity:80,recognition:80,momentum:70,morale:75,
+  inRingQuality:80,matchCraft:85,presentation:80,stamina:80,safety:75,
+  fatigue:10,wear:5,alignment:"HEEL",canEdit:false,onYourRoster:true,
+  sharedHuman:false,currentWeekIndex:8,worldRevision:4,
+  persona:{personaName:"Samoa Joe",gimmickId:"AUTHENTIC",primaryStyle:"BRAWLER",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[{promotionId:"company",promotion:"CWA",isYours:true,
+   family:"EXCLUSIVE",role:"MAIN_EVENT",remainingDates:null,
+   startWeekIndex:0,expiresWeekIndex:51,weeklyGuarantee:1500,
+   appearanceFee:0,creativeControl:"NONE"}],
+  teams:[],stables:[],connections:[],history:[]};
+ const other={...programme,programmeId:"unrelated",sideA:[
+  {kind:"PERSON",refId:"other",name:"Other Wrestler"}],sideB:[
+  {kind:"PERSON",refId:"stranger",name:"Stranger"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);calls.push(method);
+  if(method==="wrestlerDirectory")return route.fulfill({json:{
+   view:"ROSTER",year:1,week:9,worldRevision:4,canEdit:true,hasMore:false,
+   currentWeekIndex:8,people:[{personId:"joe",name:"Samoa Joe",
+    ringName:"Samoa Joe",division:"MEN",availability:"YOUR_ROSTER",
+    family:"EXCLUSIVE",remainingDates:null,startsInWeeks:0,weeksRemaining:44,
+    weeklyGuarantee:1500,appearanceFee:0,popularity:80,recognition:80,
+    momentum:70,inRingQuality:80,matchCraft:85,presentation:80,morale:75,
+    roleExpectation:"MAIN_EVENT"}]}});
+  if(method==="wrestlerProfile")return route.fulfill({json:dossier});
+  if(method==="programmes")return route.fulfill({json:{
+   year:1,week:9,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"},
+    {kind:"PERSON",refId:"riddle",name:"Matt Riddle"}],
+   teams:[],championships:[],programmes:[other,programme]}});
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/roster");
+ const wrestler=page.locator(".ppw-directory-card").first();
+ await wrestler.locator("summary").click();
+ await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+ const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(dialog).toBeVisible();
+ await dialog.locator(".ppw-profile-manage-more > summary").click();
+ await dialog.getByRole("button",{name:"Manage programmes"}).click();
+ await expect(page).toHaveURL(/#\\/programmes$/);
+ await expect(dialog).toHaveCount(0);
+ await expect(page.locator(".ppw-programme-card")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-programme-card")).not.toContainText("Other Wrestler");
+ expect(calls).toEqual(["wrestlerDirectory","wrestlerProfile","programmes"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

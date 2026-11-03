@@ -36,14 +36,14 @@ const button=(title:string,click:()=>void,disabled=false)=>{
  x.type="button";x.disabled=disabled;x.onclick=click;return x;
 };
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
- onBack?:()=>void){
+ onBack?:()=>void,focusPersonId?:string){
  let view:ProgrammeView|null=null,working=false,error="",success="";
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  let selectedProgrammeId:string|null=null;
  let activeLane:"PAYOFF"|"HISTORY"|"STORY"="STORY";
- let creationOpen=false;
+ let creationOpen=false,focusResolved=false;
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
@@ -154,7 +154,30 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   if(success)root.append(element("p","ppw-alert ppw-success",success));
   if(!view){root.append(button(working?"Loading…":"Retry",()=>{void reload();},working));return;}
   const active=view.programmes.filter(p=>p.status==="ACTIVE");
+  // A dossier route selects the wrestler's real feud, including team
+  // participation, rather than displaying the first unrelated programme.
+  if(focusPersonId&&!focusResolved){
+   focusResolved=true;
+   const teams=new Set(view.teams.filter(t=>t.memberIds.includes(focusPersonId))
+    .map(t=>t.refId));
+   const related=active.find(p=>[...p.sideA,...p.sideB].some(member=>
+    (member.kind==="PERSON"&&member.refId===focusPersonId)||
+    (member.kind==="TEAM"&&teams.has(member.refId))));
+   if(related)selectedProgrammeId=related.programmeId;
+   else if(view.canEdit&&view.people.some(p=>p.kind==="PERSON"&&
+    p.refId===focusPersonId)){
+    refsA=[{kind:"PERSON",refId:focusPersonId}];
+    refsB=[null];creationOpen=true;
+   }
+  }
   const list=element("section","ppw-programme-list");
+  if(focusPersonId){
+   const wrestler=view.people.find(p=>p.refId===focusPersonId)?.name??
+    active.flatMap(p=>[...p.sideA,...p.sideB]).find(p=>
+     p.kind==="PERSON"&&p.refId===focusPersonId)?.name;
+   if(wrestler)list.append(element("p","ppw-programme-eyebrow",
+    "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
+  }
   list.append(element("h2","","Active rivalries · "+active.length));
   if(!active.some(p=>p.programmeId===selectedProgrammeId))
    selectedProgrammeId=active[0]?.programmeId??null;

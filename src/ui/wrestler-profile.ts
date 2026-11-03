@@ -22,7 +22,7 @@ export interface WrestlerProfilePort{
  openBackstage?(personId:string):void;
  openContracts?(personId:string):void;
  openPlanner?():void;
- openProgrammes?():void;
+ openProgrammes?(personId:string):void;
  openTagTeams?():void;
  openStables?():void;
 }
@@ -154,7 +154,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     const item=button(label,fn);item.classList.add("ppw-profile-manage-button");
     extra.append(item);
    };
-   if(port.openProgrammes)next("Manage programmes",()=>port.openProgrammes?.());
+   if(port.openProgrammes)next("Manage programmes",()=>port.openProgrammes?.(personId));
    if(port.openTagTeams)next("Manage tag teams",()=>port.openTagTeams?.());
    if(port.openStables)next("Manage stables",()=>port.openStables?.());
    creative.append(extra);manage.append(creative);
