@@ -63,7 +63,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  const dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
- await dialog.getByRole("button",{name:"Hardcore / No DQ"}).click();
+ await dialog.getByRole("button",{name:"Ladder Match"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
