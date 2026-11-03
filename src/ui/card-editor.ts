@@ -152,7 +152,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const openRunIns=new Set<string>();
  const openAdvisorNotes=new Set<string>();
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
- const slotBookingSteps=new Map<string,"CAST"|"OUTCOME">();
+ const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
+ const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
  const openQuickExtras=new Set<string>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -842,22 +843,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     root.append(costs);
    }
   const toolbar=el("div","ppw-toolbar");
-  const matchFormat=selector(formatChoice,FORMATS.map(f=>[f.value,f.label]),
-   v=>{formatChoice=v as Format;render();},!mutable());
-  matchFormat.setAttribute("aria-label","Match format");
-  toolbar.append(matchFormat);
+  // Match size and rules belong to the first guided screen, not a dropdown
+  // taking up room above the actual running order.
   // One authoritative booking editor. There are no competing Quick/Advanced forms.
   const actions=el("div","ppw-experience-actions");
   actions.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
-   slotBookingSteps.set(id,"CAST");
+   slotBookingSteps.set(id,"SETUP");
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-primary ppw-action-match"),
    button("+ Add angle",()=>{
     const id="angle-"+crypto.randomUUID();
     segments.set(id,newEditorSegment(id));
-    slotBookingSteps.set(id,"CAST");
+    slotBookingSteps.set(id,"SETUP");
     order.push(id);expanded=id;markDirty();render();
     if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
    },!mutable(),"ppw-add-angle ppw-action-angle"));
@@ -1820,10 +1819,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       angleCastStageReadiness(segment!):readiness;
      const guide=el("section","ppw-guide-booking");
      guide.dataset.step=stage;
-     guide.append(el("span","ppw-eyebrow",stage==="CAST"?
-      "STEP 1 OF 2 · CAST":"STEP 2 OF 2 · SCRIPT"));
-     guide.append(el("h3","",stage==="CAST"?
-      "Who is involved?":m?"Decide the match outcome":"Set the scene and outcome"));
+     const stepIndex=stage==="SETUP"?1:stage==="CAST"?2:stage==="OUTCOME"?3:4;
+     guide.append(el("span","ppw-eyebrow",
+      "STEP "+stepIndex+" OF 4 · "+(stage==="SETUP"?"SETUP":
+       stage==="CAST"?"CAST":stage==="OUTCOME"?"SCRIPT":"REVIEW")));
+     const progress=el("div","ppw-guide-progress");
+     progress.setAttribute("role","progressbar");
+     progress.setAttribute("aria-label","Booking step");
+     progress.setAttribute("aria-valuemin","1");
+     progress.setAttribute("aria-valuemax","4");
+     progress.setAttribute("aria-valuenow",String(stepIndex));
+     for(let n=1;n<=4;n++){
+      const dot=el("span","ppw-guide-progress-dot");
+      dot.dataset.done=String(n<=stepIndex);progress.append(dot);
+     }
+     guide.append(progress);
+     guide.append(el("h3","",stage==="SETUP"?
+      m?"What kind of match?":"What kind of scene?":
+      stage==="CAST"?"Who is involved?":
+      stage==="OUTCOME"?m?"Decide the match outcome":"Set the scene and outcome":
+      "Staff briefing · Review the booking"));
      if(m&&stage==="OUTCOME"&&view.programmes.some(p=>
       p.cast?.some(x=>x.side==="A")&&p.cast.some(x=>x.side==="B")&&
       p.cast.every(x=>assignedIds(m).includes(x.personId))))
@@ -1871,7 +1886,93 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       for(const node of other)if(!node.classList.contains("ppw-card-match-consents")&&
        !node.classList.contains("ppw-card-advisor-notes"))extraContent.append(node);
       if(extraContent.childElementCount)extra.append(extraContent);
-      if(stage==="CAST"){
+      if(stage==="SETUP"){
+       if(m){
+        const tabs=el("div","ppw-guide-format-tabs");
+        const group=matchSetupTabs.get(slotId)??(
+         ["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(m.format)?
+          "TEAMS":["BATTLE_ROYAL"].includes(m.format)?"OTHER":"SINGLES");
+        for(const [key,title] of [
+         ["SINGLES","Singles"],["TEAMS","Teams"],["OTHER","Other"]
+        ] as const){
+         const tab=button(title,()=>{
+          matchSetupTabs.set(slotId,key);resetGuideScroll=true;render();
+         },false,"ppw-guide-format-tab");
+         tab.setAttribute("aria-pressed",String(group===key));tabs.append(tab);
+        }
+        guide.append(tabs);
+        const formats=FORMATS.filter(f=>
+         group==="TEAMS"?["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(f.value):
+         group==="OTHER"?f.value==="BATTLE_ROYAL":
+         ["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(f.value));
+        const formatGrid=el("div","ppw-guide-format-grid");
+        for(const option of formats){
+         const selected=m.format===option.value;
+         const tile=button(option.label,()=>{
+          if(option.value===m.format)return;
+          if(assignedIds(m).length&&
+           !window.confirm("Changing match size will clear your selected wrestlers. Continue?"))
+           return;
+          matches.set(slotId,newEditorMatch(slotId,option.value));
+          formatChoice=option.value;markDirty();resetGuideScroll=true;render();
+         },!mutable(),"ppw-guide-format-tile");
+         tile.setAttribute("aria-pressed",String(selected));
+         formatGrid.append(tile);
+        }
+        guide.append(el("strong","ppw-guide-section-label","Match size"),formatGrid);
+        const supported=compatibleStipulations(
+         m.format==="MULTI_TEAM"?"MULTI_TEAM":
+         ["TRIOS","FOUR_V_FOUR","FIVE_V_FIVE"].includes(m.format)?"LARGE_TEAM":m.format);
+        const common=new Set<MatchStipulation>([
+         "STANDARD","HARDCORE","STEEL_CAGE","LADDER",
+         "IRON_MAN","TWO_OUT_OF_THREE","FALLS_COUNT_ANYWHERE"]);
+        const stipulationGrid=el("div","ppw-guide-stipulation-grid");
+        const addStipulation=(container:HTMLElement,kind:MatchStipulation)=>{
+         const spec=MATCH_STIPULATIONS.find(x=>x.value===kind)!;
+         const selected=(m.stipulation??"STANDARD")===kind;
+         const choice=button(spec.label,()=>{
+          if(selected)return;
+          setMatch(slotId,changeMatchStipulation(m,kind));
+          resetGuideScroll=false;
+         },!mutable(),"ppw-guide-stipulation-tile");
+         choice.setAttribute("aria-pressed",String(selected));
+         container.append(choice);
+        };
+        supported.filter(x=>common.has(x)).forEach(s=>addStipulation(stipulationGrid,s));
+        guide.append(el("strong","ppw-guide-section-label","Match rules"),stipulationGrid);
+        if(supported.some(x=>!common.has(x))){
+         const more=document.createElement("details");
+         more.className="ppw-guide-other-rules";
+         more.open=!common.has(m.stipulation??"STANDARD");
+         more.append(el("summary","","More match types"));
+         const secondary=el("div","ppw-guide-stipulation-grid");
+         supported.filter(x=>!common.has(x)).forEach(s=>addStipulation(secondary,s));
+         more.append(secondary);guide.append(more);
+        }
+        const spec=MATCH_STIPULATIONS.find(x=>x.value===(m.stipulation??"STANDARD"))!;
+        const risk=stipulationInjuryRisk(spec.value);
+        const context=el("div","ppw-guide-rules-brief");
+        context.dataset.level=risk>=1.25?"watch":"info";
+        context.append(el("strong","",risk>=1.25?
+         "Higher physical risk":risk>1?"Elevated physical risk":"Standard physical risk"),
+         el("p","",spec.summary+" Injury exposure depends on the participants' "+
+          "condition, safety and the match length; ratings are not automatically improved."));
+        guide.append(context);
+       }else{
+        const angleSetup=el("div","ppw-guide-angle-setup");
+        const selectedFields=[...essentials.children].filter(child=>{
+         const label=child.querySelector("[aria-label]")?.getAttribute("aria-label");
+         return label==="Creative direction"||label==="Angle type";
+        });
+        angleSetup.append(...selectedFields);
+        guide.append(el("p","ppw-booking-hint",
+         "Choose the kind of on-screen moment first. PPW will ask who, where "+
+         "and why as you develop the scene."),angleSetup);
+       }
+       guide.append(button("Continue · Select wrestlers",()=>{
+        slotBookingSteps.set(slotId,"CAST");resetGuideScroll=true;render();
+       },!mutable(),"ppw-primary ppw-guide-next"));
+      }else if(stage==="CAST"){
        if(!m){
         // Decide the kind of scene before casting: an attack needs a victim,
         // a team turn can cast both partners, and a promo does not.
@@ -1916,11 +2017,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        guide.append(hint,...cast);
        const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
        if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
+       const warnings=slotNotes(slotId).filter(note=>note.level==="WATCH");
+       if(warnings.length){
+        const pulse=el("section","ppw-guide-crew-pulse");
+        pulse.append(el("strong","","A word from your crew"));
+        for(const n of warnings.slice(0,2))
+         pulse.append(el("p","",n.role.replaceAll("_"," ")+": "+n.title));
+        guide.append(pulse);
+       }
+       guide.append(button("← Match or scene type",()=>{
+        slotBookingSteps.set(slotId,"SETUP");resetGuideScroll=true;render();
+       },false,"ppw-guide-back"));
        guide.append(button("Next · Script outcome",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");
         resetGuideScroll=true;render();
        },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
-      }else{
+      }else if(stage==="OUTCOME"){
        guide.append(essentials);
        if(m&&view.programmes.some(p=>p.cast?.length&&
         p.cast.every(person=>assignedIds(m).includes(person.personId))))
@@ -1939,7 +2051,95 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         slotBookingSteps.set(slotId,"CAST");
         resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
-       actions.append(button("Finish editing",()=>{
+       const urgent=slotNotes(slotId).filter(note=>note.level==="WATCH");
+       if(urgent.length){
+        const caution=el("div","ppw-guide-crew-pulse");
+        caution.append(el("strong","","Staff noticed "+urgent.length+
+         " potential concern"+(urgent.length===1?"":"s")));
+        caution.append(el("p","",urgent[0]!.title+" · "+urgent[0]!.message));
+        guide.append(caution);
+       }
+       actions.append(button("Next · Staff briefing",()=>{
+        slotBookingSteps.set(slotId,"REVIEW");resetGuideScroll=true;render();
+       },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
+       guide.append(actions);
+      }else{
+       const brief=el("section","ppw-guide-staff-review");
+       brief.append(el("p","ppw-booking-hint",
+        "These are grounded pre-show observations, not promises about results. "+
+        "No card data is submitted until you save the running order."));
+       const overview=el("div","ppw-guide-booking-summary");
+       if(m){
+        overview.append(el("strong","",matchLabel(m)),
+         el("p","",nice(m.plannedFinish)+" · "+
+          MATCH_STIPULATIONS.find(s=>s.value===(m.stipulation??"STANDARD"))!.label+
+          " · "+m.plannedLengthMinutes+" min"),
+         el("p","","Winner · "+m.teams[m.winnerSide]!
+          .filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")));
+        if(m.championshipId){
+         const title=view.championships.find(c=>c.championshipId===m.championshipId);
+         overview.append(el("p","","Championship · "+(title?.name??"Selected championship")));
+        }
+       }else{
+        overview.append(el("strong","",angleName),
+         el("p","",segment!.actors.map(selectedName).join(", ")+
+          (segment!.targets.length?" with "+segment!.targets.map(selectedName).join(", "):"")),
+         el("p","",segment!.durationMinutes+" min"+
+          (segment!.scene?" · "+angleSceneLabel(segment!.scene.location)+
+           " · "+angleSceneLabel(segment!.scene.purpose):"")));
+       }
+       brief.append(overview);
+       const staff=slotNotes(slotId);
+       brief.append(el("h4","","Your staff's assessment"));
+       if(staff.length){
+        for(const finding of staff){
+         const item=el("div","ppw-guide-review-note");
+         item.dataset.level=finding.level.toLowerCase();
+         const colleague=view.advisers?.find(x=>x.role===finding.role);
+         item.append(el("span","",finding.role==="HOUSE"?"House safety":
+          (colleague?.name?colleague.name+" · ":"")+
+           nice(finding.role)),
+          el("strong","",finding.title),
+          el("p","",finding.message));
+         brief.append(item);
+        }
+       }else brief.append(el("p","ppw-guide-reviewed-clear",
+        "No specific warnings surfaced from the available condition, "+
+        "duration and creative data. This is not a guarantee of safety or a strong rating."));
+       if(m){
+        const ids=new Set(assignedIds(m));
+        const worked=view.programmes.filter(p=>{
+         const cast=p.cast??[];
+         return cast.some(x=>x.side==="A"&&ids.has(x.personId))&&
+          cast.some(x=>x.side==="B"&&ids.has(x.personId));
+        });
+        brief.append(el("h4","","Relationships & concerns"));
+        if(worked.length)
+         brief.append(el("p","",worked.map(p=>"Active rivalry · "+p.label).join(" · ")));
+        else brief.append(el("p","",
+         "No active opposing-side storyline links this exact cast. "+
+         "That does not establish whether they have good or bad chemistry."));
+        const relevant=concerns.filter(c=>c.slotId===slotId);
+        for(const issue of relevant)
+         brief.append(el("p","ppw-guide-creative-alert",
+          issue.name+" · "+(dirty?"Creative permission must be rechecked after saving":
+           issue.decision==="APPROVED"?"Agreed to the saved version":
+           issue.decision==="DECLINED"?"Declined this booking":
+           "Creative approval requires attention")));
+       }
+       const ids=m?assignedIds(m):
+        [...segment!.actors,...segment!.targets].map(p=>p.personId);
+       const fees=forecastCardAppearanceFees(ids,roster);
+       if(fees.performers)brief.append(el("p","ppw-guide-fee-note",
+        "Potential appearance fees · $"+fees.amount.toLocaleString("en-GB")+
+        (fees.complete?"":" · some fees unknown")+
+        ". Billed only if these wrestlers appear on the finished show."));
+       guide.append(brief);
+       const actions=el("div","ppw-guide-actions");
+       actions.append(button("← Revise script",()=>{
+        slotBookingSteps.set(slotId,"OUTCOME");resetGuideScroll=true;render();
+       },false,"ppw-guide-back"));
+       actions.append(button(m?"Complete match":"Complete angle",()=>{
         expanded=null;render();
        },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
        guide.append(actions);

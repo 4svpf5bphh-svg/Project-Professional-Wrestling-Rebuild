@@ -924,3 +924,60 @@ body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field select{
  gap:8px}
 .ppw-card-wrestler-actions>button{min-width:0}
 @media(max-width:355px){.ppw-card-wrestler-actions{grid-template-columns:1fr}}
+
+/* Phase 25K: guided match/angle authoring with concrete crew review.
+   Four deliberate screens reuse exactly the old match and segment models. */
+body>.ppw-card-edit-shade .ppw-guide-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:6px;margin:0 0 5px}
+.ppw-guide-progress-dot{height:4px;border-radius:8px;background:#3a5676}
+.ppw-guide-progress-dot[data-done=true]{background:#53d8c1}
+.ppw-guide-format-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:8px}
+.ppw-guide-format-tabs button{min-width:0;min-height:46px}
+body>.ppw-card-edit-shade .ppw-guide-format-tab[aria-pressed=true],
+body>.ppw-card-edit-shade .ppw-guide-format-tile[aria-pressed=true],
+body>.ppw-card-edit-shade .ppw-guide-stipulation-tile[aria-pressed=true]{
+ border-color:#79ead8;background:#19564f;color:#fff;box-shadow:inset 0 0 0 1px #a2ffe6}
+body>.ppw-card-edit-shade .ppw-guide-section-label{display:block;color:#ffe7bc;
+ font-size:13px;padding-top:8px}
+.ppw-guide-format-grid,.ppw-guide-stipulation-grid{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-format-tile,
+body>.ppw-card-edit-shade .ppw-guide-stipulation-tile{
+ min-width:0;min-height:53px;white-space:normal;text-align:center;
+ padding:10px 7px;font-size:13px;line-height:1.25}
+.ppw-guide-other-rules{border:1px solid #52668b;border-radius:12px;padding:10px}
+.ppw-guide-other-rules>summary{font-weight:800;color:#d2e4ff;
+ padding:8px;cursor:pointer;min-height:44px}
+.ppw-guide-other-rules>.ppw-guide-stipulation-grid{padding:8px 0}
+.ppw-guide-angle-setup{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.ppw-guide-rules-brief,.ppw-guide-crew-pulse{border:1px solid #587d98;
+ background:#152f40;color:#d9ebf5;border-radius:12px;padding:12px}
+.ppw-guide-rules-brief[data-level=watch],.ppw-guide-crew-pulse{
+ border-color:#c38d6a;background:#362d32}
+.ppw-guide-rules-brief strong,.ppw-guide-crew-pulse strong{
+ display:block;color:#fff4dd;font-size:13px}
+.ppw-guide-rules-brief p,.ppw-guide-crew-pulse p{margin:5px 0 0;
+ color:#dbe5ed;font-size:12px;line-height:1.5}
+.ppw-guide-staff-review{display:grid;gap:9px}
+.ppw-guide-staff-review>h4{font-size:14px;font-weight:900;
+ margin:14px 0 2px;color:#ffdfab}
+.ppw-guide-booking-summary{padding:13px;background:#153b4d;
+ border-radius:12px;border:1px solid #4c9db0;display:grid;gap:6px}
+.ppw-guide-booking-summary strong{font-size:17px;color:#fff}
+.ppw-guide-booking-summary p{font-size:12px;margin:0;color:#d5e5f0;
+ line-height:1.45;overflow-wrap:anywhere}
+.ppw-guide-review-note{display:grid;gap:4px;padding:11px 12px;
+ background:#1c3047;border:1px solid #698ba5;border-radius:12px}
+.ppw-guide-review-note[data-level=watch]{border-color:#d4a274;background:#342d35}
+.ppw-guide-review-note span{color:#94e9ff;font-size:10px;font-weight:900;
+ text-transform:uppercase;letter-spacing:.07em}
+.ppw-guide-review-note strong{font-size:13px;color:#fff5de}
+.ppw-guide-review-note p,.ppw-guide-staff-review>p{font-size:12px;
+ color:#d4e0ee;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.ppw-guide-reviewed-clear{padding:12px;border:1px solid #658698;
+ border-radius:10px;background:#183348}
+.ppw-guide-creative-alert{color:#ffdcad!important}
+.ppw-guide-fee-note{border-top:1px solid #617389;padding-top:12px}
+@media(max-width:350px){.ppw-guide-format-grid,.ppw-guide-stipulation-grid{
+ grid-template-columns:1fr}}
