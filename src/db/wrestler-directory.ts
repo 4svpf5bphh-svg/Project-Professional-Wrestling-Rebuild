@@ -84,13 +84,16 @@ export async function readWrestlerDirectory(
  return withSqlClient(pool,async tx=>{
   const auth=await tx.query<{year:number;week:number;revision:string|number;
    seed:string|number;can_edit:boolean;
-    cash:string;weekly_media_income:string|null;weekly_sponsor_income:string|null;
+    cash:string;weekly_income:string|null;
     weekly_fixed_overhead:string|null;active_guarantees:string;
     signed_roster_exposure:string;staff_payroll:string;
     plan_wage_limit:string|null;plan_cash_reserve:string|null;
     has_talent_manager:boolean}>(`
    SELECT w.year,w.week,w.revision,w.seed,
-    owner.cash::text,owner.weekly_media_income::text,owner.weekly_sponsor_income::text,
+    owner.cash::text,
+    CASE WHEN owner.weekly_media_income IS NULL OR owner.weekly_sponsor_income IS NULL
+     THEN NULL ELSE (owner.weekly_media_income+owner.weekly_sponsor_income)::text
+     END AS weekly_income,
     owner.weekly_fixed_overhead::text,
     costs.active_guarantees,costs.signed_roster_exposure,
     (SELECT coalesce(sum(employee.weekly_salary),0)::text
@@ -254,9 +257,8 @@ export async function readWrestlerDirectory(
    offerBudget:f.view==="MARKET"?{
     hasTalentManager:auth[0]!.has_talent_manager,
     cash:Number(auth[0]!.cash),
-    weeklyIncome:auth[0]!.weekly_media_income===null||
-     auth[0]!.weekly_sponsor_income===null?null:
-     Number(auth[0]!.weekly_media_income)+Number(auth[0]!.weekly_sponsor_income),
+    weeklyIncome:auth[0]!.weekly_income===null?null:
+     Number(auth[0]!.weekly_income),
     weeklyOverhead:auth[0]!.weekly_fixed_overhead===null?null:
      Number(auth[0]!.weekly_fixed_overhead),
     weeklyGuarantees:Number(auth[0]!.active_guarantees),
