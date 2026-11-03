@@ -66,3 +66,22 @@ test("talent manager advice responds to actual financial terms, not predicted ac
   weeklyGuarantees:25000,wageLimit:30000,recurringMargin:2000},
   new Set<StaffRole>()).length,0);
 });
+
+test("physical angle briefing gives genuine Medical and Referee feedback without asserting a real injury",()=>{
+ const scene=newEditorSegment("attack","ATTACK");
+ const attack={...scene,
+  actors:[{personId:"a",contractId:"contract-a"}],
+  targets:[{personId:"b",contractId:"contract-b"}],
+  scene:{...scene.scene,intensity:"BRUTAL" as const,visual:"BLOODIED" as const}};
+ const professional=angleStaffNotes(attack,[opponentA,opponentB],crew);
+ assert.ok(professional.some(n=>n.role==="MEDICAL"&&n.level==="WATCH"&&
+  n.message.includes("Samoa Joe")));
+ assert.ok(professional.some(n=>n.role==="REFEREE"&&
+  n.title==="Coordinate the staged violence"));
+ assert.ok(!professional.some(n=>/confirmed injury|medical absence created/i.test(n.message)));
+ const noHires=angleStaffNotes(attack,[opponentA,opponentB],new Set<StaffRole>());
+ assert.ok(noHires.some(n=>n.role==="HOUSE"&&n.level==="WATCH"),
+  "Condition warning remains available even without a hired specialist");
+ assert.equal(attack.scene.visual,"BLOODIED",
+  "The advisory must not rewrite an authored on-screen scene");
+});

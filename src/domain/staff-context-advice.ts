@@ -63,27 +63,46 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
 }
 export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPerson[],
  staffed:ReadonlySet<StaffRole>,programmeCast:readonly string[]=[]):StaffNote[]{
- if(!staffed.has("CREATIVE"))return [];
  const ids=[...segment.actors,...segment.targets].map(p=>p.personId);
  const cast=people.filter(p=>ids.includes(p.personId));
  const notes:StaffNote[]=[];
- if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
-  notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
-   "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
- if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
-  cast.some(p=>valid(p.presentation)&&p.presentation<50))
-  notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
-   "One or more featured wrestlers may be carrying a longer talking or character segment "+
-   "than their current presentation suggests. Consider sharing the microphone or tightening it."));
- if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
-  !segment.targets.length)
-  notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
-   "An identifiable opponent usually gives this kind of confrontation more context. "+
-   "Book the participants and motivation deliberately."));
- if(segment.kind==="VIDEO_PACKAGE")
-  notes.push(note("CREATIVE","INFO","A video can do the storytelling",
-   "Pre-recorded material can recap a feud without requiring wrestlers to appear live on this show."));
- return notes.slice(0,3);
+ // A physical angle can need a Doctor or Referee even if the manager has no
+ // Creative hire. A scripted bloody aftermath is not a certified injury.
+ const physical=["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(segment.kind);
+ const intense=physical&&(segment.scene?.intensity==="BRUTAL"||
+  segment.scene?.visual==="BLOODIED");
+ const tired=cast.filter(p=>valid(p.fatigue)&&p.fatigue>=65||
+  valid(p.wear)&&p.wear>=72);
+ if(physical&&tired.length){
+  notes.push(note(staffed.has("MEDICAL")?"MEDICAL":"HOUSE","WATCH",
+   "Check condition before this physical scene",
+   tired.map(p=>p.name).join(", ")+
+   " has elevated fatigue or wear. Rehearse the physical beat carefully or "+
+   "reduce its intensity. The on-screen aftermath does not create a medical injury."));
+ }
+ if(intense&&staffed.has("REFEREE"))
+  notes.push(note("REFEREE","INFO","Coordinate the staged violence",
+   "The referee and crew should plan the separation and timing of this intense "+
+   "physical angle. Its visual severity is storytelling, not a guaranteed injury."));
+ if(staffed.has("CREATIVE")){
+  if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
+   notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
+    "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
+  if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
+   cast.some(p=>valid(p.presentation)&&p.presentation<50))
+   notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
+    "One or more featured wrestlers may be carrying a longer talking or character segment "+
+    "than their current presentation suggests. Consider sharing the microphone or tightening it."));
+  if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
+   !segment.targets.length)
+   notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
+    "An identifiable opponent usually gives this kind of confrontation more context. "+
+    "Book the participants and motivation deliberately."));
+  if(segment.kind==="VIDEO_PACKAGE")
+   notes.push(note("CREATIVE","INFO","A video can do the storytelling",
+    "Pre-recorded material can recap a feud without requiring wrestlers to appear live on this show."));
+ }
+ return notes.slice(0,4);
 }
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;
