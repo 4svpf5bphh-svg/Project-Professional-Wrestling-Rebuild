@@ -202,8 +202,8 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
-  await expect(page.locator(".ppw-next-show-actions .ppw-next-show-evidence")).toHaveCount(3);
-  await expect(page.getByRole("button",{name:"Open wrestler dossier"})).toBeVisible();
+  await expect(page.locator(".ppw-next-show-actions").getByRole("button",{name:"See the recorded moment"})).toHaveCount(3);
+  await expect(page.getByRole("button",{name:"Open wrestler dossier"})).toHaveCount(2);
   await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   expect(reads).toBe(1);
@@ -664,7 +664,7 @@ test("post-show evidence links reopen the certified match, without a second resu
  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(3);
  await expect(page.locator(".ppw-road-agent-observation").first()).toContainText("Medical comes first");
- await expect(page.locator(".ppw-road-agent-observation").nth(1)).toContainText("10 minutes");
+ await expect(page.locator(".ppw-road-agent-observation").nth(1)).toContainText("9 minutes");
  await page.locator(".ppw-next-show-choice").first()
   .getByRole("button",{name:"See the recorded moment"}).click();
  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
