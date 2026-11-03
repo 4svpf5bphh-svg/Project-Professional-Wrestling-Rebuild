@@ -21,3 +21,21 @@ test("scouting differentiates specialisms without claiming future results",()=>{
  assert.ok(technical.every(x=>/not a guaranteed/.test(x.observation)));
  assert.equal(prospects.length,4);
 });
+
+test("Scout voices give metric-specific, actionable notes and vary by week without changing talent ranking",()=>{
+ const sample=[p("technical",91,93,34,12),p("character",35,41,93,17)];
+ const voice={insight:85,specialism:"technical upside",weekIndex:24};
+ const weekOne=selectScoutRecommendations(sample,voice);
+ const repeated=selectScoutRecommendations(sample,voice);
+ const nextWeek=selectScoutRecommendations(sample,{...voice,weekIndex:25});
+ assert.deepEqual(weekOne,repeated,"Refreshing a Staff Office must not generate new claims");
+ assert.deepEqual(weekOne.map(x=>x.personId),nextWeek.map(x=>x.personId));
+ const technician=weekOne.find(x=>x.personId==="technical")!;
+ const character=weekOne.find(x=>x.personId==="character")!;
+ assert.match(technician.observation,/presentation 34|in-ring ability 91|match craft 93/);
+ assert.match(technician.observation,/long promos|Character work trails/);
+ assert.match(character.observation,/presentation 93/);
+ assert.match(character.observation,/Match craft|In-ring work/);
+ assert.ok(weekOne.some((x,i)=>x.observation!==nextWeek[i]?.observation));
+ assert.ok(weekOne.every(x=>x.observation.includes("short-term offer")));
+});

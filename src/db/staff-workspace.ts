@@ -254,7 +254,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     aptitude:Number(p.development_aptitude??50),ring:Number(p.in_ring_quality??50),
     craft:Number(p.match_craft??50),presentation:Number(p.presentation??50),
     popularity:Number(p.popularity??50)
-   } satisfies ScoutProspect)),hiredScout):[];
+   } satisfies ScoutProspect)),{...hiredScout,weekIndex}):[];
   const observations=deriveStaffRivalryObservations(current.featured_programme);
   const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"|"market"}[]=[];
   const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
