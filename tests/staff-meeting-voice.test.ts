@@ -16,3 +16,15 @@ test("staff speak with distinct personalities while retaining exact evidence",()
   personality:null,message:"Hire a scout for recommendations."});
  assert.match(vacant,/House office note/);
 });
+
+test("ambitious staff make distinctive role-specific observations rather than copy-paste openings",()=>{
+ const base={staffName:"Aria",personality:"AMBITIOUS" as const,
+  message:"Místico faces Samoa Joe next week."};
+ const creative=staffMeetingDialogue({...base,role:"CREATIVE"});
+ const commentator=staffMeetingDialogue({...base,role:"COMMENTATOR"});
+ assert.match(creative,/creative opportunity/);
+ assert.match(commentator,/broadcast/);
+ assert.ok(!creative.includes("There's something we can improve here"));
+ assert.ok(!commentator.includes("There's something we can improve here"));
+ assert.notEqual(creative,commentator);
+});
