@@ -71,7 +71,7 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.locator(".ppw-directory-card > summary").first().click();
  await page.getByRole("button",{name:"Make contract offer"}).click();
  await expect(page.locator(".ppw-directory-affordability")).toContainText("What this does to your company");
- await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("PLANNED FULL-TERM COST");
+ await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("POTENTIAL FULL-TERM COST");
  const input=page.getByLabel("Weekly guarantee ($)");
  await input.fill("18000");
  await input.press("Tab");

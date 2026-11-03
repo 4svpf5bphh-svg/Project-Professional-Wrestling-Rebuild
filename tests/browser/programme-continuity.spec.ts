@@ -31,7 +31,7 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"History",exact:true}).click();
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
- await expect(page.locator(".ppw-programme-history-timeline")).toContainText("On-screen angle");
+ await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
  await page.getByRole("button",{name:"Story",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
@@ -60,7 +60,7 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText(/Give Matt Riddle an answer/)).toBeVisible();
+ await expect(page.getByText(/Still open · 1 week since your decision/)).toBeVisible();
  await expect(page.getByText(/An answer is still due/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });

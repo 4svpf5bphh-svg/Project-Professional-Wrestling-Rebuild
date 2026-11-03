@@ -247,7 +247,7 @@ test("Programme Desk selects the real unfinished show before opening the focusse
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Book next chapter"}).first().click();
  await expect(page.locator(".ppw-card-rivalry-ideas")).toHaveAttribute("open","");
- await expect(page.getByLabel("Choose a rivalry to book")).toHaveValue("joe-mistico");
+ await expect(page.getByLabel("Rivalry")).toHaveValue("joe-mistico");
  await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
  expect(calls).toEqual(["programmes","planner","load"]);
 });

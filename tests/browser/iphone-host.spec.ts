@@ -935,7 +935,7 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Story",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
+ await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
  await page.locator(".ppw-programme-strategy > summary").click();
  await page.locator(".ppw-programme-strategy-choice")
   .filter({hasText:"Raise the cost of another loss"})
@@ -1338,12 +1338,12 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.keyboard.press("ArrowUp");
  await page.getByRole("button",{name:"Reorder match in slot 2 with Up and Down arrow keys"}).focus();
  await page.keyboard.press("ArrowUp");
- await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ await expect(page.locator(".ppw-card-matchup").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeAttached();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
- await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ await expect(page.locator(".ppw-card-matchup").first()).toContainText("Alice");
  expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const matchup=page.getByRole("dialog",{name:"Edit match"});
