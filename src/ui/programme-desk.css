@@ -390,10 +390,14 @@
 .ppw-programme-hero-person .ppw-programme-person-link{padding:1px 2px;
  font-size:clamp(11px,3.7vw,16px);line-height:1.25;min-width:0;white-space:normal;
  overflow-wrap:anywhere;color:#fff5e7;text-align:center}
-.ppw-programme-desk .ppw-programme-versus{font-size:14px!important;color:#f9c87d;
+/* Override arena's rotated, wider VS badge at this smaller iPhone layout.
+ * Keep actual grid geometry stable, not just the inner text nowrap. */
+#game .ppw-programme-desk .ppw-programme-versus{font-size:14px!important;color:#fff4cc;
  align-self:center;display:grid;place-items:center;width:36px;height:36px;
- box-sizing:border-box;padding:0!important;min-width:0;line-height:1;
- white-space:nowrap;letter-spacing:0}
+ box-sizing:border-box;padding:0!important;min-width:36px;line-height:1;
+ white-space:nowrap;letter-spacing:0;transform:none!important;
+ background:linear-gradient(135deg,#f96e9c,#865dca);border:1px solid #ffe1b0;
+ box-shadow:none}
 .ppw-programme-heat{padding:12px 14px;display:grid;grid-template-columns:1fr auto;
  align-items:center;gap:6px 10px;background:#182940}
 .ppw-programme-heat>span:first-child{color:#a6d8ef;font-size:10px;
@@ -442,4 +446,4 @@
 @media(max-width:350px){.ppw-programme-portrait{width:48px;height:60px}
  .ppw-programme-switch{min-width:172px!important;width:172px!important}
  .ppw-programme-broadcast{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr)!important}
- .ppw-programme-desk .ppw-programme-versus{width:30px;height:30px;font-size:12px!important}}
+ #game .ppw-programme-desk .ppw-programme-versus{width:30px;height:30px;min-width:30px;font-size:12px!important}}
