@@ -80,7 +80,7 @@ test("320px dossier sends the right wrestler into a real unfinished show, casts 
  await page.setViewportSize({width:320,height:740});
  const calls=await mock(page);
  await openFromDossier(page);
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  const focused=page.locator(".ppw-card-wrestler-focus");
  await expect(focused).toContainText("Alice Vale");
@@ -124,7 +124,7 @@ test("no unfinished card sends dossier back to planner rather than inventing a d
  await page.setViewportSize({width:390,height:844});
  const calls=await mock(page,{hasDraft:false});
  await openFromDossier(page);
- await expect(page).toHaveURL(/#\\/planner\\/card$/);
+ await expect(page).toHaveURL(/#\/planner\/card$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await expect(page.getByText(/There isn't an unfinished show card this week/)).toBeVisible();
  expect(calls).toEqual(["wrestlerDirectory","wrestlerProfile","planner"]);
