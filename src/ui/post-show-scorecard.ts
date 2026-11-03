@@ -10,7 +10,7 @@ export interface PostShowScorecard{
  lowestRatedMatch:PostShowSpotlight|null;
  crowdPeak:PostShowSpotlight|null;
  crowdLow:PostShowSpotlight|null;
- medical:{name:string;weeksOut:number}[];
+ medical:{name:string;weeksOut:number|null}[];
  titleChanges:{name:string;winner:string}[];
 }
 export function projectPostShowScorecard(show:CompletedShowView):PostShowScorecard{
@@ -24,13 +24,14 @@ export function projectPostShowScorecard(show:CompletedShowView):PostShowScoreca
   ({headline:entry.headline,slotId:entry.slotId,value});
  const crowd=[...show.entries].filter(e=>Number.isFinite(e.crowdResponse))
   .sort((a,b)=>b.crowdResponse-a.crowdResponse||a.position-b.position);
- const medical=new Map<string,number>();
+ const medical=new Map<string,number|null>();
  const titleChanges:{name:string;winner:string}[]=[];
  for(const entry of show.entries){
   for(const injury of entry.fallout?.injuries??[]){
    if(!injury.personName.trim())continue;
-   medical.set(injury.personName,Math.max(injury.weeksOut,
-    medical.get(injury.personName)??0));
+   const previous=medical.get(injury.personName)??null;
+   medical.set(injury.personName,injury.weeksOut===null?previous:
+    Math.max(injury.weeksOut,previous??0));
   }
   const title=entry.fallout?.title;
   if(title?.changed)titleChanges.push({name:title.name,winner:title.winnerName});

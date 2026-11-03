@@ -436,7 +436,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    "Certified event purchase estimate");
  if(snapshot.medical.length)fact("RECORDED INJURIES",
   String(snapshot.medical.length),
-  snapshot.medical.map(x=>x.name+" · "+x.weeksOut+" weeks out").join(" / "));
+  snapshot.medical.map(x=>x.name+" · "+(x.weeksOut===null?
+   "return date not recorded":x.weeksOut+" weeks out")).join(" / "));
  if(snapshot.titleChanges.length)fact("TITLE CHANGES",
   String(snapshot.titleChanges.length),
   snapshot.titleChanges.map(x=>x.winner+" · "+x.name).join(" / "));
