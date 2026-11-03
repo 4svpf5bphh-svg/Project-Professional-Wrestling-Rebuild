@@ -1329,7 +1329,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         (stableChoices??[]).filter(t=>(t.members?.length??0)>0)
          .map(t=>["stable:"+t.stableId,"Faction · "+t.name]))
       ];
-      if(groups.length)section.append(field("Cast a team, trio or faction",
+      if(groups.length)section.append(field(segment.kind==="TURN"&&role==="targets"?
+       "Cast a target group":"Cast a team, trio or faction",
        selector("",[["","Choose a group"],...groups],v=>
         castAngleGroup(segment,role,v),!mutable())));
       if(stableChoices===null&&port.stableChoices&&
