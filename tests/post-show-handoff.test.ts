@@ -26,6 +26,8 @@ test("medical, title and cooling rivalry get exactly three historic, truthful ro
  assert.match(advice.actions[1]!.detail,/who holds it now/);
  assert.ok(advice.actions.every(x=>!x.detail.includes("You must")));
  assert.ok(advice.standout?.includes("verified stars"));
+ assert.deepEqual(advice.actions.slice(0,3).map(x=>x.evidenceSlotId),["a","a","a"]);
+ assert.equal(advice.actions[3]!.evidenceSlotId,undefined);
 });
 test("hot rivalries take priority over generic standout while free booking stays optional",()=>{
  const advice=postShowHandoff(view([match("a","HOT_PROGRAMME",4.8)]));

@@ -18,6 +18,7 @@ type MediaScrumPort={
  }>;
 };
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
+import {postShowStaffObservations} from "../domain/post-show-staff-observations.js";
 import {projectPostShowScorecard} from "./post-show-scorecard.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
@@ -407,9 +408,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // The historical show report does not claim these concerns are still live.
  const handoff=postShowHandoff(show);
  const snapshot=projectPostShowScorecard(show);
- const overview=node("section","ppw-manager-snapshot");
- overview.append(node("span","ppw-eyebrow","CERTIFIED / THIS SHOW"),
-  node("h3","","The night in numbers"));
+ const overview=document.createElement("details");
+ overview.className="ppw-manager-snapshot";
+ const summary=node("summary","ppw-manager-snapshot-toggle");
+ summary.append(node("span","ppw-eyebrow","CERTIFIED / THIS SHOW"),
+  node("h3","","The night in numbers"),
+  node("span","ppw-manager-snapshot-hint","Ratings, audience, injuries and event finances"));
+ overview.append(summary);
  const facts=node("div","ppw-manager-snapshot-grid");
  const fact=(label:string,value:string,detail:string)=>{
   const tile=node("article","ppw-manager-snapshot-fact");
@@ -461,9 +466,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   "Event profit/loss is not a second cash payment; weekly salaries and other business costs are separate."));
  if(!facts.childElementCount)overview.append(node("p","ppw-muted",
   "This show has no detailed certified ratings or business figures to compare."));
- management.append(overview);
- management.append(node("p","ppw-post-show-guidance",
-  "Your call. These observations are from this show; check the current World before acting."));
+ const intro=node("div","ppw-post-show-decision-lead");
+ intro.append(node("span","ppw-eyebrow","DECISIONS / NEXT WEEK"),
+  node("h3","","What needs your attention"),
+  node("p","","These are recorded events from this show, not automatic orders. "+
+   "You decide what to carry forward."));
+ management.append(intro);
  const choices=node("div","ppw-next-show-actions");
  for(const task of handoff.actions){
   const item=node("article","ppw-next-show-choice");
@@ -472,14 +480,27 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("h3","",task.headline),
    node("p","",task.detail));
   item.append(copy);
+  const actionRow=node("div","ppw-next-show-buttons");
+  if(task.evidenceSlotId&&storyLinks.has(task.evidenceSlotId)){
+   const source=node("button","ppw-next-show-evidence","See the recorded moment") as HTMLButtonElement;
+   source.type="button";
+   source.onclick=()=>{
+    changePage(1);
+    const detail=storyLinks.get(task.evidenceSlotId!);
+    if(detail instanceof HTMLDetailsElement)detail.open=true;
+    detail?.scrollIntoView({block:"start",behavior:"instant"});
+   };
+   actionRow.append(source);
+  }
   if(openNext){
    const control=node("button","ppw-next-show-route",task.action) as HTMLButtonElement;
    control.type="button";control.onclick=()=>openNext(task.destination);
-   item.append(control);
+   actionRow.append(control);
   }
+  if(actionRow.childElementCount)item.append(actionRow);
   choices.append(item);
  }
- management.append(choices);
+ management.append(choices,overview);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
@@ -488,6 +509,26 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","ppw-road-agent-voice",report.praise),
    node("p","ppw-road-agent-voice",report.concern),
    node("p","ppw-road-agent-next",report.recommendation));
+  const observed=postShowStaffObservations(show);
+  if(observed.length){
+   const specific=node("div","ppw-road-agent-observations");
+   specific.append(node("strong","","From the completed match reports"));
+   for(const observation of observed){
+    const line=node("article","ppw-road-agent-observation");
+    line.append(node("h4","",observation.headline),node("p","",observation.note));
+    const source=node("button","ppw-next-show-evidence",
+     "Review "+observation.headline.toLowerCase()) as HTMLButtonElement;
+    source.type="button";
+    source.onclick=()=>{
+     changePage(1);
+     const target=storyLinks.get(observation.slotId);
+     if(target instanceof HTMLDetailsElement)target.open=true;
+     target?.scrollIntoView({block:"start",behavior:"instant"});
+    };
+    line.append(source);specific.append(line);
+   }
+   office.append(specific);
+  }
   const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
   if(strongest)office.append(node("p","ppw-road-agent-standout",
    "If I were showing the locker room one match from tonight, it'd be "+

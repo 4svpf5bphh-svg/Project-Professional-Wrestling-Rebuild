@@ -97,7 +97,10 @@ for(const width of [320,390]){
    await expect(page.locator(".ppw-pop-post .ppw-pop-copy").first())
     .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"What needs your attention"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"The night in numbers"})).toBeVisible();
+  await expect(page.locator(".ppw-manager-snapshot")).not.toHaveAttribute("open");
+  await page.locator(".ppw-manager-snapshot-toggle").click();
   await expect(page.locator(".ppw-manager-snapshot-fact").first()).toContainText("4.50★");
   await expect(page.getByRole("button",{name:"Meet the press"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"Alex Stone · Road Agent"})).toBeVisible();
@@ -199,6 +202,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
+  await expect(page.locator(".ppw-next-show-evidence")).toHaveCount(3);
   await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
   await expect(page.locator(".ppw-post-show-road-agent")).toHaveCount(1);
   expect(reads).toBe(1);
@@ -629,6 +633,42 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
  await expect(artwork.locator(".ppw-ep-title")).toHaveText("Armageddon");
  await expect(page.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
  await expect(page.locator(".ppw-retro-station")).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("post-show evidence links reopen the certified match, without a second results read",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let reads=0;
+ const complete={...show,entries:[{
+  ...show.entries[0],
+  fallout:{...show.entries[0]!.fallout,
+   programmeSignal:"COOL_PROGRAMME",
+   executionQuality:44,actualMinutes:27,
+   injuries:[{personName:"Samoa Joe",severity:"MODERATE",weeksOut:3,stoppage:false}]}
+ },show.entries[1]]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  if(method==="results")reads++;
+  return r.fulfill({json:method==="resultsArchive"?
+   {items:[{showId:"omega-night",year:1,week:4,
+    showName:"Dynamite",crowdResponse:84,matchCount:1,angleCount:1}],
+    nextCursor:null}:complete});
+ });
+ await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+ await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+ await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(2);
+ await expect(page.locator(".ppw-road-agent-observation").first()).toContainText("Medical comes first");
+ await expect(page.locator(".ppw-road-agent-observation").nth(1)).toContainText("10 minutes");
+ await page.locator(".ppw-next-show-choice").first()
+  .getByRole("button",{name:"See the recorded moment"}).click();
+ await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+ await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");
+ expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
