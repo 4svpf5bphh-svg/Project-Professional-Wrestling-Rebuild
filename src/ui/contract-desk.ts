@@ -5,6 +5,7 @@ import type {readContractDesk} from "../db/contract-desk-workspace.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
 import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
  from "../domain/contract-term-presets.js";
@@ -108,31 +109,40 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   if(!view){root.append(btn(working?"Loading…":"Retry",()=>void load(),working));return;}
   const sums=el("div","ppw-contract-summary");
   for(const [metric,value] of [
-   ["SIGNED",view.summary.signed],["NEED ATTENTION",view.summary.expiringSoon+view.summary.noDates],
+   ["SIGNED",view.summary.signed],
+   ["NEED ATTENTION",view.summary.expiringSoon+view.summary.noDates],
    ["PENDING",view.summary.pendingNegotiations+view.summary.pendingRenewals+
-     view.summary.pendingOffers],["WEEKLY GUARANTEES",money(view.summary.weeklyGuarantees)]
+    view.summary.pendingOffers]
   ] as const){
    const panel=el("div","ppw-contract-metric");
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
-  // A contract decision needs the owner's actual weekly wage room, not
-  // invented four-week cash scenarios or a fictitious full-roster show.
-  const plan=view.spendingPlan,actual=view.talentBudget?.currentGuarantees??
-   view.summary.weeklyGuarantees;
-  const guide=el("section","ppw-contract-budget");
-  if(plan){
-   const left=plan.weeklyWageLimit-actual;
-   guide.append(el("strong","","Weekly wage budget"),
-    el("p","ppw-muted",money(actual)+" committed of "+
-     money(plan.weeklyWageLimit)+" · "+(left>=0?
-     money(left)+" remaining":money(-left)+" above your chosen limit")),
-    el("small","ppw-muted",
-     "Appearance fees are separate event costs. Review your spending limits in Business → Finances."));
-  }else guide.append(el("p","ppw-muted",
-   "Weekly guarantees: "+money(actual)+
-   ". You can set a wage allowance in Business → Finances."));
-  root.append(guide);
+  const exposure=remainingRosterExposure(view.roster);
+  const budget=el("section","ppw-contract-budget ppw-contract-exposure");
+  budget.append(el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
+   el("strong","ppw-contract-exposure-total",money(exposure.potentialTotal)));
+  const split=el("div","ppw-contract-exposure-parts");
+  const budgetLine=(name:string,value:number)=>{
+   const row=el("div","ppw-contract-exposure-part");
+   row.append(el("span","",name),el("strong","",money(value)));split.append(row);
+  };
+  budgetLine("Guaranteed wages to expiry",exposure.guaranteedWages);
+  budgetLine("Optional dates if all used",exposure.optionalAppearanceFees);
+  budget.append(split);
+  const plan=view.spendingPlan;
+  const actual=view.talentBudget?.currentGuarantees??view.summary.weeklyGuarantees;
+  const cash=view.talentBudget.cash;
+  const note=plan?
+   "Weekly guarantees: "+money(actual)+" of "+money(plan.weeklyWageLimit)+
+    " spending limit · Current cash: "+money(cash):
+   "Weekly guarantees: "+money(actual)+"/week · Current cash: "+money(cash);
+  budget.append(el("p","ppw-contract-exposure-context",note),
+   el("small","ppw-contract-exposure-disclaimer",
+    "Signed current terms only. Includes remaining guaranteed wages and up to "+
+    exposure.remainingUsableDates+" unused appearance dates. "+
+    "Not an upfront cost; already-paid bonuses, pending offers, future income and other expenses are excluded."));
+  root.append(budget);
   // Offer-response timing belongs inside individual pending decisions, not an
   // always-visible paragraph above every contract.
 
