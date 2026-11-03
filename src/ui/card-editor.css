@@ -981,3 +981,22 @@ body>.ppw-card-edit-shade .ppw-guide-stipulation-tile{
 .ppw-guide-fee-note{border-top:1px solid #617389;padding-top:12px}
 @media(max-width:350px){.ppw-guide-format-grid,.ppw-guide-stipulation-grid{
  grid-template-columns:1fr}}
+
+/* One roster sheet, both sides: thumb-scrollable, local (zero-RPC) slicers. */
+.ppw-picker-side-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(105px,1fr);
+ overflow-x:auto;scrollbar-width:none;gap:7px;margin:12px 0;
+ -webkit-overflow-scrolling:touch}
+.ppw-picker-source-tabs,.ppw-picker-chips{display:flex;gap:7px;overflow-x:auto;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+ padding:6px 1px 10px;scroll-snap-type:x proximity}
+.ppw-picker-source-tab,.ppw-picker-filter-chip{white-space:nowrap;flex:none;
+ scroll-snap-align:start;font-size:12px;min-height:43px;padding:8px 13px}
+.ppw-picker-side-tab{white-space:nowrap;min-height:47px;font-size:12px;
+ padding:8px 5px}
+.ppw-picker-side-tab[aria-pressed=true],.ppw-picker-source-tab[aria-pressed=true],
+.ppw-picker-filter-chip[aria-pressed=true],.ppw-picker-unit[aria-pressed=true]{
+ background:#1b615e;border-color:#8cf9d8;color:#fff}
+.ppw-picker-unit-list{display:flex;flex-wrap:wrap;gap:8px;
+ margin:8px 0 12px}
+.ppw-picker-unit{font-size:12px;min-height:44px;white-space:normal;text-align:left}
+.ppw-picker-note{font-size:11px;line-height:1.4;color:#bfd9ef}

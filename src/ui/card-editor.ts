@@ -134,7 +134,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
-  division:"ALL"|"MEN"|"WOMEN";showOther?:boolean}|null=null;
+  division:"ALL"|"MEN"|"WOMEN";showOther?:boolean;
+  source?:"ALL"|"FEUDS"|"TEAMS"|"TRIOS"|"FACTIONS";
+  sourceId?:string;chips?:Set<string>}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
@@ -154,6 +156,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
  const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
+ const guidedPickerSlots=new Set<string>();
  const openQuickExtras=new Set<string>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -398,6 +401,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const id=(kind==="MATCH"?"match-":"angle-")+crypto.randomUUID();
    if(kind==="MATCH"){
     matches.set(id,assignPerformer(newEditorMatch(id,"SINGLES"),0,0,pick));
+    guidedPickerSlots.add(id);
    }else{
     // A promo starts with a verified speaker; the booker still scripts it.
     segments.set(id,addSegmentPerson(newEditorSegment(id,"PROMO"),"actors",pick));
@@ -440,9 +444,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    error="A wrestler can only compete in one match per show";render();return;
   }
   try{
-   setMatch(picker.slotId,assignPerformer(target,picker.side,picker.member,{
-    personId:p.personId,contractId:p.contractId}));
-   picker=null;render();
+   const updated=assignPerformer(target,picker.side,picker.member,{
+    personId:p.personId,contractId:p.contractId});
+   if(guidedPickerSlots.has(picker.slotId)){
+    // The WGM-inspired selector stays open while the booker fills both
+    // sides; switching tabs never reloads the same bounded roster page.
+    const next=updated.teams.flatMap((team,side)=>team.map((member,index)=>
+     member?null:{side,index})).find(x=>x!==null);
+    if(next){picker.side=next.side;picker.member=next.index;}
+    else picker=null;
+   }else picker=null;
+   matches.set(target.slotId,updated);markDirty();render();
   }catch(e){error=errorText(e);render();}
  }
  function chooseRunInTalent(slotId:string){
@@ -850,6 +862,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   actions.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
+   guidedPickerSlots.add(id);
    slotBookingSteps.set(id,"SETUP");
    order.push(id);expanded=id;markDirty();render();
   },!mutable(),"ppw-primary ppw-action-match"),
@@ -2240,6 +2253,93 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     },false,"ppw-picker-story-other"));
     sheet.append(storyBox);
    }
+   const matchPicker=matches.get(current.slotId);
+   if(matchPicker&&!current.role){
+    const sides=el("div","ppw-picker-side-tabs");
+    sides.setAttribute("role","group");
+    sides.setAttribute("aria-label","Select booking side");
+    for(const [side,members] of matchPicker.teams.entries()){
+     const complete=members.filter(Boolean).length;
+     const tab=button((matchPicker.format==="BATTLE_ROYAL"?"Entrant ":"Side ")+
+      sideLabel(side)+" · "+complete+"/"+members.length,()=>{
+      current.side=side;
+      const next=members.findIndex(x=>x===null);
+      current.member=next<0?0:next;render();
+     },false,"ppw-picker-side-tab");
+     tab.setAttribute("aria-pressed",String(current.side===side));
+     sides.append(tab);
+    }
+    if(matchPicker.teams.length<=6)sheet.append(sides);
+    const sources=el("div","ppw-picker-source-tabs");
+    const source=current.source??"ALL";
+    for(const [key,label] of [
+     ["ALL","Roster"],["FEUDS","Feuds"],["TEAMS","Teams"],
+     ["TRIOS","Trios"],["FACTIONS","Factions"]
+    ] as const){
+     const tab=button(label,()=>{
+      current.source=key;current.sourceId=undefined;render();
+      if(key==="FACTIONS")void loadStableChoices();
+     },false,"ppw-picker-source-tab");
+     tab.setAttribute("aria-pressed",String(source===key));sources.append(tab);
+    }
+    sheet.append(sources);
+    if(source==="FEUDS"){
+     const groups=el("div","ppw-picker-unit-list");
+     for(const feud of view?.programmes??[]){
+      if(!feud.cast?.length)continue;
+      const item=button(feud.label,()=>{
+       current.sourceId=current.sourceId===feud.programmeId?
+        undefined:feud.programmeId;render();
+      },false,"ppw-picker-unit");
+      item.setAttribute("aria-pressed",String(current.sourceId===feud.programmeId));
+      groups.append(item);
+     }
+     if(!groups.childElementCount)groups.append(el("p","ppw-muted",
+      "No active feuds have a bookable cast on this show."));
+     sheet.append(groups);
+    }
+    if(source==="TEAMS"||source==="TRIOS"){
+     const groups=el("div","ppw-picker-unit-list");
+     const requestedSize=matchPicker.teams[current.side]?.length??0;
+     const eligible=source==="TEAMS"?eligibleTeams():eligibleTrios();
+     for(const group of eligible){
+      const canUse=group.members.length===requestedSize&&requestedSize>=2&&
+       matchPicker.format!=="BATTLE_ROYAL";
+      const item=button(group.name+" · "+group.members.map(p=>p.name).join(" & "),()=>{
+       if(!canUse)return;
+       if(source==="TEAMS")selectTeamForMatch(matchPicker,current.side,group.teamId);
+       else selectTrioForMatch(matchPicker,current.side,group.trioId);
+       // Completion in the same sheet; the existing group-assign functions
+       // check match/card duplicates and retain the actual contract IDs.
+       const newest=matches.get(matchPicker.slotId)!;
+       const next=newest.teams.findIndex((members,index)=>
+        index!==current.side&&members.some(p=>p===null));
+       if(next>=0){current.side=next;current.member=
+        Math.max(0,newest.teams[next]!.findIndex(p=>p===null));}
+       else if(newest.teams.every(m=>m.every(Boolean)))picker=null;
+       render();
+      },!canUse,"ppw-picker-unit");
+      groups.append(item);
+     }
+     if(!groups.childElementCount)groups.append(el("p","ppw-muted",
+      "No established, eligible groups are available for this show."));
+     sheet.append(groups);
+    }
+    if(source==="FACTIONS"){
+     const groups=el("div","ppw-picker-unit-list");
+     if(stableChoices===null)groups.append(el("p","ppw-muted",
+      "Loading factions on request…"));
+     for(const unit of stableChoices??[]){
+      const item=button(unit.name,()=>{
+       current.sourceId=current.sourceId===unit.stableId?
+        undefined:unit.stableId;render();
+      },false,"ppw-picker-unit");
+      item.setAttribute("aria-pressed",String(current.sourceId===unit.stableId));
+      groups.append(item);
+     }
+     sheet.append(groups);
+    }
+   }
    const form=document.createElement("form");form.className="ppw-search";
    const search=document.createElement("input");
    search.type="search";search.placeholder="Search your roster";
@@ -2260,6 +2360,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     value=>{current.division=value as typeof current.division;render();});
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
+   if(matchPicker&&!current.role){
+    const chips=el("div","ppw-picker-chips");
+    const flags=current.chips??new Set<string>();
+    for(const [key,label,conflict] of [
+     ["AVAILABLE","Available",""],
+     ["MEN","Men","WOMEN"],["WOMEN","Women","MEN"],
+     ["FACE","Face","HEEL"],["HEEL","Heel","FACE"],
+     ["RESTED","Rested","FATIGUED"],["FATIGUED","Fatigued 65+","RESTED"],
+     ["POPULAR","Popular 75+",""],["DATES","Has dates",""]
+    ] as const){
+     const chip=button(label,()=>{
+      if(flags.has(key))flags.delete(key);
+      else{flags.add(key);if(conflict)flags.delete(conflict);}
+      current.chips=flags;render();
+     },false,"ppw-picker-filter-chip");
+     chip.setAttribute("aria-pressed",String(flags.has(key)));chips.append(chip);
+    }
+    sheet.append(chips);
+   }
 
    const matchForPicker=matches.get(current.slotId);
    const chosen=current.role==="RUN_IN"?null:
@@ -2275,10 +2394,31 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     [...matches.values()].flatMap(m=>assignedIds(m)),
     matchForPicker?assignedIds(matchForPicker):[],
     sceneForPicker?[...sceneForPicker.actors,...sceneForPicker.targets].map(p=>p.personId):[]);
+   const source=current.source??"ALL";
+   const selectedProgramme=view?.programmes.find(p=>p.programmeId===current.sourceId);
+   const selectedFaction=stableChoices?.find(p=>p.stableId===current.sourceId);
+   const groupMembers=new Set<string>(source==="FEUDS"?
+    (selectedProgramme?.cast??view?.programmes.flatMap(p=>p.cast??[])??[])
+     .map(p=>p.personId):
+    source==="TEAMS"?eligibleTeams().flatMap(t=>t.members.map(p=>p.personId)):
+    source==="TRIOS"?eligibleTrios().flatMap(t=>t.members.map(p=>p.personId)):
+    source==="FACTIONS"?(selectedFaction?.members??stableChoices?.flatMap(x=>x.members??[])??[])
+     .map(p=>p.personId):[]);
+   const flags=current.chips??new Set<string>();
    const sorted=current.items
     .filter(p=>(!focusedStory||current.showOther||
      focusedStory.cast?.some(member=>member.personId===p.personId))&&
-     (current.division==="ALL"||p.division===current.division))
+     (current.division==="ALL"||p.division===current.division)&&
+     (source==="ALL"||groupMembers.has(p.personId))&&
+     (!flags.has("AVAILABLE")||p.available)&&
+     (!flags.has("MEN")||p.division==="MEN")&&
+     (!flags.has("WOMEN")||p.division==="WOMEN")&&
+     (!flags.has("FACE")||p.alignment==="FACE")&&
+     (!flags.has("HEEL")||p.alignment==="HEEL")&&
+     (!flags.has("RESTED")||typeof p.fatigue==="number"&&p.fatigue<35)&&
+     (!flags.has("FATIGUED")||typeof p.fatigue==="number"&&p.fatigue>=65)&&
+     (!flags.has("POPULAR")||typeof p.popularity==="number"&&p.popularity>=75)&&
+     (!flags.has("DATES")||(p.remainingDates??1)>0))
     .sort((a,b)=>{
      const unavailable=(p:TalentPage["talent"][number])=>
       Number(!p.available||takenIds.has(p.personId)&&
@@ -2294,7 +2434,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       measure(b)-measure(a)||(a.name??"").localeCompare(b.name??"");
     });
    sheet.append(el("p","ppw-picker-note",
-    sorted.length+" of "+current.items.length+" loaded · Search covers the full roster. Sort and division organise loaded results."));
+    sorted.length+" of "+current.items.length+" loaded · Filters organise "+
+    "this loaded page only. Use search to find someone anywhere on your roster."));
    if(!sorted.length)rows.append(el("p","ppw-muted",current.cursor?
     "No match yet. Load more to search additional wrestlers.":
     "No wrestlers match the current selection."));
