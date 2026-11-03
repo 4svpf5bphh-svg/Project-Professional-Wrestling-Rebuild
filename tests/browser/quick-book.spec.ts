@@ -76,21 +76,24 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator('select[aria-label="Match format"]').selectOption("TAG");
- await page.getByRole("button",{name:"Quick match"}).click();
+ await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
+ await expect(page.getByRole("button",{name:"+ Add angle"})).toHaveCount(1);
+ await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
  await dialog.getByLabel("Choose tag team").first().selectOption("pair-a");
  await dialog.getByLabel("Choose tag team").nth(1).selectOption("pair-b");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Stipulation")).toBeVisible();
- await dialog.getByLabel("Winner").selectOption("1");
+ await expect(dialog.locator(".ppw-winner-choice")).toHaveCount(2);
+ await dialog.locator(".ppw-winner-choice").nth(1).click();
  await dialog.getByLabel("Minutes").fill("22");
  await dialog.getByLabel("Minutes").press("Tab");
  await dialog.locator(".ppw-guide-extra > summary").click();
  await dialog.getByLabel("Intent").selectOption("EPIC");
  await dialog.getByRole("button",{name:"Finish editing"}).click();
 
- await page.getByRole("button",{name:"Quick angle"}).click();
+ await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("Creative direction").selectOption("TURN");
  await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
@@ -105,12 +108,11 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await page.reload();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
   .toBeVisible();
- // Old cards can switch into guided booking without changing their saved data.
+ // Saved cards reopen in the same editor, without switching booking modes.
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await dialog.getByRole("button",{name:"Quick Book"}).click();
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
- await expect(dialog.locator(".ppw-guide-context")).toContainText("Samoa Joe");
+ await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByRole("group",{name:"Booking approach"})).toHaveCount(0);
 });
 
 test("book a feud match and retaliation scene with signed participants, one save and no talent search",async({page})=>{
@@ -188,7 +190,7 @@ test("book a feud match and retaliation scene with signed participants, one save
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
  await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
- await dialog.getByLabel("Winner").selectOption("1");
+ await dialog.locator(".ppw-winner-choice").nth(1).click();
  await dialog.getByRole("button",{name:"Finish editing"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
