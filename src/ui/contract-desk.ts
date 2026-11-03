@@ -6,6 +6,8 @@ import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
+ from "../domain/contract-term-presets.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface ContractDeskPort{
@@ -34,8 +36,10 @@ function packageQuote(target:HTMLElement,terms:{termWeeks:number;dateEntitlement
  target.replaceChildren();
  try{
   const cost=packageCost(terms);
-  target.append(el("small","ppw-contract-quote-eyebrow","POTENTIAL FULL-TERM COST"),
-   el("strong","ppw-contract-quote-total",money(cost.plannedFullTermCost)));
+  target.append(el("small","ppw-contract-quote-eyebrow","POTENTIAL FULL-TERM COST · ALL DATES USED"),
+   el("strong","ppw-contract-quote-total",money(cost.plannedFullTermCost)),
+   el("small","ppw-contract-quote-guaranteed",
+    "Guaranteed wages + bonus: "+money(cost.guaranteedWages+cost.oneTimeBonus)));
   const parts=el("div","ppw-contract-quote-breakdown");
   for(const [name,value] of [
    ["Guaranteed wages",cost.guaranteedWages],
@@ -368,9 +372,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const draft:OfferTerms={
       family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
-      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:13,
-      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?13:
-       Math.max(1,Math.min(13,c.dateEntitlement??5)),
+      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:52,
+      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?52:40,
       weeklyGuarantee:family==="ONE_OFF"?0:c.weeklyGuarantee,
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
@@ -382,6 +385,10 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       packageQuote(quote,draft);
       managerNote.replaceChildren();
       if(!view?.hasTalentManager)return;
+      if(![draft.termWeeks,draft.dateEntitlement,draft.weeklyGuarantee,
+       draft.appearanceFee,draft.signingBonus].every(n=>Number.isSafeInteger(n)&&n>=0)||
+       draft.termWeeks<1||draft.termWeeks>52||
+       draft.dateEntitlement<1||draft.dateEntitlement>draft.termWeeks)return;
       const replacementPayroll=Math.max(0,view.summary.weeklyGuarantees-c.weeklyGuarantee);
       const notes=contractStaffNotes({
        weeklyGuarantee:draft.weeklyGuarantee,weeks:draft.termWeeks,
@@ -414,30 +421,64 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       managerNote.dataset.level=urgent?"watch":"info";
      };
      updateQuote();
+     const presetRow=el("div","ppw-contract-term-presets");
+     const advanced=document.createElement("details");
+     advanced.className="ppw-contract-term-advanced";
+     advanced.append(el("summary","","Advanced · customise weeks & dates"));
+     const timing=el("div","ppw-contract-renegotiate-fields");
+     const buttons=new Map<string,HTMLButtonElement>();
+     const refreshPreset=()=>{
+      const selected=selectedContractTermPreset(family,draft.termWeeks,draft.dateEntitlement);
+      for(const [key,control] of buttons)
+       control.setAttribute("aria-pressed",String(key===selected));
+     };
+     for(const choice of CONTRACT_TERM_PRESETS){
+      const plan=applyContractTermPreset(family,choice.id);
+      const control=btn(choice.label,()=>{
+       draft.termWeeks=plan.weeks;draft.dateEntitlement=plan.dates;
+       const weeks=timing.querySelector<HTMLInputElement>('[data-renew-weeks="yes"]');
+       const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
+       if(weeks)weeks.value=String(draft.termWeeks);
+       if(dates)dates.value=String(draft.dateEntitlement);
+       pending.delete("negotiated:"+c.contractId);
+       updateQuote();refreshPreset();
+      },!editable());
+      control.className+=" ppw-contract-term-choice";
+      control.append(el("small","",plan.weeks+" weeks · "+
+       (family==="EXCLUSIVE"?"Unlimited dates":plan.dates+" dates")));
+      presetRow.append(control);buttons.set(choice.id,control);
+     }
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
-      min:number,max:number,disabled=false)=>{
+      min:number,max:number,disabled=false,destination=panel)=>{
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
       input.setAttribute("aria-label",name+" for "+c.name);
-      input.oninput=()=>{if(input.value!==""){draft[key]=Number(input.value);updateQuote();}
+      input.oninput=()=>{
+       if(input.value==="")return;
+       draft[key]=Number(input.value);
        if(key==="termWeeks"){
         if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
         else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
-        const dates=panel.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
+        const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
         if(dates)dates.value=String(draft.dateEntitlement);
-       }};
+       }
+       pending.delete("negotiated:"+c.contractId);updateQuote();refreshPreset();
+      };
+      if(key==="termWeeks")input.dataset.renewWeeks="yes";
       if(key==="dateEntitlement")input.dataset.renewDates="yes";
-      label.append(input);panel.append(label);
+      label.append(input);destination.append(label);
      };
-     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF");
-     numeric("Purchased dates","dateEntitlement",1,52,fixed);
+     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF",timing);
+     numeric("Purchased dates","dateEntitlement",1,52,fixed,timing);
+     advanced.append(timing);refreshPreset();
+     negotiate.append(presetRow,advanced);
      numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
      numeric("Appearance fee ($)","appearanceFee",0,1000000000,family==="EXCLUSIVE");
      numeric("Signing bonus ($)","signingBonus",0,1000000000);
      const dropdown=<T extends string>(name:string,options:readonly T[],initial:T,set:(v:T)=>void)=>{
       const label=el("label","",name),select=document.createElement("select");
-      select.setAttribute("aria-label",name+" for "+c.name);select.value=initial;
+      select.setAttribute("aria-label",name+" for "+c.name);
       for(const key of options){
        const item=document.createElement("option");item.value=key;item.textContent=title(key);
        select.append(item);
