@@ -2340,7 +2340,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        matchPicker.format!=="BATTLE_ROYAL";
       const item=button(group.name+" · "+group.members.map(p=>p.name).join(" & "),()=>{
        if(!canUse)return;
-       if(source==="TEAMS")selectTeamForMatch(matchPicker,current.side,group.teamId);
+       if("teamId" in group)
+        selectTeamForMatch(matchPicker,current.side,group.teamId);
        else selectTrioForMatch(matchPicker,current.side,group.trioId);
        // Completion in the same sheet; the existing group-assign functions
        // check match/card duplicates and retain the actual contract IDs.
