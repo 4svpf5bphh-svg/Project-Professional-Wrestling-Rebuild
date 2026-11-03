@@ -1,0 +1,200 @@
+import {test,expect} from "@playwright/test";
+
+const pairA=[
+ {personId:"joe",contractId:"c-joe",name:"Samoa Joe"},
+ {personId:"riddle",contractId:"c-riddle",name:"Matt Riddle"}
+];
+const pairB=[
+ {personId:"alex",contractId:"c-alex",name:"Alex Shelley"},
+ {personId:"chris",contractId:"c-chris",name:"Chris Sabin"}
+];
+const x={personId:"x",contractId:"cx"},y={personId:"y",contractId:"cy"};
+const opening={matchType:"SINGLES",family:"INDIVIDUAL",participants:[x,y],
+ sides:[{sideId:"A",participants:[x]},{sideId:"B",participants:[y]}],
+ scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18};
+const planner={worldName:"Genesis",promotionName:"Crown",year:1,week:5,canEdit:true,
+ worldRevision:4,homeMarketId:"home",venues:[],venuePressure:[],
+ weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,scheduled:[],
+ shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",eventType:"REGULAR",
+ day:5,marketId:"home",venueId:"arena",marketName:"Home",venueName:"Arena",
+ ticketStrategy:"STANDARD",ready:false,slots:1,bookingClass:"REGULAR",
+ showSeriesId:null,showName:"Friday Fights"}]}]};
+const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
+ nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+ membership:"ACTIVE",promotion:{id:"crown",name:"Crown",tier:"LOCAL",cash:1000000,
+ debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY"}};
+const session={worldId:"genesis",playerId:"owner",csrfToken:"csrf",overview,availablePromotions:[]};
+
+test("Quick Book completes a team match and a tag-team turn using the ordinary save and reopen path",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4;
+ let saves=0;
+ let savedSlots:{slotId:string;kind:"MATCH"|"SEGMENT";position:number;payload:unknown}[]=[
+  {slotId:"opening",kind:"MATCH",position:0,payload:opening}
+ ];
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON(),method=String(req.method);
+  methods.push(method);
+  if(method==="save"){
+   saves++;
+   const matches=req.matches as {slotId:string;payload:{
+    family:string;participants:{personId:string}[];scriptedWinnerSide:string;
+    intent:string;plannedLengthMinutes:number}}[];
+   const angles=req.segments as {slotId:string;payload:{
+    kind:string;actorIds:string[];turnTargetAlignment?:string}}[];
+   const tag=matches.find(x=>x.payload.family==="TEAMS");
+   expect(tag?.payload.participants.map(x=>x.personId))
+    .toEqual(["joe","riddle","alex","chris"]);
+   expect(tag?.payload.scriptedWinnerSide).toBe("B");
+   expect(tag?.payload.plannedLengthMinutes).toBe(22);
+   expect(tag?.payload.intent).toBe("EPIC");
+   const turn=angles.find(x=>x.payload.kind==="TURN");
+   expect(turn?.payload.actorIds).toEqual(["joe","riddle"]);
+   expect(turn?.payload.turnTargetAlignment).toBe("FACE");
+   const order=req.runningOrder as string[];
+   savedSlots=order.map((slotId:string,position:number)=>{
+    const match=matches.find(x=>x.slotId===slotId);
+    return {slotId,position,kind:match?"MATCH" as const:"SEGMENT" as const,
+     payload:(match??angles.find(x=>x.slotId===slotId))!.payload};
+   });
+   revision++;
+  }
+  return route.fulfill({json:method==="planner"?planner:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
+   bookableTeams:[{teamId:"pair-a",name:"The Rivals",members:pairA},
+    {teamId:"pair-b",name:"Machine Guns",members:pairB}],
+   selectedPeople:[{personId:"x",name:"X",division:"MEN"},
+    {personId:"y",name:"Y",division:"MEN"}],
+   slots:savedSlots
+  }:method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator('select[aria-label="Match format"]').selectOption("TAG");
+ await page.getByRole("button",{name:"Quick match"}).click();
+ let dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await dialog.getByLabel("Choose tag team").first().selectOption("pair-a");
+ await dialog.getByLabel("Choose tag team").nth(1).selectOption("pair-b");
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.getByLabel("Stipulation")).toBeVisible();
+ await dialog.getByLabel("Winner").selectOption("1");
+ await dialog.getByLabel("Minutes").fill("22");
+ await dialog.getByLabel("Minutes").press("Tab");
+ await dialog.locator(".ppw-guide-extra > summary").click();
+ await dialog.getByLabel("Intent").selectOption("EPIC");
+ await dialog.getByRole("button",{name:"Finish editing"}).click();
+
+ await page.getByRole("button",{name:"Quick angle"}).click();
+ dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.getByLabel("New alignment")).toBeVisible();
+ await dialog.getByLabel("New alignment").selectOption("FACE");
+ await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saves).toBe(1);
+ expect(methods.filter(x=>x==="talent")).toHaveLength(0);
+ await page.reload();
+ await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
+  .toBeVisible();
+ // Old cards can switch into guided booking without changing their saved data.
+ await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
+ dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByRole("button",{name:"Quick Book"}).click();
+ await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-context")).toContainText("Samoa Joe");
+});
+
+test("book a feud match and retaliation scene with signed participants, one save and no talent search",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=4,saves=0;
+ let saved:{slotId:string;kind:"SEGMENT"|"MATCH";position:number;payload:any}[]=[];
+ const joe={personId:"joe",contractId:"c-joe",name:"Samoa Joe"};
+ const mistico={personId:"mistico",contractId:"c-mistico",name:"Místico"};
+ const feud={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
+  heat:62,repetition:42,activityCount:2,segmentCount:1,
+  lastChapter:{kind:"MATCH",weekIndex:3,segmentKind:null,crowd:76},
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false},
+  cast:[{...joe,side:"A",appearanceFee:1000,creativeControl:"NONE"},
+   {...mistico,side:"B",appearanceFee:2000,creativeControl:"NONE"}]};
+ const methods:string[]=[];
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON(),method=String(req.method);
+  methods.push(method);
+  if(method==="save"){
+   saves++;
+   const matches=req.matches as {slotId:string;payload:any}[];
+   const segments=req.segments as {slotId:string;payload:any;programmeId?:string}[];
+   const attack=segments.find(x=>x.payload.kind==="ATTACK");
+   expect(attack?.programmeId).toBe("joe-mistico");
+   expect(attack?.payload.actorIds).toEqual(["mistico"]);
+   expect(attack?.payload.targetIds).toEqual(["joe"]);
+   expect(attack?.payload.scene?.purpose).toBe("SEEK_REVENGE");
+   expect(attack?.payload.scene?.location).toBe("BACKSTAGE");
+   expect(attack?.payload.outcome).toBe("HAPPENS");
+   const bout=matches.find(x=>x.payload.family==="INDIVIDUAL");
+   expect(bout?.payload.sides.map((side:any)=>side.participants[0]?.personId))
+    .toEqual(["joe","mistico"]);
+   expect(bout?.payload.scriptedWinnerSide).toBe("B");
+   const order=req.runningOrder as string[];
+   saved=order.map((slotId:string,position:number)=>{
+    const match=matches.find(x=>x.slotId===slotId);
+    return {slotId,position,kind:match?"MATCH" as const:"SEGMENT" as const,
+     payload:(match??segments.find(x=>x.slotId===slotId))!.payload};
+   });
+   revision++;
+  }
+  return route.fulfill({json:method==="planner"?{...planner,weeks:[
+   {...planner.weeks[0],shows:[{...planner.weeks[0]!.shows[0],slots:saved.length}]}]}:
+   method==="load"?{
+    showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
+    day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+    venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+    ticketStrategy:"STANDARD",championships:[],programmes:[feud],
+    programmeLinks:saved.filter(s=>s.kind==="SEGMENT")
+     .map(s=>({slotId:s.slotId,programmeId:"joe-mistico"})),
+    selectedPeople:[{personId:"joe",name:"Samoa Joe",contractId:"c-joe",division:"MEN"},
+     {personId:"mistico",name:"Místico",contractId:"c-mistico",division:"MEN"}],
+    slots:saved
+   }:method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ const stories=page.locator(".ppw-card-rivalry-ideas");
+ await stories.locator("summary").click();
+ await expect(stories.getByRole("button",{name:"+ Book feud match"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+ await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
+ let dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await dialog.getByRole("button",{name:"Side B initiates"}).click();
+ await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("SEEK_REVENGE");
+ await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
+ await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await stories.getByRole("button",{name:"+ Book feud match"}).click();
+ dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
+ await dialog.getByLabel("Winner").selectOption("1");
+ await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saves).toBe(1);
+ expect(methods.filter(x=>x==="talent")).toHaveLength(0);
+ await page.reload();
+ await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
+  .toBeVisible();
+});

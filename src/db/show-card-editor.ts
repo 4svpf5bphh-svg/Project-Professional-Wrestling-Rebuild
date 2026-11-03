@@ -184,7 +184,10 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const activeProgrammes=await tx.query<{
    programme_id:string;heat:number|null;repetition:number;
    activity_count:number;segment_count:number;label:string;follow_up:unknown;
-   cast:{personId:string;name:string}[];last_chapter:{kind:string;weekIndex:number;segmentKind:string|null;crowd:number}|null}>([
+   cast:{personId:string;name:string;side:"A"|"B";
+    contractId:string|null;appearanceFee:number|null;creativeControl:string|null}[];
+   last_chapter:{kind:string;weekIndex:number;segmentKind:string|null;crowd:number;
+    sceneLocation:string|null;scenePurpose:string|null}|null}>([
    "SELECT p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
@@ -205,7 +208,9 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.programme_id=p.programme_id",
    "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) AS follow_up,",
    "(SELECT jsonb_build_object('kind',last.kind,'weekIndex',last.week_index,",
-   "'crowd',last.crowd_response,'segmentKind',scene.payload->>'kind')",
+   "'crowd',last.crowd_response,'segmentKind',scene.payload->>'kind',",
+   "'sceneLocation',scene.payload#>>'{scene,location}',",
+   "'scenePurpose',scene.payload#>>'{scene,purpose}')",
    "FROM ppw_programme_resolved_activities last",
    "LEFT JOIN ppw_card_slots scene ON scene.world_id=last.world_id",
    "AND scene.draft_id=last.show_id AND scene.slot_id=last.slot_id",
@@ -214,17 +219,48 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "AND last.programme_id=p.programme_id",
    "ORDER BY last.week_index DESC,last.show_id DESC,last.slot_id DESC LIMIT 1)",
    "AS last_chapter,",
-   "coalesce((SELECT jsonb_agg(DISTINCT jsonb_build_object('personId',chapter_cast.person_id,'name',person2.name))",
-   "FROM (SELECT ref.ref_id AS person_id FROM ppw_programme_side_refs ref",
+   "coalesce((SELECT jsonb_agg(DISTINCT jsonb_build_object(",
+   "'personId',chapter_cast.person_id,'name',person2.name,'side',chapter_cast.side,",
+   "'contractId',rights.contract_id,'appearanceFee',rights.appearance_fee,",
+   "'creativeControl',rights.creative_control))",
+   "FROM (SELECT ref.ref_id AS person_id,ref.side FROM ppw_programme_side_refs ref",
    "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
    "AND ref.programme_id=p.programme_id AND ref.ref_kind='PERSON'",
-   "UNION ALL SELECT member.person_id FROM ppw_programme_side_refs ref",
+   "UNION ALL SELECT member.person_id,ref.side FROM ppw_programme_side_refs ref",
    "JOIN ppw_tag_team_members member ON member.world_id=ref.world_id",
    "AND member.team_id=ref.ref_id AND member.active",
    "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
    "AND ref.programme_id=p.programme_id AND ref.ref_kind='TEAM') chapter_cast",
    "JOIN ppw_people person2 ON person2.world_id=$1",
-   "AND person2.person_id=chapter_cast.person_id),'[]'::jsonb) AS cast",
+   "AND person2.person_id=chapter_cast.person_id",
+   // Only suggest signed, clear, show-week-eligible appearances. The canonical
+   // save step independently checks every contract, rivalry and consent.
+   "LEFT JOIN LATERAL (SELECT contract.contract_id,",
+   "contract.appearance_fee::double precision AS appearance_fee,contract.creative_control",
+   "FROM ppw_contracts contract",
+   "WHERE contract.world_id=$1 AND contract.person_id=chapter_cast.person_id",
+   "AND contract.status='SIGNED' AND contract.start_week_index<=$3",
+   "AND contract.expires_week_index>=$3",
+   "AND (contract.family='EXCLUSIVE' OR contract.remaining_dates>0)",
+   "AND (contract.promotion_id=$2 OR EXISTS (",
+   "SELECT 1 FROM ppw_wrestler_promotion_affiliations affiliation",
+   "JOIN ppw_promotions target ON target.world_id=affiliation.world_id",
+   "AND target.promotion_id=affiliation.promotion_id",
+   "WHERE affiliation.world_id=$1 AND affiliation.person_id=chapter_cast.person_id",
+   "AND affiliation.promotion_id=$2 AND affiliation.basis='PARENT_COMPANY'",
+   "AND target.parent_promotion_id=contract.promotion_id))",
+   "AND person2.status='ACTIVE'",
+   "AND NOT EXISTS (SELECT 1 FROM ppw_medical_absences medical",
+   "WHERE medical.world_id=$1 AND medical.person_id=chapter_cast.person_id",
+   "AND medical.status='ACTIVE' AND medical.injured_week_index<$3",
+   "AND medical.cleared_week_index>$3)",
+   "AND NOT EXISTS (SELECT 1 FROM ppw_contracts other",
+   "WHERE other.world_id=contract.world_id AND other.person_id=contract.person_id",
+   "AND other.promotion_id<>contract.promotion_id AND other.status='SIGNED'",
+   "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
+   "ORDER BY CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "contract.start_week_index DESC,contract.contract_id LIMIT 1) rights ON TRUE",
+   "),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
    "ON r.world_id=p.world_id AND r.promotion_id=p.promotion_id",
    "AND r.programme_id=p.programme_id",
@@ -235,7 +271,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
    "GROUP BY p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count",
    "ORDER BY p.programme_id LIMIT 101"
-   ].join(" "),[id.worldId,id.promotionId]);
+   ].join(" "),[id.worldId,id.promotionId,(show.year-1)*52+show.week-1]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
   const titles=await tx.query<{
    championship_id:string;name:string;division:"SINGLES"|"TAG";

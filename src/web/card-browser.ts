@@ -360,6 +360,12 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
+ const openWorkspace=(section:HostSection)=>{
+  // Dossier portals live outside the host page. Remove them before routing
+  // so a fixed modal never traps the destination behind an old overlay.
+  if(root.classList.contains("ppw-profile-overlay"))onBack();
+  window.location.hash=hostSectionHash(section);
+ };
  return {
   load:personId=>call("wrestlerProfile",{personId}),
   career:personId=>call("wrestlerCareer",{personId}),
@@ -370,7 +376,12 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openBackstage:personId=>mountPersonaDesk(root,{
    ...personaPort(call,root,scope),load:(selected?:string)=>call("backstage",
     {personId:selected??personId})},onBack,()=>mountProgrammePage(root,scope)),
-  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),onBack)
+  openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
+   onBack,"ATTENTION",personId),
+  openPlanner:()=>openWorkspace("planner"),
+  openProgrammes:()=>openWorkspace("programmes"),
+  openTagTeams:()=>openWorkspace("teams"),
+  openStables:()=>openWorkspace("stables")
  };
 }
 function rosterMarketPort(root:HTMLElement,scope:Scope,
@@ -462,6 +473,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
+  openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   mediaScrum:{
    read:()=>scrumRequest(scope,{action:"READ"}),
    answer:(questionId,answerIndex)=>scrumRequest(scope,{

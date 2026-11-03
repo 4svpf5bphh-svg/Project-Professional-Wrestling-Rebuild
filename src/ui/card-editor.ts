@@ -40,6 +40,9 @@ import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
+import {isQuickBookField} from "./quick-book.js";
+import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
+ from "./programme-booking-starter.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -140,6 +143,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const openAdvisorNotes=new Set<string>();
+ const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
+ const slotBookingSteps=new Map<string,"CAST"|"OUTCOME">();
+ const openQuickExtras=new Set<string>();
+ let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
  const mutable=()=>view?.canEdit===true&&!saving;
@@ -293,6 +300,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       contractId:side.contractId,name:side.name,
       division:old?.division??null,available:true,reason:"AVAILABLE",
       appearanceFee:side.appearanceFee,creativeControl:side.creativeControl});
+    }
+   }
+   // Rights were verified for this show week by the existing programme read.
+   // Reuse them in the editor; never invent a contract for an unavailable rival.
+   for(const feud of view.programmes??[]){
+    for(const person of feud.cast??[]){
+     if(!person.contractId)continue;
+     const prior=roster.get(person.personId);
+     roster.set(person.personId,{...prior,personId:person.personId,
+      name:person.name,contractId:person.contractId,
+      division:prior?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:person.appearanceFee??prior?.appearanceFee??null,
+      creativeControl:person.creativeControl??prior?.creativeControl??null});
     }
    }
    for(const p of view.selectedPeople){
@@ -561,7 +581,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // Keep one modal per mounted editor. Foreground sheets are portalled out
   // of the scrolling card and its animated containing block.
   const priorModal=activeEditShade?.querySelector<HTMLElement>(".ppw-card-edit-sheet")??null;
-  const previousScroll=priorModal?.scrollTop??0;
+  const previousScroll=resetGuideScroll?0:priorModal?.scrollTop??0;
+  resetGuideScroll=false;
   activeEditShade?.remove();activeEditShade=null;
   activePickerShade?.remove();activePickerShade=null;
   root.replaceChildren();
@@ -761,6 +782,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    v=>{formatChoice=v as Format;render();},!mutable());
   matchFormat.setAttribute("aria-label","Match format");
   toolbar.append(matchFormat);
+  const guided=el("div","ppw-quick-book-actions");
+  guided.append(el("span","ppw-eyebrow","QUICK BOOK · GUIDED"));
+  const guidedButtons=el("div","ppw-quick-book-buttons");
+  guidedButtons.append(button("Quick match",()=>{
+   const id="match-"+crypto.randomUUID();
+   matches.set(id,newEditorMatch(id,formatChoice));
+   slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+   order.push(id);expanded=id;markDirty();render();
+  },!mutable(),"ppw-primary"),
+   button("Quick angle",()=>{
+    const id="angle-"+crypto.randomUUID();
+    segments.set(id,newEditorSegment(id));
+    slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+    order.push(id);expanded=id;markDirty();render();
+    if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
+   },!mutable(),"ppw-add-angle"));
+  guided.append(guidedButtons,el("small","ppw-muted",
+   "Pick the cast, script the outcome, then save the card. Full controls remain available."));
+  toolbar.append(guided);
+  toolbar.append(el("span","ppw-toolbar-hint","Or use the full booking editor:"));
   toolbar.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
@@ -827,27 +868,51 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     suggestions.append(el("p","ppw-card-story-recap",
      "Previously: Year "+(Math.floor(h.weekIndex/52)+1)+" Week "+(h.weekIndex%52+1)+
      " · "+(h.segmentKind??h.kind).replaceAll("_"," ").toLowerCase()+
+     (h.sceneLocation?" · "+angleSceneLabel(h.sceneLocation):"")+
+     (h.scenePurpose?" · "+angleSceneLabel(h.scenePurpose):"")+
      " · Crowd "+Math.round(h.crowd)));}
    const choices=recommendProgrammeAngles(selected).slice(0,3);
    const actions=el("div","ppw-card-rivalry-shortcuts");
+   const occupied=new Set([...matches.values()].flatMap(assignedIds));
+   const matchReady=programmeMatchStarter(selected,"preview",occupied);
+   if(matchReady.ok){
+    const match=button("+ Book feud match",()=>{
+     const id="match-"+crypto.randomUUID();
+     const start=programmeMatchStarter(selected,id,
+      new Set([...matches.values()].flatMap(assignedIds)));
+     if(!start.ok){error=start.reason;render();return;}
+     matches.set(id,start.value);order.push(id);expanded=id;
+     slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
+     markDirty();render();
+    },!mutable(),"ppw-card-rivalry-match");
+    match.title="Both sides cast with current show-week rights. Review the winner and finish.";
+    actions.append(match);
+   }else suggestions.append(el("small","ppw-card-story-availability",
+    "Quick feud match unavailable: "+matchReady.reason+
+    " You can still book a match manually."));
    for(const idea of choices){
-    const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
-     ()=>{
-      const id="angle-"+crypto.randomUUID();
-      const segment={...newEditorSegment(id,idea.kind),
-       programmeId:selected.programmeId,durationMinutes:idea.minutes,
-       ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
-      segments.set(id,segment);order.push(id);expanded=id;
-      markDirty();render();
-     },!mutable(),"ppw-card-rivalry-add");
+    const action=button("+ "+idea.title,()=>{
+     const id="angle-"+crypto.randomUUID();
+     segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
+     // Legacy programme records without side-resolved cast remain editable
+     // through the normal picker. A known feud uses the guided cast shortcut.
+     if(selected.cast?.some(x=>x.side==="A")&&
+      selected.cast?.some(x=>x.side==="B")){
+      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+     }
+     order.push(id);expanded=id;markDirty();render();
+    },!mutable(),"ppw-card-rivalry-add");
     action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
      " for "+selected.label);
-    action.title=idea.title+" · "+idea.reason;
-    actions.append(action);
+    action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
+    const tile=el("div","ppw-card-rivalry-option");
+    tile.append(action,el("span","",idea.kind.replaceAll("_"," ").toLowerCase()),
+     el("small","",idea.reason));
+    actions.append(tile);
    }
    suggestions.append(actions);
    suggestions.append(el("small","ppw-muted",
-    "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
+    "Your cast and outcome remain editable. Quick Book only saves when you choose to save the card."));
    root.append(suggestions);
   }
   const list=el("section","ppw-card-list");
@@ -1292,19 +1357,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const ensemble=!["STABLE_INVITATION","STABLE_EXIT",
       "STABLE_RECONCILIATION"].includes(segment.kind);
      const groupRole=ensemble&&(role==="actors"?
-      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
+      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3||segment.kind==="TURN":
       !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind));
      if(groupRole){
       const groups=[
        ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),
-       ...(view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name]),
-       ...(stableChoices??[]).filter(t=>(t.members?.length??0)>0)
-        .map(t=>["stable:"+t.stableId,"Faction · "+t.name])
+       ...(segment.kind==="TURN"&&role==="actors"?[]:
+        (view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name])),
+       ...(segment.kind==="TURN"&&role==="actors"?[]:
+        (stableChoices??[]).filter(t=>(t.members?.length??0)>0)
+         .map(t=>["stable:"+t.stableId,"Faction · "+t.name]))
       ];
-      if(groups.length)section.append(field("Cast a team, trio or faction",
+      if(groups.length)section.append(field(segment.kind==="TURN"&&role==="targets"?
+       "Cast a target group":"Cast a team, trio or faction",
        selector("",[["","Choose a group"],...groups],v=>
         castAngleGroup(segment,role,v),!mutable())));
-      if(stableChoices===null&&port.stableChoices)
+      if(stableChoices===null&&port.stableChoices&&
+       !(segment.kind==="TURN"&&role==="actors"))
        section.append(button(stableChoicesLoading?"Loading factions…":
         "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading,
         "ppw-angle-cast-faction"));
@@ -1658,6 +1727,129 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(expanded===slotId){
     const body=card.querySelector<HTMLElement>(":scope > .ppw-card-body");
     if(body){
+     // Both booking approaches edit the same typed models and submit through
+     // the existing save, World revision, eligibility and consent pipeline.
+     const approach=slotBookingModes.get(slotId)??"ADVANCED";
+     const modeBar=el("div","ppw-booking-mode");
+     modeBar.setAttribute("role","group");
+     modeBar.setAttribute("aria-label","Booking approach");
+     for(const [mode,label] of [["QUICK","Quick Book"],["ADVANCED","Advanced Booking"]] as const){
+      const action=button(label,()=>{
+       slotBookingModes.set(slotId,mode);
+       if(mode==="QUICK")slotBookingSteps.set(slotId,"CAST");
+       resetGuideScroll=true;render();
+      },false,approach===mode?"ppw-booking-mode-active":"");
+      action.setAttribute("aria-pressed",String(approach===mode));
+      modeBar.append(action);
+     }
+     if(approach==="QUICK"){
+      const stage=slotBookingSteps.get(slotId)??"CAST";
+      const readiness=m?matchCastingReadiness(m):angleCastingReadiness(segment!);
+      const guide=el("section","ppw-guide-booking");
+      guide.dataset.step=stage;
+      guide.append(el("span","ppw-eyebrow",stage==="CAST"?
+       "STEP 1 OF 2 · CAST":"STEP 2 OF 2 · SCRIPT"));
+      guide.append(el("h3","",stage==="CAST"?
+       "Who is involved?":m?"Decide how the match plays out":"What, where and why?"));
+      guide.append(el("p","ppw-guide-context",m?
+       matchLabel(m):angleName));
+      if(m&&stage==="OUTCOME"&&view.programmes.some(p=>
+       p.cast?.some(x=>x.side==="A")&&p.cast.some(x=>x.side==="B")&&
+       p.cast.every(x=>assignedIds(m).includes(x.personId))))
+       guide.append(el("p","ppw-guide-feud-warning",
+        "Rivalry cast preselected. Review the winner, finish and match length. "+
+        "The default winner is not a creative recommendation."));
+      const cast=[...body.children].filter(node=>node.classList.contains("ppw-side")||
+       node.classList.contains("ppw-sizing"));
+      const controlGrid=body.querySelector<HTMLElement>(":scope > .ppw-control-grid");
+      const essentials=el("div","ppw-control-grid ppw-guide-essentials");
+      const advancedFields=el("div","ppw-control-grid ppw-guide-advanced-fields");
+      if(controlGrid)for(const child of [...controlGrid.children]){
+       const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
+       if(isQuickBookField(m?"MATCH":"ANGLE",label)||
+        (m&&child.classList.contains("ppw-stipulation-impact")))
+        essentials.append(child);
+       else advancedFields.append(child);
+      }
+      if(!m){
+       const storyline=[...body.children].find(node=>
+        node.querySelector("[aria-label='Storyline (optional)']"));
+       if(storyline)essentials.append(storyline);
+      }
+      const remove=body.querySelector<HTMLElement>(":scope > .ppw-remove");
+      const other=[...body.children].filter(node=>node!==controlGrid&&
+       node!==remove&&!cast.includes(node)&&node!==modeBar&&
+       !node.classList.contains("ppw-angle-workflow-title"));
+      const extra=el("details","ppw-guide-extra") as HTMLDetailsElement;
+      extra.open=openQuickExtras.has(slotId);
+      extra.ontoggle=()=>{
+       if(!extra.isConnected)return;
+       if(extra.open)openQuickExtras.add(slotId);
+       else openQuickExtras.delete(slotId);
+      };
+      extra.append(el("summary","","More options · finishes, creative details and staff notes"));
+      if(advancedFields.childElementCount)extra.append(advancedFields);
+      const extraContent=el("div","ppw-guide-extra-content");
+      for(const node of other)extraContent.append(node);
+      if(extraContent.childElementCount)extra.append(extraContent);
+      if(stage==="CAST"){
+       if(!m){
+        // Decide the kind of scene before casting: an attack needs a victim,
+        // a team turn can cast both partners, and a promo does not.
+        const typeChoices=el("div","ppw-control-grid ppw-guide-angle-kind");
+        for(const candidate of [...essentials.children]){
+         const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
+         if(label==="Creative direction"||label==="Angle type")
+          typeChoices.append(candidate);
+        }
+        guide.append(typeChoices);
+        const linkedFeud=view.programmes.find(p=>p.programmeId===segment?.programmeId);
+        if(linkedFeud&&linkedFeud.cast?.some(x=>x.side==="A")&&
+         linkedFeud.cast.some(x=>x.side==="B")){
+         const fastCast=el("section","ppw-guide-feud-cast");
+         fastCast.append(el("strong","","CAST YOUR RIVALRY"),
+          el("p","",linkedFeud.label+
+           " · Choose which side initiates the scene. This does not decide the result."));
+         const castActions=el("div","ppw-guide-feud-cast-buttons");
+         for(const [side,label] of [["A","Side A initiates"],["B","Side B initiates"]] as const){
+          const control=button(label,()=>{
+           const started=programmeAngleCastStarter(linkedFeud,segment!,side);
+           if(!started.ok){error=started.reason;render();return;}
+           editSegment(segment!,{
+            actors:started.value.actors,targets:started.value.targets
+           });
+          },!mutable(),"ppw-guide-feud-cast-button");
+          castActions.append(control);
+         }
+         fastCast.append(castActions);
+         guide.append(fastCast);
+        }
+       }
+       const hint=el("p","ppw-booking-hint",readiness.hint);
+       guide.append(hint,...cast);
+       guide.append(button("Next · Script outcome",()=>{
+        slotBookingSteps.set(slotId,"OUTCOME");
+        resetGuideScroll=true;render();
+       },!mutable()||!readiness.complete,"ppw-primary ppw-guide-next"));
+       guide.append(el("small","ppw-muted",
+        "Choose every required participant first. Teams and trios can be selected together."));
+      }else{
+       guide.append(essentials);
+       if(extra.childElementCount>1)guide.append(extra);
+       const actions=el("div","ppw-guide-actions");
+       actions.append(button("← Change cast",()=>{
+        slotBookingSteps.set(slotId,"CAST");
+        resetGuideScroll=true;render();
+       },false,"ppw-guide-back"));
+       actions.append(button("Finish editing",()=>{
+        expanded=null;render();
+       },!mutable()||!readiness.complete,"ppw-primary"));
+       guide.append(actions,el("small","ppw-muted",
+        "This is still your draft. Save card to retain the show, then confirm it."));
+      }
+      if(remove)guide.append(remove);
+      body.replaceChildren(modeBar,guide);
+     }else body.prepend(modeBar);
      body.remove();
      const shade=el("div","ppw-card-edit-shade");
      const sheet=el("section","ppw-card-edit-sheet");

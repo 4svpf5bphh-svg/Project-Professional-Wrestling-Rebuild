@@ -449,3 +449,85 @@
 .ppw-results .ppw-result-broadcast-audience strong{font-size:18px;line-height:1.15}
 .ppw-results .ppw-result-broadcast-audience small,
 .ppw-results .ppw-result-audience-label{font-size:10px;line-height:1.4}
+
+/* Phase 24: quick, certified rundown from the same completed show receipt. */
+.ppw-show-breakdown-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:12px 0 17px}
+.ppw-show-breakdown-switch button{min-width:0;min-height:48px;padding:9px 10px;
+ font-weight:800;font-size:13px;color:#cce5f8;background:#182a3d;
+ border:1px solid #527a91;border-radius:11px}
+.ppw-show-breakdown-switch button[aria-pressed="true"]{background:#1a666c;
+ color:#f5fffc;border:2px solid #68d9ce}
+.ppw-show-breakdown{display:grid;gap:12px;min-width:0}
+.ppw-result-timeline[hidden],.ppw-show-breakdown[hidden]{display:none!important}
+.ppw-breakdown-card{display:grid;gap:8px;min-width:0;
+ padding:12px;border:1px solid #3d6279;border-radius:15px;
+ background:linear-gradient(122deg,#122434,#1b223c)}
+.ppw-breakdown-card[data-kind="MATCH"]{border-left:4px solid #dbaa59}
+.ppw-breakdown-card[data-kind="ANGLE"]{border-left:4px solid #a18ae3}
+.ppw-breakdown-card h3{font-size:16px;line-height:1.3;color:#fff0d8;margin:0;
+ overflow-wrap:anywhere}
+.ppw-breakdown-card .ppw-breakdown-cast{font-size:13px;color:#cce5f5;
+ margin:0;overflow-wrap:anywhere}
+.ppw-breakdown-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ppw-breakdown-meta>*{font-size:10px;font-weight:850;letter-spacing:.04em;
+ border:1px solid #526c85;border-radius:6px;padding:4px 6px;color:#bddbed}
+.ppw-breakdown-meta strong{background:#263a57;color:#fff0d9}
+.ppw-breakdown-meta .ppw-breakdown-stars{background:#503d20;color:#ffe4a0}
+.ppw-breakdown-facts{display:grid;gap:5px}
+.ppw-breakdown-facts strong{font-size:12px;color:#9eeed4}
+.ppw-breakdown-facts span,.ppw-breakdown-facts small{font-size:11px;color:#bcd8e7}
+.ppw-breakdown-card .ppw-result-lineup{max-width:100%}
+.ppw-breakdown-open{min-height:44px;padding:10px 12px;
+ border:1px solid #6ba9bb;border-radius:10px;background:#244663;
+ color:#e6fdff;font-weight:850;text-align:left}
+@media(max-width:350px){.ppw-show-breakdown-switch{gap:5px}
+ .ppw-show-breakdown-switch button{font-size:11px;padding:7px 5px}}
+
+/* Phase 24 management scorecard: certified, bounded, and distinct from the broadcast. */
+.ppw-manager-snapshot{margin:14px 0 18px;padding:15px;
+ background:linear-gradient(130deg,#202b4d,#102c3d);border:1px solid #6b65a8;
+ border-radius:16px;min-width:0}
+.ppw-manager-snapshot h3{font-size:20px;line-height:1.2;color:#f8f0ff;margin:7px 0 14px}
+.ppw-manager-snapshot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-manager-snapshot-fact{padding:13px 11px;border:1px solid #446b88;
+ border-radius:11px;background:#0c2036;min-width:0}
+.ppw-manager-snapshot-fact small{display:block;color:#b3d5e8;
+ font-size:10px;font-weight:900;letter-spacing:.05em;line-height:1.4}
+.ppw-manager-snapshot-fact strong{display:block;color:#ffdfa2;
+ font-size:19px;line-height:1.2;margin:6px 0;overflow-wrap:anywhere;
+ font-variant-numeric:tabular-nums}
+.ppw-manager-snapshot-fact p{font-size:12px;color:#e3eaf4;
+ line-height:1.45;margin:0;overflow-wrap:anywhere}
+.ppw-manager-snapshot-note{font-size:11px;line-height:1.5;color:#c0d3de;
+ margin:14px 0 0}
+@media(max-width:360px){.ppw-manager-snapshot{padding:12px}
+ .ppw-manager-snapshot-grid{grid-template-columns:1fr}}
+
+/* Phase 24E: decisions before statistics, compact mobile report and linked evidence. */
+.ppw-post-show-decision-lead{min-width:0}
+.ppw-post-show-decision-lead h3{font-size:20px;line-height:1.2;color:#ffdfae;
+ margin:5px 0 8px}
+.ppw-post-show-decision-lead p{font-size:12px;line-height:1.5;color:#d9e9f0;margin:0}
+.ppw-next-show-buttons{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.ppw-next-show-buttons>*{flex:1 1 150px}
+.ppw-next-show-evidence{min-height:44px;max-width:100%;min-width:0;
+ border:1px solid #7da5c5;border-radius:10px;background:#213d53;
+ color:#e3f2ff;padding:9px 12px;font-size:12px;font-weight:850;cursor:pointer}
+.ppw-next-show-evidence:focus-visible{outline:3px solid #b9e5ff;outline-offset:2px}
+.ppw-manager-snapshot-toggle{cursor:pointer;min-height:54px}
+.ppw-manager-snapshot-toggle h3{margin:3px 0 0}
+.ppw-manager-snapshot-hint{display:block;color:#cadbea;font-size:12px;line-height:1.4;
+ margin:6px 0}
+.ppw-manager-snapshot[open] .ppw-manager-snapshot-grid{margin-top:13px}
+.ppw-road-agent-observations{display:grid;gap:8px;border-top:1px solid #426373;
+ padding-top:12px;margin-top:8px}
+.ppw-road-agent-observations>strong{font-size:12px;color:#ffe0a5}
+.ppw-road-agent-observation{min-width:0;display:grid;gap:6px;
+ border:1px solid #426373;border-radius:11px;padding:11px;background:#122c3b}
+.ppw-road-agent-observation h4{font-size:13px;color:#9de6dc;margin:0}
+.ppw-post-show-road-agent .ppw-road-agent-observation p{font-size:12px;
+ line-height:1.55;margin:0;color:#e1edf2}
+.ppw-road-agent-observation .ppw-next-show-evidence{justify-self:start}
+@media(max-width:390px){.ppw-next-show-buttons{display:grid;grid-template-columns:1fr}
+ .ppw-next-show-buttons>*{width:100%}}

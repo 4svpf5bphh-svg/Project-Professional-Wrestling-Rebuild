@@ -3,6 +3,7 @@
  * verified scores, written stories and the original locked card.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import {projectShowBreakdown} from "./show-breakdown.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
@@ -17,6 +18,8 @@ type MediaScrumPort={
  }>;
 };
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
+import {postShowStaffObservations} from "../domain/post-show-staff-observations.js";
+import {projectPostShowScorecard} from "./post-show-scorecard.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
@@ -127,12 +130,13 @@ export async function mountShowResults(root:HTMLElement,port:{
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
  mediaScrum?:MediaScrumPort;
  openNext?:(section:NextStepDestination)=>void;
+ openWrestler?:(personId:string)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext,port.mediaScrum);
+  renderBroadcast(root,show,port.openNext,port.mediaScrum,port.openWrestler);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review&&
@@ -146,7 +150,8 @@ export async function mountShowResults(root:HTMLElement,port:{
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
- openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort):void{
+ openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
+ openWrestler?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
  const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
  const effectiveSkin=poster?null:show.resultsSkin;
@@ -404,8 +409,71 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h2","","POST-SHOW MANAGEMENT BRIEF"));
  // The historical show report does not claim these concerns are still live.
  const handoff=postShowHandoff(show);
- management.append(node("p","ppw-post-show-guidance",
-  "Your call. These observations are from this show; check the current World before acting."));
+ const snapshot=projectPostShowScorecard(show);
+ const overview=document.createElement("details");
+ overview.className="ppw-manager-snapshot";
+ const summary=node("summary","ppw-manager-snapshot-toggle");
+ summary.append(node("span","ppw-eyebrow","CERTIFIED / THIS SHOW"),
+  node("h3","","The night in numbers"),
+  node("span","ppw-manager-snapshot-hint","Ratings, audience, injuries and event finances"));
+ overview.append(summary);
+ const facts=node("div","ppw-manager-snapshot-grid");
+ const fact=(label:string,value:string,detail:string)=>{
+  const tile=node("article","ppw-manager-snapshot-fact");
+  tile.append(node("small","",label),node("strong","",value),
+   node("p","",detail));facts.append(tile);
+ };
+ if(snapshot.bestMatch)fact("TOP-RATED MATCH",
+  snapshot.bestMatch.value.toFixed(2)+"★",snapshot.bestMatch.headline);
+ if(snapshot.lowestRatedMatch)fact("LOWEST-RATED MATCH",
+  snapshot.lowestRatedMatch.value.toFixed(2)+"★",
+  snapshot.lowestRatedMatch.headline);
+ if(snapshot.crowdPeak)fact("BIGGEST CROWD RESPONSE",
+  Math.round(snapshot.crowdPeak.value)+"/100",snapshot.crowdPeak.headline);
+ if(snapshot.crowdLow)fact("QUIETEST MOMENT",
+  Math.round(snapshot.crowdLow.value)+"/100",snapshot.crowdLow.headline);
+ if(show.audience?.format==="TV"&&show.audience.estimatedViewers!==null)
+  fact("TELEVISION AUDIENCE",
+   show.audience.estimatedViewers.toLocaleString("en-GB")+" viewers",
+   show.audience.householdRating===null?"Certified broadcast estimate":
+    show.audience.householdRating.toFixed(1)+" household rating");
+ if(show.audience?.format==="PPV"&&show.audience.ppvBuys!==null)
+  fact("PAY-PER-VIEW BUYS",
+   show.audience.ppvBuys.toLocaleString("en-GB"),
+   "Certified event purchase estimate");
+ if(snapshot.medical.length)fact("RECORDED INJURIES",
+  String(snapshot.medical.length),
+  snapshot.medical.map(x=>x.name+" · "+(x.weeksOut===null?
+   "return date not recorded":x.weeksOut+" weeks out")).join(" / "));
+ if(snapshot.titleChanges.length)fact("TITLE CHANGES",
+  String(snapshot.titleChanges.length),
+  snapshot.titleChanges.map(x=>x.winner+" · "+x.name).join(" / "));
+ if(show.economics){
+  const number=(value:string)=>BigInt(value).toLocaleString("en-GB");
+  const usd=(value:string)=>"$"+number(value);
+  fact("LIVE ATTENDANCE",show.economics.attendance.toLocaleString("en-GB"),
+   "Recorded event attendance");
+  fact("TICKET GATE",usd(show.economics.gateRevenue),"Recorded ticket receipts");
+  fact("EVENT COST",usd(show.economics.totalCost),
+   "Includes venue, production, travel and appearance fees");
+  fact("EVENT PROFIT / LOSS",
+   (BigInt(show.economics.netResult)<0n?"−$":"$")+
+    number(BigInt(show.economics.netResult)<0n?
+     (-BigInt(show.economics.netResult)).toString():show.economics.netResult),
+   "Event-only P&L; not the promotion's overall weekly profit");
+ }
+ overview.append(facts);
+ if(show.economics)overview.append(node("p","ppw-manager-snapshot-note",
+  "Appearance fees are included in event costs but already settled by World accounting. "+
+  "Event profit/loss is not a second cash payment; weekly salaries and other business costs are separate."));
+ if(!facts.childElementCount)overview.append(node("p","ppw-muted",
+  "This show has no detailed certified ratings or business figures to compare."));
+ const intro=node("div","ppw-post-show-decision-lead");
+ intro.append(node("span","ppw-eyebrow","DECISIONS / NEXT WEEK"),
+  node("h3","","What needs your attention"),
+  node("p","","These are recorded events from this show, not automatic orders. "+
+   "You decide what to carry forward."));
+ management.append(intro);
  const choices=node("div","ppw-next-show-actions");
  for(const task of handoff.actions){
   const item=node("article","ppw-next-show-choice");
@@ -414,14 +482,32 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("h3","",task.headline),
    node("p","",task.detail));
   item.append(copy);
+  const actionRow=node("div","ppw-next-show-buttons");
+  if(task.evidenceSlotId&&storyLinks.has(task.evidenceSlotId)){
+   const source=node("button","ppw-next-show-evidence","See the recorded moment") as HTMLButtonElement;
+   source.type="button";
+   source.onclick=()=>{
+    changePage(1);
+    const detail=storyLinks.get(task.evidenceSlotId!);
+    if(detail instanceof HTMLDetailsElement)detail.open=true;
+    detail?.scrollIntoView({block:"start",behavior:"instant"});
+   };
+   actionRow.append(source);
+  }
+  if(task.personId&&openWrestler){
+   const profile=node("button","ppw-next-show-evidence","Open wrestler dossier") as HTMLButtonElement;
+   profile.type="button";profile.onclick=()=>openWrestler(task.personId!);
+   actionRow.append(profile);
+  }
   if(openNext){
    const control=node("button","ppw-next-show-route",task.action) as HTMLButtonElement;
    control.type="button";control.onclick=()=>openNext(task.destination);
-   item.append(control);
+   actionRow.append(control);
   }
+  if(actionRow.childElementCount)item.append(actionRow);
   choices.append(item);
  }
- management.append(choices);
+ management.append(choices,overview);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
@@ -430,6 +516,26 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","ppw-road-agent-voice",report.praise),
    node("p","ppw-road-agent-voice",report.concern),
    node("p","ppw-road-agent-next",report.recommendation));
+  const observed=postShowStaffObservations(show);
+  if(observed.length){
+   const specific=node("div","ppw-road-agent-observations");
+   specific.append(node("strong","","From the completed match reports"));
+   for(const observation of observed){
+    const line=node("article","ppw-road-agent-observation");
+    line.append(node("h4","",observation.headline),node("p","",observation.note));
+    const source=node("button","ppw-next-show-evidence",
+     "Review "+observation.headline.toLowerCase()) as HTMLButtonElement;
+    source.type="button";
+    source.onclick=()=>{
+     changePage(1);
+     const target=storyLinks.get(observation.slotId);
+     if(target instanceof HTMLDetailsElement)target.open=true;
+     target?.scrollIntoView({block:"start",behavior:"instant"});
+    };
+    line.append(source);specific.append(line);
+   }
+   office.append(specific);
+  }
   const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
   if(strongest)office.append(node("p","ppw-road-agent-standout",
    "If I were showing the locker room one match from tonight, it'd be "+
@@ -530,7 +636,68 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","WRESTLERS · FINISHES · SEGMENTS"));
   full.append(station);
  }
- full.append(timeline);
+ // A second reading mode for the same completed show: compact certified
+ // rundown vs existing immersive narrative. No extra API or World query.
+ const breakdown=node("section","ppw-show-breakdown");
+ breakdown.append(node("h2","ppw-broadcast-section-title","SHOW BREAKDOWN"),
+  node("p","ppw-muted","Every match and angle, in running order. Tap any chapter to read its full broadcast."));
+ const breakdownRows=projectShowBreakdown(show.entries);
+ const portraitJobs:{card:HTMLElement;entry:ShowResultEntry}[]=[];
+ const breakdownSwitch=node("div","ppw-show-breakdown-switch");
+ breakdownSwitch.setAttribute("role","group");
+ breakdownSwitch.setAttribute("aria-label","Full show display");
+ const narrativeButton=node("button","ppw-show-breakdown-toggle","Broadcast play-by-play") as HTMLButtonElement;
+ const rundownButton=node("button","ppw-show-breakdown-toggle","Show Breakdown") as HTMLButtonElement;
+ narrativeButton.type="button";rundownButton.type="button";
+ const setBreakdown=(compact:boolean)=>{
+  breakdown.hidden=!compact;timeline.hidden=compact;
+  // Portraits are created only while browsing the breakdown. Keeping a
+  // hidden second copy would duplicate wrestler content for screen readers,
+  // needlessly allocate images and break the original broadcast view.
+  for(const job of portraitJobs){
+   const existing=job.card.querySelector(".ppw-breakdown-portraits");
+   if(compact&&!existing){
+    const strip=matchPortraits(job.entry);
+    if(strip){strip.classList.add("ppw-breakdown-portraits");job.card.append(strip);}
+   }else if(!compact)existing?.remove();
+  }
+  narrativeButton.setAttribute("aria-pressed",String(!compact));
+  rundownButton.setAttribute("aria-pressed",String(compact));
+ };
+ narrativeButton.onclick=()=>setBreakdown(false);
+ rundownButton.onclick=()=>setBreakdown(true);
+ breakdownSwitch.append(narrativeButton,rundownButton);
+ for(const entry of breakdownRows){
+  const real=show.entries.find(x=>x.slotId===entry.slotId)!;
+  const card=node("article","ppw-breakdown-card");
+  card.dataset.kind=entry.kind;card.dataset.slotId=entry.slotId;
+  const meta=node("div","ppw-breakdown-meta");
+  meta.append(node("strong","","#"+(entry.position+1)+" · "+entry.kind),
+   node("span","","CROWD "+Math.round(entry.crowd)+"/100"));
+  if(entry.stars!==null)meta.append(node("span","ppw-breakdown-stars",
+   "★ "+entry.stars.toFixed(2)+"/5"));
+  if(entry.minutes!==null)meta.append(node("span","",entry.minutes+" MIN"));
+  card.append(meta,node("h3","",entry.headline),
+   node("p","ppw-breakdown-cast",entry.participants));
+  if(real.matchContext?.sideParticipants?.length)portraitJobs.push({card,entry:real});
+  const facts=node("div","ppw-breakdown-facts");
+  if(entry.winner)facts.append(node("strong","","WINNER · "+entry.winner));
+  facts.append(node("span","","RESULT · "+finishLabel(real)));
+  for(const moment of entry.keyMoments)facts.append(node("small","",moment));
+  card.append(facts);
+  const open=node("button","ppw-breakdown-open","Read the full chapter") as HTMLButtonElement;
+  open.type="button";
+  open.setAttribute("aria-label","Read full chapter for slot "+(entry.position+1));
+  open.onclick=()=>{
+   setBreakdown(false);
+   const target=storyLinks.get(entry.slotId);
+   if(target instanceof HTMLDetailsElement)target.open=true;
+   target?.scrollIntoView({block:"start",behavior:"instant"});
+  };
+  card.append(open);breakdown.append(card);
+ }
+ setBreakdown(false);
+ full.append(breakdownSwitch,breakdown,timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(effectiveSkin==="TERRITORY_TV"){
   const station=node("header","ppw-territory-chapter-head");

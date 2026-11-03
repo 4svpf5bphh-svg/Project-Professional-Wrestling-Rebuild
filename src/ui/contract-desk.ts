@@ -24,11 +24,12 @@ const btn=(value:string,click:()=>void,disabled=false)=>{
  const x=el("button","ppw-contract-button",value) as HTMLButtonElement;
  x.type="button";x.disabled=disabled;x.onclick=click;return x;};
 export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?:()=>void,
- initialFocus:"ATTENTION"|"EXPIRING"|"PENDING"="ATTENTION"){
+ initialFocus:"ATTENTION"|"EXPIRING"|"PENDING"="ATTENTION",
+ focusedPersonId?:string){
  let view:ContractDeskView|null=null,working=false,error="",notice="";
  let filter:"ALL"|"ATTENTION"|"NO_DATES"|"EXPIRING"=
   initialFocus==="EXPIRING"?"EXPIRING":"ATTENTION";
- let search="";
+ let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
  let pending=new Map<string,string>();
  const editable=()=>view?.canEdit===true&&!working;
@@ -229,6 +230,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    for(const c of visible){
     const card=document.createElement("details");
     card.className="ppw-contract-card"+(c.needsAttention?" ppw-contract-urgent":"");
+    if(focusedPersonId===c.personId)card.open=true;
     const summary=document.createElement("summary");
     const chips=el("div","ppw-contract-heading");
     chips.append(el("strong","",c.name),
@@ -411,7 +413,14 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  }
  async function load(){
   working=true;render();
-  try{view=await port.load();error="";}
+  try{
+   view=await port.load();error="";
+   if(!focusApplied&&focusedPersonId){
+    const person=view.roster.find(x=>x.personId===focusedPersonId);
+    if(person){filter="ALL";search=person.name;}
+   }
+   focusApplied=true;
+  }
   catch(e){error=e instanceof Error?e.message:"Unable to load contract desk";}
   finally{working=false;render();}
  }

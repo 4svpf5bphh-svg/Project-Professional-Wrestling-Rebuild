@@ -10,6 +10,9 @@ export interface PostShowNextStep{
  key:"medical"|"title"|"cooling"|"hot"|"standout"|"production"|"plan";
  eyebrow:string;headline:string;detail:string;
  destination:NextStepDestination;action:string;
+ /** Which completed match supports this suggestion; never a current booking ID. */
+ evidenceSlotId?:string;
+ personId?:string; // certified participant identity, not a name guess
 }
 export interface PostShowHandoff{
  actions:PostShowNextStep[];standout:string|null;
@@ -19,6 +22,11 @@ export interface PostShowHandoff{
 export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
  const entries=show.entries;
  const priorities:PostShowNextStep[]=[];
+ const recordedPerson=(entry:CompletedShowView["entries"][number]|undefined,
+  name:string):string|undefined=>{
+  const members=entry?.matchContext?.sideParticipants?.flat().filter(x=>x.name===name)??[];
+  return members.length===1?members[0]?.personId:undefined;
+ };
  const medical=entries.flatMap(e=>e.fallout?.injuries??[]);
  if(medical.length){
   const names=[...new Set(medical.map(p=>p.personName))].slice(0,3);
@@ -27,13 +35,20 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
    detail:"This show recorded "+names.join(", ")+
     (medical.length>3?" and others":"")+
     " as injured. Review their current status before planning another appearance.",
-   destination:"roster",action:"Check roster"});
+   destination:"roster",action:"Check roster",
+   evidenceSlotId:entries.find(e=>e.fallout?.injuries?.length)?.slotId,
+   ...(medical.length===1?{
+    personId:recordedPerson(entries.find(e=>e.fallout?.injuries?.some(i=>
+     i.personName===medical[0]!.personName)),medical[0]!.personName)
+   }:{})});
  }
  const title=entries.find(e=>e.fallout?.title?.changed)?.fallout?.title;
  if(title)priorities.push({key:"title",eyebrow:"TITLE HISTORY",
   headline:"A new champion was crowned",
   detail:title.winnerName+" won "+title.name+" on this show. Review who holds it now before planning a defence.",
-  destination:"championships",action:"View championships"});
+  destination:"championships",action:"View championships",
+  evidenceSlotId:entries.find(e=>e.fallout?.title?.changed)?.slotId,
+  personId:recordedPerson(entries.find(e=>e.fallout?.title?.changed),title.winnerName)});
  const cool=entries.find(e=>e.type==="MATCH"&&
   ["COOL_PROGRAMME","PROGRAMME_REPETITION"].includes(e.fallout?.programmeSignal??""));
  if(cool)priorities.push({key:"cooling",eyebrow:"CREATIVE DIRECTION",
@@ -42,13 +57,13 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
    "The verified result flagged repetition in "+cool.headline+
    ". Consider a different angle or opposition before booking that story again.":
    cool.headline+" produced a cooling rivalry signal. Decide whether the programme needs a new direction.",
-  destination:"programmes",action:"Review programmes"});
+  destination:"programmes",action:"Review programmes",evidenceSlotId:cool.slotId});
  const hot=entries.find(e=>e.type==="MATCH"&&
   e.fallout?.programmeSignal==="HOT_PROGRAMME");
  if(hot&&!cool)priorities.push({key:"hot",eyebrow:"CREATIVE OPPORTUNITY",
   headline:"A rivalry caught fire",
   detail:hot.headline+" had a verified hot-programme signal. If you continue it, give the next chapter a purpose.",
-  destination:"programmes",action:"Develop programme"});
+  destination:"programmes",action:"Develop programme",evidenceSlotId:hot.slotId});
  const strong=entries.filter(e=>e.type==="MATCH"&&
   typeof e.fallout?.ratingStars==="number"&&
   Number.isFinite(e.fallout.ratingStars)).sort((a,b)=>
@@ -62,7 +77,10 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
   priorities.push({key:"standout",eyebrow:"BUILD ON THE SHOW",
    headline:"Give the standout a follow-up",
    detail:standout!,
-   destination:"planner",action:"Open show planner"});
+   destination:"planner",action:"Open show planner",evidenceSlotId:strong.slotId,
+   ...(strong.matchContext?.winnerNames.length===1?{
+    personId:recordedPerson(strong,strong.matchContext.winnerNames[0]!)
+   }:{})});
  }
  if(show.gorillaLog?.incidents.length)
   priorities.push({key:"production",eyebrow:"PRODUCTION",

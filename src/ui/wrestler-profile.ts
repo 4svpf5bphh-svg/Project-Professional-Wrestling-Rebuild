@@ -9,6 +9,7 @@ import type {CareerView} from "../db/wrestler-career.js";
 import {verifiedCareerForm} from "../domain/verified-career-form.js";
 import {recordedCareerHighlights} from "../domain/recorded-career-highlights.js";
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
+import {wrestlerManagementStatus} from "./wrestler-management-status.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
 export interface WrestlerProfilePort{
@@ -18,7 +19,11 @@ export interface WrestlerProfilePort{
   primaryStyle:string|null;secondaryStyle:string|null;
   signatureMoves:string[];finishingMoves:string[]}):Promise<Save>;
  openBackstage?(personId:string):void;
- openContracts?():void;
+ openContracts?(personId:string):void;
+ openPlanner?():void;
+ openProgrammes?():void;
+ openTagTeams?():void;
+ openStables?():void;
 }
 const el=(tag:string,cls="",text="")=>{
  const e=document.createElement(tag);e.className=cls;e.textContent=text;return e;
@@ -107,6 +112,53 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    credit.href="/portrait-credits.html";credit.target="_blank";credit.rel="noopener noreferrer";
    root.append(credit);
   }
+
+  // Manage the wrestler from the dossier, instead of chasing a long menu.
+  // This uses the existing Backstage, Contracts, Planner and team workspaces.
+  // Availability is only a current-week snapshot; the booking save is authoritative.
+  const status=wrestlerManagementStatus(view);
+  const ownAgreement=view.contracts.find(c=>c.isYours);
+  const manage=el("section","ppw-profile-manage");
+  manage.dataset.status=status.kind;
+  manage.append(el("span","ppw-profile-kicker","THE BOOKER / MANAGE TALENT"),
+   el("h2","","Your next move"),
+   el("strong","ppw-profile-manage-status",status.headline),
+   el("p","ppw-profile-manage-note",status.detail));
+  if(ownAgreement){
+   const weeksLeft=ownAgreement.expiresWeekIndex-view.currentWeekIndex+1;
+   manage.append(el("p","ppw-profile-manage-contract",
+    (ownAgreement.remainingDates===null?"Unlimited dates":
+     ownAgreement.remainingDates+" appearance dates")+
+    " · "+(weeksLeft>0?weeksLeft+" contract weeks remaining":"Contract term ended")+
+    " · Current World week"));
+  }
+  const actions=el("div","ppw-profile-manage-actions");
+  const action=(label:string,fn:()=>void)=>{
+   const control=button(label,fn);
+   control.classList.add("ppw-profile-manage-button");
+   actions.append(control);
+  };
+  if(view.onYourRoster&&port.openPlanner)
+   action("Open show planner",()=>port.openPlanner?.());
+  if(view.onYourRoster&&port.openBackstage)
+   action("Talk in Backstage",()=>port.openBackstage?.(personId));
+  if(ownAgreement&&port.openContracts)
+   action("Manage contract",()=>port.openContracts?.(personId));
+  if(actions.childElementCount)manage.append(actions);
+  if(view.onYourRoster&&(port.openProgrammes||port.openTagTeams||port.openStables)){
+   const creative=el("details","ppw-profile-manage-more");
+   creative.append(el("summary","","Teams, factions & rivalries"));
+   const extra=el("div","ppw-profile-manage-actions");
+   const next=(label:string,fn:()=>void)=>{
+    const item=button(label,fn);item.classList.add("ppw-profile-manage-button");
+    extra.append(item);
+   };
+   if(port.openProgrammes)next("Manage programmes",()=>port.openProgrammes?.());
+   if(port.openTagTeams)next("Manage tag teams",()=>port.openTagTeams?.());
+   if(port.openStables)next("Manage stables",()=>port.openStables?.());
+   creative.append(extra);manage.append(creative);
+  }
+  root.append(manage);
 
   // The opening identity card is always visible. Full details are tabs,
   // not a ten-screen-long list beneath duplicated attributes.
@@ -227,7 +279,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     ));
    }
    if(view.onYourRoster&&port.openContracts)contract.append(button(
-    "Manage contract",()=>port.openContracts?.()));
+    "Manage contract",()=>port.openContracts?.(personId)));
   }else contract.append(el("p","ppw-profile-muted",
    "Not signed to your promotion. Review current availability in Talent Market."));
   if(view.contracts.length){
