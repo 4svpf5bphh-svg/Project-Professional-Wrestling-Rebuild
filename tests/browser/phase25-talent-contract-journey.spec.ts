@@ -10,7 +10,8 @@ const market={year:1,week:5,currentWeekIndex:4,worldRevision:4,canEdit:true,
  view:"MARKET",offset:0,hasMore:false,
  offerBudget:{hasTalentManager:true,cash:5_000_000,
   weeklyIncome:90_000,weeklyOverhead:25_000,weeklyGuarantees:30_000,
-  weeklyStaffPayroll:5_000,weeklyWageLimit:55_000,cashReserve:300_000},
+  weeklyStaffPayroll:5_000,weeklyWageLimit:55_000,cashReserve:300_000,
+  signedRosterExposure:1_000_000},
  people:[{personId:"star",name:"Taylor Vale",division:"MEN",
   availability:"FREE_AGENT",interest:"INTERESTED",pendingOffer:false,
   estimatedWeeklyValue:10_000,recognition:60,popularity:70,momentum:50,
@@ -60,7 +61,9 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  await expect(offer.getByText(/52 weeks · 40 dates/)).toBeVisible();
  await offer.getByLabel("Appearance fee ($)").fill("12500");
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$500,000");
- await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$4,500,000 left");
+ await expect(offer.locator(".ppw-directory-cash-only"))
+  .toContainText("signed roster + this offer");
+ await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$3,500,000 left");
  expect(filters.length).toBe(4); // one initial read, two refinements, one clear
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
