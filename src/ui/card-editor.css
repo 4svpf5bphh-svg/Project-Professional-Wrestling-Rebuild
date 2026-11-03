@@ -881,3 +881,19 @@ body>.ppw-card-edit-shade .ppw-guide-extra{background:#172942;border-color:#526d
 body>.ppw-card-edit-shade .ppw-stipulation-impact{font-size:12px;line-height:1.4}
 @media(max-width:350px){.ppw-editor .ppw-card-person-face{width:34px;height:34px}
  body>.ppw-card-edit-shade .ppw-winner-picker{grid-template-columns:1fr}}
+
+/* Critical staff and consent actions are not buried in the optional script. */
+body>.ppw-card-edit-shade .ppw-guide-casting-options{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-casting-options>.ppw-field{min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-winner-reminder{margin:0;padding:8px 10px;
+ border-left:3px solid #62dacf;color:#d5eee9;background:#193a4b;
+ font-size:12px;line-height:1.4}
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-card-match-consents{
+ min-width:0;margin:2px 0}
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-card-advisor-notes{
+ min-width:0;margin:3px 0}
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-stipulation-impact{
+ display:block;min-width:0;line-height:1.45;font-size:12px}
+@media(max-width:350px){body>.ppw-card-edit-shade .ppw-guide-casting-options{
+ grid-template-columns:1fr}}

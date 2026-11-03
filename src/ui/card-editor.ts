@@ -1142,7 +1142,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const usual=ANGLE_TYPES.filter(x=>anglesForGoal(goal).includes(x.value));
     const unlocked=SPECIAL_MOMENTS.filter(x=>specialOwned?.includes(x.sku)&&
      anglesForGoal(goal).includes(x.kind));
-    if(usual.length>1||unlocked.length){
+    if(usual.length||unlocked.length){
      const options:[string,string][]=[...usual.map(x=>[x.value,x.label] as [string,string]),
       ...unlocked.map(x=>[x.sku,"★ "+x.label] as [string,string])];
      controls.append(field("Angle type",selector(segment.specialMoment??segment.kind,
@@ -1776,18 +1776,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const advancedFields=el("div","ppw-control-grid ppw-guide-advanced-fields");
       if(controlGrid)for(const child of [...controlGrid.children]){
        const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
-       if(child.classList.contains("ppw-winner-picker")||isQuickBookField(m?"MATCH":"ANGLE",label))
+       if(child.classList.contains("ppw-winner-picker")||
+        child.classList.contains("ppw-stipulation-impact")||
+        (!m&&child.classList.contains("ppw-field"))||
+        isQuickBookField(m?"MATCH":"ANGLE",label))
         essentials.append(child);
        else advancedFields.append(child);
       }
-      if(!m){
-       const storyline=[...body.children].find(node=>
-        node.querySelector("[aria-label='Storyline (optional)']"));
-       if(storyline)essentials.append(storyline);
-      }
+      const storyline=!m?[...body.children].find(node=>
+       node.querySelector("[aria-label='Storyline (optional)']")):undefined;
       const remove=body.querySelector<HTMLElement>(":scope > .ppw-remove");
       const other=[...body.children].filter(node=>node!==controlGrid&&
-       node!==remove&&!cast.includes(node)&&
+       node!==remove&&node!==storyline&&!cast.includes(node)&&
        !node.classList.contains("ppw-angle-workflow-title"));
       const extra=el("details","ppw-guide-extra") as HTMLDetailsElement;
       extra.open=openQuickExtras.has(slotId);
@@ -1799,7 +1799,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       extra.append(el("summary","","Additional options"));
       if(advancedFields.childElementCount)extra.append(advancedFields);
       const extraContent=el("div","ppw-guide-extra-content");
-      for(const node of other)extraContent.append(node);
+      for(const node of other)if(!node.classList.contains("ppw-card-match-consents")&&
+       !node.classList.contains("ppw-card-advisor-notes"))extraContent.append(node);
       if(extraContent.childElementCount)extra.append(extraContent);
       if(stage==="CAST"){
        if(!m){
@@ -1812,6 +1813,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           typeChoices.append(candidate);
         }
         guide.append(typeChoices);
+        const castingOptions=el("div","ppw-control-grid ppw-guide-casting-options");
+        for(const candidate of [...essentials.children]){
+         const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
+         if(["Turn a complete tag team","After which match?"].includes(label??""))
+          castingOptions.append(candidate);
+        }
+        if(storyline)castingOptions.append(storyline);
+        if(castingOptions.childElementCount)guide.append(castingOptions);
         const linkedFeud=view.programmes.find(p=>p.programmeId===segment?.programmeId);
         if(linkedFeud&&linkedFeud.cast?.some(x=>x.side==="A")&&
          linkedFeud.cast.some(x=>x.side==="B")){
@@ -1836,13 +1845,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        }
        const hint=el("p","ppw-booking-hint",readiness.hint);
        guide.append(hint,...cast);
+       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
+       if(notes&&notes.dataset.level==="WATCH")guide.append(notes);
        guide.append(button("Next · Script outcome",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");
         resetGuideScroll=true;render();
        },!mutable()||!readiness.complete,"ppw-primary ppw-guide-next"));
       }else{
        guide.append(essentials);
+       if(m&&view.programmes.some(p=>p.cast?.length&&
+        p.cast.every(person=>assignedIds(m).includes(person.personId))))
+        guide.append(el("p","ppw-guide-winner-reminder",
+         "Choose your winner deliberately · the default is not a creative recommendation."));
        if(extra.childElementCount>1)guide.append(extra);
+       // A saved match approval is not an advanced preference. Keep the
+       // authoritative consent action in sight alongside its result.
+       if(m)for(const issue of other.filter(node=>
+        node.classList.contains("ppw-card-match-consents")))
+        guide.append(issue);
+       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
+       if(notes&&notes.dataset.level==="WATCH")guide.append(notes);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Change cast",()=>{
         slotBookingSteps.set(slotId,"CAST");

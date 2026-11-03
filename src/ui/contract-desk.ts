@@ -132,11 +132,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   budget.append(split);
   const plan=view.spendingPlan;
   const actual=view.talentBudget?.currentGuarantees??view.summary.weeklyGuarantees;
-  const cash=view.talentBudget.cash;
+  const cash=view.talentBudget?.cash;
+  const cashSuffix=typeof cash==="number"?" · Current cash: "+money(cash):"";
   const note=plan?
    "Weekly guarantees: "+money(actual)+" of "+money(plan.weeklyWageLimit)+
-    " spending limit · Current cash: "+money(cash):
-   "Weekly guarantees: "+money(actual)+"/week · Current cash: "+money(cash);
+    " spending limit"+cashSuffix:
+   "Weekly guarantees: "+money(actual)+"/week"+cashSuffix;
   budget.append(el("p","ppw-contract-exposure-context",note),
    el("small","ppw-contract-exposure-disclaimer",
     "Signed current terms only. Includes remaining guaranteed wages and up to "+
