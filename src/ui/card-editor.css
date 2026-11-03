@@ -897,3 +897,19 @@ body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-stipulation-impact{
  display:block;min-width:0;line-height:1.45;font-size:12px}
 @media(max-width:350px){body>.ppw-card-edit-shade .ppw-guide-casting-options{
  grid-template-columns:1fr}}
+
+/* Keep meaningful authored creative choices readable at iPhone widths. */
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Attack style"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="How the turn is shown"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="The message"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="How it ends"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Storytelling purpose"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Exact location"]){grid-column:1/-1}
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field select{
+ min-width:0;width:100%;max-width:100%;font-size:14px}

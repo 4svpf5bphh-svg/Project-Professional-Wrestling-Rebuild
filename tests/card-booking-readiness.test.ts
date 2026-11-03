@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch,assignPerformer} from "../src/ui/card-editor-model.js";
 import {newEditorSegment,addSegmentPerson} from "../src/ui/card-segment-model.js";
-import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "../src/ui/card-booking-readiness.js";
+import {matchCastingReadiness,angleCastingReadiness,angleCastStageReadiness,reservedPickerPeople} from "../src/ui/card-booking-readiness.js";
 const p=(id:string)=>({personId:id,contractId:"deal-"+id});
 test("unfilled matches and authored angles show specific missing roles before save",()=>{
  let m=newEditorMatch("m","TRIPLE_THREAT");
@@ -62,4 +62,24 @@ test("a wrestler may appear in a match and storyline angle without being double-
   "A booked wrestler remains eligible to cut a promo or be attacked");
  assert.equal(reservedPickerPeople("actors",all,bout,scene).has("wrestler-c"),true,
   "The same wrestler must not fill two roles within an angle");
+});
+
+test("guided CAST does not demand script-only decisions before showing SCRIPT",()=>{
+ const turn={...newEditorSegment("turn","TURN"),turnTargetAlignment:null};
+ assert.equal(angleCastStageReadiness(turn).complete,false);
+ const cast=addSegmentPerson(turn,"actors",p("a"));
+ assert.equal(angleCastStageReadiness(cast).complete,true);
+ assert.equal(angleCastingReadiness(cast).label,"CHOOSE ALLEGIANCE");
+ let faction=newEditorSegment("f","STABLE_INVITATION");
+ faction=addSegmentPerson(faction,"actors",p("a"));
+ faction=addSegmentPerson(faction,"targets",p("b"));
+ assert.equal(angleCastStageReadiness(faction).label,"CHOOSE FACTION");
+ faction={...faction,stableId:"my-stable"};
+ assert.equal(angleCastStageReadiness(faction).complete,true);
+ assert.equal(angleCastingReadiness(faction).label,"CHOOSE REACTION");
+ let assault=newEditorSegment("a","POST_MATCH_ASSAULT");
+ assault=addSegmentPerson(assault,"actors",p("a"));
+ assault=addSegmentPerson(assault,"targets",p("b"));
+ assert.equal(angleCastStageReadiness(assault).label,"CHOOSE THE BOUT");
+ assert.equal(angleCastStageReadiness({...assault,sourceMatchSlotId:"bout"}).complete,true);
 });

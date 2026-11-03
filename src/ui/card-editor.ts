@@ -20,7 +20,7 @@ import {createWrestlerCard,wrestlerInitials} from "./wrestler-card.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
-import {matchCastingReadiness,angleCastingReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
+import {matchCastingReadiness,angleCastingReadiness,angleCastStageReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
 import {MATCH_STYLE_DIMENSIONS,type MatchStyleDimension} from "../simulation/legacy/match-style.js";
 import {MATCH_STIPULATIONS,compatibleStipulations,
  permittedStipulationFinishes,stipulationInjuryRisk,
@@ -1758,6 +1758,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      // the existing save, World revision, eligibility and consent pipeline.
      const readiness=m?matchCastingReadiness(m):angleCastingReadiness(segment!);
      const stage=slotBookingSteps.get(slotId)??(readiness.complete?"OUTCOME":"CAST");
+     const castReadiness=stage==="CAST"&&!m?
+      angleCastStageReadiness(segment!):readiness;
      const guide=el("section","ppw-guide-booking");
      guide.dataset.step=stage;
      guide.append(el("span","ppw-eyebrow",stage==="CAST"?
@@ -1816,7 +1818,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const castingOptions=el("div","ppw-control-grid ppw-guide-casting-options");
         for(const candidate of [...essentials.children]){
          const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
-         if(["Turn a complete tag team","After which match?"].includes(label??""))
+         if(["Turn a complete tag team","After which match?","Faction"].includes(label??""))
           castingOptions.append(candidate);
         }
         if(storyline)castingOptions.append(storyline);
@@ -1843,14 +1845,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          guide.append(fastCast);
         }
        }
-       const hint=el("p","ppw-booking-hint",readiness.hint);
+       const hint=el("p","ppw-booking-hint",castReadiness.hint);
        guide.append(hint,...cast);
        const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
        if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        guide.append(button("Next · Script outcome",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");
         resetGuideScroll=true;render();
-       },!mutable()||!readiness.complete,"ppw-primary ppw-guide-next"));
+       },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
       }else{
        guide.append(essentials);
        if(m&&view.programmes.some(p=>p.cast?.length&&
