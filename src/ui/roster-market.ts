@@ -15,7 +15,7 @@ export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
  offer(input:{personId:string;requestId:string;expectedRevision:number;
   terms:OfferTerms}):Promise<unknown>;
- openContracts():void;openTagTeams():void;openStables():void;
+ openContracts(personId?:string):void;openTagTeams():void;openStables():void;
  openChampionships():void;
  openWrestler(personId:string,origin:DirectoryView):void;
  openBusiness?():void;
@@ -336,16 +336,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   if(filter.view==="ROSTER"){
    const sections=el("nav","ppw-directory-nav");
    sections.setAttribute("aria-label","Roster divisions");
-   const singles=btn("Singles",()=>{},true);
-   singles.setAttribute("aria-current","page");
-   singles.setAttribute("aria-label","Singles roster");
-   sections.append(singles,
-    btn("My Champions",port.openChampionships),
+   // Every shortcut actually navigates; disabled fake tabs mislead players.
+   sections.append(btn("My Champions",port.openChampionships),
     btn("Tag Teams",port.openTagTeams),
     btn("Stables",port.openStables));
-   const trios=btn("Trios · not formed yet",()=>{},true);
-   trios.title="Trios roster groups are not yet available";
-   sections.append(trios);
    root.append(sections);
   }
   const controls=el("section","ppw-directory-filters");
@@ -480,7 +474,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      "No dates remaining — negotiate an addendum before booking."));
     detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)));
     if(!p.affiliatedViaParent)
-     detail.append(btn("Manage contract →",()=>port.openContracts()));
+     detail.append(btn("Manage contract →",()=>port.openContracts(p.personId)));
    }else{
     detail.append(el("p","ppw-directory-interest",
      "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+

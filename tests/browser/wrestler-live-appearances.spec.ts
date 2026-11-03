@@ -138,6 +138,12 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
   await expect(dialog.getByRole("heading",{name:"Character & repertoire"})).toHaveCount(0);
   await dialog.getByRole("button",{name:"Contract",exact:true}).click();
   await expect(dialog.getByRole("heading",{name:"Contract & availability"})).toBeVisible();
+  const budget=dialog.locator(".ppw-profile-contract-budget");
+  await expect(budget.getByText("Guaranteed wages remaining")).toBeVisible();
+  await expect(budget.getByText("$16,000").first()).toBeVisible();
+  await expect(budget.getByText("Optional appearance fees")).toBeVisible();
+  await expect(budget.getByText("$0")).toBeVisible();
+  await expect(budget.getByText("Potential remaining cost")).toBeVisible();
   await dialog.getByRole("button",{name:"Career",exact:true}).click();
  expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(0);
  await dialog.locator("details.ppw-profile-career > summary").click();
@@ -181,4 +187,12 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await dialog.getByRole("button",{name:"Open show planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(dialog).toHaveCount(0);
+ // Opening Contracts from a named roster card focuses the selected person.
+ await page.goto("/#/roster");
+ const selectedRosterCard=page.locator(".ppw-directory-card").first();
+ await selectedRosterCard.locator("summary").click();
+ await selectedRosterCard.getByRole("button",{name:"Manage contract →"}).click();
+ await expect(page.getByLabel("Search roster contracts")).toHaveValue("Alice");
+ await expect(page.locator(".ppw-contract-card")).toHaveCount(1);
+ await expect(page.locator(".ppw-contract-card")).toHaveAttribute("open","");
 });
