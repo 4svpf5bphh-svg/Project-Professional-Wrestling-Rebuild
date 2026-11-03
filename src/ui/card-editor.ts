@@ -1856,7 +1856,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(m&&view.programmes.some(p=>p.cast?.length&&
         p.cast.every(person=>assignedIds(m).includes(person.personId))))
         guide.append(el("p","ppw-guide-winner-reminder",
-         "Choose your winner deliberately · the default is not a creative recommendation."));
+         "The default winner is not a creative recommendation. Choose who wins."));
        if(extra.childElementCount>1)guide.append(extra);
        // A saved match approval is not an advanced preference. Keep the
        // authoritative consent action in sight alongside its result.

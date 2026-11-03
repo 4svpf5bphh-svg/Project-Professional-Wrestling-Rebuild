@@ -201,7 +201,16 @@ test("book a feud match and retaliation scene with signed participants, one save
   .toBeVisible();
 });
 
-test("Programme Desk opens the actual card focused on the chosen feud, with no extra database read",async({page})=>{
+const feudPlanner={
+ worldName:"Genesis",promotionName:"Crown",year:1,week:5,canEdit:true,
+ worldRevision:4,homeMarketId:"home",venues:[],venuePressure:[],
+ weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+  scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+   eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+   marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",ready:false,
+   slots:0,bookingClass:"REGULAR",showSeriesId:null,showName:"Friday Fights"}]}]
+};
+test("Programme Desk selects the real unfinished show before opening the focussed feud",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  const story={programmeId:"joe-mistico",status:"ACTIVE",heat:68,repetition:42,
@@ -223,7 +232,7 @@ test("Programme Desk opens the actual card focused on the chosen feud, with no e
   const request=r.request().postDataJSON();
   const method=String(request.method);
   calls.push(method);
-  const data=method==="programmes"?{
+  const data=method==="planner"?feudPlanner:method==="programmes"?{
    year:1,week:5,worldRevision:4,canEdit:true,
    people:[],teams:[],championships:[],programmes:[story]
   }:method==="load"?{
@@ -240,7 +249,7 @@ test("Programme Desk opens the actual card focused on the chosen feud, with no e
  await expect(page.locator(".ppw-card-rivalry-ideas")).toHaveAttribute("open","");
  await expect(page.getByLabel("Choose a rivalry to book")).toHaveValue("joe-mistico");
  await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
- expect(calls).toEqual(["programmes","load"]);
+ expect(calls).toEqual(["programmes","planner","load"]);
 });
 test("an explicit programme creative choice opens an unsaved, editable matching scene",async({page})=>{
  await page.setViewportSize({width:390,height:844});
@@ -263,7 +272,7 @@ test("an explicit programme creative choice opens an unsaved, editable matching 
  await page.route("**/api/card",r=>{
   const method=String(r.request().postDataJSON().method);
   methods.push(method);
-  return r.fulfill({json:method==="programmes"?{
+  return r.fulfill({json:method==="planner"?feudPlanner:method==="programmes"?{
    year:1,week:5,worldRevision:4,canEdit:true,people:[],teams:[],
    championships:[],programmes:[story]
   }:method==="load"?{
@@ -280,5 +289,5 @@ test("an explicit programme creative choice opens an unsaved, editable matching 
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
  await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
  await expect(page.getByText("Edits not saved")).toBeVisible();
- expect(methods).toEqual(["programmes","load"]); // no write before save
+ expect(methods).toEqual(["programmes","planner","load"]); // no write before save
 });

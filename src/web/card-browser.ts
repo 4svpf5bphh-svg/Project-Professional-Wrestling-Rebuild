@@ -538,12 +538,19 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  return {
   load:()=>call("programmes"),openResults,openArchive,
   openPlanner:(programmeId,ideaKind)=>{
-   if(programmeId){
-    // Go directly into the existing show editor with the requested rivalry.
-    // Choosing an idea creates a local draft only; the player must still save.
-    mountBookingPage(root,scope,()=>mountProgrammePage(root,scope),
+   if(!programmeId){
+    mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope));return;
+   }
+   // Programmes intentionally has no show ID. Resolve the only appropriate
+   // unfinished current-week card through the existing bounded Planner read.
+   // Never invent a draft ID or send booking commands without a real show.
+   const backToProgrammes=()=>mountProgrammePage(root,scope);
+   const openSelectedCard=(draftId:string)=>{
+    mountBookingPage(root,{...scope,showId:draftId},
+     ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
      undefined,undefined,programmeId,ideaKind);
-   }else mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope));
+   };
+   mountPlannerPage(root,scope,backToProgrammes,true,undefined,openSelectedCard);
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
