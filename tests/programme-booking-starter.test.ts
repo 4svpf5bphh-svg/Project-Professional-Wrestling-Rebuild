@@ -78,3 +78,10 @@ test("latest certified angle changes lead suggestion instead of repeating identi
  assert.equal(choices[0]?.kind,"CHALLENGE");
  assert.equal(choices[2]?.kind,"CONTRACT_SIGNING");
 });
+
+test("older programme cards without cast metadata keep manual booking available",()=>{
+ const historic={programmeId:"historic",cast:undefined} as unknown as typeof p;
+ const result=programmeMatchStarter(historic,"fresh");
+ assert.equal(result.ok,false);
+ assert.match(!result.ok?result.reason:"",/manually/);
+});

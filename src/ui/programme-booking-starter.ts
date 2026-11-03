@@ -18,7 +18,7 @@ export interface FeudCastPerson{
 export interface FeudCast{programmeId:string;cast:readonly FeudCastPerson[]}
 export type StarterResult<T>={ok:true;value:T}|{ok:false;reason:string};
 const notReady=(reason:string):StarterResult<never>=>({ok:false,reason});
-const bySide=(p:FeudCast,side:"A"|"B")=>p.cast.filter(x=>x.side===side)
+const bySide=(p:FeudCast,side:"A"|"B")=>(p.cast??[]).filter(x=>x.side===side)
  .sort((a,b)=>a.name.localeCompare(b.name)||a.personId.localeCompare(b.personId));
 /** A blocked member is never converted to a synthetic contract or silently dropped. */
 function checkCast(p:FeudCast):StarterResult<{a:PersonPick[];b:PersonPick[]}>{
