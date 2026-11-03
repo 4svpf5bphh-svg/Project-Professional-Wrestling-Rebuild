@@ -892,10 +892,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const action=button("+ "+idea.title,()=>{
      const id="angle-"+crypto.randomUUID();
      segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
-     slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+     // Legacy programme records without side-resolved cast remain editable
+     // through the normal picker. A known feud uses the guided cast shortcut.
+     if(selected.cast?.some(x=>x.side==="A")&&
+      selected.cast?.some(x=>x.side==="B")){
+      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+     }
      order.push(id);expanded=id;markDirty();render();
     },!mutable(),"ppw-card-rivalry-add");
-    action.setAttribute("aria-label","Start "+idea.title+" for "+selected.label);
+    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
+     " for "+selected.label);
     action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
     const tile=el("div","ppw-card-rivalry-option");
     tile.append(action,el("span","",idea.kind.replaceAll("_"," ").toLowerCase()),

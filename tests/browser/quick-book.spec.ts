@@ -172,12 +172,12 @@ test("book a feud match and retaliation scene with signed participants, one save
  const stories=page.locator(".ppw-card-rivalry-ideas");
  await stories.locator("summary").click();
  await expect(stories.getByRole("button",{name:"+ Book feud match"})).toBeVisible();
- await stories.getByRole("button",{name:/Start Strike back/}).click();
+ await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
  await dialog.getByRole("button",{name:"Side B initiates"}).click();
- await expect(dialog.getByText("Místico")).toBeVisible();
+ await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("SEEK_REVENGE");
  await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
