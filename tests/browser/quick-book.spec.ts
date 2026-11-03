@@ -75,12 +75,15 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await page.locator('select[aria-label="Match format"]').selectOption("TAG");
  await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
  await expect(page.getByRole("button",{name:"+ Add angle"})).toHaveCount(1);
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+ await dialog.getByRole("button",{name:"Teams",exact:true}).click();
+ await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await dialog.getByLabel("Choose tag team").first().selectOption("pair-a");
  await dialog.getByLabel("Choose tag team").nth(1).selectOption("pair-b");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
@@ -91,16 +94,20 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await dialog.getByLabel("Minutes").press("Tab");
  await dialog.locator(".ppw-guide-extra > summary").click();
  await dialog.getByLabel("Intent").selectOption("EPIC");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
+ await dialog.getByRole("button",{name:"Complete match"}).click();
 
  await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("New alignment")).toBeVisible();
  await dialog.getByLabel("New alignment").selectOption("FACE");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
@@ -111,7 +118,7 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  // Saved cards reopen in the same editor, without switching booking modes.
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await expect(dialog.getByRole("group",{name:"Booking approach"})).toHaveCount(0);
 });
 
@@ -178,20 +185,22 @@ test("book a feud match and retaliation scene with signed participants, one save
   .toBeLessThanOrEqual(1);
  await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
  await dialog.getByRole("button",{name:"Side B initiates"}).click();
  await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("SEEK_REVENGE");
  await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
  await stories.getByRole("button",{name:"+ Book feud match"}).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
  await dialog.locator(".ppw-winner-choice").nth(1).click();
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
@@ -287,7 +296,7 @@ test("an explicit programme creative choice opens an unsaved, editable matching 
  await page.getByRole("button",{name:"Strike back"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await expect(page.getByText("Edits not saved")).toBeVisible();
  expect(methods).toEqual(["programmes","planner","load"]); // no write before save
 });
