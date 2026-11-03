@@ -762,3 +762,29 @@ body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-remove{justify-self:start;
  body>.ppw-card-edit-shade .ppw-guide-essentials{grid-template-columns:minmax(0,1fr)}
  body>.ppw-card-edit-shade .ppw-guide-actions{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Phase 24: useful feud starters without a second form or a second read. */
+.ppw-card-rivalry-option{min-width:0;display:grid;gap:5px;padding:10px;
+ border:1px solid #456783;border-radius:12px;
+ background:linear-gradient(130deg,#1b314f,#18263e)}
+.ppw-card-rivalry-option button{width:100%;min-width:0;text-align:left}
+.ppw-card-rivalry-option>span{color:#ffdfae;font-size:11px;font-weight:900;
+ text-transform:uppercase;letter-spacing:.045em}
+.ppw-card-rivalry-option>small,.ppw-card-story-availability{
+ color:#c0d5e8;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-card-rivalry-match{font:inherit;min-height:48px;border-radius:11px;
+ border:1px solid #9bddb1;color:#0c2830;font-weight:900;
+ background:linear-gradient(120deg,#91e6bd,#d1ffa7);padding:10px 13px}
+.ppw-card-story-availability{display:block;margin:8px 0}
+.ppw-guide-feud-cast{display:grid;gap:8px;margin:10px 0 14px;padding:13px;
+ border:1px solid #7776b7;border-radius:12px;
+ background:linear-gradient(125deg,#2a2655,#19394e)}
+.ppw-guide-feud-cast strong{color:#ffe4b9;font-size:12px;letter-spacing:.07em}
+.ppw-guide-feud-cast p{color:#dceafa;font-size:12px;line-height:1.5;margin:0}
+.ppw-guide-feud-cast-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-guide-feud-cast-button{font:inherit;font-size:12px;font-weight:850;
+ min-height:46px;padding:9px 8px;border-radius:10px;
+ color:#fff;background:#324a83;border:1px solid #8fb0eb;cursor:pointer}
+.ppw-guide-feud-warning{padding:10px 12px;border-radius:10px;
+ background:#34374f;color:#f4e3c2;font-size:12px;line-height:1.5}
+@media(max-width:350px){.ppw-guide-feud-cast-buttons{grid-template-columns:1fr}}

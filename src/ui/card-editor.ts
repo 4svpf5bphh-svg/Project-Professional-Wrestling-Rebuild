@@ -41,6 +41,8 @@ import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
+import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
+ from "./programme-booking-starter.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -298,6 +300,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       contractId:side.contractId,name:side.name,
       division:old?.division??null,available:true,reason:"AVAILABLE",
       appearanceFee:side.appearanceFee,creativeControl:side.creativeControl});
+    }
+   }
+   // Rights were verified for this show week by the existing programme read.
+   // Reuse them in the editor; never invent a contract for an unavailable rival.
+   for(const feud of view.programmes??[]){
+    for(const person of feud.cast??[]){
+     if(!person.contractId)continue;
+     const prior=roster.get(person.personId);
+     roster.set(person.personId,{...prior,personId:person.personId,
+      name:person.name,contractId:person.contractId,
+      division:prior?.division??null,available:true,reason:"AVAILABLE",
+      appearanceFee:person.appearanceFee??prior?.appearanceFee??null,
+      creativeControl:person.creativeControl??prior?.creativeControl??null});
     }
    }
    for(const p of view.selectedPeople){
@@ -856,24 +871,40 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      " · Crowd "+Math.round(h.crowd)));}
    const choices=recommendProgrammeAngles(selected).slice(0,3);
    const actions=el("div","ppw-card-rivalry-shortcuts");
+   const occupied=new Set([...matches.values()].flatMap(assignedIds));
+   const matchReady=programmeMatchStarter(selected,"preview",occupied);
+   if(matchReady.ok){
+    const match=button("+ Book feud match",()=>{
+     const id="match-"+crypto.randomUUID();
+     const start=programmeMatchStarter(selected,id,
+      new Set([...matches.values()].flatMap(assignedIds)));
+     if(!start.ok){error=start.reason;render();return;}
+     matches.set(id,start.value);order.push(id);expanded=id;
+     slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
+     markDirty();render();
+    },!mutable(),"ppw-card-rivalry-match");
+    match.title="Both sides cast with current show-week rights. Review the winner and finish.";
+    actions.append(match);
+   }else suggestions.append(el("small","ppw-card-story-availability",
+    "Quick feud match unavailable: "+matchReady.reason+
+    " You can still book a match manually."));
    for(const idea of choices){
-    const action=button("+ "+idea.kind.replaceAll("_"," ").toLowerCase(),
-     ()=>{
-      const id="angle-"+crypto.randomUUID();
-      const segment={...newEditorSegment(id,idea.kind),
-       programmeId:selected.programmeId,durationMinutes:idea.minutes,
-       ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
-      segments.set(id,segment);order.push(id);expanded=id;
-      markDirty();render();
-     },!mutable(),"ppw-card-rivalry-add");
-    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
-     " for "+selected.label);
-    action.title=idea.title+" · "+idea.reason;
-    actions.append(action);
+    const action=button("+ "+idea.title,()=>{
+     const id="angle-"+crypto.randomUUID();
+     segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
+     slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
+     order.push(id);expanded=id;markDirty();render();
+    },!mutable(),"ppw-card-rivalry-add");
+    action.setAttribute("aria-label","Start "+idea.title+" for "+selected.label);
+    action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
+    const tile=el("div","ppw-card-rivalry-option");
+    tile.append(action,el("span","",idea.kind.replaceAll("_"," ").toLowerCase()),
+     el("small","",idea.reason));
+    actions.append(tile);
    }
    suggestions.append(actions);
    suggestions.append(el("small","ppw-muted",
-    "Suggestions are optional. The wrestlers, angle ending and show remain yours to book."));
+    "Your cast and outcome remain editable. Quick Book only saves when you choose to save the card."));
    root.append(suggestions);
   }
   const list=el("section","ppw-card-list");
