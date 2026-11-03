@@ -41,12 +41,12 @@ const card={showId:"week5-card",year:1,week:5,worldRevision:4,
  bookingClass:"REGULAR",ticketStrategy:"STANDARD",championships:[],
  programmes:[],programmeLinks:[],bookableTeams:[],bookableTrios:[],
  advisers:[],selectedPeople:[],slots:[]};
-function mock(page:import("@playwright/test").Page,settings?:{
+async function mock(page:import("@playwright/test").Page,settings?:{
  availability?:"AVAILABLE"|"INJURED";hasDraft?:boolean;
 }){
  const calls:string[]=[];
- page.route("**/api/session",route=>route.fulfill({json:session}));
- page.route("**/api/card",route=>{
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
   const method=String(route.request().postDataJSON().method);
   calls.push(method);
   const data=method==="wrestlerDirectory"?roster:
@@ -78,7 +78,7 @@ async function openFromDossier(page:import("@playwright/test").Page){
 }
 test("320px dossier sends the right wrestler into a real unfinished show, casts a match only after server rights check",async({page})=>{
  await page.setViewportSize({width:320,height:740});
- const calls=mock(page);
+ const calls=await mock(page);
  await openFromDossier(page);
  await expect(page).toHaveURL(/#\\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
@@ -98,7 +98,7 @@ test("320px dossier sends the right wrestler into a real unfinished show, casts 
 });
 test("dossier-based promo is explicitly unsaved and does not bypass the angle editor",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- const calls=mock(page);
+ const calls=await mock(page);
  await openFromDossier(page);
  const focused=page.locator(".ppw-card-wrestler-focus");
  await focused.getByRole("button",{name:"Start a promo"}).click();
@@ -111,7 +111,7 @@ test("dossier-based promo is explicitly unsaved and does not bypass the angle ed
 });
 test("dossier shortcut refuses an injured show-week wrestler without writing or creating a slot",async({page})=>{
  await page.setViewportSize({width:320,height:740});
- const calls=mock(page,{availability:"INJURED"});
+ const calls=await mock(page,{availability:"INJURED"});
  await openFromDossier(page);
  await page.locator(".ppw-card-wrestler-focus").getByRole("button",{name:"Start a match"}).click();
  await expect(page.getByText(/cannot be booked for this show's week/)).toBeVisible();
@@ -122,7 +122,7 @@ test("dossier shortcut refuses an injured show-week wrestler without writing or 
 });
 test("no unfinished card sends dossier back to planner rather than inventing a draft",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- const calls=mock(page,{hasDraft:false});
+ const calls=await mock(page,{hasDraft:false});
  await openFromDossier(page);
  await expect(page).toHaveURL(/#\\/planner\\/card$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
