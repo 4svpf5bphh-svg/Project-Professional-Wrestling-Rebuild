@@ -868,6 +868,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     suggestions.append(el("p","ppw-card-story-recap",
      "Previously: Year "+(Math.floor(h.weekIndex/52)+1)+" Week "+(h.weekIndex%52+1)+
      " · "+(h.segmentKind??h.kind).replaceAll("_"," ").toLowerCase()+
+     (h.sceneLocation?" · "+angleSceneLabel(h.sceneLocation):"")+
+     (h.scenePurpose?" · "+angleSceneLabel(h.scenePurpose):"")+
      " · Crowd "+Math.round(h.crowd)));}
    const choices=recommendProgrammeAngles(selected).slice(0,3);
    const actions=el("div","ppw-card-rivalry-shortcuts");

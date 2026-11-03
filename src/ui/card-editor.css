@@ -788,3 +788,15 @@ body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-remove{justify-self:start;
 .ppw-guide-feud-warning{padding:10px 12px;border-radius:10px;
  background:#34374f;color:#f4e3c2;font-size:12px;line-height:1.5}
 @media(max-width:350px){.ppw-guide-feud-cast-buttons{grid-template-columns:1fr}}
+
+/* Wider iPhone idea tiles: concise, readable titles and reasons, not three
+ * skinny columns of text. The feud match action spans the whole row. */
+.ppw-card-rivalry-shortcuts .ppw-card-rivalry-match{grid-column:1/-1}
+@media(max-width:600px){
+ .ppw-card-rivalry-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ppw-card-rivalry-option .ppw-card-rivalry-add{font-size:12px;line-height:1.35;
+  padding:10px;text-align:left;overflow-wrap:anywhere}
+}
+@media(max-width:360px){
+ .ppw-card-rivalry-shortcuts{grid-template-columns:minmax(0,1fr)}
+}

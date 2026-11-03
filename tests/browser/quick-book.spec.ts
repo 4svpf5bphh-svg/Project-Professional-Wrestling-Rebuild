@@ -172,6 +172,8 @@ test("book a feud match and retaliation scene with signed participants, one save
  const stories=page.locator(".ppw-card-rivalry-ideas");
  await stories.locator("summary").click();
  await expect(stories.getByRole("button",{name:"+ Book feud match"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
  await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
