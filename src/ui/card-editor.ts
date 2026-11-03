@@ -1758,7 +1758,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const advancedFields=el("div","ppw-control-grid ppw-guide-advanced-fields");
       if(controlGrid)for(const child of [...controlGrid.children]){
        const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
-       if(isQuickBookField(m?"MATCH":"ANGLE",label))
+       if(child.classList.contains("ppw-winner-picker")||isQuickBookField(m?"MATCH":"ANGLE",label))
         essentials.append(child);
        else advancedFields.append(child);
       }
@@ -1769,7 +1769,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       }
       const remove=body.querySelector<HTMLElement>(":scope > .ppw-remove");
       const other=[...body.children].filter(node=>node!==controlGrid&&
-       node!==remove&&!cast.includes(node)&&node!==modeBar&&
+       node!==remove&&!cast.includes(node)&&
        !node.classList.contains("ppw-angle-workflow-title"));
       const extra=el("details","ppw-guide-extra") as HTMLDetailsElement;
       extra.open=openQuickExtras.has(slotId);
