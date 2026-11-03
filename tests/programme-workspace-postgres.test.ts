@@ -143,6 +143,17 @@ test("a player creates, inspects and ends original two-sided wrestler and tag pr
    "An actual linked drafted match must show as planned, not as certified history");
   const linkedCard=await showCardEditorAsActor(context,worldId,promotionId,"weekly");
   assert.ok(linkedCard.programmes.some(x=>x.label.includes("The Unit")));
+  // Same bounded card read carries actual feud sides and current contracted
+  // appearance rights. Never prefill a match from just a wrestler name.
+  const activeCast=linkedCard.programmes.find(x=>
+   x.programmeId===currentProgrammeId)?.cast??[];
+  assert.deepEqual(activeCast.filter(x=>x.side==="A").map(x=>x.personId),
+   [people[0]]);
+  assert.deepEqual(activeCast.filter(x=>x.side==="B").map(x=>x.personId).sort(),
+   [people[2],people[3]].sort());
+  assert.ok(activeCast.every(x=>typeof x.contractId==="string"&&
+   x.contractId.startsWith("contract-")),
+   "Only real show-week contract identities may enable feud quick-casting");
   assert.equal((await save(4,1,"different-opponent")).status,"APPLIED");
   const noLongerPlanned=await readProgrammeWorkspace(db.pool,scope);
   assert.deepEqual(noLongerPlanned.programmes.find(p=>p.programmeId===currentProgrammeId)?.plannedActivity,
