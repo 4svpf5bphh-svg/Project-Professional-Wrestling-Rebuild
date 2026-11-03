@@ -23,3 +23,13 @@ test("expired terms, already-used dates, and exclusive dates are not charged twi
  assert.equal(exposure.optionalAppearanceFees,1900);
  assert.equal(exposure.remainingUsableDates,4);
 });
+
+test("signed future contracts do not commit wages before their effective start",()=>{
+ const result=remainingRosterExposure([{
+  weeksRemaining:55,startsInWeeks:10,remainingDates:40,
+  weeklyGuarantee:1000,appearanceFee:500
+ }]);
+ assert.equal(result.guaranteedWages,45000);
+ assert.equal(result.optionalAppearanceFees,20000);
+ assert.equal(result.potentialTotal,65000);
+});

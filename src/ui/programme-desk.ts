@@ -433,9 +433,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
 
    if(latestMatch||p.latestFollowUp){
     const direction=element("details","ppw-programme-next") as HTMLDetailsElement;
-    direction.append(element("summary","","Creative continuity · previous decision"),
-     element("span","ppw-programme-eyebrow","YOUR RESPONSE TO THE LAST MATCH"),
-     element("h3","","Where does this rivalry go next?"));
+    // Next chapter is already prominent above; keep older decisions as one
+    // optional disclosure instead of a second repeated heading.
+    direction.append(element("summary","","Creative continuity · previous decision"));
     if(p.latestFollowUp){
      if(continuity.directionHeadline){
       const status=element("div","ppw-programme-follow-through");

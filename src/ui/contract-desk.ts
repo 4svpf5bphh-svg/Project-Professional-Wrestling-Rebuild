@@ -118,7 +118,10 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
-  const exposure=remainingRosterExposure(view.roster);
+  const exposure=remainingRosterExposure(view.roster.map(c=>({
+   ...c,startsInWeeks:Math.max(0,(c.startWeekIndex??view!.currentWeekIndex)-
+    view!.currentWeekIndex)
+  })));
   const budget=el("section","ppw-contract-budget ppw-contract-exposure");
   budget.append(el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
    el("strong","ppw-contract-exposure-total",money(exposure.potentialTotal)));
@@ -312,12 +315,22 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       (c.weeksRemaining===1?"Next week's show requires a new agreement.":"Renew before booking shows beyond that week."));
      body.append(warning);
     }
-    const originalPackage=packageCost({
-     family:c.family,termWeeks:Math.max(1,c.expiresWeekIndex-c.startWeekIndex+1),
-     dateEntitlement:c.dateEntitlement??0,
-     weeklyGuarantee:c.weeklyGuarantee,appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
+    // The original package is known for canonical signed terms. Imported or
+    // partial records must never invent a signing bonus or crash the dossier.
+    const knownPackage=[c.startWeekIndex,c.expiresWeekIndex,c.weeklyGuarantee,
+     c.appearanceFee,c.signingBonus].every(x=>
+      typeof x==="number"&&Number.isFinite(x)&&x>=0);
+    let originalTotal:number|null=null;
+    if(knownPackage)try{
+     originalTotal=packageCost({
+      family:c.family,termWeeks:Math.max(1,c.expiresWeekIndex-c.startWeekIndex+1),
+      dateEntitlement:c.dateEntitlement??0,weeklyGuarantee:c.weeklyGuarantee,
+      appearanceFee:c.appearanceFee,signingBonus:c.signingBonus
+     }).plannedFullTermCost;
+    }catch{ /* Incomplete imported contract: show only known terms. */ }
     body.append(el("strong","ppw-contract-current-value",
-     "Signed deal · "+money(originalPackage.plannedFullTermCost)+" full-term potential"),
+     originalTotal===null?"Signed deal · full-term package unavailable":
+      "Signed deal · "+money(originalTotal)+" full-term potential"),
      el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
      " · Appearance "+money(c.appearanceFee)),
      el("p","ppw-muted","Role: "+title(c.roleExpectation)+

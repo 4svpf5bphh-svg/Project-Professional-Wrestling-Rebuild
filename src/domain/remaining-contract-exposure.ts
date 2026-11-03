@@ -7,6 +7,8 @@ export interface ContractExposure{
  remainingDates:number|null;
  weeklyGuarantee:number;
  appearanceFee:number;
+ /** Delay until this signed contract takes effect, when known. */
+ startsInWeeks?:number;
 }
 export interface RosterExposure{
  guaranteedWages:number;
@@ -19,7 +21,9 @@ export function remainingRosterExposure(contracts:readonly ContractExposure[]):R
  for(const c of contracts){
   if(![c.weeksRemaining,c.weeklyGuarantee,c.appearanceFee].every(n=>
     Number.isFinite(n)&&n>=0))continue;
-  const weeks=Math.max(0,Math.trunc(c.weeksRemaining));
+  const deferred=c.startsInWeeks===undefined?0:
+   Number.isFinite(c.startsInWeeks)?Math.max(0,Math.trunc(c.startsInWeeks)):0;
+  const weeks=Math.max(0,Math.trunc(c.weeksRemaining)-deferred);
   if(weeks===0)continue;
   const dates=c.remainingDates===null?0:Math.min(weeks,Math.max(0,
    Number.isFinite(c.remainingDates)?Math.trunc(c.remainingDates):0));
