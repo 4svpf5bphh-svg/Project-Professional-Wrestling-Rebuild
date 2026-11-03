@@ -157,6 +157,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
  const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
  const guidedPickerSlots=new Set<string>();
+ // A new booking is only added to the working card at the final step.
+ // Closing earlier discards this wizard's local slot and restores the
+ // existing unsaved-card state. Already saved slots are never discarded.
+ const inProgressWizards=new Map<string,{wasDirty:boolean}>();
  const openQuickExtras=new Set<string>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
@@ -267,6 +271,32 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  };
  function markDirty(){dirty=true;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(true);}
+ function startWizard(slotId:string){
+  inProgressWizards.set(slotId,{wasDirty:dirty});
+  markDirty();render();
+ }
+ function endWizard(slotId:string){
+  inProgressWizards.delete(slotId);
+  expanded=null;render();
+ }
+ function closeWizard(slotId:string){
+  const pending=inProgressWizards.get(slotId);
+  if(!pending){expanded=null;render();return;}
+  const match=matches.get(slotId),angle=segments.get(slotId);
+  const hasParticipants=match?assignedIds(match).length>0:
+   Boolean(angle?.actors.length||angle?.targets.length);
+  if(hasParticipants&&!window.confirm(
+   "Discard this unfinished "+(match?"match":"angle")+
+   "? It has not been added to your card yet."))return;
+  matches.delete(slotId);segments.delete(slotId);
+  order=order.filter(id=>id!==slotId);
+  inProgressWizards.delete(slotId);
+  slotBookingSteps.delete(slotId);
+  guidedPickerSlots.delete(slotId);
+  matchSetupTabs.delete(slotId);
+  dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
+  port.onDraftChange?.(dirty);expanded=null;render();
+ }
  function setMatch(slotId:string,next:EditorMatch){
   matches.set(slotId,next);markDirty();render();
  }
@@ -348,7 +378,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const slotId="angle-"+crypto.randomUUID();
       segments.set(slotId,programmeAngleIdeaStarter(selected,slotId,recommended));
       slotBookingSteps.set(slotId,"CAST");
-      order.push(slotId);expanded=slotId;markDirty();
+      order.push(slotId);expanded=slotId;startWizard(slotId);
      }
     }
    }
@@ -408,7 +438,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    focusedPerson=null;order.push(id);expanded=id;
    slotBookingSteps.set(id,"CAST");
-   resetGuideScroll=true;markDirty();
+   resetGuideScroll=true;startWizard(id);
   }catch(e){error=errorText(e);}
   finally{focusBusy=false;render();}
  }
@@ -864,13 +894,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    matches.set(id,newEditorMatch(id,formatChoice));
    guidedPickerSlots.add(id);
    slotBookingSteps.set(id,"SETUP");
-   order.push(id);expanded=id;markDirty();render();
+   order.push(id);expanded=id;startWizard(id);
   },!mutable(),"ppw-primary ppw-action-match"),
    button("+ Add angle",()=>{
     const id="angle-"+crypto.randomUUID();
     segments.set(id,newEditorSegment(id));
     slotBookingSteps.set(id,"SETUP");
-    order.push(id);expanded=id;markDirty();render();
+    order.push(id);expanded=id;startWizard(id);
     if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
    },!mutable(),"ppw-add-angle ppw-action-angle"));
   toolbar.append(actions);root.append(toolbar);
@@ -943,7 +973,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      if(!start.ok){error=start.reason;render();return;}
      matches.set(id,start.value);order.push(id);expanded=id;
      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
-     markDirty();render();
+     startWizard(id);
     },!mutable(),"ppw-card-rivalry-match");
     match.title="Both sides cast with current show-week rights. Review the winner and finish.";
     actions.append(match);
@@ -960,7 +990,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       selected.cast?.some(x=>x.side==="B")){
       slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
      }
-     order.push(id);expanded=id;markDirty();render();
+     order.push(id);expanded=id;startWizard(id);
     },!mutable(),"ppw-card-rivalry-add");
     action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
      " for "+selected.label);
@@ -1459,6 +1489,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     body.append(controls);
     body.append(button("Remove angle",()=>{
      segments.delete(slotId);order=order.filter(x=>x!==slotId);
+     inProgressWizards.delete(slotId);
      expanded=null;markDirty();render();
     },!mutable(),"ppw-remove"));
     card.append(body);
@@ -1811,6 +1842,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     body.append(elimination);
     body.append(button("Remove match",()=>{
      matches.delete(slotId);order=order.filter(x=>x!==slotId);
+     inProgressWizards.delete(slotId);
      for(const [angleId,angle] of segments){
       if(angle.kind==="POST_MATCH_ASSAULT"&&angle.sourceMatchSlotId===slotId)
        segments.set(angleId,{...angle,sourceMatchSlotId:null,targets:[]});
@@ -2153,7 +2185,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         slotBookingSteps.set(slotId,"OUTCOME");resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
        actions.append(button(m?"Complete match":"Complete angle",()=>{
-        expanded=null;render();
+        endWizard(slotId);
        },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
        guide.append(actions);
       }
@@ -2169,9 +2201,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const label=el("div","ppw-card-edit-label");
      label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" / "+(m?"MATCH":"ANGLE")),
       el("strong","",m?matchLabel(m):angleName));
-     head.append(label,button("×",()=>{
-      expanded=null;render();
-     },false,"ppw-card-edit-close"));
+     head.append(label,button("×",()=>closeWizard(slotId),
+      false,"ppw-card-edit-close"));
      const close=head.querySelector<HTMLButtonElement>(".ppw-card-edit-close");
      close?.setAttribute("aria-label","Close card editor");
      sheet.append(head,body);
@@ -2179,7 +2210,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      sheet.onkeydown=event=>{
       if(event.key==="Escape"){
        if(picker)return;
-       event.preventDefault();expanded=null;render();return;
+       event.preventDefault();closeWizard(slotId);return;
       }
       if(event.key!=="Tab")return;
       const focusable=[...sheet.querySelectorAll<HTMLElement>(
@@ -2194,12 +2225,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      };
      shade.append(sheet);
      shade.onclick=event=>{
-      if(event.target===shade){expanded=null;render();}
+      if(event.target===shade)closeWizard(slotId);
      };
      editShade=shade;
     }
    }
-   list.append(card);
+   // Incomplete wizard slots are intentionally absent from the running
+   // order until Complete is pressed. Modal remains mounted independently.
+   if(!inProgressWizards.has(slotId))list.append(card);
   }
   root.append(list);
   const foot=el("div","ppw-save");
