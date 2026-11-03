@@ -196,3 +196,76 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   }).finally(()=>db.close());
  }
 });
+
+test("PostgreSQL: a signed one-night guest is bookable only in the next World week",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const id=randomUUID(),world="guest-"+id,promotion="promo-"+id,
+  player="owner-"+id,person="guest-"+id;
+ const db=postgresPool(url!,2);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"One night",seed:45,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:promotion,name:"Chaotic Wrestling Alliance",
+    tier:"INDEPENDENT"});
+   await tx.query("UPDATE ppw_worlds SET offer_acceptance_threshold=0 WHERE world_id=$1",
+    [world]);
+   await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,recognition,popularity,
+    in_ring_quality,match_craft,presentation,stamina,fatigue,career_stage,morale,contract_priorities)
+    VALUES($1,$2,'Guest Star','ACTIVE',85,82,84,83,82,85,0,'PRIME',80,$3::jsonb)`,
+    [world,person,JSON.stringify({money:60,role:10,prestige:10,schedule:10,
+     loyalty:5,exposure:5})]);
+  });
+  assert.equal((await joinWorld(db.pool,{worldId:world,playerId:player,
+   requestId:"join-"+id,expectedRevision:0})).status,"APPLIED");
+  assert.equal((await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId:promotion,requestId:"claim-"+id,expectedRevision:1})).status,"APPLIED");
+  const terms:OfferTerms={
+   family:"ONE_OFF",roleExpectation:"SPECIAL_ATTRACTION",creativeControl:"NONE",
+   startWeekIndex:0,termWeeks:1,dateEntitlement:1,
+   weeklyGuarantee:0,appearanceFee:18000,signingBonus:0
+  };
+  assert.equal((await submitManualContractOffer(db.pool,{worldId:world,
+   playerId:player,promotionId:promotion,personId:person,
+   requestId:"offer-"+id,expectedRevision:2,terms})).status,"APPLIED");
+  const resolved=await resolvePersonContractOffers(db.pool,{worldId:world,
+   personId:person,requestId:"resolve-"+id,expectedRevision:3},
+   {source:"WORLD_RESOLUTION",worldId:world});
+  assert.equal(resolved.status,"APPLIED");
+  assert.equal(resolved.result.accepted,1);
+  const rows=await withWorldTransaction(db.pool,tx=>tx.query<{
+   family:"ONE_OFF";status:"SIGNED";start_week_index:number;
+   expires_week_index:number;remaining_dates:number;
+   weekly_guarantee:string;appearance_fee:string
+  }>(`SELECT family,status,start_week_index,expires_week_index,
+    remaining_dates,weekly_guarantee,appearance_fee FROM ppw_contracts
+    WHERE world_id=$1 AND person_id=$2`,[world,person]));
+  assert.equal(rows.length,1);
+  const agreement=rows[0]!;
+  assert.equal(agreement.start_week_index,1);
+  assert.equal(agreement.expires_week_index,1);
+  assert.equal(agreement.remaining_dates,1);
+  assert.equal(Number(agreement.weekly_guarantee),0);
+  assert.equal(Number(agreement.appearance_fee),18000);
+  const {contractAvailability}=await import("../src/domain/contract-availability.js");
+  const check=(week:number)=>contractAvailability({
+   family:agreement.family,status:agreement.status,
+   startWeekIndex:agreement.start_week_index,
+   expiresWeekIndex:agreement.expires_week_index,
+   remainingDates:agreement.remaining_dates,currentWeekIndex:week
+  });
+  assert.deepEqual(check(0),{available:false,reason:"NOT_STARTED"});
+  assert.deepEqual(check(1),{available:true,reason:"AVAILABLE"});
+  assert.deepEqual(check(2),{available:false,reason:"EXPIRED"});
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_contract_offers","ppw_ledger_events","ppw_command_receipts",
+    "ppw_contracts","ppw_promotion_controls","ppw_memberships",
+    "ppw_people","ppw_promotions"]){
+    await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
+   }
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
