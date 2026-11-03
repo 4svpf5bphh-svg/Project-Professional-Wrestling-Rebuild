@@ -238,6 +238,7 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  await expect(dialog.getByLabel("Creative direction")).toHaveValue("TURN");
  await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("TURN");
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
  await page.getByRole("dialog",{name:"Choose wrestler"}).locator(".ppw-wrestler-card").first().click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
@@ -252,7 +253,9 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-turn-what.png",animations:"disabled"});
  await dialog.getByLabel("Storytelling purpose").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-turn-where-why.png",animations:"disabled"});
- await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saved).not.toBeNull();
