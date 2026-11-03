@@ -7,7 +7,7 @@ import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {evaluateProgrammeReview} from "../domain/programme-review.js";
-import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
+import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
@@ -24,7 +24,7 @@ export interface ProgrammeDeskPort{
  standingConsent(input:{requestId:string;expectedRevision:number;programmeId:string;
   personId:string;matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}):Promise<unknown>;
- openPlanner?(programmeId?:string):void;
+ openPlanner?(programmeId?:string,ideaKind?:ProgrammeAngleIdea["kind"]):void;
  openResults?(showId:string):void;
  openArchive?():void;
  openWrestler?(personId:string):void;
@@ -395,7 +395,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const suggested=recommendProgrammeAngles(p).slice(0,3);
     for(const idea of suggested){
      const item=element("div","ppw-programme-booking-idea");
-     const action=button(idea.title,()=>port.openPlanner?.(p.programmeId),working);
+     const action=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
      item.append(action,element("small","",
       idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason));
      advice.append(item);

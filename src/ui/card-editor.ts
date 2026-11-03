@@ -32,7 +32,7 @@ import {initialCreativeBeat,supportsCreativeBeat,type SegmentCreativeBeat}
 import {creativeFields,creativeSummary} from "./segment-creative-options.js";
 import {SPECIAL_MOMENTS,specialMomentBySku} from "../domain/special-moments.js";
 import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,angleLocationsFor,anglePurposesFor,angleLocationArea,angleSceneLabel} from "../domain/angle-scene.js";
-import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
+import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
@@ -50,6 +50,9 @@ type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
 type ReadyResult=Awaited<ReturnType<typeof markPreparedShowReady>>;
 export interface CardEditorPort{
  load():Promise<View>;
+ /** Transient on-page focus from the Programme Desk, not a saved game command. */
+ focusProgrammeId?:string;
+ focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
   matches:{slotId:string;payload:unknown}[];
@@ -139,8 +142,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoicesLoading=false;
  let specialOwned:readonly string[]|null=null,specialBusy=false;
  let formatChoice:Format="SINGLES";
- let focusedRivalryId:string|null=null;
- let rivalryIdeasOpen=false;
+ let focusedRivalryId:string|null=port.focusProgrammeId??null;
+ let rivalryIdeasOpen=Boolean(port.focusProgrammeId);
+ let initialProgrammeFocusDone=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
  const openAdvisorNotes=new Set<string>();
@@ -327,6 +331,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    expanded=null;dirty=false;needsRevisionRefresh=false;
    pendingRequestId=null;error="";success="";
    port.onDraftChange?.(false);
+   if(!initialProgrammeFocusDone){
+    initialProgrammeFocusDone=true;
+    const selected=view.programmes.find(p=>p.programmeId===port.focusProgrammeId);
+    if(selected&&view.canEdit&&port.focusProgrammeIdeaKind){
+     const recommended=recommendProgrammeAngles(selected).find(idea=>
+      idea.kind===port.focusProgrammeIdeaKind);
+     if(recommended){
+      const slotId="angle-"+crypto.randomUUID();
+      segments.set(slotId,programmeAngleIdeaStarter(selected,slotId,recommended));
+      slotBookingSteps.set(slotId,"CAST");
+      order.push(slotId);expanded=slotId;markDirty();
+     }
+    }
+   }
    return true;
   }catch(e){error=errorText(e);return false;}
   finally{loading=false;render();}

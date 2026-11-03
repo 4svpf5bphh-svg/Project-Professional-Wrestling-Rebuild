@@ -112,7 +112,8 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope,
  onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void,
- onNavigate?:(section:HostSection)=>void){
+ onNavigate?:(section:HostSection)=>void,
+ focusProgrammeId?:string,focusProgrammeIdeaKind?:string){
  const call=createCardClient(scope);
  const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -126,6 +127,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
  }
  const port:CardEditorPort={
   onDraftChange,
+  focusProgrammeId,
+  focusProgrammeIdeaKind:focusProgrammeIdeaKind as CardEditorPort["focusProgrammeIdeaKind"],
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
@@ -534,7 +537,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
-  openPlanner:()=>mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope)),
+  openPlanner:(programmeId,ideaKind)=>{
+   if(programmeId){
+    // Go directly into the existing show editor with the requested rivalry.
+    // Choosing an idea creates a local draft only; the player must still save.
+    mountBookingPage(root,scope,()=>mountProgrammePage(root,scope),
+     undefined,undefined,programmeId,ideaKind);
+   }else mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope));
+  },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),

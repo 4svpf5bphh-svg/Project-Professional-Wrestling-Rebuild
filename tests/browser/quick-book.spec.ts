@@ -200,3 +200,85 @@ test("book a feud match and retaliation scene with signed participants, one save
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
   .toBeVisible();
 });
+
+test("Programme Desk opens the actual card focused on the chosen feud, with no extra database read",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ const story={programmeId:"joe-mistico",status:"ACTIVE",heat:68,repetition:42,
+  activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,draws:0,
+  championshipId:null,startedWeekIndex:1,endedWeekIndex:null,
+  sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+  sideB:[{kind:"PERSON",refId:"mistico",name:"Místico"}],
+  recentActivity:[],eligibleCreativePeople:[],creativeAgreements:[],
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null}};
+ const cast={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
+  heat:68,repetition:42,activityCount:2,segmentCount:1,
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null},
+  cast:[{personId:"joe",contractId:"c-joe",name:"Samoa Joe",side:"A"},
+   {personId:"mistico",contractId:"c-mistico",name:"Místico",side:"B"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const request=r.request().postDataJSON();
+  const method=String(request.method);
+  calls.push(method);
+  const data=method==="programmes"?{
+   year:1,week:5,worldRevision:4,canEdit:true,
+   people:[],teams:[],championships:[],programmes:[story]
+  }:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[cast],
+   programmeLinks:[],bookableTeams:[],bookableTrios:[],selectedPeople:[],slots:[]
+  }:{};
+  return r.fulfill({json:data});
+ });
+ await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Book next chapter"}).first().click();
+ await expect(page.locator(".ppw-card-rivalry-ideas")).toHaveAttribute("open","");
+ await expect(page.getByLabel("Choose a rivalry to book")).toHaveValue("joe-mistico");
+ await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
+ expect(calls).toEqual(["programmes","load"]);
+});
+test("an explicit programme creative choice opens an unsaved, editable matching scene",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const story={programmeId:"joe-mistico",status:"ACTIVE",heat:68,repetition:42,
+  activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,draws:0,
+  championshipId:null,startedWeekIndex:1,endedWeekIndex:null,
+  sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+  sideB:[{kind:"PERSON",refId:"mistico",name:"Místico"}],
+  recentActivity:[],eligibleCreativePeople:[],creativeAgreements:[],
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null}};
+ const cast={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
+  heat:68,repetition:42,activityCount:2,segmentCount:1,
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null},
+  cast:[{personId:"joe",contractId:"c-joe",name:"Samoa Joe",side:"A"},
+   {personId:"mistico",contractId:"c-mistico",name:"Místico",side:"B"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=String(r.request().postDataJSON().method);
+  methods.push(method);
+  return r.fulfill({json:method==="programmes"?{
+   year:1,week:5,worldRevision:4,canEdit:true,people:[],teams:[],
+   championships:[],programmes:[story]
+  }:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[cast],
+   programmeLinks:[],bookableTeams:[],bookableTrios:[],selectedPeople:[],slots:[]
+  }:{}});
+ });
+ await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Strike back"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(page.getByText("Edits not saved")).toBeVisible();
+ expect(methods).toEqual(["programmes","load"]); // no write before save
+});
