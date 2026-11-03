@@ -1558,8 +1558,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       if(!run.isConnected)return;
       if(run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
      };
-     run.append(el("summary","","Run-in / match interference"+
-      (m.interference?" · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):" · optional")));
+     const runSummary=el("summary","","Run-in / match interference"+
+      (m.interference?" · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):" · optional"));
+     // A field change can synchronously replace this editor before the
+     // native async toggle fires. Persist the desired state on click too.
+     runSummary.onclick=()=>{
+      if(!run.isConnected)return;
+      if(!run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
+     };
+     run.append(runSummary);
      run.append(el("p","ppw-run-in-help",
       "Bring someone from outside the match to ringside. Choose which side they support and whether the run-in succeeds. The winner is still your decision."));
      run.append(button(m.interference?
@@ -1798,7 +1805,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(extra.open)openQuickExtras.add(slotId);
        else openQuickExtras.delete(slotId);
       };
-      extra.append(el("summary","","Additional options"));
+      const extraSummary=el("summary","","Additional options");
+      // Avoid collapsing advanced choices on a fast iPhone selection. Native
+      // <details> toggle events can arrive after edit() has re-rendered the
+      // entire modal, so capture the click before that replacement.
+      extraSummary.onclick=()=>{
+       if(!extra.isConnected)return;
+       if(!extra.open)openQuickExtras.add(slotId);
+       else openQuickExtras.delete(slotId);
+      };
+      extra.append(extraSummary);
       if(advancedFields.childElementCount)extra.append(advancedFields);
       const extraContent=el("div","ppw-guide-extra-content");
       for(const node of other)if(!node.classList.contains("ppw-card-match-consents")&&

@@ -170,6 +170,15 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  const heading=page.getByRole("heading",{name:"Programmes"});
  await expect(heading).toBeVisible();
  expect(await heading.evaluate(el=>el.scrollWidth>el.clientWidth+1)).toBe(false);
+ const versus=page.locator(".ppw-programme-focused .ppw-programme-versus");
+ await expect(versus).toHaveText("VS");
+ const vsLayout=await versus.evaluate(node=>{
+  const box=node.getBoundingClientRect(),css=getComputedStyle(node);
+  return {width:box.width,height:box.height,whiteSpace:css.whiteSpace};
+ });
+ expect(vsLayout.whiteSpace).toBe("nowrap");
+ expect(vsLayout.height).toBeLessThanOrEqual(36);
+ expect(vsLayout.width).toBeLessThanOrEqual(36);
  await page.getByRole("button",{name:"Manage Booker 2 vs Rival 2"}).click();
  await expect(page.locator(".ppw-programme-broadcast")).toContainText("Booker 2");
  await expect(page.locator(".ppw-programme-broadcast")).not.toContainText("Booker 1");
