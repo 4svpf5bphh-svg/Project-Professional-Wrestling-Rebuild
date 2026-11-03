@@ -87,7 +87,7 @@ export function programmeAngleCastStarter(p:FeudCast,segment:EditorSegment,
   actors.length+targets.length>30||targets.length<rules.minTargets)
   return notReady("The full rival sides do not fit this angle's cast. Choose individuals or a different type.");
  try{
-  let next={...segment,actors:[],targets:[]};
+  let next:EditorSegment={...segment,actors:[],targets:[]};
   for(const p of actors)next=addSegmentPerson(next,"actors",p);
   for(const p of targets)next=addSegmentPerson(next,"targets",p);
   const ready=angleCastingReadiness(next);
