@@ -137,6 +137,15 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   const actual=view.talentBudget?.currentGuarantees??view.summary.weeklyGuarantees;
   const cash=view.talentBudget?.cash;
   const cashSuffix=typeof cash==="number"?" · Current cash: "+money(cash):"";
+  if(typeof cash==="number"&&Number.isFinite(cash)){
+   const cashOnly=cash-exposure.potentialTotal;
+   const balance=el("div","ppw-contract-cash-comparison");
+   balance.dataset.coverage=cashOnly>=0?"covered":"gap";
+   balance.append(el("span","","Cash-only cover · all remaining dates used"),
+    el("strong","",cashOnly>=0?money(cashOnly)+" left":
+     money(-cashOnly)+" short"));
+   budget.append(balance);
+  }
   const note=plan?
    "Weekly guarantees: "+money(actual)+" of "+money(plan.weeklyWageLimit)+
     " spending limit"+cashSuffix:
@@ -145,7 +154,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    el("small","ppw-contract-exposure-disclaimer",
     "Signed current terms only. Includes remaining guaranteed wages and up to "+
     exposure.remainingUsableDates+" unused appearance dates. "+
-    "Not an upfront cost; already-paid bonuses, pending offers, future income and other expenses are excluded."));
+    "Cash-only cover is a planning comparison, not a debt or cash reservation. "+
+    "Costs are paid over time; already-paid bonuses, pending offers, future income "+
+    "and other expenses are excluded."));
   root.append(budget);
   // Offer-response timing belongs inside individual pending decisions, not an
   // always-visible paragraph above every contract.

@@ -165,3 +165,13 @@
  .ppw-contract-desk .ppw-contract-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
  .ppw-contract-exposure-part{flex-wrap:wrap}
 }
+
+/* Compare signed future costs with today's cash, no new finance queries. */
+.ppw-contract-cash-comparison{display:grid;gap:5px;padding:12px;
+ background:#10283d;border:1px solid #638aa3;border-radius:10px;min-width:0}
+.ppw-contract-cash-comparison span{font-size:11px;color:#bcd9eb}
+.ppw-contract-cash-comparison strong{font-size:clamp(18px,5vw,24px);
+ line-height:1.2;color:#efffff;font-variant-numeric:tabular-nums;
+ overflow-wrap:anywhere}
+.ppw-contract-cash-comparison[data-coverage="gap"]{border-color:#c88972}
+.ppw-contract-cash-comparison[data-coverage="gap"] strong{color:#ffe0bb}

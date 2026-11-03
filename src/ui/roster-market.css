@@ -217,3 +217,36 @@
 .ppw-directory-guaranteed{font-size:12px;color:#a8f1d0;font-weight:750;line-height:1.4}
 @media(max-width:360px){.ppw-directory-presets{grid-template-columns:1fr}
  .ppw-directory-advanced-fields{grid-template-columns:1fr}}
+
+/* Phase 25H — the wrestlers come first. Technical filters are deliberate. */
+.ppw-directory .ppw-directory-quick{grid-column:1/-1;display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;min-width:0}
+.ppw-directory-shortcuts{grid-column:1/-1;display:flex;gap:7px;
+ overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ppw-directory .ppw-directory-shortcut{flex:none;padding-inline:12px;
+ min-height:43px;font-size:12px;border-radius:100px}
+.ppw-directory-shortcut[aria-pressed=true]{background:linear-gradient(110deg,#773c96,#a0438e);
+ border-color:#f0addd;color:#fff}
+.ppw-directory .ppw-directory-refinements{grid-column:1/-1;min-width:0;
+ border-top:1px solid rgba(151,190,226,.22);padding-top:3px}
+.ppw-directory-refinements>summary{cursor:pointer;min-height:44px;
+ padding:12px 2px;display:flex;align-items:center;color:#c5ebff;
+ font-size:13px;font-weight:850}
+.ppw-directory-refine-fields{display:grid;gap:10px;padding:7px 0 11px;
+ grid-template-columns:repeat(2,minmax(0,1fr))}
+.ppw-directory-refine-fields>.ppw-directory-hint{grid-column:1/-1}
+.ppw-directory .ppw-directory-refinements>.ppw-directory-advanced{
+ padding:5px 0 12px}
+.ppw-directory-clear{width:100%;margin:4px 0 9px}
+.ppw-directory-offer-timing{padding:11px 12px;margin:0;border-radius:10px;
+ border:1px solid #477d9a;background:#16354e;color:#d7ecff;
+ font-size:12px;line-height:1.45}
+.ppw-directory-cash-only{display:grid;gap:4px;padding:12px;
+ border:1px solid #6587a1;border-radius:10px;background:#1c3a4c;min-width:0}
+.ppw-directory-cash-only span{font-size:11px;color:#c2d9e8}
+.ppw-directory-cash-only strong{font-size:clamp(18px,5.2vw,24px);
+ font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.ppw-directory-cash-only[data-coverage="gap"]{border-color:#d99e77}
+.ppw-directory-cash-only[data-coverage="gap"] strong{color:#ffd7b0}
+@media(max-width:355px){.ppw-directory .ppw-directory-refine-fields{
+ grid-template-columns:minmax(0,1fr)}}
