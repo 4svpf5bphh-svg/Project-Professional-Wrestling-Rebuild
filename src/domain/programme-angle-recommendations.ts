@@ -4,23 +4,48 @@
  * No new Neon reads, AI calls, or other persistent state.
  */
 import type {SegmentKind} from "../simulation/legacy/show-segments.js";
+import type {AngleScene} from "./angle-scene.js";
 import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
 export interface ProgrammeAngleContext{
  heat:number|null;repetition:number;activityCount?:number;segmentCount?:number;
  programmeId?:string;championshipId?:string|null;
  recentActivity?:readonly {kind:string}[];
+ lastChapter?:{kind:string;segmentKind:string|null;
+  sceneLocation?:string|null;scenePurpose?:string|null}|null;
  latestFollowUp?:{choice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
   laterMatchRecorded?:boolean;laterAngleRecorded?:boolean;
   nextMatchWeekIndex?:number|null;nextAngleWeekIndex?:number|null}|null;
 }
 export interface ProgrammeAngleIdea{
  kind:SegmentKind;title:string;reason:string;minutes:number;
+ purpose:AngleScene["purpose"];location:AngleScene["location"];
 }
 const idea=(kind:SegmentKind,title:string,reason:string,minutes=5):ProgrammeAngleIdea=>{
  if(!SEGMENT_BOOKING_RULES[kind])throw new Error("Unsupported angle recommendation");
- return {kind,title,reason,minutes};
+ // Actual screenplay defaults instead of a generic first dropdown choice.
+ // These are editable direction suggestions, never a scripted result.
+ const map:Record<SegmentKind,{purpose:AngleScene["purpose"];location:AngleScene["location"]}>={
+  PROMO:{purpose:"REVEAL_MOTIVATION",location:"IN_RING"},
+  INTERVIEW:{purpose:"REVEAL_MOTIVATION",location:"INTERVIEW_AREA"},
+  CONFRONTATION:{purpose:"BUILD_RIVALRY",location:"IN_RING"},
+  CHALLENGE:{purpose:"SET_UP_MATCH",location:"IN_RING"},
+  CELEBRATION:{purpose:"CELEBRATE_SUCCESS",location:"IN_RING"},
+  ATTACK:{purpose:"SEEK_REVENGE",location:"BACKSTAGE"},
+  INTERRUPTION:{purpose:"STEAL_SPOTLIGHT",location:"IN_RING"},
+  RESCUE:{purpose:"PROTECT_ALLY",location:"IN_RING"},
+  POST_MATCH_ASSAULT:{purpose:"BUILD_RIVALRY",location:"IN_RING"},
+  TURN:{purpose:"EXPLAIN_TURN",location:"IN_RING"},
+  CONTRACT_SIGNING:{purpose:"SET_UP_MATCH",location:"IN_RING"},
+  INTERFERENCE:{purpose:"COST_RIVAL_VICTORY",location:"RINGSIDE"},
+  DEBUT:{purpose:"INTRODUCE_WRESTLER",location:"ENTRANCE_RAMP"},
+  VIDEO_PACKAGE:{purpose:"RECAP_RIVALRY",location:"VIDEO_SCREEN"},
+  STABLE_INVITATION:{purpose:"RECRUIT_ALLY",location:"BACKSTAGE"},
+  STABLE_EXIT:{purpose:"EXPLAIN_SPLIT",location:"BACKSTAGE"},
+  STABLE_RECONCILIATION:{purpose:"REPAIR_ALLIANCE",location:"BACKSTAGE"}
+ };
+ return {kind,title,reason,minutes,...map[kind]};
 };
-export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
+function rawProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
  const d=p.latestFollowUp;
  if(d?.choice==="PLAN_RETALIATION"&&
     !d.laterAngleRecorded&&d.nextAngleWeekIndex==null){
@@ -83,4 +108,16 @@ export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly Progr
  const offset=((p.activityCount??0)+(p.segmentCount??0)+
   (lastKind==="SEGMENT"?1:0))%choices.length;
  return [...choices.slice(offset),...choices.slice(0,offset)];
+}
+
+/** When the most recent certified chapter used the same type, change the
+ * lead suggestion. A rematch/retaliation promise still uses its own choices.
+ */
+export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
+ const ideas=rawProgrammeAngles(p);
+ const previous=p.lastChapter;
+ if(previous?.kind!=="SEGMENT"||!previous.segmentKind||ideas.length<2||
+  ideas[0]?.kind!==previous.segmentKind)return ideas;
+ // Preserve all three alternatives, never merely vary a headline.
+ return [...ideas.slice(1),ideas[0]!];
 }
