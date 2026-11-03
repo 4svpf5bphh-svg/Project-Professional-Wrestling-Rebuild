@@ -25,7 +25,11 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
   sharedHuman:false,currentWeekIndex:55,worldRevision:4,
   persona:{personaName:"Alice",gimmickId:"AUTHENTIC",primaryStyle:"TECHNICAL",
    secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
-  contracts:[],teams:[],stables:[],connections:[],history:[]};
+  contracts:[{promotionId:"aew",promotion:"AEW",isYours:true,
+   family:"EXCLUSIVE",role:"MAIN_EVENT",remainingDates:null,
+   startWeekIndex:52,expiresWeekIndex:70,weeklyGuarantee:1000,
+   appearanceFee:0,creativeControl:"NONE"}],
+  teams:[],stables:[],connections:[],history:[]};
  const career={personId:"alice",summary:{matches:3,wins:2,losses:1,singles:3,
   tag:0,ratedMatches:3,averageStars:3.25,bestStars:4.0,injuries:1},
   injuryHistory:[{showId:"show-2",matchId:"main",year:2,week:3,
@@ -55,8 +59,20 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await page.route("**/api/card",route=>{
   const req=route.request().postDataJSON() as {method:string};
   calls.push(req.method);
+  const contractView={year:2,week:4,worldRevision:4,canEdit:true,
+   currentWeekIndex:55,roster:[{personId:"alice",contractId:"deal-alice",
+    name:"Alice",family:"EXCLUSIVE",remainingDates:null,weeksRemaining:15,
+    expiresWeekIndex:70,weeklyGuarantee:1000,appearanceFee:0,
+    roleExpectation:"MAIN_EVENT",creativeControl:"NONE",
+    renewalArranged:false,pendingNegotiation:false,pendingRenewal:false,
+    needsAttention:false,expiringSoon:false,reason:null,
+    additionalDatesEligible:false,renewalEligible:false}],
+   requests:[],renewals:[],offers:[],
+   summary:{signed:1,expiringSoon:0,noDates:0,
+    pendingNegotiations:0,pendingRenewals:0,pendingOffers:0,weeklyGuarantees:1000}};
   return route.fulfill({json:req.method==="wrestlerDirectory"?directory:
-   req.method==="wrestlerProfile"?dossier:req.method==="wrestlerCareer"?career:{}});
+   req.method==="wrestlerProfile"?dossier:req.method==="wrestlerCareer"?career:
+   req.method==="contracts"?contractView:{}});
  });
  await page.goto("/#/roster");
  const cards=page.locator(".ppw-directory-card .ppw-wrestler-card");
@@ -88,7 +104,8 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Open show planner"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Talk in Backstage"})).toBeVisible();
- await expect(dialog.getByText(/actual show week/)).toHaveCount(0);
+ await expect(dialog.getByText(/actual show week/)).toBeVisible();
+ await expect(dialog.getByRole("button",{name:"Manage contract"}).first()).toBeVisible();
   // The compact Overview may fit without scrolling. The detail tabs must
   // remain reachable, and tall Career must own the iOS scroll viewport.
   for(const width of [320,390]){
@@ -147,4 +164,21 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await dialog.getByRole("button",{name:"‹ Back"}).click();
  await expect(dialog).toHaveCount(0);
  expect(calls.filter(x=>x==="wrestlerDirectory")).toHaveLength(before);
+ // Management opens the selected contract, not a second list to search.
+ await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
+ await dialog.getByRole("button",{name:"Manage contract"}).first().click();
+ await expect(dialog.getByRole("heading",{name:"Contract Desk"})).toBeVisible();
+ await expect(dialog.getByLabel("Search roster contracts")).toHaveValue("Alice");
+ await expect(dialog.locator(".ppw-contract-card")).toHaveCount(1);
+ await expect(dialog.locator(".ppw-contract-card")).toHaveAttribute("open","");
+ expect(calls.filter(x=>x==="contracts")).toHaveLength(1);
+ await dialog.getByRole("button",{name:/Back to booking/}).click();
+ await expect(dialog).toHaveCount(0);
+ expect(calls.filter(x=>x==="wrestlerDirectory")).toHaveLength(before);
+ // Planned show route closes the old iOS fixed overlay.
+ await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ await dialog.getByRole("button",{name:"Open show planner"}).click();
+ await expect(page).toHaveURL(/#\/planner$/);
+ await expect(dialog).toHaveCount(0);
 });

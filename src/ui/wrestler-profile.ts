@@ -19,7 +19,7 @@ export interface WrestlerProfilePort{
   primaryStyle:string|null;secondaryStyle:string|null;
   signatureMoves:string[];finishingMoves:string[]}):Promise<Save>;
  openBackstage?(personId:string):void;
- openContracts?():void;
+ openContracts?(personId:string):void;
  openPlanner?():void;
  openProgrammes?():void;
  openTagTeams?():void;
@@ -143,7 +143,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   if(view.onYourRoster&&port.openBackstage)
    action("Talk in Backstage",()=>port.openBackstage?.(personId));
   if(ownAgreement&&port.openContracts)
-   action("Manage contract",()=>port.openContracts?.());
+   action("Manage contract",()=>port.openContracts?.(personId));
   if(actions.childElementCount)manage.append(actions);
   if(view.onYourRoster&&(port.openProgrammes||port.openTagTeams||port.openStables)){
    const creative=el("details","ppw-profile-manage-more");
@@ -279,7 +279,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     ));
    }
    if(view.onYourRoster&&port.openContracts)contract.append(button(
-    "Manage contract",()=>port.openContracts?.()));
+    "Manage contract",()=>port.openContracts?.(personId)));
   }else contract.append(el("p","ppw-profile-muted",
    "Not signed to your promotion. Review current availability in Talent Market."));
   if(view.contracts.length){
