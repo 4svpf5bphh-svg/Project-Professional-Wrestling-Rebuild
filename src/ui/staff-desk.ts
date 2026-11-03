@@ -42,7 +42,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
  let days=new Set<number>(),venues=new Set<string>(),requestId="";
  let department:StaffRole="ROAD_AGENT",termWeeks:52|104=52;
  let confirming="",renewing="";
- let pane:"MEETINGS"|"TEAM"|"CONTRACTS"|"MARKET"="MEETINGS";
+ let pane:"MEETINGS"|"TEAM"|"MARKET"="MEETINGS";
  const offers=new Map<string,number>();
  const hydrate=(v:StaffView)=>{
   view=v;fallback=v.allowUnfinishedFallback;logistics=v.allowLogisticsFallback;
@@ -150,37 +150,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const nav=el("nav","ppw-staff-nav");
   nav.setAttribute("aria-label","Staff Office sections");
   for(const [key,label] of [
-   ["MEETINGS","Meetings"],["TEAM","My Staff"],
-   ["CONTRACTS","Contracts"],["MARKET","Staff Market"]
+   ["MEETINGS","Meetings"],["TEAM","My Staff"],["MARKET","Staff Market"]
   ] as const){
    const tab=button(label,()=>{pane=key;render();});
    tab.setAttribute("aria-current",pane===key?"page":"false");
    nav.append(tab);
   }
   root.append(nav);
-  // A manager sees up to three actual issues, not nine equally loud reports.
-  // The full meeting is retained below on demand; no additional server reads.
-  if(pane==="MEETINGS"&&(view.notices?.length??0)>0){
-   const agenda=el("section","ppw-staff-panel ppw-staff-agenda");
-   agenda.append(el("span","ppw-staff-kicker","NEEDS YOUR ATTENTION"),
-    el("h2","","Manager's priorities"));
-   for(const item of view.notices.slice(0,3)){
-    const line=el("article","ppw-staff-agenda-item");
-    line.append(el("strong","",item.department),el("p","",item.message));
-    if(item.target==="contracts"&&port.openContracts)
-     line.append(button("Review contracts →",()=>port.openContracts?.()));
-    if(item.target==="programmes"&&port.openProgrammes)
-     line.append(button("Review programmes →",()=>port.openProgrammes?.()));
-    if(item.target==="roster"&&port.openRoster)
-     line.append(button("Review roster →",()=>port.openRoster?.()));
-    if(item.target==="market"&&port.openMarket)
-     line.append(button("Browse Talent Market →",()=>port.openMarket?.()));
-    if(item.target==="staff")
-     line.append(button("Review staff →",()=>{pane="TEAM";render();}));
-    agenda.append(line);
-   }
-   root.append(agenda);
-  }
   const meeting=el("section","ppw-staff-panel ppw-staff-meetings");
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
@@ -197,6 +173,15 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    slot.append(el("p","ppw-staff-dialogue",
     staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
      personality:brief.personality,message:brief.message})));
+   // Each specialist provides practical context rather than a generic alert.
+   if(brief.role==="TALENT_MANAGER")slot.append(el("p","ppw-staff-meeting-context",
+    "Contract renewals: "+(view.autoRenewSameTerms?"automatic same-terms offers enabled":"manager approval required")+
+    ". Check future show dates before rebooking talent."));
+   if(brief.role==="ROAD_AGENT")slot.append(el("p","ppw-staff-meeting-context",
+    "Gorilla policy: "+gorillaPolicy.replaceAll("_"," ").toLowerCase()+
+    ". Your scripted winners and finishes remain protected."));
+   if(brief.role==="SCOUT")slot.append(el("p","ppw-staff-meeting-context",
+    (view.scoutReport?.length??0)+" specific scouting leads currently available."));
    if(brief.role==="SCOUT"&&view.scoutReport?.length){
     for(const prospect of view.scoutReport){
      const item=el("div","ppw-staff-scout-pick");
@@ -259,7 +244,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   const teamRows=el("div","ppw-staff-team-list");
   for(const role of STAFF_ROLES){
    const member=view.employees.find(e=>e.role===role);
-   if(pane==="CONTRACTS"&&!member)continue;
+
    const item=el("article","ppw-staff-role-row");
    item.append(el("span","ppw-staff-manager-avatar",member?
     member.name.split(" ").slice(0,2).map(w=>w[0]).join(""):"＋"));
@@ -269,17 +254,16 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("span","",member?
      member.personality+" · "+member.specialism+" · "+money(member.weeklySalary)+"/wk":
      "Basic cover · no weekly staff wage"));
-   if(member&&pane!=="CONTRACTS")detail.append(el("span","",
+   if(member)detail.append(el("span","",
     "CRAFT "+member.craft+"  ·  PEOPLE "+member.people+
     "  ·  RELIABILITY "+member.reliability+
     "  ·  MORALE "+member.morale+"/100  ·  "+member.weeksRemaining+" weeks left"));
-   if(member&&pane==="CONTRACTS")detail.append(el("span","",
+   if(member)detail.append(el("span","",
     member.weeksRemaining+" weeks remaining · "+
     money(member.weeklySalary)+" per week · "+
     money(member.buyoutCost)+" buyout"));
    item.append(detail);
    if(member){
-    if(pane==="CONTRACTS"){
     const actions=el("div","ppw-staff-actions");
     if(member.weeksRemaining<=13){
      if(renewing===member.employmentId){
@@ -300,23 +284,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     }else actions.append(button("Release",()=>{confirming=member.employmentId;render();},
      saving||!view.canEdit));
     item.append(actions);
-    }else item.append(staffDossier(member));
+    item.append(staffDossier(member));
    }else item.append(button("Recruit",()=>{
     department=role;pane="MARKET";render();
    }));
    teamRows.append(item);
   }
   team.append(teamRows);
-  if(pane==="CONTRACTS"){
-   team.classList.add("ppw-staff-contract-ledger");
-   team.querySelector("h2")!.textContent="Contract decisions";
-   team.querySelector(".ppw-staff-muted")!.textContent=
-    "Employed staff only. Renewals and buyouts have real weekly payroll consequences; vacancies are managed under My Staff.";
-   team.insertBefore(el("p","ppw-staff-contract-total",
-    view.employees.length+" active agreements · "+money(view.weeklyPayroll)+"/week committed"),
-    teamRows);
-  }
-  if(pane==="TEAM"||pane==="CONTRACTS")root.append(team);
+  if(pane==="TEAM")root.append(team);
   const market=el("section","ppw-staff-panel ppw-staff-market");
   market.id="ppw-staff-market";
   market.append(el("span","ppw-staff-kicker","SHARED WORLD TALENT"),

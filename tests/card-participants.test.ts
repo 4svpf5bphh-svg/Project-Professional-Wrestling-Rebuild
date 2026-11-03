@@ -16,3 +16,12 @@ test("malformed slots cannot silently waive appearance charges",()=>{
   assert.throws(()=>appearancesFromSlots([{wrestlers:["a"]}]),/missing participants/);
   assert.throws(()=>appearancesFromSlots([{participants:[{personId:"a"}]}]),/Invalid participant contract/);
 });
+
+test("pre-recorded videos do not cost contracted live dates",()=>{
+ const video={kind:"VIDEO_PACKAGE",participants:[{personId:"a",contractId:"ca"}]};
+ assert.deepEqual(appearancesFromSlots([video]),[]);
+ assert.deepEqual(uniqueShowAppearances(appearancesFromSlots([
+  video,{kind:"MATCH",participants:[{personId:"a",contractId:"ca"}]},
+  {kind:"PROMO",participants:[{personId:"b",contractId:"cb"}]}
+ ])),[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}]);
+});

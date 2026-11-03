@@ -56,6 +56,7 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(business.recurringMargin,325000-60000-business.weeklyGuarantees);
   assert.equal(business.lastWeeklyNet,0);
   assert.equal(business.shows.length,0);
+  assert.deepEqual(business.competitorBroadcasts,[],"No fabricated rival viewing figures before certified shows");
   assert.equal(business.territories.length,4);
   assert.equal(business.territories[0]!.isHome,true);
   assert.equal(business.territories[0]!.name,"Territory 0");
@@ -63,8 +64,8 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(business.territories[0]!.rivalLiveStrength,57);
   assert.ok(business.territories.every(t=>t.strongestRival!==null),
    "Known rivals use already recorded territory populations, never guesses");
-  const budget=meter.assertBudget({maxQueries:3,maxResultBytes:12000});
-  assert.equal(budget.queryCount,3);
+  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:12000});
+  assert.equal(budget.queryCount,4);
   assert.ok(budget.resultRows<=6);
   const actorRead=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},"business",{
    worldId:world,promotionId:promotion,playerId:"forged"}) as unknown as

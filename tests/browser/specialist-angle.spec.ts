@@ -286,7 +286,7 @@ test("iPhone booker can add an unsaved feud-linked recommended angle without aut
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
  await expect(dialog.getByLabel("Creative direction")).toHaveValue("CHALLENGE");
- await expect(dialog.getByLabel("Storyline / programme")).toHaveValue("gunns-rivalry");
+ await expect(dialog.getByLabel("Storyline (optional)")).toHaveValue("gunns-rivalry");
  await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
  expect(methods).toEqual(["planner","load"]);
  expect(methods).not.toContain("save");
@@ -397,13 +397,11 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByRole("button",{name:"Browse Special Moments"}).click();
- await expect(dialog.getByLabel("Special Moment")).toBeVisible();
- await expect(dialog.getByLabel("Special Moment").locator("option:disabled")).toHaveCount(1);
- await dialog.getByLabel("Special Moment").selectOption("MOMENT_VEHICLE_HOSING");
+ await expect(dialog.getByLabel("Angle type").locator('option[value="MOMENT_VEHICLE_HOSING"]')).toHaveCount(1);
+ await dialog.getByLabel("Angle type").selectOption("MOMENT_VEHICLE_HOSING");
  await expect(dialog.getByLabel("Exact location")).toHaveValue("RINGSIDE");
  await expect(dialog.getByLabel("Exact location").locator("option",{hasText:"Arena car park"})).toHaveCount(0);
- await dialog.getByLabel("Special Moment").scrollIntoViewIfNeeded();
+ await dialog.getByLabel("Angle type").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-special-moment-390.png",
   fullPage:true,animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
@@ -412,8 +410,7 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Vehicle hosedown"})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByRole("button",{name:"Browse Special Moments"}).click();
- await expect(dialog.getByLabel("Special Moment")).toHaveValue("MOMENT_VEHICLE_HOSING");
+ await expect(dialog.getByLabel("Angle type")).toHaveValue("MOMENT_VEHICLE_HOSING");
  expect(methods.filter(x=>x==="kpWorkspace")).toHaveLength(2);
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
 });

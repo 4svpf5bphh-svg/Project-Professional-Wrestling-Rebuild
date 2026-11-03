@@ -5,6 +5,9 @@ import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import type {StaffRole} from "../domain/world-staff.js";
 export type WrestlerDirectoryData=Awaited<ReturnType<typeof readWrestlerDirectory>>;
 export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
@@ -62,9 +65,21 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const label=el("label","ppw-directory-field",caption);
   const input=document.createElement("input");
   input.type="number";input.inputMode="numeric";input.min=String(min);
-  input.max=String(max);input.value=String(initial);
+  input.max=String(max);input.step="1";input.value=String(initial);
   input.setAttribute("aria-label",caption);
-  input.onchange=()=>onchange(Number(input.value));
+  // Whole weeks/dates and non-negative costs: do not crash the live
+  // calculator while a mobile number field is being edited.
+  const apply=(final:boolean)=>{
+   // A cleared field is temporary while typing; clamp on blur.
+   if(!input.value.trim()&&!final)return;
+   const raw=Number(input.value);
+   const valid=Number.isFinite(raw)?
+    Math.min(max,Math.max(min,Math.round(raw))):min;
+   if(final)input.value=String(valid);
+   onchange(valid);
+  };
+  input.oninput=()=>apply(false);
+  input.onchange=()=>apply(true);
   label.append(input);box.append(label);
  };
  const selection=<T extends string>(caption:string,options:readonly (readonly [T,string])[],
@@ -136,19 +151,99 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["FULL_APPROVAL","Full approval"]
   ] as const,draft.creative,next=>{draft.creative=next;pendingKey="";}));
   const fields=el("div","ppw-directory-offer-fields");
-   const quote=el("p","ppw-directory-muted ppw-directory-offer-quote");
+   const quote=el("section","ppw-directory-contract-estimate");
+   const affordability=el("section","ppw-directory-affordability");
+   const adviser=el("details","ppw-directory-adviser") as HTMLDetailsElement;
+   adviser.append(el("summary","","Talent Manager · contract advice"));
+   const adviserContents=el("div","ppw-directory-adviser-content");
+   adviser.append(adviserContents);
    const updateQuote=()=>{
     const weeks=draft.family==="ONE_OFF"?1:draft.weeks;
     const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
     const appearance=draft.family==="EXCLUSIVE"?0:draft.appearance;
     const dates=draft.family==="ONE_OFF"?1:draft.family==="EXCLUSIVE"?0:draft.dates;
-    quote.textContent="If accepted: "+money(guarantee)+"/week guaranteed ("+
-     money(guarantee*weeks)+" over "+weeks+" weeks), "+
-     money(draft.bonus)+" signing bonus"+
-     (draft.family==="EXCLUSIVE"?". No per-appearance fee.":
-      ", plus "+money(appearance)+" only when booked ("+
-      money(appearance*dates)+" if all "+dates+" dates are used).")+
-     " These are future liabilities, not charges for submitting the offer.";
+    const projection=forecastContractCost({weeks,dates,weeklyGuarantee:guarantee,
+     appearanceFee:appearance,signingBonus:draft.bonus});
+    quote.replaceChildren();
+    const costHeading=el("div","ppw-directory-contract-estimate-top");
+    costHeading.append(el("span","","PLANNED FULL-TERM COST"),
+     el("strong","",money(projection.plannedFullTermCost)));
+    quote.append(costHeading);
+    const breakdown=el("div","ppw-directory-contract-breakdown");
+    const costRow=(title:string,amount:number)=>{
+     const row=el("div","ppw-directory-contract-cost-row");
+     row.append(el("span","",title),el("strong","",money(amount)));
+     breakdown.append(row);
+    };
+    costRow(weeks+" week"+(weeks===1?"":"s")+" × "+money(guarantee)+
+     " guaranteed wages",projection.guaranteedWages);
+    if(dates>0)costRow(dates+" date"+(dates===1?"":"s")+" × "+money(appearance)+
+     " appearance fee",projection.plannedAppearanceFees);
+    costRow("One-time signing bonus",projection.oneTimeBonus);
+    quote.append(breakdown,el("p","ppw-directory-contract-assumption",
+     dates>0?
+      "Planning assumes all "+dates+" purchased date"+(dates===1?" is":"s are")+
+      " used during the "+weeks+"-week contract. Appearance fees are charged only "+
+      "when booked; unused dates expire. Nothing is charged for submitting an offer.":
+      "Includes all guaranteed wages and the one-time bonus. Actual income, "+
+      "show costs and wrestler acceptance are separate."));
+    affordability.replaceChildren();
+    const company=view?.offerBudget;
+    if(company){
+     affordability.append(el("strong","","What this does to your company"));
+     const reservedCash=company.cash-draft.bonus;
+     const wageRoom=company.weeklyWageLimit===null?null:
+      company.weeklyWageLimit-company.weeklyGuarantees-guarantee;
+     const baseline=company.weeklyIncome===null||company.weeklyOverhead===null?null:
+      company.weeklyIncome-company.weeklyOverhead-
+      company.weeklyGuarantees-company.weeklyStaffPayroll;
+     const postMargin=baseline===null?null:baseline-guarantee;
+     // The full contract cost already sits immediately above this panel.
+     // Only show the four implications that change a managerial decision.
+     const lines:[string,string][]=[
+      ["Cash after signing bonus",money(reservedCash)],
+      ["Weekly wage headroom",wageRoom===null?
+       "No spending plan":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
+      ["Recurring margin after signing",postMargin===null?
+       "Not yet configured":money(postMargin)],
+      ["Average planned weekly cost, all terms",money(projection.averageWeeklyCost)]
+     ];
+     for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
+      row.append(el("span","",title),el("strong","",value));affordability.append(row);}
+     if(wageRoom!==null&&wageRoom<0||company.cashReserve!==null&&
+      reservedCash<company.cashReserve||postMargin!==null&&postMargin<0){
+      affordability.dataset.risk="true";
+      affordability.append(el("p","ppw-directory-affordability-warning",
+       "This offer exceeds a spending limit or your recurring income. "+
+       "You can still propose it, but consider adjusting the terms."));
+     }else affordability.dataset.risk="false";
+     affordability.append(el("small","ppw-directory-muted",
+      "Recurring margin excludes future ticket sales and appearance fees. The "+
+      "full-term forecast above includes every purchased date."));
+     adviserContents.replaceChildren();
+     if(company.hasTalentManager){
+      const messages=contractStaffNotes({
+       weeklyGuarantee:guarantee,weeks,appearanceFee:appearance,dates,
+       signingBonus:draft.bonus,cash:company.cash,cashReserve:company.cashReserve,
+       weeklyGuarantees:company.weeklyGuarantees,
+       wageLimit:company.weeklyWageLimit,recurringMargin:baseline
+      },new Set<StaffRole>(["TALENT_MANAGER"]));
+      const concerns=messages.filter(x=>x.level==="WATCH").length;
+      adviser.firstElementChild!.textContent=concerns?
+       "Talent Manager · "+concerns+" concern"+(concerns===1?"":"s"):
+       "Talent Manager · offer advice";
+      for(const m of messages){
+       const item=el("div","ppw-directory-adviser-note");
+       item.dataset.level=m.level;
+       item.append(el("strong","",m.title),el("p","",m.message));
+       adviserContents.append(item);
+      }
+     }else{
+      adviser.firstElementChild!.textContent="Your finance checklist";
+      adviserContents.append(el("p","ppw-directory-muted",
+       "This is a projection of current costs. Hire a Talent Manager to get additional contract guidance and renewal support."));
+     }
+    }
    };
    updateQuote();
   if(draft.family!=="ONE_OFF")numbers(fields,"Weeks (1–52)",
@@ -162,7 +257,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  editor.append(fields,quote,btn(sending?"Sending…":"Submit offer",
+  editor.append(fields,quote,affordability,adviser);
+  if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
+  editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
   return editor;
  }

@@ -46,7 +46,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  // Actual currency values must stay visible inside the iPhone viewport.
  // This covers the finance screenshot regression, not only the data payload.
  await page.getByText("View weekly income and commitments").click();
- const figures=page.locator(".ppw-business-line>strong");
+ const figures=page.locator(".ppw-business-breakdown .ppw-business-line>strong");
  await expect(figures).toHaveCount(6);
  const amounts=await figures.allTextContents();
  expect(amounts).toContain("US$300,000");
@@ -115,6 +115,16 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
  await page.getByRole("spinbutton",{name:"Weekly wrestler wages"}).fill("75000");
  await page.getByRole("spinbutton",{name:"Talent per show"}).fill("150000");
  await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
+ await page.locator(".ppw-business-signing-check > summary").click();
+ const scenario=page.locator(".ppw-business-signing-check");
+ await scenario.getByRole("spinbutton",{name:"Contract weeks"}).fill("10");
+ await scenario.getByRole("spinbutton",{name:"Planned appearances"}).fill("5");
+ await scenario.getByRole("spinbutton",{name:"Weekly guarantee"}).fill("2000");
+ await scenario.getByRole("spinbutton",{name:"Appearance fee per show"}).fill("9000");
+ await scenario.getByRole("spinbutton",{name:"Signing bonus"}).fill("3000");
+ await expect(scenario).toContainText("68,000");
+ await expect(scenario).toContainText("45,000");
+ await expect(scenario).toContainText("6,800");
  await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
  await page.getByRole("button",{name:"Save spending plan"}).click();
  await expect.poll(()=>methods.includes("setSpendingPlan"),{

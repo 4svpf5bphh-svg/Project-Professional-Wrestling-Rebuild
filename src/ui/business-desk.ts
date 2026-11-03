@@ -3,6 +3,7 @@ import {commercialCompanyName,COMMERCIAL_COMPANIES} from "../domain/commercial-o
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -202,6 +203,19 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const bank=el("div","ppw-business-budget-bank");
    bank.append(el("span","","Cash in the bank"),el("strong","",money(view.cash)));
    budget.append(bank);
+   const compass=el("section","ppw-business-compass");
+   compass.append(el("h3","","What the company can afford"),
+    el("p","ppw-business-muted","These are guaranteed weekly commitments, before uncertain ticket sales and show costs."));
+   const costs=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+view.weeklyStaffPayroll;
+   const receipts=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
+   for(const [label,value] of [
+    ["Guaranteed broadcast + sponsor income",receipts],
+    ["Overhead + talent + staff each week",-costs],
+    ["Recurring room before live shows",receipts-costs]
+   ] as const){const line=el("div","ppw-business-line");
+    line.append(el("span","",label),el("strong",tone(value),money(value)));compass.append(line);}
+   if(port.openContracts)compass.append(button("Review wrestler contracts →",()=>port.openContracts?.()));
+   budget.append(compass);
    const fields=el("div","ppw-business-budget-fields");
    const preview=el("div","ppw-business-budget-preview");
    const save=button("Save spending plan",()=>void saveSpendingPlan());
@@ -228,11 +242,73 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.min="0";input.max="1000000000";input.step="1000";
     input.inputMode="numeric";input.value=String(plan[key]);
     input.setAttribute("aria-label",label);
-    input.oninput=()=>{spendingDraft={...spendingDraft!,[key]:Number(input.value)};
+    input.oninput=()=>{spendingDraft={...(spendingDraft??plan),[key]:Number(input.value)};
      spendingNotice="";refreshPreview();};
     input.disabled=spendingBusy;field.append(input);fields.append(field);
    }
    budget.append(fields,preview);
+   const scenario=document.createElement("details");
+   scenario.className="ppw-business-signing-check";
+   scenario.append(el("summary","","Can I afford another wrestler?"));
+   scenario.append(el("p","ppw-business-muted",
+    "Try proposed terms here before offering a contract. This is a comparison, not an offer or guaranteed acceptance."));
+   const inputs=el("div","ppw-business-signing-inputs");
+   const status=el("p","ppw-business-signing-result");
+   const projections:{weeks:number;dates:number;weekly:number;fee:number;bonus:number}={
+    weeks:10,dates:5,weekly:0,fee:0,bonus:0
+   };
+   const update=()=>{
+    const forecast=forecastContractCost({
+     weeks:projections.weeks,dates:projections.dates,
+     weeklyGuarantee:projections.weekly,appearanceFee:projections.fee,
+     signingBonus:projections.bonus
+    });
+    const baseline=receipts-costs;
+    const activePlan=spendingDraft??plan;
+    const wageRoom=activePlan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
+    const remainingCash=view!.cash-projections.bonus;
+    const risk=wageRoom<0||remainingCash<activePlan.cashReserve||
+     baseline-projections.weekly<0;
+    status.replaceChildren();
+    status.append(el("strong","ppw-business-fullterm-cost",
+     "Planned full-term cost · "+money(forecast.plannedFullTermCost)));
+    const breakdownText=el("span","ppw-business-fullterm-detail",
+     money(forecast.guaranteedWages)+" wages across "+projections.weeks+
+     " weeks + "+money(forecast.plannedAppearanceFees)+" across "+
+     projections.dates+" planned appearances + "+
+     money(projections.bonus)+" one-time bonus.");
+    status.append(breakdownText,el("span","ppw-business-fullterm-detail",
+     "Average planned cost: "+money(forecast.averageWeeklyCost)+"/week. "+
+     "After signing bonus: "+money(remainingCash)+" cash; "+
+     (wageRoom>=0?money(wageRoom)+" wage headroom.":money(-wageRoom)+
+      " above your wage limit.")));
+    status.append(el("small","ppw-business-fullterm-caveat",
+     "Assumes all purchased dates are used. Appearance fees are only charged "+
+     "on booked shows, not when signing; ticket sales and other variable costs "+
+     "aren't forecast here."));
+    if(risk)status.append(el("small","ppw-business-fullterm-warning",
+     "Review your wage plan, cash reserve or recurring income before committing."));
+    status.dataset.risk=String(risk);
+   };
+   for(const [label,key,min,max] of [
+    ["Contract weeks","weeks",1,52],
+    ["Planned appearances","dates",0,104],
+    ["Weekly guarantee","weekly",0,1000000000],
+    ["Appearance fee per show","fee",0,1000000000],
+    ["Signing bonus","bonus",0,1000000000]
+   ] as const){
+    const field=el("label","ppw-business-budget-field");
+    field.append(el("span","",label));const input=document.createElement("input");
+    input.type="number";input.inputMode="numeric";input.min=String(min);
+    input.max=String(max);input.value=String(projections[key]);
+    input.oninput=()=>{
+     const value=Math.min(max,Math.max(min,Math.floor(Number(input.value)||0)));
+     projections[key]=value;
+     update();
+    };
+    field.append(input);inputs.append(field);
+   }
+   scenario.append(inputs,status);budget.append(scenario);update();
    if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
     "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
@@ -595,6 +671,28 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     }
     section.append(audience);
    }
+   const comparison=el("section","ppw-business-broadcast-comparison");
+   comparison.append(el("h3","","How the industry is performing"),
+    el("p","ppw-business-muted","Latest certified TV episode per promotion from the last six weeks. Ratings are household estimates, not crowd scores."));
+   const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+   const rivals=view.competitorBroadcasts??[];
+   if(!rivals.length)comparison.append(el("p","ppw-business-muted","No competitor TV broadcasts have certified yet."));
+   for(const episode of rivals.slice(0,15)){
+    const row=el("article","ppw-business-broadcast-row");
+    if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
+    const info=el("div","");
+    info.append(el("strong","",episode.name+(episode.isYours?" · YOUR SHOW":"")),
+     el("span","",episode.showName+" · "+(days[(episode.day??0)-1]??"Broadcast day unavailable")+
+      " · Y"+episode.year+" W"+episode.week),
+     el("small","",episode.networkOfferCode?
+      commercialCompanyName(episode.networkOfferCode):"No broadcast partner recorded"));
+    const numbers=el("div","ppw-business-broadcast-numbers");
+    numbers.append(el("strong","",episode.householdRating.toFixed(1)),
+     el("small","",episode.estimatedViewers===null?"Viewers unreported":
+      episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+    row.append(info,numbers);comparison.append(row);
+   }
+   section.append(comparison);
    const active=view.commercialAgreements;
    if(active.length)section.append(el("h3","","Current agreements"));
    for(const deal of active){

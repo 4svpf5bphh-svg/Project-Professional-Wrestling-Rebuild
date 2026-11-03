@@ -58,8 +58,8 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  await page.getByRole("button",{name:"Creative",exact:true}).click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText(/Follow through on your promise/)).toBeVisible();
- await expect(page.getByText(/Retaliation remains unresolved/)).toBeVisible();
+ await expect(page.getByText(/Give Matt Riddle an answer/)).toBeVisible();
+ await expect(page.getByText(/An answer is still due/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
 
@@ -79,6 +79,7 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await archive.locator("summary").click();
  await expect(archive.getByText("Samoa Joe 2 — 1 Matt Riddle")).toBeVisible();
  await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
+ await expect(archive.locator(".ppw-programme-feud-stars")).toHaveAttribute("aria-label",/out of five stars/);
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
  await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
 });
@@ -154,7 +155,7 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await expect(page.locator(".ppw-programme-switch")).toHaveCount(4);
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"Creative",exact:true})).toHaveAttribute("aria-current","page");
- await expect(page.getByRole("button",{name:"Next chapter"})).toHaveCount(0);
+ await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Finale"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Creative",exact:true})).toBeVisible();

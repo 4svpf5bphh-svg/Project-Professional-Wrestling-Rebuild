@@ -23,6 +23,7 @@ import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {creativeReviewsInTransaction} from "./match-creative-consent.js";
+import {worldStaff} from "../domain/world-staff.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
@@ -43,6 +44,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean;within_window:boolean;broadcast_package:string|null;
+ advisers?:{role:string;staffId:string}[];
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
@@ -72,6 +74,13 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
   "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
    "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
+   ...(includeTournament?[
+    "COALESCE((SELECT jsonb_agg(jsonb_build_object('role',e.role,'staffId',e.staff_id)",
+    "ORDER BY e.role) FROM ppw_staff_employments e",
+    "WHERE e.world_id=d.world_id AND e.promotion_id=d.promotion_id",
+    "AND e.status='ACTIVE' AND e.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,"
+   ]:[]),
    ...(includeTournament?[`
    (SELECT coalesce(jsonb_agg(jsonb_build_object(
     'tournamentId',bookable.tournament_id,
@@ -161,6 +170,7 @@ function boundedSlots(slots:readonly SlotRow[]){
 export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdentity){
  return withSqlClient(pool,async tx=>{
   const show=await readShowScope(tx,id,true);
+  const staffNames=new Map(worldStaff(show.seed).map(member=>[member.staffId,member.name]));
   const slots=boundedSlots(await tx.query<SlotRow>(
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
    " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
@@ -173,7 +183,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
    programme_id:string;heat:number|null;repetition:number;
-   activity_count:number;segment_count:number;label:string;follow_up:unknown}>([
+   activity_count:number;segment_count:number;label:string;follow_up:unknown;
+   cast:{personId:string;name:string}[];last_chapter:{kind:string;weekIndex:number;segmentKind:string|null;crowd:number}|null}>([
    "SELECT p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
@@ -192,7 +203,28 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "AND a.kind='SEGMENT'))",
    "FROM ppw_programme_postshow_directions d",
    "WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.programme_id=p.programme_id",
-   "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) AS follow_up",
+   "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) AS follow_up,",
+   "(SELECT jsonb_build_object('kind',last.kind,'weekIndex',last.week_index,",
+   "'crowd',last.crowd_response,'segmentKind',scene.payload->>'kind')",
+   "FROM ppw_programme_resolved_activities last",
+   "LEFT JOIN ppw_card_slots scene ON scene.world_id=last.world_id",
+   "AND scene.draft_id=last.show_id AND scene.slot_id=last.slot_id",
+   "AND scene.kind='SEGMENT'",
+   "WHERE last.world_id=$1 AND last.promotion_id=$2",
+   "AND last.programme_id=p.programme_id",
+   "ORDER BY last.week_index DESC,last.show_id DESC,last.slot_id DESC LIMIT 1)",
+   "AS last_chapter,",
+   "coalesce((SELECT jsonb_agg(DISTINCT jsonb_build_object('personId',chapter_cast.person_id,'name',person2.name))",
+   "FROM (SELECT ref.ref_id AS person_id FROM ppw_programme_side_refs ref",
+   "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
+   "AND ref.programme_id=p.programme_id AND ref.ref_kind='PERSON'",
+   "UNION ALL SELECT member.person_id FROM ppw_programme_side_refs ref",
+   "JOIN ppw_tag_team_members member ON member.world_id=ref.world_id",
+   "AND member.team_id=ref.ref_id AND member.active",
+   "WHERE ref.world_id=$1 AND ref.promotion_id=$2",
+   "AND ref.programme_id=p.programme_id AND ref.ref_kind='TEAM') chapter_cast",
+   "JOIN ppw_people person2 ON person2.world_id=$1",
+   "AND person2.person_id=chapter_cast.person_id),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
    "ON r.world_id=p.world_id AND r.promotion_id=p.promotion_id",
    "AND r.programme_id=p.programme_id",
@@ -311,6 +343,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    teamId:t.unit_id,name:t.name,members:t.members})),
    bookableTrios:bookableTrios.map(t=>({
     trioId:t.unit_id,name:t.name,members:t.members})),
+   advisers:(show.advisers??[]).map(member=>({...member,
+    name:staffNames.get(member.staffId)??null})),
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
@@ -340,7 +374,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
       }:null;
     return {programmeId:p.programme_id,label:p.label,heat:p.heat,
      repetition:p.repetition,activityCount:p.activity_count,
-     segmentCount:p.segment_count,latestFollowUp};
+     segmentCount:p.segment_count,latestFollowUp,
+     cast:p.cast??[],lastChapter:p.last_chapter??null};
    }),
    programmeLinks:links.filter(x=>x.kind==="SEGMENT")
     .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
@@ -611,7 +646,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Unlock each Special Moment with Kayfabe Points before booking it");
    }
    const appearances=uniqueShowAppearances([
-    ...booked,...runIns,...segments.flatMap(s=>readCardParticipants(s.payload))]);
+    ...booked,...runIns,...segments.filter(s=>(s.payload as {kind?:unknown}|null)?.kind!=="VIDEO_PACKAGE")
+     .flatMap(s=>readCardParticipants(s.payload))]);
    if(appearances.length>100)throw new Error("Show exceeds 100 unique wrestlers");
    const ids=appearances.map(p=>p.personId),contracts=appearances.map(p=>p.contractId);
    const week=(show.year-1)*52+show.week-1;

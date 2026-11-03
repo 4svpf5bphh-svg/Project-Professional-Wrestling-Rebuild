@@ -51,6 +51,13 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {view:"MARKET",search:"Wrestler 87",division:"WOMEN",limit:5});
   assert.deepEqual(young.people.map(x=>x.personId),["person-87"]);
   assert.equal(young.people[0]!.availability,"FREE_AGENT");
+  // Affordability shares the existing two-query directory read.
+  assert.equal(owned.offerBudget,null);
+  assert.equal(young.offerBudget?.cash,5_000_000);
+  assert.equal(young.offerBudget?.weeklyIncome,325_000);
+  assert.equal(young.offerBudget?.weeklyOverhead,60_000);
+  assert.ok((young.offerBudget?.weeklyGuarantees??0)>0);
+  assert.equal(young.offerBudget?.weeklyWageLimit,null);
   const blocked=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",search:"Wrestler 5"});
   assert.equal(blocked.people[0]!.availability,"EXCLUSIVE_ELSEWHERE");

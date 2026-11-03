@@ -59,3 +59,16 @@ test("official headline is not fed back verbatim as a fan's dialogue",()=>{
  assert.equal(posts.length,3);
  assert.ok(posts.every(p=>!p.text.includes(headline)));
 });
+
+test("new weekly broadcasts have more varied, still deterministic fictional fan voices",()=>{
+ const newer={...rumour,year:1,week:19};
+ const posts=projectHotTagNewsThread(newer);
+ assert.deepEqual(posts,projectHotTagNewsThread(newer));
+ assert.equal(posts.length,3);
+ assert.equal(new Set(posts.map(p=>p.text)).size,3);
+ const future=Array.from({length:50},(_,i)=>projectHotTagNewsThread({
+  ...newer,id:"next-week:"+i
+ })).flat();
+ assert.ok(future.some(p=>/conspiracy board|barber|car crash|anonymous source/i.test(p.text)),
+  "New stories draw from the larger fictional voice bank");
+});

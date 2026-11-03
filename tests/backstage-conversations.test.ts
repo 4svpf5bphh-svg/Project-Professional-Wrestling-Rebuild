@@ -119,3 +119,21 @@ test("wrestler-led rivalry pitch speaks about its own certified shows, not a fut
  assert.match(generic,/Matt Riddle/);
  assert.doesNotMatch(generic,/3 shows/);
 });
+
+test("new locker-room conversations have more voices without rewriting old messages",()=>{
+ const older={partnerName:"Morgan",createdWeekIndex:17};
+ const future={partnerName:"Morgan",createdWeekIndex:18};
+ for(const id of ["x01","x02","x03","x04","x05"]){
+  assert.equal(backstageMessage("PARTNERSHIP",older,id),
+   backstageMessage("PARTNERSHIP",{partnerName:"Morgan"},id),
+   "Previously issued conversations retain their original text");
+  assert.equal(backstageMessage("PARTNERSHIP",future,id),
+   backstageMessage("PARTNERSHIP",future,id),
+   "A new conversation cannot change just because the player reopens it");
+ }
+ const variations=new Set(Array.from({length:50},(_,i)=>
+  backstageMessage("PARTNERSHIP",future,"fresh-"+i)));
+ assert.ok(variations.size>=5,"Professional friction has more than three voices");
+ assert.ok([...variations].every(line=>line.includes("Morgan")),
+  "Relationship talk stays about the player's actual partner, not invented names");
+});

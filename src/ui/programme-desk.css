@@ -296,3 +296,40 @@
  line-height:1.15!important;white-space:nowrap!important;
  overflow-wrap:normal!important;word-break:normal!important;
  text-transform:none!important}
+
+/* Phase 23: one clear creative decision, compact concluded-feud scorecard. */
+.ppw-programme-feud-review{display:grid;grid-template-columns:auto 1fr;align-items:center;
+ gap:2px 12px;margin:12px 0;padding:12px;background:#102e42;border:1px solid #6486a5;
+ border-radius:12px}
+.ppw-programme-feud-stars{font-size:clamp(18px,5vw,27px);line-height:1.2;
+ color:#f7d276;letter-spacing:1px;white-space:nowrap;grid-row:span 2}
+.ppw-programme-feud-review>span{font-size:16px;font-weight:850;color:#fff1d4}
+.ppw-programme-feud-review>small{font-size:12px;color:#c8ddef;line-height:1.4}
+.ppw-programme-booking-idea{min-width:0}
+.ppw-programme-booking-idea .ppw-programme-action[aria-pressed=true]{background:#246549;color:#d1ffea}
+@media(max-width:375px){.ppw-programme-feud-review{grid-template-columns:1fr}
+ .ppw-programme-feud-stars{grid-row:auto}}
+
+/* Connected, compact certified rivalry timeline for narrow iPhone screens. */
+.ppw-programme-history-timeline{margin:0}
+.ppw-programme-history-timeline>summary{cursor:pointer;min-height:44px;padding:10px 0;
+ font-weight:800;color:#e4f3ff}
+.ppw-programme-timeline{position:relative;margin:10px 0 7px 9px;padding-left:22px;
+ border-left:2px solid #4d9dbe;display:grid;gap:0}
+.ppw-programme-timeline .ppw-programme-history-entry{position:relative;
+ display:flex;align-items:center;gap:10px;min-height:77px;padding:10px 0 10px 3px;
+ border:0;border-bottom:1px solid #34536b}
+.ppw-programme-timeline .ppw-programme-history-entry:before{content:"";position:absolute;
+ left:-30px;top:22px;width:12px;height:12px;border-radius:50%;
+ background:#f5c76b;border:2px solid #19283b;box-shadow:0 0 0 2px #4d9dbe}
+.ppw-programme-history-detail{display:grid;gap:2px;min-width:0;flex:1}
+.ppw-programme-history-detail small{font-size:10px;font-weight:850;letter-spacing:.07em;color:#94cee8}
+.ppw-programme-history-detail strong{font-size:14px;color:#fff2d6;line-height:1.3}
+.ppw-programme-history-detail span{font-size:12px;color:#c4d9e8;line-height:1.35}
+.ppw-programme-timeline .ppw-programme-history-entry .ppw-programme-action{
+ flex:none;width:auto;min-height:40px;margin:0;padding:7px 11px;
+ font-size:12px;white-space:nowrap;border-radius:9px}
+@media(max-width:390px){.ppw-programme-timeline .ppw-programme-history-entry{
+ flex-direction:row;align-items:center;gap:6px}
+ .ppw-programme-timeline .ppw-programme-history-entry .ppw-programme-action{
+ width:auto;font-size:11px;padding:7px}}

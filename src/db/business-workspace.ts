@@ -1,6 +1,6 @@
 /** Private promotion business desk. Original resolved finances only: current
  * canonical balances, paid commitments, settled show receipts and local market
- * strength. Three bounded SQL reads, no cloned finance snapshots or World blob.
+ * strength. Four bounded SQL reads, no cloned finance snapshots or World blob.
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
@@ -161,6 +161,30 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    ORDER BY is_home DESC,s.live_strength DESC,s.market_id LIMIT 41`,
    [worldId,promotionId]);
   if(territories.length>40)throw new Error("Territory reporting limit reached");
+  // Bounded certified broadcaster comparison; one episode per rival, five-week window.
+  const competitorBroadcasts=await tx.query<{
+   promotion_id:string;promotion_name:string;show_name:string|null;
+   show_day:number|null;year:number;week:number;household_rating:string;
+   estimated_viewers:string|null;network_offer_code:string|null;
+  }>(`
+   SELECT recent.* FROM (
+    SELECT DISTINCT ON (e.promotion_id) e.promotion_id,p.name AS promotion_name,
+     d.show_name,d.show_day,e.year,e.week,
+     e.tv_household_rating::text AS household_rating,
+     e.estimated_viewers::text AS estimated_viewers,
+     (SELECT agreement.offer_code FROM ppw_commercial_deals agreement
+      WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
+       AND agreement.kind='BROADCAST' AND agreement.status='ACTIVE'
+      ORDER BY agreement.start_week_index DESC LIMIT 1) AS network_offer_code
+    FROM ppw_show_economics e
+    JOIN ppw_promotions p ON p.world_id=e.world_id
+     AND p.promotion_id=e.promotion_id AND p.lifecycle='ACTIVE'
+    JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
+    WHERE e.world_id=$1 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
+     AND (e.year-1)*52+e.week-1 BETWEEN $2-5 AND $2
+    ORDER BY e.promotion_id,e.year DESC,e.week DESC,e.show_id DESC LIMIT 36
+   ) recent ORDER BY recent.household_rating::numeric DESC,recent.promotion_name LIMIT 20`,
+   [worldId,(w.year-1)*52+w.week-1]);
   const number=(v:string|null)=>v===null?null:Number(v);
   const weeklyMedia=number(w.weekly_media_income);
   const weeklySponsor=number(w.weekly_sponsor_income);
@@ -211,6 +235,12 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    financialDistress:w.financial_distress,
    spendingPlan:w.spending_plan,
    commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
+   competitorBroadcasts:competitorBroadcasts.map(e=>({
+    promotionId:e.promotion_id,name:e.promotion_name,showName:e.show_name??"Weekly show",
+    day:e.show_day,year:e.year,week:e.week,householdRating:Number(e.household_rating),
+    estimatedViewers:e.estimated_viewers===null?null:Number(e.estimated_viewers),
+    networkOfferCode:e.network_offer_code,isYours:e.promotion_id===promotionId
+   })),
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
    recentTransactions:w.finance_recent,

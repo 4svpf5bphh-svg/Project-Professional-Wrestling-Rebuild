@@ -386,27 +386,32 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     (p.championshipId?" · Championship stakes":"")));
    if(p.recentActivity.length){
     const history=document.createElement("details");
-    const header=document.createElement("summary");
-    header.textContent="Recent show history · "+p.recentActivity.length;
-    history.append(header);
+    history.className="ppw-programme-history-timeline";
+    history.append(element("summary","","Story timeline · "+p.recentActivity.length+" certified chapters"));
+    const entries=element("div","ppw-programme-timeline");
     for(const activity of p.recentActivity){
-     const week=Math.floor(activity.weekIndex/52)+1;
-     const number=activity.weekIndex%52+1;
+     const year=Math.floor(activity.weekIndex/52)+1;
+     const week=activity.weekIndex%52+1;
      const item=element("div","ppw-programme-history-entry");
-     item.append(element("span","ppw-muted",
-      "Year "+week+" · Week "+number+" · "+
-      (activity.kind==="MATCH"?"Match":"Angle")+" · Crowd "+
-      Math.round(activity.crowdResponse)+
-      (activity.kind==="MATCH"&&activity.winnerSide==="A"?
-       " · "+p.sideA.map(x=>x.name).join(" & ")+" won":
-       activity.kind==="MATCH"&&activity.winnerSide==="B"?
-       " · "+p.sideB.map(x=>x.name).join(" & ")+" won":"")));
-     if(port.openResults)item.append(button("Open show results",()=>{
-      port.openResults?.(activity.showId);
-     },working));
-     history.append(item);
+     const details=element("div","ppw-programme-history-detail");
+     const type=activity.kind==="MATCH"?"Match":(activity.segmentKind??"Angle")
+      .replaceAll("_"," ").toLowerCase();
+     const result=activity.kind==="MATCH"?(activity.winnerSide==="A"?
+      p.sideA.map(x=>x.name).join(" & ")+" won":activity.winnerSide==="B"?
+      p.sideB.map(x=>x.name).join(" & ")+" won":"Match completed"):
+      type.charAt(0).toUpperCase()+type.slice(1);
+     details.append(element("small","","YEAR "+year+" · WEEK "+week),
+      element("strong","",result),element("span","",
+       (activity.kind==="MATCH"?"Match":type)+
+       (activity.sceneLocation?" · "+activity.sceneLocation.replaceAll("_"," ").toLowerCase():"")+
+       " · Crowd "+Math.round(activity.crowdResponse)));
+     item.append(details);
+     if(port.openResults){const open=button("View show",()=>port.openResults?.(activity.showId),working);
+      open.setAttribute("aria-label","View show for Year "+year+" Week "+week);
+      item.append(open);}
+     entries.append(item);
     }
-    historyLane.append(history);
+    history.append(entries);historyLane.append(history);
    }
    // Optional creative guidance from the already-loaded immutable rivalry
    // record. Nothing is auto-booked or requested from the model.
@@ -432,29 +437,35 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
      element("h3","",note.headline),
      element("p","ppw-programme-staff-observation",note.observation));
-    const reasoning=document.createElement("details");
-    reasoning.className="ppw-programme-rationale";
-    reasoning.append(element("summary","","Why Creative suggests these"),
-     element("p","",note.suggestion));
-    sheet.append(reasoning);
     const ideas=element("div","ppw-programme-booking-ideas");
-    for(const idea of note.options){
+    // Independently derive the possible branches from the verified story,
+    // not the selected creative response. Saving one direction cannot mutate
+    // the other option labels or their explanations.
+    const paths=suggestProgrammeAdvice({
+     heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
+     matchCount:p.matchCount,segmentCount:p.segmentCount,
+     sideAWins:p.sideAWins,sideBWins:p.sideBWins,
+     championshipId:p.championshipId,
+     sideAName:p.sideA.map(x=>x.name).join(" & "),
+     sideBName:p.sideB.map(x=>x.name).join(" & "),
+     direction:null,directionStatus:"NONE",
+     recentKind:latest?.kind==="MATCH"?"MATCH":
+      latest?.kind==="SEGMENT"?"SEGMENT":null,
+     recentWinnerSide:latestMatch?.winnerSide??null
+    }).options;
+    for(const idea of paths){
      const item=element("article","ppw-programme-booking-idea");
      item.append(element("strong","",idea.label),element("p","",idea.plan));
      if(latestMatch&&view.canEdit){
-      const active=p.latestFollowUp?.choice===idea.choice&&
-       p.latestFollowUp.showId===latestMatch.showId&&
-       p.latestFollowUp.slotId===latestMatch.slotId;
-      const choose=button(active?"Direction recorded":"Choose this direction",
-       ()=>void saveDirection(p.programmeId,latestMatch.showId,
-        latestMatch.slotId,idea.choice),working||active);
-      choose.setAttribute("aria-pressed",String(active));
-      item.append(choose);
+      const active=p.latestFollowUp?.choice===idea.choice&&p.latestFollowUp?.showId===latestMatch.showId&&p.latestFollowUp?.slotId===latestMatch.slotId;
+      const choose=button(active?"Direction recorded":"Choose direction",()=>void saveDirection(p.programmeId,latestMatch.showId,latestMatch.slotId,idea.choice),working||active);
+      choose.setAttribute("aria-pressed",String(active));item.append(choose);
      }
      ideas.append(item);
     }
-    sheet.append(element("span","ppw-programme-eyebrow","THREE DIFFERENT PATHS"),ideas);
-    if(port.openPlanner)sheet.append(button("Open show planner →",port.openPlanner));
+    sheet.append(element("span","ppw-programme-eyebrow","OPTIONAL NEXT CHAPTER"),ideas);
+    sheet.append(element("small","ppw-muted","Your intention, not an automatic booking. The choices stay stable after saving."));
+    if(port.openPlanner)sheet.append(button("Book the next chapter →",port.openPlanner));
     advice.append(sheet);
    }
    creativeLane.append(advice);
@@ -672,8 +683,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      repetition:p.repetition,matchCount:p.matchCount,
      segmentCount:p.segmentCount,finaleCompleted:p.finale?.resolvedWeekIndex!=null,
      finaleCrowd:p.finale?.resolvedCrowdResponse??null});
-    archive.append(element("div","ppw-programme-feud-review",
-     "FEUD REVIEW · "+rating.grade+" · "+rating.verdict));
+    const stars=Math.max(1,Math.min(5,Math.round(rating.score/20)));
+    const review=element("div","ppw-programme-feud-review");
+    const graphic=element("strong","ppw-programme-feud-stars","★".repeat(stars)+"☆".repeat(5-stars));
+    graphic.setAttribute("aria-label",stars+" out of five stars");
+    review.append(graphic,element("span","",stars+"/5 · Grade "+rating.grade),element("small","",rating.verdict));
+    archive.append(review);
     if((p.wrestlerChanges?.length??0)>0){
      const impact=element("div","ppw-programme-impact");
      for(const person of p.wrestlerChanges){
