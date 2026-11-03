@@ -238,3 +238,12 @@
  .ppw-business-signing-inputs>.ppw-business-budget-field:last-child{grid-column:auto}
  .ppw-business-broadcast-row{grid-template-columns:1fr}
  .ppw-business-broadcast-numbers{text-align:left}}
+
+/* The same full-term projection as the contract offer, not a second formula. */
+.ppw-business-signing-check .ppw-business-signing-result{display:grid;gap:8px}
+.ppw-business-fullterm-cost{font-size:17px;line-height:1.35;color:#ffe5ae}
+.ppw-business-fullterm-detail{font-size:12px;line-height:1.5;color:#e1ecf1}
+.ppw-business-fullterm-caveat{font-size:11px;line-height:1.5;color:#b5cdd9}
+.ppw-business-fullterm-warning{font-size:12px;color:#ffd2a8;line-height:1.45}
+.ppw-business-signing-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ppw-business-signing-inputs>.ppw-business-budget-field:last-child{grid-column:auto}

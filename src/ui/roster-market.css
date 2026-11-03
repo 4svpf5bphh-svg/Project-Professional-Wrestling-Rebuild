@@ -175,3 +175,23 @@
 .ppw-directory-adviser-note[data-level="WATCH"]{border-color:#ffa95b}
 .ppw-directory-adviser-note strong{font-size:13px;color:#ffe9bb}
 .ppw-directory-adviser-note p{font-size:12px;line-height:1.45;margin:4px 0 0;color:#d5e3eb}
+
+/* Contract economics: full-term exposure first, straightforward arithmetic second. */
+.ppw-directory-contract-estimate{margin:15px 0 12px;padding:13px;
+ background:linear-gradient(110deg,#17394c,#122638 70%);
+ border:1px solid #63a5bc;border-radius:12px;min-width:0}
+.ppw-directory-contract-estimate-top{display:grid;gap:5px;padding-bottom:10px;
+ border-bottom:1px solid #41697b}
+.ppw-directory-contract-estimate-top>span{font-size:10px;font-weight:900;
+ letter-spacing:.11em;color:#b1e7ef}
+.ppw-directory-contract-estimate-top>strong{font-size:clamp(24px,7vw,31px);
+ color:#ffe3a6;font-variant-numeric:tabular-nums;line-height:1.15}
+.ppw-directory-contract-breakdown{display:grid;gap:3px;margin-top:9px}
+.ppw-directory-contract-cost-row{display:flex;align-items:flex-start;
+ justify-content:space-between;gap:12px;padding:5px 0;font-size:12px;
+ line-height:1.4;color:#d6e9f2}
+.ppw-directory-contract-cost-row>span{min-width:0}
+.ppw-directory-contract-cost-row>strong{color:#fff1d7;
+ white-space:nowrap;font-weight:800;font-variant-numeric:tabular-nums}
+.ppw-directory-contract-assumption{font-size:11px;line-height:1.45;
+ color:#a8cede;margin:10px 0 0}

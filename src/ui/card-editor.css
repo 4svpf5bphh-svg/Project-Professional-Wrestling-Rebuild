@@ -627,3 +627,62 @@ body>.ppw-card-edit-shade .ppw-angle-controls .ppw-field select{
 @media(max-width:375px){
  .ppw-card-crew-strip>summary,.ppw-card-advisor-notes>summary{font-size:12px}
 }
+
+/* Phase 23: information hierarchy, not a row of mini dashboard boxes. */
+.ppw-card-status-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px;
+ margin:5px 1px 9px;padding:0;font-size:12px;line-height:1.5;
+ color:#a9c4d5}
+.ppw-card-status-line strong{font-size:12px;color:#bbebda;font-weight:800}
+.ppw-card-status-line[data-state=UNSAVED] strong,
+.ppw-card-status-line[data-state=NEEDS_ATTENTION] strong{color:#ffe2ab}
+.ppw-card-status-line span{color:#b5c5d8}
+
+/* A single slim signpost on the card; the detailed advice is one tap deeper. */
+.ppw-card-crew-strip{margin:5px 0 10px;border:1px solid #415d74;
+ background:#142638;border-radius:11px;box-shadow:none}
+.ppw-card-crew-strip[data-level=watch]{border-color:#907650}
+.ppw-card-crew-strip>summary.ppw-card-crew-summary{display:flex;align-items:center;
+ min-height:43px;gap:9px;padding:8px 12px;list-style:none;color:#d6e7f1}
+.ppw-card-crew-summary::-webkit-details-marker{display:none}
+.ppw-card-crew-summary::marker{content:""}
+.ppw-card-crew-icon{display:grid;place-items:center;flex:0 0 23px;
+ width:23px;height:23px;background:#294862;border-radius:50%;
+ color:#bfe8ef;font-size:14px;font-weight:900}
+.ppw-card-crew-strip[data-level=watch] .ppw-card-crew-icon{
+ background:#704e2d;color:#ffe4aa}
+.ppw-card-crew-summary>strong{flex:1;min-width:0;font-size:12px;
+ line-height:1.4;color:#f2e5c7}
+.ppw-card-crew-cta{color:#9be0ec;font-size:11px;font-weight:750}
+.ppw-card-crew-strip[open] .ppw-card-crew-cta{color:#b3c4d4}
+.ppw-card-crew-list{gap:5px;padding:5px 9px 10px}
+.ppw-card-crew-list .ppw-card-crew-jump{border:0;
+ border-left:2px solid #a5cfe4;background:#182f43;
+ color:#dcecf7;padding:9px 10px;min-height:37px;font-size:12px}
+
+/* Tap a staff member to read their specific reasoning; collapse the rest. */
+.ppw-card-advisor-notes{background:#14283b;border-color:#4a6d85}
+.ppw-card-advisor-notes>summary.ppw-card-advisor-head{display:flex;gap:4px;
+ flex-direction:column;padding:10px 12px;list-style:none}
+.ppw-card-advisor-head::-webkit-details-marker{display:none}
+.ppw-card-advisor-head::marker{content:""}
+.ppw-card-advisor-eyebrow{color:#87d6e6;font-size:10px;font-weight:900;
+ letter-spacing:.10em}
+.ppw-card-advisor-head strong{color:#ffe4ad;font-size:13px}
+.ppw-card-advisor-list{gap:6px;padding:0 9px 9px}
+.ppw-card-advisor-item{border:1px solid #3d5b72;
+ background:#0e2134;border-radius:9px;overflow:hidden;min-width:0}
+.ppw-card-advisor-item[data-level=WATCH]{border-color:#917957}
+.ppw-card-advisor-item>summary.ppw-card-advisor-item-heading{padding:10px 12px;
+ list-style:none;cursor:pointer;display:grid;gap:3px;min-height:44px}
+.ppw-card-advisor-item-heading::-webkit-details-marker{display:none}
+.ppw-card-advisor-item-heading::marker{content:""}
+.ppw-card-advisor-item-heading .ppw-card-advisor-role{
+ font-size:10px;line-height:1.3;color:#96cfe0;letter-spacing:.06em}
+.ppw-card-advisor-item-heading strong{font-size:12px;color:#f3e8ca;
+ line-height:1.35}
+.ppw-card-advisor-item-heading::after{content:"›";float:right;
+ position:absolute;right:12px}
+.ppw-card-advisor-item-heading{position:relative;padding-right:27px!important}
+.ppw-card-advisor-item[open] .ppw-card-advisor-item-heading::after{content:"⌄"}
+.ppw-card-advisor-explanation{font-size:12px;line-height:1.5;
+ color:#d0e1ec;padding:1px 12px 11px;margin:0}

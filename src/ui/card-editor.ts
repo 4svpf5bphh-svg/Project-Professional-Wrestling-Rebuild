@@ -167,22 +167,28 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    else openAdvisorNotes.delete(slotId);};
   const urgent=notes.filter(x=>x.level==="WATCH").length;
   block.dataset.level=urgent?"watch":"info";
-  block.append(el("summary","",urgent?
-   "Crew advice · "+urgent+" concern"+(urgent===1?"":"s"):
-   "Crew advice · "+notes.length+" note"+(notes.length===1?"":"s")));
+  const heading=el("summary","ppw-card-advisor-head");
+  heading.append(el("span","ppw-card-advisor-eyebrow","YOUR CREW"),
+   el("strong","",urgent?
+    urgent+" thing"+(urgent===1?"":"s")+" to consider":
+    notes.length+" professional note"+(notes.length===1?"":"s")));
+  block.append(heading);
   const list=el("div","ppw-card-advisor-list");
   for(const n of notes){
-   const row=el("div","ppw-card-advisor-row");
-   row.dataset.level=n.level;
+   // Each voice starts as a one-line recommendation, not another paragraph.
+   const item=el("details","ppw-card-advisor-item") as HTMLDetailsElement;
+   item.dataset.level=n.level;
    const colleague=view?.advisers?.find(member=>member.role===n.role);
-   row.append(el("span","ppw-card-advisor-role",
+   const heading=el("summary","ppw-card-advisor-item-heading");
+   heading.append(el("span","ppw-card-advisor-role",
     n.role==="HOUSE"?"HOUSE SAFETY":
     (colleague?.name?colleague.name+" · ":"")+n.role.replaceAll("_"," ")),
-    el("strong","",n.title),el("p","",n.message));
-   list.append(row);
+    el("strong","",n.title));
+   item.append(heading,el("p","ppw-card-advisor-explanation",n.message));
+   list.append(item);
   }
   list.append(el("small","ppw-muted",
-   "Based on known roster condition and your draft. Not a guaranteed result or an instruction to change the card."));
+   "Advice from known conditions, not a guaranteed outcome. Your booking remains your decision."));
   block.append(list);return block;
  }
 
@@ -601,18 +607,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(!loading)root.append(button("Retry",()=>{void load();}));
    return;
   }
-  const summary=el("div","ppw-summary");
   const castReady=[...matches.values()].filter(x=>matchCastingReadiness(x).complete).length+
    [...segments.values()].filter(x=>angleCastingReadiness(x).complete).length;
-  summary.append(el("span","",matches.size+" matches"),
-   el("span","",segments.size+" angles"),
-   el("span","",[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0)+
-    " match minutes · "+[...segments.values()].reduce((n,a)=>n+a.durationMinutes,0)+" angle minutes"),
-   el("span","",order.length+" card slots"),
-   el("span","",castReady+" / "+order.length+" ready to book"),
-   el("span","",dirty?"Unsaved changes":view.ready?"Show confirmed":"Not confirmed"));
-  root.append(summary);
-  // One optional crew checklist for the card; no floating controls or extra RPC.
+  // The run-down already shows match/angle minutes. Repeating six pill counters
+  // adds noise on an iPhone. Show only the state that affects the next action.
+  const state=el("p","ppw-card-status-line");
+  const missing=Math.max(0,order.length-castReady);
+  state.dataset.state=dirty?"UNSAVED":view.ready?"CONFIRMED":
+   missing?"NEEDS_ATTENTION":"READY";
+  state.append(el("strong","",dirty?"Unsaved changes":
+   view.ready?"Show confirmed":
+   !order.length?"Start building your card":
+   missing?missing+" slot"+(missing===1?" needs":"s need")+" attention":
+   "Card ready to confirm"));
+  if(dirty||missing)state.append(el("span","",dirty&&missing?
+   " · "+missing+" slot"+(missing===1?" needs":"s need")+" attention":
+   dirty?" · Save before confirming":" · Finish casting to continue"));
+  root.append(state);
+  // One concise crew shortcut; individual notes live inside the relevant slot.
   const allNotes=order.flatMap(id=>slotNotes(id).map(n=>({id,n})));
   if(allNotes.length){
    const compact=el("details","ppw-card-crew-strip") as HTMLDetailsElement;
@@ -620,18 +632,28 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    compact.ontoggle=()=>{if(compact.open)openAdvisorNotes.add("overview");
     else openAdvisorNotes.delete("overview");};
    const urgent=allNotes.filter(x=>x.n.level==="WATCH").length;
-   compact.append(el("summary","",
-    urgent?"Your crew spotted "+urgent+" booking concern"+(urgent===1?"":"s"):
-     "Crew check · "+allNotes.length+" available notes"));
+   compact.dataset.level=urgent?"watch":"info";
+   const summary=el("summary","ppw-card-crew-summary");
+   summary.append(el("span","ppw-card-crew-icon",urgent?"!":"i"),
+    el("strong","",urgent?
+     "Crew heads-up · "+urgent+" concern"+(urgent===1?"":"s"):
+     "Crew check · "+allNotes.length+" note"+(allNotes.length===1?"":"s")),
+    el("span","ppw-card-crew-cta","Review"));
+   compact.append(summary);
    const content=el("div","ppw-card-crew-list");
-   for(const item of allNotes.filter(x=>x.n.level==="WATCH").slice(0,5)){
-    const slot=order.indexOf(item.id)+1;
-    content.append(button("Slot "+slot+" · "+item.n.title,()=>{
-     expanded=item.id;openAdvisorNotes.add(item.id);render();
-    }));
+   for(const id of order){
+    const issues=allNotes.filter(x=>x.id===id&&x.n.level==="WATCH");
+    if(!issues.length)continue;
+    const slot=order.indexOf(id)+1;
+    const label=matches.has(id)?matchLabel(matches.get(id)!):
+     (segments.get(id)?.kind??"Angle").replaceAll("_"," ").toLowerCase();
+    content.append(button("Slot "+slot+" · "+label+" · "+issues.length+
+     " concern"+(issues.length===1?"":"s"),()=>{
+     expanded=id;openAdvisorNotes.add(id);render();
+    },false,"ppw-card-crew-jump"));
    }
    if(!urgent)content.append(el("p","ppw-muted",
-    "No urgent concerns from available staff. Open a match or angle for their notes."));
+    "No major concerns identified. Open a match or angle to hear the notes."));
    compact.append(content);root.append(compact);
   }
 

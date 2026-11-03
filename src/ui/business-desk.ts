@@ -3,6 +3,7 @@ import {commercialCompanyName,COMMERCIAL_COMPANIES} from "../domain/commercial-o
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -253,24 +254,58 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     "Try proposed terms here before offering a contract. This is a comparison, not an offer or guaranteed acceptance."));
    const inputs=el("div","ppw-business-signing-inputs");
    const status=el("p","ppw-business-signing-result");
-   const projections:{weekly:number;fee:number;bonus:number}={weekly:0,fee:0,bonus:0};
+   const projections:{weeks:number;dates:number;weekly:number;fee:number;bonus:number}={
+    weeks:10,dates:5,weekly:0,fee:0,bonus:0
+   };
    const update=()=>{
+    const forecast=forecastContractCost({
+     weeks:projections.weeks,dates:projections.dates,
+     weeklyGuarantee:projections.weekly,appearanceFee:projections.fee,
+     signingBonus:projections.bonus
+    });
     const baseline=receipts-costs;
     const activePlan=spendingDraft??plan;
     const wageRoom=activePlan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
     const remainingCash=view!.cash-projections.bonus;
-    status.textContent="After signing: "+money(baseline-projections.weekly)+
-     "/week before shows · "+(wageRoom>=0?money(wageRoom)+" under":"Over by "+money(-wageRoom)+" on")+
-     " your wage limit · "+money(remainingCash)+" cash after the bonus. "+
-     (projections.fee>0?money(projections.fee)+" more each show you book them.":"No extra appearance fee.")+
-     (remainingCash<activePlan.cashReserve?" Your planned cash reserve would be breached.":"");
-    status.dataset.risk=String(wageRoom<0||remainingCash<activePlan.cashReserve||baseline-projections.weekly<0);
+    const risk=wageRoom<0||remainingCash<activePlan.cashReserve||
+     baseline-projections.weekly<0;
+    status.replaceChildren();
+    status.append(el("strong","ppw-business-fullterm-cost",
+     "Planned full-term cost · "+money(forecast.plannedFullTermCost)));
+    const costs=el("span","ppw-business-fullterm-detail",
+     money(forecast.guaranteedWages)+" wages across "+projections.weeks+
+     " weeks + "+money(forecast.plannedAppearanceFees)+" across "+
+     projections.dates+" planned appearances + "+
+     money(projections.bonus)+" one-time bonus.");
+    status.append(costs,el("span","ppw-business-fullterm-detail",
+     "Average planned cost: "+money(forecast.averageWeeklyCost)+"/week. "+
+     "After signing bonus: "+money(remainingCash)+" cash; "+
+     (wageRoom>=0?money(wageRoom)+" wage headroom.":money(-wageRoom)+
+      " above your wage limit.")));
+    status.append(el("small","ppw-business-fullterm-caveat",
+     "Assumes all purchased dates are used. Appearance fees are only charged "+
+     "on booked shows, not when signing; ticket sales and other variable costs "+
+     "aren't forecast here."));
+    if(risk)status.append(el("small","ppw-business-fullterm-warning",
+     "Review your wage plan, cash reserve or recurring income before committing."));
+    status.dataset.risk=String(risk);
    };
-   for(const [label,key] of [["Weekly guarantee","weekly"],["Appearance fee per show","fee"],["Signing bonus","bonus"]] as const){
+   for(const [label,key,min,max] of [
+    ["Contract weeks","weeks",1,52],
+    ["Planned appearances","dates",0,104],
+    ["Weekly guarantee","weekly",0,1000000000],
+    ["Appearance fee per show","fee",0,1000000000],
+    ["Signing bonus","bonus",0,1000000000]
+   ] as const){
     const field=el("label","ppw-business-budget-field");
     field.append(el("span","",label));const input=document.createElement("input");
-    input.type="number";input.inputMode="numeric";input.min="0";input.max="1000000000";input.value="0";
-    input.oninput=()=>{projections[key]=Math.max(0,Number(input.value)||0);update();};
+    input.type="number";input.inputMode="numeric";input.min=String(min);
+    input.max=String(max);input.value=String(projections[key]);
+    input.oninput=()=>{
+     const value=Math.min(max,Math.max(min,Math.floor(Number(input.value)||0)));
+     projections[key]=value;
+     update();
+    };
     field.append(input);inputs.append(field);
    }
    scenario.append(inputs,status);budget.append(scenario);update();

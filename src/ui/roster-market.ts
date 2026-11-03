@@ -6,6 +6,7 @@ import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import type {StaffRole} from "../domain/world-staff.js";
 export type WrestlerDirectoryData=Awaited<ReturnType<typeof readWrestlerDirectory>>;
 export interface RosterMarketPort{
@@ -138,7 +139,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["FULL_APPROVAL","Full approval"]
   ] as const,draft.creative,next=>{draft.creative=next;pendingKey="";}));
   const fields=el("div","ppw-directory-offer-fields");
-   const quote=el("p","ppw-directory-muted ppw-directory-offer-quote");
+   const quote=el("section","ppw-directory-contract-estimate");
    const affordability=el("section","ppw-directory-affordability");
    const adviser=el("details","ppw-directory-adviser") as HTMLDetailsElement;
    adviser.append(el("summary","","Talent Manager · contract advice"));
@@ -149,17 +150,31 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
     const appearance=draft.family==="EXCLUSIVE"?0:draft.appearance;
     const dates=draft.family==="ONE_OFF"?1:draft.family==="EXCLUSIVE"?0:draft.dates;
-    quote.textContent="If accepted: "+money(guarantee)+"/week guaranteed ("+
-     money(guarantee*weeks)+" over "+weeks+" weeks), "+
-     money(draft.bonus)+" signing bonus"+
-     (draft.family==="EXCLUSIVE"?". No per-appearance fee.":
-      ", plus "+money(appearance)+" only when booked ("+
-      money(appearance*dates)+" if all "+dates+" dates are used).")+
-     " These are future liabilities, not charges for submitting the offer. "+
-     (draft.family==="LIMITED_NON_EXCLUSIVE"?
-      (dates>weeks?"To use every purchased date, you may need more than one eligible show in some weeks. ":"")+
-      "Unused dates expire with the contract. ":"")+
-     "Compare the offer with your wage allowance and cash reserve in Business → Finances.";
+    const projection=forecastContractCost({weeks,dates,weeklyGuarantee:guarantee,
+     appearanceFee:appearance,signingBonus:draft.bonus});
+    quote.replaceChildren();
+    const costHeading=el("div","ppw-directory-contract-estimate-top");
+    costHeading.append(el("span","","PLANNED FULL-TERM COST"),
+     el("strong","",money(projection.plannedFullTermCost)));
+    quote.append(costHeading);
+    const breakdown=el("div","ppw-directory-contract-breakdown");
+    const costRow=(title:string,amount:number)=>{
+     const row=el("div","ppw-directory-contract-cost-row");
+     row.append(el("span","",title),el("strong","",money(amount)));
+     breakdown.append(row);
+    };
+    costRow(weeks+" week"+(weeks===1?"":"s")+" × "+money(guarantee)+
+     " guaranteed wages",projection.guaranteedWages);
+    if(dates>0)costRow(dates+" date"+(dates===1?"":"s")+" × "+money(appearance)+
+     " appearance fee",projection.plannedAppearanceFees);
+    costRow("One-time signing bonus",projection.oneTimeBonus);
+    quote.append(breakdown,el("p","ppw-directory-contract-assumption",
+     dates>0?
+      "Planning assumes all "+dates+" purchased date"+(dates===1?" is":"s are")+
+      " used during the "+weeks+"-week contract. Appearance fees are charged only "+
+      "when booked; unused dates expire. Nothing is charged for submitting an offer.":
+      "Includes all guaranteed wages and the one-time bonus. Actual income, "+
+      "show costs and wrestler acceptance are separate."));
     affordability.replaceChildren();
     const company=view?.offerBudget;
     if(company){
@@ -178,7 +193,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        "No spending plan set":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
       ["Recurring weekly margin after signing",postMargin===null?
        "Not yet configured":money(postMargin)],
-      ["Extra appearance cost when booked",money(appearance)+" per show"]
+      ["Average planned cost per week, all terms",money(projection.averageWeeklyCost)],
+      ["Appearance fees across all dates",money(projection.plannedAppearanceFees)]
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
@@ -189,7 +205,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        "This offer would exceed at least one of your chosen limits or your recurring income. It is not blocked, but review affordability before submitting."));
      }else affordability.dataset.risk="false";
      affordability.append(el("small","ppw-directory-muted",
-      "Before ticket sales, show costs and other variable liabilities. Approval and negotiated terms remain uncertain."));
+      "Weekly margin includes guaranteed costs only. Average planned cost also includes all "+
+      "purchased dates and signing bonus spread over "+weeks+" weeks. Future income, show "+
+      "costs and acceptance remain uncertain."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({

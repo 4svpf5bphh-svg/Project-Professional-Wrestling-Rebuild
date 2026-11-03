@@ -1781,7 +1781,7 @@ test("dragging booking tickets on iPhone changes only local order until Save",as
  await expect(tickets.nth(1)).toHaveClass(/ppw-card-drop-target/,{timeout:10000});
  await page.mouse.up();
  await expect(tickets.first()).toHaveAttribute("data-booking-slot-id","second");
- await expect(page.locator(".ppw-summary").getByText("Unsaved changes")).toBeVisible();
+ await expect(page.locator(".ppw-card-status-line").getByText("Unsaved changes")).toBeVisible();
  expect(calls).toEqual(["planner","load"]);
 });
 

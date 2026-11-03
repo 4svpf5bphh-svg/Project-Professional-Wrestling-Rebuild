@@ -44,7 +44,7 @@ test("Creative's contextual angle advice appears in PPW's real mobile editor",as
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
- await dialog.locator(".ppw-card-advisor-notes summary").click();
+ await dialog.locator(".ppw-card-advisor-notes > summary").click();
  await expect(dialog.getByText("Storyline cast does not appear")).toBeVisible();
  await mkdir(folder,{recursive:true});
  await page.screenshot({path:folder+"/phase23-creative-storyline-advice-390.png"});
@@ -71,9 +71,16 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.locator(".ppw-directory-card > summary").first().click();
  await page.getByRole("button",{name:"Make contract offer"}).click();
  await expect(page.locator(".ppw-directory-affordability")).toContainText("What this does to your company");
+ await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("PLANNED FULL-TERM COST");
  const input=page.getByLabel("Weekly guarantee ($)");
  await input.fill("18000");
  await input.press("Tab");
+ await page.getByLabel("Weeks (1–52)").fill("10");
+ await page.getByLabel("Purchased dates").fill("5");
+ await page.getByLabel("Appearance fee ($)").fill("9000");
+ await page.getByLabel("Signing bonus ($)").fill("3000");
+ await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("45,000");
+ await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("228,000");
  const notes=page.locator(".ppw-directory-adviser");
  await expect(notes).toBeVisible();
  await notes.locator("summary").click();
