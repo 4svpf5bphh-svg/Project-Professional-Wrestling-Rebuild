@@ -1846,7 +1846,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        const hint=el("p","ppw-booking-hint",readiness.hint);
        guide.append(hint,...cast);
        const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes&&notes.dataset.level==="watch")guide.append(notes);
+       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        guide.append(button("Next · Script outcome",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");
         resetGuideScroll=true;render();
@@ -1864,7 +1864,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         node.classList.contains("ppw-card-match-consents")))
         guide.append(issue);
        const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes&&notes.dataset.level==="watch")guide.append(notes);
+       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Change cast",()=>{
         slotBookingSteps.set(slotId,"CAST");
