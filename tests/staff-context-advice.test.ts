@@ -72,7 +72,7 @@ test("physical angle briefing gives genuine Medical and Referee feedback without
  const attack={...scene,
   actors:[{personId:"a",contractId:"contract-a"}],
   targets:[{personId:"b",contractId:"contract-b"}],
-  scene:{...scene.scene,intensity:"BRUTAL" as const,visual:"BLOODIED" as const}};
+  scene:{...scene.scene!,intensity:"BRUTAL" as const,visual:"BLOODIED" as const}};
  const professional=angleStaffNotes(attack,[opponentA,opponentB],crew);
  assert.ok(professional.some(n=>n.role==="MEDICAL"&&n.level==="WATCH"&&
   n.message.includes("Samoa Joe")));
