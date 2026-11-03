@@ -322,7 +322,10 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card").first()).toBeDisabled();
  await page.goto("/#/roster");
  await expect(page.getByRole("navigation",{name:"Roster divisions"})).toBeVisible();
- await expect(page.getByRole("button",{name:/Trios/})).toBeDisabled();
+ // The roster now presents only actionable shortcuts; actual trio formation
+ // remains available inside Tag Teams rather than a disabled placeholder.
+ await expect(page.getByRole("button",{name:/Trios/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Singles roster"})).toHaveCount(0);
  await page.getByRole("navigation",{name:"Roster divisions"})
   .getByRole("button",{name:"Tag Teams"}).click();
  await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
