@@ -114,7 +114,8 @@ test("dossier shortcut refuses an injured show-week wrestler without writing or 
  const calls=await mock(page,{availability:"INJURED"});
  await openFromDossier(page);
  await page.locator(".ppw-card-wrestler-focus").getByRole("button",{name:"Start a match"}).click();
- await expect(page.getByText(/cannot be booked for this show's week/)).toBeVisible();
+ await expect(page.locator(".ppw-alert.ppw-error"))
+  .toContainText("cannot be booked for this show's week");
  await expect(page.locator(".ppw-card-wrestler-focus")).toBeVisible();
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
