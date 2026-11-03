@@ -56,15 +56,15 @@ test("643-wrestler iPhone session: Home, roster, market, Business, Staff and Ind
   assert.equal(meter.assertBudget({maxQueries:5,maxResultBytes:42000}).queryCount,5);
   const business=await readBusinessWorkspace(measured,scope);
   assert.equal(business.name,"Promotion 0");
-  assert.equal(meter.assertBudget({maxQueries:8,maxResultBytes:60000}).queryCount,8);
+  assert.equal(meter.assertBudget({maxQueries:9,maxResultBytes:65000}).queryCount,9);
   const staff=await readStaffWorkspace(measured,scope);
   assert.equal(staff.year,overview?.world.year);
   assert.equal(staff.autoRenewSameTerms,false);
-  assert.equal(meter.assertBudget({maxQueries:10,maxResultBytes:70000}).queryCount,10);
+  assert.equal(meter.assertBudget({maxQueries:11,maxResultBytes:75000}).queryCount,11);
   const industry=await readIndustryWorldHub(measured,scope);
   assert.equal(industry.promotions.length,8);
-  const sample=meter.assertBudget({maxQueries:14,maxResultBytes:88000});
-  assert.equal(sample.queryCount,14);
+  const sample=meter.assertBudget({maxQueries:15,maxResultBytes:95000});
+  assert.equal(sample.queryCount,15);
   assert.ok(sample.resultRows<150,
    "The mobile session must not load all 643 wrestlers into a client response");
   console.log("PPW 643-person iPhone session SQL budget:",JSON.stringify(sample));

@@ -1,3 +1,4 @@
+import {mkdir} from "node:fs/promises";
 import {test,expect} from "@playwright/test";
 
 const joe={personId:"joe",contractId:"deal-joe"};
@@ -45,6 +46,9 @@ test("390px iPhone gets contextual Road Agent, referee and medical warnings with
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
  await expect(page.locator(".ppw-card-crew-strip")).toContainText("booking concerns");
+ await mkdir("test-results/presentation-screenshots",{recursive:true});
+ await page.locator(".ppw-card-crew-strip").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase23-crew-checklist-390.png"});
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
@@ -53,6 +57,7 @@ test("390px iPhone gets contextual Road Agent, referee and medical warnings with
  await expect(dialog.getByText("Watch cumulative wear")).toBeVisible();
  await expect(dialog.getByText("Risky stipulation and safety concerns")).toBeVisible();
  await expect(dialog).toContainText("Samoa Joe");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase23-road-agent-medical-referee-390.png"});
  expect(methods).toEqual(["planner","load"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
