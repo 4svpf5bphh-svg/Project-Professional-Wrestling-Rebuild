@@ -198,15 +198,15 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       company.weeklyIncome-company.weeklyOverhead-
       company.weeklyGuarantees-company.weeklyStaffPayroll;
      const postMargin=baseline===null?null:baseline-guarantee;
+     // The full contract cost already sits immediately above this panel.
+     // Only show the four implications that change a managerial decision.
      const lines:[string,string][]=[
-      ["Cash if accepted (after signing bonus)",money(reservedCash)],
-      ["Weekly guarantees after signing",money(company.weeklyGuarantees+guarantee)],
-      ["Room under your weekly wage allowance",wageRoom===null?
-       "No spending plan set":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
-      ["Recurring weekly margin after signing",postMargin===null?
+      ["Cash after signing bonus",money(reservedCash)],
+      ["Weekly wage headroom",wageRoom===null?
+       "No spending plan":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
+      ["Recurring margin after signing",postMargin===null?
        "Not yet configured":money(postMargin)],
-      ["Average planned cost per week, all terms",money(projection.averageWeeklyCost)],
-      ["Appearance fees across all dates",money(projection.plannedAppearanceFees)]
+      ["Average planned weekly cost, all terms",money(projection.averageWeeklyCost)]
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
@@ -214,12 +214,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       reservedCash<company.cashReserve||postMargin!==null&&postMargin<0){
       affordability.dataset.risk="true";
       affordability.append(el("p","ppw-directory-affordability-warning",
-       "This offer would exceed at least one of your chosen limits or your recurring income. It is not blocked, but review affordability before submitting."));
+       "This offer exceeds a spending limit or your recurring income. "+
+       "You can still propose it, but consider adjusting the terms."));
      }else affordability.dataset.risk="false";
      affordability.append(el("small","ppw-directory-muted",
-      "Weekly margin includes guaranteed costs only. Average planned cost also includes all "+
-      "purchased dates and signing bonus spread over "+weeks+" weeks. Future income, show "+
-      "costs and acceptance remain uncertain."));
+      "Recurring margin excludes future ticket sales and appearance fees. The "+
+      "full-term forecast above includes every purchased date."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({
