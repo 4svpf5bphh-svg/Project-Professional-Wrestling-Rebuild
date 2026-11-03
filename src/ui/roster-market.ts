@@ -140,13 +140,13 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const signableWeek=view!.currentWeekIndex+1;
   const eligibleWeek="Year "+(Math.floor(signableWeek/52)+1)+
    " Week "+(signableWeek%52+1);
-  const timing=el("p","ppw-directory-offer-timing");
-  const updateTiming=()=>{timing.textContent=draft.family==="ONE_OFF"?
+  const signingWindowNote=el("p","ppw-directory-offer-timing");
+  const updateTiming=()=>{signingWindowNote.textContent=draft.family==="ONE_OFF"?
    "One night only · if accepted at the weekly World advance, the single "+
    "appearance is valid in "+eligibleWeek+" only. You cannot use it on this week's show.":
    "If accepted at the weekly World advance, this contract becomes available "+
    "in "+eligibleWeek+". An offer is not an immediate signing.";};
-  updateTiming();editor.append(timing);
+  updateTiming();editor.append(signingWindowNote);
   const termsMenu=el("section","ppw-directory-term-menu");
   termsMenu.append(el("strong","","Choose a deal length"));
   const presetChoices=el("div","ppw-directory-presets");
