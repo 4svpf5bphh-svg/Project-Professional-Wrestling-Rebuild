@@ -800,3 +800,84 @@ body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-remove{justify-self:start;
 @media(max-width:360px){
  .ppw-card-rivalry-shortcuts{grid-template-columns:minmax(0,1fr)}
 }
+
+/* PHASE 25A: one intentional booking surface. Preserve existing underlying
+   slot, consent, story and World Lock controls; replace competing presentation. */
+.ppw-editor .ppw-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:8px;margin:12px 0 14px;padding:0;border:0;background:transparent}
+.ppw-editor .ppw-toolbar>select{grid-column:1!important;width:100%;min-height:42px;
+ background:#182b45;border:1px solid #577798;border-radius:10px;color:#eef5ff}
+.ppw-editor .ppw-experience-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ppw-editor .ppw-experience-actions button{min-height:49px;width:100%;min-width:0;
+ font-size:15px;font-weight:850;border-radius:11px;color:white!important;
+ border:1px solid #e58bc7;box-shadow:none!important}
+.ppw-editor .ppw-action-match{background:linear-gradient(110deg,#e12b8b,#9946c2)!important}
+.ppw-editor .ppw-action-angle{background:linear-gradient(110deg,#244f89,#6351c8)!important;
+ border-color:#8bb9fc!important}
+.ppw-editor .ppw-card-airtime{padding:10px 12px;margin:8px 0;
+ background:linear-gradient(110deg,#17314b,#242744)}
+.ppw-editor .ppw-card-airtime-heading{margin:0 0 6px}
+.ppw-editor .ppw-card-airtime>small{margin-top:6px;font-size:12px}
+.ppw-editor .ppw-card-appearance-cost{display:block;border:1px solid #456786;
+ background:#122c42;border-radius:10px;padding:0 12px;margin:8px 0}
+.ppw-editor .ppw-card-appearance-cost>summary{min-height:43px;display:flex;
+ align-items:center;font-size:13px;color:#c8e5fa;font-weight:750;cursor:pointer}
+.ppw-editor .ppw-card-appearance-cost>p{font-size:12px;line-height:1.5;
+ color:#b8cede;margin:0 0 11px}
+.ppw-editor .ppw-card-crew-strip{margin:8px 0;padding:0 10px}
+.ppw-editor .ppw-card-rivalry-ideas{margin:9px 0;padding:7px 11px}
+.ppw-editor .ppw-card-rivalry-shortcuts{gap:7px}
+.ppw-editor .ppw-card-rivalry-option{padding:7px}
+.ppw-editor .ppw-card-rivalry-option>small{font-size:11px;line-height:1.3}
+.ppw-editor .ppw-card-rivalry-shortcuts .ppw-card-rivalry-add{min-height:43px}
+.ppw-editor .ppw-card{overflow:hidden;margin:8px 0;border-radius:12px;
+ background:linear-gradient(125deg,#192a45,#292140)}
+.ppw-editor .ppw-card-bar{padding:10px 11px;gap:7px}
+.ppw-editor .ppw-card-bar strong{font-size:15px}
+.ppw-editor .ppw-card-lineup{font-size:11px;line-height:1.4}
+.ppw-editor .ppw-card-matchup{display:flex;align-items:center;justify-content:center;
+ gap:6px;padding:0 10px 10px;min-width:0}
+.ppw-editor .ppw-card-matchup-side{display:flex;justify-content:center;align-items:center;
+ gap:5px;min-width:0;flex:1;flex-wrap:wrap}
+.ppw-editor .ppw-card-person{display:flex;flex-direction:column;align-items:center;
+ gap:4px;min-width:0;max-width:82px;flex:1}
+.ppw-editor .ppw-card-person-face{display:grid;place-items:center;position:relative;
+ width:42px;height:42px;overflow:hidden;border-radius:50%;color:#ecf5ff;
+ background:#283e61;border:2px solid #6b8cbd;font-size:13px;font-weight:850}
+.ppw-editor .ppw-card-person-face img{position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover}
+.ppw-editor .ppw-card-person-name{font-size:10px;color:#f0f2ff;text-align:center;
+ line-height:1.15;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-versus{font-size:13px;font-weight:950;color:#ffd47c;
+ font-style:italic;flex:none}
+.ppw-editor .ppw-card-extra-people{color:#aaccdf;font-size:11px;font-weight:850}
+.ppw-editor .ppw-card-multi-lineup{color:#dbe7fc;font-size:12px;line-height:1.35;
+ text-align:center;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-broadcast-slot{margin:0 8px 9px}
+.ppw-editor .ppw-card-broadcast-slot>summary{font-size:11px;min-height:28px}
+.ppw-editor .ppw-save{position:static!important;bottom:auto!important;box-shadow:none;
+ border-radius:13px;padding:10px;margin:15px 0 28px!important;background:#17263d}
+body>.ppw-card-edit-shade .ppw-winner-picker{grid-column:1/-1;border:0;
+ margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-winner-picker>legend{font-weight:850;font-size:13px;
+ margin-bottom:8px;color:#a9defa}
+body>.ppw-card-edit-shade .ppw-winner-choice{min-height:60px;min-width:0;
+ padding:9px;border:2px solid #52668b;border-radius:11px;background:#202a43;
+ color:#f2f2ff;font-size:13px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-winner-selected{border-color:#58e6c5;
+ background:#1b5b58;box-shadow:inset 0 0 0 1px #82ffe4}
+body>.ppw-card-edit-shade .ppw-winner-picker>select{grid-column:1/-1;min-height:48px}
+body>.ppw-card-edit-shade .ppw-guide-context{display:none}
+body>.ppw-card-edit-shade .ppw-guide-booking{gap:10px}
+body>.ppw-card-edit-shade .ppw-guide-booking h3{font-size:19px}
+body>.ppw-card-edit-shade .ppw-guide-back{background:#203550!important;
+ border:1px solid #7094bb!important;color:#dbeeff!important}
+body>.ppw-card-edit-shade .ppw-booking-done{background:linear-gradient(115deg,#e12b8b,#9845c4)!important;
+ color:#fff!important;border:1px solid #ffa5db!important}
+body>.ppw-card-edit-shade .ppw-remove{color:#ffced5!important;
+ background:#3a263d!important;border:1px solid #a86b81!important;
+ border-radius:9px!important;min-height:36px;padding:6px 12px}
+body>.ppw-card-edit-shade .ppw-guide-extra{background:#172942;border-color:#526d8d}
+body>.ppw-card-edit-shade .ppw-stipulation-impact{font-size:12px;line-height:1.4}
+@media(max-width:350px){.ppw-editor .ppw-card-person-face{width:34px;height:34px}
+ body>.ppw-card-edit-shade .ppw-winner-picker{grid-template-columns:1fr}}
