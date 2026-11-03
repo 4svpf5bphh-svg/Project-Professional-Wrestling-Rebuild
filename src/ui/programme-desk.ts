@@ -212,7 +212,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const currentIndex=(view.year-1)*52+view.week-1;
    const ageNow=p.startedWeekIndex===null?null:Math.max(0,currentIndex-p.startedWeekIndex);
    const latestBeat=p.recentActivity[0];
-   const latestMatch=p.recentActivity.find(x=>x.kind==="MATCH");
+   const lastCertifiedMatch=p.recentActivity.find(x=>x.kind==="MATCH");
    const sideAName=p.sideA.map(x=>x.name).join(" & ");
    const sideBName=p.sideB.map(x=>x.name).join(" & ");
    const latestLabel=latestBeat?describeProgrammeChapter(latestBeat,sideAName,sideBName):null;
@@ -230,8 +230,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      element("span","",latestLabel.detail));
     glance.append(latest);
    }else glance.append(element("p","ppw-muted","No completed chapters yet."));
-   if(latestMatch){
-    const outcome=describeProgrammeChapter(latestMatch,sideAName,sideBName);
+   if(lastCertifiedMatch){
+    const outcome=describeProgrammeChapter(lastCertifiedMatch,sideAName,sideBName);
     glance.append(element("small","ppw-programme-glance-lastbell",
      "LATEST MATCH · "+outcome.headline));
    }

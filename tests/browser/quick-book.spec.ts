@@ -92,9 +92,9 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
 
  await page.getByRole("button",{name:"Quick angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByLabel("Creative direction").selectOption("TURN");
  await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await dialog.getByLabel("Creative direction").selectOption("TURN");
  await expect(dialog.getByLabel("New alignment")).toBeVisible();
  await dialog.getByLabel("New alignment").selectOption("FACE");
  await dialog.getByRole("button",{name:"Finish editing"}).click();

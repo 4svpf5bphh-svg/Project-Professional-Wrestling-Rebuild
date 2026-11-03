@@ -1318,19 +1318,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const ensemble=!["STABLE_INVITATION","STABLE_EXIT",
       "STABLE_RECONCILIATION"].includes(segment.kind);
      const groupRole=ensemble&&(role==="actors"?
-      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3:
+      SEGMENT_BOOKING_RULES[segment.kind].maxActors>=3||segment.kind==="TURN":
       !["RESCUE","POST_MATCH_ASSAULT"].includes(segment.kind));
      if(groupRole){
       const groups=[
        ...(view.bookableTeams??[]).map(t=>["team:"+t.teamId,"Team · "+t.name]),
-       ...(view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name]),
-       ...(stableChoices??[]).filter(t=>(t.members?.length??0)>0)
-        .map(t=>["stable:"+t.stableId,"Faction · "+t.name])
+       ...(segment.kind==="TURN"&&role==="actors"?[]:
+        (view.bookableTrios??[]).map(t=>["trio:"+t.trioId,"Trio · "+t.name])),
+       ...(segment.kind==="TURN"&&role==="actors"?[]:
+        (stableChoices??[]).filter(t=>(t.members?.length??0)>0)
+         .map(t=>["stable:"+t.stableId,"Faction · "+t.name]))
       ];
       if(groups.length)section.append(field("Cast a team, trio or faction",
        selector("",[["","Choose a group"],...groups],v=>
         castAngleGroup(segment,role,v),!mutable())));
-      if(stableChoices===null&&port.stableChoices)
+      if(stableChoices===null&&port.stableChoices&&
+       !(segment.kind==="TURN"&&role==="actors"))
        section.append(button(stableChoicesLoading?"Loading factions…":
         "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading,
         "ppw-angle-cast-faction"));
@@ -1744,6 +1747,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       for(const node of other)extraContent.append(node);
       if(extraContent.childElementCount)extra.append(extraContent);
       if(stage==="CAST"){
+       if(!m){
+        // Decide the kind of scene before casting: an attack needs a victim,
+        // a team turn can cast both partners, and a promo does not.
+        const typeChoices=el("div","ppw-control-grid ppw-guide-angle-kind");
+        for(const candidate of [...essentials.children]){
+         const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
+         if(label==="Creative direction"||label==="Angle type")
+          typeChoices.append(candidate);
+        }
+        guide.append(typeChoices);
+       }
        const hint=el("p","ppw-booking-hint",readiness.hint);
        guide.append(hint,...cast);
        guide.append(button("Next · Script outcome",()=>{
