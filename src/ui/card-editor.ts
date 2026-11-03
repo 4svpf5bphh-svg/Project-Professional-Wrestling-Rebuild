@@ -1745,6 +1745,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        "Who is involved?":m?"Decide how the match plays out":"What, where and why?"));
       guide.append(el("p","ppw-guide-context",m?
        matchLabel(m):angleName));
+      if(m&&stage==="OUTCOME"&&view.programmes.some(p=>
+       p.cast?.some(x=>x.side==="A")&&p.cast.some(x=>x.side==="B")&&
+       p.cast.every(x=>assignedIds(m).includes(x.personId))))
+       guide.append(el("p","ppw-guide-feud-warning",
+        "Rivalry cast preselected. Review the winner, finish and match length. "+
+        "The default winner is not a creative recommendation."));
       const cast=[...body.children].filter(node=>node.classList.contains("ppw-side")||
        node.classList.contains("ppw-sizing"));
       const controlGrid=body.querySelector<HTMLElement>(":scope > .ppw-control-grid");
@@ -1789,6 +1795,27 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           typeChoices.append(candidate);
         }
         guide.append(typeChoices);
+        const linkedFeud=view.programmes.find(p=>p.programmeId===segment?.programmeId);
+        if(linkedFeud&&linkedFeud.cast?.some(x=>x.side==="A")&&
+         linkedFeud.cast.some(x=>x.side==="B")){
+         const fastCast=el("section","ppw-guide-feud-cast");
+         fastCast.append(el("strong","","CAST YOUR RIVALRY"),
+          el("p","",linkedFeud.label+
+           " · Choose which side initiates the scene. This does not decide the result."));
+         const castActions=el("div","ppw-guide-feud-cast-buttons");
+         for(const [side,label] of [["A","Side A initiates"],["B","Side B initiates"]] as const){
+          const control=button(label,()=>{
+           const started=programmeAngleCastStarter(linkedFeud,segment!,side);
+           if(!started.ok){error=started.reason;render();return;}
+           editSegment(segment!,{
+            actors:started.value.actors,targets:started.value.targets
+           });
+          },!mutable(),"ppw-guide-feud-cast-button");
+          castActions.append(control);
+         }
+         fastCast.append(castActions);
+         guide.append(fastCast);
+        }
        }
        const hint=el("p","ppw-booking-hint",readiness.hint);
        guide.append(hint,...cast);
