@@ -79,7 +79,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
- await picker.locator(".ppw-wrestler-card").nth(1).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker).toHaveCount(0);
  await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText("Watch cumulative wear");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
@@ -138,7 +138,7 @@ test("390px: an angle also has a meaningful Creative team review before completi
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
- await picker.locator(".ppw-wrestler-card").first().click();
+ await picker.locator(".ppw-wrestler-card").nth(1).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByLabel("Angle duration (minutes)").selectOption("20");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
