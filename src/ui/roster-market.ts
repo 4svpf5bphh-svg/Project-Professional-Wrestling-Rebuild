@@ -417,7 +417,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   ].filter(x=>typeof x==="number"&&x>0).length;
   const refinements=document.createElement("details");
   refinements.className="ppw-directory-refinements";
-  refinements.open=filtersExpanded||enabled+attributeCount>0;
+  // A quick Free Agents tap must not expand the advanced filter form.
+  // The summary still displays the active count until the player opens it.
+  refinements.open=filtersExpanded;
   const refineSummary=el("summary","",
    "Refine talent"+(enabled+attributeCount?
     " · "+(enabled+attributeCount)+" active":""));
