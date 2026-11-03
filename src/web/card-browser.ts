@@ -402,14 +402,15 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
   openPlanner:()=>openWorkspace("planner"),
-  openBooking:(personId,name)=>{
-   // Direct card navigation never bypasses the planner's actual draft lookup.
-   if(scope.showId)return;
+  // The editor's own dossier is already on a card. Do not render a button
+  // which would appear actionable but merely return without navigating.
+  ...(scope.showId?{}:{openBooking:(personId:string,name:string)=>{
+   // Resolve the actual draft via Planner rather than guessing its identity.
    if(root.classList.contains("ppw-profile-overlay"))onBack();
    pendingBookingFocus={worldId:scope.worldId,promotionId:scope.promotionId,
     personId,name};
    window.location.hash=plannerCardHash;
-  },
+  }}),
   openProgrammes:personId=>{
    if(window.location.hash!==hostSectionHash("programmes"))
     pendingProgrammeFocusPersonId=personId;
