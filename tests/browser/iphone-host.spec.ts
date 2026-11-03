@@ -933,21 +933,26 @@ test("Post-show creative direction follows the latest completed rivalry match wi
   }:{}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
- await page.locator(".ppw-programme-booking-idea")
+ await page.locator(".ppw-programme-strategy > summary").click();
+ await page.locator(".ppw-programme-strategy-choice")
   .filter({hasText:"Raise the cost of another loss"})
   .getByRole("button",{name:"Choose direction"}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
- await page.locator(".ppw-programme-booking-idea")
+ await page.locator(".ppw-programme-strategy > summary").click();
+ await page.locator(".ppw-programme-strategy-choice")
   .filter({hasText:"Let the result mean something"})
   .getByRole("button",{name:"Choose direction"}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
  expect(methods).not.toContain("save");
  expect(methods).not.toContain("results");
- await expect(page.getByText(/No bout or angle is booked for you/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Book next chapter"})).toBeVisible();
 });
 
 test("Industry featured wrestlers load only on expansion, cache through local filters and open the universal dossier",async({page})=>{

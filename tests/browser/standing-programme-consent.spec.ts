@@ -46,13 +46,15 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
   await route.fulfill({json:req.method==="programmes"?story:{}});
  });
  await page.goto("/#/programmes");
- await expect(page.getByText("CREATIVE MEETING")).toBeVisible();
- await page.getByRole("button",{name:"Creative",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Match agreements"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Story",exact:true})).toHaveAttribute("aria-current","page");
+ await expect(page.locator(".ppw-programme-broadcast")).toContainText("Alice");
+ await page.locator(".ppw-programme-standing > summary").click();
  // Standing terms cannot replace the long-standing rivalry dossier and
  // post-match direction choices from the original Programme desk.
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
+ await page.locator(".ppw-programme-strategy > summary").click();
  await expect(page.getByRole("button",{name:"Choose direction"}).first()).toBeVisible();
  await page.getByRole("combobox",{name:"Match format for Alice"}).selectOption("TAG");
  await page.getByRole("combobox",{name:"Permitted finish for Alice"}).selectOption("WIN_OR_PROTECTED_LOSS");
@@ -65,9 +67,11 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  await expect(page.getByRole("heading",{name:"Active rivalries · 1"})).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes"]);
  await page.reload();
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-standing > summary").click();
  await expect(page.getByText(/Agreed · Through/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes","programmes"]);
 });

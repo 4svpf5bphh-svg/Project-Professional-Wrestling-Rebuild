@@ -30,9 +30,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"History",exact:true}).click();
- await expect(page.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
- await expect(page.getByText(/Latest chapter: an on-screen angle/)).toBeVisible();
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
+ await expect(page.locator(".ppw-programme-history-timeline")).toContainText("On-screen angle");
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
  await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
  await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
@@ -55,7 +56,8 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
     recentActivity:[programme.recentActivity[1]]}]}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
  await expect(page.getByText(/Give Matt Riddle an answer/)).toBeVisible();
@@ -117,8 +119,8 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  });
  await page.goto("/#/programmes");
  await expect(page.getByText(/Not booked yet/)).toHaveCount(0);
- await expect(page.locator(".ppw-programme-now")).toContainText("booked on Armageddon");
- await page.getByRole("button",{name:/^Finale/}).click();
+ await expect(page.locator(".ppw-programme-upcoming-compact")).toContainText("Armageddon");
+ await page.getByRole("button",{name:/^Payoff/}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
@@ -154,12 +156,12 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await page.goto("/#/programmes");
  await expect(page.locator(".ppw-programme-switch")).toHaveCount(4);
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
- await expect(page.getByRole("button",{name:"Creative",exact:true})).toHaveAttribute("aria-current","page");
+ await expect(page.getByRole("button",{name:"Story",exact:true})).toHaveAttribute("aria-current","page");
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
- await expect(page.getByRole("button",{name:"Finale"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Creative",exact:true})).toBeVisible();
- for(const name of ["Creative","Finale","History"]){
+ await expect(page.getByRole("button",{name:"Payoff"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Story",exact:true})).toBeVisible();
+ for(const name of ["Story","Payoff","History"]){
   const tab=page.getByRole("button",{name,exact:true});
   await expect(tab).toBeVisible();
   const clipped=await tab.evaluate(el=>el.scrollWidth>el.clientWidth+1);
@@ -171,7 +173,7 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await page.getByRole("button",{name:"Manage Booker 2 vs Rival 2"}).click();
  await expect(page.locator(".ppw-programme-broadcast")).toContainText("Booker 2");
  await expect(page.locator(".ppw-programme-broadcast")).not.toContainText("Booker 1");
- await page.screenshot({path:"test-results/presentation-screenshots/phase22-programmes-creative.png",fullPage:true,animations:"disabled"});
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-programmes-story.png",fullPage:true,animations:"disabled"});
  expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
