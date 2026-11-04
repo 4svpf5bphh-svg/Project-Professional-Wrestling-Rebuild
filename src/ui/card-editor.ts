@@ -2238,8 +2238,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const directions:[string,string][]=[
          ["COMPETITIVE","Competitive"],["TECHNICAL","Technical"],
          ["DOMINANT","Dominant"],["STORY","Storytelling"],
-         ["HIGH_RISK","Spectacle"],["SHOWCASE","Showcase"]
+         ["HIGH_RISK","Spectacle"],["SHOWCASE","Showcase"],
+         ["PROTECTIVE","Protective"],["EPIC","Epic"]
         ];
+        // Eight existing simulation profiles are now editable by tap.
+        // The old duplicate Intent dropdown no longer belongs in Advanced.
+        extra.querySelector<HTMLElement>('[aria-label="Intent"]')
+         ?.closest(".ppw-field")?.remove();
         const direction=el("div","ppw-guide-direction");
         direction.append(el("strong","ppw-guide-section-label","Match direction"));
         const choices=el("div","ppw-guide-direction-tiles");

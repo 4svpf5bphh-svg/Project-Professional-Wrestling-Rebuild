@@ -92,8 +92,11 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await dialog.locator(".ppw-winner-choice").nth(1).click();
  await dialog.getByLabel("Minutes").fill("22");
  await dialog.getByLabel("Minutes").press("Tab");
- await dialog.locator(".ppw-guide-extra > summary").click();
- await dialog.getByLabel("Intent").selectOption("EPIC");
+ await expect(dialog.locator(".ppw-guide-direction-tile")).toHaveCount(8);
+ await dialog.getByRole("button",{name:"Epic",exact:true}).click();
+ await expect(dialog.getByRole("button",{name:"Epic",exact:true}))
+  .toHaveAttribute("aria-pressed","true");
+ await expect(dialog.getByLabel("Intent")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
  await dialog.getByRole("button",{name:"Complete match"}).click();
