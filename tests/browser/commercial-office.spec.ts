@@ -167,8 +167,9 @@ for(const width of [320,390]){
   const iron=page.locator('.ppw-commercial-brand[data-code="SPONSOR_GEAR"]');
   await expect(iron.locator("svg")).toBeVisible();
   await expect(page.getByRole("button",{name:"Sign Ironclad Workwear"})).toBeVisible();
-  await expect(page.locator(".ppw-commercial-offer[data-availability='TAKEN']"))
-   .toContainText(["Jack's Crematorium","Rival Wrestling"]);
+  const heldSponsor=page.locator(".ppw-commercial-offer[data-availability='TAKEN']");
+  await expect(heldSponsor).toContainText("Jack's Crematorium");
+  await expect(heldSponsor).toContainText("Rival Wrestling");
   expect(calls).toEqual(["business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
