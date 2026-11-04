@@ -2102,9 +2102,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         // preserved, but no longer appear as one undifferentiated form.
         // What and Who were chosen earlier. This screen is Where, Why
         // and how the scripted scene plays out.
-        const where=el("section","ppw-guide-angle-section");
-        const why=el("section","ppw-guide-angle-section");
-        const how=el("section","ppw-guide-angle-section");
+        const existing=!inProgressWizards.has(slotId);
+        const what=el("section","ppw-guide-angle-section ppw-control-grid");
+        const where=el("section","ppw-guide-angle-section ppw-control-grid");
+        const why=el("section","ppw-guide-angle-section ppw-control-grid");
+        const how=el("section","ppw-guide-angle-section ppw-control-grid");
+        if(existing)what.append(el("h4","","What is the scene?"));
         where.append(el("h4","","Where does it happen?"));
         why.append(el("h4","","Why is this on the show?"));
         how.append(el("h4","","How does it unfold?"));
@@ -2112,9 +2115,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          segment!.kind==="POST_MATCH_ASSAULT";
         for(const child of [...essentials.children]){
          const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
-         if(label==="Creative direction"||label==="Angle type"||
-          ["Turn a complete tag team","After which match?","Faction"].includes(label))
+         if(label==="Creative direction"||label==="Angle type"){
+          if(existing)what.append(child);
           continue;
+         }
+         if(["Turn a complete tag team","After which match?","Faction"].includes(label)){
+          if(existing)what.append(child);
+          continue;
+         }
          if(["Area","Exact location","Attack intensity","Visible aftermath"].includes(label))
           where.append(child);
          else if(label==="Storytelling purpose"||child.classList.contains("ppw-angle-purpose-disclaimer"))
@@ -2135,7 +2143,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          if(linked)why.append(el("p","ppw-guide-angle-feud",
           "Continuing "+linked.label));
         }
-        for(const block of [where,why,how]){
+        for(const block of [what,where,why,how]){
          if(block.childElementCount>1)guide.append(block);
         }
        }
