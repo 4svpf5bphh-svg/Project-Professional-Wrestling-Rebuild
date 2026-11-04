@@ -201,3 +201,13 @@ test("Talent Manager flags cash-only shortfall for oversized annual deals even b
   n.title==="Unsustainable on current cash"&&n.message.includes("shortfall")));
  assert.ok(!large.some(n=>n.title==="Offer fits the current plan"));
 });
+
+test("a lengthy interview still gets a truthful house warning when Creative is not hired",()=>{
+ const interview={...newEditorSegment("long-house-interview","INTERVIEW"),
+  durationMinutes:30,actors:[{personId:"b",contractId:"contract-b"}]};
+ const result=angleStaffNotes(interview,[opponentB],new Set<StaffRole>());
+ assert.ok(result.some(n=>n.role==="HOUSE"&&n.level==="WATCH"&&
+  n.title==="Long talking segment"));
+ assert.ok(!angleStaffNotes({...interview,durationMinutes:10},[opponentB],
+  new Set<StaffRole>()).some(n=>n.title==="Long talking segment"));
+});

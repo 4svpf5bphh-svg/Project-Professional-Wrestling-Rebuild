@@ -128,13 +128,18 @@ export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPer
   notes.push(note("REFEREE","INFO","Coordinate the staged violence",
    "The referee and crew should plan the separation and timing of this intense "+
    "physical angle. Its visual severity is storytelling, not a guaranteed injury."));
+ const longTalk=["INTERVIEW","PROMO","CONFRONTATION","CHALLENGE",
+  "CONTRACT_SIGNING"].includes(segment.kind)&&segment.durationMinutes>=25&&cast.length>0;
+ if(longTalk&&!staffed.has("CREATIVE"))
+  notes.push(note("HOUSE","WATCH","Long talking segment",
+   segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
+   " takes a substantial share of the show. Consider tightening the scene "+
+   "or splitting it into shorter beats."));
  if(staffed.has("CREATIVE")){
   if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
    notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
     "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
-  const talk=["INTERVIEW","PROMO","CONFRONTATION","CHALLENGE",
-   "CONTRACT_SIGNING"].includes(segment.kind);
-  if(talk&&segment.durationMinutes>=25)
+  if(longTalk)
    notes.push(note("CREATIVE","WATCH","Long talking segment",
     segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
     " takes substantial airtime. "+(cast.some(p=>valid(p.presentation)&&p.presentation<50)?
