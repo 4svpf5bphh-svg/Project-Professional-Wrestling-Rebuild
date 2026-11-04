@@ -136,3 +136,16 @@ test("warnings are evidence-driven and reject stale or mismatched edits",()=>{
  assert.throws(()=>applyBookingAdjustment(iron,{kind:"MATCH_LENGTH",minutes:18}),
   /no longer legal/);
 });
+
+test("30-minute interview offers an adjustment with high presentation, not a false all-clear",()=>{
+ const interview={...newEditorSegment("interview","INTERVIEW"),
+  durationMinutes:30,actors:[{personId:"mistico",contractId:"b"}]};
+ const advice=bookingChoiceAdvice(interview,[mistico],crew)!;
+ assert.equal(advice.role,"CREATIVE");
+ assert.equal(advice.actionLabel,"Shorten scene to 10 min");
+ const changed=applyBookingAdjustment(interview,advice.adjustment);
+ assert.ok(!("teams" in changed));
+ assert.equal(changed.durationMinutes,10);
+ assert.equal(changed.actors[0]?.personId,"mistico");
+ assert.equal(bookingChoiceAdvice(changed,[mistico],crew),null);
+});

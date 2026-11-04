@@ -170,3 +170,15 @@ test("opponent relationships and in-ring skills never imply teammate chemistry",
  assert.deepEqual(matchPartnershipNotes(match,[{personId:"a",name:"A",inRingQuality:99},
   {personId:"b",name:"B",inRingQuality:100}],crew),[]);
 });
+
+test("a 30-minute interview prompts a creative review even with a strong speaker",()=>{
+ const interview={...newEditorSegment("long-interview","INTERVIEW"),
+  durationMinutes:30,actors:[{personId:"b",contractId:"contract-b"}]};
+ const notes=angleStaffNotes(interview,[opponentB],crew);
+ assert.ok(notes.some(n=>n.role==="CREATIVE"&&n.level==="WATCH"&&
+  n.title==="Long talking segment"&&n.message.includes("30 minutes")));
+ assert.ok(!notes.some(n=>n.message.includes("limited presentation strength")),
+  "Do not invent weak presentation for a strong speaker");
+ assert.ok(!angleStaffNotes({...interview,durationMinutes:10},[opponentB],crew)
+  .some(n=>n.title==="Long talking segment"));
+});

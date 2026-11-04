@@ -132,11 +132,19 @@ export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPer
   if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
    notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
     "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
-  if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
+  const talk=["INTERVIEW","PROMO","CONFRONTATION","CHALLENGE",
+   "CONTRACT_SIGNING"].includes(segment.kind);
+  if(talk&&segment.durationMinutes>=25)
+   notes.push(note("CREATIVE","WATCH","Long talking segment",
+    segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
+    " takes substantial airtime. "+(cast.some(p=>valid(p.presentation)&&p.presentation<50)?
+     "A featured wrestler has limited presentation strength. ":"")+
+    "Consider a shorter scene or a change of pace."));
+  else if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
    cast.some(p=>valid(p.presentation)&&p.presentation<50))
    notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
-    "One or more featured wrestlers may be carrying a longer talking or character segment "+
-    "than their current presentation suggests. Consider sharing the microphone or tightening it."));
+    "A featured wrestler may struggle to carry "+segment.durationMinutes+
+    " minutes. Consider tightening the segment."));
   if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
    !segment.targets.length)
    notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
