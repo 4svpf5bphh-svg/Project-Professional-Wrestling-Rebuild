@@ -7,6 +7,7 @@ import {currentWrestlerTitlesJoin,normaliseCurrentTitles} from "./current-wrestl
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
+import {worldTalentManagers} from "../domain/world-staff.js";
 export type DirectoryView="ROSTER"|"MARKET";
 export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
@@ -88,7 +89,7 @@ export async function readWrestlerDirectory(
     weekly_fixed_overhead:string|null;active_guarantees:string;
     signed_roster_exposure:string;staff_payroll:string;
     plan_wage_limit:string|null;plan_cash_reserve:string|null;
-    has_talent_manager:boolean}>(`
+    has_talent_manager:boolean;manager_id:string|null}>(`
    SELECT w.year,w.week,w.revision,w.seed,
     owner.cash::text,
     CASE WHEN owner.weekly_media_income IS NULL OR owner.weekly_sponsor_income IS NULL
@@ -103,6 +104,12 @@ export async function readWrestlerDirectory(
       AND employee.expires_week_index>=(w.year-1)*52+w.week-1) AS staff_payroll,
     plan.weekly_wage_limit::text AS plan_wage_limit,
     plan.cash_reserve::text AS plan_cash_reserve,
+    (SELECT adviser.staff_id FROM ppw_staff_employments adviser
+     WHERE adviser.world_id=w.world_id AND adviser.promotion_id=owner.promotion_id
+      AND adviser.role='TALENT_MANAGER' AND adviser.status='ACTIVE'
+      AND adviser.start_week_index<=(w.year-1)*52+w.week-1
+      AND adviser.expires_week_index>=(w.year-1)*52+w.week-1
+     ORDER BY adviser.staff_id LIMIT 1) AS manager_id,
     EXISTS(SELECT 1 FROM ppw_staff_employments adviser
      WHERE adviser.world_id=w.world_id AND adviser.promotion_id=owner.promotion_id
      AND adviser.role='TALENT_MANAGER' AND adviser.status='ACTIVE'
@@ -142,6 +149,8 @@ export async function readWrestlerDirectory(
    WHERE w.world_id=$1`,[who.worldId,who.playerId,who.promotionId]);
   if(auth.length!==1)throw new Error("Wrestler directory access denied");
   const now=(auth[0]!.year-1)*52+auth[0]!.week-1;
+  const manager=auth[0]!.manager_id?
+   worldTalentManagers(auth[0]!.seed).find(m=>m.staffId===auth[0]!.manager_id):null;
   // DISTINCT person identity: a second offer/contract must never create a
   // duplicate market tile. Correlated lookups are world+person indexed.
   const rows=await tx.query<PersonRow>(`
@@ -256,6 +265,9 @@ export async function readWrestlerDirectory(
    canEdit:auth[0]!.can_edit,view:f.view,offset:f.offset,
    offerBudget:f.view==="MARKET"?{
     hasTalentManager:auth[0]!.has_talent_manager,
+    talentManager:manager??(auth[0]!.manager_id?{
+     staffId:auth[0]!.manager_id,name:"Talent Manager",insight:55
+    }:null),
     cash:Number(auth[0]!.cash),
     weeklyIncome:auth[0]!.weekly_income===null?null:
      Number(auth[0]!.weekly_income),
