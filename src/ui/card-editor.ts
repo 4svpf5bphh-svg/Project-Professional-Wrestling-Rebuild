@@ -954,28 +954,31 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
     m.tournamentBoutNo===b.boutNo));
   if(tournamentFixtures.length&&mutable()){
-   const tournament=el("section","ppw-card-continuity");
-   tournament.append(el("strong","","TOURNAMENT BOOKING"),
-    el("p","ppw-muted","Book the next available round on this card. Only certified match winners advance."));
+   const tournament=el("section","ppw-card-tournament");
+   const heading=el("div","ppw-card-tournament-heading");
+   heading.append(el("strong","","Tournament fixtures"),
+    el("span","",tournamentFixtures.length+" ready to book"));
+   tournament.append(heading);
    for(const bout of tournamentFixtures){
-    const row=el("div","ppw-tournament-booking-row");
-    row.append(el("span","",bout.tournamentName+" · "+
-     tournamentBoutLabel(bout.entrantsCount,bout.boutNo).toUpperCase()+
-     " · "+bout.personA.name+" vs "+bout.personB.name),
-     button("+ Add tournament bout",()=>{
-      if([...matches.values()].some(m=>assignedIds(m).some(id=>
-       id===bout.personA.personId||id===bout.personB.personId))){
-       error="These tournament wrestlers are already booked on the card.";render();return;
-      }
-      const id="match-"+crypto.randomUUID();
-      matches.set(id,{...newEditorMatch(id,"SINGLES"),
-       teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
-        [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
-       tournamentId:bout.tournamentId,
-       tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
-       ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
-      order.push(id);expanded=id;markDirty();render();
-     }));
+    const row=el("div","ppw-card-tournament-fixture");
+    const label=el("div","ppw-card-tournament-names");
+    label.append(el("small","",bout.tournamentName+" · "+
+     tournamentBoutLabel(bout.entrantsCount,bout.boutNo)),
+     el("strong","",bout.personA.name+" vs "+bout.personB.name));
+    row.append(label,button("Book bout",()=>{
+     if([...matches.values()].some(m=>assignedIds(m).some(id=>
+      id===bout.personA.personId||id===bout.personB.personId))){
+      error="These tournament wrestlers are already booked on the card.";render();return;
+     }
+     const id="match-"+crypto.randomUUID();
+     matches.set(id,{...newEditorMatch(id,"SINGLES"),
+      teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
+       [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
+      tournamentId:bout.tournamentId,
+      tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
+      ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
+     order.push(id);expanded=id;slotBookingSteps.set(id,"OUTCOME");startWizard(id);
+    },!mutable(),"ppw-card-tournament-book"));
     tournament.append(row);
    }
    root.append(tournament);
@@ -983,36 +986,32 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // One optional feud picker. It must not compete with the core Add Match /
   // Add Angle buttons or repeat the Programme Desk's long creative reports.
   if(view.programmes.length){
-   const suggestions=document.createElement("details");
-   suggestions.className="ppw-card-rivalry-ideas";
-   suggestions.open=rivalryIdeasOpen;
-   suggestions.ontoggle=()=>{
-    if(suggestions.isConnected)rivalryIdeasOpen=suggestions.open;
-   };
-   suggestions.append(el("summary","","Ongoing storylines · "+view.programmes.length+
-    (view.programmes.length===1?" active feud":" active feuds")));
+   const suggestions=el("section","ppw-card-rivalry-launch");
+   const head=el("div","ppw-card-rivalry-launch-head");
+   head.append(el("strong","","Add a rivalry chapter"));
+   if(port.openProgrammes)head.append(button("Manage stories",()=>{
+    port.openProgrammes?.();
+   },false,"ppw-card-rivalry-manage"));
+   suggestions.append(head);
    const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
     view.programmes[0]!;
    focusedRivalryId=selected.programmeId;
-   const select=selector(selected.programmeId,
-    view.programmes.map(p=>[p.programmeId,p.label]),id=>{
-     focusedRivalryId=id;rivalryIdeasOpen=true;render();
-    },!mutable());
-   select.setAttribute("aria-label","Choose a rivalry to book");
-   suggestions.append(field("Rivalry",select));
-   if(selected.lastChapter){const h=selected.lastChapter;
-    suggestions.append(el("p","ppw-card-story-recap",
-     "Previously: Year "+(Math.floor(h.weekIndex/52)+1)+" Week "+(h.weekIndex%52+1)+
-     " · "+(h.segmentKind??h.kind).replaceAll("_"," ").toLowerCase()+
-     (h.sceneLocation?" · "+angleSceneLabel(h.sceneLocation):"")+
-     (h.scenePurpose?" · "+angleSceneLabel(h.scenePurpose):"")+
-     " · Crowd "+Math.round(h.crowd)));}
-   const choices=recommendProgrammeAngles(selected).slice(0,3);
+   const picks=el("div","ppw-card-rivalry-picks");
+   picks.setAttribute("role","group");
+   picks.setAttribute("aria-label","Choose a rivalry to book");
+   for(const feud of view.programmes){
+    const pick=button(feud.label,()=>{
+     focusedRivalryId=feud.programmeId;render();
+    },false,"ppw-card-rivalry-pick");
+    pick.setAttribute("aria-pressed",String(feud.programmeId===selected.programmeId));
+    picks.append(pick);
+   }
+   suggestions.append(picks);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    const occupied=new Set([...matches.values()].flatMap(assignedIds));
    const matchReady=programmeMatchStarter(selected,"preview",occupied);
    if(matchReady.ok){
-    const match=button("+ Book feud match",()=>{
+    actions.append(button("Book rivalry match",()=>{
      const id="match-"+crypto.randomUUID();
      const start=programmeMatchStarter(selected,id,
       new Set([...matches.values()].flatMap(assignedIds)));
@@ -1020,32 +1019,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      matches.set(id,start.value);order.push(id);expanded=id;
      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
      startWizard(id);
-    },!mutable(),"ppw-card-rivalry-match");
-    match.title="Both sides cast with current show-week rights. Review the winner and finish.";
-    actions.append(match);
-   }else suggestions.append(el("small","ppw-card-story-availability",
-    "Quick feud match unavailable: "+matchReady.reason+
-    " You can still book a match manually."));
-   for(const idea of choices){
-    const action=button("+ "+idea.title,()=>{
+    },!mutable(),"ppw-card-rivalry-match"));
+   }
+   for(const idea of recommendProgrammeAngles(selected).slice(0,3)){
+    const action=button(idea.title,()=>{
      const id="angle-"+crypto.randomUUID();
      segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
-     // Legacy programme records without side-resolved cast remain editable
-     // through the normal picker. A known feud uses the guided cast shortcut.
      if(selected.cast?.some(x=>x.side==="A")&&
       selected.cast?.some(x=>x.side==="B")){
       slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
      }
      order.push(id);expanded=id;startWizard(id);
     },!mutable(),"ppw-card-rivalry-add");
-    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
-     " for "+selected.label);
     action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
-    const tile=el("div","ppw-card-rivalry-option");
-    tile.append(action,el("span","",idea.kind.replaceAll("_"," ").toLowerCase()),
-     el("small","",idea.reason));
-    actions.append(tile);
+    actions.append(action);
    }
+   if(!matchReady.ok&&actions.childElementCount===0)
+    suggestions.append(el("p","ppw-card-story-availability","Book the cast manually."));
    suggestions.append(actions);
    root.append(suggestions);
   }

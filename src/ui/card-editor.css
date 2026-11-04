@@ -1242,3 +1242,48 @@ body>.ppw-card-edit-shade .ppw-guide-readiness-person small{color:#bfd9e8;font-s
 .ppw-sheet .ppw-picker-source-tabs,.ppw-sheet .ppw-picker-chips{gap:8px;align-items:stretch}
 .ppw-sheet .ppw-picker-filters select{border-radius:12px;min-width:0}
 .ppw-sheet .ppw-search :is(input,button){border-radius:12px!important}
+
+/* Phase 27 — the card is the card. Compact fixtures and a single rivalry launcher. */
+.ppw-editor .ppw-card-tournament,.ppw-editor .ppw-card-rivalry-launch{
+ margin:11px 0;padding:13px;background:#162940;
+ border:1px solid #547a98;border-radius:13px;display:grid;gap:10px}
+.ppw-editor .ppw-card-tournament-heading,.ppw-editor .ppw-card-rivalry-launch-head{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ min-width:0;flex-wrap:wrap}
+.ppw-editor .ppw-card-tournament-heading strong,
+.ppw-editor .ppw-card-rivalry-launch-head strong{
+ color:#f7e9ce;font-size:14px}
+.ppw-editor .ppw-card-tournament-heading span{font-size:11px;color:#bed7e9}
+.ppw-editor .ppw-card-tournament-fixture{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;
+ align-items:center;padding:10px;background:#1c3450;border:1px solid #486c8b;
+ border-radius:11px}
+.ppw-editor .ppw-card-tournament-names{display:grid;gap:4px;min-width:0}
+.ppw-editor .ppw-card-tournament-names small{color:#a9dbeb;font-size:11px}
+.ppw-editor .ppw-card-tournament-names strong{
+ color:#fff4d9;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-tournament-book{
+ border-radius:11px;min-width:92px;min-height:44px;
+ background:#255477;color:#fff;border:1px solid #8fb8d5;
+ font-weight:850;font-size:12px}
+.ppw-editor .ppw-card-rivalry-manage{
+ border-radius:11px;background:#203b55;color:#e9f7ff;
+ border:1px solid #6b91ae;min-height:44px;padding:8px 10px;font-size:12px}
+.ppw-editor .ppw-card-rivalry-picks{
+ display:flex;overflow-x:auto;gap:8px;padding:2px 0 5px;
+ scrollbar-width:thin;overscroll-behavior-x:contain}
+.ppw-editor .ppw-card-rivalry-pick{flex:0 0 auto;max-width:230px;min-height:44px!important;
+ font-size:12px!important;white-space:normal}
+.ppw-editor .ppw-card-rivalry-shortcuts{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.ppw-editor .ppw-card-rivalry-shortcuts button{
+ box-sizing:border-box;border-radius:11px!important;min-height:46px;
+ background:#224361;color:#eef8ff;border:1px solid #6e9bc2;
+ text-align:center;font-weight:800;font-size:12px;padding:9px}
+.ppw-editor .ppw-card-rivalry-shortcuts .ppw-card-rivalry-match{
+ grid-column:1/-1;background:#205c57;color:#f5fffc;
+ border-color:#85e2ce}
+@media(max-width:370px){
+ .ppw-editor .ppw-card-tournament-fixture{grid-template-columns:1fr;gap:8px}
+ .ppw-editor .ppw-card-tournament-book{width:100%}
+}
