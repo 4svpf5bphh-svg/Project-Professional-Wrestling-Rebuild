@@ -832,37 +832,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      !mutable()||focusBusy));
    focus.append(actions);root.append(focus);
   }
-  // One concise crew shortcut; individual notes live inside the relevant slot.
-  const allNotes=committedOrder.flatMap(id=>slotNotes(id).map(n=>({id,n})));
-  if(allNotes.some(item=>item.n.level==="WATCH")){
-   const compact=el("details","ppw-card-crew-strip") as HTMLDetailsElement;
-   compact.open=openAdvisorNotes.has("overview");
-   compact.ontoggle=()=>{if(compact.open)openAdvisorNotes.add("overview");
-    else openAdvisorNotes.delete("overview");};
-   const urgent=allNotes.filter(x=>x.n.level==="WATCH").length;
-   compact.dataset.level=urgent?"watch":"info";
-   const summary=el("summary","ppw-card-crew-summary");
-   summary.append(el("span","ppw-card-crew-icon",urgent?"!":"i"),
-    el("strong","",urgent?
-     "Crew heads-up · "+urgent+" concern"+(urgent===1?"":"s"):
-     "Crew check · "+allNotes.length+" note"+(allNotes.length===1?"":"s")),
-    el("span","ppw-card-crew-cta","Review"));
-   compact.append(summary);
-   const content=el("div","ppw-card-crew-list");
-   for(const id of committedOrder){
-    const issues=allNotes.filter(x=>x.id===id&&x.n.level==="WATCH");
-    if(!issues.length)continue;
-    const slot=order.indexOf(id)+1;
-    const label=matches.has(id)?matchLabel(matches.get(id)!):
-     (segments.get(id)?.kind??"Angle").replaceAll("_"," ").toLowerCase();
-    content.append(button("Slot "+slot+" · "+label+" · "+issues.length+
-     " concern"+(issues.length===1?"":"s"),()=>{
-     expanded=id;openAdvisorNotes.add(id);render();
-    },false,"ppw-card-crew-jump"));
-   }
-   compact.append(content);root.append(compact);
-  }
-
+  // Staff advice lives in the final booking briefing, not on the running order.
   const concerns=view.creativeConcerns??[];
   if(concerns.length){
    const desk=el("section","ppw-card-creative");
@@ -1839,17 +1809,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
     }
     if(m.format==="SINGLES"){
-     const sheet=document.createElement("details");
-     sheet.className="ppw-match-style";
-     sheet.open=openStyles.has(slotId);
-     sheet.ontoggle=()=>{
-      if(!sheet.isConnected)return;
-      if(sheet.open)openStyles.add(slotId);else openStyles.delete(slotId);
-     };
-     sheet.append(el("summary","","Match presentation · pace, story & risk"));
+     const sheet=el("section","ppw-match-style");
+     sheet.append(el("h4","","Detailed match direction"));
      const style=editorMatchStyle(m),load=editorStyleLoad(m);
-     sheet.append(el("p","ppw-match-style-intro",
-      "Direct the feel of the bout. A demanding performance can stretch your wrestlers, and bold ideas don't always pay off."));
      const dims=el("div","ppw-match-style-grid");
      const names:Record<MatchStyleDimension,string>={
       competitiveness:"Competition",technical:"Technical wrestling",
@@ -1871,33 +1833,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      workload.append(el("strong","","Expected workload · "+nice(load.band)),
       el("span","","Physical "+Math.round(load.physical)+" · Creative "+Math.round(load.creative)));
      sheet.append(workload);
-     const conditions=new Map<string,ConditionSnapshot>();
-     for(const [personId,profile] of roster){
-      conditions.set(personId,{inRingQuality:profile.inRingQuality??null,
-       matchCraft:profile.matchCraft??null,presentation:profile.presentation??null,
-       stamina:profile.stamina??null,safety:profile.safety??null,
-       fatigue:profile.fatigue??null,wear:profile.wear??null});
-     }
-     const assessments=bookedStyleReadiness(m,conditions);
-     const fitness=el("div","ppw-match-style-fitness");
-     fitness.append(el("h4","","Performer readiness"));
-     if(!assessments.known)fitness.append(el("p","ppw-match-style-fineprint",
-      "Choose wrestlers to see how comfortable they are with these demands."));
-     for(const report of assessments.reports){
-      const item=el("p","ppw-match-style-fitness-row");
-      item.dataset.status=report.status;
-      item.append(el("strong","",roster.get(report.personId)?.name??report.personId),
-       el("span","",report.status==="COMFORTABLE"?"Comfortable":
-        report.status==="CONCERNED"?"Has concerns":"Likely to refuse"),
-       el("small","",report.reasons.length?
-        report.reasons.map(nice).join(" · "):"No immediate concerns"));
-      fitness.append(item);
-     }
-     if(assessments.missing&&assessments.known)
-      fitness.append(el("p","ppw-match-style-fineprint",
-       "Some wrestlers still need a current fitness report."));
-     sheet.append(fitness,el("p","ppw-match-style-fineprint",
-      "An early warning from your roster's current condition. Speak to the wrestler or adjust the bout if concerns arise; no winner or outcome changes here."));
      body.append(sheet);
     }
     if(m.format==="BATTLE_ROYAL"||m.format==="MULTI_TEAM"){
@@ -2144,7 +2079,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         if(typeSelect){
          const tiles=el("div","ppw-angle-type-tiles");
          for(const item of [...typeSelect.options]){
-          const choice=button(item.textContent??item.value,()=>{
+          const choice=button(item.value==="INTERFERENCE"?"Ringside disruption":
+           item.textContent??item.value,()=>{
            typeSelect.value=item.value;
            typeSelect.dispatchEvent(new Event("change",{bubbles:true}));
           },!mutable(),"ppw-angle-type-tile");
@@ -2199,25 +2135,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        }
        const hint=el("p","ppw-booking-hint",castReadiness.hint);
        guide.append(hint,...cast);
-       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
-       const warnings=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       // Positive earned team familiarity also belongs here, at the moment
-       // the booker chooses partners, rather than buried under final review.
-       // Only established World evidence is shown; no chemistry guessed.
-       const teamBrief=m?matchPartnershipNotes(m,advisorPeople(),team())
-        .filter(n=>n.level==="INFO").slice(0,1):[];
-       if(warnings.length||teamBrief.length){
-        const pulse=el("section","ppw-guide-crew-pulse");
-        pulse.append(el("strong","","A word from your crew"));
-        for(const n of warnings.slice(0,2))
-         pulse.append(el("p","",n.role.replaceAll("_"," ")+": "+n.title));
-        for(const n of teamBrief)
-         pulse.append(el("p","",
-          (view.advisers?.find(c=>c.role==="ROAD_AGENT")?.name??"Road Agent")+
-          ": "+n.title+" · "+n.message));
-        guide.append(pulse);
-       }
        guide.append(button("← Match or scene type",()=>{
         slotBookingSteps.set(slotId,"SETUP");resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
@@ -2226,8 +2143,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         resetGuideScroll=true;render();
        },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
       }else if(stage==="OUTCOME"){
-       const suggestion=bookingChoicePanel(slotId);
-       if(suggestion)guide.append(suggestion);
        if(m){
         // A stipulation is already chosen on Setup; don't ask again.
         for(const child of [...essentials.children]){
@@ -2256,6 +2171,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          choices.append(pick);
         }
         direction.append(choices);
+        const finish=essentials.querySelector<HTMLSelectElement>('select[aria-label="Finish"]');
+        if(finish){
+         const parent=finish.closest(".ppw-field");
+         const panel=el("section","ppw-guide-finish");
+         panel.append(el("strong","ppw-guide-section-label","Finish"));
+         const grid=el("div","ppw-guide-finish-tiles");
+         for(const option of [...finish.options]){
+          const tile=button(option.textContent??option.value,()=>{
+           finish.value=option.value;
+           finish.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable(),"ppw-guide-finish-tile");
+          tile.setAttribute("aria-pressed",String(option.value===m.plannedFinish));
+          grid.append(tile);
+         }
+         panel.append(grid);parent?.replaceWith(panel);
+        }
         guide.append(essentials,direction);
        }else{
         // The original angle fields and server-validated callbacks are
@@ -2301,22 +2232,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         guide.append(el("p","ppw-guide-winner-reminder",
          "The default winner is not a creative recommendation. Choose who wins."));
        if(m){
-        const terms=previewMatchCreativeTerms(m,roster);
-        if(terms.length){
-         const rights=el("section","ppw-guide-contract-alert");
-         rights.append(el("strong","","Wrestler contract terms"));
-         for(const term of terms.slice(0,2))
-          rights.append(el("p","",term.message));
-         if(terms.length>2)rights.append(el("p","",
-          "+"+(terms.length-2)+" other wrestler contract term"+
-          (terms.length===3?"":"s")+" to check in the staff briefing."));
-         guide.append(rights);
-        }
-       }
-       if(m){
         const runIn=extraContent.querySelector<HTMLElement>(".ppw-run-in");
         if(runIn)guide.append(runIn);
-        if(extra.childElementCount>1)guide.append(extra);
+        if(extra.childElementCount>1){
+         const open=openQuickExtras.has(slotId);
+         const control=button(open?"Hide detailed match direction":"Fine-tune match",
+          ()=>{if(open)openQuickExtras.delete(slotId);else openQuickExtras.add(slotId);
+           resetGuideScroll=false;render();},false,"ppw-guide-tuning-toggle");
+         control.setAttribute("aria-expanded",String(open));
+         guide.append(control);
+         if(open){
+          const tuning=el("section","ppw-guide-tuning");
+          for(const child of [...extra.children]){
+           if(child.tagName!=="SUMMARY")tuning.append(child);
+          }
+          guide.append(tuning);
+         }
+        }
        }else if(extraContent.childElementCount){
         // No generic Additional Options trap for authored angles.
         guide.append(extraContent);
@@ -2326,21 +2258,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(m)for(const issue of other.filter(node=>
         node.classList.contains("ppw-card-match-consents")))
         guide.append(issue);
-       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Change cast",()=>{
         slotBookingSteps.set(slotId,"CAST");
         resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
-       const urgent=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       if(urgent.length&&!suggestion){
-        const caution=el("div","ppw-guide-crew-pulse");
-        caution.append(el("strong","","Staff noticed "+urgent.length+
-         " potential concern"+(urgent.length===1?"":"s")));
-        caution.append(el("p","",urgent[0]!.title+" · "+urgent[0]!.message));
-        guide.append(caution);
-       }
        actions.append(button("Next · Staff briefing",()=>{
         slotBookingSteps.set(slotId,"REVIEW");resetGuideScroll=true;render();
        },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
@@ -2422,6 +2344,31 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          more.append(rest);brief.append(more);
         }
         }
+       if(m&&m.format==="SINGLES"){
+        const snapshots=new Map<string,ConditionSnapshot>();
+        for(const [id,person] of roster){
+         snapshots.set(id,{inRingQuality:person.inRingQuality??null,
+          matchCraft:person.matchCraft??null,presentation:person.presentation??null,
+          stamina:person.stamina??null,safety:person.safety??null,
+          fatigue:person.fatigue??null,wear:person.wear??null});
+        }
+        const readiness=bookedStyleReadiness(m,snapshots);
+        if(readiness.reports.length){
+         brief.append(el("h4","","Performer readiness"));
+         const reports=el("div","ppw-guide-readiness");
+         for(const report of readiness.reports){
+          const item=el("div","ppw-guide-readiness-person");
+          item.dataset.status=report.status;
+          item.append(el("strong","",roster.get(report.personId)?.name??report.personId),
+           el("span","",report.status==="COMFORTABLE"?"Ready":
+            report.status==="CONCERNED"?"Has concerns":"Likely to refuse"));
+          if(report.reasons.length)item.append(el("small","",
+           report.reasons.map(nice).join(" · ")));
+          reports.append(item);
+         }
+         brief.append(reports);
+        }
+       }
        const staff=slotNotes(slotId);
        brief.append(el("h4","","Your staff's assessment"));
        if(staff.length){
@@ -2454,9 +2401,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           "+"+(contractTerms.length-3)+" more contract terms need review."));
         if(worked.length)
          brief.append(el("p","",worked.map(p=>"Active rivalry · "+p.label).join(" · ")));
-        else brief.append(el("p","",
-         "No active opposing-side storyline links this exact cast. "+
-         "That does not establish whether they have good or bad chemistry."));
+        else brief.append(el("p","","No active rivalry between these opponents."));
         const relevant=concerns.filter(c=>c.slotId===slotId);
         for(const issue of relevant)
          brief.append(el("p","ppw-guide-creative-alert",

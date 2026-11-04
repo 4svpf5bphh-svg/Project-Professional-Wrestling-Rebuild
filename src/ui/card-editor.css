@@ -1188,3 +1188,57 @@ body>.ppw-card-edit-shade .ppw-guide-extra>summary{min-height:44px}
  body>.ppw-card-edit-shade .ppw-guide-direction-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
  body>.ppw-card-edit-shade .ppw-guide-stipulation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Phase 27 — consistent tap surfaces, no floating step footer. */
+body>.ppw-card-edit-shade .ppw-guide-actions,
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-guide-next{
+ position:static!important;bottom:auto!important;z-index:auto!important;
+ background:transparent!important;margin-top:12px;padding:0!important}
+body>.ppw-card-edit-shade :is(.ppw-guide-finish-tile,.ppw-guide-format-tile,
+ .ppw-guide-stipulation-tile,.ppw-guide-direction-tile,
+ .ppw-angle-category-tile,.ppw-angle-type-tile,.ppw-guide-format-tab),
+.ppw-sheet :is(.ppw-picker-side-tab,.ppw-picker-source-tab,
+ .ppw-picker-filter-chip,.ppw-picker-unit),
+.ppw-editor .ppw-card-rivalry-pick{
+ appearance:none!important;box-sizing:border-box;min-height:46px;
+ border:2px solid #6284a4!important;border-radius:12px!important;
+ background:#213650!important;color:#eef6ff!important;
+ padding:9px 10px;text-align:center;font:inherit;font-size:13px;
+ font-weight:750;line-height:1.25;box-shadow:none!important}
+body>.ppw-card-edit-shade :is(.ppw-guide-finish-tile,.ppw-guide-format-tile,
+ .ppw-guide-stipulation-tile,.ppw-guide-direction-tile,
+ .ppw-angle-category-tile,.ppw-angle-type-tile,.ppw-guide-format-tab)[aria-pressed=true],
+.ppw-sheet :is(.ppw-picker-side-tab,.ppw-picker-source-tab,
+ .ppw-picker-filter-chip,.ppw-picker-unit)[aria-pressed=true],
+.ppw-editor .ppw-card-rivalry-pick[aria-pressed=true]{
+ background:#195a54!important;color:#fff!important;
+ border-color:#8af3dd!important;box-shadow:inset 0 0 0 1px #b0ffed!important}
+body>.ppw-card-edit-shade .ppw-guide-finish{display:grid;gap:8px;
+ grid-column:1/-1}
+body>.ppw-card-edit-shade .ppw-guide-finish-tiles{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-tuning-toggle{
+ width:100%;min-height:48px;background:#253c56!important;color:#eaf6ff!important;
+ border:1px solid #8bb1ca!important;border-radius:12px!important;
+ text-align:center;font-weight:800}
+body>.ppw-card-edit-shade .ppw-guide-tuning{padding:12px;
+ background:#152a42;border:1px solid #58799b;border-radius:12px;
+ min-width:0;display:grid;gap:10px}
+body>.ppw-card-edit-shade .ppw-guide-tuning .ppw-match-style{
+ background:transparent;border:0;padding:0;margin:0}
+body>.ppw-card-edit-shade .ppw-guide-tuning .ppw-match-style h4{
+ margin:0 0 10px;color:#fff0cf}
+body>.ppw-card-edit-shade .ppw-guide-readiness{display:grid;gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person{padding:10px 12px;
+ border:1px solid #59758d;border-left:4px solid #5ad5c6;
+ background:#192f45;border-radius:11px;display:grid;gap:4px}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person[data-status=CONCERNED]{
+ border-left-color:#efa85d}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person[data-status=REFUSE]{
+ border-left-color:#ef6c87}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person strong{color:#f4f8ff;font-size:13px}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person span{color:#ffe1ac;font-size:13px;font-weight:850}
+body>.ppw-card-edit-shade .ppw-guide-readiness-person small{color:#bfd9e8;font-size:12px}
+.ppw-sheet .ppw-picker-source-tabs,.ppw-sheet .ppw-picker-chips{gap:8px;align-items:stretch}
+.ppw-sheet .ppw-picker-filters select{border-radius:12px;min-width:0}
+.ppw-sheet .ppw-search :is(input,button){border-radius:12px!important}
