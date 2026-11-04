@@ -54,6 +54,14 @@ async function mock(page:import("@playwright/test").Page,settings?:{
    method==="planner"?{...planner,weeks:[{
     ...week,shows:settings?.hasDraft===false?[]:week.shows}]}:
    method==="load"?card:
+   method==="backstage"?{
+    personId:"alice",personName:"Alice Vale",worldYear:1,worldWeek:5,
+    worldRevision:4,canEdit:true,roster:[{personId:"alice",
+     name:"Alice Vale",isCurrent:true,morale:75,momentum:65,
+     lastMessage:null,latestIncoming:null}],persona:null,archetypes:[],
+    history:[],memories:[],recentRequests:[],nextPitchWeek:0,
+    documentedAlternates:[],conversations:[]
+   }:
    method==="talent"?{talent:[{personId:"alice",contractId:"deal-alice",
     name:"Alice Vale",division:"WOMEN",available:settings?.availability!=="INJURED",
     reason:settings?.availability??"AVAILABLE",medicalWeeksRemaining:
@@ -130,3 +138,29 @@ test("no unfinished card sends dossier back to planner rather than inventing a d
  await expect(page.getByText(/There isn't an unfinished show card this week/)).toBeVisible();
  expect(calls).toEqual(["wrestlerDirectory","wrestlerProfile","planner"]);
 });
+
+for(const width of [320,390]){
+ test(width+"px dossier → Backstage always exposes a safe return action",async({page})=>{
+  await page.setViewportSize({width,height:740});
+  const calls=await mock(page);
+  await page.goto("/#/roster");
+  const wrestler=page.locator(".ppw-directory-card").first();
+  await wrestler.locator("summary").click();
+  await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+  const dossier=page.getByRole("dialog",{name:"Wrestler dossier"});
+  await dossier.getByRole("button",{name:"Talk in Backstage"}).click();
+  await expect(page).toHaveURL(/#\\/backstage$/);
+  const leave=page.getByRole("button",{name:"‹ Leave Backstage"});
+  await expect(leave).toBeVisible();
+  const position=await leave.boundingBox();
+  expect(position).not.toBeNull();
+  expect(position!.y).toBeGreaterThanOrEqual(0);
+  expect(position!.y+position!.height).toBeLessThan(150);
+  expect(position!.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  expect(calls).toContain("backstage");
+  await leave.click();
+  await expect(page).toHaveURL(/#\\/roster$/);
+ });
+}
