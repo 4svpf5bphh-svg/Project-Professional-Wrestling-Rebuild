@@ -7,6 +7,7 @@ import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import {recommendTalentOffer,type TalentOfferProfile} from "../domain/talent-offer-advice.js";
 import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
  from "../domain/contract-term-presets.js";
 import type {StaffRole} from "../domain/world-staff.js";
@@ -134,18 +135,50 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   finally{sending=false;render();}
  }
  function offerEditor(personId:string){
-  const draft=choices.get(personId)??offerDefaults();choices.set(personId,draft);
+  const prospect=view?.people.find(p=>p.personId===personId);
+  const manager=view?.offerBudget?.talentManager;
+  const proposed=prospect&&manager?recommendTalentOffer({
+   personId,name:prospect.name,
+   marketWeeklyValue:prospect.estimatedWeeklyValue??9000,
+   popularity:prospect.popularity,recognition:prospect.recognition,
+   morale:prospect.morale,careerStage:prospect.careerStage,
+   interest:prospect.interest as TalentOfferProfile["interest"]
+  },manager):null;
+  const fromProposal=proposed?{
+   family:proposed.terms.family,role:proposed.terms.roleExpectation,
+   creative:proposed.terms.creativeControl,
+   weeks:proposed.terms.termWeeks,dates:proposed.terms.dateEntitlement,
+   weekly:proposed.terms.weeklyGuarantee,
+   appearance:proposed.terms.appearanceFee,
+   bonus:proposed.terms.signingBonus
+  }:null;
+  const draft=choices.get(personId)??fromProposal??offerDefaults();
+  choices.set(personId,draft);
   const editor=el("div","ppw-directory-offer");
-  editor.append(el("h3","","Propose a contract"));
+  editor.append(el("h3","","Make an offer"));
+  if(proposed&&fromProposal){
+   const pitch=el("section","ppw-directory-manager-proposal");
+   pitch.append(el("span","ppw-directory-manager-eyebrow",
+    proposed.managerName+" · TALENT MANAGER"),
+    el("h4","","My recommendation"),
+    el("p","ppw-directory-manager-voice",proposed.voice),
+    el("div","ppw-directory-manager-price",
+     money(proposed.projectedCommitment)+" potential full-term cost"),
+    el("small","",proposed.rationale));
+   const apply=btn("Use my recommendation",()=>{
+    Object.assign(draft,fromProposal);
+    pendingKey="";render();
+   });
+   apply.className+=" ppw-directory-manager-apply";
+   pitch.append(apply);editor.append(pitch);
+  }
   const signableWeek=view!.currentWeekIndex+1;
   const eligibleWeek="Year "+(Math.floor(signableWeek/52)+1)+
    " Week "+(signableWeek%52+1);
   const signingWindowNote=el("p","ppw-directory-offer-timing");
   const updateTiming=()=>{signingWindowNote.textContent=draft.family==="ONE_OFF"?
-   "One night only · if accepted at the weekly World advance, the single "+
-   "appearance is valid in "+eligibleWeek+" only. You cannot use it on this week's show.":
-   "If accepted at the weekly World advance, this contract becomes available "+
-   "in "+eligibleWeek+". An offer is not an immediate signing.";};
+   "One-night booking available in "+eligibleWeek+" if accepted.":
+   "Starts "+eligibleWeek+" if accepted.";};
   updateTiming();editor.append(signingWindowNote);
   const termsMenu=el("section","ppw-directory-term-menu");
   termsMenu.append(el("strong","","Choose a deal length"));
@@ -171,19 +204,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   oneNight.append(el("small","","1 appearance · no weekly wage"));
   presetChoices.append(oneNight);
   termsMenu.append(presetChoices);editor.append(termsMenu);
-  const advanced=document.createElement("details");
-  advanced.className="ppw-directory-advanced-terms";
-  advanced.open=openAdvancedTerms.has(personId)||active==="CUSTOM";
-  advanced.append(el("summary","","Advanced terms · type, weeks & dates"));
-  advanced.ontoggle=()=>{
-   if(!advanced.isConnected)return;
-   if(advanced.open)openAdvancedTerms.add(personId);
-   else openAdvancedTerms.delete(personId);
-  };
-  advanced.querySelector("summary")!.onclick=()=>{
-   if(advanced.open)openAdvancedTerms.delete(personId);
+  const custom=openAdvancedTerms.has(personId);
+  const toggle=btn(custom?"Hide custom terms":"Customise this offer",()=>{
+   if(custom)openAdvancedTerms.delete(personId);
    else openAdvancedTerms.add(personId);
-  };
+   render();
+  });
+  toggle.className+=" ppw-directory-custom-toggle";
+  editor.append(toggle);
+  const advanced=el("section","ppw-directory-advanced-terms");
+  advanced.append(el("h4","","Detailed terms"));
   advanced.append(selection("Contract type",[
    ["LIMITED_NON_EXCLUSIVE","Non-exclusive · purchased dates"],
    ["EXCLUSIVE","Exclusive · unlimited appearances"],
@@ -198,13 +228,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    else draft.dates=Math.min(draft.dates,draft.weeks);
    pendingKey="";openAdvancedTerms.add(personId);render();
   }));
-
-  editor.append(selection("Card role",[
+  advanced.append(selection("Card role",[
    ["DEVELOPMENTAL","Developing"],["REGULAR","Regular"],
    ["FEATURED","Featured"],["UPPER_CARD","Upper card"],
    ["MAIN_EVENT","Main event"],["SPECIAL_ATTRACTION","Special attraction"]
   ] as const,draft.role,next=>{draft.role=next;pendingKey="";}));
-  if(draft.family!=="ONE_OFF")editor.append(selection("Creative rights",[
+  if(draft.family!=="ONE_OFF")advanced.append(selection("Creative rights",[
    ["NONE","No control"],["CONSULTATION","Consultation"],
    ["PROTECTED_FINISHES","Protected finishes"],
    ["FULL_APPROVAL","Full approval"]
@@ -212,8 +241,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const fields=el("div","ppw-directory-offer-fields");
    const quote=el("section","ppw-directory-contract-estimate");
    const affordability=el("section","ppw-directory-affordability");
-   const adviser=el("details","ppw-directory-adviser") as HTMLDetailsElement;
-   adviser.append(el("summary","","Talent Manager · contract advice"));
+   const adviser=el("section","ppw-directory-adviser");
+   const adviserHeading=el("h4","","Talent Manager · financial concerns");
+   adviser.append(adviserHeading);
    const adviserContents=el("div","ppw-directory-adviser-content");
    adviser.append(adviserContents);
    const updateQuote=()=>{
@@ -243,13 +273,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     if(dates>0)costRow(dates+" date"+(dates===1?"":"s")+" × "+money(appearance)+
      " appearance fee",projection.plannedAppearanceFees);
     costRow("One-time signing bonus",projection.oneTimeBonus);
-    quote.append(breakdown,el("p","ppw-directory-contract-assumption",
-     dates>0?
-      "Planning assumes all "+dates+" purchased date"+(dates===1?" is":"s are")+
-      " used during the "+weeks+"-week contract. Appearance fees are charged only "+
-      "when booked; unused dates expire. Nothing is charged for submitting an offer.":
-      "Includes all guaranteed wages and the one-time bonus. Actual income, "+
-      "show costs and wrestler acceptance are separate."));
+    if(custom)quote.append(breakdown);
+    quote.append(el("small","ppw-directory-contract-assumption",
+     "Includes wages, bonus and all planned appearances. Only worked dates incur appearance fees."));
     affordability.replaceChildren();
     const company=view?.offerBudget;
     if(company){
@@ -279,11 +305,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      // Only show the four implications that change a managerial decision.
      const lines:[string,string][]=[
       ["Cash after signing bonus",money(reservedCash)],
-      ["Weekly wage headroom",wageRoom===null?
+      ["Weekly wage room",wageRoom===null?
        "No spending plan":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
-      ["Recurring margin after signing",postMargin===null?
-       "Not yet configured":money(postMargin)],
-      ["Average planned weekly cost, all terms",money(projection.averageWeeklyCost)]
+      ["Weekly operating room",postMargin===null?
+       "Not configured":money(postMargin)]
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
@@ -297,11 +322,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        "This offer exceeds a spending limit or your recurring income. "+
        "You can still propose it, but consider adjusting the terms."));
      }else affordability.dataset.risk="false";
-     affordability.append(el("small","ppw-directory-muted",
-      "Recurring margin excludes future ticket sales and appearance fees. The "+
-      "full-term forecast above includes every purchased date. Cash-only "+
-      "outlook includes remaining signed roster costs when available; it "+
-      "excludes pending offers, other running costs and future income."));
+     if(custom)affordability.append(el("small","ppw-directory-muted",
+      "Cash-only figures include signed roster costs but exclude future income and pending offers."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({
@@ -312,11 +334,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        existingRosterExposure:includesRoster?existing:0
       },new Set<StaffRole>(["TALENT_MANAGER"]));
       const concerns=messages.filter(x=>x.level==="WATCH").length;
-      adviser.open=concerns>0;
       adviser.dataset.risk=concerns?"watch":"info";
-      adviser.firstElementChild!.textContent=concerns?
-       "Talent Manager · "+concerns+" concern"+(concerns===1?"":"s"):
-       "Talent Manager · offer advice";
+      adviser.hidden=concerns===0;
+      adviserHeading.textContent="Talent Manager · "+concerns+
+       " financial concern"+(concerns===1?"":"s");
       for(const m of messages){
        const item=el("div","ppw-directory-adviser-note");
        item.dataset.level=m.level;
@@ -324,9 +345,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        adviserContents.append(item);
       }
      }else{
-      adviser.firstElementChild!.textContent="Your finance checklist";
-      adviserContents.append(el("p","ppw-directory-muted",
-       "This is a projection of current costs. Hire a Talent Manager to get additional contract guidance and renewal support."));
+      adviser.hidden=true;
      }
     }
    };
@@ -343,15 +362,17 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    numbers(timing,"Purchased dates",draft.dates,1,52,
     n=>{draft.dates=Math.min(n,draft.weeks);pendingKey="";updateQuote();});
   advanced.append(timing);
-  editor.append(advanced);
+  if(custom)editor.append(advanced);
   if(draft.family!=="ONE_OFF")numbers(fields,"Weekly guarantee ($)",
    draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";updateQuote();});
   if(draft.family!=="EXCLUSIVE")numbers(fields,"Appearance fee ($)",
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  // Put the Talent Manager before the finance breakdown and submit action.
-  editor.append(fields,adviser,quote,affordability);
+  // First the suggested deal, then affordability. Detailed term editing is
+  // an explicit choice and never another nested disclosure.
+  if(custom)editor.append(fields);
+  editor.append(adviser,quote,affordability);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
