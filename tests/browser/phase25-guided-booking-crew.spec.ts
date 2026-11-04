@@ -22,7 +22,8 @@ const talent=[
  {personId:"mistico",contractId:"c-mistico",name:"Místico",division:"MEN",
   alignment:"FACE",available:true,reason:"AVAILABLE",remainingDates:20,
   popularity:91,recognition:91,momentum:70,inRingQuality:90,matchCraft:90,
-  presentation:85,stamina:91,safety:84,fatigue:6,wear:12,appearanceFee:16000}
+  presentation:85,stamina:91,safety:84,fatigue:6,wear:12,appearanceFee:16000,
+  creativeControl:"PROTECTED_FINISHES"}
 ];
 const card={showId:"weekly",year:1,week:5,worldRevision:4,
  canEdit:true,ready:false,day:5,venueId:"arena",showName:"Ascension",
@@ -104,6 +105,10 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await dialog.getByLabel("Minutes").fill("30");
  await dialog.getByLabel("Minutes").press("Tab");
+ await expect(dialog.locator(".ppw-guide-contract-alert"))
+  .toContainText("Místico");
+ await expect(dialog.locator(".ppw-guide-contract-alert"))
+  .toContainText("protects against this planned clean loss");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
  const review=dialog.locator(".ppw-guide-staff-review");
@@ -113,6 +118,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(review).toContainText("This is a demanding match");
  await expect(review).toContainText("Watch cumulative wear");
  await expect(review).toContainText("Risky stipulation and safety concerns");
+ await expect(review).toContainText("Místico's contract protects");
  const condition=review.locator(".ppw-guide-condition-list");
  await expect(condition).toContainText("Samoa Joe");
  await expect(condition).toContainText("Fatigue 78/100");

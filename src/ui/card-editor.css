@@ -1112,3 +1112,10 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field s
  margin:6px 0 10px;padding:9px 10px;border-radius:9px;
  background:#203b49;border:1px solid #6696a4;color:#daf0f0;
  overflow-wrap:anywhere}
+
+/* Contract warnings are provisional, never an authoritative consent result. */
+.ppw-guide-contract-alert{border:1px solid #b8956b;border-radius:11px;
+ background:#332c35;padding:11px 12px;display:grid;gap:5px}
+.ppw-guide-contract-alert>strong{font-size:13px;color:#ffdfae}
+.ppw-guide-contract-alert>p{font-size:12px;color:#f4e2d1;
+ line-height:1.45;margin:0;overflow-wrap:anywhere}

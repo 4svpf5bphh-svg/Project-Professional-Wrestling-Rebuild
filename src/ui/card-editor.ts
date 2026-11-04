@@ -33,6 +33,7 @@ import {SPECIAL_MOMENTS,specialMomentBySku} from "../domain/special-moments.js";
 import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,angleLocationsFor,anglePurposesFor,angleLocationArea,angleSceneLabel} from "../domain/angle-scene.js";
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
+import {previewMatchCreativeTerms} from "./card-creative-term-preview.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
@@ -2244,6 +2245,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         p.cast.every(person=>assignedIds(m).includes(person.personId))))
         guide.append(el("p","ppw-guide-winner-reminder",
          "The default winner is not a creative recommendation. Choose who wins."));
+       if(m){
+        const terms=previewMatchCreativeTerms(m,roster);
+        if(terms.length){
+         const rights=el("section","ppw-guide-contract-alert");
+         rights.append(el("strong","","Wrestler contract terms"));
+         for(const term of terms.slice(0,2))
+          rights.append(el("p","",term.message));
+         if(terms.length>2)rights.append(el("p","",
+          "+"+(terms.length-2)+" other wrestler contract term"+
+          (terms.length===3?"":"s")+" to check in the staff briefing."));
+         guide.append(rights);
+        }
+       }
        if(extra.childElementCount>1)guide.append(extra);
        // A saved match approval is not an advanced preference. Keep the
        // authoritative consent action in sight alongside its result.
@@ -2365,6 +2379,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           cast.some(x=>x.side==="B"&&ids.has(x.personId));
         });
         brief.append(el("h4","","Relationships & concerns"));
+        const contractTerms=previewMatchCreativeTerms(m,roster);
+        for(const term of contractTerms.slice(0,3))
+         brief.append(el("p","ppw-guide-creative-alert",term.message));
+        if(contractTerms.length>3)
+         brief.append(el("p","ppw-guide-creative-alert",
+          "+"+(contractTerms.length-3)+" more contract terms need review."));
         if(worked.length)
          brief.append(el("p","",worked.map(p=>"Active rivalry · "+p.label).join(" · ")));
         else brief.append(el("p","",
