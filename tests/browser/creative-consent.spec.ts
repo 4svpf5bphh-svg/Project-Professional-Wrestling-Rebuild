@@ -64,7 +64,8 @@ test("mobile booker asks for one saved wrestler agreement and sees the actual an
  expect(calls).toEqual(["planner","load","creativeConsent","load"]);
  await page.getByRole("button",{name:"Edit this match"}).click();
  const editor=page.getByRole("dialog",{name:"Edit match"});
- await editor.getByLabel("Finish").selectOption("PROTECTED_FINISH");
+ await editor.locator(".ppw-guide-finish-tile")
+  .filter({hasText:/Protected finish/i}).click();
  await expect(editor.getByText("Recheck needed")).toBeVisible();
  await expect(page.getByText("RECHECK AFTER SAVE")).toBeVisible();
  await editor.getByRole("button",{name:"Ask Bob about this draft"}).click();

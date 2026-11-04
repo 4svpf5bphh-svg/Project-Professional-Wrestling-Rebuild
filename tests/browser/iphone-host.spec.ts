@@ -519,9 +519,9 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  const focused=page.getByRole("dialog",{name:"Edit match"});
  await expect(focused).toBeVisible();
  await expect(page.locator(".ppw-card-list .ppw-card-body")).toHaveCount(0);
- const finish=focused.getByLabel("Finish");
- await finish.selectOption("FOREIGN_OBJECT");
- await focused.locator(".ppw-guide-extra > summary").click();
+ await focused.locator(".ppw-guide-finish-tile")
+  .filter({hasText:/Foreign object/i}).click();
+ await focused.getByRole("button",{name:"Fine-tune match"}).click();
  await focused.getByLabel("Who uses the foreign object?").selectOption("alice");
  await focused.locator(".ppw-run-in > summary").click();
  await page.getByRole("button",{name:"Choose run-in wrestler"}).click();
@@ -938,20 +938,15 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
- await page.locator(".ppw-programme-strategy > summary").click();
- await page.locator(".ppw-programme-strategy-choice")
-  .filter({hasText:"Raise the cost of another loss"})
-  .getByRole("button",{name:"Choose direction"}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
- await page.locator(".ppw-programme-strategy > summary").click();
- await page.locator(".ppw-programme-strategy-choice")
-  .filter({hasText:"Let the result mean something"})
-  .getByRole("button",{name:"Choose direction"}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-strategy")).toHaveCount(0);
+ await page.getByRole("button",{name:"Raise the cost of another loss"}).click();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("Pursue a rematch");
+ await page.getByRole("button",{name:"Change course deliberately"}).click();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("Let the result stand");
+ await expect(page.locator('.ppw-programme-decision .ppw-programme-action[aria-pressed="true"]'))
+  .toHaveCount(1);
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
  expect(methods).not.toContain("save");

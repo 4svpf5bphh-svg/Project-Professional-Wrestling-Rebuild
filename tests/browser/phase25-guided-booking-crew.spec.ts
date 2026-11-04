@@ -316,8 +316,7 @@ test("390px: match and physical angle share show workload advice and are saved t
   .toContainText("Side B");
  await picker.locator(".ppw-wrestler-card").first().click();
  await match.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(match.locator(".ppw-guide-contract-alert"))
-  .toContainText("Místico's contract protects against this planned clean loss");
+ await expect(match.locator(".ppw-guide-contract-alert")).toHaveCount(0);
  await match.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(match.locator(".ppw-guide-staff-review"))
   .toContainText("Místico's contract protects");
@@ -386,21 +385,23 @@ test("390px: referee changes dangerous match rules only on request; Road Agent t
  await picker.locator(".ppw-wrestler-card").first().click();
  await picker.locator(".ppw-wrestler-card").first().click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toContainText("Mark Reid");
  await expect(choice).toContainText("Reconsider the stipulation");
- await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("18 min");
  await choice.getByRole("button",{name:"Use standard rules"}).click();
  await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"← Revise script"}).click();
  await dialog.getByLabel("Minutes").fill("35");
  await dialog.getByLabel("Minutes").press("Tab");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Derek James");
  await expect(choice).toContainText("Samoa Joe");
  await expect(choice).toContainText("35 minutes");
  await choice.getByRole("button",{name:"Shorten to 18 min"}).click();
- await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("18 min");
  await expect(choice).toHaveCount(0);
- await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Standard rules");
  await expect(review).toContainText("Winner · Samoa Joe");
@@ -441,14 +442,15 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await expect(choice).toHaveCount(0);
  await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
  await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Dr Singh");
  await expect(choice).toContainText("Samoa Joe");
  await expect(choice).toContainText("Soften this physical scene");
- await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
  await choice.getByRole("button",{name:"Reduce physical intensity"}).click();
+ await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"← Revise script"}).click();
  await expect(dialog.getByLabel("Attack intensity")).toHaveValue("WARNING");
  await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("OFFICIALS_SEPARATE");
- await expect(choice).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Check condition before this physical scene");
@@ -473,13 +475,13 @@ test("390px: Creative can tighten a weak long promo without altering the scripte
  await picker.locator(".ppw-wrestler-card").first().click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByLabel("Angle duration (minutes)").selectOption("20");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toContainText("Emma Cross");
  await expect(choice).toContainText("Samoa Joe");
  await choice.getByRole("button",{name:"Shorten scene to 10 min"}).click();
- await expect(dialog.getByLabel("Angle duration (minutes)")).toHaveValue("10");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("10 min");
  await expect(choice).toHaveCount(0);
- await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(dialog.locator(".ppw-guide-staff-review"))
   .not.toContainText("Long scene, limited presentation strength");
  await dialog.getByRole("button",{name:"Complete angle"}).click();
