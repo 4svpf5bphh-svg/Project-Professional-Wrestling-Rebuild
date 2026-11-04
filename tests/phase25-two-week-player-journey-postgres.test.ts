@@ -120,8 +120,8 @@ test("player books, resolves, reviews and follows a feud into next week's decisi
    for(const [index,showId] of [firstShow,secondShow].entries())
     await tx.query("INSERT INTO ppw_booking_drafts("+
      "world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,"+
-     "market_id,show_name,booking_class)"+
-     " VALUES($1,$2,$3,1,$4,'DRAFT',3,'arena','home',$5,'REGULAR')",
+     "market_id,show_name,booking_class,event_importance)"+
+     " VALUES($1,$2,$3,1,$4,'DRAFT',3,'arena','home',$5,'REGULAR',65)",
      [worldId,showId,promotionId,index+1,
       index===0?"Ascension: Week 1":"Ascension: Week 2"]);
   });
