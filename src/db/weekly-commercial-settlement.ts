@@ -4,8 +4,9 @@
  * This module is never a timer or independent scheduler.
  */
 import type {SqlRows} from "./world-operations.js";
-import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialEvidence,type CommercialOffer}
+import {COMMERCIAL_COMPANIES,type CommercialEvidence}
  from "../domain/commercial-offers.js";
+import {awardAiCommercialPartners} from "../domain/commercial-ai-market.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  year:number,week:number){
@@ -224,50 +225,32 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI";
   airing_day:number|null;airing_hour:number|null};
  const proposals:Proposal[]=[];
- // One global finite catalogue: a network or sponsor can serve only one
- // promotion in a World. Existing agreements, including legacy terms, hold
- // inventory until expiry. A World lock serializes this whole rollover.
+ // Human and AI bidders share one finite World inventory. Rank eligible AI
+ // bidders by the actual audience each partner values, not promotion ID.
+ // Existing agreements still block a company’s kind until term expiry.
  const occupied=await tx.query<{offer_code:string}>(`
   SELECT DISTINCT offer_code FROM ppw_commercial_deals
   WHERE world_id=$1 AND status='ACTIVE'
  `,[worldId]);
  const taken=new Set(occupied.map(row=>row.offer_code));
- const announced=new Set<"BROADCAST"|"SPONSOR">();
- for(const p of owners){
-  const offers=commercialOffers(p);
-  for(const kind of ["BROADCAST","SPONSOR"] as const){
-   if(p.active_kinds.includes(kind)||announced.has(kind))continue;
-   const eligible=offers.filter(o=>o.kind===kind&&!taken.has(o.code));
-   // AI companies act as real bidders for the same finite roster of brands.
-   // One broadcast and one sponsor award per World week prevents a single
-   // rollover from instantly exhausting every slot.
-   const preference=kind==="BROADCAST"?
-    ["BROADCAST_GLOBAL","BROADCAST_TV","BROADCAST_GROWTH",
-     "BROADCAST_ARCHIVE","BROADCAST_INDIE","BROADCAST_STABLE"]:
-    ["SPONSOR_LUXURY","SPONSOR_TECH","SPONSOR_PARTNER",
-     "SPONSOR_GEAR","SPONSOR_FOOD","SPONSOR_LOCAL"];
-   const choice:CommercialOffer|undefined=preference
-    .map(code=>eligible.find(o=>o.code===code)).find(Boolean);
-   if(!choice)continue;
-   const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
-   if(baseline===null)continue;
-   const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
-    Math.min(100,p.mediaReach):null;
-   taken.add(choice.code);
-   announced.add(kind);
-   proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
-    promotion_id:p.promotion_id,kind,offer_code:choice.code,
-    baseline_income:baseline,agreed_income:choice.weeklyIncome,
-    baseline_reach:originalReach,
-    agreed_reach:originalReach===null?null:
-     Math.min(100,originalReach+choice.reachIncrease),
-    start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI",
-    airing_day:kind==="BROADCAST"?
-     (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
-      p.recentShowDay:COMMERCIAL_COMPANIES[choice.code]?.preferredDay??6):null,
-    airing_hour:kind==="BROADCAST"?
-     Number(COMMERCIAL_COMPANIES[choice.code]?.airtime.slice(0,2)??"20"):null});
-  }
+ for(const {promotion:p,offer:choice} of awardAiCommercialPartners(owners,taken)){
+  const kind=choice.kind;
+  const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
+  if(baseline===null)throw new Error("AI commercial offer lacks an income baseline");
+  const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
+   Math.min(100,p.mediaReach):null;
+  proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
+   promotion_id:p.promotion_id,kind,offer_code:choice.code,
+   baseline_income:baseline,agreed_income:choice.weeklyIncome,
+   baseline_reach:originalReach,
+   agreed_reach:originalReach===null?null:
+    Math.min(100,originalReach+choice.reachIncrease),
+   start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI",
+   airing_day:kind==="BROADCAST"?
+    (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
+     p.recentShowDay:COMMERCIAL_COMPANIES[choice.code]?.preferredDay??6):null,
+   airing_hour:kind==="BROADCAST"?
+    Number(COMMERCIAL_COMPANIES[choice.code]?.airtime.slice(0,2)??"20"):null});
  }
  if(proposals.length){
   // Insert strictly before applying amounts; WHERE status active filters out

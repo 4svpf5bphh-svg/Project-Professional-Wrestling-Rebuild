@@ -679,19 +679,29 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      audience.append(el("small","",
       view.recentTvEpisodes+" recent episodes · "+view.averageTvRating.toFixed(1)+
       " average household rating"));
-    const ppv=view.shows.find(s=>s.audience?.format==="PPV");
+    const ppv=view.shows.find(s=>s.audience?.format==="PPV"&&
+     typeof s.audience.ppvBuys==="number");
     if(ppv)audience.append(el("small","",
      ppv.name+" · "+ppv.audience!.ppvBuys!.toLocaleString("en-GB")+" PPV buys"));
     section.append(audience);
     const rivals=view.competitorBroadcasts??[];
     if(rivals.length){
      const ranking=el("section","ppw-business-broadcast-comparison");
-     ranking.append(el("h3","","Ratings war"));
+     ranking.append(el("h3","","Ratings war"),
+      el("small","ppw-business-muted","Latest TV episode per promotion · past six weeks"));
      const yourRank=rivals.findIndex(r=>r.isYours);
      ranking.append(el("p","ppw-business-muted",yourRank>=0?
       "Your latest TV show ranks #"+(yourRank+1)+" of "+
       rivals.length+" recent broadcasters.":"No certified recent episode of yours."));
-     for(const [i,episode] of rivals.slice(0,7).entries()){
+     if(yourRank>0)ranking.append(el("p","ppw-business-muted",
+      rivals[0]!.name+" leads your latest audience by "+
+      Math.max(0,rivals[0]!.householdRating-rivals[yourRank]!.householdRating)
+       .toFixed(1)+" rating points."));
+     // Keep the manager's own place visible even below the seven leaders.
+     const visible=rivals.slice(0,7);
+     if(yourRank>=7)visible.push(rivals[yourRank]!);
+     for(const episode of visible){
+      const i=rivals.indexOf(episode);
       const row=el("article","ppw-business-broadcast-row");
       if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
       const label=el("div","");

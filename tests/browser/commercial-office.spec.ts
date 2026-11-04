@@ -175,3 +175,48 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("Ratings war keeps a lower-ranked owner visible and ignores legacy PPV rows without buys",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ let calls=0;
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",
+  overview:{world:{revision:6,name:"World",year:1,week:11,phase:"OPEN",
+   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:1_000_000,debt:0}},availablePromotions:[]
+ }}));
+ await page.route("**/api/card",r=>{
+  calls++;
+  return r.fulfill({json:{
+   name:"CWA",tier:"LOCAL",year:1,week:11,worldRevision:6,phase:"OPEN",
+   cash:1_000_000,debt:0,homeMarketName:"Midlands",mediaReach:70,
+   weeklyMediaIncome:12000,weeklySponsorIncome:3000,weeklyFixedOverhead:5000,
+   weeklyGuarantees:2000,weeklyStaffPayroll:0,recurringMargin:8000,
+   lastWeeklyNet:0,runwayWeeks:null,financialDistress:"HEALTHY",
+   standing:null,territories:[],recentTransactions:[],
+   rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+   commercialAgreements:[],commercialOffers:[],partnerInventory:[],
+   recentTvEpisodes:1,averageTvRating:.3,recentAverageCrowd:70,
+   shows:[{name:"Special",year:1,week:10,
+    audience:{format:"PPV",householdRating:null,estimatedViewers:null,ppvBuys:null}}],
+   competitorBroadcasts:[
+    ...Array.from({length:8},(_,i)=>({promotionId:"r"+i,
+     name:"Rival "+i,showName:"Weekly",day:5,year:1,week:10,
+     householdRating:4-i*.4,estimatedViewers:100000,networkOfferCode:null,
+     isYours:false})),
+    {promotionId:"mine",name:"CWA",showName:"Ascension",day:2,year:1,
+     week:10,householdRating:.3,estimatedViewers:20000,
+     networkOfferCode:null,isYours:true}]
+  }});
+ });
+ await page.goto("/#/business");
+ await page.getByRole("button",{name:"Deals"}).click();
+ await expect(page.getByText(/Your latest TV show ranks #9 of 9/)).toBeVisible();
+ await expect(page.getByText("#9 · CWA · YOUR SHOW")).toBeVisible();
+ await expect(page.getByText("Latest TV episode per promotion · past six weeks")).toBeVisible();
+ await expect(page.getByText(/PPV buys/)).toHaveCount(0);
+ expect(calls).toBe(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

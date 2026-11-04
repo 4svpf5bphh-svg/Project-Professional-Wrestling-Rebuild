@@ -32,7 +32,7 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    await tx.query(`UPDATE ppw_worlds SET week=4,
     next_lock_at=clock_timestamp()+interval '2 days'
     WHERE world_id=$1`,[world]);
-   for(const company of [promotion,"promotion-1"]){
+   for(const company of [promotion,"promotion-1","promotion-3"]){
    for(let week=1;week<=3;week++){
     const show="commercial-show-"+company+"-"+week;
     await tx.query(`INSERT INTO ppw_booking_drafts
@@ -41,13 +41,17 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
      [world,show,company,week]);
     await tx.query(`INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
-     VALUES($1,$2,$3,1,$4,$5,75,'{}'::jsonb,$6)`,
-     [world,company,show,week,"certified-"+company+"-"+week,"a".repeat(62)+(company==="promotion-1"?"b":"a")+week]);
+     VALUES($1,$2,$3,1,$4,$5,
+      CASE WHEN $3='promotion-3' THEN 85 ELSE 75 END,'{}'::jsonb,$6)`,
+     [world,company,show,week,"certified-"+company+"-"+week,"a".repeat(62)+(company==="promotion-1"?"b":company==="promotion-3"?"c":"a")+week]);
     await tx.query(`INSERT INTO ppw_show_economics
      (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
       gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
-      total_cost,net_result,incremental_cash)
-     VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000)`,
+      total_cost,net_result,incremental_cash,audience_format,tv_household_rating)
+     VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000,
+      CASE WHEN $3 IN ('promotion-1','promotion-3') THEN 'TV' ELSE NULL END,
+      CASE WHEN $3='promotion-3' THEN 0.8
+       WHEN $3='promotion-1' THEN 0.11 ELSE NULL END)`,
      [world,show,company,week]);
    }
    }
@@ -190,9 +194,14 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   const npc=await withWorldTransaction(db.pool,tx=>tx.query<{
    kind:string;source:string
   }>(`SELECT kind,source FROM ppw_commercial_deals
-   WHERE world_id=$1 AND promotion_id='promotion-1' AND status='ACTIVE'
+   WHERE world_id=$1 AND promotion_id='promotion-3' AND status='ACTIVE'
    ORDER BY kind`,[world]));
-  assert.deepEqual(npc,[{kind:"BROADCAST",source:"AI"},{kind:"SPONSOR",source:"AI"}]);
+  assert.deepEqual(npc,[{kind:"BROADCAST",source:"AI"},{kind:"SPONSOR",source:"AI"}],
+   "The stronger certified TV audience beats the alphabetically earlier AI rival");
+  const weak=await withWorldTransaction(db.pool,tx=>tx.query<{kind:string}>(
+   `SELECT kind FROM ppw_commercial_deals
+    WHERE world_id=$1 AND promotion_id='promotion-1' AND status='ACTIVE'`,[world]));
+  assert.deepEqual(weak,[],"The weaker AI cannot claim a second copy of either slot");
   const afterSponsor=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:owner});
   assert.equal(afterSponsor.weeklySponsorIncome,25000);
