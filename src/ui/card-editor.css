@@ -1044,3 +1044,12 @@ body>.ppw-card-edit-shade .ppw-guide-stipulation-tile{
 .ppw-guide-angle-feud{padding:10px 12px;background:#202d50;
  border-left:3px solid #b3a1f4;border-radius:7px}
 @media(max-width:350px){.ppw-angle-type-tiles{grid-template-columns:1fr}}
+
+/* Preserve legible full-width scripted direction on 320/390px iPhones.
+   The original generic control-grid has two columns at these widths. */
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid{
+ grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field{
+ grid-column:1/-1;width:100%;min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field select{
+ width:100%;min-width:0;max-width:100%;font-size:14px}

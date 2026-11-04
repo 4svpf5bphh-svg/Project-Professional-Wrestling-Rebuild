@@ -226,9 +226,9 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(picker).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
- await expect(dialog.getByText("Where does it happen?")).toBeVisible();
- await expect(dialog.getByText("Why is this on the show?")).toBeVisible();
- await expect(dialog.getByText("How does it unfold?")).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Where does it happen?",exact:true})).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Why is this on the show?",exact:true})).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"How does it unfold?",exact:true})).toBeVisible();
  await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
  await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
  await dialog.getByLabel("Exact location").selectOption("PARKING_LOT");

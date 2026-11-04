@@ -186,7 +186,10 @@ test("book a feud match and retaliation scene with signed participants, one save
  await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Side B initiates"}).click();
  await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
@@ -295,8 +298,11 @@ test("an explicit programme creative choice opens an unsaved, editable matching 
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Strike back"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(page.getByText("Edits not saved")).toBeVisible();
  expect(methods).toEqual(["programmes","planner","load"]); // no write before save
 });
