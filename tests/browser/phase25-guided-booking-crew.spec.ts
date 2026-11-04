@@ -288,3 +288,57 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("390px: match and physical angle share show workload advice and are saved together once",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const {saved}=await stub(page);
+ await goToCard(page);
+ await page.getByRole("button",{name:"+ Add match"}).click();
+ const match=page.getByRole("dialog",{name:"Edit match"});
+ await expect(page.locator(".ppw-save .ppw-primary")).toBeDisabled();
+ await match.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await match.getByRole("button",{name:"Choose wrestler"}).first().click();
+ let picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await expect(picker.locator(".ppw-picker-side-tab[aria-pressed=true]"))
+  .toContainText("Side B");
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await match.getByRole("button",{name:"Next · Script outcome"}).click();
+ await match.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await match.getByRole("button",{name:"Complete match"}).click();
+ await expect(page.locator(".ppw-card-matchup")).toBeVisible();
+ await expect(page.locator(".ppw-save .ppw-primary")).toBeEnabled();
+ await page.getByRole("button",{name:"+ Add angle"}).click();
+ const angle=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(page.locator(".ppw-save .ppw-primary")).toBeDisabled();
+ await angle.getByLabel("Creative direction").selectOption("RIVALRY");
+ await angle.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:"Attack",exact:true}).click();
+ await angle.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await angle.getByRole("button",{name:"+ Add performer"}).click();
+ picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await angle.getByRole("button",{name:"+ Add target"}).click();
+ picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Face",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await angle.getByRole("button",{name:"Next · Script outcome"}).click();
+ await angle.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const staff=angle.locator(".ppw-guide-staff-review");
+ await expect(staff).toContainText("Multiple physical bookings on this show");
+ await expect(staff).toContainText("also have a match");
+ await expect(staff).toContainText("Dr Singh");
+ await angle.getByRole("button",{name:"Complete angle"}).click();
+ await expect(page.locator(".ppw-match-card")).toHaveCount(1);
+ await expect(page.locator(".ppw-angle-card")).toHaveCount(1);
+ await expect(page.locator(".ppw-card-appearance-cost")).toContainText("$27,000");
+ await expect(page.locator(".ppw-save .ppw-primary")).toBeEnabled();
+ await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saved).toHaveLength(1);
+ const payload=saved[0] as {matches:unknown[];segments:unknown[]};
+ expect(payload.matches).toHaveLength(1);
+ expect(payload.segments).toHaveLength(1);
+});
