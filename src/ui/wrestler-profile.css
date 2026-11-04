@@ -205,3 +205,18 @@ body:has(.ppw-profile-overlay){overflow:hidden}
  min-height:44px;display:flex;align-items:center;font-weight:850;cursor:pointer}
 @media(max-width:360px){.ppw-profile-manage{padding:11px}
  .ppw-profile-manage-actions{grid-template-columns:1fr}}
+
+/* Phase 28: dossier attributes are the one authoritative visible stat set. */
+.ppw-profile-attributes{padding:15px!important;overflow:visible}
+.ppw-profile-attributes>h2{margin:0 0 13px;color:#e5f5ff}
+.ppw-profile-attributes>.ppw-profile-statgrid{padding:0}
+.ppw-wrestler-profile>.ppw-wrestler-card{
+ border-radius:15px;margin:3px 0 12px}
+.ppw-wrestler-profile .ppw-profile-manage{
+ padding:13px;margin:10px 0 13px}
+.ppw-wrestler-profile .ppw-profile-manage h2{margin:3px 0 9px}
+.ppw-wrestler-profile .ppw-profile-manage-actions{gap:7px}
+@media(max-width:360px){
+ .ppw-wrestler-profile .ppw-profile-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ppw-wrestler-profile .ppw-profile-stat{padding:8px}
+}
