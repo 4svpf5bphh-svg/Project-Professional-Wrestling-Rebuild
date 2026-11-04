@@ -132,9 +132,13 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.locator(".ppw-control-grid select").nth(1).selectOption("POST_MATCH_ASSAULT");
- dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:"Post-match assault"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("After which match?").selectOption("bout");
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByLabel("How it ends").selectOption("VICTIM_FIGHTS_BACK");
  await dialog.getByRole("button",{name:"← Change cast"}).click();
  await expect(dialog.getByText("Victim from the match")).toBeVisible();
@@ -146,8 +150,9 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await expect(page.locator(".ppw-card-lineup").filter({hasText:/Victim Fights Back/i})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("After which match?")).toHaveValue("bout");
  await expect(dialog.getByLabel("How it ends")).toHaveValue("VICTIM_FIGHTS_BACK");
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await expect(dialog.getByLabel("After which match?")).toHaveValue("bout");
  expect(methods.filter(m=>m==="save")).toHaveLength(1);
  expect(methods.filter(m=>m==="load")).toHaveLength(2);
  expect(methods).not.toContain("talent");
@@ -234,9 +239,9 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.getByRole("button",{name:"+ Add angle"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Creative direction").selectOption("TURN");
- await expect(dialog.getByLabel("Creative direction")).toHaveValue("TURN");
- await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("TURN");
+ await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Turns"}).click();
+ await expect(dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:"Turn",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
@@ -294,7 +299,8 @@ test("iPhone booker can add an unsaved feud-linked recommended angle without aut
  await expect(dialog).toBeVisible();
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Challenge");
  await dialog.getByRole("button",{name:"← Match or scene type"}).click();
- await expect(dialog.getByLabel("Creative direction")).toHaveValue("CHALLENGE");
+ await expect(dialog.locator(".ppw-angle-category-tiles")
+  .getByRole("button",{name:"Challenges"})).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByLabel("Storyline (optional)")).toHaveValue("gunns-rivalry");
  await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
@@ -407,11 +413,19 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("Angle type").locator('option[value="MOMENT_VEHICLE_HOSING"]')).toHaveCount(1);
- await dialog.getByLabel("Angle type").selectOption("MOMENT_VEHICLE_HOSING");
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ const hosedown=dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:/Vehicle hosedown/});
+ await expect(hosedown).toHaveCount(1);
+ await hosedown.click();
+ await expect(dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:/Vehicle hosedown/})).toHaveAttribute("aria-pressed","true");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Exact location")).toHaveValue("RINGSIDE");
  await expect(dialog.getByLabel("Exact location").locator("option",{hasText:"Arena car park"})).toHaveCount(0);
- await dialog.getByLabel("Angle type").scrollIntoViewIfNeeded();
+ await dialog.getByLabel("Exact location").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-special-moment-390.png",
   fullPage:true,animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
@@ -420,7 +434,10 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Vehicle hosedown"})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("Angle type")).toHaveValue("MOMENT_VEHICLE_HOSING");
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await expect(dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:/Vehicle hosedown/})).toHaveAttribute("aria-pressed","true");
  expect(methods.filter(x=>x==="kpWorkspace")).toHaveLength(2);
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
 });

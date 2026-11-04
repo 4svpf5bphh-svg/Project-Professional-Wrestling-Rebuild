@@ -937,7 +937,7 @@ test("Post-show creative direction follows the latest completed rivalry match wi
   }:{}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
  await page.locator(".ppw-programme-strategy > summary").click();
