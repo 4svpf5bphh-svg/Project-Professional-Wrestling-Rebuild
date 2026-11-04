@@ -56,6 +56,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  const bonuses=await tx.query<{promotion_id:string;amount:string}>(`
  WITH certified AS (
   SELECT s.promotion_id,max(s.crowd_response) AS crowd,
+   max(CASE WHEN e.audience_format='TV'
+    THEN e.tv_household_rating END) AS tv_rating,
    bool_or(EXISTS(
     SELECT 1 FROM ppw_completed_show_matches result
     JOIN ppw_card_slots slot ON slot.world_id=result.world_id
@@ -73,7 +75,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   GROUP BY s.promotion_id
  ), eligible AS (
   SELECT d.world_id,d.deal_id,d.promotion_id,c.crowd,
-   round(d.agreed_income*(CASE
+   round(d.agreed_income*least(.18,(CASE
     WHEN d.offer_code='SPONSOR_LOCAL' AND c.hardcore THEN .05
     WHEN d.offer_code='BROADCAST_GROWTH' AND c.crowd>=70 THEN .04
     WHEN d.offer_code='BROADCAST_INDIE' AND c.crowd>=66 THEN .04
@@ -83,9 +85,32 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
     WHEN d.offer_code='SPONSOR_FOOD' AND c.crowd>=72 THEN .04
     WHEN d.offer_code='SPONSOR_TECH' AND c.crowd>=76 THEN .05
     WHEN d.offer_code='SPONSOR_LUXURY' AND c.crowd>=82 THEN .06
-    ELSE 0 END))::bigint AS amount
+    ELSE 0 END)+
+    CASE WHEN d.kind='BROADCAST' AND c.tv_rating IS NOT NULL THEN
+      least(.12,greatest(0,
+       c.tv_rating/(
+        (CASE p.tier
+         WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
+         WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
+         ELSE .12 END) *
+        (CASE d.offer_code
+         WHEN 'BROADCAST_GLOBAL' THEN 1.45
+         WHEN 'BROADCAST_TV' THEN 1.25
+         WHEN 'BROADCAST_GROWTH' THEN .9
+         WHEN 'BROADCAST_ARCHIVE' THEN .8
+         WHEN 'BROADCAST_INDIE' THEN .75
+         ELSE .7 END)) - 1)*.07)
+     WHEN d.kind='SPONSOR' AND c.tv_rating IS NOT NULL AND
+      d.offer_code IN ('SPONSOR_TECH','SPONSOR_LUXURY') AND
+      c.tv_rating >= (CASE p.tier
+       WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
+       WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
+       ELSE .12 END) THEN .025
+     ELSE 0 END))::bigint AS amount
   FROM ppw_commercial_deals d
   JOIN certified c ON c.promotion_id=d.promotion_id
+  JOIN ppw_promotions p ON p.world_id=d.world_id
+   AND p.promotion_id=d.promotion_id
   WHERE d.world_id=$1 AND d.status='ACTIVE'
    AND d.start_week_index<=$4 AND d.end_week_index>=$4
  ), earned AS (
@@ -147,7 +172,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
   promotion_id:string;management_mode:string;active_kinds:string[];
-  recentShowDay:number|null
+  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null
  }>(`
  SELECT p.promotion_id,p.management_mode,p.tier,
   p.media_reach AS "mediaReach",
@@ -155,6 +180,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   p.weekly_sponsor_income::double precision AS "weeklySponsorIncome",
   coalesce(recent.completed,0)::integer AS "completedShows",
   recent.crowd::double precision AS "averageCrowd",
+  recent.tv_count AS "recentTvEpisodes",
+  recent.tv_rating::double precision AS "averageTvRating",
   (SELECT draft.show_day FROM ppw_booking_drafts draft
    JOIN ppw_completed_shows c ON c.world_id=draft.world_id
     AND c.show_id=draft.draft_id AND c.promotion_id=draft.promotion_id
@@ -167,9 +194,14 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
     AND d.status='ACTIVE') AS active_kinds
  FROM ppw_promotions p
  LEFT JOIN LATERAL (
-  SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd
+  SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd,
+   count(tv_household_rating)::integer AS tv_count,
+   avg(tv_household_rating) AS tv_rating
   FROM (
-   SELECT show.year,show.week,show.crowd_response FROM ppw_completed_shows show
+   SELECT show.year,show.week,show.crowd_response,
+    CASE WHEN econ.audience_format='TV'
+     THEN econ.tv_household_rating END AS tv_household_rating
+    FROM ppw_completed_shows show
    JOIN ppw_show_economics econ ON econ.world_id=show.world_id
     AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id
    JOIN ppw_booking_drafts draft ON draft.world_id=show.world_id
