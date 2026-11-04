@@ -52,6 +52,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
       signatureMoves:[{name:"Iron Whip",category:"STRIKE",source:"PPW_AUTHORED"}],
       finishingMoves:[],source:"GAME_AUTHORED"})]);
     await tx.query("INSERT INTO ppw_wrestler_relationships(world_id,person_a_id,person_b_id,professional_trust,familiarity,last_change_type) VALUES($1,'p0','p1',37,22,'STRAIN')",[world]);
+    await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'tested-pair','Tested Pair','ACTIVE')",[world]);
+    await tx.query("INSERT INTO ppw_tag_team_members(world_id,team_id,person_id) VALUES($1,'tested-pair','p0'),($1,'tested-pair','p1')",[world]);
     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
@@ -59,6 +61,11 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
    assert.equal(view.canEdit,true);
+   const offeredPair=view.bookableTeams.find(t=>t.teamId==="tested-pair");
+   assert.equal(offeredPair?.members.length,2);
+   assert.equal(offeredPair?.members.find(m=>m.personId==="p0")
+    ?.workingConnections.find(x=>x.personId==="p1")?.professionalTrust,37,
+    "Named-tag shortcut reuses the same verified World relationship with no extra query");
    assert.equal(view.selectedPeople.find(x=>x.personId==="p0")
     ?.workingConnections?.find(x=>x.personId==="p1")?.professionalTrust,37);
    assert.equal(view.showName,"Wednesday Night Live");
@@ -296,7 +303,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
       "ppw_week_continuity_assessments","ppw_week_logistics_authorizations",
       "ppw_command_receipts","ppw_programme_match_activities",
      "ppw_programme_side_refs","ppw_programmes","ppw_card_slots",
-     "ppw_booking_drafts","ppw_portable_personas","ppw_contracts","ppw_people",
+     "ppw_booking_drafts","ppw_portable_personas","ppw_tag_team_members",
+     "ppw_tag_teams","ppw_wrestler_relationships","ppw_contracts","ppw_people",
      "ppw_venues","ppw_promotion_controls","ppw_memberships",
      "ppw_promotions","ppw_markets"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
     await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
