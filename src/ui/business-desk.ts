@@ -323,7 +323,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated"),
     metric("BROADCAST REACH",view.mediaReach==null?"Not reported":
      Math.round(view.mediaReach).toLocaleString("en-GB")),
-    metric("CURRENT TIER",view.tier??"Not reported"),
+    metric("BASE WEEKLY OVERHEAD",view.weeklyFixedOverhead===null?
+     "Not configured":money(view.weeklyFixedOverhead)),
     metric("WEEKLY CONTRACT WAGES",money(view.weeklyGuarantees)));
    root.append(cards);
    const flow=el("section","ppw-business-panel");
