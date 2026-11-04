@@ -1300,3 +1300,16 @@ body>.ppw-card-edit-shade .ppw-run-in-person{border-radius:12px!important;
  border:1px solid #8bb1ca!important;background:#265673!important;
  color:#f7fdff!important;min-height:44px;font-weight:750}
 body>.ppw-card-edit-shade .ppw-run-in-clear{border-radius:12px!important}
+
+body>.ppw-card-edit-shade .ppw-run-in-subhead{color:#d6e8f7;font-size:12px;
+ letter-spacing:.04em}
+body>.ppw-card-edit-shade .ppw-run-in-choices{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-run-in-option{
+ box-sizing:border-box;border-radius:12px!important;min-height:46px;
+ background:#213650!important;color:#eef6ff!important;
+ border:2px solid #6284a4!important;font-weight:750;font-size:12px;
+ padding:8px;line-height:1.3;white-space:normal}
+body>.ppw-card-edit-shade .ppw-run-in-option[aria-pressed=true]{
+ background:#195a54!important;color:#fff!important;
+ border-color:#8af3dd!important}

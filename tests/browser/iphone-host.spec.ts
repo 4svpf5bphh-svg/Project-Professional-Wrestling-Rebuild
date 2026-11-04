@@ -528,11 +528,14 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
  await page.locator(".ppw-sheet .ppw-wrestler-card").first().click();
  const run=page.locator(".ppw-run-in");
- await expect(run.getByLabel("Which side?")).toBeVisible();
- await run.getByLabel("Which side?").selectOption("B");
- await expect(run.getByLabel("What happens?")).toHaveValue("THWARTED");
- await run.getByLabel("Which side?").selectOption("A");
- await run.getByLabel("What happens?").selectOption("SUCCESS");
+ await expect(run.getByRole("group",{name:"Which side?"})).toBeVisible();
+ await run.getByRole("button",{name:"Help Side B"}).click();
+ await expect(run.getByRole("button",{name:"Run-in thwarted"}))
+  .toHaveAttribute("aria-pressed","true");
+ await run.getByRole("button",{name:"Help Side A"}).click();
+ await run.getByRole("button",{name:"Run-in succeeds"}).click();
+ await expect(run.getByRole("button",{name:"Run-in succeeds"}))
+  .toHaveAttribute("aria-pressed","true");
  await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
  await focused.getByRole("button",{name:"Close card editor"}).click();
  await expect(focused).toHaveCount(0);

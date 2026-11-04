@@ -1717,17 +1717,30 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
       if(m.interference){
        const spot=m.interference;
-       const sides=m.teams.map((_,index)=>[index===0?"A":"B",
-        "Help "+(index===0?"Side A":"Side B")] as string[]);
-       run.append(field("Which side?",selector(spot.aidedSide,sides,
-        value=>edit(m,{interference:{...spot,aidedSide:value as "A"|"B",
-         plannedOutcome:value===(m.winnerSide===0?"A":"B")?
-          spot.plannedOutcome:"THWARTED"}}),!mutable())));
-       run.append(field("What happens?",selector(spot.plannedOutcome,[
-        ["SUCCESS","Run-in succeeds"],["THWARTED","Run-in is thwarted"]],
-        value=>edit(m,{interference:{...spot,plannedOutcome:value as "SUCCESS"|"THWARTED",
-         aidedSide:value==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide}}),
-        !mutable())));
+       const support=el("div","ppw-run-in-choices");
+       support.setAttribute("role","group");
+       support.setAttribute("aria-label","Which side?");
+       for(const [value,label] of [["A","Help Side A"],["B","Help Side B"]] as const){
+        const action=button(label,()=>edit(m,{interference:{...spot,
+         aidedSide:value,plannedOutcome:value===(m.winnerSide===0?"A":"B")?
+          spot.plannedOutcome:"THWARTED"}}),!mutable(),"ppw-run-in-option");
+        action.setAttribute("aria-pressed",String(spot.aidedSide===value));
+        support.append(action);
+       }
+       run.append(el("strong","ppw-run-in-subhead","Supports"),support);
+       const result=el("div","ppw-run-in-choices");
+       result.setAttribute("role","group");
+       result.setAttribute("aria-label","What happens?");
+       for(const [value,label] of [["SUCCESS","Run-in succeeds"],
+        ["THWARTED","Run-in thwarted"]] as const){
+        const action=button(label,()=>edit(m,{interference:{...spot,
+         plannedOutcome:value,
+         aidedSide:value==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide
+        }}),!mutable(),"ppw-run-in-option");
+        action.setAttribute("aria-pressed",String(spot.plannedOutcome===value));
+        result.append(action);
+       }
+       run.append(el("strong","ppw-run-in-subhead","Outcome"),result);
        run.append(button("Remove run-in",()=>{
         openRunIns.delete(slotId);edit(m,{interference:undefined});
        },!mutable(),"ppw-run-in-clear"));
