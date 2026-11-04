@@ -286,14 +286,21 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      const includesRoster=typeof existing==="number"&&Number.isFinite(existing);
      const cashOnly=company.cash-(includesRoster?existing:0)-
       projection.plannedFullTermCost;
+     const cashStress=document.createElement("details");
+     cashStress.className="ppw-directory-cash-stress";
+     cashStress.append(el("summary","","Review future contract commitments"));
      const coverage=el("div","ppw-directory-cash-only");
      coverage.dataset.coverage=cashOnly>=0?"covered":"gap";
      coverage.append(el("span","",includesRoster?
-      "Cash-only outlook · signed roster + this offer":
-      "Cash-only outlook · this offer only"),
-      el("strong","",cashOnly>=0?money(cashOnly)+" left":
-       money(-cashOnly)+" short"));
-     affordability.append(coverage);
+      "Cash-only scenario · signed roster + this offer":
+      "Cash-only scenario · this offer only"),
+      el("strong","",cashOnly>=0?money(cashOnly)+" remaining":
+       money(-cashOnly)+" above today's bank"));
+     cashStress.append(coverage,el("p","ppw-directory-muted",
+      "This stress test assumes every remaining appearance is worked and "+
+      "compares future payments with today's cash only. It does not include "+
+      "future broadcast, sponsor or ticket income; the amount is not owed now."));
+     affordability.append(cashStress);
      const wageRoom=company.weeklyWageLimit===null?null:
       company.weeklyWageLimit-company.weeklyGuarantees-guarantee;
      const baseline=company.weeklyIncome===null||company.weeklyOverhead===null?null:
@@ -311,18 +318,20 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
-     if(cashOnly<0||wageRoom!==null&&wageRoom<0||
+     const expectedVariableWeek=(projection.plannedAppearanceFees+
+      projection.oneTimeBonus)/Math.max(1,weeks);
+     const variablePressure=postMargin!==null&&
+      expectedVariableWeek>postMargin;
+     const realRisk=wageRoom!==null&&wageRoom<0||
       company.cashReserve!==null&&reservedCash<company.cashReserve||
-      postMargin!==null&&postMargin<0){
-      affordability.dataset.risk="true";
-      affordability.append(el("p","ppw-directory-affordability-warning",
-       cashOnly<0?"The proposed contract and existing roster exceed today's cash "+
-       "without future income. Review the Talent Manager's recommendation.":
-       "This offer exceeds a spending limit or your recurring income. "+
-       "You can still propose it, but consider adjusting the terms."));
-     }else affordability.dataset.risk="false";
-     if(custom)affordability.append(el("small","ppw-directory-muted",
-      "Cash-only figures include signed roster costs but exclude future income and pending offers."));
+      postMargin!==null&&postMargin<0||variablePressure;
+     affordability.dataset.risk=String(realRisk);
+     if(realRisk)affordability.append(el("p","ppw-directory-affordability-warning",
+      variablePressure?
+       "Working every purchased date would exceed the available recurring "+
+       "cashflow on average. Reconsider the dates, fees or deal length.":
+       "This offer exceeds your weekly wage room or planned cash reserve. "+
+       "You can still propose it, but review the terms first."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({
