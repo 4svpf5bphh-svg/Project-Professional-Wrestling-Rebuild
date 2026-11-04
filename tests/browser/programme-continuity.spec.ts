@@ -33,12 +33,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText("The return bout happened")).toBeVisible();
- await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
- await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Ask Creative · what next?"})).toHaveCount(0);
- await expect(page.getByText(/A newer match has taken place/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("The return bout happened");
+ await expect(page.locator(".ppw-programme-strategy")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Choose direction"})).toHaveCount(0);
  expect(calls).toEqual(["programmes"]); // Reading is not a booking command
 });
 test("iPhone makes an unfulfilled retaliation direction visible without pretending to book an angle",async({page})=>{
@@ -57,11 +55,10 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText("An answer is still due")).toBeVisible();
- await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText(/Still open · 1 week since your decision/)).toBeVisible();
- await expect(page.getByText(/An answer is still due/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("An answer is still due");
+ await expect(page.locator(".ppw-programme-strategy")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Choose direction"})).toHaveCount(0);
  expect(calls).toEqual(["programmes"]);
 });
 
@@ -75,8 +72,10 @@ test("completed feud remains a readable promotion archive instead of a forgotten
    latestFollowUp:null}]
  }}));
  await page.goto("/#/programmes");
- await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toHaveCount(0);
  await expect(page.locator(".ppw-programme-archive-card")).toHaveCount(0);
+ await page.getByRole("button",{name:"Past rivalries · 1"}).click();
+ await expect(page.getByRole("heading",{name:"Past rivalries · 1"})).toBeVisible();
  await page.locator(".ppw-programme-archive-open").click();
  await expect(page.getByRole("heading",{name:"Rivalry retrospective"})).toBeVisible();
  const archive=page.locator(".ppw-programme-archive-card");
@@ -85,9 +84,14 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
  await expect(archive.locator(".ppw-programme-feud-stars")).toHaveAttribute("aria-label",/out of five stars/);
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
- await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
- await page.getByRole("button",{name:"← Back to programmes"}).click();
- await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
+ await expect(archive.locator(".ppw-programme-archive-duel")).toContainText("Samoa Joe");
+ await expect(archive.locator(".ppw-programme-archive-timeline"))
+  .toContainText("Matt Riddle won");
+ await expect(archive.getByRole("button",{name:"View show"})).toHaveCount(2);
+ await page.getByRole("button",{name:"← Past rivalries"}).click();
+ await expect(page.getByRole("heading",{name:"Past rivalries · 1"})).toBeVisible();
+ await page.getByRole("button",{name:"← Active rivalries"}).click();
+ await expect(page.getByRole("button",{name:"Past rivalries · 1"})).toBeVisible();
 });
 
 test("iPhone plans and removes a real match or angle payoff without auto-ending the feud",async({page})=>{

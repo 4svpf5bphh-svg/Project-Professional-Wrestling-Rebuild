@@ -366,7 +366,6 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp
    });
    const weekIndex=(view.year-1)*52+view.week-1;
-   const weekIndex=(view.year-1)*52+view.week-1;
    if(p.recentActivity.length){
     const history=document.createElement("details");
     history.className="ppw-programme-history-timeline";
@@ -390,22 +389,6 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      entries.append(item);
     }
     history.append(entries);historyLane.append(history);
-   }
-   const advice=element("section","ppw-programme-story-actions");
-   advice.append(element("h3","","Plan next"));
-   if(p.plannedActivity?.length)
-    advice.append(element("p","ppw-programme-booked-short",
-     "Already on the card · "+p.plannedActivity[0]!.showName+
-     ". You can change it in the planner."));
-   else{
-    const suggested=recommendProgrammeAngles(p).slice(0,3);
-    for(const idea of suggested){
-     const item=element("div","ppw-programme-booking-idea");
-     const action=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
-     item.append(action,element("small","",
-      idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason));
-     advice.append(item);
-    }
    }
    const advice=element("section","ppw-programme-story-actions");
    if(p.plannedActivity?.length)

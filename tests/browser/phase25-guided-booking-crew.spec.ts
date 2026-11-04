@@ -100,9 +100,11 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-side-b-independent-filters-320.png",animations:"disabled"});
  await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker).toHaveCount(0);
- await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText("Watch cumulative wear");
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByLabel("Finish")).toHaveCount(0);
+ await expect(dialog.locator(".ppw-guide-finish-tile").first()).toBeVisible();
  await dialog.getByLabel("Minutes").fill("30");
  await dialog.getByLabel("Minutes").press("Tab");
  // Ladder stipulation changes the scripted finish, so it should not
@@ -125,7 +127,8 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(condition).toContainText("Wear 82/100");
  await expect(condition).toContainText("Místico");
  await expect(review).toContainText("Additional appearance fees · $27,000");
- await expect(review).toContainText("does not establish whether they have good or bad chemistry");
+ await expect(review).toContainText("No active rivalry between these opponents");
+ await expect(review).toContainText("Performer readiness");
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-review-top-320.png",animations:"disabled"});
  await condition.scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-condition-320.png",animations:"disabled"});
