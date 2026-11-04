@@ -84,7 +84,7 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  // A named Talent Manager now includes a weekly guarantee in the year-long
  // recommendation: $114,400 wages + $500,000 on 40 dates = $614,400.
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$614,400");
- await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$3,385,600 left");
+ await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$3,385,600 remaining");
  expect(filters.length).toBe(4); // one initial read, two refinements, one clear
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
