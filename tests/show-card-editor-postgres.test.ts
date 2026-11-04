@@ -51,6 +51,7 @@ for(const mode of ["ROYAL","TEAMS"] as const){
       primaryStyle:"BRAWLER",secondaryStyle:null,
       signatureMoves:[{name:"Iron Whip",category:"STRIKE",source:"PPW_AUTHORED"}],
       finishingMoves:[],source:"GAME_AUTHORED"})]);
+    await tx.query("INSERT INTO ppw_wrestler_relationships(world_id,person_a_id,person_b_id,professional_trust,familiarity,last_change_type) VALUES($1,'p0','p1',37,22,'STRAIN')",[world]);
     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
@@ -58,6 +59,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
    assert.equal(view.canEdit,true);
+   assert.equal(view.selectedPeople.find(x=>x.personId==="p0")
+    ?.workingConnections?.find(x=>x.personId==="p1")?.professionalTrust,37);
    assert.equal(view.showName,"Wednesday Night Live");
    assert.equal(view.promotionName,"Local");
    assert.equal(view.venueName,"Main Hall");
@@ -68,6 +71,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    const page=await cardTalentAsActor(context,world,promotion,show,"Talent",null,10);
    assert.equal(page.talent.length,Math.min(10,ids.length));
    assert.ok(page.talent.every(t=>t.available));
+   assert.equal(page.talent.find(x=>x.personId==="p0")
+    ?.workingConnections.find(x=>x.personId==="p1")?.lastChangeType,"STRAIN");
    const renamed=page.talent.find(person=>person.personId==="p0");
    assert.equal(renamed?.ringName,"The Iron Wave");
    assert.equal(renamed?.primaryStyle,"BRAWLER");
@@ -108,6 +113,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    const saved=await showCardEditorAsActor(context,world,promotion,show);
    assert.equal(saved.slots.length,2);
    assert.equal(saved.selectedPeople.length,ids.length);
+   assert.equal(saved.selectedPeople.find(x=>x.personId==="p0")
+    ?.workingConnections.find(x=>x.personId==="p1")?.familiarity,22);
    assert.equal(saved.slots[0]!.slotId,"main");
    assert.equal((saved.slots[0]!.payload as {participants:unknown[]}).participants.length,ids.length);
    assert.equal((await markPreparedShowReadyAsActor(context,{...identity,
