@@ -52,10 +52,11 @@ test("390px iPhone gets contextual Road Agent, referee and medical warnings with
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
- await dialog.locator(".ppw-card-advisor-notes > summary").click();
- await expect(dialog.getByText("This is a demanding match")).toBeVisible();
- await expect(dialog.getByText("Watch cumulative wear")).toBeVisible();
- await expect(dialog.getByText("Risky stipulation and safety concerns")).toBeVisible();
+ const notes=dialog.locator(".ppw-card-advisor-notes");
+ await notes.locator(":scope > summary").click();
+ await expect(notes.getByText("This is a demanding match")).toBeVisible();
+ await expect(notes.getByText("Watch cumulative wear")).toBeVisible();
+ await expect(notes.getByText("Risky stipulation and safety concerns")).toBeVisible();
  await dialog.locator(".ppw-card-advisor-item").first().locator("summary").click();
  await expect(dialog).toContainText("Samoa Joe");
  await page.screenshot({path:"test-results/presentation-screenshots/phase23-road-agent-medical-referee-390.png"});
