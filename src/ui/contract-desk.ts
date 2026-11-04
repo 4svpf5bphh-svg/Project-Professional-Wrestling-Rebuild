@@ -7,6 +7,7 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {recommendTalentOffer} from "../domain/talent-offer-advice.js";
 import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
  from "../domain/contract-term-presets.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
@@ -68,8 +69,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  let view:ContractDeskView|null=null,working=false,error="",notice="";
  let filter:"ALL"|"ATTENTION"|"NO_DATES"|"EXPIRING"=
   initialFocus==="EXPIRING"?"EXPIRING":"ATTENTION";
+ let deskTab:"ATTENTION"|"ROSTER"|"OFFERS"=
+  initialFocus==="PENDING"?"OFFERS":"ATTENTION";
  let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
+ const expandedRenewals=new Set<string>();
  let pending=new Map<string,string>();
  const editable=()=>view?.canEdit===true&&!working;
  const request=(key:string)=>{let id=pending.get(key);if(!id){id=crypto.randomUUID();pending.set(key,id);}return id;};
@@ -118,12 +122,32 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
+  const tabs=el("nav","ppw-contract-tabs");
+  tabs.setAttribute("aria-label","Contract Desk sections");
+  for(const [id,caption,count] of [
+   ["ATTENTION","Needs action",view.summary.expiringSoon+view.summary.noDates],
+   ["ROSTER","Roster",view.summary.signed],
+   ["OFFERS","Offers",view.requests.length+view.renewals.length+view.offers.length]
+  ] as const){
+   const label=caption+(count?" · "+count:"");
+   const control=btn(label,()=>{
+    deskTab=id;
+    filter=id==="ROSTER"?"ALL":"ATTENTION";
+    render();
+   });
+   control.setAttribute("aria-current",deskTab===id?"page":"false");
+   tabs.append(control);
+  }
+  root.append(tabs);
   const exposure=remainingRosterExposure(view.roster.map(c=>({
    ...c,startsInWeeks:Math.max(0,(c.startWeekIndex??view!.currentWeekIndex)-
     view!.currentWeekIndex)
   })));
-  const budget=el("section","ppw-contract-budget ppw-contract-exposure");
-  budget.append(el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
+  const budget=document.createElement("details");
+  budget.className="ppw-contract-budget ppw-contract-exposure";
+  budget.append(el("summary","","Future contract costs · "+
+   money(exposure.potentialTotal)),
+   el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
    el("strong","ppw-contract-exposure-total",money(exposure.potentialTotal)));
   const split=el("div","ppw-contract-exposure-parts");
   const budgetLine=(name:string,value:number)=>{
@@ -157,7 +181,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     "Cash-only cover is a planning comparison, not a debt or cash reservation. "+
     "Costs are paid over time; already-paid bonuses, pending offers, future income "+
     "and other expenses are excluded."));
-  root.append(budget);
+  if(deskTab!=="OFFERS")root.append(budget);
   // Offer-response timing belongs inside individual pending decisions, not an
   // always-visible paragraph above every contract.
 
@@ -165,7 +189,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
   const pendingTotal=view.requests.length+view.renewals.length+view.offers.length;
-  if(pendingTotal){
+  if(deskTab==="OFFERS"&&pendingTotal){
    const box=document.createElement("details");box.className="ppw-contract-pending";box.open=true;
    box.append(el("summary","",pendingTotal+" pending negotiations"));
    for(const r of view.requests){
@@ -218,10 +242,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     box.append(row);
    }
    inbox.append(box);root.append(inbox);
-  }
+  }else if(deskTab==="OFFERS")
+   root.append(el("p","ppw-muted ppw-contract-empty","No active negotiations. Accepted and declined offers remain in the decision history below."));
   // An accepted or declined contract is still visible after its Home news
   // item has been dismissed. This is the actual agreement desk, not an alert.
-  if((view.resolvedOffers??[]).length){
+  if(deskTab==="OFFERS"&&(view.resolvedOffers??[]).length){
    const recent=document.createElement("details");
    recent.className="ppw-contract-decisions";recent.open=initialFocus==="PENDING";
    recent.append(el("summary","",
@@ -249,7 +274,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    recent.append(events);root.append(recent);
   }
-  if(view.dateDecisions?.length){
+  if(deskTab==="OFFERS"&&view.dateDecisions?.length){
    const history=document.createElement("details");history.className="ppw-contract-decisions";
    history.open=initialFocus==="PENDING";
    history.append(el("summary","","Additional-date decisions · "+view.dateDecisions.length));
@@ -279,16 +304,21 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   const input=document.createElement("input");
   input.type="search";input.placeholder="Search your contracted wrestlers";
   input.setAttribute("aria-label","Search roster contracts");input.value=search;
-  const mode=document.createElement("select");
-  mode.setAttribute("aria-label","Contract filter");
-  for(const [key,value] of [["ATTENTION","Needs attention"],["ALL","All contracts"],
-   ["EXPIRING","Expiring soon"],["NO_DATES","No dates left"]] as const){
-   const opt=document.createElement("option");opt.value=key;opt.textContent=value;
-   mode.append(opt);
+  filters.append(input);
+  if(deskTab==="ATTENTION"){
+   const choices=el("div","ppw-contract-filter-pills");
+   for(const [key,title] of [
+    ["ATTENTION","All issues"],["EXPIRING","Expiring soon"],["NO_DATES","No dates"]
+   ] as const){
+    const control=btn(title,()=>{filter=key;render();});
+    control.setAttribute("aria-pressed",String(filter===key));
+    choices.append(control);
+   }
+   filters.append(choices);
   }
-  mode.value=filter;filters.append(input,mode);
-  root.append(filters);
-  const list=el("div","ppw-contract-list");root.append(list);
+  if(deskTab!=="OFFERS")root.append(filters);
+  const list=el("div","ppw-contract-list");
+  if(deskTab!=="OFFERS")root.append(list);
   function paint(){
    list.replaceChildren();
    const visible=view!.roster.filter(c=>
@@ -396,14 +426,27 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
       "Same-terms renewal offered. Awaiting wrestler decision."),!editable()));
-     const negotiate=document.createElement("details");
-     negotiate.className="ppw-contract-renegotiate";
-     negotiate.append(el("summary","","Negotiate different terms"));
-     negotiate.append(el("p","ppw-muted",
-      "An alternative renewal, not an extra booking. If accepted, the next contract begins after this one expires."));
+     const open=expandedRenewals.has(c.contractId);
+     const toggle=btn(open?"Close renewal terms":"Negotiate a new package",()=>{
+      if(open)expandedRenewals.delete(c.contractId);
+      else expandedRenewals.add(c.contractId);
+      render();
+     },!editable());
+     toggle.className+=" ppw-contract-renewal-toggle";
+     body.append(toggle);
+     const negotiate=el("section","ppw-contract-renegotiate");
+     negotiate.append(el("h4","","New contract terms"),
+      el("p","ppw-muted",
+       "If accepted, the new package starts when the current agreement ends."));
      const family=c.family as OfferTerms["family"];
      const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
      const nextWeek=c.expiresWeekIndex+1;
+     const suggestion=view?.talentManager&&family==="LIMITED_NON_EXCLUSIVE"?
+      recommendTalentOffer({personId:c.personId,name:c.name,
+       marketWeeklyValue:c.estimatedWeeklyValue??9000,
+       popularity:c.popularity??null,recognition:c.recognition??null,
+       morale:c.morale??null,careerStage:c.careerStage,
+       interest:"INTERESTED"},view.talentManager):null;
      const draft:OfferTerms={
       family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
@@ -413,6 +456,35 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
      };
+     const recommended:OfferTerms|null=suggestion?{
+      ...suggestion.terms,startWeekIndex:nextWeek
+     }:null;
+     if(recommended)Object.assign(draft,recommended);
+     if(suggestion&&recommended){
+      const opinion=el("div","ppw-contract-manager-recommendation");
+      opinion.append(el("small","ppw-contract-manager-tag",
+       suggestion.managerName+" · TALENT MANAGER"),
+       el("p","",suggestion.voice),
+       el("small","",suggestion.rationale));
+      const restore=btn("Use recommended terms",()=>{
+       Object.assign(draft,recommended);
+       pending.delete("negotiated:"+c.contractId);
+       // Updating the existing elements, rather than recreating the contract,
+       // preserves the selected wrestler and World command identity.
+       for(const [key,value] of [
+        ["termWeeks",draft.termWeeks],["dateEntitlement",draft.dateEntitlement],
+        ["weeklyGuarantee",draft.weeklyGuarantee],
+        ["appearanceFee",draft.appearanceFee],["signingBonus",draft.signingBonus]
+       ] as const){
+        const input=negotiate.querySelector<HTMLInputElement>(
+         '[data-term-key="'+key+'"]');
+        if(input)input.value=String(value);
+       }
+       updateQuote();refreshPreset();
+      });
+      restore.className+=" ppw-contract-recommend-apply";
+      opinion.append(restore);negotiate.append(opinion);
+     }
      const quote=el("section","ppw-contract-cost-quote");
      const managerNote=el("div","ppw-contract-manager-take");
      const panel=el("div","ppw-contract-renegotiate-fields");
@@ -443,31 +515,17 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        pendingOfferExposure:pendingExposure
       },new Set(["TALENT_MANAGER"]));
       const urgent=notes.find(n=>n.level==="WATCH");
-      const cost=packageCost(draft);
-      const prev=packageCost({
-       family:c.family,termWeeks:draft.termWeeks,
-       dateEntitlement:draft.family==="EXCLUSIVE"?0:
-        Math.min(draft.termWeeks,c.dateEntitlement??0),
-       weeklyGuarantee:c.weeklyGuarantee,
-       appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
-      const delta=cost.plannedFullTermCost-prev.plannedFullTermCost;
-      const assessment=urgent?.message??(delta>0?
-       "On equivalent terms this proposal adds "+money(delta)+
-       " in potential spending. Make sure the wrestler's planned role justifies it.":
-       delta<0?"This package reduces potential cost by "+money(-delta)+
-       " versus equivalent current rates. Consider whether the new terms still secure the dates you need.":
-       "The proposed package matches the current rates for an equivalent term. "+
-       "Confirm that the purchased dates fit your show plans before offering.");
-      managerNote.append(el("strong","",urgent?
-       "Talent Manager · "+urgent.title:"Talent Manager · Deal assessment"),
-       el("p","",assessment));
-      managerNote.dataset.level=urgent?"watch":"info";
+      if(urgent){
+       managerNote.append(el("strong","",
+        (view.talentManager?.name??"Talent Manager")+" · "+urgent.title),
+        el("p","",urgent.message));
+       managerNote.dataset.level="watch";
+      }
      };
      updateQuote();
      const presetRow=el("div","ppw-contract-term-presets");
-     const advanced=document.createElement("details");
-     advanced.className="ppw-contract-term-advanced";
-     advanced.append(el("summary","","Advanced · customise weeks & dates"));
+     const advanced=el("section","ppw-contract-term-advanced");
+     advanced.append(el("h4","","Custom duration"));
      const timing=el("div","ppw-contract-renegotiate-fields");
      const buttons=new Map<string,HTMLButtonElement>();
      const refreshPreset=()=>{
@@ -496,6 +554,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
+      input.dataset.termKey=key;
       input.setAttribute("aria-label",name+" for "+c.name);
       input.oninput=()=>{
        if(input.value==="")return;
@@ -554,16 +613,17 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        ...m,personId:c.personId,sourceContractId:c.contractId,terms:draft}),
        "Renewal offer sent. The wrestler will respond at the end of the week.");
      },!editable()));
-     body.append(negotiate);
+     if(open)body.append(negotiate);
     }
     card.append(body);
     list.append(card);
    }
-   if(!visible.length)list.append(el("p","ppw-muted",
-    view!.roster.length?"No contracts match this filter.":"No signed contracts yet."));
+   if(!visible.length)list.append(el("p","ppw-muted ppw-contract-empty",
+    !view!.roster.length?"No signed contracts yet. Recruit wrestlers through Talent Market.":
+    filter==="ATTENTION"?"No contracts need attention. Your roster agreements are up to date.":
+    "No contracts match this view."));
   }
   input.oninput=()=>{search=input.value;paint();};
-  mode.onchange=()=>{filter=mode.value as typeof filter;paint();};
   paint();
  }
  async function load(){
@@ -572,7 +632,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    view=await port.load();error="";
    if(!focusApplied&&focusedPersonId){
     const person=view.roster.find(x=>x.personId===focusedPersonId);
-    if(person){filter="ALL";search=person.name;}
+    if(person){deskTab="ROSTER";filter="ALL";search=person.name;}
    }
    focusApplied=true;
   }

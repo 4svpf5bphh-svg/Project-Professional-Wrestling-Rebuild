@@ -76,9 +76,8 @@ async function mock(page:import("@playwright/test").Page,settings?:{
 }
 async function openFromDossier(page:import("@playwright/test").Page){
  await page.goto("/#/roster");
- const wrestler=page.locator(".ppw-directory-card").first();
- await wrestler.locator("summary").click();
- await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+ const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+ await wrestler.click();
  const dossierDialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dossierDialog.getByRole("button",{name:"Book on this week's show"})).toBeVisible();
  await dossierDialog.getByRole("button",{name:"Book on this week's show"}).click();
@@ -144,19 +143,19 @@ for(const width of [320,390]){
   await page.setViewportSize({width,height:740});
   const calls=await mock(page);
   await page.goto("/#/roster");
-  const wrestler=page.locator(".ppw-directory-card").first();
-  await wrestler.locator("summary").click();
-  await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+  const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+  await wrestler.click();
   const dossier=page.getByRole("dialog",{name:"Wrestler dossier"});
   await dossier.getByRole("button",{name:"Talk in Backstage"}).click();
   await expect(page).toHaveURL(/#\/backstage$/);
   const leave=page.getByRole("button",{name:"‹ Leave Backstage"});
   await expect(leave).toBeVisible();
-  const position=await leave.boundingBox();
-  expect(position).not.toBeNull();
-  expect(position!.y).toBeGreaterThanOrEqual(0);
-  expect(position!.y+position!.height).toBeLessThan(150);
-  expect(position!.height).toBeGreaterThanOrEqual(44);
+  // Loading the Backstage inbox may replace its header once. Assess the
+  // final in-viewport control rather than a transient detached button.
+  await expect.poll(async()=>{
+   const box=await leave.boundingBox();
+   return Boolean(box&&box.y>=0&&box.y+box.height<150&&box.height>=44);
+  }).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   expect(calls).toContain("backstage");

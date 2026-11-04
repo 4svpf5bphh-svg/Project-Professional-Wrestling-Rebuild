@@ -32,6 +32,7 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
  const cast=people.filter(p=>ids.has(p.personId));
  if(!cast.length)return [];
  const highRisk=stipulationInjuryRisk(match.stipulation??"STANDARD")>=1.25;
+ const riskyFinish=["FOREIGN_OBJECT","DISQUALIFICATION"].includes(match.plannedFinish);
  const poorCondition=cast.filter(p=>valid(p.fatigue)&&p.fatigue>=65||
   valid(p.wear)&&p.wear>=72);
  const safetyConcern=cast.filter(p=>valid(p.safety)&&p.safety<50);
@@ -52,13 +53,20 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
   notes.push(note("MEDICAL","WATCH","Watch cumulative wear",
    poorCondition.map(p=>p.name).join(", ")+
    " has elevated fatigue or wear. They may be available but still need a lighter workload."));
- if(staffed.has("REFEREE")&&(highRisk&&safetyConcern.length))
-  notes.push(note("REFEREE","WATCH","Risky stipulation and safety concerns",
+ if(staffed.has("REFEREE")&&(highRisk||riskyFinish)&&safetyConcern.length)
+  notes.push(note("REFEREE","WATCH",highRisk?
+   "Risky stipulation and safety concerns":"Risky finish and safety concerns",
    safetyConcern.map(p=>p.name).join(", ")+
-   " has a lower safety rating in a higher-risk match. Consider simpler spots or standard rules."));
+   (highRisk?" has a low safety rating in a demanding stipulation.":
+    " has a low safety rating for the planned finish.")+
+   " Rehearse the finish carefully or choose a safer one."));
  else if(staffed.has("REFEREE")&&highRisk)
   notes.push(note("REFEREE","INFO","Additional match-risk briefing",
    "This stipulation increases the baseline injury risk. The referee cannot eliminate that risk."));
+ else if(!staffed.has("REFEREE")&&riskyFinish&&safetyConcern.length)
+  notes.push(note("HOUSE","WATCH","Risky finish and safety concerns",
+   safetyConcern.map(p=>p.name).join(", ")+
+   " has a low safety rating for the planned finish. Consider a safer finish."));
  // A critical safety fact is shown even when a company has not hired a doctor.
  if(!staffed.has("MEDICAL")&&poorCondition.length&&highRisk)
   notes.push(note("HOUSE","WATCH","High-risk booking with tired talent",

@@ -75,7 +75,7 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
    req.method==="contracts"?contractView:{}});
  });
  await page.goto("/#/roster");
- const cards=page.locator(".ppw-directory-card .ppw-wrestler-card");
+ const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
  await expect(cards).toHaveCount(2);
  for(const width of [390,320]){
   await page.setViewportSize({width,height:844});
@@ -96,15 +96,20 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  }
  await page.setViewportSize({width:390,height:844});
- const card=page.locator(".ppw-directory-card").first();
- await card.locator("summary").click();
- await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ const card=cards.first();
+ await expect(card.locator(".ppw-wrestler-stats")).toHaveCount(0);
+ await expect(card.locator(".ppw-wrestler-fans")).toBeVisible();
+ const rosterFollowing=await card.locator(".ppw-wrestler-fans").textContent();
+ await card.click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
+ await expect(dialog.locator(".ppw-wrestler-fans")).toHaveText(rosterFollowing??"");
  await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Open show planner"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Talk in Backstage"})).toBeVisible();
- await expect(dialog.getByText(/actual show week/)).toBeVisible();
+ await expect(dialog.getByText(/actual show week/)).toHaveCount(0);
+ await expect(dialog.locator(".ppw-profile-attributes .ppw-profile-stat")).toHaveCount(11);
+ await expect(dialog.locator(".ppw-profile-attributes summary")).toHaveCount(0);
  await expect(dialog.getByRole("button",{name:"Manage contract"}).first()).toBeVisible();
   // The compact Overview may fit without scrolling. The detail tabs must
   // remain reachable, and tall Career must own the iOS scroll viewport.
@@ -171,7 +176,7 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog).toHaveCount(0);
  expect(calls.filter(x=>x==="wrestlerDirectory")).toHaveLength(before);
  // Management opens the selected contract, not a second list to search.
- await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ await card.click();
  await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
  await dialog.getByRole("button",{name:"Manage contract"}).first().click();
  await expect(dialog.getByRole("heading",{name:"Contract Desk"})).toBeVisible();
@@ -183,15 +188,16 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog).toHaveCount(0);
  expect(calls.filter(x=>x==="wrestlerDirectory")).toHaveLength(before);
  // Planned show route closes the old iOS fixed overlay.
- await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ await card.click();
  await dialog.getByRole("button",{name:"Open show planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(dialog).toHaveCount(0);
  // Opening Contracts from a named roster card focuses the selected person.
  await page.goto("/#/roster");
- const selectedRosterCard=page.locator(".ppw-directory-card").first();
- await selectedRosterCard.locator("summary").click();
- await selectedRosterCard.getByRole("button",{name:"Manage contract →"}).click();
+ const selectedRosterCard=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+ await selectedRosterCard.click();
+ const rosterDossier=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await rosterDossier.getByRole("button",{name:"Manage contract"}).first().click();
  await expect(page.getByLabel("Search roster contracts")).toHaveValue("Alice");
  await expect(page.locator(".ppw-contract-card")).toHaveCount(1);
  await expect(page.locator(".ppw-contract-card")).toHaveAttribute("open","");

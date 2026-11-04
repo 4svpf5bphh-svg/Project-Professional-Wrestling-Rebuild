@@ -182,12 +182,11 @@ test("book a feud match and retaliation scene with signed participants, one save
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- const stories=page.locator(".ppw-card-rivalry-ideas");
- await stories.locator("summary").click();
- await expect(stories.getByRole("button",{name:"+ Book feud match"})).toBeVisible();
+ const stories=page.locator(".ppw-card-rivalry-launch");
+ await expect(stories.getByRole("button",{name:"Book rivalry match"})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
- await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
+ await stories.getByRole("button",{name:"Strike back"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
@@ -204,7 +203,7 @@ test("book a feud match and retaliation scene with signed participants, one save
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-angle-card .ppw-card-booked-facts"))
   .toContainText("Samoa Joe vs Místico");
- await stories.getByRole("button",{name:"+ Book feud match"}).click();
+ await stories.getByRole("button",{name:"Book rivalry match"}).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
@@ -265,8 +264,9 @@ test("Programme Desk selects the real unfinished show before opening the focusse
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Book next chapter"}).first().click();
- await expect(page.locator(".ppw-card-rivalry-ideas")).toHaveAttribute("open","");
- await expect(page.getByLabel("Rivalry")).toHaveValue("joe-mistico");
+ await expect(page.locator(".ppw-card-rivalry-launch")).toBeVisible();
+ await expect(page.locator('.ppw-card-rivalry-pick[aria-pressed="true"]'))
+  .toContainText("Samoa Joe vs Místico");
  await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
  expect(calls).toEqual(["programmes","planner","load"]);
 });

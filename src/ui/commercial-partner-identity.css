@@ -1,0 +1,43 @@
+.ppw-commercial-brand{--partner-bg:#102b42;--partner-fg:#b0ecfb;
+ display:flex;align-items:center;gap:12px;min-width:0;width:100%;
+ padding:9px;border-radius:12px;background:var(--partner-bg);color:var(--partner-fg);
+ border:1px solid color-mix(in srgb,var(--partner-fg) 46%,transparent)}
+.ppw-commercial-brand-mark{display:grid;place-items:center;flex:0 0 48px;
+ height:48px;border-radius:12px;color:var(--partner-fg);background:#0005}
+.ppw-commercial-brand-mark svg{stroke:currentColor;fill:none;stroke-width:2;
+ stroke-linejoin:round;stroke-linecap:round;overflow:visible}
+.ppw-commercial-brand-name{display:grid;gap:3px;min-width:0}
+.ppw-commercial-brand-name strong{font-size:16px;color:#fff;line-height:1.2;
+ overflow-wrap:anywhere}
+.ppw-commercial-brand-name small{color:var(--partner-fg);font-size:11px;line-height:1.3}
+.ppw-commercial-brand[data-code="BROADCAST_STABLE"]{--partner-bg:#132a4c;--partner-fg:#84d8fa}
+.ppw-commercial-brand[data-code="BROADCAST_GROWTH"]{--partner-bg:#361f5d;--partner-fg:#dc9fff}
+.ppw-commercial-brand[data-code="BROADCAST_TV"]{--partner-bg:#252d49;--partner-fg:#f3c46f}
+.ppw-commercial-brand[data-code="BROADCAST_INDIE"]{--partner-bg:#10483f;--partner-fg:#90ffe1}
+.ppw-commercial-brand[data-code="BROADCAST_ARCHIVE"]{--partner-bg:#3e2e49;--partner-fg:#f1bcbf}
+.ppw-commercial-brand[data-code="BROADCAST_GLOBAL"]{--partner-bg:#4e3413;--partner-fg:#ffe6a5}
+.ppw-commercial-brand[data-code="SPONSOR_LOCAL"]{--partner-bg:#4b222b;--partner-fg:#ffd1a9}
+.ppw-commercial-brand[data-code="SPONSOR_PARTNER"]{--partner-bg:#482423;--partner-fg:#ff9689}
+.ppw-commercial-brand[data-code="SPONSOR_GEAR"]{--partner-bg:#323a31;--partner-fg:#d8e39f}
+.ppw-commercial-brand[data-code="SPONSOR_FOOD"]{--partner-bg:#4b3229;--partner-fg:#ffcc92}
+.ppw-commercial-brand[data-code="SPONSOR_TECH"]{--partner-bg:#152f52;--partner-fg:#84d7ff}
+.ppw-commercial-brand[data-code="SPONSOR_LUXURY"]{--partner-bg:#3c2936;--partner-fg:#efd19e}
+.ppw-commercial-voice{margin:3px 0!important;font-size:13px;color:#dcf1ff;
+ font-style:italic;line-height:1.45}
+.ppw-commercial-status{color:#ffe5b4;font-weight:850;font-size:12px}
+.ppw-commercial-deal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:14px 0}
+.ppw-commercial-deal-tabs button{min-height:46px;border-radius:12px!important;
+ border:2px solid #597b9d;background:#183348;color:#f1f9ff;
+ font-weight:850}
+.ppw-commercial-deal-tabs button[aria-pressed=true]{background:#23625c;
+ border-color:#95e9d3;color:#fff}
+.ppw-commercial-slot{font-size:12px;color:#bbdeee;line-height:1.4}
+.ppw-commercial-world-note{font-size:12px;color:#c2dbe9;line-height:1.5}
+.ppw-commercial-offer[data-availability="TAKEN"]{border-color:#795878;
+ background:#19253c}
+.ppw-commercial-offer[data-availability="TAKEN"] .ppw-commercial-brand{opacity:.82}
+.ppw-commercial-market-trend{display:grid;gap:7px;padding:12px;border-radius:12px;
+ background:#0e2b3c;border:1px solid #456c86}
+.ppw-commercial-market-trend strong{color:#ffe4ab;font-size:19px}
+.ppw-commercial-market-trend small{color:#c1dbea;font-size:12px}

@@ -47,19 +47,19 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.goto("/#/business");
  await page.getByRole("button",{name:"Deals"}).click();
  await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
- await expect(page.getByText("Audience-first streaming")).toBeVisible();
+ await expect(page.getByText("VibeFlix",{exact:true})).toBeVisible();
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
- await expect(page.getByText("+15 audience reach")).toBeVisible();
+ await expect(page.getByText("+15 distribution reach")).toBeVisible();
  expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.dismiss());
- await page.getByRole("button",{name:"Sign agreement"}).click();
+ await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.accept());
- await page.getByRole("button",{name:"Sign agreement"}).click();
+ await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
- await expect(page.getByText(/26 weeks remaining/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Sign agreement"})).toHaveCount(0);
+ await expect(page.getByText(/26 weeks left on this agreement/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
@@ -105,3 +105,118 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test(`World-exclusive partners and ratings-war coverage remain legible at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:780});
+  const calls:string[]=[];
+  await page.route("**/api/session",route=>route.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",
+   overview:{world:{revision:7,name:"World",year:1,week:6,phase:"OPEN",
+    nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+    membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"NATIONAL",
+     cash:5_000_000,debt:0}},availablePromotions:[]
+  }}));
+  await page.route("**/api/card",route=>{
+   const input=route.request().postDataJSON() as {method:string};
+   calls.push(input.method);
+   return route.fulfill({json:{
+    name:"CWA",tier:"NATIONAL",year:1,week:6,worldRevision:7,phase:"OPEN",
+    homeMarketName:"Midlands",mediaReach:85,cash:5_000_000,debt:0,
+    standing:null,weeklyMediaIncome:250_000,weeklySponsorIncome:22_000,
+    weeklyFixedOverhead:60_000,weeklyGuarantees:45_000,weeklyStaffPayroll:5_000,
+    recurringMargin:162_000,lastWeeklyNet:23_000,runwayWeeks:null,
+    financialDistress:"HEALTHY",territories:[],recentTransactions:[],
+    rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+    remainingRosterPotential:2_000_000,remainingRosterGuaranteed:1_600_000,
+    recentTvEpisodes:3,averageTvRating:2.2,recentAverageCrowd:82,
+    shows:[{year:1,week:5,name:"Ascension",audience:{
+     format:"TV",householdRating:2.7,estimatedViewers:4_200_000,ppvBuys:null}}],
+    competitorBroadcasts:[
+     {promotionId:"rival",name:"Rival Wrestling",showName:"Collision",
+      day:5,year:1,week:6,householdRating:3.1,estimatedViewers:5_000_000,
+      networkOfferCode:"BROADCAST_GROWTH",isYours:false},
+     {promotionId:"mine",name:"CWA",showName:"Ascension",
+      day:2,year:1,week:5,householdRating:2.7,estimatedViewers:4_200_000,
+      networkOfferCode:"BROADCAST_TV",isYours:true}],
+    partnerInventory:[
+     {offerCode:"BROADCAST_GROWTH",promotionId:"rival",promotionName:"Rival Wrestling",
+      endWeekIndex:27,kind:"BROADCAST"},
+     {offerCode:"SPONSOR_LOCAL",promotionId:"rival",promotionName:"Rival Wrestling",
+      endWeekIndex:20,kind:"SPONSOR"}],
+    commercialAgreements:[],
+    commercialQualified:[{code:"SPONSOR_GEAR",kind:"SPONSOR"}],
+    commercialOffers:[{code:"SPONSOR_GEAR",kind:"SPONSOR",
+     name:"Ironclad Workwear",description:"Reliable regional partner",
+     weeklyIncome:24_000,reachIncrease:0,termWeeks:26,
+     obligation:"Keep staging shows."}]
+   }});
+  });
+  await page.goto("/#/business");
+  await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
+  await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
+  await page.getByRole("button",{name:"Deals"}).click();
+  await expect(page.getByRole("heading",{name:"Ratings war"})).toBeVisible();
+  await expect(page.getByText(/Your latest TV show ranks #2 of 2/)).toBeVisible();
+  const v=page.locator('.ppw-commercial-offer[data-availability="TAKEN"]')
+   .filter({has:page.locator('.ppw-commercial-brand[data-code="BROADCAST_GROWTH"]')});
+  await expect(v.locator("svg")).toBeVisible();
+  await expect(v).toContainText("Exclusive partner of Rival Wrestling");
+  await expect(v.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Sponsors"}).click();
+  const iron=page.locator('.ppw-commercial-brand[data-code="SPONSOR_GEAR"]');
+  await expect(iron.locator("svg")).toBeVisible();
+  await expect(page.getByRole("button",{name:"Sign Ironclad Workwear"})).toBeVisible();
+  const heldSponsor=page.locator(".ppw-commercial-offer[data-availability='TAKEN']");
+  await expect(heldSponsor).toContainText("Jack's Crematorium");
+  await expect(heldSponsor).toContainText("Rival Wrestling");
+  expect(calls).toEqual(["business"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
+
+test("Ratings war keeps a lower-ranked owner visible and ignores legacy PPV rows without buys",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ let calls=0;
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"opaque",
+  overview:{world:{revision:6,name:"World",year:1,week:11,phase:"OPEN",
+   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:1_000_000,debt:0}},availablePromotions:[]
+ }}));
+ await page.route("**/api/card",r=>{
+  calls++;
+  return r.fulfill({json:{
+   name:"CWA",tier:"LOCAL",year:1,week:11,worldRevision:6,phase:"OPEN",
+   cash:1_000_000,debt:0,homeMarketName:"Midlands",mediaReach:70,
+   weeklyMediaIncome:12000,weeklySponsorIncome:3000,weeklyFixedOverhead:5000,
+   weeklyGuarantees:2000,weeklyStaffPayroll:0,recurringMargin:8000,
+   lastWeeklyNet:0,runwayWeeks:null,financialDistress:"HEALTHY",
+   standing:null,territories:[],recentTransactions:[],
+   rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+   commercialAgreements:[],commercialOffers:[],partnerInventory:[],
+   recentTvEpisodes:1,averageTvRating:.3,recentAverageCrowd:70,
+   shows:[{name:"Special",year:1,week:10,
+    audience:{format:"PPV",householdRating:null,estimatedViewers:null,ppvBuys:null}}],
+   competitorBroadcasts:[
+    ...Array.from({length:8},(_,i)=>({promotionId:"r"+i,
+     name:"Rival "+i,showName:"Weekly",day:5,year:1,week:10,
+     householdRating:4-i*.4,estimatedViewers:100000,networkOfferCode:null,
+     isYours:false})),
+    {promotionId:"mine",name:"CWA",showName:"Ascension",day:2,year:1,
+     week:10,householdRating:.3,estimatedViewers:20000,
+     networkOfferCode:null,isYours:true}]
+  }});
+ });
+ await page.goto("/#/business");
+ await page.getByRole("button",{name:"Deals"}).click();
+ await expect(page.getByText(/Your latest TV show ranks #9 of 9/)).toBeVisible();
+ await expect(page.getByText("#9 · CWA · YOUR SHOW")).toBeVisible();
+ await expect(page.getByText("Latest TV episode per promotion · past six weeks")).toBeVisible();
+ await expect(page.getByText(/PPV buys/)).toHaveCount(0);
+ expect(calls).toBe(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

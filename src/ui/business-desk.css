@@ -1,3 +1,4 @@
+@import "./commercial-partner-identity.css";
 .ppw-business{box-sizing:border-box;max-width:1060px;min-width:0;
  margin:0 auto;padding:18px 14px 84px;color:#f0f6fc}
 .ppw-business *{box-sizing:border-box}
@@ -251,3 +252,57 @@
 @media(max-width:360px){
  .ppw-business-signing-inputs{grid-template-columns:1fr}
 }
+
+.ppw-commercial-desk .ppw-commercial-offer{gap:9px}
+.ppw-commercial-desk .ppw-commercial-offer>button{
+ color:#fff!important;background:linear-gradient(115deg,#18786d,#3250a8)!important;
+ border:1px solid #95d8ed!important;border-radius:12px!important;
+ min-height:48px;font-weight:900}
+.ppw-commercial-desk .ppw-commercial-offer>small{max-width:100%}
+
+/* Phase 28 — the front office starts with the bank, not a workbook. */
+.ppw-business .ppw-finance-first{padding:15px;margin:12px 0 16px;
+ display:grid;gap:13px;background:linear-gradient(145deg,#172d48,#202848);
+ border:1px solid #6b9abd;border-radius:16px;min-width:0}
+.ppw-finance-first h2{font-size:22px;color:#fff1d5;margin:0}
+.ppw-finance-bank{display:grid;gap:3px;background:#0e2741;padding:14px;
+ border-radius:12px;border:1px solid #527fa7}
+.ppw-finance-bank small{color:#9bd9e9;font-size:12px}
+.ppw-finance-bank strong{font-size:clamp(29px,8vw,44px);
+ color:#ffe0a8;line-height:1.18;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.ppw-finance-snapshot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-finance-snapshot-tile{min-width:0;display:grid;gap:6px;align-content:start;
+ padding:11px;border:1px solid #456580;border-radius:12px;background:#112b40}
+.ppw-finance-snapshot-tile span{font-size:12px;font-weight:800;color:#a2dbe9}
+.ppw-finance-snapshot-tile strong{font-size:clamp(15px,4.4vw,21px);line-height:1.25;
+ color:#fff0cb;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.ppw-finance-snapshot-tile small{font-size:11px;color:#c5d4e2;line-height:1.3}
+.ppw-finance-commitments{font-size:12px;line-height:1.45;margin:0;color:#bfdaed}
+.ppw-finance-debt{margin:0;color:#ffc3b7;font-size:13px}
+.ppw-finance-first-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-finance-first-actions button{min-height:48px;padding:9px;
+ box-sizing:border-box;border-radius:12px!important;font-size:12px;
+ font-weight:850;color:#fff!important;background:#214e69;border:1px solid #80afca}
+@media(max-width:350px){
+ .ppw-finance-first-actions{grid-template-columns:1fr}
+ .ppw-finance-snapshot-tile{padding:9px}
+}
+/* Phase 28 UX: compact bank dashboard and disclosure-only commitments. */
+.ppw-finance-roster-exposure{background:#10283d;border:1px solid #476b89;
+ border-radius:12px;padding:10px 12px;font-size:12px}
+.ppw-finance-roster-exposure>summary{cursor:pointer;list-style:auto;
+ color:#d2edff;font-size:12px;font-weight:800;min-height:28px}
+.ppw-finance-roster-exposure[open]>summary{margin-bottom:8px}
+.ppw-business-pulse{margin:0 0 14px;border:1px solid #3e647b;
+ background:#122b40;border-radius:13px;padding:12px}
+.ppw-business-pulse>summary{font-weight:850;color:#d7edfc;
+ font-size:14px;cursor:pointer;min-height:25px}
+.ppw-business-pulse[data-health=warning]{border-color:#c78a60}
+.ppw-business-pulse[data-health=watch]{border-color:#b4a069}
+.ppw-business-pulse-headline{display:block;margin-top:11px;
+ color:#ffe5b2;line-height:1.4;font-size:14px}
+.ppw-business-pulse .ppw-business-muted{margin:8px 0 0}
+.ppw-finance-snapshot-tile span{font-size:11px}
+@media(max-width:350px){.ppw-finance-snapshot{gap:6px}
+ .ppw-finance-snapshot-tile{padding:8px;gap:4px}
+ .ppw-finance-snapshot-tile strong{font-size:14px}}

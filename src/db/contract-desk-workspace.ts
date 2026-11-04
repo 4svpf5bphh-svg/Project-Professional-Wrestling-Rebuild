@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
+import {worldTalentManagers} from "../domain/world-staff.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
 
 /** One consistent World-clock snapshot, including pending negotiations.
@@ -13,12 +14,19 @@ export async function readContractDesk(
  return withSqlClient(pool,async tx=>{
   const auth=await tx.query<{year:number;week:number;
    revision:string|number;can_edit:boolean;cash:string;
+   world_seed:string;manager_id:string|null;
     weekly_media_income:string|null;weekly_sponsor_income:string|null;
     weekly_fixed_overhead:string|null;staff_payroll:string;
     plan_weekly_wage_limit:string|null;
     plan_show_talent_limit:string|null;plan_cash_reserve:string|null;
     has_talent_manager:boolean}>(`
-   SELECT w.year,w.week,w.revision,p.cash::text,
+   SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,p.cash::text,
+     (SELECT employee.staff_id FROM ppw_staff_employments employee
+      WHERE employee.world_id=p.world_id AND employee.promotion_id=p.promotion_id
+       AND employee.role='TALENT_MANAGER' AND employee.status='ACTIVE'
+       AND employee.start_week_index<=(w.year-1)*52+w.week-1
+       AND employee.expires_week_index>=(w.year-1)*52+w.week-1
+      ORDER BY employee.staff_id LIMIT 1) AS manager_id,
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,
      plan.weekly_wage_limit::text AS plan_weekly_wage_limit,
@@ -45,17 +53,27 @@ export async function readContractDesk(
    [worldId,playerId,promotionId]);
   if(auth.length!==1)throw new Error("Promotion access denied");
   const currentWeekIndex=(auth[0]!.year-1)*52+auth[0]!.week-1;
+  const managerId=auth[0]!.manager_id;
+  const talentManager=managerId?
+   worldTalentManagers(auth[0]!.world_seed).find(m=>m.staffId===managerId)??{
+    staffId:managerId,name:"Talent Manager",insight:55
+   }:null;
   const contracts=await tx.query<{
    contract_id:string;person_id:string;name:string;
    family:ContractAvailabilityInput["family"];status:ContractAvailabilityInput["status"];
    remaining_dates:number|null;expires_week_index:number;start_week_index:number;
    date_entitlement:number|null;weekly_guarantee:string;appearance_fee:string;signing_bonus:string;
    creative_control:string;role_expectation:string;
+   popularity:number|null;recognition:number|null;morale:number|null;
+   career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
+   presentation:number|null;
    backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
+     p.popularity,p.recognition,p.morale,p.career_stage,p.in_ring_quality,
+     p.match_craft,p.presentation,
      EXISTS(SELECT 1 FROM ppw_contract_offers accepted
       WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
        AND accepted.person_id=c.person_id
@@ -166,6 +184,7 @@ export async function readContractDesk(
   return {
    currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
     talentBudget,hasTalentManager:auth[0]!.has_talent_manager,
+    talentManager,
     spendingPlan:auth[0]!.plan_weekly_wage_limit===null?null:{
      weeklyWageLimit:Number(auth[0]!.plan_weekly_wage_limit),
      showTalentLimit:Number(auth[0]!.plan_show_talent_limit),
@@ -176,6 +195,14 @@ export async function readContractDesk(
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
+    popularity:cost.popularity,recognition:cost.recognition,morale:cost.morale,
+    careerStage:cost.career_stage,estimatedWeeklyValue:Math.max(500,Math.round(
+     (500+(cost.recognition??50)*50+(cost.popularity??50)*30+
+      ((cost.in_ring_quality??50)+(cost.match_craft??50)+
+       (cost.presentation??50))*25/3)*
+      (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
+       cost.career_stage==="VETERAN"?1.1:
+       cost.career_stage==="PROSPECT"?.75:1))),
     pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
      renewalArranged:arrangedIds.has(c.contractId),
     backstageContractConversationId:cost.backstage_contract_request_id};}),

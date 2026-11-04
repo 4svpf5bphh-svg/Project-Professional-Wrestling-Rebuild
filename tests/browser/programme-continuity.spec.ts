@@ -1,4 +1,5 @@
 import {test,expect} from "@playwright/test";
+import {mkdir} from "node:fs/promises";
 const overview={world:{revision:4,name:"Genesis",year:1,week:9,
  phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
  membership:"ACTIVE",promotion:{id:"company",name:"CWA",tier:"LOCAL",cash:800000,
@@ -33,12 +34,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText("The return bout happened")).toBeVisible();
- await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
- await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Ask Creative · what next?"})).toHaveCount(0);
- await expect(page.getByText(/A newer match has taken place/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("The return bout happened");
+ await expect(page.locator(".ppw-programme-strategy")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Choose direction"})).toHaveCount(0);
  expect(calls).toEqual(["programmes"]); // Reading is not a booking command
 });
 test("iPhone makes an unfulfilled retaliation direction visible without pretending to book an angle",async({page})=>{
@@ -57,11 +56,10 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await page.locator(".ppw-programme-next > summary").click();
- await expect(page.getByText("An answer is still due")).toBeVisible();
- await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText(/Still open · 1 week since your decision/)).toBeVisible();
- await expect(page.getByText(/An answer is still due/)).toBeVisible();
+ await expect(page.locator(".ppw-programme-direction-record"))
+  .toContainText("An answer is still due");
+ await expect(page.locator(".ppw-programme-strategy")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Choose direction"})).toHaveCount(0);
  expect(calls).toEqual(["programmes"]);
 });
 
@@ -75,8 +73,10 @@ test("completed feud remains a readable promotion archive instead of a forgotten
    latestFollowUp:null}]
  }}));
  await page.goto("/#/programmes");
- await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toHaveCount(0);
  await expect(page.locator(".ppw-programme-archive-card")).toHaveCount(0);
+ await page.getByRole("button",{name:"Past rivalries · 1"}).click();
+ await expect(page.getByRole("heading",{name:"Past rivalries · 1"})).toBeVisible();
  await page.locator(".ppw-programme-archive-open").click();
  await expect(page.getByRole("heading",{name:"Rivalry retrospective"})).toBeVisible();
  const archive=page.locator(".ppw-programme-archive-card");
@@ -85,9 +85,23 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
  await expect(archive.locator(".ppw-programme-feud-stars")).toHaveAttribute("aria-label",/out of five stars/);
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
- await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
- await page.getByRole("button",{name:"← Back to programmes"}).click();
- await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
+ await expect(archive.locator(".ppw-programme-archive-duel")).toContainText("Samoa Joe");
+ await expect(archive.locator(".ppw-programme-archive-timeline"))
+  .toContainText("Matt Riddle won");
+ await expect(archive.getByRole("button",{name:"View show"})).toHaveCount(2);
+ await mkdir("test-results/presentation-screenshots",{recursive:true});
+ await page.screenshot({path:"test-results/presentation-screenshots/phase27-past-feud-390.png",
+  fullPage:true,animations:"disabled"});
+ await page.setViewportSize({width:320,height:740});
+ await expect(archive.locator(".ppw-programme-archive-duel")).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+ await page.screenshot({path:"test-results/presentation-screenshots/phase27-past-feud-320.png",
+  fullPage:true,animations:"disabled"});
+ await page.getByRole("button",{name:"← Past rivalries"}).click();
+ await expect(page.getByRole("heading",{name:"Past rivalries · 1"})).toBeVisible();
+ await page.getByRole("button",{name:"← Active rivalries"}).click();
+ await expect(page.getByRole("button",{name:"Past rivalries · 1"})).toBeVisible();
 });
 
 test("iPhone plans and removes a real match or angle payoff without auto-ending the feud",async({page})=>{
@@ -174,6 +188,15 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  const heading=page.getByRole("heading",{name:"Programmes"});
  await expect(heading).toBeVisible();
  expect(await heading.evaluate(el=>el.scrollWidth>el.clientWidth+1)).toBe(false);
+ // Names and full-sized portraits occupy independent columns on a 320px iPhone.
+ const photos=page.locator(".ppw-programme-focused .ppw-programme-hero-person .ppw-programme-portrait");
+ await expect(photos).toHaveCount(2);
+ const bounds=await photos.evaluateAll(nodes=>nodes.map(node=>{
+  const box=node.getBoundingClientRect();
+  return {left:box.left,right:box.right,width:box.width,height:box.height};
+ }));
+ expect(bounds[0]!.right).toBeLessThan(bounds[1]!.left);
+ expect(bounds[0]!.width).toBeGreaterThanOrEqual(60);
  const versus=page.locator(".ppw-programme-focused .ppw-programme-versus");
  await expect(versus).toHaveText("VS");
  const vsLayout=await versus.evaluate(node=>{
@@ -230,9 +253,8 @@ test("a wrestler dossier opens their own active feud rather than the first unrel
   return route.fulfill({json:{}});
  });
  await page.goto("/#/roster");
- const wrestler=page.locator(".ppw-directory-card").first();
- await wrestler.locator("summary").click();
- await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+ const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+ await wrestler.click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
  await dialog.locator(".ppw-profile-manage-more > summary").click();

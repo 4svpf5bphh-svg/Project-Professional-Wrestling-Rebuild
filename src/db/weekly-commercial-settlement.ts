@@ -4,8 +4,9 @@
  * This module is never a timer or independent scheduler.
  */
 import type {SqlRows} from "./world-operations.js";
-import {commercialOffers,type CommercialEvidence,type CommercialOffer}
+import {COMMERCIAL_COMPANIES,type CommercialEvidence}
  from "../domain/commercial-offers.js";
+import {awardAiCommercialPartners} from "../domain/commercial-ai-market.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  year:number,week:number){
@@ -56,6 +57,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  const bonuses=await tx.query<{promotion_id:string;amount:string}>(`
  WITH certified AS (
   SELECT s.promotion_id,max(s.crowd_response) AS crowd,
+   max(CASE WHEN e.audience_format='TV'
+    THEN e.tv_household_rating END) AS tv_rating,
    bool_or(EXISTS(
     SELECT 1 FROM ppw_completed_show_matches result
     JOIN ppw_card_slots slot ON slot.world_id=result.world_id
@@ -73,7 +76,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   GROUP BY s.promotion_id
  ), eligible AS (
   SELECT d.world_id,d.deal_id,d.promotion_id,c.crowd,
-   round(d.agreed_income*(CASE
+   round(d.agreed_income*least(.18,(CASE
     WHEN d.offer_code='SPONSOR_LOCAL' AND c.hardcore THEN .05
     WHEN d.offer_code='BROADCAST_GROWTH' AND c.crowd>=70 THEN .04
     WHEN d.offer_code='BROADCAST_INDIE' AND c.crowd>=66 THEN .04
@@ -83,9 +86,32 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
     WHEN d.offer_code='SPONSOR_FOOD' AND c.crowd>=72 THEN .04
     WHEN d.offer_code='SPONSOR_TECH' AND c.crowd>=76 THEN .05
     WHEN d.offer_code='SPONSOR_LUXURY' AND c.crowd>=82 THEN .06
-    ELSE 0 END))::bigint AS amount
+    ELSE 0 END)+
+    CASE WHEN d.kind='BROADCAST' AND c.tv_rating IS NOT NULL THEN
+      least(.12,greatest(0,
+       c.tv_rating/(
+        (CASE p.tier
+         WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
+         WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
+         ELSE .12 END) *
+        (CASE d.offer_code
+         WHEN 'BROADCAST_GLOBAL' THEN 1.45
+         WHEN 'BROADCAST_TV' THEN 1.25
+         WHEN 'BROADCAST_GROWTH' THEN .9
+         WHEN 'BROADCAST_ARCHIVE' THEN .8
+         WHEN 'BROADCAST_INDIE' THEN .75
+         ELSE .7 END)) - 1)*.07)
+     WHEN d.kind='SPONSOR' AND c.tv_rating IS NOT NULL AND
+      d.offer_code IN ('SPONSOR_TECH','SPONSOR_LUXURY') AND
+      c.tv_rating >= (CASE p.tier
+       WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
+       WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
+       ELSE .12 END) THEN .025
+     ELSE 0 END))::bigint AS amount
   FROM ppw_commercial_deals d
   JOIN certified c ON c.promotion_id=d.promotion_id
+  JOIN ppw_promotions p ON p.world_id=d.world_id
+   AND p.promotion_id=d.promotion_id
   WHERE d.world_id=$1 AND d.status='ACTIVE'
    AND d.start_week_index<=$4 AND d.end_week_index>=$4
  ), earned AS (
@@ -146,7 +172,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // One bounded set of AI promotions; recent verified shows only. Separate
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
-  promotion_id:string;management_mode:string;active_kinds:string[]
+  promotion_id:string;management_mode:string;active_kinds:string[];
+  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null
  }>(`
  SELECT p.promotion_id,p.management_mode,p.tier,
   p.media_reach AS "mediaReach",
@@ -154,14 +181,28 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   p.weekly_sponsor_income::double precision AS "weeklySponsorIncome",
   coalesce(recent.completed,0)::integer AS "completedShows",
   recent.crowd::double precision AS "averageCrowd",
+  recent.tv_count AS "recentTvEpisodes",
+  recent.tv_rating::double precision AS "averageTvRating",
+  (SELECT draft.show_day FROM ppw_booking_drafts draft
+   JOIN ppw_completed_shows c ON c.world_id=draft.world_id
+    AND c.show_id=draft.draft_id AND c.promotion_id=draft.promotion_id
+   WHERE draft.world_id=p.world_id AND draft.promotion_id=p.promotion_id
+    AND draft.event_type='REGULAR' AND draft.status='SUBMITTED'
+   ORDER BY draft.year DESC,draft.week DESC,draft.draft_id DESC LIMIT 1)
+    AS "recentShowDay",
   ARRAY(SELECT d.kind FROM ppw_commercial_deals d
    WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
     AND d.status='ACTIVE') AS active_kinds
  FROM ppw_promotions p
  LEFT JOIN LATERAL (
-  SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd
+  SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd,
+   count(tv_household_rating)::integer AS tv_count,
+   avg(tv_household_rating) AS tv_rating
   FROM (
-   SELECT show.year,show.week,show.crowd_response FROM ppw_completed_shows show
+   SELECT show.year,show.week,show.crowd_response,
+    CASE WHEN econ.audience_format='TV'
+     THEN econ.tv_household_rating END AS tv_household_rating
+    FROM ppw_completed_shows show
    JOIN ppw_show_economics econ ON econ.world_id=show.world_id
     AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id
    JOIN ppw_booking_drafts draft ON draft.world_id=show.world_id
@@ -181,33 +222,35 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  if(owners.length>128)throw new Error("AI commercial batch bound exceeded");
  type Proposal={deal_id:string;promotion_id:string;kind:string;offer_code:string;
   baseline_income:number;agreed_income:number;baseline_reach:number|null;
-  agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI"};
+  agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI";
+  airing_day:number|null;airing_hour:number|null};
  const proposals:Proposal[]=[];
- for(const p of owners){
-  const offers=commercialOffers(p);
-  for(const kind of ["BROADCAST","SPONSOR"] as const){
-   if(p.active_kinds.includes(kind))continue;
-   const eligible=offers.filter(o=>o.kind===kind);
-   // AI promotions pursue stronger guaranteed income after sustained
-   // high-quality shows, otherwise a conservative short term.
-   const choice:CommercialOffer|undefined=kind==="BROADCAST"?
-    (eligible.find(o=>o.code==="BROADCAST_TV")??
-     eligible.find(o=>o.code==="BROADCAST_STABLE")):
-    (eligible.find(o=>o.code==="SPONSOR_PARTNER")??
-     eligible.find(o=>o.code==="SPONSOR_LOCAL"));
-   if(!choice)continue;
-   const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
-   if(baseline===null)continue;
-   const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
-    Math.min(100,p.mediaReach):null;
-   proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
-    promotion_id:p.promotion_id,kind,offer_code:choice.code,
-    baseline_income:baseline,agreed_income:choice.weeklyIncome,
-    baseline_reach:originalReach,
-    agreed_reach:originalReach===null?null:
-     Math.min(100,originalReach+choice.reachIncrease),
-    start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI"});
-  }
+ // Human and AI bidders share one finite World inventory. Rank eligible AI
+ // bidders by the actual audience each partner values, not promotion ID.
+ // Existing agreements still block a company’s kind until term expiry.
+ const occupied=await tx.query<{offer_code:string}>(`
+  SELECT DISTINCT offer_code FROM ppw_commercial_deals
+  WHERE world_id=$1 AND status='ACTIVE'
+ `,[worldId]);
+ const taken=new Set(occupied.map(row=>row.offer_code));
+ for(const {promotion:p,offer:choice} of awardAiCommercialPartners(owners,taken)){
+  const kind=choice.kind;
+  const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
+  if(baseline===null)throw new Error("AI commercial offer lacks an income baseline");
+  const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
+   Math.min(100,p.mediaReach):null;
+  proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
+   promotion_id:p.promotion_id,kind,offer_code:choice.code,
+   baseline_income:baseline,agreed_income:choice.weeklyIncome,
+   baseline_reach:originalReach,
+   agreed_reach:originalReach===null?null:
+    Math.min(100,originalReach+choice.reachIncrease),
+   start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI",
+   airing_day:kind==="BROADCAST"?
+    (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
+     p.recentShowDay:COMMERCIAL_COMPANIES[choice.code]?.preferredDay??6):null,
+   airing_hour:kind==="BROADCAST"?
+    Number(COMMERCIAL_COMPANIES[choice.code]?.airtime.slice(0,2)??"20"):null});
  }
  if(proposals.length){
   // Insert strictly before applying amounts; WHERE status active filters out
@@ -216,15 +259,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    agreed_income:string;agreed_reach:number|null}>(`
    INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,offer_code,
     status,baseline_income,agreed_income,baseline_reach,agreed_reach,
-    start_week_index,end_week_index,source)
+    start_week_index,end_week_index,source,exclusive_rights,airing_day,airing_hour)
    SELECT $1,x.deal_id,x.promotion_id,x.kind,x.offer_code,'ACTIVE',
     x.baseline_income,x.agreed_income,x.baseline_reach,x.agreed_reach,
-    x.start_week_index,x.end_week_index,x.source
+    x.start_week_index,x.end_week_index,x.source,true,x.airing_day,x.airing_hour
    FROM jsonb_to_recordset($2::jsonb) AS x(
     deal_id text,promotion_id text,kind text,offer_code text,
     baseline_income bigint,agreed_income bigint,baseline_reach double precision,
     agreed_reach double precision,start_week_index integer,end_week_index integer,
-    source text)
+    source text,airing_day smallint,airing_hour smallint)
    ON CONFLICT DO NOTHING
    RETURNING promotion_id,kind,agreed_income::text,agreed_reach
   `,[worldId,JSON.stringify(proposals)]);

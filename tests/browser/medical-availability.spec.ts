@@ -37,14 +37,14 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/roster");
-  const cards=page.locator(".ppw-directory-card");
+  const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText("INJURED · 1 WEEK TO CLEARANCE");
   await expect(cards.nth(1)).toContainText("UNLIMITED DATES");
-  await cards.first().locator("summary").click();
-  await expect(cards.first()).toContainText("cannot be booked while injured");
+  // Immediate medical status remains prominent; full attributes belong in the dossier.
+  await expect(cards.first()).toHaveRole("button");
   await expect(cards.first()).not.toContainText("NaN");
-  await expect(cards.first()).toContainText("Morale");
+  await expect(cards.first().locator(".ppw-wrestler-stats")).toHaveCount(0);
   expect(loads).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({path:screenshots+"/medical-roster-"+width+".png",fullPage:true});

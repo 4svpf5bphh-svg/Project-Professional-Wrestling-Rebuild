@@ -563,6 +563,14 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0128_certified_broadcast_audience.sql
+      - name: Enforce exclusive World partner rights for all new deals
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0129_world_partner_exclusivity.sql
+      - name: Verify partner migration remains safe on repeat
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0129_world_partner_exclusivity.sql
       - name: Verify audience migration is retry-safe before release
         env:
           PGPASSWORD: ppw_test

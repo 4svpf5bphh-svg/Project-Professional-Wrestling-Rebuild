@@ -120,3 +120,52 @@
  .ppw-wrestler-card:where(button):not(:disabled):active{transform:scale(.992)}
  .ppw-wrestler-card:where(button):hover{border-color:#78d8ff}
 }
+
+/* Phase 28 — roster and marketplace list cards are identity-first.
+   Booking pickers retain their in-context attribute comparison. */
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market){
+ grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;
+ padding:10px;border-radius:13px}
+.ppw-wrestler-card.ppw-wrestler-roster:where(button){
+ grid-template-columns:64px minmax(0,1fr) 15px;min-height:94px}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-media{
+ width:64px;height:79px;align-self:center}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-copy{
+ gap:4px;justify-content:center}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-name{
+ font-size:clamp(15px,4.4vw,19px);line-height:1.13}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-badges{
+ gap:4px;order:2}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-identity{
+ overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
+.ppw-wrestler-fans{font-size:12px;line-height:1.2;color:#e9f9ff;font-weight:850;
+ font-variant-numeric:tabular-nums}
+.ppw-wrestler-trait{display:inline-flex;align-self:flex-start;
+ color:#b8edfc;border:1px solid #6baed0;border-radius:999px;
+ padding:2px 7px;font-size:9px;font-weight:800}
+.ppw-wrestler-chevron{font-size:25px;color:#c9e6ff;grid-column:3;
+ grid-row:1;align-self:center;justify-self:end;line-height:1}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-status{
+ grid-column:auto;grid-row:auto;align-self:flex-start;
+ max-width:100%;border-radius:7px;padding:4px 7px;
+ font-size:10px;text-transform:none;letter-spacing:0}
+.ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market)
+ .ppw-wrestler-championship-titles{font-size:10px}
+@media(min-width:610px){
+ .ppw-wrestler-card.ppw-wrestler-roster:where(button){
+  grid-template-columns:74px minmax(0,1fr) 17px}
+ .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-media{
+  width:74px;height:87px}
+}
+@media(max-width:360px){
+ .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market){
+  grid-template-columns:52px minmax(0,1fr);padding:8px;gap:8px}
+ .ppw-wrestler-card.ppw-wrestler-roster:where(button){
+  grid-template-columns:52px minmax(0,1fr) 12px}
+ .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-media{
+  width:52px;height:70px}
+ .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-name{
+  font-size:15px}
+ .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-badges{
+  gap:3px}
+}

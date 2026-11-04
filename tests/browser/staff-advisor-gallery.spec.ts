@@ -43,10 +43,11 @@ test("Creative's contextual angle advice appears in PPW's real mobile editor",as
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
- const notes=dialog.locator(".ppw-card-advisor-notes");
- await notes.locator(":scope > summary").click();
- await expect(notes.getByText("Storyline cast does not appear")).toBeVisible();
+ await expect(dialog.locator(".ppw-card-advisor-notes")).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const briefing=dialog.locator(".ppw-guide-staff-review");
+ await expect(briefing).toContainText("Jamie Keane");
+ await expect(briefing).toContainText("Storyline cast does not appear");
  await mkdir(folder,{recursive:true});
  await page.screenshot({path:folder+"/phase23-creative-storyline-advice-390.png"});
 });
@@ -73,12 +74,11 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.getByRole("button",{name:"Make contract offer"}).click();
  await expect(page.locator(".ppw-directory-affordability")).toContainText("What this does to your company");
  await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("POTENTIAL FULL-TERM COST");
+ await page.getByRole("button",{name:"Customise this offer"}).click();
  const input=page.getByLabel("Weekly guarantee ($)");
  await input.fill("18000");
  await input.press("Tab");
- // Standard offers begin on the 52-week preset; manually changing dates
- // is deliberately an advanced action, not a missing contract capability.
- await page.locator(".ppw-directory-advanced-terms > summary").click();
+ // The editor is one flat panel; no second disclosure hides the dates.
  await page.getByLabel("Weeks (1–52)").fill("10");
  await page.getByLabel("Purchased dates").fill("5");
  await page.getByLabel("Appearance fee ($)").fill("9000");
@@ -90,7 +90,7 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.screenshot({path:folder+"/phase23-contract-full-term-390.png"});
  const notes=page.locator(".ppw-directory-adviser");
  await expect(notes).toBeVisible();
- await notes.locator("summary").click();
+ await expect(notes).toHaveAttribute("data-risk","watch");
  await expect(notes).toContainText("wage plan");
  await mkdir(folder,{recursive:true});
  await page.locator(".ppw-directory-affordability").scrollIntoViewIfNeeded();

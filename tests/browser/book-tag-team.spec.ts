@@ -79,12 +79,8 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Matt Riddle");
  await expect(dialog).toContainText("Alex Shelley");
- // Real partnership context arrives while choosing the team, not only
- // at the very end of the four-screen booking journey.
- await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
-  "Known partnership strain");
- await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
-  "Derek James: Partnership developing");
+ // Only the final booking screen contains staff concerns.
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const briefing=dialog.locator(".ppw-guide-staff-review");
@@ -206,7 +202,8 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Stipulation")).toHaveCount(0);
- await expect(dialog.getByLabel("Finish")).toHaveValue("MOST_FALLS");
+ await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]'))
+  .toContainText("Most Falls");
  await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-iron-man-booking-390.png",
   animations:"disabled"});
@@ -224,5 +221,6 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(dialog.getByLabel("Finish")).toHaveValue("CLEAN_PIN");
+ await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]'))
+  .toContainText("Clean Pin");
 });

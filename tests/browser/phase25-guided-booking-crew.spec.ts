@@ -35,7 +35,7 @@ const card={showId:"weekly",year:1,week:5,worldRevision:4,
   {role:"MEDICAL",name:"Dr Singh",staffId:"doctor"},
   {role:"REFEREE",name:"Mark Reid",staffId:"ref"},
   {role:"CREATIVE",name:"Emma Cross",staffId:"creative"}]};
-async function stub(page:Page){
+async function stub(page:Page,bookingCard:Record<string,unknown>=card){
  const calls:string[]=[];
  const saved:unknown[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -46,7 +46,7 @@ async function stub(page:Page){
    saved.push({matches:req.matches,segments:req.segments});
    return route.fulfill({json:{status:"APPLIED",result:{showId:"weekly"}}});
   }
-  const data=req.method==="planner"?planner:req.method==="load"?card:
+  const data=req.method==="planner"?planner:req.method==="load"?bookingCard:
    req.method==="talent"?{talent,cursor:null}:{};
   return route.fulfill({json:data});
  });
@@ -69,12 +69,33 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("0 / 120 min");
  await dialog.getByRole("button",{name:"Ladder Match"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
+ const ruleRadii=await dialog.locator(".ppw-guide-stipulation-tile").evaluateAll(tiles=>
+  tiles.map(tile=>getComputedStyle(tile).borderRadius));
+ expect(new Set(ruleRadii).size).toBe(1);
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-guided-match-setup-320.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await dialog.getByRole("button",{name:"Choose wrestler"}).first().click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-side-tabs .ppw-picker-side-tab")).toHaveCount(2);
+ // A selected state must never change the geometry of any picker slicer.
+ const pickerRadii=await picker.locator(".ppw-picker-side-tab, .ppw-picker-source-tab, .ppw-picker-filter-chip")
+  .evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).borderTopLeftRadius));
+ expect(pickerRadii.length).toBeGreaterThanOrEqual(10);
+ expect(new Set(pickerRadii).size).toBe(1);
+ // The booking sheet may refresh while the initial roster fetch settles.
+ // Assert computed styles once the live picker nodes are attached, not against
+ // detached old selects (getComputedStyle returns empty strings for those).
+ await expect.poll(()=>picker.locator(".ppw-picker-filters select")
+  .evaluateAll(nodes=>nodes.map(n=>{
+   if(!n.isConnected)return null;
+   const style=getComputedStyle(n);
+   return {radius:style.borderTopLeftRadius,color:style.color,
+    background:style.backgroundColor,appearance:style.appearance};
+  })),{timeout:10000}).toEqual(Array.from({length:2},()=>({
+   radius:"12px",color:"rgb(238, 246, 255)",
+   background:"rgb(33, 54, 80)",appearance:"none"
+  })));
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
@@ -100,9 +121,11 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-side-b-independent-filters-320.png",animations:"disabled"});
  await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker).toHaveCount(0);
- await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText("Watch cumulative wear");
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByLabel("Finish")).toHaveCount(0);
+ await expect(dialog.locator(".ppw-guide-finish-tile").first()).toBeVisible();
  await dialog.getByLabel("Minutes").fill("30");
  await dialog.getByLabel("Minutes").press("Tab");
  // Ladder stipulation changes the scripted finish, so it should not
@@ -125,7 +148,11 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(condition).toContainText("Wear 82/100");
  await expect(condition).toContainText("Místico");
  await expect(review).toContainText("Additional appearance fees · $27,000");
- await expect(review).toContainText("does not establish whether they have good or bad chemistry");
+ await expect(review).toContainText("No active rivalry between these opponents");
+ await expect(review).toContainText("Performer readiness");
+ const headings=await review.locator("h4").allTextContents();
+ expect(headings.indexOf("Your staff's assessment"))
+  .toBeLessThan(headings.indexOf("Wrestler condition"));
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-review-top-320.png",animations:"disabled"});
  await condition.scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-condition-320.png",animations:"disabled"});
@@ -313,8 +340,7 @@ test("390px: match and physical angle share show workload advice and are saved t
   .toContainText("Side B");
  await picker.locator(".ppw-wrestler-card").first().click();
  await match.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(match.locator(".ppw-guide-contract-alert"))
-  .toContainText("Místico's contract protects against this planned clean loss");
+ await expect(match.locator(".ppw-guide-contract-alert")).toHaveCount(0);
  await match.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(match.locator(".ppw-guide-staff-review"))
   .toContainText("Místico's contract protects");
@@ -355,6 +381,7 @@ test("390px: match and physical angle share show workload advice and are saved t
  // Reopen its original slot rather than building a second advisory surface.
  await page.getByRole("button",{name:/Edit match in slot 1/}).click();
  const reopened=page.getByRole("dialog",{name:"Edit match"});
+ // Completed wizards retain their Review step on reopening.
  await expect(reopened.locator(".ppw-guide-staff-review"))
   .toContainText("Multiple physical bookings on this show");
  await expect(reopened.locator(".ppw-guide-staff-review"))
@@ -383,21 +410,23 @@ test("390px: referee changes dangerous match rules only on request; Road Agent t
  await picker.locator(".ppw-wrestler-card").first().click();
  await picker.locator(".ppw-wrestler-card").first().click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toContainText("Mark Reid");
  await expect(choice).toContainText("Reconsider the stipulation");
- await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("18 min");
  await choice.getByRole("button",{name:"Use standard rules"}).click();
  await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"← Revise script"}).click();
  await dialog.getByLabel("Minutes").fill("35");
  await dialog.getByLabel("Minutes").press("Tab");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Derek James");
  await expect(choice).toContainText("Samoa Joe");
  await expect(choice).toContainText("35 minutes");
  await choice.getByRole("button",{name:"Shorten to 18 min"}).click();
- await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("18 min");
  await expect(choice).toHaveCount(0);
- await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Standard rules");
  await expect(review).toContainText("Winner · Samoa Joe");
@@ -438,14 +467,15 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await expect(choice).toHaveCount(0);
  await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
  await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Dr Singh");
  await expect(choice).toContainText("Samoa Joe");
  await expect(choice).toContainText("Soften this physical scene");
- await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
  await choice.getByRole("button",{name:"Reduce physical intensity"}).click();
+ await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"← Revise script"}).click();
  await expect(dialog.getByLabel("Attack intensity")).toHaveValue("WARNING");
  await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("OFFICIALS_SEPARATE");
- await expect(choice).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Check condition before this physical scene");
@@ -470,16 +500,46 @@ test("390px: Creative can tighten a weak long promo without altering the scripte
  await picker.locator(".ppw-wrestler-card").first().click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByLabel("Angle duration (minutes)").selectOption("20");
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toContainText("Emma Cross");
  await expect(choice).toContainText("Samoa Joe");
  await choice.getByRole("button",{name:"Shorten scene to 10 min"}).click();
- await expect(dialog.getByLabel("Angle duration (minutes)")).toHaveValue("10");
+ await expect(dialog.locator(".ppw-guide-booking-summary")).toContainText("10 min");
  await expect(choice).toHaveCount(0);
- await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(dialog.locator(".ppw-guide-staff-review"))
   .not.toContainText("Long scene, limited presentation strength");
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  expect(saved).toHaveLength(0);
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
+});
+
+test("320px tournament fixture starts a guided final with named wrestlers and no extra roster read",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const {calls,saved}=await stub(page,{...card,tournamentBouts:[{
+  tournamentId:"contender",tournamentName:"#1 Contender Series",
+  boutNo:3,entrantsCount:4,championshipId:null,
+  personA:{personId:"joe",contractId:"c-joe",name:"Samoa Joe"},
+  personB:{personId:"mistico",contractId:"c-mistico",name:"Místico"}
+ }]});
+ await goToCard(page);
+ const fixture=page.locator(".ppw-card-tournament-fixture");
+ await expect(fixture).toHaveCount(1);
+ await expect(fixture).toContainText("Samoa Joe vs Místico");
+ await expect(page.locator(".ppw-tournament-booking-row")).toHaveCount(0);
+ await fixture.getByRole("button",{name:"Book bout"}).click();
+ const wizard=page.getByRole("dialog",{name:"Edit match"});
+ await expect(wizard.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(wizard).toContainText("Samoa Joe");
+ await expect(wizard).toContainText("Místico");
+ await wizard.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(wizard.locator(".ppw-guide-booking-summary")).toContainText("Samoa Joe");
+ await wizard.getByRole("button",{name:"Complete match"}).click();
+ await expect(page.locator(".ppw-card-matchup")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-card-matchup")).toContainText("Místico");
+ await expect(page.locator(".ppw-card-booked-facts")).toContainText("Tournament bout");
+ expect(saved).toHaveLength(0);
+ expect(calls.filter(x=>x==="talent")).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });

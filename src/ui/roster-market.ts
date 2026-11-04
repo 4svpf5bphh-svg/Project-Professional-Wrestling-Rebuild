@@ -7,6 +7,7 @@ import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import {recommendTalentOffer,type TalentOfferProfile} from "../domain/talent-offer-advice.js";
 import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
  from "../domain/contract-term-presets.js";
 import type {StaffRole} from "../domain/world-staff.js";
@@ -32,7 +33,6 @@ const btn=(value:string,fn:()=>void,disabled=false)=>{
  x.type="button";x.onclick=fn;x.disabled=disabled;return x;
 };
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
-const value=(n:number|null|undefined)=>n==null||!Number.isFinite(n)?"–":Math.round(n).toString();
 type TermsDraft={family:OfferTerms["family"];role:OfferTerms["roleExpectation"];
  creative:OfferTerms["creativeControl"];weeks:number;dates:number;
  weekly:number;appearance:number;bonus:number};
@@ -43,7 +43,7 @@ const offerDefaults=():TermsDraft=>({
 export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  initialView:DirectoryView="ROSTER"){
  let filter:DirectoryFilter={view:initialView,search:"",division:"ALL",
-  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"ROLE",minPopularity:undefined,limit:25,offset:0};
+  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"NAME",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
   sending=false,pendingKey="",activeOffer:string|null=null;
  let choices=new Map<string,TermsDraft>();
@@ -51,6 +51,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  // The player chooses when detailed scouting filters are visible. Persist
  // disclosure across server refreshes without storing private World data.
  let filtersExpanded=false,attributesExpanded=false;
+ // Like the booking picker, these act on the loaded roster page only.
+ // Server-backed division, role, search and sort remain comprehensive.
+ const quickChips=new Set<"AVAILABLE"|"FACE"|"HEEL"|"POPULAR"|"DATES"|"CHAMPIONS">();
  let querySerial=0;
  function pick(next:Partial<DirectoryFilter>){
   filter={...filter,...next,offset:0};void load();
@@ -134,18 +137,50 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   finally{sending=false;render();}
  }
  function offerEditor(personId:string){
-  const draft=choices.get(personId)??offerDefaults();choices.set(personId,draft);
+  const prospect=view?.people.find(p=>p.personId===personId);
+  const manager=view?.offerBudget?.talentManager;
+  const proposed=prospect&&manager?recommendTalentOffer({
+   personId,name:prospect.name,
+   marketWeeklyValue:prospect.estimatedWeeklyValue??9000,
+   popularity:prospect.popularity,recognition:prospect.recognition,
+   morale:prospect.morale,careerStage:prospect.careerStage,
+   interest:prospect.interest as TalentOfferProfile["interest"]
+  },manager):null;
+  const fromProposal=proposed?{
+   family:proposed.terms.family,role:proposed.terms.roleExpectation,
+   creative:proposed.terms.creativeControl,
+   weeks:proposed.terms.termWeeks,dates:proposed.terms.dateEntitlement,
+   weekly:proposed.terms.weeklyGuarantee,
+   appearance:proposed.terms.appearanceFee,
+   bonus:proposed.terms.signingBonus
+  }:null;
+  const draft=choices.get(personId)??fromProposal??offerDefaults();
+  choices.set(personId,draft);
   const editor=el("div","ppw-directory-offer");
-  editor.append(el("h3","","Propose a contract"));
+  editor.append(el("h3","","Make an offer"));
+  if(proposed&&fromProposal){
+   const pitch=el("section","ppw-directory-manager-proposal");
+   pitch.append(el("span","ppw-directory-manager-eyebrow",
+    proposed.managerName+" · TALENT MANAGER"),
+    el("h4","","My recommendation"),
+    el("p","ppw-directory-manager-voice",proposed.voice),
+    el("div","ppw-directory-manager-price",
+     money(proposed.projectedCommitment)+" potential full-term cost"),
+    el("small","",proposed.rationale));
+   const apply=btn("Use my recommendation",()=>{
+    Object.assign(draft,fromProposal);
+    pendingKey="";render();
+   });
+   apply.className+=" ppw-directory-manager-apply";
+   pitch.append(apply);editor.append(pitch);
+  }
   const signableWeek=view!.currentWeekIndex+1;
   const eligibleWeek="Year "+(Math.floor(signableWeek/52)+1)+
    " Week "+(signableWeek%52+1);
   const signingWindowNote=el("p","ppw-directory-offer-timing");
   const updateTiming=()=>{signingWindowNote.textContent=draft.family==="ONE_OFF"?
-   "One night only · if accepted at the weekly World advance, the single "+
-   "appearance is valid in "+eligibleWeek+" only. You cannot use it on this week's show.":
-   "If accepted at the weekly World advance, this contract becomes available "+
-   "in "+eligibleWeek+". An offer is not an immediate signing.";};
+   "One-night booking available in "+eligibleWeek+" if accepted.":
+   "Starts "+eligibleWeek+" if accepted.";};
   updateTiming();editor.append(signingWindowNote);
   const termsMenu=el("section","ppw-directory-term-menu");
   termsMenu.append(el("strong","","Choose a deal length"));
@@ -171,19 +206,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   oneNight.append(el("small","","1 appearance · no weekly wage"));
   presetChoices.append(oneNight);
   termsMenu.append(presetChoices);editor.append(termsMenu);
-  const advanced=document.createElement("details");
-  advanced.className="ppw-directory-advanced-terms";
-  advanced.open=openAdvancedTerms.has(personId)||active==="CUSTOM";
-  advanced.append(el("summary","","Advanced terms · type, weeks & dates"));
-  advanced.ontoggle=()=>{
-   if(!advanced.isConnected)return;
-   if(advanced.open)openAdvancedTerms.add(personId);
-   else openAdvancedTerms.delete(personId);
-  };
-  advanced.querySelector("summary")!.onclick=()=>{
-   if(advanced.open)openAdvancedTerms.delete(personId);
+  const custom=openAdvancedTerms.has(personId);
+  const toggle=btn(custom?"Hide custom terms":"Customise this offer",()=>{
+   if(custom)openAdvancedTerms.delete(personId);
    else openAdvancedTerms.add(personId);
-  };
+   render();
+  });
+  toggle.className+=" ppw-directory-custom-toggle";
+  editor.append(toggle);
+  const advanced=el("section","ppw-directory-advanced-terms");
+  advanced.append(el("h4","","Detailed terms"));
   advanced.append(selection("Contract type",[
    ["LIMITED_NON_EXCLUSIVE","Non-exclusive · purchased dates"],
    ["EXCLUSIVE","Exclusive · unlimited appearances"],
@@ -198,13 +230,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    else draft.dates=Math.min(draft.dates,draft.weeks);
    pendingKey="";openAdvancedTerms.add(personId);render();
   }));
-
-  editor.append(selection("Card role",[
+  advanced.append(selection("Card role",[
    ["DEVELOPMENTAL","Developing"],["REGULAR","Regular"],
    ["FEATURED","Featured"],["UPPER_CARD","Upper card"],
    ["MAIN_EVENT","Main event"],["SPECIAL_ATTRACTION","Special attraction"]
   ] as const,draft.role,next=>{draft.role=next;pendingKey="";}));
-  if(draft.family!=="ONE_OFF")editor.append(selection("Creative rights",[
+  if(draft.family!=="ONE_OFF")advanced.append(selection("Creative rights",[
    ["NONE","No control"],["CONSULTATION","Consultation"],
    ["PROTECTED_FINISHES","Protected finishes"],
    ["FULL_APPROVAL","Full approval"]
@@ -212,8 +243,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const fields=el("div","ppw-directory-offer-fields");
    const quote=el("section","ppw-directory-contract-estimate");
    const affordability=el("section","ppw-directory-affordability");
-   const adviser=el("details","ppw-directory-adviser") as HTMLDetailsElement;
-   adviser.append(el("summary","","Talent Manager · contract advice"));
+   const adviser=el("section","ppw-directory-adviser");
+   const adviserHeading=el("h4","","Talent Manager · financial concerns");
+   adviser.append(adviserHeading);
    const adviserContents=el("div","ppw-directory-adviser-content");
    adviser.append(adviserContents);
    const updateQuote=()=>{
@@ -243,13 +275,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     if(dates>0)costRow(dates+" date"+(dates===1?"":"s")+" × "+money(appearance)+
      " appearance fee",projection.plannedAppearanceFees);
     costRow("One-time signing bonus",projection.oneTimeBonus);
-    quote.append(breakdown,el("p","ppw-directory-contract-assumption",
-     dates>0?
-      "Planning assumes all "+dates+" purchased date"+(dates===1?" is":"s are")+
-      " used during the "+weeks+"-week contract. Appearance fees are charged only "+
-      "when booked; unused dates expire. Nothing is charged for submitting an offer.":
-      "Includes all guaranteed wages and the one-time bonus. Actual income, "+
-      "show costs and wrestler acceptance are separate."));
+    if(custom)quote.append(breakdown);
+    quote.append(el("small","ppw-directory-contract-assumption",
+     "Includes wages, bonus and all planned appearances. Only worked dates incur appearance fees."));
     affordability.replaceChildren();
     const company=view?.offerBudget;
     if(company){
@@ -261,14 +289,21 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      const includesRoster=typeof existing==="number"&&Number.isFinite(existing);
      const cashOnly=company.cash-(includesRoster?existing:0)-
       projection.plannedFullTermCost;
+     const cashStress=document.createElement("details");
+     cashStress.className="ppw-directory-cash-stress";
+     cashStress.append(el("summary","","Review future contract commitments"));
      const coverage=el("div","ppw-directory-cash-only");
      coverage.dataset.coverage=cashOnly>=0?"covered":"gap";
      coverage.append(el("span","",includesRoster?
-      "Cash-only outlook · signed roster + this offer":
-      "Cash-only outlook · this offer only"),
-      el("strong","",cashOnly>=0?money(cashOnly)+" left":
-       money(-cashOnly)+" short"));
-     affordability.append(coverage);
+      "Cash-only scenario · signed roster + this offer":
+      "Cash-only scenario · this offer only"),
+      el("strong","",cashOnly>=0?money(cashOnly)+" remaining":
+       money(-cashOnly)+" above today's bank"));
+     cashStress.append(coverage,el("p","ppw-directory-muted",
+      "This stress test assumes every remaining appearance is worked and "+
+      "compares future payments with today's cash only. It does not include "+
+      "future broadcast, sponsor or ticket income; the amount is not owed now."));
+     affordability.append(cashStress);
      const wageRoom=company.weeklyWageLimit===null?null:
       company.weeklyWageLimit-company.weeklyGuarantees-guarantee;
      const baseline=company.weeklyIncome===null||company.weeklyOverhead===null?null:
@@ -279,29 +314,27 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      // Only show the four implications that change a managerial decision.
      const lines:[string,string][]=[
       ["Cash after signing bonus",money(reservedCash)],
-      ["Weekly wage headroom",wageRoom===null?
+      ["Weekly wage room",wageRoom===null?
        "No spending plan":wageRoom>=0?money(wageRoom):money(-wageRoom)+" over limit"],
-      ["Recurring margin after signing",postMargin===null?
-       "Not yet configured":money(postMargin)],
-      ["Average planned weekly cost, all terms",money(projection.averageWeeklyCost)]
+      ["Weekly operating room",postMargin===null?
+       "Not configured":money(postMargin)]
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
-     if(cashOnly<0||wageRoom!==null&&wageRoom<0||
+     const expectedVariableWeek=(projection.plannedAppearanceFees+
+      projection.oneTimeBonus)/Math.max(1,weeks);
+     const variablePressure=postMargin!==null&&
+      expectedVariableWeek>postMargin;
+     const realRisk=wageRoom!==null&&wageRoom<0||
       company.cashReserve!==null&&reservedCash<company.cashReserve||
-      postMargin!==null&&postMargin<0){
-      affordability.dataset.risk="true";
-      affordability.append(el("p","ppw-directory-affordability-warning",
-       cashOnly<0?"The proposed contract and existing roster exceed today's cash "+
-       "without future income. Review the Talent Manager's recommendation.":
-       "This offer exceeds a spending limit or your recurring income. "+
-       "You can still propose it, but consider adjusting the terms."));
-     }else affordability.dataset.risk="false";
-     affordability.append(el("small","ppw-directory-muted",
-      "Recurring margin excludes future ticket sales and appearance fees. The "+
-      "full-term forecast above includes every purchased date. Cash-only "+
-      "outlook includes remaining signed roster costs when available; it "+
-      "excludes pending offers, other running costs and future income."));
+      postMargin!==null&&postMargin<0||variablePressure;
+     affordability.dataset.risk=String(realRisk);
+     if(realRisk)affordability.append(el("p","ppw-directory-affordability-warning",
+      variablePressure?
+       "Working every purchased date would exceed the available recurring "+
+       "cashflow on average. Reconsider the dates, fees or deal length.":
+       "This offer exceeds your weekly wage room or planned cash reserve. "+
+       "You can still propose it, but review the terms first."));
      adviserContents.replaceChildren();
      if(company.hasTalentManager){
       const messages=contractStaffNotes({
@@ -312,11 +345,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        existingRosterExposure:includesRoster?existing:0
       },new Set<StaffRole>(["TALENT_MANAGER"]));
       const concerns=messages.filter(x=>x.level==="WATCH").length;
-      adviser.open=concerns>0;
       adviser.dataset.risk=concerns?"watch":"info";
-      adviser.firstElementChild!.textContent=concerns?
-       "Talent Manager · "+concerns+" concern"+(concerns===1?"":"s"):
-       "Talent Manager · offer advice";
+      adviser.hidden=concerns===0;
+      adviserHeading.textContent="Talent Manager · "+concerns+
+       " financial concern"+(concerns===1?"":"s");
       for(const m of messages){
        const item=el("div","ppw-directory-adviser-note");
        item.dataset.level=m.level;
@@ -324,9 +356,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        adviserContents.append(item);
       }
      }else{
-      adviser.firstElementChild!.textContent="Your finance checklist";
-      adviserContents.append(el("p","ppw-directory-muted",
-       "This is a projection of current costs. Hire a Talent Manager to get additional contract guidance and renewal support."));
+      adviser.hidden=true;
      }
     }
    };
@@ -343,15 +373,17 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    numbers(timing,"Purchased dates",draft.dates,1,52,
     n=>{draft.dates=Math.min(n,draft.weeks);pendingKey="";updateQuote();});
   advanced.append(timing);
-  editor.append(advanced);
+  if(custom)editor.append(advanced);
   if(draft.family!=="ONE_OFF")numbers(fields,"Weekly guarantee ($)",
    draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";updateQuote();});
   if(draft.family!=="EXCLUSIVE")numbers(fields,"Appearance fee ($)",
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  // Put the Talent Manager before the finance breakdown and submit action.
-  editor.append(fields,adviser,quote,affordability);
+  // First the suggested deal, then affordability. Detailed term editing is
+  // an explicit choice and never another nested disclosure.
+  if(custom)editor.append(fields);
+  editor.append(adviser,quote,affordability);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));
@@ -388,9 +420,38 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   search.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();pick({search:search.value});}};
   controls.append(search,btn("Search",()=>pick({search:search.value})));
   const quick=el("div","ppw-directory-quick");
-  quick.append(selection("Division",[
+  for(const [key,label] of [
    ["ALL","All"],["MEN","Men"],["WOMEN","Women"]
-  ] as const,filter.division??"ALL",division=>pick({division})));
+  ] as const){
+   const control=btn(label,()=>pick({division:key}));
+   control.setAttribute("aria-pressed",String(filter.division===key));
+   quick.append(control);
+  }
+  if(filter.view==="ROSTER"){
+   const chips=el("div","ppw-directory-chips");
+   chips.setAttribute("role","group");
+   chips.setAttribute("aria-label","Quick roster filters · this page");
+   const options=[
+    ["AVAILABLE","Available"],["FACE","Face"],["HEEL","Heel"],
+    ["POPULAR","Popular 75+"],["DATES","Has dates"],
+    ["CHAMPIONS","Champions"]
+   ] as const;
+   for(const [key,name] of options){
+    const chip=btn(name,()=>{
+     if(quickChips.has(key))quickChips.delete(key);
+     else{
+      quickChips.add(key);
+      if(key==="FACE")quickChips.delete("HEEL");
+      if(key==="HEEL")quickChips.delete("FACE");
+     }
+     render();
+    });
+    chip.className+=" ppw-directory-quick-chip";
+    chip.setAttribute("aria-pressed",String(quickChips.has(key)));
+    chips.append(chip);
+   }
+   quick.append(chips);
+  }
   const sortOptions=filter.view==="ROSTER"?[
    ["ROLE","By card role"],["NAME","Name"],["POPULARITY","Popularity"],
    ["RECOGNITION","Recognition"],["MOMENTUM","Momentum"],
@@ -403,9 +464,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
    ["MOMENTUM","Momentum"],["VALUE","Value: lowest"]
   ] as const;
-  quick.append(selection("Sort by",sortOptions,
-   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
-    filter.view==="ROSTER"?"ROLE":"INTEREST",sort=>pick({sort})));
   controls.append(quick);
   if(filter.view==="MARKET"){
    const shortcuts=el("div","ppw-directory-shortcuts");
@@ -465,6 +523,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    fields.append(el("p","ppw-directory-hint",
     "Interest is a scouting estimate, not a guarantee of acceptance."));
   }
+  fields.append(selection("Sort by",sortOptions,
+   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
+    filter.view==="ROSTER"?"NAME":"INTEREST",sort=>pick({sort})));
   refinements.append(fields);
   const advanced=document.createElement("details");
   advanced.className="ppw-directory-advanced";
@@ -487,9 +548,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   refinements.append(advanced);
   const clear=btn("Clear filters",()=>{
    filter={...filter,search:"",division:"ALL",role:"ALL",contract:"ALL",
-    availability:"ALL",interest:"ALL",sort:filter.view==="ROSTER"?"ROLE":"INTEREST",
+    availability:"ALL",interest:"ALL",sort:filter.view==="ROSTER"?"NAME":"INTEREST",
     minPopularity:undefined,minRecognition:undefined,minMomentum:undefined,
     minInRing:undefined,minCraft:undefined,minPresentation:undefined,offset:0};
+   quickChips.clear();
    filtersExpanded=false;attributesExpanded=false;void load();
   });
   clear.className+=" ppw-directory-clear";
@@ -511,13 +573,29 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   heading.append(el("h2","",filter.view==="ROSTER"?"Your roster":"Available profiles"),
    el("span","ppw-directory-muted","Page "+(Math.floor((filter.offset??0)/(filter.limit??25))+1)));
   listing.append(heading);
-  for(const p of view.people){
-   const card=document.createElement("details");card.className="ppw-directory-card";
-   const title=document.createElement("summary");
+  // Quick chips never imply that only the first 25 wrestlers exist.
+  // Each result remains a full server-backed page; pagination is unchanged.
+  const people=filter.view==="ROSTER"?
+   view.people.filter(p=>
+    (!quickChips.has("FACE")||p.alignment==="FACE")&&
+    (!quickChips.has("HEEL")||p.alignment==="HEEL")&&
+    (!quickChips.has("POPULAR")||typeof p.popularity==="number"&&p.popularity>=75)&&
+    (!quickChips.has("CHAMPIONS")||Boolean(p.championships?.length))&&
+    (!quickChips.has("DATES")||(p.remainingDates===null||p.remainingDates>0))&&
+    (!quickChips.has("AVAILABLE")||
+     p.medicalWeeksRemaining==null&&!(p.startsInWeeks&&p.startsInWeeks>0)&&
+     (p.remainingDates===null||p.remainingDates>0))):
+   view.people;
+  if(filter.view==="ROSTER"&&quickChips.size){
+   heading.append(el("small","ppw-directory-muted",
+    people.length+" of "+view.people.length+" · this page"));
+  }
+  for(const p of people){
    const label=p.medicalWeeksRemaining!=null?
      "INJURED · "+p.medicalWeeksRemaining+" WEEK"+
      (p.medicalWeeksRemaining===1?"":"S")+" TO CLEARANCE":
-     p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
+     p.affiliatedViaParent?"PARENT-COMPANY ROSTER · "+
+     (p.contractOwnerName??"PARENT PROMOTION"):
     p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
@@ -527,46 +605,34 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE STARTS SOON":
     p.availability==="CONTRACTED_SOON"?"CONTRACTED SOON":
     p.availability==="FREE_AGENT"?"FREE AGENT":"NON-EXCLUSIVE";
+   if(filter.view==="ROSTER"){
+    const card=createWrestlerCard({...p,status:label},{
+     context:"ROSTER",label,onSelect:()=>port.openWrestler(p.personId,"ROSTER")
+    });
+    const role=p.roleExpectation??"UNASSIGNED";
+    if(filter.sort==="ROLE"){
+     let group=listing.querySelector<HTMLDetailsElement>(
+      '.ppw-directory-role-group[data-role="'+role+'"]');
+     if(!group){
+      group=document.createElement("details");
+      group.className="ppw-directory-role-group";group.dataset.role=role;
+      group.open=true;
+      group.append(el("summary","ppw-directory-role-heading",
+       role==="UNASSIGNED"?"Other wrestlers":role.replaceAll("_"," ").toLowerCase()));
+      listing.append(group);
+     }
+     group.append(card);
+    }else listing.append(card);
+    continue;
+   }
+   const card=document.createElement("details");card.className="ppw-directory-card";
+   const title=document.createElement("summary");
    title.append(createWrestlerCard({...p,status:label},{
     context:filter.view,label}));
-   if(filter.view==="MARKET")title.append(el("span","ppw-directory-interest",
+   title.append(el("span","ppw-directory-interest",
     "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()));
    card.append(title);
    const detail=el("div","ppw-directory-detail");
-   const metrics=el("div","ppw-directory-metrics");
-   for(const [name,n] of [
-    ["Recognition",p.recognition],["Match craft",p.matchCraft],
-    ["Presentation",p.presentation],["Morale",p.morale]
-   ] as const){
-    const row=el("div","ppw-directory-metric");
-    row.append(el("span","",name),el("strong","",value(n)));metrics.append(row);
-   }
-   detail.append(metrics);
-   if(filter.view==="ROSTER"){
-    if(p.medicalWeeksRemaining!=null)
-     detail.append(el("p","ppw-directory-warning",
-      "Medical absence · "+p.medicalWeeksRemaining+" week"+
-      (p.medicalWeeksRemaining===1?"":"s")+
-      " until cleared. This wrestler cannot be booked while injured."));
-    if(p.affiliatedViaParent){
-     detail.append(el("p","ppw-directory-muted",
-      "Roster appearance through "+(p.contractOwnerName??"parent company")+
-      ". The parent owns the contract and wages; booking uses its existing dates."));
-    }else detail.append(el("p","ppw-directory-muted",
-     (p.family??"Contract").replaceAll("_"," ")+" · "+
-     (p.startsInWeeks&&p.startsInWeeks>0?
-      "Starts in "+p.startsInWeeks+" weeks":
-      (p.weeksRemaining??0)+" weeks left")+" · Weekly "+
-     money(p.weeklyGuarantee??0)+" · Appearance "+money(p.appearanceFee??0)));
-    if(p.startsInWeeks&&p.startsInWeeks>0)
-     detail.append(el("p","ppw-directory-warning",
-      "Already signed, but not eligible for booking until the contract starts."));
-    else if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
-     "No dates remaining — negotiate an addendum before booking."));
-    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)));
-    if(!p.affiliatedViaParent)
-     detail.append(btn("Manage contract →",()=>port.openContracts(p.personId)));
-   }else{
     detail.append(el("p","ppw-directory-interest",
      "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+
      ". Indicative only: agreed terms and acceptance are still uncertain."));
@@ -599,25 +665,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      detail.append(offerEditor(p.personId));
     if(!view.canEdit)detail.append(el("p","ppw-directory-muted",
      "The weekly deadline has passed. You can review talent, but offers are closed."));
-   }
    card.append(detail);
    if(activeOffer===p.personId)card.open=true;
-   if(filter.view==="ROSTER"&&filter.sort==="ROLE"){
-    const role=p.roleExpectation??"UNASSIGNED";
-    let group=listing.querySelector<HTMLDetailsElement>(
-     '.ppw-directory-role-group[data-role="'+role+'"]');
-    if(!group){
-     group=document.createElement("details");
-     group.className="ppw-directory-role-group";group.dataset.role=role;group.open=true;
-     const summary=el("summary","ppw-directory-role-heading",
-      role==="UNASSIGNED"?"Other wrestlers":role.replaceAll("_"," ").toLowerCase());
-     group.append(summary);listing.append(group);
-    }
-    group.append(card);
-   }else listing.append(card);
+   listing.append(card);
   }
-  if(!view.people.length)listing.append(el("p","ppw-directory-empty",
-   "No wrestlers match. Clear the filters or change division."));
+  if(!people.length)listing.append(el("p","ppw-directory-empty",
+   view.people.length&&quickChips.size?
+    "No wrestlers on this page match. Clear a quick filter or turn the page.":
+    "No wrestlers match. Clear the filters or change division."));
   const pager=el("div","ppw-directory-pager");
   pager.append(btn("← Previous",()=>{filter.offset=Math.max(0,(filter.offset??0)-
    (filter.limit??25));void load();},loading||(filter.offset??0)===0),

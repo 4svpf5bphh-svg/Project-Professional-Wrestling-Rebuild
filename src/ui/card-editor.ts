@@ -155,7 +155,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let initialProgrammeFocusDone=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
- const openAdvisorNotes=new Set<string>();
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
  const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
@@ -239,36 +238,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   },!mutable(),"ppw-booking-choice-action"));
   return panel;
  }
- function advicePanel(slotId:string,notes:StaffNote[]){
-  const block=el("details","ppw-card-advisor-notes") as HTMLDetailsElement;
-  block.open=openAdvisorNotes.has(slotId);
-  block.ontoggle=()=>{if(block.open)openAdvisorNotes.add(slotId);
-   else openAdvisorNotes.delete(slotId);};
-  const urgent=notes.filter(x=>x.level==="WATCH").length;
-  block.dataset.level=urgent?"watch":"info";
-  const heading=el("summary","ppw-card-advisor-head");
-  heading.append(el("span","ppw-card-advisor-eyebrow","YOUR CREW"),
-   el("strong","",urgent?
-    urgent+" thing"+(urgent===1?"":"s")+" to consider":
-    notes.length+" professional note"+(notes.length===1?"":"s")));
-  block.append(heading);
-  const list=el("div","ppw-card-advisor-list");
-  for(const n of notes){
-   // Each voice starts as a one-line recommendation, not another paragraph.
-   const item=el("details","ppw-card-advisor-item") as HTMLDetailsElement;
-   item.dataset.level=n.level;
-   const colleague=view?.advisers?.find(member=>member.role===n.role);
-   const heading=el("summary","ppw-card-advisor-item-heading");
-   heading.append(el("span","ppw-card-advisor-role",
-    n.role==="HOUSE"?"HOUSE SAFETY":
-    (colleague?.name?colleague.name+" · ":"")+n.role.replaceAll("_"," ")),
-    el("strong","",n.title));
-   item.append(heading,el("p","ppw-card-advisor-explanation",n.message));
-   list.append(item);
-  }
-  block.append(list);return block;
- }
-
  function selectTrioForMatch(match:EditorMatch,side:number,trioId:string){
   const trio=eligibleTrios().find(t=>t.trioId===trioId);
   if(!trio||match.format!=="TRIOS")return;
@@ -832,37 +801,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      !mutable()||focusBusy));
    focus.append(actions);root.append(focus);
   }
-  // One concise crew shortcut; individual notes live inside the relevant slot.
-  const allNotes=committedOrder.flatMap(id=>slotNotes(id).map(n=>({id,n})));
-  if(allNotes.some(item=>item.n.level==="WATCH")){
-   const compact=el("details","ppw-card-crew-strip") as HTMLDetailsElement;
-   compact.open=openAdvisorNotes.has("overview");
-   compact.ontoggle=()=>{if(compact.open)openAdvisorNotes.add("overview");
-    else openAdvisorNotes.delete("overview");};
-   const urgent=allNotes.filter(x=>x.n.level==="WATCH").length;
-   compact.dataset.level=urgent?"watch":"info";
-   const summary=el("summary","ppw-card-crew-summary");
-   summary.append(el("span","ppw-card-crew-icon",urgent?"!":"i"),
-    el("strong","",urgent?
-     "Crew heads-up · "+urgent+" concern"+(urgent===1?"":"s"):
-     "Crew check · "+allNotes.length+" note"+(allNotes.length===1?"":"s")),
-    el("span","ppw-card-crew-cta","Review"));
-   compact.append(summary);
-   const content=el("div","ppw-card-crew-list");
-   for(const id of committedOrder){
-    const issues=allNotes.filter(x=>x.id===id&&x.n.level==="WATCH");
-    if(!issues.length)continue;
-    const slot=order.indexOf(id)+1;
-    const label=matches.has(id)?matchLabel(matches.get(id)!):
-     (segments.get(id)?.kind??"Angle").replaceAll("_"," ").toLowerCase();
-    content.append(button("Slot "+slot+" · "+label+" · "+issues.length+
-     " concern"+(issues.length===1?"":"s"),()=>{
-     expanded=id;openAdvisorNotes.add(id);render();
-    },false,"ppw-card-crew-jump"));
-   }
-   compact.append(content);root.append(compact);
-  }
-
+  // Staff advice lives in the final booking briefing, not on the running order.
   const concerns=view.creativeConcerns??[];
   if(concerns.length){
    const desk=el("section","ppw-card-creative");
@@ -984,28 +923,31 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    ![...matches.values()].some(m=>m.tournamentId===b.tournamentId&&
     m.tournamentBoutNo===b.boutNo));
   if(tournamentFixtures.length&&mutable()){
-   const tournament=el("section","ppw-card-continuity");
-   tournament.append(el("strong","","TOURNAMENT BOOKING"),
-    el("p","ppw-muted","Book the next available round on this card. Only certified match winners advance."));
+   const tournament=el("section","ppw-card-tournament");
+   const heading=el("div","ppw-card-tournament-heading");
+   heading.append(el("strong","","Tournament fixtures"),
+    el("span","",tournamentFixtures.length+" ready to book"));
+   tournament.append(heading);
    for(const bout of tournamentFixtures){
-    const row=el("div","ppw-tournament-booking-row");
-    row.append(el("span","",bout.tournamentName+" · "+
-     tournamentBoutLabel(bout.entrantsCount,bout.boutNo).toUpperCase()+
-     " · "+bout.personA.name+" vs "+bout.personB.name),
-     button("+ Add tournament bout",()=>{
-      if([...matches.values()].some(m=>assignedIds(m).some(id=>
-       id===bout.personA.personId||id===bout.personB.personId))){
-       error="These tournament wrestlers are already booked on the card.";render();return;
-      }
-      const id="match-"+crypto.randomUUID();
-      matches.set(id,{...newEditorMatch(id,"SINGLES"),
-       teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
-        [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
-       tournamentId:bout.tournamentId,
-       tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
-       ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
-      order.push(id);expanded=id;markDirty();render();
-     }));
+    const row=el("div","ppw-card-tournament-fixture");
+    const label=el("div","ppw-card-tournament-names");
+    label.append(el("small","",bout.tournamentName+" · "+
+     tournamentBoutLabel(bout.entrantsCount,bout.boutNo)),
+     el("strong","",bout.personA.name+" vs "+bout.personB.name));
+    row.append(label,button("Book bout",()=>{
+     if([...matches.values()].some(m=>assignedIds(m).some(id=>
+      id===bout.personA.personId||id===bout.personB.personId))){
+      error="These tournament wrestlers are already booked on the card.";render();return;
+     }
+     const id="match-"+crypto.randomUUID();
+     matches.set(id,{...newEditorMatch(id,"SINGLES"),
+      teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],
+       [{personId:bout.personB.personId,contractId:bout.personB.contractId}]],
+      tournamentId:bout.tournamentId,
+      tournamentBoutNo:bout.boutNo as 1|2|3|4|5|6|7,
+      ...(bout.championshipId?{championshipId:bout.championshipId}:{})});
+     order.push(id);expanded=id;slotBookingSteps.set(id,"OUTCOME");startWizard(id);
+    },!mutable(),"ppw-card-tournament-book"));
     tournament.append(row);
    }
    root.append(tournament);
@@ -1013,36 +955,32 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // One optional feud picker. It must not compete with the core Add Match /
   // Add Angle buttons or repeat the Programme Desk's long creative reports.
   if(view.programmes.length){
-   const suggestions=document.createElement("details");
-   suggestions.className="ppw-card-rivalry-ideas";
-   suggestions.open=rivalryIdeasOpen;
-   suggestions.ontoggle=()=>{
-    if(suggestions.isConnected)rivalryIdeasOpen=suggestions.open;
-   };
-   suggestions.append(el("summary","","Ongoing storylines · "+view.programmes.length+
-    (view.programmes.length===1?" active feud":" active feuds")));
+   const suggestions=el("section","ppw-card-rivalry-launch");
+   const head=el("div","ppw-card-rivalry-launch-head");
+   head.append(el("strong","","Add a rivalry chapter"));
+   if(port.openProgrammes)head.append(button("Manage stories",()=>{
+    port.openProgrammes?.();
+   },false,"ppw-card-rivalry-manage"));
+   suggestions.append(head);
    const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
     view.programmes[0]!;
    focusedRivalryId=selected.programmeId;
-   const select=selector(selected.programmeId,
-    view.programmes.map(p=>[p.programmeId,p.label]),id=>{
-     focusedRivalryId=id;rivalryIdeasOpen=true;render();
-    },!mutable());
-   select.setAttribute("aria-label","Choose a rivalry to book");
-   suggestions.append(field("Rivalry",select));
-   if(selected.lastChapter){const h=selected.lastChapter;
-    suggestions.append(el("p","ppw-card-story-recap",
-     "Previously: Year "+(Math.floor(h.weekIndex/52)+1)+" Week "+(h.weekIndex%52+1)+
-     " · "+(h.segmentKind??h.kind).replaceAll("_"," ").toLowerCase()+
-     (h.sceneLocation?" · "+angleSceneLabel(h.sceneLocation):"")+
-     (h.scenePurpose?" · "+angleSceneLabel(h.scenePurpose):"")+
-     " · Crowd "+Math.round(h.crowd)));}
-   const choices=recommendProgrammeAngles(selected).slice(0,3);
+   const picks=el("div","ppw-card-rivalry-picks");
+   picks.setAttribute("role","group");
+   picks.setAttribute("aria-label","Choose a rivalry to book");
+   for(const feud of view.programmes){
+    const pick=button(feud.label,()=>{
+     focusedRivalryId=feud.programmeId;render();
+    },false,"ppw-card-rivalry-pick");
+    pick.setAttribute("aria-pressed",String(feud.programmeId===selected.programmeId));
+    picks.append(pick);
+   }
+   suggestions.append(picks);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    const occupied=new Set([...matches.values()].flatMap(assignedIds));
    const matchReady=programmeMatchStarter(selected,"preview",occupied);
    if(matchReady.ok){
-    const match=button("+ Book feud match",()=>{
+    actions.append(button("Book rivalry match",()=>{
      const id="match-"+crypto.randomUUID();
      const start=programmeMatchStarter(selected,id,
       new Set([...matches.values()].flatMap(assignedIds)));
@@ -1050,32 +988,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      matches.set(id,start.value);order.push(id);expanded=id;
      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
      startWizard(id);
-    },!mutable(),"ppw-card-rivalry-match");
-    match.title="Both sides cast with current show-week rights. Review the winner and finish.";
-    actions.append(match);
-   }else suggestions.append(el("small","ppw-card-story-availability",
-    "Quick feud match unavailable: "+matchReady.reason+
-    " You can still book a match manually."));
-   for(const idea of choices){
-    const action=button("+ "+idea.title,()=>{
+    },!mutable(),"ppw-card-rivalry-match"));
+   }
+   for(const idea of recommendProgrammeAngles(selected).slice(0,3)){
+    const action=button(idea.title,()=>{
      const id="angle-"+crypto.randomUUID();
      segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
-     // Legacy programme records without side-resolved cast remain editable
-     // through the normal picker. A known feud uses the guided cast shortcut.
      if(selected.cast?.some(x=>x.side==="A")&&
       selected.cast?.some(x=>x.side==="B")){
       slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
      }
      order.push(id);expanded=id;startWizard(id);
     },!mutable(),"ppw-card-rivalry-add");
-    action.setAttribute("aria-label","Add "+idea.kind.replaceAll("_"," ").toLowerCase()+
-     " for "+selected.label);
     action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
-    const tile=el("div","ppw-card-rivalry-option");
-    tile.append(action,el("span","",idea.kind.replaceAll("_"," ").toLowerCase()),
-     el("small","",idea.reason));
-    actions.append(tile);
+    actions.append(action);
    }
+   if(!matchReady.ok&&actions.childElementCount===0)
+    suggestions.append(el("p","ppw-card-story-availability","Book the cast manually."));
    suggestions.append(actions);
    root.append(suggestions);
   }
@@ -1091,7 +1020,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const label=el("div","");
    if(m&&committedOrder.slice(committedOrder.indexOf(slotId)+1)
     .every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
-   const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
+   const angleName=segment?(segment.kind==="INTERFERENCE"?"Ringside disruption":
+    ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle"):"";
    const anglePeople=segment?[
     segment.actors.length?
      (segment.kind==="RESCUE"?"Attacker / rescuer: ":
@@ -1534,8 +1464,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
       "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
 
-    const angleNotes=slotNotes(slotId);
-    if(angleNotes.length)body.append(advicePanel(slotId,angleNotes));
     body.append(el("h3","ppw-angle-workflow-title","1 · Who is involved?"));
     for(const role of ["actors","targets"] as const){
      if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
@@ -1623,8 +1551,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
-    const matchNotes=slotNotes(slotId);
-    if(matchNotes.length)body.append(advicePanel(slotId,matchNotes));
     if(m.tournamentId){
      const bracket=view.tournamentBouts?.find(b=>
       b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
@@ -1771,44 +1697,54 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     if(impact)controls.append(impact);
     body.append(controls);
+    // One direct run-in choice in Script, never another nested accordion.
+    // An existing authored run-in always exposes its fields on reopening.
     if(m.format==="SINGLES"||m.format==="TAG"){
-     const run=document.createElement("details");run.className="ppw-run-in";
-     run.open=openRunIns.has(slotId);
-     run.ontoggle=()=>{
-      if(!run.isConnected)return;
-      if(run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
-     };
-     const runSummary=el("summary","","Run-in / match interference"+
-      (m.interference?" · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):" · optional"));
-     // A field change can synchronously replace this editor before the
-     // native async toggle fires. Persist the desired state on click too.
-     runSummary.onclick=()=>{
-      if(!run.isConnected)return;
-      if(!run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
-     };
-     run.append(runSummary);
-     run.append(el("p","ppw-run-in-help",
-      "Bring someone from outside the match to ringside. Choose which side they support and whether the run-in succeeds. The winner is still your decision."));
-     run.append(button(m.interference?
-      "Change wrestler · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):
-      "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
-     if(m.interference){
-      const spot=m.interference;
-      const sideChoices=m.teams.map((_,i)=>[i===0?"A":"B",
-       "Help "+(i===0?"Side A":"Side B")] as string[]);
-      run.append(field("Which side?",selector(spot.aidedSide,sideChoices,
-       v=>edit(m,{interference:{...spot,aidedSide:v as "A"|"B",
-        plannedOutcome:v===(m.winnerSide===0?"A":"B")?
-         spot.plannedOutcome:"THWARTED"}}),!mutable())));
-      run.append(field("What happens?",selector(spot.plannedOutcome,[
-       ["SUCCESS","Run-in succeeds"],["THWARTED","Run-in is thwarted"]],
-       v=>edit(m,{interference:{...spot,plannedOutcome:v as "SUCCESS"|"THWARTED",
-        aidedSide:v==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide}}),!mutable())));
-      run.append(button("Remove run-in",()=>edit(m,{interference:undefined}),
-       !mutable(),"ppw-run-in-clear"));
-      if(spot.plannedOutcome==="SUCCESS")
-       run.append(el("p","ppw-run-in-hint",
-        "A successful run-in supports the wrestler or team you've selected to win."));
+     const run=el("section","ppw-run-in");
+     const active=Boolean(m.interference)||openRunIns.has(slotId);
+     const heading=el("div","ppw-run-in-header");
+     heading.append(el("strong","","Match run-in"));
+     if(!active)heading.append(button("+ Add run-in",()=>{
+      openRunIns.add(slotId);render();
+     },!mutable(),"ppw-run-in-toggle"));
+     else if(!m.interference)heading.append(button("Cancel",()=>{
+      openRunIns.delete(slotId);render();
+     },false,"ppw-run-in-toggle"));
+     run.append(heading);
+     if(active){
+      run.append(button(m.interference?
+       "Change wrestler · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):
+       "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
+      if(m.interference){
+       const spot=m.interference;
+       const support=el("div","ppw-run-in-choices");
+       support.setAttribute("role","group");
+       support.setAttribute("aria-label","Which side?");
+       for(const [value,label] of [["A","Help Side A"],["B","Help Side B"]] as const){
+        const action=button(label,()=>edit(m,{interference:{...spot,
+         aidedSide:value,plannedOutcome:value===(m.winnerSide===0?"A":"B")?
+          spot.plannedOutcome:"THWARTED"}}),!mutable(),"ppw-run-in-option");
+        action.setAttribute("aria-pressed",String(spot.aidedSide===value));
+        support.append(action);
+       }
+       run.append(el("strong","ppw-run-in-subhead","Supports"),support);
+       const result=el("div","ppw-run-in-choices");
+       result.setAttribute("role","group");
+       result.setAttribute("aria-label","What happens?");
+       for(const [value,label] of [["SUCCESS","Run-in succeeds"],
+        ["THWARTED","Run-in thwarted"]] as const){
+        const action=button(label,()=>edit(m,{interference:{...spot,
+         plannedOutcome:value,
+         aidedSide:value==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide
+        }}),!mutable(),"ppw-run-in-option");
+        action.setAttribute("aria-pressed",String(spot.plannedOutcome===value));
+        result.append(action);
+       }
+       run.append(el("strong","ppw-run-in-subhead","Outcome"),result);
+       run.append(button("Remove run-in",()=>{
+        openRunIns.delete(slotId);edit(m,{interference:undefined});
+       },!mutable(),"ppw-run-in-clear"));
+      }
      }
      body.append(run);
     }
@@ -1839,17 +1775,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
     }
     if(m.format==="SINGLES"){
-     const sheet=document.createElement("details");
-     sheet.className="ppw-match-style";
-     sheet.open=openStyles.has(slotId);
-     sheet.ontoggle=()=>{
-      if(!sheet.isConnected)return;
-      if(sheet.open)openStyles.add(slotId);else openStyles.delete(slotId);
-     };
-     sheet.append(el("summary","","Match presentation · pace, story & risk"));
+     const sheet=el("section","ppw-match-style");
+     sheet.append(el("h4","","Detailed match direction"));
      const style=editorMatchStyle(m),load=editorStyleLoad(m);
-     sheet.append(el("p","ppw-match-style-intro",
-      "Direct the feel of the bout. A demanding performance can stretch your wrestlers, and bold ideas don't always pay off."));
      const dims=el("div","ppw-match-style-grid");
      const names:Record<MatchStyleDimension,string>={
       competitiveness:"Competition",technical:"Technical wrestling",
@@ -1871,33 +1799,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      workload.append(el("strong","","Expected workload · "+nice(load.band)),
       el("span","","Physical "+Math.round(load.physical)+" · Creative "+Math.round(load.creative)));
      sheet.append(workload);
-     const conditions=new Map<string,ConditionSnapshot>();
-     for(const [personId,profile] of roster){
-      conditions.set(personId,{inRingQuality:profile.inRingQuality??null,
-       matchCraft:profile.matchCraft??null,presentation:profile.presentation??null,
-       stamina:profile.stamina??null,safety:profile.safety??null,
-       fatigue:profile.fatigue??null,wear:profile.wear??null});
-     }
-     const assessments=bookedStyleReadiness(m,conditions);
-     const fitness=el("div","ppw-match-style-fitness");
-     fitness.append(el("h4","","Performer readiness"));
-     if(!assessments.known)fitness.append(el("p","ppw-match-style-fineprint",
-      "Choose wrestlers to see how comfortable they are with these demands."));
-     for(const report of assessments.reports){
-      const item=el("p","ppw-match-style-fitness-row");
-      item.dataset.status=report.status;
-      item.append(el("strong","",roster.get(report.personId)?.name??report.personId),
-       el("span","",report.status==="COMFORTABLE"?"Comfortable":
-        report.status==="CONCERNED"?"Has concerns":"Likely to refuse"),
-       el("small","",report.reasons.length?
-        report.reasons.map(nice).join(" · "):"No immediate concerns"));
-      fitness.append(item);
-     }
-     if(assessments.missing&&assessments.known)
-      fitness.append(el("p","ppw-match-style-fineprint",
-       "Some wrestlers still need a current fitness report."));
-     sheet.append(fitness,el("p","ppw-match-style-fineprint",
-      "An early warning from your roster's current condition. Speak to the wrestler or adjust the bout if concerns arise; no winner or outcome changes here."));
      body.append(sheet);
     }
     if(m.format==="BATTLE_ROYAL"||m.format==="MULTI_TEAM"){
@@ -2144,7 +2045,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         if(typeSelect){
          const tiles=el("div","ppw-angle-type-tiles");
          for(const item of [...typeSelect.options]){
-          const choice=button(item.textContent??item.value,()=>{
+          const choice=button(item.value==="INTERFERENCE"?"Ringside disruption":
+           item.textContent??item.value,()=>{
            typeSelect.value=item.value;
            typeSelect.dispatchEvent(new Event("change",{bubbles:true}));
           },!mutable(),"ppw-angle-type-tile");
@@ -2199,25 +2101,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        }
        const hint=el("p","ppw-booking-hint",castReadiness.hint);
        guide.append(hint,...cast);
-       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
-       const warnings=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       // Positive earned team familiarity also belongs here, at the moment
-       // the booker chooses partners, rather than buried under final review.
-       // Only established World evidence is shown; no chemistry guessed.
-       const teamBrief=m?matchPartnershipNotes(m,advisorPeople(),team())
-        .filter(n=>n.level==="INFO").slice(0,1):[];
-       if(warnings.length||teamBrief.length){
-        const pulse=el("section","ppw-guide-crew-pulse");
-        pulse.append(el("strong","","A word from your crew"));
-        for(const n of warnings.slice(0,2))
-         pulse.append(el("p","",n.role.replaceAll("_"," ")+": "+n.title));
-        for(const n of teamBrief)
-         pulse.append(el("p","",
-          (view.advisers?.find(c=>c.role==="ROAD_AGENT")?.name??"Road Agent")+
-          ": "+n.title+" · "+n.message));
-        guide.append(pulse);
-       }
        guide.append(button("← Match or scene type",()=>{
         slotBookingSteps.set(slotId,"SETUP");resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
@@ -2226,8 +2109,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         resetGuideScroll=true;render();
        },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
       }else if(stage==="OUTCOME"){
-       const suggestion=bookingChoicePanel(slotId);
-       if(suggestion)guide.append(suggestion);
        if(m){
         // A stipulation is already chosen on Setup; don't ask again.
         for(const child of [...essentials.children]){
@@ -2256,6 +2137,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          choices.append(pick);
         }
         direction.append(choices);
+        const finish=essentials.querySelector<HTMLSelectElement>('select[aria-label="Finish"]');
+        if(finish){
+         const parent=finish.closest(".ppw-field");
+         const panel=el("section","ppw-guide-finish");
+         panel.append(el("strong","ppw-guide-section-label","Finish"));
+         const grid=el("div","ppw-guide-finish-tiles");
+         for(const option of [...finish.options]){
+          const tile=button(option.textContent??option.value,()=>{
+           finish.value=option.value;
+           finish.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable(),"ppw-guide-finish-tile");
+          tile.setAttribute("aria-pressed",String(option.value===m.plannedFinish));
+          grid.append(tile);
+         }
+         panel.append(grid);parent?.replaceWith(panel);
+        }
         guide.append(essentials,direction);
        }else{
         // The original angle fields and server-validated callbacks are
@@ -2301,22 +2198,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         guide.append(el("p","ppw-guide-winner-reminder",
          "The default winner is not a creative recommendation. Choose who wins."));
        if(m){
-        const terms=previewMatchCreativeTerms(m,roster);
-        if(terms.length){
-         const rights=el("section","ppw-guide-contract-alert");
-         rights.append(el("strong","","Wrestler contract terms"));
-         for(const term of terms.slice(0,2))
-          rights.append(el("p","",term.message));
-         if(terms.length>2)rights.append(el("p","",
-          "+"+(terms.length-2)+" other wrestler contract term"+
-          (terms.length===3?"":"s")+" to check in the staff briefing."));
-         guide.append(rights);
-        }
-       }
-       if(m){
         const runIn=extraContent.querySelector<HTMLElement>(".ppw-run-in");
         if(runIn)guide.append(runIn);
-        if(extra.childElementCount>1)guide.append(extra);
+        if(extra.childElementCount>1){
+         const open=openQuickExtras.has(slotId);
+         const control=button(open?"Hide detailed match direction":"Fine-tune match",
+          ()=>{if(open)openQuickExtras.delete(slotId);else openQuickExtras.add(slotId);
+           resetGuideScroll=false;render();},false,"ppw-guide-tuning-toggle");
+         control.setAttribute("aria-expanded",String(open));
+         guide.append(control);
+         if(open){
+          const tuning=el("section","ppw-guide-tuning");
+          for(const child of [...extra.children]){
+           if(child.tagName!=="SUMMARY")tuning.append(child);
+          }
+          guide.append(tuning);
+         }
+        }
        }else if(extraContent.childElementCount){
         // No generic Additional Options trap for authored angles.
         guide.append(extraContent);
@@ -2326,21 +2224,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(m)for(const issue of other.filter(node=>
         node.classList.contains("ppw-card-match-consents")))
         guide.append(issue);
-       const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
-       if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Change cast",()=>{
         slotBookingSteps.set(slotId,"CAST");
         resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
-       const urgent=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       if(urgent.length&&!suggestion){
-        const caution=el("div","ppw-guide-crew-pulse");
-        caution.append(el("strong","","Staff noticed "+urgent.length+
-         " potential concern"+(urgent.length===1?"":"s")));
-        caution.append(el("p","",urgent[0]!.title+" · "+urgent[0]!.message));
-        guide.append(caution);
-       }
        actions.append(button("Next · Staff briefing",()=>{
         slotBookingSteps.set(slotId,"REVIEW");resetGuideScroll=true;render();
        },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
@@ -2380,6 +2268,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          " · Very little time left for entrances and breaks.":""));
        if(projected.overBy)airtime.dataset.level="watch";
        brief.append(airtime);
+       const staff=slotNotes(slotId);
+       brief.append(el("h4","","Your staff's assessment"));
+       if(staff.length){
+        for(const finding of staff){
+         const item=el("div","ppw-guide-review-note");
+         item.dataset.level=finding.level.toLowerCase();
+         const colleague=view.advisers?.find(x=>x.role===finding.role);
+         item.append(el("span","",finding.role==="HOUSE"?"House safety":
+          (colleague?.name?colleague.name+" · ":"")+
+           nice(finding.role)),
+          el("strong","",finding.title),
+          el("p","",finding.message));
+         brief.append(item);
+        }
+       }else brief.append(el("p","ppw-guide-reviewed-clear",
+        "No specific staff concerns on this booking."));
+       // Keep the direct fix next to its staff diagnosis, above the statistics.
+       const decision=bookingChoicePanel(slotId);
+       if(decision)brief.append(decision);
        // The review must show the *actual* selected wrestlers' condition
        // readings, not only a generic staff warning. This uses the same
        // show-week talent snapshot already loaded by the booking editor.
@@ -2422,22 +2329,31 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          more.append(rest);brief.append(more);
         }
         }
-       const staff=slotNotes(slotId);
-       brief.append(el("h4","","Your staff's assessment"));
-       if(staff.length){
-        for(const finding of staff){
-         const item=el("div","ppw-guide-review-note");
-         item.dataset.level=finding.level.toLowerCase();
-         const colleague=view.advisers?.find(x=>x.role===finding.role);
-         item.append(el("span","",finding.role==="HOUSE"?"House safety":
-          (colleague?.name?colleague.name+" · ":"")+
-           nice(finding.role)),
-          el("strong","",finding.title),
-          el("p","",finding.message));
-         brief.append(item);
+       if(m&&m.format==="SINGLES"){
+        const snapshots=new Map<string,ConditionSnapshot>();
+        for(const [id,person] of roster){
+         snapshots.set(id,{inRingQuality:person.inRingQuality??null,
+          matchCraft:person.matchCraft??null,presentation:person.presentation??null,
+          stamina:person.stamina??null,safety:person.safety??null,
+          fatigue:person.fatigue??null,wear:person.wear??null});
         }
-       }else brief.append(el("p","ppw-guide-reviewed-clear",
-        "No specific staff concerns on this booking."));
+        const readiness=bookedStyleReadiness(m,snapshots);
+        if(readiness.reports.length){
+         brief.append(el("h4","","Performer readiness"));
+         const reports=el("div","ppw-guide-readiness");
+         for(const report of readiness.reports){
+          const item=el("div","ppw-guide-readiness-person");
+          item.dataset.status=report.status;
+          item.append(el("strong","",roster.get(report.personId)?.name??report.personId),
+           el("span","",report.status==="COMFORTABLE"?"Ready":
+            report.status==="CONCERNED"?"Has concerns":"Likely to refuse"));
+          if(report.reasons.length)item.append(el("small","",
+           report.reasons.map(nice).join(" · ")));
+          reports.append(item);
+         }
+         brief.append(reports);
+        }
+       }
        if(m){
         const ids=new Set(assignedIds(m));
         const worked=view.programmes.filter(p=>{
@@ -2454,9 +2370,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           "+"+(contractTerms.length-3)+" more contract terms need review."));
         if(worked.length)
          brief.append(el("p","",worked.map(p=>"Active rivalry · "+p.label).join(" · ")));
-        else brief.append(el("p","",
-         "No active opposing-side storyline links this exact cast. "+
-         "That does not establish whether they have good or bad chemistry."));
+        else brief.append(el("p","","No active rivalry between these opponents."));
         const relevant=concerns.filter(c=>c.slotId===slotId);
         for(const issue of relevant)
          brief.append(el("p","ppw-guide-creative-alert",
@@ -2509,8 +2423,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          " wrestler"+(fees.alreadyBooked===1?" is":"s are")+
          " already counted on this show's live card."));
        guide.append(brief);
-       const decision=bookingChoicePanel(slotId);
-       if(decision)guide.append(decision);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Revise script",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");resetGuideScroll=true;render();

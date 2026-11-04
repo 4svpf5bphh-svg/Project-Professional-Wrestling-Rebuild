@@ -1,4 +1,6 @@
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {estimateWrestlerFans,compactFanEstimate,wrestlerSpotlightTrait}
+ from "../domain/fan-following.js";
 /** One presentation contract across roster, recruitment and the booking sheet.
  * Caller owns selection/permission decisions; visual cards never query Neon.
  */
@@ -108,21 +110,40 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
   belts.title="Current championships";
   copy.append(belts);
  }
+ if(options.context!=="BOOKING"){
+  const audience=compactFanEstimate(estimateWrestlerFans(
+   p.popularity,p.recognition,p.momentum));
+  if(audience){
+   const following=span("ppw-wrestler-fans",audience);
+   following.title="Estimated following based on popularity, recognition and momentum; not a social-account count.";
+   copy.append(following);
+  }
+  const trait=wrestlerSpotlightTrait(p);
+  if(trait)copy.append(span("ppw-wrestler-trait",trait));
+ }
  const stats=document.createElement("span");stats.className="ppw-wrestler-stats";
  const numbers:[string,number|null|undefined][]=[
   ["POP",p.popularity],["REC",p.recognition],["MOM",p.momentum],
   ["RING",p.inRingQuality],["CRAFT",p.matchCraft],["PRES",p.presentation]];
- for(const [key,n] of numbers)if(n!==undefined)stats.append(metric(key,n));
- copy.append(stats);
- if(p.signatureMove&&!options.compact)
+ if(options.context==="BOOKING"){
+  for(const [key,n] of numbers)if(n!==undefined)stats.append(metric(key,n));
+  copy.append(stats);
+ }
+ if(p.signatureMove&&options.context==="BOOKING"&&!options.compact)
   copy.append(span("ppw-wrestler-finisher","SIGNATURE  /  "+p.signatureMove));
- if(p.finisherMove&&(!options.compact||options.context==="BOOKING"))
+ if(p.finisherMove&&options.context==="BOOKING")
   copy.append(span("ppw-wrestler-finisher","FINISHER  /  "+p.finisherMove));
  const footer=span("ppw-wrestler-status",options.label??p.status??"");
  footer.setAttribute("aria-live","off");
  if(options.context==="BOOKING"&&p.available===false)
   footer.classList.add("ppw-wrestler-status-blocked");
  if(p.reason&&p.available===false)footer.title=wrestlerLabel(p.reason);
- root.append(copy,footer);
+ if(options.context==="BOOKING")root.append(copy,footer);
+ else{
+  copy.append(footer);
+  root.append(copy);
+  if(options.context==="ROSTER"&&selectable)
+   root.append(span("ppw-wrestler-chevron","›"));
+ }
  return root;
 }

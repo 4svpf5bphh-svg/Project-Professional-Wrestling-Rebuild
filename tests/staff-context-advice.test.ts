@@ -211,3 +211,21 @@ test("a lengthy interview still gets a truthful house warning when Creative is n
  assert.ok(!angleStaffNotes({...interview,durationMinutes:10},[opponentB],
   new Set<StaffRole>()).some(n=>n.title==="Long talking segment"));
 });
+
+test("an unsafe wrestler gets finish-specific guidance even without a hired referee",()=>{
+ const match={...newEditorMatch("risky","SINGLES"),
+  plannedFinish:"FOREIGN_OBJECT",plannedLengthMinutes:18,
+  teams:[[{personId:"a",contractId:"ca"}],[{personId:"b",contractId:"cb"}]]};
+ const withoutReferee=matchStaffNotes(match,[opponentA,opponentB],
+  new Set<StaffRole>(["ROAD_AGENT"]));
+ assert.ok(withoutReferee.some(n=>n.role==="HOUSE"&&n.level==="WATCH"&&
+  n.title==="Risky finish and safety concerns"&&n.message.includes("Samoa Joe")));
+ const withReferee=matchStaffNotes(match,[opponentA,opponentB],crew);
+ assert.ok(withReferee.some(n=>n.role==="REFEREE"&&n.level==="WATCH"&&
+  n.title==="Risky finish and safety concerns"));
+ const safeFinish=matchStaffNotes({...match,plannedFinish:"CLEAN_PIN"},
+  [opponentA,opponentB],new Set<StaffRole>(["ROAD_AGENT"]));
+ assert.ok(!safeFinish.some(n=>n.title==="Risky finish and safety concerns"));
+ assert.equal(match.plannedFinish,"FOREIGN_OBJECT",
+  "A staff assessment must not rewrite the player's scripted outcome");
+});

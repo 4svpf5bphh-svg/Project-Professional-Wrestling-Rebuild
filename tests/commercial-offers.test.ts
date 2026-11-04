@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {commercialOffers} from "../src/domain/commercial-offers.js";
+import {commercialOffers,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
+ from "../src/domain/commercial-offers.js";
 
 const settled={
  tier:"LOCAL",mediaReach:100,weeklyMediaIncome:10000,
@@ -17,7 +18,7 @@ test("commercial deals require evidence and never materialise from missing Genes
 test("one earned broadcaster tradeoff and sensible sponsorship, with capped initial choices",()=>{
  const options=commercialOffers(settled);
  assert.deepEqual(options.map(x=>x.code),[
-  "BROADCAST_STABLE","BROADCAST_GROWTH","SPONSOR_LOCAL"
+  "BROADCAST_STABLE","BROADCAST_GROWTH","SPONSOR_LOCAL","SPONSOR_GEAR"
  ]);
  assert.equal(options[0]!.weeklyIncome,11200);
  assert.equal(options[0]!.reachIncrease,0);
@@ -25,7 +26,7 @@ test("one earned broadcaster tradeoff and sensible sponsorship, with capped init
  assert.equal(options[1]!.reachIncrease,0);
  assert.equal(options[2]!.weeklyIncome,2160);
  assert.equal(options[2]!.reachIncrease,0);
- assert.deepEqual(options.map(x=>x.termWeeks),[26,26,13]);
+ assert.deepEqual(options.map(x=>x.termWeeks),[26,26,13,26]);
 });
 test("major terms require sustained genuine results and national standing",()=>{
  const strong={...settled,tier:"NATIONAL",completedShows:10,averageCrowd:78};
@@ -65,4 +66,50 @@ test("long-term broadcasters saturate at 100 rather than blocking demand in late
  const overLegacy=commercialOffers({...settled,mediaReach:105});
  assert.ok(overLegacy.filter(o=>o.kind==="BROADCAST")
   .every(o=>o.reachIncrease===0));
+});
+
+test("verified TV ratings strengthen partner terms, poor ratings close premium doors",()=>{
+ const baseline=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78});
+ const great=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78,recentTvEpisodes:4,averageTvRating:2.2});
+ const bad=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78,recentTvEpisodes:4,averageTvRating:.5});
+ assert.ok(great.find(x=>x.code==="BROADCAST_TV")!.weeklyIncome>
+  baseline.find(x=>x.code==="BROADCAST_TV")!.weeklyIncome);
+ assert.ok(!bad.some(x=>x.code==="BROADCAST_TV"));
+ assert.equal(commercialOffers({...settled,recentTvEpisodes:1,averageTvRating:99})
+  .find(x=>x.code==="BROADCAST_STABLE")!.weeklyIncome,
+  commercialOffers(settled).find(x=>x.code==="BROADCAST_STABLE")!.weeklyIncome);
+});
+test("fictional partner catalogue has twelve distinct branded personalities and scarcity messages",()=>{
+ assert.equal(Object.keys(COMMERCIAL_COMPANIES).length,12);
+ for(const [code,brand] of Object.entries(COMMERCIAL_COMPANIES)){
+  assert.ok(brand.name&&brand.voice&&brand.mark&&brand.tagline);
+  assert.ok(brand.preferredDay>=1&&brand.preferredDay<=7,
+   "Every broadcaster needs a valid fallback World release day");
+  assert.ok(brand.airtime.match(/^\d\d:\d\d$/));
+  assert.ok(brand.ratingPressure>0);
+  const held=partnerResponse(code,{tier:"LOCAL",heldBy:"CWA",current:false});
+  assert.ok(held.includes("CWA"));
+  if(code.startsWith("BROADCAST_")){
+   const target=broadcasterRatingTarget(code,"NATIONAL");
+   assert.ok(target>0);
+   assert.match(partnerResponse(code,{tier:"NATIONAL",
+    averageTvRating:target*1.4,current:false}),/stronger deal/);
+  }
+ }
+});
+
+test("sponsors react in different voices to certified strong and weak crowd runs",()=>{
+ const wild=partnerResponse("SPONSOR_LOCAL",{
+  tier:"LOCAL",crowd:85,current:true});
+ const prestige=partnerResponse("SPONSOR_LUXURY",{
+  tier:"NATIONAL",crowd:85,current:true});
+ const disappointed=partnerResponse("SPONSOR_LUXURY",{
+  tier:"NATIONAL",crowd:48,current:true});
+ assert.match(wild,/Those fans were on their feet/);
+ assert.match(prestige,/premium-level presentation/);
+ assert.match(disappointed,/Our board expects a stronger presentation/);
+ assert.notEqual(wild,prestige);
 });

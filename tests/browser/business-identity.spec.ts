@@ -36,7 +36,8 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  });
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
- await expect(page.getByRole("heading",{name:"Your trading position"})).toBeVisible();
+ await expect(page.locator(".ppw-business-pulse>summary")).toHaveText("Financial outlook");
+ await page.locator(".ppw-business-pulse>summary").click();
  await expect(page.locator(".ppw-business-pulse-headline")).toContainText("US$250,000");
  await expect(page.locator(".ppw-business-pulse")).toHaveAttribute("data-health","normal");
  await expect(page.locator(".ppw-business-metric").filter({hasText:"HOME TERRITORY"}).getByText("Territory 0",{exact:true})).toBeVisible();
@@ -111,20 +112,17 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
   }});
  });
  await page.goto("/#/business");
+ await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Set your spending limits"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Manage spending limits"}).click();
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toBeVisible();
  await page.getByRole("spinbutton",{name:"Weekly wrestler wages"}).fill("75000");
  await page.getByRole("spinbutton",{name:"Talent per show"}).fill("150000");
  await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
- await page.locator(".ppw-business-signing-check > summary").click();
- const scenario=page.locator(".ppw-business-signing-check");
- await scenario.getByRole("spinbutton",{name:"Contract weeks"}).fill("10");
- await scenario.getByRole("spinbutton",{name:"Planned appearances"}).fill("5");
- await scenario.getByRole("spinbutton",{name:"Weekly guarantee"}).fill("2000");
- await scenario.getByRole("spinbutton",{name:"Appearance fee per show"}).fill("9000");
- await scenario.getByRole("spinbutton",{name:"Signing bonus"}).fill("3000");
- await expect(scenario).toContainText("68,000");
- await expect(scenario).toContainText("45,000");
- await expect(scenario).toContainText("6,800");
+ await expect(page.locator(".ppw-business-signing-check")).toHaveCount(0);
+ // Costing a new wrestler is now handled where the actual offer is made.
+ await expect(page.locator(".ppw-finance-snapshot")).toContainText("Weekly income");
+ await expect(page.locator(".ppw-finance-snapshot")).toContainText("Weekly commitments");
  await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
  await page.getByRole("button",{name:"Save spending plan"}).click();
  await expect.poll(()=>methods.includes("setSpendingPlan"),{

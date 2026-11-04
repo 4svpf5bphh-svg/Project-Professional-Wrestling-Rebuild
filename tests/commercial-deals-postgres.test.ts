@@ -32,7 +32,7 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    await tx.query(`UPDATE ppw_worlds SET week=4,
     next_lock_at=clock_timestamp()+interval '2 days'
     WHERE world_id=$1`,[world]);
-   for(const company of [promotion,"promotion-1"]){
+   for(const company of [promotion,"promotion-1","promotion-3"]){
    for(let week=1;week<=3;week++){
     const show="commercial-show-"+company+"-"+week;
     await tx.query(`INSERT INTO ppw_booking_drafts
@@ -41,13 +41,20 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
      [world,show,company,week]);
     await tx.query(`INSERT INTO ppw_completed_shows
      (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
-     VALUES($1,$2,$3,1,$4,$5,75,'{}'::jsonb,$6)`,
-     [world,company,show,week,"certified-"+company+"-"+week,"a".repeat(62)+(company==="promotion-1"?"b":"a")+week]);
+     VALUES($1,$2,$3,1,$4,$5,
+      CASE WHEN $3='promotion-3' THEN 85 ELSE 75 END,'{}'::jsonb,$6)`,
+     [world,company,show,week,"certified-"+company+"-"+week,"a".repeat(62)+(company==="promotion-1"?"b":company==="promotion-3"?"c":"a")+week]);
     await tx.query(`INSERT INTO ppw_show_economics
      (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
       gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
-      total_cost,net_result,incremental_cash)
-     VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000)`,
+      total_cost,net_result,incremental_cash,audience_format,tv_household_rating,
+      estimated_viewers)
+     VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000,
+      CASE WHEN $3 IN ('promotion-1','promotion-3') THEN 'TV' ELSE NULL END,
+      CASE WHEN $3='promotion-3' THEN 0.8
+       WHEN $3='promotion-1' THEN 0.1 ELSE NULL END,
+      CASE WHEN $3='promotion-3' THEN 800000
+       WHEN $3='promotion-1' THEN 100000 ELSE NULL END)`,
      [world,show,company,week]);
    }
    }
@@ -57,7 +64,8 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   const records=await readPromotionRecordBook(db.pool,
    {worldId:world,promotionId:promotion,playerId:owner});
   assert.deepEqual(records.leaders,[],"Record Book reads only verified career matches");
-  assert.equal(business.commercialOffers.length,3);
+  assert.equal(business.commercialOffers.length,4,
+   "The fallback workwear sponsor is another scarce World-wide option");
   assert.equal(business.worldRevision,2);
   assert.equal(business.commercialAgreements.length,0);
   const command={worldId:world,promotionId:promotion,playerId:owner,
@@ -102,9 +110,39 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    playerId:secondOwner,promotionId:"promotion-2",requestId:"second-human-claim",
    expectedRevision:secondJoin.revision});
   assert.equal(secondClaim.status,"APPLIED");
+  // A second human also earns three real certified programmes. The World
+  // market must not duplicate the first human's broadcaster or sponsor.
+  await withWorldTransaction(db.pool,async tx=>{
+   for(let week=1;week<=3;week++){
+    const show="rival-offer-"+week;
+    await tx.query(`INSERT INTO ppw_booking_drafts
+     (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
+     VALUES($1,$2,'promotion-2',1,$3,'SUBMITTED',4,'Rival Weekly','REGULAR')`,
+     [world,show,week]);
+    await tx.query(`INSERT INTO ppw_completed_shows
+     (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,'promotion-2',$2,1,$3,$4,75,'{}'::jsonb,$5)`,
+     [world,show,week,"rival-certified-"+week,"b".repeat(63)+week]);
+    await tx.query(`INSERT INTO ppw_show_economics
+     (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+      total_cost,net_result,incremental_cash)
+     VALUES($1,$2,'promotion-2',1,$3,850,1000,150000,20000,30000,
+      10000,20000,80000,70000,70000)`,[world,show,week]);
+   }
+  });
   const others=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:"promotion-2",playerId:secondOwner});
   assert.deepEqual(others.commercialAgreements,[]);
+  assert.ok(!others.commercialOffers.some(x=>x.code==="BROADCAST_GROWTH"));
+  assert.ok(!others.commercialOffers.some(x=>x.code==="SPONSOR_LOCAL"));
+  assert.ok(others.commercialOffers.some(x=>x.code==="BROADCAST_STABLE"));
+  assert.ok(others.partnerInventory.some(x=>x.offerCode==="BROADCAST_GROWTH"));
+  await assert.rejects(signCommercialDeal(db.pool,{
+   worldId:world,promotionId:"promotion-2",playerId:secondOwner,
+   requestId:"rival-vibeflix",expectedRevision:secondClaim.revision,
+   offerCode:"BROADCAST_GROWTH"
+  }),/already has an exclusive agreement/);
   await assert.rejects(readPromotionRecordBook(db.pool,{
    worldId:world,promotionId:promotion,playerId:secondOwner}),/access denied/);
   await assert.rejects(readBusinessWorkspace(db.pool,{worldId:world,
@@ -156,12 +194,20 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   assert.ok(afterTour[0]!.awareness>beforeTour[0]!.awareness);
   assert.equal(firstSettlement.aiDeals,2,
    "One AI broadcaster and one AI sponsor are signed from the same earned evidence");
-  const npc=await withWorldTransaction(db.pool,tx=>tx.query<{
-   kind:string;source:string
-  }>(`SELECT kind,source FROM ppw_commercial_deals
-   WHERE world_id=$1 AND promotion_id='promotion-1' AND status='ACTIVE'
-   ORDER BY kind`,[world]));
-  assert.deepEqual(npc,[{kind:"BROADCAST",source:"AI"},{kind:"SPONSOR",source:"AI"}]);
+  const awarded=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;kind:string;source:string;offer_code:string
+  }>(`SELECT promotion_id,kind,source,offer_code FROM ppw_commercial_deals
+   WHERE world_id=$1 AND source='AI' AND status='ACTIVE'
+    AND start_week_index=16
+   ORDER BY kind,promotion_id`,[world]));
+  assert.deepEqual(awarded.map(d=>d.kind),["BROADCAST","SPONSOR"],
+   "The World awards exactly one network and one sponsor in a rollover");
+  assert.equal(awarded[0]?.promotion_id,"promotion-3",
+   "The stronger certified TV audience defeats the alphabetically earlier AI rival");
+  assert.ok(["promotion-1","promotion-3"].includes(awarded[1]!.promotion_id),
+   "The sponsor also goes only to a promotion with real recent shows");
+  assert.equal(new Set(awarded.map(d=>d.offer_code)).size,2,
+   "Each named partner has a single exclusive World contract");
   const afterSponsor=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:owner});
   assert.equal(afterSponsor.weeklySponsorIncome,25000);

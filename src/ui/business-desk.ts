@@ -1,9 +1,10 @@
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
-import {commercialCompanyName,COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
+import {commercialCompanyName,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
+ from "../domain/commercial-offers.js";
+import {commercialPartnerBrand} from "./commercial-partner-identity.js";
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
-import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -36,7 +37,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
-  commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false;
+  commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false,
+  commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
+  spendingExpanded=false;
  let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
  async function refresh(){
   loading=true;draw();
@@ -187,6 +190,55 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
+   const weeklyIncome=view.weeklyMediaIncome!=null&&view.weeklySponsorIncome!=null?
+    view.weeklyMediaIncome+view.weeklySponsorIncome:null;
+   const fixedWeekly=view.weeklyFixedOverhead!=null?
+    view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll:null;
+   const bank=el("section","ppw-finance-first");
+   bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
+    el("h2","","Financial position"));
+   const balance=el("div","ppw-finance-bank");
+   balance.append(el("small","","Cash in the bank"),
+    el("strong","",money(view.cash)));
+   bank.append(balance);
+   const snapshot=el("div","ppw-finance-snapshot");
+   const item=(caption:string,figure:string,help:string)=>{
+    const tile=el("div","ppw-finance-snapshot-tile");
+    tile.append(el("span","",caption),el("strong","",figure),
+     el("small","",help));return tile;
+   };
+   snapshot.append(
+    item("Weekly income",weeklyIncome===null?"Not reported":money(weeklyIncome),
+     "Confirmed network + sponsor"),
+    item("Weekly commitments",fixedWeekly===null?"Not reported":money(fixedWeekly),
+     "Wages, staff and overhead"),
+    item("Operating room",view.recurringMargin===null?"Not reported":
+     money(view.recurringMargin),"Before show income and costs"),
+    item("Last week net",view.lastWeeklyNet===null?"Not settled":
+     money(view.lastWeeklyNet),"After the last weekly settlement"));
+   bank.append(snapshot);
+   if(typeof view.remainingRosterPotential==="number"){
+    const commitment=document.createElement("details");
+    commitment.className="ppw-finance-roster-exposure";
+    commitment.append(el("summary","","Remaining roster commitments · "+
+     money(view.remainingRosterPotential)));
+    commitment.append(el("p","ppw-finance-commitments",
+     money(view.remainingRosterGuaranteed)+
+      " is guaranteed wages; up to "+
+      money(Math.max(0,view.remainingRosterPotential-view.remainingRosterGuaranteed))+
+      " is appearance fees only if every remaining date is used. These amounts"+
+      " are payable over the remaining contracts, not owed today."));
+    bank.append(commitment);
+   }
+   if(view.debt>0)bank.append(el("p","ppw-finance-debt",
+    "Outstanding debt · "+money(view.debt)));
+   const actions=el("div","ppw-finance-first-actions");
+   if(port.openContracts)actions.append(button("Manage roster costs",
+    ()=>port.openContracts?.()));
+   actions.append(button(spendingExpanded?"Close spending limits":
+    "Manage spending limits",()=>{spendingExpanded=!spendingExpanded;draw();}));
+   bank.append(actions);
+   root.append(bank);
    // Owner budgeting is independent of actual settlement, contracts and cash.
    const regularCosts=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
     view.weeklyStaffPayroll;
@@ -200,22 +252,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("h2","","Set your spending limits"),
     el("p","ppw-business-muted",
      "Protect working capital and decide how much to commit to talent. Limits guide your decisions; they do not move cash or cancel a booking."));
-   const bank=el("div","ppw-business-budget-bank");
-   bank.append(el("span","","Cash in the bank"),el("strong","",money(view.cash)));
-   budget.append(bank);
-   const compass=el("section","ppw-business-compass");
-   compass.append(el("h3","","What the company can afford"),
-    el("p","ppw-business-muted","These are guaranteed weekly commitments, before uncertain ticket sales and show costs."));
-   const costs=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+view.weeklyStaffPayroll;
-   const receipts=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
-   for(const [label,value] of [
-    ["Guaranteed broadcast + sponsor income",receipts],
-    ["Overhead + talent + staff each week",-costs],
-    ["Recurring room before live shows",receipts-costs]
-   ] as const){const line=el("div","ppw-business-line");
-    line.append(el("span","",label),el("strong",tone(value),money(value)));compass.append(line);}
-   if(port.openContracts)compass.append(button("Review wrestler contracts →",()=>port.openContracts?.()));
-   budget.append(compass);
+   // Keep one authoritative money snapshot above. Budgets are optional player limits,
+   // not extra accounts or funds reserved by the server.
    const fields=el("div","ppw-business-budget-fields");
    const preview=el("div","ppw-business-budget-preview");
    const save=button("Save spending plan",()=>void saveSpendingPlan());
@@ -247,87 +285,28 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.disabled=spendingBusy;field.append(input);fields.append(field);
    }
    budget.append(fields,preview);
-   const scenario=document.createElement("details");
-   scenario.className="ppw-business-signing-check";
-   scenario.append(el("summary","","Can I afford another wrestler?"));
-   scenario.append(el("p","ppw-business-muted",
-    "Try proposed terms here before offering a contract. This is a comparison, not an offer or guaranteed acceptance."));
-   const inputs=el("div","ppw-business-signing-inputs");
-   const status=el("p","ppw-business-signing-result");
-   const projections:{weeks:number;dates:number;weekly:number;fee:number;bonus:number}={
-    weeks:10,dates:5,weekly:0,fee:0,bonus:0
-   };
-   const update=()=>{
-    const forecast=forecastContractCost({
-     weeks:projections.weeks,dates:projections.dates,
-     weeklyGuarantee:projections.weekly,appearanceFee:projections.fee,
-     signingBonus:projections.bonus
-    });
-    const baseline=receipts-costs;
-    const activePlan=spendingDraft??plan;
-    const wageRoom=activePlan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
-    const remainingCash=view!.cash-projections.bonus;
-    const risk=wageRoom<0||remainingCash<activePlan.cashReserve||
-     baseline-projections.weekly<0;
-    status.replaceChildren();
-    status.append(el("strong","ppw-business-fullterm-cost",
-     "Planned full-term cost · "+money(forecast.plannedFullTermCost)));
-    const breakdownText=el("span","ppw-business-fullterm-detail",
-     money(forecast.guaranteedWages)+" wages across "+projections.weeks+
-     " weeks + "+money(forecast.plannedAppearanceFees)+" across "+
-     projections.dates+" planned appearances + "+
-     money(projections.bonus)+" one-time bonus.");
-    status.append(breakdownText,el("span","ppw-business-fullterm-detail",
-     "Average planned cost: "+money(forecast.averageWeeklyCost)+"/week. "+
-     "After signing bonus: "+money(remainingCash)+" cash; "+
-     (wageRoom>=0?money(wageRoom)+" wage headroom.":money(-wageRoom)+
-      " above your wage limit.")));
-    status.append(el("small","ppw-business-fullterm-caveat",
-     "Assumes all purchased dates are used. Appearance fees are only charged "+
-     "on booked shows, not when signing; ticket sales and other variable costs "+
-     "aren't forecast here."));
-    if(risk)status.append(el("small","ppw-business-fullterm-warning",
-     "Review your wage plan, cash reserve or recurring income before committing."));
-    status.dataset.risk=String(risk);
-   };
-   for(const [label,key,min,max] of [
-    ["Contract weeks","weeks",1,52],
-    ["Planned appearances","dates",0,104],
-    ["Weekly guarantee","weekly",0,1000000000],
-    ["Appearance fee per show","fee",0,1000000000],
-    ["Signing bonus","bonus",0,1000000000]
-   ] as const){
-    const field=el("label","ppw-business-budget-field");
-    field.append(el("span","",label));const input=document.createElement("input");
-    input.type="number";input.inputMode="numeric";input.min=String(min);
-    input.max=String(max);input.value=String(projections[key]);
-    input.oninput=()=>{
-     const value=Math.min(max,Math.max(min,Math.floor(Number(input.value)||0)));
-     projections[key]=value;
-     update();
-    };
-    field.append(input);inputs.append(field);
-   }
-   scenario.append(inputs,status);budget.append(scenario);update();
+   // Recruiting shows the same package-cost and affordability model in context.
+   // A second five-field contract calculator here was duplicating that decision.
+   if(port.openRoster)budget.append(button("Explore wrestler signings",()=>port.openRoster?.()));
    if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
     "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
    if(port.setSpendingPlan)budget.append(save);
    refreshPreview();
-   root.append(budget);
+   if(spendingExpanded)root.append(budget);
    // Context from the existing workspace, never a projection of future
    // bookings, ticket sales or the next World settlement.
-   const overview=el("section","ppw-business-pulse");
+   const overview=document.createElement("details");overview.className="ppw-business-pulse";
    const risk=view.financialDistress,margin=view.recurringMargin;
    overview.dataset.health=risk==="DISTRESSED"||risk==="CRISIS"?"warning":
     risk==="WATCH"?"watch":"normal";
-   overview.append(el("span","ppw-business-kicker","THE COMPANY / THIS WEEK"),
-    el("h2","","Your trading position"));
+   overview.append(el("summary","","Financial outlook"));
    const headline=margin===null?
     "Recurring operating margin is not configured yet.":
     margin>=0?
      "Recurring income covers regular commitments by "+money(margin)+" per week.":
      "Regular commitments exceed recurring income by "+money(-margin)+" per week.";
+   if(risk==="DISTRESSED"||risk==="CRISIS"||risk==="WATCH")overview.open=true;
    overview.append(el("strong","ppw-business-pulse-headline",headline));
    const context=risk==="CRISIS"||risk==="DISTRESSED"?
     "The company is under sustained financial pressure. Review spending and show returns before committing to new costs.":
@@ -341,24 +320,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
       " weeks at the recently observed rate. This is not a deadline or a Game Over."));
    root.append(overview);
    const cards=el("section","ppw-business-grid");
-   cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated",
-     "The market where your promotion is based"),
-    metric("BROADCAST REACH",view.mediaReach==null?"Not recorded":
-     Math.round(view.mediaReach).toLocaleString("en-GB"),
-     "Current distribution strength"),
-    metric("CASH",money(view.cash)),metric("DEBT",money(view.debt)),
+   cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated"),
+    metric("BROADCAST REACH",view.mediaReach==null?"Not reported":
+     Math.round(view.mediaReach).toLocaleString("en-GB")),
     metric("BASE WEEKLY OVERHEAD",view.weeklyFixedOverhead===null?
-     "Not configured":money(view.weeklyFixedOverhead),
-     "Premises, operations and running the company · excludes talent, staff and live shows"),
-    metric("TOTAL RECURRING SPEND",view.weeklyFixedOverhead===null?
-     "Not configured":money(view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll),
-     "Fixed overhead + signed guarantees + staff wages"),
-    metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":money(view.lastWeeklyNet),
-     "Actual result, including settled shows and contracts"),
-    metric("RUNWAY",view.runwayWeeks===null?
-     view.lastWeeklyNet===null?"Not settled":"No projected shortfall":
-      view.runwayWeeks+" weeks",
-      view.financialDistress??"Awaiting the first weekly accounts"));
+     "Not configured":money(view.weeklyFixedOverhead)),
+    metric("WEEKLY CONTRACT WAGES",money(view.weeklyGuarantees)));
    root.append(cards);
    const flow=el("section","ppw-business-panel");
    flow.append(el("h2","","Weekly commitments"),
@@ -384,27 +351,6 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    breakdown.className="ppw-business-breakdown";
    breakdown.append(el("summary","","View weekly income and commitments"),flow);
    root.append(breakdown);
-   if(view.recurringMargin!==null){
-    const resilience=el("section","ppw-business-panel");
-    resilience.append(el("h2","","Trading position"),
-     el("p","ppw-business-muted",
-      "This compares verified recurring commitments with the cash added by completed shows. It is not a forecast."));
-    const sample=view.shows.slice(0,4);
-    const average=sample.length?Math.round(sample.reduce(
-     (sum,show)=>sum+show.incrementalCash,0)/sample.length):null;
-    const gap=Math.max(0,-view.recurringMargin);
-    const summary=gap>0?
-     "Recurring commitments exceed guaranteed weekly income by "+money(gap)+
-      ". Ticket sales and other show receipts must help cover that gap.":
-     "Guaranteed weekly income currently covers recurring commitments by "+
-      money(view.recurringMargin)+" before show costs and receipts.";
-    resilience.append(el("p","",summary));
-    if(average!==null)resilience.append(el("p","ppw-business-muted",
-     "Last "+sample.length+" completed show"+(sample.length===1?"":"s")+
-      ": average incremental cash contribution "+money(average)+
-      " per event. Results vary by card, venue, tickets and competition."));
-    root.append(resilience);
-   }
    if((view.financialDistress==="DISTRESSED"||
       view.financialDistress==="CRISIS")&&port.previewRestructure){
     const panel=el("section","ppw-business-panel");
@@ -641,95 +587,143 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   if(pane==="COMMERCIAL"){
    const section=el("section","ppw-business-panel ppw-commercial-desk");
-   section.append(el("h2","","Broadcasting & sponsorship"),
-    el("p","ppw-business-muted",
-     "Your shows earn their audience. Commercial partners offer real weekly terms; contracts last until expiry and do not automatically renew."));
-   const tv=view.shows.filter(show=>show.audience?.format==="TV"&&
-    show.audience.householdRating!==null);
-   const ppvs=view.shows.filter(show=>show.audience?.format==="PPV"&&
-    show.audience.ppvBuys!==null);
-   if(tv.length||ppvs.length){
-    const audience=el("section","ppw-business-audience-report");
-    audience.append(el("h3","","Broadcast audience"));
-    if(tv.length){
-     audience.append(el("p","ppw-business-muted",
-      "Household television rating · recent certified weekly shows"));
-     const trend=el("div","ppw-business-audience-trend");
-     for(const show of [...tv].reverse()){
-      const tile=el("div","ppw-business-audience-tile");
-      tile.append(el("small","","Y"+show.year+" W"+show.week),
-       el("strong","",show.audience!.householdRating!.toFixed(1)),
-       el("small","",show.name));trend.append(tile);
-     }
-     audience.append(trend);
-    }
-    if(ppvs.length){
-     const latest=ppvs[0]!;
-     audience.append(el("p","ppw-business-muted",
-      latest.name+" · "+latest.audience!.ppvBuys!.toLocaleString("en-GB")+
-       " estimated PPV purchases"));
-    }
+   const day=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+   const now=(view.year-1)*52+view.week-1;
+   section.append(el("h2","","Broadcasting & sponsorship"));
+   const rows=el("div","ppw-commercial-deal-tabs");
+   for(const [kind,label] of [["BROADCAST","Networks & streaming"],["SPONSOR","Sponsors"]] as const){
+    const choice=button(label,()=>{commercialKind=kind;draw();});
+    choice.setAttribute("aria-pressed",String(commercialKind===kind));
+    rows.append(choice);
+   }
+   section.append(rows);
+   // A rating belongs to the certified TV episode, not the show's 0–100
+   // quality score. PPV purchases are reported separately.
+   if(commercialKind==="BROADCAST"){
+    const episodes=view.shows.filter(show=>show.audience?.format==="TV"&&
+     show.audience.householdRating!==null).slice(0,6);
+    const audience=el("section","ppw-commercial-market-trend");
+    const latest=episodes[0];
+    audience.append(el("small","","YOUR TV AUDIENCE"),
+     el("strong","",latest?.audience?.householdRating!==null&&latest?
+      latest.audience!.householdRating!.toFixed(1)+" · "+latest.name:
+      "Awaiting a certified TV broadcast"));
+    if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
+     audience.append(el("small","",
+      view.recentTvEpisodes+" recent episodes · "+view.averageTvRating.toFixed(1)+
+      " average household rating"));
+    const ppv=view.shows.find(s=>s.audience?.format==="PPV"&&
+     typeof s.audience.ppvBuys==="number");
+    if(ppv)audience.append(el("small","",
+     ppv.name+" · "+ppv.audience!.ppvBuys!.toLocaleString("en-GB")+" PPV buys"));
     section.append(audience);
+    const rivals=view.competitorBroadcasts??[];
+    if(rivals.length){
+     const ranking=el("section","ppw-business-broadcast-comparison");
+     ranking.append(el("h3","","Ratings war"),
+      el("small","ppw-business-muted","Latest TV episode per promotion · past six weeks"));
+     const yourRank=rivals.findIndex(r=>r.isYours);
+     ranking.append(el("p","ppw-business-muted",yourRank>=0?
+      "Your latest TV show ranks #"+(yourRank+1)+" of "+
+      rivals.length+" recent broadcasters.":"No certified recent episode of yours."));
+     if(yourRank>0)ranking.append(el("p","ppw-business-muted",
+      rivals[0]!.name+" leads your latest audience by "+
+      Math.max(0,rivals[0]!.householdRating-rivals[yourRank]!.householdRating)
+       .toFixed(1)+" rating points."));
+     // Keep the manager's own place visible even below the seven leaders.
+     const visible=rivals.slice(0,7);
+     if(yourRank>=7)visible.push(rivals[yourRank]!);
+     for(const episode of visible){
+      const i=rivals.indexOf(episode);
+      const row=el("article","ppw-business-broadcast-row");
+      if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
+      const label=el("div","");
+      label.append(el("strong","","#"+(i+1)+" · "+episode.name+
+       (episode.isYours?" · YOUR SHOW":"")),
+       el("span","",episode.showName+" · "+
+        (day[(episode.day??0)-1]??"Day unreported")+
+        " · Y"+episode.year+" W"+episode.week),
+       el("small","",episode.networkOfferCode?
+        commercialCompanyName(episode.networkOfferCode):"No partner on record"));
+      const score=el("div","ppw-business-broadcast-numbers");
+      score.append(el("strong","",episode.householdRating.toFixed(1)),
+       el("small","",episode.estimatedViewers===null?"Household rating":
+        episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+      row.append(label,score);ranking.append(row);
+     }
+     section.append(ranking);
+    }
    }
-   const comparison=el("section","ppw-business-broadcast-comparison");
-   comparison.append(el("h3","","How the industry is performing"),
-    el("p","ppw-business-muted","Latest certified TV episode per promotion from the last six weeks. Ratings are household estimates, not crowd scores."));
-   const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-   const rivals=view.competitorBroadcasts??[];
-   if(!rivals.length)comparison.append(el("p","ppw-business-muted","No competitor TV broadcasts have certified yet."));
-   for(const episode of rivals.slice(0,15)){
-    const row=el("article","ppw-business-broadcast-row");
-    if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
-    const info=el("div","");
-    info.append(el("strong","",episode.name+(episode.isYours?" · YOUR SHOW":"")),
-     el("span","",episode.showName+" · "+(days[(episode.day??0)-1]??"Broadcast day unavailable")+
-      " · Y"+episode.year+" W"+episode.week),
-     el("small","",episode.networkOfferCode?
-      commercialCompanyName(episode.networkOfferCode):"No broadcast partner recorded"));
-    const numbers=el("div","ppw-business-broadcast-numbers");
-    numbers.append(el("strong","",episode.householdRating.toFixed(1)),
-     el("small","",episode.estimatedViewers===null?"Viewers unreported":
-      episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
-    row.append(info,numbers);comparison.append(row);
-   }
-   section.append(comparison);
-   const active=view.commercialAgreements;
-   if(active.length)section.append(el("h3","","Current agreements"));
-   for(const deal of active){
+   const current=view.commercialAgreements.filter(d=>d.kind===commercialKind);
+   if(current.length)section.append(el("h3","","Your partner"));
+   for(const deal of current){
     const item=el("article","ppw-commercial-offer");
-    item.append(el("strong","",deal.kind==="BROADCAST"?"Broadcast partner":"Sponsor"),
-     el("p","",commercialCompanyName(deal.offerCode)),
-     el("small","","Weekly guarantee "+money(deal.weeklyIncome)+
-      " · "+Math.max(0,deal.endWeekIndex-((view.year-1)*52+view.week-1)+1)+
-      " weeks remaining"+
-      (deal.kind==="BROADCAST"?" · additional reach +"+Math.round(deal.reachIncrease):"")));
+    item.append(commercialPartnerBrand(deal.offerCode));
+    item.append(el("p","ppw-commercial-voice",partnerResponse(deal.offerCode,{
+     tier:view.tier,averageTvRating:view.averageTvRating,
+     crowd:view.recentAverageCrowd,current:true
+    })));
+    item.append(el("strong","",
+     money(deal.weeklyIncome)+" weekly guarantee"));
+    item.append(el("small","ppw-commercial-status",
+     Math.max(0,deal.endWeekIndex-now+1)+" weeks left on this agreement"));
+    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number")
+     item.append(el("span","ppw-commercial-slot",
+      "Your broadcast slot · "+(day[deal.airingDay-1]??"Weekly")+
+       " at "+String(deal.airingHour).padStart(2,"0")+":00"));
     section.append(item);
    }
-   section.append(el("h3","","Available opportunities"));
-   if(!view.commercialOffers.length)section.append(el("p","ppw-business-muted",
-    "No new agreements currently qualify. Complete strong shows to attract offers, or let an existing agreement expire."));
-   for(const offer of view.commercialOffers){
+   section.append(el("h3","","The World deal market"),
+    el("p","ppw-commercial-world-note",
+     "Each partner can back only one promotion at a time in this World. "+
+     "More viewers strengthen future offers; existing agreements are honoured until expiry."));
+   const brands=Object.entries(COMMERCIAL_COMPANIES)
+    .filter(([code])=>code.startsWith(commercialKind+"_"));
+   for(const [code,identity] of brands){
+    if(current.some(d=>d.offerCode===code))continue;
+    const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
+    const offer=view.commercialOffers.find(d=>d.code===code);
+    const qualified=(view.commercialQualified??view.commercialOffers).find(d=>d.code===code);
     const item=el("article","ppw-commercial-offer");
-    item.append(el("strong","",offer.name));
-    const identity=COMMERCIAL_COMPANIES[offer.code];
-    if(identity)item.append(el("p","ppw-commercial-tagline",identity.tagline));
-    item.append(el("p","",offer.description));
-    if(identity)item.append(el("small","ppw-business-muted",
-     "Best fit: "+identity.preference));
-    const terms=el("div","ppw-commercial-terms");
-    terms.append(el("span","",money(offer.weeklyIncome)+"/week"),
-     el("span","",offer.termWeeks+" weeks"),
-     el("span","",offer.kind==="BROADCAST"?
-      "+"+Math.round(offer.reachIncrease)+" audience reach":"Sponsorship"));
-    item.append(terms,el("small","ppw-business-muted",offer.obligation));
-    if(offer.code==="SPONSOR_LOCAL")item.append(el("small","ppw-commercial-bonus",
-     "Hardcore-match bonus: a certified show with a Hardcore / No DQ bout adds 5% of the weekly guarantee."));
-    if(["BROADCAST_GROWTH","BROADCAST_INDIE","BROADCAST_TV","BROADCAST_GLOBAL",
-      "SPONSOR_PARTNER","SPONSOR_FOOD","SPONSOR_TECH","SPONSOR_LUXURY"]
-      .includes(offer.code))item.append(el("small","ppw-commercial-bonus",
-       "Eligible certified shows also earn a modest performance reward, paid after completion."));
-    if(port.signCommercial)item.append(button(commercialBusy?
-     "Reviewing…" : "Sign agreement",()=>void acceptCommercial(offer.code)));
+    item.dataset.availability=reserved?"TAKEN":offer?"AVAILABLE":"LOCKED";
+    item.append(commercialPartnerBrand(code));
+    item.append(el("p","ppw-commercial-voice",partnerResponse(code,{
+     tier:view.tier,averageTvRating:view.averageTvRating,
+     crowd:view.recentAverageCrowd,current:false,
+     heldBy:reserved?.promotionName??null
+    })));
+    if(reserved){
+     item.append(el("span","ppw-commercial-status",
+      "Exclusive partner of "+reserved.promotionName+" · "+
+      Math.max(0,reserved.endWeekIndex-now+1)+" weeks remaining"));
+    }else if(current.length){
+     item.append(el("span","ppw-commercial-status",
+      "Your current "+(commercialKind==="BROADCAST"?"network":"sponsor")+
+      " agreement runs until expiry"));
+    }else if(offer){
+     item.append(el("strong","",money(offer.weeklyIncome)+"/week · "+
+      offer.termWeeks+" weeks"));
+     if(offer.kind==="BROADCAST"){
+      item.append(el("span","ppw-commercial-slot",
+       "Preferred "+(day[identity.preferredDay-1]??"weekly")+
+       " "+identity.airtime+" · Rating target "+
+       broadcasterRatingTarget(code,view.tier).toFixed(1)));
+      item.append(el("span","ppw-commercial-slot",
+       "+"+Math.round(offer.reachIncrease)+" distribution reach"));
+     }else item.append(el("small","ppw-commercial-slot",identity.preference));
+     item.append(el("small","",offer.obligation));
+     if(port.signCommercial){
+      const sign=button(commercialBusy?"Negotiating…":"Sign "+identity.name,
+       ()=>void acceptCommercial(code));
+      (sign as HTMLButtonElement).disabled=commercialBusy;
+      item.append(sign);
+     }
+    }else{
+     item.append(el("span","ppw-commercial-status",qualified?
+      "Not available while another deal is signed":
+      "Not approaching your promotion yet"));
+     item.append(el("small","ppw-business-muted",identity.preference));
+    }
     section.append(item);
    }
    root.append(section);
