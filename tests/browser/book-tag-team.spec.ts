@@ -96,7 +96,8 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.locator(".ppw-angle-category-tiles")
+  .getByRole("button",{name:"Turns"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("Turn a complete tag team").selectOption("pair-a");
  await expect(dialog).toContainText("Samoa Joe");
@@ -196,17 +197,17 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
- await dialog.getByLabel("Stipulation").selectOption("IRON_MAN");
- dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await dialog.getByRole("button",{name:"Iron Man Match"}).click();
+ await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
+ await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
+  .toHaveAttribute("aria-pressed","true");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.getByLabel("Stipulation")).toHaveCount(0);
  await expect(dialog.getByLabel("Finish")).toHaveValue("MOST_FALLS");
  await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
- await expect(dialog).toContainText("Performance depends on wrestler suitability");
- const selectBox=await dialog.getByLabel("Stipulation").boundingBox();
- const noteBox=await dialog.locator(".ppw-stipulation-impact").boundingBox();
- expect(selectBox).not.toBeNull();expect(noteBox).not.toBeNull();
- expect(selectBox!.height).toBeLessThan(75);
- expect(noteBox!.width).toBeGreaterThan(285);
- await dialog.getByLabel("Stipulation").scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-iron-man-booking-390.png",
   animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
@@ -215,8 +216,13 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await expect(page.locator(".ppw-card-bar strong").first()).toContainText("Iron Man Match");
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByLabel("Stipulation")).toHaveValue("IRON_MAN");
- await dialog.getByLabel("Stipulation").selectOption("FALLS_COUNT_ANYWHERE");
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
+  .toHaveAttribute("aria-pressed","true");
+ await dialog.getByRole("button",{name:"Falls Count Anywhere"}).click();
+ await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Finish")).toHaveValue("CLEAN_PIN");
- await expect(dialog).toContainText("HIGH injury exposure");
 });

@@ -169,6 +169,14 @@ export function mountPersonaDesk(root:HTMLElement,
    el("h1","","Contact details"),
    el("p","ppw-muted","Private career conversations and character history."));
   if(pane!=="THREAD")root.append(head);
+  else if(onBack){
+   // From a dossier, leave the conversation without relying on a hidden
+   // header or the thread's Chats button.
+   const exitBar=el("nav","ppw-backstage-thread-exit");
+   const leave=button("‹ Leave Backstage",onBack);
+   leave.classList.add("ppw-backstage-exit");
+   exitBar.append(leave);root.append(exitBar);
+  }
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!view){root.append(button(loading?"Loading…":"Retry",()=>void load(personId),loading));return;}
   const tabs=el("nav","ppw-backstage-tabs");

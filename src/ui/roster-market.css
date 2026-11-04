@@ -250,3 +250,15 @@
 .ppw-directory-cash-only[data-coverage="gap"] strong{color:#ffd7b0}
 @media(max-width:355px){.ppw-directory .ppw-directory-refine-fields{
  grid-template-columns:minmax(0,1fr)}}
+
+/* The Talent Manager's warning is a front-of-form booking decision, not
+   an optional afterthought at the bottom of the finance breakdown. */
+.ppw-directory-adviser[data-risk="watch"]{border:2px solid #e6aa78;
+ background:#312e39}
+.ppw-directory-adviser[data-risk="watch"]>summary{color:#ffe0b7}
+.ppw-directory-presets>.ppw-directory-preset,
+.ppw-directory-presets>.ppw-directory-preset-active{
+ box-sizing:border-box;border-radius:12px!important;border-width:2px!important}
+.ppw-directory-presets>.ppw-directory-preset-active::before{
+ content:"✓ SELECTED";color:#fff4d3;font-size:10px;font-weight:900;
+ letter-spacing:.07em}

@@ -136,3 +136,29 @@ test("warnings are evidence-driven and reject stale or mismatched edits",()=>{
  assert.throws(()=>applyBookingAdjustment(iron,{kind:"MATCH_LENGTH",minutes:18}),
   /no longer legal/);
 });
+
+test("30-minute interview offers an adjustment with high presentation, not a false all-clear",()=>{
+ const interview={...newEditorSegment("interview","INTERVIEW"),
+  durationMinutes:30,actors:[{personId:"mistico",contractId:"b"}]};
+ const advice=bookingChoiceAdvice(interview,[mistico],crew)!;
+ assert.equal(advice.role,"CREATIVE");
+ assert.equal(advice.actionLabel,"Shorten scene to 10 min");
+ const changed=applyBookingAdjustment(interview,advice.adjustment);
+ assert.ok(!("teams" in changed));
+ assert.equal(changed.durationMinutes,10);
+ assert.equal(changed.actors[0]?.personId,"mistico");
+ assert.equal(bookingChoiceAdvice(changed,[mistico],crew),null);
+});
+
+test("a long interview without a Creative hire still offers a house adjustment",()=>{
+ const scene={...newEditorSegment("long-interview","INTERVIEW"),
+  durationMinutes:30,actors:[{personId:"mistico",contractId:"b"}]};
+ const house=bookingChoiceAdvice(scene,[mistico],new Set<StaffRole>())!;
+ assert.equal(house.role,"HOUSE");
+ assert.equal(house.actionLabel,"Shorten scene to 10 min");
+ const shorter=applyBookingAdjustment(scene,house.adjustment);
+ assert.ok(!("teams" in shorter));
+ assert.equal(shorter.durationMinutes,10);
+ assert.deepEqual(shorter.actors,scene.actors);
+ assert.equal(bookingChoiceAdvice(shorter,[mistico],new Set<StaffRole>()),null);
+});

@@ -167,7 +167,7 @@ test("390px: cancelling a new match or scene leaves no phantom running-order slo
  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
  await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Turns"}).click();
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(dialog).toHaveCount(0);
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
@@ -179,7 +179,7 @@ test("390px: an angle also has a meaningful Creative team review before completi
  await goToCard(page);
  await page.getByRole("button",{name:"+ Add angle"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Turns"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
@@ -206,13 +206,15 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await page.getByRole("button",{name:"+ Add angle"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
- await dialog.getByLabel("Creative direction").selectOption("RIVALRY");
+ await expect(dialog.getByLabel("Creative direction")).toHaveCount(0);
+ await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
+ await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Conflict & attacks"}).click();
  const choices=dialog.locator(".ppw-angle-type-tiles");
  await expect(choices).toContainText("Attack");
  expect(await choices.evaluate(element=>
   getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(2);
  await choices.getByRole("button",{name:"Attack",exact:true}).click();
- await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("ATTACK");
+ await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
  await expect(choices.getByRole("button",{name:"Attack",exact:true}))
   .toHaveAttribute("aria-pressed","true");
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-what-320.png",animations:"disabled"});
@@ -220,7 +222,7 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await expect(dialog.getByLabel("Creative direction")).toHaveCount(0);
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
- await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ await dialog.getByRole("button",{name:"+ Add attacker"}).click();
  let picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-side-tab")).toHaveCount(2);
  expect(await picker.locator(".ppw-picker-side-tab").evaluateAll(
@@ -322,11 +324,11 @@ test("390px: match and physical angle share show workload advice and are saved t
  await page.getByRole("button",{name:"+ Add angle"}).click();
  const angle=page.getByRole("dialog",{name:"Edit angle"});
  await expect(page.locator(".ppw-save .ppw-primary")).toBeDisabled();
- await angle.getByLabel("Creative direction").selectOption("RIVALRY");
+ await angle.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Conflict & attacks"}).click();
  await angle.locator(".ppw-angle-type-tiles")
   .getByRole("button",{name:"Attack",exact:true}).click();
  await angle.getByRole("button",{name:"Continue · Select wrestlers"}).click();
- await angle.getByRole("button",{name:"+ Add performer"}).click();
+ await angle.getByRole("button",{name:"+ Add attacker"}).click();
  picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-overlap")).toHaveCount(2);
  await expect(picker.locator(".ppw-picker-overlap").first())
@@ -419,11 +421,11 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await goToCard(page);
  await page.getByRole("button",{name:"+ Add angle"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Creative direction").selectOption("RIVALRY");
+ await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Conflict & attacks"}).click();
  await dialog.locator(".ppw-angle-type-tiles")
   .getByRole("button",{name:"Attack",exact:true}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
- await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ await dialog.getByRole("button",{name:"+ Add attacker"}).click();
  let picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.locator(".ppw-wrestler-card").first().click();

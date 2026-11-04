@@ -32,7 +32,7 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  await page.getByRole("button",{name:"History",exact:true}).click();
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
- await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
  await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
@@ -56,7 +56,7 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
     recentActivity:[programme.recentActivity[1]]}]}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
@@ -75,15 +75,19 @@ test("completed feud remains a readable promotion archive instead of a forgotten
    latestFollowUp:null}]
  }}));
  await page.goto("/#/programmes");
- await expect(page.getByRole("heading",{name:"Recently concluded"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
+ await expect(page.locator(".ppw-programme-archive-card")).toHaveCount(0);
+ await page.locator(".ppw-programme-archive-open").click();
+ await expect(page.getByRole("heading",{name:"Rivalry retrospective"})).toBeVisible();
  const archive=page.locator(".ppw-programme-archive-card");
  await expect(archive).toHaveCount(1);
- await archive.locator("summary").click();
  await expect(archive.getByText("Samoa Joe 2 — 1 Matt Riddle")).toBeVisible();
  await expect(archive.getByText("3 in-ring meetings · 1 on-screen chapter")).toBeVisible();
  await expect(archive.locator(".ppw-programme-feud-stars")).toHaveAttribute("aria-label",/out of five stars/);
  await expect(archive.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
  await expect(archive.getByRole("button",{name:/Revisit the final chapter/})).toBeVisible();
+ await page.getByRole("button",{name:"← Back to programmes"}).click();
+ await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toBeVisible();
 });
 
 test("iPhone plans and removes a real match or angle payoff without auto-ending the feud",async({page})=>{
@@ -126,7 +130,7 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
  await expect(page.getByText(/only the certified event can end this rivalry/i)).toBeVisible();
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
- await expect(page.getByRole("heading",{name:"Recently concluded"})).toHaveCount(0);
+ await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toHaveCount(0);
  await page.getByRole("button",{name:"Remove planned finale"}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
  expect(methods).toEqual(["programmes","planProgrammeFinale","programmes",
@@ -161,7 +165,7 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Payoff"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Story",exact:true})).toBeVisible();
- for(const name of ["Story","Payoff","History"]){
+ for(const name of ["Story","Plan","Payoff","History"]){
   const tab=page.getByRole("button",{name,exact:true});
   await expect(tab).toBeVisible();
   const clipped=await tab.evaluate(el=>el.scrollWidth>el.clientWidth+1);

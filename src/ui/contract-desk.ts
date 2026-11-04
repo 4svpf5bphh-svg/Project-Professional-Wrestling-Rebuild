@@ -425,6 +425,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        draft.termWeeks<1||draft.termWeeks>52||
        draft.dateEntitlement<1||draft.dateEntitlement>draft.termWeeks)return;
       const replacementPayroll=Math.max(0,view.summary.weeklyGuarantees-c.weeklyGuarantee);
+      const pendingExposure=view.offers.reduce((sum,offer)=>{
+       if(!offer.terms)return sum;
+       try{return sum+packageCost(offer.terms as OfferTerms).plannedFullTermCost;}
+       catch{return sum;}
+      },0);
       const notes=contractStaffNotes({
        weeklyGuarantee:draft.weeklyGuarantee,weeks:draft.termWeeks,
        appearanceFee:draft.appearanceFee,
@@ -433,7 +438,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        cashReserve:view.spendingPlan?.cashReserve??null,
        weeklyGuarantees:replacementPayroll,
        wageLimit:view.spendingPlan?.weeklyWageLimit??null,
-       recurringMargin:null
+       recurringMargin:null,
+       existingRosterExposure:exposure.potentialTotal,
+       pendingOfferExposure:pendingExposure
       },new Set(["TALENT_MANAGER"]));
       const urgent=notes.find(n=>n.level==="WATCH");
       const cost=packageCost(draft);
@@ -451,7 +458,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        " versus equivalent current rates. Consider whether the new terms still secure the dates you need.":
        "The proposed package matches the current rates for an equivalent term. "+
        "Confirm that the purchased dates fit your show plans before offering.");
-      managerNote.append(el("strong","","Talent Manager · Deal assessment"),
+      managerNote.append(el("strong","",urgent?
+       "Talent Manager · "+urgent.title:"Talent Manager · Deal assessment"),
        el("p","",assessment));
       managerNote.dataset.level=urgent?"watch":"info";
      };
@@ -527,7 +535,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(quote,managerNote,panel);
+     negotiate.append(managerNote,quote,panel);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");

@@ -128,15 +128,28 @@ export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPer
   notes.push(note("REFEREE","INFO","Coordinate the staged violence",
    "The referee and crew should plan the separation and timing of this intense "+
    "physical angle. Its visual severity is storytelling, not a guaranteed injury."));
+ const longTalk=["INTERVIEW","PROMO","CONFRONTATION","CHALLENGE",
+  "CONTRACT_SIGNING"].includes(segment.kind)&&segment.durationMinutes>=25&&cast.length>0;
+ if(longTalk&&!staffed.has("CREATIVE"))
+  notes.push(note("HOUSE","WATCH","Long talking segment",
+   segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
+   " takes a substantial share of the show. Consider tightening the scene "+
+   "or splitting it into shorter beats."));
  if(staffed.has("CREATIVE")){
   if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
    notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
     "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
-  if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
+  if(longTalk)
+   notes.push(note("CREATIVE","WATCH","Long talking segment",
+    segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
+    " takes substantial airtime. "+(cast.some(p=>valid(p.presentation)&&p.presentation<50)?
+     "A featured wrestler has limited presentation strength. ":"")+
+    "Consider a shorter scene or a change of pace."));
+  else if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
    cast.some(p=>valid(p.presentation)&&p.presentation<50))
    notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
-    "One or more featured wrestlers may be carrying a longer talking or character segment "+
-    "than their current presentation suggests. Consider sharing the microphone or tightening it."));
+    "A featured wrestler may struggle to carry "+segment.durationMinutes+
+    " minutes. Consider tightening the segment."));
   if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
    !segment.targets.length)
    notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
@@ -192,10 +205,27 @@ export function showWorkloadNotes(slotId:string,current:EditorMatch|EditorSegmen
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;
  cash:number;cashReserve:number|null;weeklyGuarantees:number;
- wageLimit:number|null;recurringMargin:number|null},
+ wageLimit:number|null;recurringMargin:number|null;
+ existingRosterExposure?:number;pendingOfferExposure?:number},
  staffed:ReadonlySet<StaffRole>):StaffNote[]{
  if(!staffed.has("TALENT_MANAGER"))return [];
  const notes:StaffNote[]=[];
+ // Use the full cash-only envelope, not just the current weekly wage cap.
+ const planned=input.weeks*input.weeklyGuarantee+
+  input.dates*input.appearanceFee+input.signingBonus;
+ const outstanding=Math.max(0,input.existingRosterExposure??0)+
+  Math.max(0,input.pendingOfferExposure??0);
+ const cashRoom=Math.max(0,input.cash-(input.cashReserve??0)-outstanding);
+ if(Number.isFinite(planned)&&planned>cashRoom){
+  const severe=planned>input.cash||planned>cashRoom*2;
+  notes.push(note("TALENT_MANAGER","WATCH",
+   severe?"Unsustainable on current cash":"Cash-only funding gap",
+   "This offer could cost $"+Math.round(planned).toLocaleString("en-GB")+
+   " across the term, but only $"+Math.round(cashRoom).toLocaleString("en-GB")+
+   " of today's cash is unallocated after signed commitments, other offers and reserve. "+
+   "That is a $"+Math.round(planned-cashRoom).toLocaleString("en-GB")+
+   " shortfall without future income. Reduce the term, dates or payments."));
+ }
  const room=input.wageLimit===null?null:
   input.wageLimit-input.weeklyGuarantees-input.weeklyGuarantee;
  if(room!==null&&room<0)notes.push(note("TALENT_MANAGER","WATCH",
@@ -217,5 +247,5 @@ export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  if(!notes.length)notes.push(note("TALENT_MANAGER","INFO","Offer fits the current plan",
   "No immediate spending-plan breach is visible. Acceptance still depends on "+
   "the wrestler's interest, other commitments and the terms you propose."));
- return notes.slice(0,3);
+ return notes.slice(0,4);
 }

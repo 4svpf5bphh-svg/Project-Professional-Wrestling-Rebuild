@@ -85,6 +85,13 @@ export function bookingChoiceAdvice(booking:EditorMatch|EditorSegment,
    "Reduce physical intensity",{kind:"ANGLE_SOFTEN"});
  }
  const scene=segment.scene;
+ const longTalk=["INTERVIEW","PROMO","CHALLENGE","CONFRONTATION",
+  "CONTRACT_SIGNING"].includes(segment.kind)&&segment.durationMinutes>=25&&cast.length>0;
+ if(longTalk&&!staffed.has("CREATIVE"))
+  return make("HOUSE","Tighten the talking time",
+   segment.durationMinutes+" minutes of on-screen talking is a large part of "+
+   "the show. A shorter scene keeps the same cast and scripted outcome.",
+   "Shorten scene to 10 min",{kind:"ANGLE_DURATION",minutes:10});
  if(staffed.has("CREATIVE")&&scene){
   if(segment.programmeId&&scene.purpose==="START_RIVALRY"&&
    ANGLE_PURPOSES.includes("BUILD_RIVALRY")){
@@ -102,12 +109,12 @@ export function bookingChoiceAdvice(booking:EditorMatch|EditorSegment,
     "Review wrestlers",{kind:"BACK_TO_CAST"});
   const weakPresentation=cast.filter(p=>
    known(p.presentation)&&p.presentation<50);
-  if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
+  if(longTalk||segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
    weakPresentation.length)
    return make("CREATIVE","Tighten the talking time",
-    weakPresentation.map(p=>p.name).join(", ")+" may struggle to carry "+
-    segment.durationMinutes+" minutes of this scene. "+
-    "Ten minutes keeps the location, cast and scripted outcome.",
+    segment.durationMinutes+" minutes of "+segment.kind.replaceAll("_"," ").toLowerCase()+
+    (weakPresentation.length?" puts extra pressure on "+weakPresentation.map(p=>p.name).join(", ")+".":".")+
+    " A shorter scene keeps the cast and intended outcome.",
     "Shorten scene to 10 min",{kind:"ANGLE_DURATION",minutes:10});
  }
  return null;

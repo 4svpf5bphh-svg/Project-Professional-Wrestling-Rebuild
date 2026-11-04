@@ -52,10 +52,15 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  // Standing terms cannot replace the long-standing rivalry dossier and
  // post-match direction choices from the original Programme desk.
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
  await page.locator(".ppw-programme-strategy > summary").click();
  await expect(page.getByRole("button",{name:"Choose direction"}).first()).toBeVisible();
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ const agreement=page.locator(".ppw-programme-standing");
+ if(!await agreement.getByRole("combobox",{name:"Match format for Alice"}).isVisible())
+  await agreement.locator("summary").click();
  await page.getByRole("combobox",{name:"Match format for Alice"}).selectOption("TAG");
  await page.getByRole("combobox",{name:"Permitted finish for Alice"}).selectOption("WIN_OR_PROTECTED_LOSS");
  await page.getByRole("spinbutton",{name:"Agreement weeks for Alice"}).fill("4");
@@ -71,6 +76,7 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  await page.locator(".ppw-programme-standing > summary").click();
  await expect(page.getByText(/Agreed · Through/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes","programmes"]);

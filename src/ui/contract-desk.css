@@ -175,3 +175,13 @@
  overflow-wrap:anywhere}
 .ppw-contract-cash-comparison[data-coverage="gap"]{border-color:#c88972}
 .ppw-contract-cash-comparison[data-coverage="gap"] strong{color:#ffe0bb}
+
+/* Clear preset choice states without changing the button footprint. */
+.ppw-contract-term-choice,.ppw-contract-term-choice[aria-pressed=true]{
+ box-sizing:border-box;border:2px solid #6b83a5!important;
+ border-radius:12px!important}
+.ppw-contract-term-choice[aria-pressed=true]{border-color:#ffe1a9!important}
+.ppw-contract-term-choice[aria-pressed=true]::before{
+ content:"✓ SELECTED";color:#fff4cb;font-size:10px;letter-spacing:.08em;font-weight:900}
+.ppw-contract-manager-take[data-level="watch"]{border:2px solid #e2a16f}
+.ppw-contract-manager-take[data-level="watch"] strong{color:#ffe1ad}

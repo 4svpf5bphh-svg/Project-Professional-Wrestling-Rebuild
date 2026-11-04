@@ -287,10 +287,13 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      ];
      for(const [title,value] of lines){const row=el("div","ppw-directory-affordability-row");
       row.append(el("span","",title),el("strong","",value));affordability.append(row);}
-     if(wageRoom!==null&&wageRoom<0||company.cashReserve!==null&&
-      reservedCash<company.cashReserve||postMargin!==null&&postMargin<0){
+     if(cashOnly<0||wageRoom!==null&&wageRoom<0||
+      company.cashReserve!==null&&reservedCash<company.cashReserve||
+      postMargin!==null&&postMargin<0){
       affordability.dataset.risk="true";
       affordability.append(el("p","ppw-directory-affordability-warning",
+       cashOnly<0?"The proposed contract and existing roster exceed today's cash "+
+       "without future income. Review the Talent Manager's recommendation.":
        "This offer exceeds a spending limit or your recurring income. "+
        "You can still propose it, but consider adjusting the terms."));
      }else affordability.dataset.risk="false";
@@ -305,9 +308,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
        weeklyGuarantee:guarantee,weeks,appearanceFee:appearance,dates,
        signingBonus:draft.bonus,cash:company.cash,cashReserve:company.cashReserve,
        weeklyGuarantees:company.weeklyGuarantees,
-       wageLimit:company.weeklyWageLimit,recurringMargin:baseline
+       wageLimit:company.weeklyWageLimit,recurringMargin:baseline,
+       existingRosterExposure:includesRoster?existing:0
       },new Set<StaffRole>(["TALENT_MANAGER"]));
       const concerns=messages.filter(x=>x.level==="WATCH").length;
+      adviser.open=concerns>0;
+      adviser.dataset.risk=concerns?"watch":"info";
       adviser.firstElementChild!.textContent=concerns?
        "Talent Manager · "+concerns+" concern"+(concerns===1?"":"s"):
        "Talent Manager · offer advice";
@@ -344,7 +350,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
    n=>{draft.bonus=n;pendingKey="";updateQuote();});
-  editor.append(fields,quote,affordability,adviser);
+  // Put the Talent Manager before the finance breakdown and submit action.
+  editor.append(fields,adviser,quote,affordability);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));

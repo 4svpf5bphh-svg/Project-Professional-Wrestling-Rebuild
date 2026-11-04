@@ -68,10 +68,8 @@ for(const conflicting of [false,true]){
   await page.goto("/#/planner");
   await page.getByRole("button",{name:"Edit card"}).click();
   await expect(page.locator(".ppw-card-booking")).toHaveAttribute("data-broadcast-package","primetime");
-  await page.locator(".ppw-card-broadcast-slot summary").first().click();
-  await expect(page.locator(".ppw-card-broadcast-slot .ppw-tv-frame")).toHaveAttribute("data-kind","match");
-  await expect(page.locator(".ppw-card-broadcast-slot .ppw-tv-red-label")).toHaveText("UP NEXT · MATCH");
-  await page.locator(".ppw-card-broadcast-slot summary").first().click();
+  // Results retains broadcast visuals; the work-in-progress card is text-first.
+  await expect(page.locator(".ppw-card-broadcast-slot")).toHaveCount(0);
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
   const dialog=page.getByRole("dialog",{name:"Edit match"});
   await dialog.locator(".ppw-winner-choice").nth(1).click();

@@ -937,7 +937,7 @@ test("Post-show creative direction follows the latest completed rivalry match wi
   }:{}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.locator(".ppw-programme-next > summary").click();
  await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
  await page.locator(".ppw-programme-strategy > summary").click();
@@ -956,6 +956,9 @@ test("Post-show creative direction follows the latest completed rivalry match wi
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
  expect(methods).not.toContain("save");
  expect(methods).not.toContain("results");
+ // Booking the next chapter is part of the Story overview, while
+ // Creative decisions and previous follow-up live in the Plan tab.
+ await page.getByRole("button",{name:"Story",exact:true}).click();
  await expect(page.getByRole("button",{name:"Book next chapter"})).toBeVisible();
 });
 

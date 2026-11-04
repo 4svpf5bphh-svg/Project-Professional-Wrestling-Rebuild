@@ -41,7 +41,6 @@ import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../d
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
-import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
 import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
@@ -1320,30 +1319,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     if(facts.childElementCount)card.append(facts);
    }
-   // The booking list stays compact. Players may expand a real, text-only
-   // match/segment broadcast graphic without opening its editing form.
-   if(view.broadcastPackage){
-    const activeView=view;
-    const graphic=el("details","ppw-card-broadcast-studio ppw-card-broadcast-slot") as HTMLDetailsElement;
-    const text=m?"TV match graphic":"TV segment graphic";
-    graphic.append(el("summary","",text));
-    graphic.ontoggle=()=>{
-     if(!graphic.open||graphic.querySelector(".ppw-tv-frame"))return;
-     const preview=m?createBroadcastPackageFrame({
-      style:activeView.broadcastPackage,kind:"MATCH",promotion:activeView.promotionName,
-      show:activeView.showName??"Weekly show",compact:true,
-      sideA:m.teams[0]?.filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & "),
-      sideB:m.teams.slice(1).flat().filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")
-     }):createBroadcastPackageFrame({
-      style:activeView.broadcastPackage,kind:"SEGMENT",promotion:activeView.promotionName,
-      show:activeView.showName??"Weekly show",compact:true,
-      segmentLabel:angleName,
-      segmentPerson:segment?[...segment.actors,...segment.targets]
-       .filter((p):p is PersonPick=>p!==null).map(selectedName).join(" · "):undefined});
-     if(preview)graphic.append(preview);
-    };
-    card.append(graphic);
-   }
+   // Broadcast treatments belong to the results/presentation experience,
+   // not the working booking card.
    // The movable card remains text-only. Portraits are reserved for the
    // completed Ringside results presentation.
    if(segment&&expanded===slotId){
@@ -1568,11 +1545,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       "Attacker first · rescuer second":"Wrestler being rescued":
       segment.kind==="INTERRUPTION"?role==="actors"?"Interrupter":"Speaker interrupted":
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
-      role==="actors"?"Initiator / featured wrestler":
+      role==="actors"?segment.kind==="INTERVIEW"?"Speaker":
+       ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"Attacker":
+       segment.kind==="CHALLENGE"?"Challenger":"Initiator / featured wrestler":
        segment.kind==="STABLE_EXIT"&&segment.creativeBeat?.kind==="STABLE_EXIT"&&
         ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure)?
          "Member being expelled":
-       ["PROMO","INTERVIEW"].includes(segment.kind)?"Wrestler being discussed (optional)":
+       segment.kind==="INTERVIEW"?"Subject (optional)":
+       segment.kind==="PROMO"?"Wrestler being discussed (optional)":
        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?
         "Target / victim":"Other person involved";
      section.append(el("h3","",heading));
@@ -1588,10 +1568,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       section.append(button("+ Add "+(role==="actors"?
        specialist?(segment.actors.length?"rescuer":"attacker"):
         segment.kind==="INTERRUPTION"?"interrupter":
-        segment.kind==="POST_MATCH_ASSAULT"?"attacker":"performer":
+        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"attacker":
+        segment.kind==="INTERVIEW"?"speaker":"performer":
        specialist?"person being rescued":
         segment.kind==="INTERRUPTION"?"speaker":
-        segment.kind==="POST_MATCH_ASSAULT"?"wrestler from the match":"target"),()=>{
+        segment.kind==="POST_MATCH_ASSAULT"?"wrestler from the match":
+        segment.kind==="INTERVIEW"?"subject":"target"),()=>{
        chooseSegmentTalent(slotId,role);
       },!mutable()||segment.actors.length+segment.targets.length>=30||
        (role==="actors"&&segment.actors.length>=SEGMENT_BOOKING_RULES[segment.kind].maxActors)||
@@ -2060,7 +2042,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(extra.open)openQuickExtras.add(slotId);
        else openQuickExtras.delete(slotId);
       };
-      const extraSummary=el("summary","","Additional options");
+      const extraSummary=el("summary","","Advanced match settings");
       // Avoid collapsing advanced choices on a fast iPhone selection. Native
       // <details> toggle events can arrive after edit() has re-rendered the
       // entire modal, so capture the click before that replacement.
@@ -2112,10 +2094,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const supported=compatibleStipulations(
          m.format==="MULTI_TEAM"?"MULTI_TEAM":
          ["TRIOS","FOUR_V_FOUR","FIVE_V_FIVE"].includes(m.format)?"LARGE_TEAM":m.format);
-        const common=new Set<MatchStipulation>([
-         "STANDARD","HARDCORE","STEEL_CAGE","LADDER",
-         "IRON_MAN","TWO_OUT_OF_THREE","FALLS_COUNT_ANYWHERE"]);
-        const stipulationGrid=el("div","ppw-guide-stipulation-grid");
+         const stipulationGrid=el("div","ppw-guide-stipulation-grid");
         const addStipulation=(container:HTMLElement,kind:MatchStipulation)=>{
          const spec=MATCH_STIPULATIONS.find(x=>x.value===kind)!;
          const selected=(m.stipulation??"STANDARD")===kind;
@@ -2127,42 +2106,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          choice.setAttribute("aria-pressed",String(selected));
          container.append(choice);
         };
-        supported.filter(x=>common.has(x)).forEach(s=>addStipulation(stipulationGrid,s));
+        supported.forEach(s=>addStipulation(stipulationGrid,s));
         guide.append(el("strong","ppw-guide-section-label","Match rules"),stipulationGrid);
-        if(supported.some(x=>!common.has(x))){
-         const more=document.createElement("details");
-         more.className="ppw-guide-other-rules";
-         more.open=!common.has(m.stipulation??"STANDARD");
-         more.append(el("summary","","More match types"));
-         const secondary=el("div","ppw-guide-stipulation-grid");
-         supported.filter(x=>!common.has(x)).forEach(s=>addStipulation(secondary,s));
-         more.append(secondary);guide.append(more);
-        }
         const spec=MATCH_STIPULATIONS.find(x=>x.value===(m.stipulation??"STANDARD"))!;
         const risk=stipulationInjuryRisk(spec.value);
         const context=el("div","ppw-guide-rules-brief");
         context.dataset.level=risk>=1.25?"watch":"info";
         context.append(el("strong","",risk>=1.25?
          "Higher physical risk":risk>1?"Elevated physical risk":"Standard physical risk"),
-         el("p","",spec.summary+" Injury exposure depends on the participants' "+
-          "condition, safety and the match length; ratings are not automatically improved."));
+         el("p","",spec.summary));
         guide.append(context);
        }else{
         const angleSetup=el("div","ppw-guide-angle-setup");
-        const selectedFields=[...essentials.children].filter(child=>{
-         const label=child.querySelector("[aria-label]")?.getAttribute("aria-label");
-         return label==="Creative direction"||label==="Angle type";
-        });
-        angleSetup.append(...selectedFields);
-        guide.append(el("p","ppw-booking-hint",
-         "Choose the on-screen moment. The cast, location, motivation and "+
-         "crew advice have their own screens."),angleSetup);
-        // Offer tappable angle choices without duplicating or replacing the
-        // existing validated Angle type control. Both edit one authoritative
-        // selected value, including purchased special moments.
-        const typeSelect=angleSetup.querySelector<HTMLSelectElement>(
+        // Preserve the original validated selectors as handlers, but show
+        // only tappable categories and scene choices to the player.
+        const goalSelect=essentials.querySelector<HTMLSelectElement>(
+         '[aria-label="Creative direction"]');
+        const typeSelect=essentials.querySelector<HTMLSelectElement>(
          '[aria-label="Angle type"]');
-        if(typeSelect&&typeSelect.options.length>1){
+        const goal=angleGoalFor(segment!.kind);
+        const categories=el("div","ppw-angle-category-tiles");
+        const categoryLabels:Record<AngleGoal,string>={
+         CHARACTER:"Promos & interviews",RIVALRY:"Conflict & attacks",
+         CHALLENGE:"Challenges",FACTION:"Alliances",TURN:"Turns",
+         ARRIVAL:"Debuts",VIDEO:"Video packages"
+        };
+        for(const category of ANGLE_STORY_GOALS){
+         const tile=button(categoryLabels[category.value],()=>{
+          if(!goalSelect||category.value===goal)return;
+          goalSelect.value=category.value;
+          goalSelect.dispatchEvent(new Event("change",{bubbles:true}));
+         },!mutable(),"ppw-angle-category-tile");
+         tile.setAttribute("aria-pressed",String(category.value===goal));
+         categories.append(tile);
+        }
+        angleSetup.append(categories);
+        if(typeSelect){
          const tiles=el("div","ppw-angle-type-tiles");
          for(const item of [...typeSelect.options]){
           const choice=button(item.textContent??item.value,()=>{
@@ -2173,9 +2152,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            (segment!.specialMoment??segment!.kind)));
           tiles.append(choice);
          }
-         guide.append(el("strong","ppw-guide-section-label",
-          "Or tap an angle type"),tiles);
+         angleSetup.append(el("strong","ppw-guide-section-label",
+          "Choose a scene"),tiles);
         }
+        guide.append(angleSetup);
        }
        guide.append(button("Continue · Select wrestlers",()=>{
         slotBookingSteps.set(slotId,"CAST");resetGuideScroll=true;render();
@@ -2185,8 +2165,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         // The player already made the What choice on screen one. Show a
         // concise reminder instead of repeating those dropdowns.
         const context=el("div","ppw-guide-angle-context");
-        context.append(el("strong","",angleName),
-         el("span","","Change the angle type using the Back control below."));
+        context.append(el("strong","",angleName));
         guide.append(context);
         const castingOptions=el("div","ppw-control-grid ppw-guide-casting-options");
         for(const candidate of [...essentials.children]){
@@ -2249,8 +2228,36 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       }else if(stage==="OUTCOME"){
        const suggestion=bookingChoicePanel(slotId);
        if(suggestion)guide.append(suggestion);
-       if(m)guide.append(essentials);
-       else{
+       if(m){
+        // A stipulation is already chosen on Setup; don't ask again.
+        for(const child of [...essentials.children]){
+         const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
+         if(label==="Stipulation"||child.classList.contains("ppw-stipulation-impact"))
+          child.remove();
+        }
+        const directions:[string,string][]=[
+         ["COMPETITIVE","Competitive"],["TECHNICAL","Technical"],
+         ["DOMINANT","Dominant"],["STORY","Storytelling"],
+         ["HIGH_RISK","Spectacle"],["SHOWCASE","Showcase"],
+         ["PROTECTIVE","Protective"],["EPIC","Epic"]
+        ];
+        // Eight existing simulation profiles are now editable by tap.
+        // The old duplicate Intent dropdown no longer belongs in Advanced.
+        extra.querySelector<HTMLElement>('[aria-label="Intent"]')
+         ?.closest(".ppw-field")?.remove();
+        const direction=el("div","ppw-guide-direction");
+        direction.append(el("strong","ppw-guide-section-label","Match direction"));
+        const choices=el("div","ppw-guide-direction-tiles");
+        for(const [value,label] of directions){
+         const pick=button(label,()=>setMatch(slotId,
+          changeMatchIntent(m,value as typeof m.intent)),!mutable(),
+          "ppw-guide-direction-tile");
+         pick.setAttribute("aria-pressed",String(m.intent===value));
+         choices.append(pick);
+        }
+        direction.append(choices);
+        guide.append(essentials,direction);
+       }else{
         // The original angle fields and server-validated callbacks are
         // preserved, but no longer appear as one undifferentiated form.
         // What and Who were chosen earlier. This screen is Where, Why
@@ -2268,10 +2275,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          segment!.kind==="POST_MATCH_ASSAULT";
         for(const child of [...essentials.children]){
          const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
-         if(label==="Creative direction"||label==="Angle type"){
-          if(existing)what.append(child);
-          continue;
-         }
+         if(label==="Creative direction"||label==="Angle type")continue;
          if(["Turn a complete tag team","After which match?","Faction"].includes(label)){
           if(existing)what.append(child);
           continue;
@@ -2283,15 +2287,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          else if(!child.classList.contains("ppw-angle-workflow-title"))
           how.append(child);
         }
-        if(physical)where.append(el("p","ppw-guide-angle-fact",
-         "Attack intensity and aftermath describe what viewers see. "+
-         "They do not automatically injure a wrestler."));
-        if(segment!.scene?.location==="VIDEO_SCREEN")
-         where.append(el("p","ppw-guide-angle-fact",
-          "This package is shown on the arena screens and broadcast."));
-        why.append(el("p","ppw-guide-angle-fact",
-         "This is your creative intention, not a guaranteed crowd response."));
-        if(segment!.programmeId){
+         if(segment!.programmeId){
          const linked=view.programmes.find(p=>p.programmeId===segment!.programmeId);
          if(linked)why.append(el("p","ppw-guide-angle-feud",
           "Continuing "+linked.label));
@@ -2317,7 +2313,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          guide.append(rights);
         }
        }
-       if(extra.childElementCount>1)guide.append(extra);
+       if(m){
+        const runIn=extraContent.querySelector<HTMLElement>(".ppw-run-in");
+        if(runIn)guide.append(runIn);
+        if(extra.childElementCount>1)guide.append(extra);
+       }else if(extraContent.childElementCount){
+        // No generic Additional Options trap for authored angles.
+        guide.append(extraContent);
+       }
        // A saved match approval is not an advanced preference. Keep the
        // authoritative consent action in sight alongside its result.
        if(m)for(const issue of other.filter(node=>
@@ -2344,10 +2347,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        guide.append(actions);
       }else{
        const brief=el("section","ppw-guide-staff-review");
-       brief.append(el("p","ppw-booking-hint",
-        "These are grounded pre-show observations, not promises about results. "+
-        "No card data is submitted until you save the running order."));
-       const overview=el("div","ppw-guide-booking-summary");
+        const overview=el("div","ppw-guide-booking-summary");
        if(m){
         overview.append(el("strong","",matchLabel(m)),
          el("p","",nice(m.plannedFinish)+" · "+
@@ -2421,10 +2421,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          for(const item of conditions.slice(4))rest.append(makeCondition(item));
          more.append(rest);brief.append(more);
         }
-        brief.append(el("p","ppw-guide-condition-disclaimer",
-         "Figures are the latest available show-week booking snapshot. "+
-         "They are not a diagnosis or a guaranteed match outcome."));
-       }
+        }
        const staff=slotNotes(slotId);
        brief.append(el("h4","","Your staff's assessment"));
        if(staff.length){
@@ -2440,8 +2437,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          brief.append(item);
         }
        }else brief.append(el("p","ppw-guide-reviewed-clear",
-        "No specific warnings surfaced from the available condition, "+
-        "duration and creative data. This is not a guarantee of safety or a strong rating."));
+        "No specific staff concerns on this booking."));
        if(m){
         const ids=new Set(assignedIds(m));
         const worked=view.programmes.filter(p=>{
