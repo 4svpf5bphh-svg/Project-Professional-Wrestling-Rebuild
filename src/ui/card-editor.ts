@@ -35,7 +35,7 @@ import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/progra
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
-import {matchStaffNotes,angleStaffNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
@@ -178,10 +178,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }));
  function slotNotes(slotId:string):StaffNote[]{
   const match=matches.get(slotId),segment=segments.get(slotId);
-  if(match)return matchStaffNotes(match,advisorPeople(),team());
-  if(!segment)return [];
-  const cast=view?.programmes.find(p=>p.programmeId===segment.programmeId)?.cast??[];
-  return angleStaffNotes(segment,advisorPeople(),team(),cast.map(p=>p.personId));
+  if(!match&&!segment)return [];
+  // Count completed tickets plus the booking being edited. Other unfinished
+  // wizards are not yet on the card and cannot create false staff warnings.
+  const activeMatches=[...matches.values()].filter(m=>
+   m.slotId===slotId||!inProgressWizards.has(m.slotId));
+  const activeSegments=[...segments.values()].filter(s=>
+   s.slotId===slotId||!inProgressWizards.has(s.slotId));
+  const people=advisorPeople(),staffed=team();
+  const workload=showWorkloadNotes(slotId,(match??segment)!,activeMatches,
+   activeSegments,people,staffed);
+  if(match)return [...workload,...matchStaffNotes(match,people,staffed)].slice(0,5);
+  const cast=view?.programmes.find(p=>p.programmeId===segment!.programmeId)?.cast??[];
+  return [...workload,...angleStaffNotes(segment!,people,staffed,
+   cast.map(p=>p.personId))].slice(0,5);
  }
  function advicePanel(slotId:string,notes:StaffNote[]){
   const block=el("details","ppw-card-advisor-notes") as HTMLDetailsElement;
@@ -537,6 +547,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  async function save(){
   if(!mutable()||!view||needsRevisionRefresh)return;
   try{
+   if(inProgressWizards.size)
+    throw new Error("Complete or cancel the open booking before saving the running order.");
    const incomplete=order.map((slotId,index)=>({index,slotId,match:matches.get(slotId),angle:segments.get(slotId)}))
     .find(x=>x.match&&!matchCastingReadiness(x.match).complete||
      x.angle&&!angleCastingReadiness(x.angle).complete);
@@ -2444,12 +2456,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   foot.setAttribute("role","group");
   foot.setAttribute("aria-label","Save and confirm show");
   const needsMatch=committedMatches.length===0;
+  const wizardOpen=inProgressWizards.size>0;
   foot.append(button(saving?"Saving…":dirty?"Save changes":"Save card",()=>{void save();},
-    !mutable()||needsRevisionRefresh||needsMatch,"ppw-primary"));
+    !mutable()||needsRevisionRefresh||needsMatch||wizardOpen,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
    view.ready?"Confirmed":"Confirm show",
    ()=>{void confirm();},
-   !mutable()||dirty||view.ready||needsMatch,"ppw-confirm"));
+   !mutable()||dirty||view.ready||needsMatch||wizardOpen,"ppw-confirm"));
   if(needsMatch&&committedSegments.length){
    const guidance=el("small","ppw-card-save-hint",
     "Add and complete a match to enable saving. An angle-only show cannot be submitted.");
