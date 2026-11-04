@@ -494,7 +494,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   render();void findTalent("");
  }
  function chooseSegmentTalent(slotId:string,role:"actors"|"targets"){
-  picker={slotId,side:0,member:0,role,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
+  picker={slotId,side:role==="actors"?0:1,member:0,role,query:"",cursor:null,
+   items:[],sort:"POPULARITY",division:"ALL"};
   const linked=view?.programmes.find(p=>p.programmeId===segments.get(slotId)?.programmeId);
   picker.showOther=!linked||!linked.cast?.length;
   render();if(!linked)void findTalent("");
@@ -2012,23 +2013,39 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         });
         angleSetup.append(...selectedFields);
         guide.append(el("p","ppw-booking-hint",
-         "Choose the kind of on-screen moment first. PPW will ask who, where "+
-         "and why as you develop the scene."),angleSetup);
+         "Choose the on-screen moment. The cast, location, motivation and "+
+         "crew advice have their own screens."),angleSetup);
+        // Offer tappable angle choices without duplicating or replacing the
+        // existing validated Angle type control. Both edit one authoritative
+        // selected value, including purchased special moments.
+        const typeSelect=angleSetup.querySelector<HTMLSelectElement>(
+         '[aria-label="Angle type"]');
+        if(typeSelect&&typeSelect.options.length>1){
+         const tiles=el("div","ppw-angle-type-tiles");
+         for(const item of [...typeSelect.options]){
+          const choice=button(item.textContent??item.value,()=>{
+           typeSelect.value=item.value;
+           typeSelect.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable(),"ppw-angle-type-tile");
+          choice.setAttribute("aria-pressed",String(item.value===
+           (segment!.specialMoment??segment!.kind)));
+          tiles.append(choice);
+         }
+         guide.append(el("strong","ppw-guide-section-label",
+          "Or tap an angle type"),tiles);
+        }
        }
        guide.append(button("Continue · Select wrestlers",()=>{
         slotBookingSteps.set(slotId,"CAST");resetGuideScroll=true;render();
        },!mutable(),"ppw-primary ppw-guide-next"));
       }else if(stage==="CAST"){
        if(!m){
-        // Decide the kind of scene before casting: an attack needs a victim,
-        // a team turn can cast both partners, and a promo does not.
-        const typeChoices=el("div","ppw-control-grid ppw-guide-angle-kind");
-        for(const candidate of [...essentials.children]){
-         const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
-         if(label==="Creative direction"||label==="Angle type")
-          typeChoices.append(candidate);
-        }
-        guide.append(typeChoices);
+        // The player already made the What choice on screen one. Show a
+        // concise reminder instead of repeating those dropdowns.
+        const context=el("div","ppw-guide-angle-context");
+        context.append(el("strong","",angleName),
+         el("span","","Change the angle type using the Back control below."));
+        guide.append(context);
         const castingOptions=el("div","ppw-control-grid ppw-guide-casting-options");
         for(const candidate of [...essentials.children]){
          const label=candidate.querySelector("[aria-label]")?.getAttribute("aria-label");
@@ -2079,7 +2096,49 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         resetGuideScroll=true;render();
        },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
       }else if(stage==="OUTCOME"){
-       guide.append(essentials);
+       if(m)guide.append(essentials);
+       else{
+        // The original angle fields and server-validated callbacks are
+        // preserved, but no longer appear as one undifferentiated form.
+        // What and Who were chosen earlier. This screen is Where, Why
+        // and how the scripted scene plays out.
+        const where=el("section","ppw-guide-angle-section");
+        const why=el("section","ppw-guide-angle-section");
+        const how=el("section","ppw-guide-angle-section");
+        where.append(el("h4","","Where does it happen?"));
+        why.append(el("h4","","Why is this on the show?"));
+        how.append(el("h4","","How does it unfold?"));
+        const physical=segment!.kind==="ATTACK"||
+         segment!.kind==="POST_MATCH_ASSAULT";
+        for(const child of [...essentials.children]){
+         const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
+         if(label==="Creative direction"||label==="Angle type"||
+          ["Turn a complete tag team","After which match?","Faction"].includes(label))
+          continue;
+         if(["Area","Exact location","Attack intensity","Visible aftermath"].includes(label))
+          where.append(child);
+         else if(label==="Storytelling purpose"||child.classList.contains("ppw-angle-purpose-disclaimer"))
+          why.append(child);
+         else if(!child.classList.contains("ppw-angle-workflow-title"))
+          how.append(child);
+        }
+        if(physical)where.append(el("p","ppw-guide-angle-fact",
+         "Attack intensity and aftermath describe what viewers see. "+
+         "They do not automatically injure a wrestler."));
+        if(segment!.scene?.location==="VIDEO_SCREEN")
+         where.append(el("p","ppw-guide-angle-fact",
+          "This package is shown on the arena screens and broadcast."));
+        why.append(el("p","ppw-guide-angle-fact",
+         "This is your creative intention, not a guaranteed crowd response."));
+        if(segment!.programmeId){
+         const linked=view.programmes.find(p=>p.programmeId===segment!.programmeId);
+         if(linked)why.append(el("p","ppw-guide-angle-feud",
+          "Continuing "+linked.label));
+        }
+        for(const block of [where,why,how]){
+         if(block.childElementCount>1)guide.append(block);
+        }
+       }
        if(m&&view.programmes.some(p=>p.cast?.length&&
         p.cast.every(person=>assignedIds(m).includes(person.personId))))
         guide.append(el("p","ppw-guide-winner-reminder",
@@ -2344,6 +2403,60 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     sheet.append(storyBox);
    }
    const matchPicker=matches.get(current.slotId);
+   const anglePicker=(current.role==="actors"||current.role==="targets")?
+    segments.get(current.slotId):undefined;
+   if(anglePicker){
+    const roles=el("div","ppw-picker-side-tabs");
+    roles.setAttribute("role","group");
+    roles.setAttribute("aria-label","Select angle role");
+    const options=(SEGMENT_BOOKING_RULES[anglePicker.kind].allowTargets?
+     ["actors","targets"]:["actors"]) as ("actors"|"targets")[];
+    for(const role of options){
+     const assigned=anglePicker[role].length;
+     const tab=button((role==="actors"?"Initiator / featured":"Target / recipient")+
+      " · "+assigned+" cast",()=>{
+      current.role=role;current.side=role==="actors"?0:1;render();
+     },false,"ppw-picker-side-tab");
+     tab.setAttribute("aria-pressed",String(current.role===role));roles.append(tab);
+    }
+    sheet.append(roles);
+    const sources=el("div","ppw-picker-source-tabs");
+    for(const [key,title] of [
+     ["ALL","Roster"],["FEUDS","Feuds"],["TEAMS","Teams"],
+     ["TRIOS","Trios"],["FACTIONS","Factions"]
+    ] as const){
+     const tab=button(title,()=>{
+      current.source=key;current.sourceId=undefined;
+      if(key==="FACTIONS")void loadStableChoices();
+      render();
+     },false,"ppw-picker-source-tab");
+     tab.setAttribute("aria-pressed",String((current.source??"ALL")===key));
+     sources.append(tab);
+    }
+    sheet.append(sources);
+    const source=current.source??"ALL";
+    if(source!=="ALL"){
+     const units=el("div","ppw-picker-unit-list");
+     const options=source==="FEUDS"?
+      (view?.programmes??[]).filter(p=>p.cast?.length)
+       .map(p=>[p.programmeId,p.label] as const):
+      source==="TEAMS"?eligibleTeams().map(t=>[t.teamId,t.name] as const):
+      source==="TRIOS"?eligibleTrios().map(t=>[t.trioId,t.name] as const):
+      (stableChoices??[]).map(t=>[t.stableId,t.name] as const);
+     for(const [id,name] of options){
+      const option=button(name,()=>{
+       current.sourceId=current.sourceId===id?undefined:id;render();
+      },false,"ppw-picker-unit");
+      option.setAttribute("aria-pressed",String(current.sourceId===id));
+      units.append(option);
+     }
+     if(!options.length)units.append(el("p","ppw-muted",
+      source==="FACTIONS"&&stableChoices===null?
+       "Loading factions only when requested…":
+       "No eligible "+source.toLowerCase()+" are available to filter by."));
+     sheet.append(units);
+    }
+   }
    if(matchPicker&&!current.role){
     const sides=el("div","ppw-picker-side-tabs");
     sides.setAttribute("role","group");
@@ -2448,7 +2561,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    sort.setAttribute("aria-label","Sort loaded wrestlers");
    // Each side remembers its own roster filters. A heel selected for Side A
    // must not leave Side B accidentally restricted to heels too.
-   const matchDivision=Boolean(matchPicker&&!current.role);
+   const matchDivision=Boolean((matchPicker&&!current.role)||anglePicker);
    const currentDivision=matchDivision?
     current.divisionBySide?.get(current.side)??"ALL":current.division;
    const setDivision=(value:"ALL"|"MEN"|"WOMEN")=>{
@@ -2463,7 +2576,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     value=>setDivision(value as "ALL"|"MEN"|"WOMEN"));
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
-   if(matchPicker&&!current.role){
+   if((matchPicker&&!current.role)||anglePicker){
     const chips=el("div","ppw-picker-chips");
     const flags=current.chipsBySide?.get(current.side)??new Set<string>();
     for(const [key,label,conflict] of [
@@ -2510,8 +2623,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const groupMembers=new Set<string>(source==="FEUDS"?
     (selectedProgramme?.cast??view?.programmes.flatMap(p=>p.cast??[])??[])
      .map(p=>p.personId):
-    source==="TEAMS"?eligibleTeams().flatMap(t=>t.members.map(p=>p.personId)):
-    source==="TRIOS"?eligibleTrios().flatMap(t=>t.members.map(p=>p.personId)):
+    source==="TEAMS"?eligibleTeams().filter(t=>!current.sourceId||
+     t.teamId===current.sourceId).flatMap(t=>t.members.map(p=>p.personId)):
+    source==="TRIOS"?eligibleTrios().filter(t=>!current.sourceId||
+     t.trioId===current.sourceId).flatMap(t=>t.members.map(p=>p.personId)):
     source==="FACTIONS"?(selectedFaction?.members??stableChoices?.flatMap(x=>x.members??[])??[])
      .map(p=>p.personId):[]);
    const flags=current.chipsBySide?.get(current.side)??new Set<string>();
