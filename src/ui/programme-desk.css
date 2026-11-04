@@ -447,3 +447,44 @@
  .ppw-programme-switch{min-width:172px!important;width:172px!important}
  .ppw-programme-broadcast{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr)!important}
  #game .ppw-programme-desk .ppw-programme-versus{width:30px;height:30px;min-width:30px;font-size:12px!important}}
+
+/* Phase 26: full-width one-tap rivalry rows, never narrow columns on iPhone. */
+.ppw-programme-desk .ppw-programme-switcher{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ overflow:visible!important;scroll-snap-type:none!important;gap:6px!important;
+ min-width:0;width:100%;padding:0;margin:0 0 8px}
+.ppw-programme-desk .ppw-programme-switch{
+ box-sizing:border-box;width:100%!important;min-width:0!important;
+ display:grid!important;grid-template-columns:54px minmax(0,1fr)!important;
+ grid-template-rows:auto auto!important;gap:3px 10px!important;
+ min-height:54px;padding:9px 10px!important;scroll-snap-align:none;
+ border-radius:12px!important}
+.ppw-programme-desk .ppw-programme-switch-faces{width:54px;min-width:54px}
+.ppw-programme-desk .ppw-programme-switch>strong{
+ display:block;min-width:0;max-width:100%;font-size:14px;
+ line-height:1.3;overflow-wrap:break-word;word-break:normal;
+ white-space:normal;grid-column:2}
+.ppw-programme-desk .ppw-programme-switch-sub{
+ min-width:0;grid-column:2;font-size:11px;line-height:1.3;
+ overflow-wrap:break-word;word-break:normal}
+.ppw-programme-desk .ppw-programme-view-tabs{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.ppw-programme-desk .ppw-programme-view-tab{
+ font-size:clamp(10px,2.7vw,13px);min-width:0;white-space:normal}
+.ppw-programme-archive-open{width:100%;min-width:0;display:grid;gap:5px;
+ text-align:left;padding:13px;margin:7px 0;border-radius:12px;
+ border:1px solid #547795;background:#1c304a;color:#fff2df;font-size:14px;
+ font-weight:850;white-space:normal;overflow-wrap:break-word}
+.ppw-programme-archive-open>small{font-size:11px;color:#b6cfe2}
+.ppw-programme-retrospective{min-width:0}
+.ppw-programme-retrospective>.ppw-programme-action{min-height:46px}
+.ppw-programme-retrospective>.ppw-programme-archive-card{display:grid;
+ min-width:0;gap:10px;padding:14px;border:1px solid #587b97;border-radius:14px}
+.ppw-programme-retrospective>.ppw-programme-archive-card>header{
+ display:grid;gap:6px;overflow-wrap:break-word}
+.ppw-programme-retrospective>.ppw-programme-archive-card>header strong{
+ color:#ffddb2;font-size:18px}
+@media(max-width:350px){
+ .ppw-programme-desk .ppw-programme-switch{grid-template-columns:48px minmax(0,1fr)!important}
+ .ppw-programme-desk .ppw-programme-view-tab{font-size:10px;padding:6px 2px}
+}

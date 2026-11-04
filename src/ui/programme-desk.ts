@@ -42,7 +42,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  let selectedProgrammeId:string|null=null;
- let activeLane:"PAYOFF"|"HISTORY"|"STORY"="STORY";
+ let activeLane:"PAYOFF"|"HISTORY"|"STORY"|"PLAN"="STORY";
+ let selectedArchiveId:string|null=null;
  let creationOpen=false,focusResolved=false;
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
@@ -212,6 +213,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const finaleLane=element("div","ppw-programme-lane");
    const historyLane=element("div","ppw-programme-lane");
    const creativeLane=element("div","ppw-programme-lane");
+   const planLane=element("div","ppw-programme-lane");
    const header=element("div","ppw-programme-broadcast");
    const side=(members:typeof p.sideA)=>{
     const column=element("div","ppw-programme-broadcast-side");
@@ -263,7 +265,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     " · "+(scheduled.status==="SUBMITTED"?"Confirmed":"Draft")));
    if(port.openPlanner&&view.canEdit)glance.append(button(
     scheduled?"Review booked chapter":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
-   panel.append(glance);
+   creativeLane.append(glance);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
     [p.sideA.map(x=>x.name).join(" & ")+" WINS",p.sideAWins],
@@ -409,7 +411,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
     b.slotId.localeCompare(a.slotId))[0];
    const advice=element("section","ppw-programme-story-actions");
-   advice.append(element("h3","","Next chapter"));
+   advice.append(element("h3","","Plan next"));
    if(p.plannedActivity?.length)
     advice.append(element("p","ppw-programme-booked-short",
      "Already on the card · "+p.plannedActivity[0]!.showName+
@@ -452,7 +454,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }
     advice.append(strategy);
    }
-   creativeLane.append(advice);
+   planLane.append(advice);
 
    if(latestMatch||p.latestFollowUp){
     const direction=element("details","ppw-programme-next") as HTMLDetailsElement;
@@ -490,7 +492,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      "Your choice becomes a continuing creative thread; a future certified chapter records whether you followed through."));
     // Historic response can be inspected, not presented as another primary action.
     if(port.openPlanner)direction.append(button("Go to card",()=>port.openPlanner?.(p.programmeId)));
-    creativeLane.append(direction);
+    planLane.append(direction);
    }
    if((p.eligibleCreativePeople?.length??0)||(p.creativeAgreements?.length??0)){
     const terms=element("details","ppw-programme-standing") as HTMLDetailsElement;
@@ -584,6 +586,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    finaleLane.append(retire);
    const views=[
     {key:"STORY",label:"Story",node:creativeLane},
+    {key:"PLAN",label:"Plan Next",node:planLane},
     {key:"PAYOFF",label:p.finale?"Payoff ●":"Payoff",node:finaleLane},
     {key:"HISTORY",label:"History",node:historyLane}
    ] as const;
@@ -599,8 +602,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    list.append(panel);
   }
   if(!active.length)list.append(element("p","ppw-muted","No active rivalries. Start a story below."));
-  root.append(list);
-  if(view.canEdit){
+  if(!selectedArchiveId)root.append(list);
+  if(view.canEdit&&!selectedArchiveId){
    const creation=element("section","ppw-programme-create");
    creation.append(element("h2","","Start a programme"),
     element("p","ppw-muted","Choose one or two wrestlers or teams on each side."));
@@ -641,13 +644,31 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   const concluded=view.programmes.filter(p=>p.status!=="ACTIVE").slice(0,15);
   if(concluded.length){
    const history=element("section","ppw-programme-history");
-   history.append(element("h2","","Recently concluded"));
-   for(const p of concluded){
+   if(selectedArchiveId){
+    history.classList.add("ppw-programme-retrospective");
+    history.append(button("← Back to programmes",()=>{
+     selectedArchiveId=null;render();}),element("h2","","Rivalry retrospective"));
+   }else{
+    history.append(element("h2","","Concluded rivalries"));
+    for(const item of concluded){
+     const label=item.sideA.map(x=>x.name).join(" & ")+" vs "+
+      item.sideB.map(x=>x.name).join(" & ");
+     const open=button(label,()=>{
+      selectedArchiveId=item.programmeId;render();
+     },working);
+     open.className="ppw-programme-archive-open";
+     open.append(element("small","",item.endedWeekIndex===null?"Concluded":
+      "Closed · Year "+(Math.floor(item.endedWeekIndex/52)+1)+
+      " Week "+(item.endedWeekIndex%52+1)));
+     history.append(open);
+    }
+   }
+   for(const p of concluded.filter(x=>x.programmeId===selectedArchiveId)){
     const aName=p.sideA.map(x=>x.name).join(" & ");
     const bName=p.sideB.map(x=>x.name).join(" & ");
-    const archive=document.createElement("details");
+    const archive=document.createElement("article");
     archive.className="ppw-programme-archive-card";
-    const heading=document.createElement("summary");
+    const heading=document.createElement("header");
     heading.append(element("strong","",aName+" vs "+bName),
      element("small","",p.endedWeekIndex==null?"Completed rivalry":
       "Closed · Year "+(Math.floor(p.endedWeekIndex/52)+1)+

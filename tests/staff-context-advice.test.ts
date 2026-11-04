@@ -182,3 +182,22 @@ test("a 30-minute interview prompts a creative review even with a strong speaker
  assert.ok(!angleStaffNotes({...interview,durationMinutes:10},[opponentB],crew)
   .some(n=>n.title==="Long talking segment"));
 });
+
+test("Talent Manager flags cash-only shortfall for oversized annual deals even below wage cap",()=>{
+ const small=contractStaffNotes({
+  weeklyGuarantee:100,weeks:12,appearanceFee:100,dates:9,signingBonus:0,
+  cash:5_000_000,cashReserve:250_000,weeklyGuarantees:2_000,
+  wageLimit:50_000,recurringMargin:null,
+  existingRosterExposure:1_000_000,pendingOfferExposure:0
+ },crew);
+ assert.ok(!small.some(n=>n.title.includes("cash")));
+ const large=contractStaffNotes({
+  weeklyGuarantee:1000,weeks:52,appearanceFee:900_000,dates:40,signingBonus:0,
+  cash:5_000_000,cashReserve:250_000,weeklyGuarantees:2_000,
+  wageLimit:50_000,recurringMargin:null,
+  existingRosterExposure:1_000_000,pendingOfferExposure:200_000
+ },crew);
+ assert.ok(large.some(n=>n.level==="WATCH"&&
+  n.title==="Unsustainable on current cash"&&n.message.includes("shortfall")));
+ assert.ok(!large.some(n=>n.title==="Offer fits the current plan"));
+});

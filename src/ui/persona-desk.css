@@ -382,3 +382,17 @@
  font-weight:600;line-height:1.48;color:#1c304b;white-space:normal}
 .ppw-messenger-thread .ppw-backstage-reply-choice:focus-visible{
  outline:3px solid #0a84ff!important;outline-offset:2px}
+
+/* Dossier → Talk Backstage: exit within the iPhone safe touch area. */
+html[data-ppw-screen="backstage"] #game .ppw-backstage-thread-exit{
+ position:sticky;top:0;z-index:10;
+ padding:calc(7px + env(safe-area-inset-top)) 12px 7px;
+ background:#f3f5fa;border-bottom:1px solid #dce3ee;min-height:54px}
+html[data-ppw-screen="backstage"] #game .ppw-backstage-thread-exit .ppw-backstage-exit{
+ min-height:44px;display:inline-flex;align-items:center;
+ max-width:100%;margin:0;color:#1461c5;background:transparent;
+ border:0;font-weight:800}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread .ppw-backstage-phone-header{
+ top:0;min-height:54px;scroll-margin-top:env(safe-area-inset-top)}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
+ padding-top:0!important}

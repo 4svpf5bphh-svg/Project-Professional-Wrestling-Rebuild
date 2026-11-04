@@ -1152,3 +1152,39 @@ body>.ppw-card-edit-shade .ppw-booking-choice-action:disabled{opacity:.55}
 @media(max-width:350px){
  body>.ppw-card-edit-shade .ppw-booking-choice-action{width:100%}
 }
+
+/* Phase 26: consistent selection geometry and accessible booking actions. */
+body>.ppw-card-edit-shade :is(.ppw-guide-format-tile,
+ .ppw-guide-stipulation-tile,.ppw-guide-direction-tile,
+ .ppw-angle-category-tile,.ppw-angle-type-tile){
+ box-sizing:border-box;min-width:0;min-height:44px;border-radius:11px!important;
+ border:2px solid #5e7c99;padding:8px 7px;font-size:12px;line-height:1.25;
+ white-space:normal;overflow-wrap:normal;word-break:normal;text-align:center}
+body>.ppw-card-edit-shade :is(.ppw-guide-format-tile,
+ .ppw-guide-stipulation-tile,.ppw-guide-direction-tile,
+ .ppw-angle-category-tile,.ppw-angle-type-tile)[aria-pressed="true"]{
+ border-color:#7decd8;background:#185950;color:#fff;
+ box-shadow:inset 0 0 0 1px #a5fbe8}
+body>.ppw-card-edit-shade .ppw-guide-stipulation-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+body>.ppw-card-edit-shade .ppw-angle-category-tiles{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+body>.ppw-card-edit-shade .ppw-angle-type-tiles{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+body>.ppw-card-edit-shade .ppw-guide-direction{display:grid;gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-direction-tiles{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+body>.ppw-card-edit-shade .ppw-guide-actions{
+ position:sticky;bottom:0;z-index:5;padding:11px 0 max(9px,env(safe-area-inset-bottom));
+ background:linear-gradient(180deg,#13263d,#13263d 80%);
+ display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-actions>button{
+ min-width:0;min-height:47px;white-space:normal;text-align:center}
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-guide-next{
+ position:sticky;bottom:0;z-index:5;min-height:48px;width:100%;
+ margin-top:10px}
+body>.ppw-card-edit-shade .ppw-guide-extra>summary{min-height:44px}
+@media(max-width:350px){
+ body>.ppw-card-edit-shade .ppw-guide-direction-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body>.ppw-card-edit-shade .ppw-guide-stipulation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

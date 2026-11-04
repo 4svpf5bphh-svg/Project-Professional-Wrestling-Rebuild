@@ -200,10 +200,27 @@ export function showWorkloadNotes(slotId:string,current:EditorMatch|EditorSegmen
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;
  cash:number;cashReserve:number|null;weeklyGuarantees:number;
- wageLimit:number|null;recurringMargin:number|null},
+ wageLimit:number|null;recurringMargin:number|null;
+ existingRosterExposure?:number;pendingOfferExposure?:number},
  staffed:ReadonlySet<StaffRole>):StaffNote[]{
  if(!staffed.has("TALENT_MANAGER"))return [];
  const notes:StaffNote[]=[];
+ // Use the full cash-only envelope, not just the current weekly wage cap.
+ const planned=input.weeks*input.weeklyGuarantee+
+  input.dates*input.appearanceFee+input.signingBonus;
+ const outstanding=Math.max(0,input.existingRosterExposure??0)+
+  Math.max(0,input.pendingOfferExposure??0);
+ const cashRoom=Math.max(0,input.cash-(input.cashReserve??0)-outstanding);
+ if(Number.isFinite(planned)&&planned>cashRoom){
+  const severe=planned>input.cash||planned>cashRoom*2;
+  notes.push(note("TALENT_MANAGER","WATCH",
+   severe?"Unsustainable on current cash":"Cash-only funding gap",
+   "This offer could cost $"+Math.round(planned).toLocaleString("en-GB")+
+   " across the term, but only $"+Math.round(cashRoom).toLocaleString("en-GB")+
+   " of today's cash is unallocated after signed commitments, other offers and reserve. "+
+   "That is a $"+Math.round(planned-cashRoom).toLocaleString("en-GB")+
+   " shortfall without future income. Reduce the term, dates or payments."));
+ }
  const room=input.wageLimit===null?null:
   input.wageLimit-input.weeklyGuarantees-input.weeklyGuarantee;
  if(room!==null&&room<0)notes.push(note("TALENT_MANAGER","WATCH",
@@ -225,5 +242,5 @@ export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  if(!notes.length)notes.push(note("TALENT_MANAGER","INFO","Offer fits the current plan",
   "No immediate spending-plan breach is visible. Acceptance still depends on "+
   "the wrestler's interest, other commitments and the terms you propose."));
- return notes.slice(0,3);
+ return notes.slice(0,4);
 }
