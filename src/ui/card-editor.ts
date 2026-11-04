@@ -35,6 +35,7 @@ import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/progra
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {previewMatchCreativeTerms} from "./card-creative-term-preview.js";
 import {forecastBookingAirtime} from "./card-airtime-preview.js";
+import {bookingChoiceAdvice,applyBookingAdjustment} from "../domain/booking-choice-advice.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
@@ -200,6 +201,44 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const cast=view?.programmes.find(p=>p.programmeId===segment!.programmeId)?.cast??[];
   return [...workload,...angleStaffNotes(segment!,people,staffed,
    cast.map(p=>p.personId))].slice(0,5);
+ }
+ /** One optional next action at a time, using the same locally authored
+  * card and already-loaded named crew. Reopen/revision re-evaluates it.
+  * A staff suggestion never applies by itself or calls Neon.
+  */
+ function bookingChoicePanel(slotId:string):HTMLElement|null{
+  const current=matches.get(slotId)??segments.get(slotId);
+  if(!current)return null;
+  const programme="teams" in current?null:
+   view?.programmes.find(p=>p.programmeId===current.programmeId);
+  const suggestion=bookingChoiceAdvice(current,advisorPeople(),team(),{
+   programmeCast:programme?.cast?.map(p=>p.personId)??[],
+   hasProgrammes:Boolean(view?.programmes.length)
+  });
+  if(!suggestion)return null;
+  const colleague=view?.advisers?.find(p=>p.role===suggestion.role);
+  const panel=el("section","ppw-booking-choice-panel");
+  panel.dataset.level=suggestion.level.toLowerCase();
+  panel.append(el("span","ppw-booking-choice-role",
+   colleague?.name??(suggestion.role==="HOUSE"?"House safety":
+    nice(suggestion.role))),
+   el("strong","",suggestion.title),
+   el("p","",suggestion.message));
+  panel.append(button(suggestion.actionLabel,()=>{
+   if(!mutable())return;
+   if(suggestion.adjustment.kind==="BACK_TO_CAST"){
+    slotBookingSteps.set(slotId,"CAST");
+    resetGuideScroll=true;render();return;
+   }
+   const latest=matches.get(slotId)??segments.get(slotId);
+   if(!latest)return;
+   try{
+    const updated=applyBookingAdjustment(latest,suggestion.adjustment);
+    if("teams" in updated)setMatch(slotId,updated);
+    else editSegment(latest as EditorSegment,updated);
+   }catch(e){error=errorText(e);render();}
+  },!mutable(),"ppw-booking-choice-action"));
+  return panel;
  }
  function advicePanel(slotId:string,notes:StaffNote[]){
   const block=el("details","ppw-card-advisor-notes") as HTMLDetailsElement;
@@ -2208,6 +2247,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         resetGuideScroll=true;render();
        },!mutable()||!castReadiness.complete,"ppw-primary ppw-guide-next"));
       }else if(stage==="OUTCOME"){
+       const suggestion=bookingChoicePanel(slotId);
+       if(suggestion)guide.append(suggestion);
        if(m)guide.append(essentials);
        else{
         // The original angle fields and server-validated callbacks are
@@ -2290,7 +2331,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
        const urgent=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       if(urgent.length){
+       if(urgent.length&&!suggestion){
         const caution=el("div","ppw-guide-crew-pulse");
         caution.append(el("strong","","Staff noticed "+urgent.length+
          " potential concern"+(urgent.length===1?"":"s")));
@@ -2472,6 +2513,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          " wrestler"+(fees.alreadyBooked===1?" is":"s are")+
          " already counted on this show's live card."));
        guide.append(brief);
+       const decision=bookingChoicePanel(slotId);
+       if(decision)guide.append(decision);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Revise script",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");resetGuideScroll=true;render();
