@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch} from "../src/ui/card-editor-model.js";
 import {newEditorSegment} from "../src/ui/card-segment-model.js";
-import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,contractStaffNotes}
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,contractStaffNotes}
  from "../src/domain/staff-context-advice.js";
 import type {StaffRole} from "../src/domain/world-staff.js";
 
@@ -133,4 +133,40 @@ test("promos, pre-recorded packages and unrelated scenes do not inflate physical
  assert.equal(showWorkloadNotes("physical",alsoPhysical,[match],[promo,alsoPhysical],
   [opponentA,opponentB],crew).length,1,
   "A physical scene is still recognised alongside nonphysical scenes");
+});
+
+test("Road Agent flags verified tag partnership strain and improvement without inventing animosity",()=>{
+ const match={...newEditorMatch("tag","TAG"),teams:[
+  [{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}],
+  [{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}]]};
+ const people=[
+  {...opponentA,workingConnections:[{personId:"b",professionalTrust:37,
+   familiarity:22,lastChangeType:"STRAIN" as const}]},
+  {...opponentB,workingConnections:[]},
+  {personId:"c",name:"Shelley",workingConnections:[{personId:"d",
+   professionalTrust:65,familiarity:28,lastChangeType:"IMPROVEMENT" as const}]},
+  {personId:"d",name:"Sabin",workingConnections:[]}
+ ];
+ const notes=matchPartnershipNotes(match,people,crew);
+ assert.equal(notes.length,2);
+ assert.equal(notes[0]!.role,"ROAD_AGENT");
+ assert.equal(notes[0]!.level,"WATCH");
+ assert.match(notes[0]!.message,/Samoa Joe and Mistico/);
+ assert.match(notes[0]!.message,/not evidence of personal animosity/i);
+ assert.equal(notes[1]!.level,"INFO");
+ assert.match(notes[1]!.message,/professional partnership has improved/);
+ assert.deepEqual(matchPartnershipNotes(match,people,new Set<StaffRole>()),[]);
+ assert.deepEqual(matchPartnershipNotes({...match,format:"SINGLES"},people,crew),[]);
+});
+test("opponent relationships and in-ring skills never imply teammate chemistry",()=>{
+ const match={...newEditorMatch("tag","TAG"),teams:[
+  [{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}],
+  [{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}]]};
+ const people=[
+  {personId:"a",name:"A",workingConnections:[{personId:"c",professionalTrust:20,
+   familiarity:40,lastChangeType:"STRAIN" as const}]},
+  {personId:"b",name:"B"},{personId:"c",name:"C"},{personId:"d",name:"D"}];
+ assert.deepEqual(matchPartnershipNotes(match,people,crew),[]);
+ assert.deepEqual(matchPartnershipNotes(match,[{personId:"a",name:"A",inRingQuality:99},
+  {personId:"b",name:"B",inRingQuality:100}],crew),[]);
 });
