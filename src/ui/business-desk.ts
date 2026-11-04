@@ -5,7 +5,6 @@ import {commercialPartnerBrand} from "./commercial-partner-identity.js";
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
-import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -191,9 +190,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
-   const weeklyIncome=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
-   const fixedWeekly=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
-    view.weeklyStaffPayroll;
+   const incomeKnown=view.weeklyMediaIncome!==null&&view.weeklyMediaIncome!==undefined&&
+    view.weeklySponsorIncome!==null&&view.weeklySponsorIncome!==undefined;
+   const costsKnown=view.weeklyFixedOverhead!==null&&view.weeklyFixedOverhead!==undefined;
+   const weeklyIncome=incomeKnown?view.weeklyMediaIncome+view.weeklySponsorIncome:null;
+   const fixedWeekly=costsKnown?view.weeklyFixedOverhead+view.weeklyGuarantees+
+    view.weeklyStaffPayroll:null;
    const bank=el("section","ppw-finance-first");
    bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
     el("h2","","Financial position"));
@@ -208,19 +210,27 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("small","",help));return tile;
    };
    snapshot.append(
-    item("Weekly income",money(weeklyIncome),"Broadcast + sponsorship"),
-    item("Weekly commitments",money(fixedWeekly),"Wrestlers, staff & operations"),
-    item("Weekly operating room",view.recurringMargin===null?"Not available":
-     money(view.recurringMargin),"Before your live shows"),
-    item("Roster future cost",typeof view.remainingRosterPotential!=="number"?
-     "Not yet reported":money(view.remainingRosterPotential),
-     "All remaining wages and possible appearances"));
+    item("Weekly income",weeklyIncome===null?"Not reported":money(weeklyIncome),
+     "Confirmed network + sponsor"),
+    item("Weekly commitments",fixedWeekly===null?"Not reported":money(fixedWeekly),
+     "Wages, staff and overhead"),
+    item("Operating room",view.recurringMargin===null?"Not reported":
+     money(view.recurringMargin),"Before show income and costs"),
+    item("Last week net",view.lastWeeklyNet===null?"Not settled":
+     money(view.lastWeeklyNet),"After the last weekly settlement"));
    bank.append(snapshot);
    if(typeof view.remainingRosterPotential==="number"){
-    const split=el("p","ppw-finance-commitments",
-     "Of the roster estimate, "+money(view.remainingRosterGuaranteed)+
-      " is guaranteed wages. Appearance fees only apply to dates worked.");
-    bank.append(split);
+    const commitment=document.createElement("details");
+    commitment.className="ppw-finance-roster-exposure";
+    commitment.append(el("summary","","Remaining roster commitments · "+
+     money(view.remainingRosterPotential)));
+    commitment.append(el("p","ppw-finance-commitments",
+     money(view.remainingRosterGuaranteed)+
+      " is guaranteed wages; up to "+
+      money(Math.max(0,view.remainingRosterPotential-view.remainingRosterGuaranteed))+
+      " is appearance fees only if every remaining date is used. These amounts"+
+      " are payable over the remaining contracts, not owed today."));
+    bank.append(commitment);
    }
    if(view.debt>0)bank.append(el("p","ppw-finance-debt",
     "Outstanding debt · "+money(view.debt)));
@@ -244,23 +254,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("h2","","Set your spending limits"),
     el("p","ppw-business-muted",
      "Protect working capital and decide how much to commit to talent. Limits guide your decisions; they do not move cash or cancel a booking."));
-   const planBank=el("div","ppw-business-budget-bank");
-   planBank.append(el("span","","Cash in the bank"),
-    el("strong","",money(view.cash)));
-   budget.append(planBank);
-   const compass=el("section","ppw-business-compass");
-   compass.append(el("h3","","What the company can afford"),
-    el("p","ppw-business-muted","These are guaranteed weekly commitments, before uncertain ticket sales and show costs."));
-   const costs=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+view.weeklyStaffPayroll;
-   const receipts=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
-   for(const [label,value] of [
-    ["Guaranteed broadcast + sponsor income",receipts],
-    ["Overhead + talent + staff each week",-costs],
-    ["Recurring room before live shows",receipts-costs]
-   ] as const){const line=el("div","ppw-business-line");
-    line.append(el("span","",label),el("strong",tone(value),money(value)));compass.append(line);}
-   if(port.openContracts)compass.append(button("Review wrestler contracts →",()=>port.openContracts?.()));
-   budget.append(compass);
+   // Keep one authoritative money snapshot above. Budgets are optional player limits,
+   // not extra accounts or funds reserved by the server.
    const fields=el("div","ppw-business-budget-fields");
    const preview=el("div","ppw-business-budget-preview");
    const save=button("Save spending plan",()=>void saveSpendingPlan());
@@ -292,68 +287,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.disabled=spendingBusy;field.append(input);fields.append(field);
    }
    budget.append(fields,preview);
-   const scenario=document.createElement("details");
-   scenario.className="ppw-business-signing-check";
-   scenario.append(el("summary","","Can I afford another wrestler?"));
-   scenario.append(el("p","ppw-business-muted",
-    "Try proposed terms here before offering a contract. This is a comparison, not an offer or guaranteed acceptance."));
-   const inputs=el("div","ppw-business-signing-inputs");
-   const status=el("p","ppw-business-signing-result");
-   const projections:{weeks:number;dates:number;weekly:number;fee:number;bonus:number}={
-    weeks:10,dates:5,weekly:0,fee:0,bonus:0
-   };
-   const update=()=>{
-    const forecast=forecastContractCost({
-     weeks:projections.weeks,dates:projections.dates,
-     weeklyGuarantee:projections.weekly,appearanceFee:projections.fee,
-     signingBonus:projections.bonus
-    });
-    const baseline=receipts-costs;
-    const activePlan=spendingDraft??plan;
-    const wageRoom=activePlan.weeklyWageLimit-view!.weeklyGuarantees-projections.weekly;
-    const remainingCash=view!.cash-projections.bonus;
-    const risk=wageRoom<0||remainingCash<activePlan.cashReserve||
-     baseline-projections.weekly<0;
-    status.replaceChildren();
-    status.append(el("strong","ppw-business-fullterm-cost",
-     "Planned full-term cost · "+money(forecast.plannedFullTermCost)));
-    const breakdownText=el("span","ppw-business-fullterm-detail",
-     money(forecast.guaranteedWages)+" wages across "+projections.weeks+
-     " weeks + "+money(forecast.plannedAppearanceFees)+" across "+
-     projections.dates+" planned appearances + "+
-     money(projections.bonus)+" one-time bonus.");
-    status.append(breakdownText,el("span","ppw-business-fullterm-detail",
-     "Average planned cost: "+money(forecast.averageWeeklyCost)+"/week. "+
-     "After signing bonus: "+money(remainingCash)+" cash; "+
-     (wageRoom>=0?money(wageRoom)+" wage headroom.":money(-wageRoom)+
-      " above your wage limit.")));
-    status.append(el("small","ppw-business-fullterm-caveat",
-     "Assumes all purchased dates are used. Appearance fees are only charged "+
-     "on booked shows, not when signing; ticket sales and other variable costs "+
-     "aren't forecast here."));
-    if(risk)status.append(el("small","ppw-business-fullterm-warning",
-     "Review your wage plan, cash reserve or recurring income before committing."));
-    status.dataset.risk=String(risk);
-   };
-   for(const [label,key,min,max] of [
-    ["Contract weeks","weeks",1,52],
-    ["Planned appearances","dates",0,104],
-    ["Weekly guarantee","weekly",0,1000000000],
-    ["Appearance fee per show","fee",0,1000000000],
-    ["Signing bonus","bonus",0,1000000000]
-   ] as const){
-    const field=el("label","ppw-business-budget-field");
-    field.append(el("span","",label));const input=document.createElement("input");
-    input.type="number";input.inputMode="numeric";input.min=String(min);
-    input.max=String(max);input.value=String(projections[key]);
-    input.oninput=()=>{
-     const value=Math.min(max,Math.max(min,Math.floor(Number(input.value)||0)));
-     projections[key]=value;
-     update();
-    };
-    field.append(input);inputs.append(field);
-   }
-   scenario.append(inputs,status);budget.append(scenario);update();
+   // Recruiting shows the same package-cost and affordability model in context.
+   // A second five-field contract calculator here was duplicating that decision.
+   if(port.openRoster)budget.append(button("Explore wrestler signings",()=>port.openRoster?.()));
    if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
     "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
@@ -362,17 +298,17 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    if(spendingExpanded)root.append(budget);
    // Context from the existing workspace, never a projection of future
    // bookings, ticket sales or the next World settlement.
-   const overview=el("section","ppw-business-pulse");
+   const overview=document.createElement("details");overview.className="ppw-business-pulse";
    const risk=view.financialDistress,margin=view.recurringMargin;
    overview.dataset.health=risk==="DISTRESSED"||risk==="CRISIS"?"warning":
     risk==="WATCH"?"watch":"normal";
-   overview.append(el("span","ppw-business-kicker","THE COMPANY / THIS WEEK"),
-    el("h2","","Your trading position"));
+   overview.append(el("summary","","Financial outlook"));
    const headline=margin===null?
     "Recurring operating margin is not configured yet.":
     margin>=0?
      "Recurring income covers regular commitments by "+money(margin)+" per week.":
      "Regular commitments exceed recurring income by "+money(-margin)+" per week.";
+   if(risk==="DISTRESSED"||risk==="CRISIS"||risk==="WATCH")overview.open=true;
    overview.append(el("strong","ppw-business-pulse-headline",headline));
    const context=risk==="CRISIS"||risk==="DISTRESSED"?
     "The company is under sustained financial pressure. Review spending and show returns before committing to new costs.":
@@ -389,10 +325,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated"),
     metric("BROADCAST REACH",view.mediaReach==null?"Not reported":
      Math.round(view.mediaReach).toLocaleString("en-GB")),
-    metric("BASE WEEKLY OVERHEAD",view.weeklyFixedOverhead===null?
-     "Not configured":money(view.weeklyFixedOverhead)),
-    metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":
-     money(view.lastWeeklyNet)));
+    metric("CURRENT TIER",view.tier??"Not reported"),
+    metric("WEEKLY CONTRACT WAGES",money(view.weeklyGuarantees)));
    root.append(cards);
    const flow=el("section","ppw-business-panel");
    flow.append(el("h2","","Weekly commitments"),
