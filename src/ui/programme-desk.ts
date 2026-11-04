@@ -1,7 +1,7 @@
 /** Mobile PPW feud desk. Uses server-validated original programme sides.
  * No World-wide data, auto-submission, or mandatory flow.
  */
-import type {readProgrammeWorkspace,ProgrammePayoff} from "../db/programme-workspace.js";
+import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
@@ -366,6 +366,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp
    });
    const weekIndex=(view.year-1)*52+view.week-1;
+   const weekIndex=(view.year-1)*52+view.week-1;
    if(p.recentActivity.length){
     const history=document.createElement("details");
     history.className="ppw-programme-history-timeline";
@@ -390,11 +391,6 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }
     history.append(entries);historyLane.append(history);
    }
-   // Optional creative guidance from the already-loaded immutable rivalry
-   // record. Nothing is auto-booked or requested from the model.
-    const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
-    b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
-    b.slotId.localeCompare(a.slotId))[0];
    const advice=element("section","ppw-programme-story-actions");
    advice.append(element("h3","","Plan next"));
    if(p.plannedActivity?.length)

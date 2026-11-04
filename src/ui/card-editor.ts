@@ -1051,7 +1051,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const label=el("div","");
    if(m&&committedOrder.slice(committedOrder.indexOf(slotId)+1)
     .every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
-   const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
+   const angleName=segment?(segment.kind==="INTERFERENCE"?"Ringside disruption":
+    ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle"):"";
    const anglePeople=segment?[
     segment.actors.length?
      (segment.kind==="RESCUE"?"Attacker / rescuer: ":

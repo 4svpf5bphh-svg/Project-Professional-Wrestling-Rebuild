@@ -63,6 +63,10 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
  else if(staffed.has("REFEREE")&&highRisk)
   notes.push(note("REFEREE","INFO","Additional match-risk briefing",
    "This stipulation increases the baseline injury risk. The referee cannot eliminate that risk."));
+ else if(!staffed.has("REFEREE")&&riskyFinish&&safetyConcern.length)
+  notes.push(note("HOUSE","WATCH","Risky finish and safety concerns",
+   safetyConcern.map(p=>p.name).join(", ")+
+   " has a low safety rating for the planned finish. Consider a safer finish."));
  // A critical safety fact is shown even when a company has not hired a doctor.
  if(!staffed.has("MEDICAL")&&poorCondition.length&&highRisk)
   notes.push(note("HOUSE","WATCH","High-risk booking with tired talent",
