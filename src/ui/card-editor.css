@@ -1061,3 +1061,41 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field s
   grid-template-columns:repeat(2,minmax(0,1fr));
  }
 }
+
+/* Phase 25Q: the editable running order prioritises actual names, direction,
+   timing and a visible tap target. Portraits remain on Ringside results. */
+.ppw-editor .ppw-card{border-left:3px solid #5682bb}
+.ppw-editor .ppw-angle-card{border-left-color:#b18ae4}
+.ppw-editor .ppw-main-event{border-left-color:#ffc75b}
+.ppw-editor .ppw-card-open-zone{min-width:0;flex:1;cursor:pointer;
+ border-radius:8px;padding:4px 1px;outline-offset:3px}
+.ppw-editor .ppw-card-open-zone:focus-visible{outline:2px solid #83e2f7}
+.ppw-editor .ppw-card-open-zone:hover strong{color:#c8f9ff}
+.ppw-editor .ppw-card-lineup{display:grid;gap:4px;margin-top:5px}
+.ppw-editor .ppw-card-lineup-names{display:block;color:#fff4df;
+ font-size:13px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-lineup-context{display:block;color:#b7d5e5;
+ font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-matchup{gap:8px;padding:11px 13px;
+ background:#152a40;border-top:1px solid #3c5677;
+ border-bottom:1px solid #3c5677}
+.ppw-editor .ppw-card-matchup-side{display:flex;flex:1 1 0;min-width:0;
+ flex-wrap:wrap;gap:4px 6px;justify-content:center}
+.ppw-editor .ppw-card-person{display:inline;flex:initial;min-width:0;
+ max-width:none;color:#f5f6ff;font-size:clamp(12px,3.5vw,15px);
+ font-weight:850;line-height:1.35;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-person+.ppw-card-person:before{
+ content:" & ";color:#9fb8d2}
+.ppw-editor .ppw-card-versus{font-size:12px;color:#ffc97c;
+ font-weight:950;flex:none}
+.ppw-editor .ppw-card-multi-lineup{font-size:12px;line-height:1.5}
+.ppw-editor .ppw-card-booked-facts{display:flex;flex-wrap:wrap;gap:6px;
+ padding:8px 11px}
+.ppw-editor .ppw-card-booked-facts span{font-size:11px;color:#daf0fc;
+ padding:5px 8px;border:1px solid #4b7591;border-radius:7px;
+ background:#183b50;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-editor .ppw-card-matchup{padding:8px 9px}
+ .ppw-editor .ppw-card-person{font-size:12px}
+ .ppw-editor .ppw-card-booked-facts span{font-size:10px}
+}

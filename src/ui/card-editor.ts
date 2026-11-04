@@ -16,8 +16,7 @@ import {ANGLE_STORY_GOALS,angleGoalFor,anglesForGoal,firstAngleFor,angleDirectio
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
-import {createWrestlerCard,wrestlerInitials} from "./wrestler-card.js";
-import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {createWrestlerCard} from "./wrestler-card.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,angleCastStageReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
@@ -727,17 +726,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(!loading)root.append(button("Retry",()=>{void load();}));
    return;
   }
-  const castReady=[...matches.values()].filter(x=>matchCastingReadiness(x).complete).length+
-   [...segments.values()].filter(x=>angleCastingReadiness(x).complete).length;
+  // A wizard is not on the card until Complete. Its provisional selections
+  // must not silently change visible slot counts, show-time or payroll.
+  const committedOrder=order.filter(id=>!inProgressWizards.has(id));
+  const committedMatches=committedOrder.flatMap(id=>
+   matches.has(id)?[matches.get(id)!]:[]);
+  const committedSegments=committedOrder.flatMap(id=>
+   segments.has(id)?[segments.get(id)!]:[]);
+  const castReady=committedMatches.filter(x=>matchCastingReadiness(x).complete).length+
+   committedSegments.filter(x=>angleCastingReadiness(x).complete).length;
   // The run-down already shows match/angle minutes. Repeating six pill counters
   // adds noise on an iPhone. Show only the state that affects the next action.
   const state=el("p","ppw-card-status-line");
-  const missing=Math.max(0,order.length-castReady);
+  const missing=Math.max(0,committedOrder.length-castReady);
   state.dataset.state=dirty?"UNSAVED":view.ready?"CONFIRMED":
    missing?"NEEDS_ATTENTION":"READY";
   state.append(el("strong","",dirty?"Unsaved changes":
    view.ready?"Show confirmed":
-   !order.length?"Start building your card":
+   !committedOrder.length?"Start building your card":
    missing?missing+" slot"+(missing===1?" needs":"s need")+" attention":
    "Card ready to confirm"));
   if(dirty||missing)state.append(el("span","",dirty&&missing?
@@ -759,7 +765,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focus.append(actions);root.append(focus);
   }
   // One concise crew shortcut; individual notes live inside the relevant slot.
-  const allNotes=order.flatMap(id=>slotNotes(id).map(n=>({id,n})));
+  const allNotes=committedOrder.flatMap(id=>slotNotes(id).map(n=>({id,n})));
   if(allNotes.some(item=>item.n.level==="WATCH")){
    const compact=el("details","ppw-card-crew-strip") as HTMLDetailsElement;
    compact.open=openAdvisorNotes.has("overview");
@@ -775,7 +781,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     el("span","ppw-card-crew-cta","Review"));
    compact.append(summary);
    const content=el("div","ppw-card-crew-list");
-   for(const id of order){
+   for(const id of committedOrder){
     const issues=allNotes.filter(x=>x.id===id&&x.n.level==="WATCH");
     if(!issues.length)continue;
     const slot=order.indexOf(id)+1;
@@ -839,8 +845,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   // Match timing is already authored and available in memory. Present only a
   // truthful partial estimate: angles and entrances have their own air-time.
-  const matchMinutes=[...matches.values()].reduce((n,m)=>n+m.plannedLengthMinutes,0);
-  const angleMinutes=[...segments.values()].reduce((n,a)=>n+a.durationMinutes,0);
+  const matchMinutes=committedMatches.reduce((n,m)=>n+m.plannedLengthMinutes,0);
+  const angleMinutes=committedSegments.reduce((n,a)=>n+a.durationMinutes,0);
   const usedMinutes=matchMinutes+angleMinutes;
   const airtime=el("section","ppw-card-airtime");
   const clock=el("div","ppw-card-airtime-heading");
@@ -868,11 +874,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     "Very little time left for entrances, breaks and commentary."));
   root.append(airtime);
    const participation=[
-    ...[...matches.values()].flatMap(m=>[
+    ...committedMatches.flatMap(m=>[
      ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
      ...(m.interference?[m.interference.personId]:[])
     ]),
-    ...[...segments.values()].filter(s=>s.kind!=="VIDEO_PACKAGE")
+    ...committedSegments.filter(s=>s.kind!=="VIDEO_PACKAGE")
      .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
    ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
@@ -1015,25 +1021,45 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    card.dataset.bookingSlotId=slotId;
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
-   if(m&&order.slice(i+1).every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
+   if(m&&committedOrder.slice(committedOrder.indexOf(slotId)+1)
+    .every(id=>!matches.has(id)))card.classList.add("ppw-main-event");
    const angleName=segment?ANGLE_TYPES.find(x=>x.value===segment.kind)?.label??"Angle":"";
    const anglePeople=segment?[
-    segment.actors.length?"Featuring: "+segment.actors.map(p=>selectedName(p)).join(", "):"",
-    segment.targets.length?"With: "+segment.targets.map(p=>selectedName(p)).join(", "):""
+    segment.actors.length?
+     (segment.kind==="RESCUE"?"Attacker / rescuer: ":
+      ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"Attacker: ":
+      segment.kind==="INTERRUPTION"?"Interrupter: ":"Featuring: ")+
+      segment.actors.map(selectedName).join(", "):"",
+    segment.targets.length?
+     (segment.kind==="RESCUE"?"Rescued: ":
+      ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"Victim: ":
+      segment.kind==="INTERRUPTION"?"Interrupted: ":"Target: ")+
+      segment.targets.map(selectedName).join(", "):""
    ].filter(Boolean).join(" · "):"";
    const selectedSpectacle=segment?.specialMoment?
     specialMomentBySku(segment.specialMoment):null;
    const angleDetails=segment?[
     ...(selectedSpectacle?["SPECIAL · "+selectedSpectacle.label]:[]),
     creativeSummary(segment.creativeBeat)].filter(Boolean).join(" · "):"";
+   const headline=m?(m.stipulation&&m.stipulation!=="STANDARD"?
+    MATCH_STIPULATIONS.find(s=>s.value===m.stipulation)?.label??"Match":
+    FORMATS.find(f=>f.value===m.format)?.label??"Match"):angleName;
    label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
-    el("strong","",m?(m.stipulation&&m.stipulation!=="STANDARD"?
-     MATCH_STIPULATIONS.find(s=>s.value===m.stipulation)?.label??"Match":
-     FORMATS.find(f=>f.value===m.format)?.label??"Match"):angleName),
-    ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]),
-    el("small","ppw-card-lineup",m?matchSubtitle(m):
-      [anglePeople,segment?.scene?angleSceneLabel(segment.scene.location):"",angleDetails].filter(Boolean).join(" · ")||
-       "Choose the wrestlers for this moment"));
+    el("strong","",headline),
+    ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]));
+   const lineup=el("small","ppw-card-lineup");
+   if(m)lineup.append(el("span","ppw-card-lineup-context",matchSubtitle(m)));
+   else{
+    lineup.append(el("span","ppw-card-lineup-names",
+     anglePeople||"Choose the wrestlers for this moment"));
+    lineup.append(el("span","ppw-card-lineup-context",[
+     segment?.scene?angleSceneLabel(segment.scene.location):"",
+     segment?.scene?angleSceneLabel(segment.scene.purpose):"",
+     ...angleDetails.split(" · ").filter(Boolean),
+     segment?.durationMinutes+" min"
+    ].filter(Boolean).join(" · ")));
+   }
+   label.append(lineup);
    const status=m?matchCastingReadiness(m):segment?angleCastingReadiness(segment):null;
    if(status){
     const indicator=el("span","ppw-booking-readiness",status.label);
@@ -1051,11 +1077,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      label.append(badge);
     }
    }
-   bar.append(button(expanded===slotId?"▴":"▾",()=>{
+   const toggleBooking=()=>{
     expanded=expanded===slotId?null:slotId;render();
     if(segment&&expanded===slotId&&specialOwned===null&&port.specialMoments)
      void loadSpecialMoments();
-   },false,"ppw-expand"),label);
+   };
+   // The full text summary is a touch target: players should not have to
+   // hit a tiny chevron to edit the completed match or angle.
+   label.classList.add("ppw-card-open-zone");
+   label.setAttribute("role","button");
+   label.setAttribute("tabindex","0");
+   label.setAttribute("aria-label","Edit "+(m?"match":"angle")+" in slot "+(i+1)+
+    " · "+headline);
+   label.onclick=toggleBooking;
+   label.onkeydown=event=>{
+    if(event.key==="Enter"||event.key===" "){
+     event.preventDefault();toggleBooking();
+    }
+   };
+   bar.append(button(expanded===slotId?"▴":"▾",toggleBooking,
+    false,"ppw-expand"),label);
    const arrows=el("div","ppw-actions");
    arrows.setAttribute("role","group");
    arrows.setAttribute("aria-label","Reorder "+(m?"match":"angle")+" in slot "+(i+1));
@@ -1164,19 +1205,38 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
    bar.append(arrows);card.append(bar);
-   if(m&&m.format!=="BATTLE_ROYAL"&&m.teams.flat().some(Boolean)){
+   if(m&&m.teams.flat().some(Boolean)){
     const matchup=el("div","ppw-card-matchup");
     if(m.teams.length<=2)for(const [sideIndex,side] of m.teams.entries()){
      if(sideIndex)matchup.append(el("span","ppw-card-versus","VS"));
      const group=el("div","ppw-card-matchup-side");
      for(const person of side.slice(0,2))if(person)group.append(cardIdentity(person));
-     if(side.length>2)group.append(el("span","ppw-card-extra-people","+"+(side.length-2)));
+     if(side.length>2)group.append(el("span","ppw-card-extra-people",
+      "+"+(side.length-2)+" more"));
      if(!side.some(Boolean))group.append(el("span","ppw-muted","Choose wrestlers"));
      matchup.append(group);
-    }else matchup.append(el("span","ppw-card-multi-lineup",
-     m.teams.map(side=>side.filter((p):p is PersonPick=>p!==null)
-      .map(selectedName).join(" & ")).filter(Boolean).join("  VS  ")));
+    }else{
+     const entrants=m.teams.map(side=>side.filter((p):p is PersonPick=>p!==null)
+      .map(selectedName).join(" & ")).filter(Boolean);
+     matchup.append(el("span","ppw-card-multi-lineup",
+      m.format==="BATTLE_ROYAL"?
+       entrants.slice(0,4).join(" · ")+
+        (entrants.length>4?" · +"+(entrants.length-4)+" more entrants":""):
+       entrants.join("  VS  ")));
+    }
     card.append(matchup);
+   }
+   if(m&&matchCastingReadiness(m).complete){
+    const facts=el("div","ppw-card-booked-facts");
+    const winner=m.teams[m.winnerSide]?.filter(
+     (person):person is PersonPick=>person!==null).map(selectedName).join(" & ");
+    if(winner)facts.append(el("span","","Planned winner · "+winner));
+    if(m.championshipId){
+     const title=view.championships.find(c=>c.championshipId===m.championshipId);
+     facts.append(el("span","","Title match · "+(title?.name??"Championship")));
+    }
+    if(m.tournamentId)facts.append(el("span","","Tournament bout"));
+    if(facts.childElementCount)card.append(facts);
    }
    // The booking list stays compact. Players may expand a real, text-only
    // match/segment broadcast graphic without opening its editing form.
@@ -2712,16 +2772,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
  }
  function cardIdentity(pick:PersonPick):HTMLElement{
-  const name=selectedName(pick);
-  const item=el("span","ppw-card-person");
-  const portrait=el("span","ppw-card-person-face",wrestlerInitials(name));
-  const photo=createWrestlerPortrait(name,80,pick.personId);
-  if(photo){
-   photo.alt="";photo.loading="lazy";photo.onerror=()=>photo.remove();
-   portrait.append(photo);
-  }
-  item.append(portrait,el("span","ppw-card-person-name",name));
-  return item;
+  // The booking card is an editable running order, not the Ringside results.
+  // Keep the full name legible instead of competing miniature portraits.
+  return el("span","ppw-card-person",selectedName(pick));
  }
  function sideLabel(index:number){return String.fromCharCode(65+index);}
  void load();
