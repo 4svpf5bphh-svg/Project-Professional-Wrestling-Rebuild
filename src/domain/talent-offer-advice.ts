@@ -45,7 +45,7 @@ export function recommendTalentOffer(person:TalentOfferProfile,
  const base=Math.max(500,person.marketWeeklyValue);
  // Staff insight scales estimation error. Strong managers are much closer
  // to the recommendation's evidence-centred wage; never reveal real utility.
- const error=stableNoise(person.personId,manager.staffId)*
+ const error=stableNoise(person.personId,"negotiation")*
   (100-manager.insight)/100*.37;
  const estimate=clamp(base*interestMultiplier[person.interest]*(1+error),
   base*.45,base*1.85);
