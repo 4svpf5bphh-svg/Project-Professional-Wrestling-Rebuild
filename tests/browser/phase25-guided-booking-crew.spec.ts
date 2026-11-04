@@ -318,6 +318,9 @@ test("390px: match and physical angle share show workload advice and are saved t
  await angle.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await angle.getByRole("button",{name:"+ Add performer"}).click();
  picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await expect(picker.locator(".ppw-picker-overlap")).toHaveCount(2);
+ await expect(picker.locator(".ppw-picker-overlap").first())
+  .toContainText("Appearance fee counted once");
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.locator(".ppw-wrestler-card").first().click();
  await angle.getByRole("button",{name:"+ Add target"}).click();

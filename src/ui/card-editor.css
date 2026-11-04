@@ -1105,3 +1105,10 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field s
 .ppw-editor .ppw-card-save-hint{grid-column:1/-1;padding:8px 10px;
  border-radius:9px;border:1px solid #b99562;background:#3c3430;
  color:#ffe8c4;font-size:12px;line-height:1.45;font-weight:750}
+
+/* A second on-card appearance is legal for storyline casting, not a
+   duplicate contract charge. Explain it beside the selectable wrestler. */
+.ppw-picker-overlap{font-size:11px;line-height:1.45;
+ margin:6px 0 10px;padding:9px 10px;border-radius:9px;
+ background:#203b49;border:1px solid #6696a4;color:#daf0f0;
+ overflow-wrap:anywhere}

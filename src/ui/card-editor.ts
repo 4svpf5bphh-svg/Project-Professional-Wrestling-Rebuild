@@ -2818,6 +2818,24 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       (current.role==="actors"||current.role==="targets"?"ALREADY IN SCENE":
        current.role==="RUN_IN"?"IN THIS MATCH":"ALREADY BOOKED"):label,
      disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
+    if(anglePicker&&candidate.available&&!taken){
+     // Scene casting is intentionally allowed after a match. Make that
+     // freedom clear before the user selects the performer, without
+     // inventing another fee or silently removing an existing booking.
+     const inMatch=[...matches.values()].some(m=>
+      !inProgressWizards.has(m.slotId)&&
+      [...assignedIds(m),...(m.interference?[m.interference.personId]:[])]
+       .includes(candidate.personId));
+     const inScene=[...segments.values()].some(s=>s.slotId!==anglePicker.slotId&&
+      !inProgressWizards.has(s.slotId)&&s.kind!=="VIDEO_PACKAGE"&&
+      [...s.actors,...s.targets].some(p=>p.personId===candidate.personId));
+     if(inMatch||inScene)
+      entry.append(el("p","ppw-picker-overlap",
+       inMatch?"Already in a match on this card · Can also work this scene. "+
+        "Appearance fee counted once; physical workload reviewed by staff.":
+        "Already in another live scene · You can book another scene; "+
+        "physical workload will be reviewed by staff."));
+    }
     if(port.openProfile)entry.append(button("View full wrestler profile",()=>{
      const overlay=el("div","ppw-profile-overlay");
      overlay.setAttribute("role","dialog");
