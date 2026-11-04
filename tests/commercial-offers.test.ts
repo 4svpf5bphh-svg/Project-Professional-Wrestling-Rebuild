@@ -17,7 +17,7 @@ test("commercial deals require evidence and never materialise from missing Genes
 test("one earned broadcaster tradeoff and sensible sponsorship, with capped initial choices",()=>{
  const options=commercialOffers(settled);
  assert.deepEqual(options.map(x=>x.code),[
-  "BROADCAST_STABLE","BROADCAST_GROWTH","SPONSOR_LOCAL"
+  "BROADCAST_STABLE","BROADCAST_GROWTH","SPONSOR_LOCAL","SPONSOR_GEAR"
  ]);
  assert.equal(options[0]!.weeklyIncome,11200);
  assert.equal(options[0]!.reachIncrease,0);
@@ -25,7 +25,7 @@ test("one earned broadcaster tradeoff and sensible sponsorship, with capped init
  assert.equal(options[1]!.reachIncrease,0);
  assert.equal(options[2]!.weeklyIncome,2160);
  assert.equal(options[2]!.reachIncrease,0);
- assert.deepEqual(options.map(x=>x.termWeeks),[26,26,13]);
+ assert.deepEqual(options.map(x=>x.termWeeks),[26,26,13,26]);
 });
 test("major terms require sustained genuine results and national standing",()=>{
  const strong={...settled,tier:"NATIONAL",completedShows:10,averageCrowd:78};

@@ -47,19 +47,19 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.goto("/#/business");
  await page.getByRole("button",{name:"Deals"}).click();
  await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
- await expect(page.getByText("Audience-first streaming")).toBeVisible();
+ await expect(page.getByText("VibeFlix")).toBeVisible();
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
- await expect(page.getByText("+15 audience reach")).toBeVisible();
+ await expect(page.getByText("+15 distribution reach")).toBeVisible();
  expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.dismiss());
- await page.getByRole("button",{name:"Sign agreement"}).click();
+ await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  expect(methods).toEqual(["business"]);
  page.once("dialog",dialog=>void dialog.accept());
- await page.getByRole("button",{name:"Sign agreement"}).click();
+ await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
- await expect(page.getByText(/26 weeks remaining/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Sign agreement"})).toHaveCount(0);
+ await expect(page.getByText(/26 weeks left on this agreement/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);

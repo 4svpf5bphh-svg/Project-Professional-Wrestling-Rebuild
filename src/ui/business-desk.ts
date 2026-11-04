@@ -665,7 +665,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      el("strong","",latest?.audience?.householdRating!==null&&latest?
       latest.audience!.householdRating!.toFixed(1)+" · "+latest.name:
       "Awaiting a certified TV broadcast"));
-    if(view.averageTvRating!==null&&view.recentTvEpisodes)
+    if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
      audience.append(el("small","",
       view.recentTvEpisodes+" recent episodes · "+view.averageTvRating.toFixed(1)+
       " average household rating"));
@@ -713,7 +713,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
      money(deal.weeklyIncome)+" weekly guarantee"));
     item.append(el("small","ppw-commercial-status",
      Math.max(0,deal.endWeekIndex-now+1)+" weeks left on this agreement"));
-    if(deal.kind==="BROADCAST"&&deal.airingDay!==null&&deal.airingHour!==null)
+    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number")
      item.append(el("span","ppw-commercial-slot",
       "Your broadcast slot · "+(day[deal.airingDay-1]??"Weekly")+
        " at "+String(deal.airingHour).padStart(2,"0")+":00"));
@@ -727,9 +727,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     .filter(([code])=>code.startsWith(commercialKind+"_"));
    for(const [code,identity] of brands){
     if(current.some(d=>d.offerCode===code))continue;
-    const reserved=view.partnerInventory.find(d=>d.offerCode===code);
+    const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
     const offer=view.commercialOffers.find(d=>d.code===code);
-    const qualified=view.commercialQualified.find(d=>d.code===code);
+    const qualified=(view.commercialQualified??view.commercialOffers).find(d=>d.code===code);
     const item=el("article","ppw-commercial-offer");
     item.dataset.availability=reserved?"TAKEN":offer?"AVAILABLE":"LOCKED";
     item.append(commercialPartnerBrand(code));

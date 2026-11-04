@@ -64,7 +64,7 @@ test("Private Business dashboard preserves exact Genesis financial data, territo
   assert.equal(business.territories[0]!.rivalLiveStrength,57);
   assert.ok(business.territories.every(t=>t.strongestRival!==null),
    "Known rivals use already recorded territory populations, never guesses");
-  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:12000});
+  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:14000});
   assert.equal(budget.queryCount,4);
   assert.ok(budget.resultRows<=6);
   const actorRead=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},"business",{

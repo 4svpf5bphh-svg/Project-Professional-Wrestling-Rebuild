@@ -132,7 +132,7 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
   add("SPONSOR_LOCAL","SPONSOR",base,.08,0,13,
    "An eccentric local outfit happy to put its name on the ring apron.",
    "Keep staging shows. A taste for hardcore wrestling is a preference, not a requirement.");
-  if(count>=4&&crowd>=55)
+  if(count>=3&&crowd>=55)
    add("SPONSOR_GEAR","SPONSOR",base,.09,0,26,
     "Blue-collar support for the hard-working regional circuit.",
     "Keep promoting dependable events.");
