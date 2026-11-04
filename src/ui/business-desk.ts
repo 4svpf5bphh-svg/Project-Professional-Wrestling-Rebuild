@@ -190,12 +190,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
-   const incomeKnown=view.weeklyMediaIncome!==null&&view.weeklyMediaIncome!==undefined&&
-    view.weeklySponsorIncome!==null&&view.weeklySponsorIncome!==undefined;
-   const costsKnown=view.weeklyFixedOverhead!==null&&view.weeklyFixedOverhead!==undefined;
-   const weeklyIncome=incomeKnown?view.weeklyMediaIncome+view.weeklySponsorIncome:null;
-   const fixedWeekly=costsKnown?view.weeklyFixedOverhead+view.weeklyGuarantees+
-    view.weeklyStaffPayroll:null;
+   const weeklyIncome=view.weeklyMediaIncome!=null&&view.weeklySponsorIncome!=null?
+    view.weeklyMediaIncome+view.weeklySponsorIncome:null;
+   const fixedWeekly=view.weeklyFixedOverhead!=null?
+    view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll:null;
    const bank=el("section","ppw-finance-first");
    bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
     el("h2","","Financial position"));
