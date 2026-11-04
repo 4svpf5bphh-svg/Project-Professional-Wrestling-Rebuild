@@ -178,6 +178,15 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  const heading=page.getByRole("heading",{name:"Programmes"});
  await expect(heading).toBeVisible();
  expect(await heading.evaluate(el=>el.scrollWidth>el.clientWidth+1)).toBe(false);
+ // Names and full-sized portraits occupy independent columns on a 320px iPhone.
+ const photos=page.locator(".ppw-programme-focused .ppw-programme-hero-person .ppw-programme-portrait");
+ await expect(photos).toHaveCount(2);
+ const bounds=await photos.evaluateAll(nodes=>nodes.map(node=>{
+  const box=node.getBoundingClientRect();
+  return {left:box.left,right:box.right,width:box.width,height:box.height};
+ }));
+ expect(bounds[0]!.right).toBeLessThan(bounds[1]!.left);
+ expect(bounds[0]!.width).toBeGreaterThanOrEqual(60);
  const versus=page.locator(".ppw-programme-focused .ppw-programme-versus");
  await expect(versus).toHaveText("VS");
  const vsLayout=await versus.evaluate(node=>{

@@ -152,11 +152,12 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/backstage$/);
   const leave=page.getByRole("button",{name:"‹ Leave Backstage"});
   await expect(leave).toBeVisible();
-  const position=await leave.boundingBox();
-  expect(position).not.toBeNull();
-  expect(position!.y).toBeGreaterThanOrEqual(0);
-  expect(position!.y+position!.height).toBeLessThan(150);
-  expect(position!.height).toBeGreaterThanOrEqual(44);
+  // Loading the Backstage inbox may replace its header once. Assess the
+  // final in-viewport control rather than a transient detached button.
+  await expect.poll(async()=>{
+   const box=await leave.boundingBox();
+   return Boolean(box&&box.y>=0&&box.y+box.height<150&&box.height>=44);
+  }).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   expect(calls).toContain("backstage");

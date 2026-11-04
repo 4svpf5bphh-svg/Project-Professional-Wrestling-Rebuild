@@ -69,6 +69,9 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("0 / 120 min");
  await dialog.getByRole("button",{name:"Ladder Match"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
+ const ruleRadii=await dialog.locator(".ppw-guide-stipulation-tile").evaluateAll(tiles=>
+  tiles.map(tile=>getComputedStyle(tile).borderRadius));
+ expect(new Set(ruleRadii).size).toBe(1);
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-guided-match-setup-320.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
