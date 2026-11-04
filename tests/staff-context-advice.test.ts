@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch} from "../src/ui/card-editor-model.js";
 import {newEditorSegment} from "../src/ui/card-segment-model.js";
-import {matchStaffNotes,angleStaffNotes,contractStaffNotes}
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,contractStaffNotes}
  from "../src/domain/staff-context-advice.js";
 import type {StaffRole} from "../src/domain/world-staff.js";
 
@@ -84,4 +84,53 @@ test("physical angle briefing gives genuine Medical and Referee feedback without
   "Condition warning remains available even without a hired specialist");
  assert.equal(attack.scene.visual,"BLOODIED",
   "The advisory must not rewrite an authored on-screen scene");
+});
+
+test("same-show match plus physical angle is flagged for the booked performer without double-booking restrictions",()=>{
+ const match={...newEditorMatch("bout","SINGLES"),
+  teams:[[{personId:"a",contractId:"contract-a"}],
+   [{personId:"b",contractId:"contract-b"}]]};
+ const physical={...newEditorSegment("scene","ATTACK"),
+  actors:[{personId:"a",contractId:"contract-a"}],
+  targets:[{personId:"b",contractId:"contract-b"}]};
+ const onAngle=showWorkloadNotes("scene",physical,[match],[physical],
+  [opponentA,opponentB],crew);
+ assert.equal(onAngle.length,1);
+ assert.equal(onAngle[0]!.role,"MEDICAL");
+ assert.equal(onAngle[0]!.level,"WATCH");
+ assert.match(onAngle[0]!.message,/Samoa Joe/);
+ assert.match(onAngle[0]!.message,/also have a match/);
+ assert.match(onAngle[0]!.message,/current fatigue or wear/);
+ assert.doesNotMatch(onAngle[0]!.message,/confirmed injury|will be injured/i);
+ const onMatch=showWorkloadNotes("bout",match,[match],[physical],
+  [opponentA,opponentB],crew);
+ assert.equal(onMatch.length,1);
+ assert.match(onMatch[0]!.message,/physical angle/);
+ assert.equal(showWorkloadNotes("scene",physical,[match],[physical],
+  [opponentA,opponentB],new Set<StaffRole>())[0]!.role,"HOUSE");
+ assert.deepEqual(showWorkloadNotes("scene",physical,[],[physical],
+  [opponentA,opponentB],crew),[],
+  "An angle is not assumed to be a second physical appearance without another slot");
+});
+
+test("promos, pre-recorded packages and unrelated scenes do not inflate physical workload",()=>{
+ const match={...newEditorMatch("bout","SINGLES"),
+  teams:[[{personId:"a",contractId:"contract-a"}],
+   [{personId:"b",contractId:"contract-b"}]]};
+ const promo={...newEditorSegment("promo","CELEBRATION"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ const video={...newEditorSegment("video","VIDEO_PACKAGE"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ const unrelated={...newEditorSegment("unrelated","ATTACK"),
+  actors:[{personId:"c",contractId:"contract-c"}],
+  targets:[{personId:"d",contractId:"contract-d"}]};
+ assert.deepEqual(showWorkloadNotes("bout",match,[match],[promo,video,unrelated],
+  [opponentA,opponentB],crew),[]);
+ assert.deepEqual(showWorkloadNotes("promo",promo,[match],[promo],
+  [opponentA,opponentB],crew),[]);
+ const alsoPhysical={...newEditorSegment("physical","ATTACK"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ assert.equal(showWorkloadNotes("physical",alsoPhysical,[match],[promo,alsoPhysical],
+  [opponentA,opponentB],crew).length,1,
+  "A physical scene is still recognised alongside nonphysical scenes");
 });
