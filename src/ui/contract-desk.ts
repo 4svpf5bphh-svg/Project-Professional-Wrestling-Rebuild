@@ -7,6 +7,7 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {recommendTalentOffer} from "../domain/talent-offer-advice.js";
 import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
  from "../domain/contract-term-presets.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
@@ -412,6 +413,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const family=c.family as OfferTerms["family"];
      const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
      const nextWeek=c.expiresWeekIndex+1;
+     const suggestion=view?.talentManager&&family==="LIMITED_NON_EXCLUSIVE"?
+      recommendTalentOffer({personId:c.personId,name:c.name,
+       marketWeeklyValue:c.estimatedWeeklyValue??9000,
+       popularity:c.popularity??null,recognition:c.recognition??null,
+       morale:c.morale??null,careerStage:c.careerStage,
+       interest:"INTERESTED"},view.talentManager):null;
      const draft:OfferTerms={
       family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
@@ -421,6 +428,35 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
      };
+     const recommended:OfferTerms|null=suggestion?{
+      ...suggestion.terms,startWeekIndex:nextWeek
+     }:null;
+     if(recommended)Object.assign(draft,recommended);
+     if(suggestion&&recommended){
+      const opinion=el("div","ppw-contract-manager-recommendation");
+      opinion.append(el("small","ppw-contract-manager-tag",
+       suggestion.managerName+" · TALENT MANAGER"),
+       el("p","",suggestion.voice),
+       el("small","",suggestion.rationale));
+      const restore=btn("Use recommended terms",()=>{
+       Object.assign(draft,recommended);
+       pending.delete("negotiated:"+c.contractId);
+       // Updating the existing elements, rather than recreating the contract,
+       // preserves the selected wrestler and World command identity.
+       for(const [key,value] of [
+        ["termWeeks",draft.termWeeks],["dateEntitlement",draft.dateEntitlement],
+        ["weeklyGuarantee",draft.weeklyGuarantee],
+        ["appearanceFee",draft.appearanceFee],["signingBonus",draft.signingBonus]
+       ] as const){
+        const input=negotiate.querySelector<HTMLInputElement>(
+         '[data-term-key="'+key+'"]');
+        if(input)input.value=String(value);
+       }
+       updateQuote();refreshPreset();
+      });
+      restore.className+=" ppw-contract-recommend-apply";
+      opinion.append(restore);negotiate.append(opinion);
+     }
      const quote=el("section","ppw-contract-cost-quote");
      const managerNote=el("div","ppw-contract-manager-take");
      const panel=el("div","ppw-contract-renegotiate-fields");
@@ -451,25 +487,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        pendingOfferExposure:pendingExposure
       },new Set(["TALENT_MANAGER"]));
       const urgent=notes.find(n=>n.level==="WATCH");
-      const cost=packageCost(draft);
-      const prev=packageCost({
-       family:c.family,termWeeks:draft.termWeeks,
-       dateEntitlement:draft.family==="EXCLUSIVE"?0:
-        Math.min(draft.termWeeks,c.dateEntitlement??0),
-       weeklyGuarantee:c.weeklyGuarantee,
-       appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
-      const delta=cost.plannedFullTermCost-prev.plannedFullTermCost;
-      const assessment=urgent?.message??(delta>0?
-       "On equivalent terms this proposal adds "+money(delta)+
-       " in potential spending. Make sure the wrestler's planned role justifies it.":
-       delta<0?"This package reduces potential cost by "+money(-delta)+
-       " versus equivalent current rates. Consider whether the new terms still secure the dates you need.":
-       "The proposed package matches the current rates for an equivalent term. "+
-       "Confirm that the purchased dates fit your show plans before offering.");
-      managerNote.append(el("strong","",urgent?
-       "Talent Manager · "+urgent.title:"Talent Manager · Deal assessment"),
-       el("p","",assessment));
-      managerNote.dataset.level=urgent?"watch":"info";
+      if(urgent){
+       managerNote.append(el("strong","",
+        (view.talentManager?.name??"Talent Manager")+" · "+urgent.title),
+        el("p","",urgent.message));
+       managerNote.dataset.level="watch";
+      }
      };
      updateQuote();
      const presetRow=el("div","ppw-contract-term-presets");
@@ -503,6 +526,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
+      input.dataset.termKey=key;
       input.setAttribute("aria-label",name+" for "+c.name);
       input.oninput=()=>{
        if(input.value==="")return;
