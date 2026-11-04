@@ -287,3 +287,22 @@
  .ppw-finance-first-actions{grid-template-columns:1fr}
  .ppw-finance-snapshot-tile{padding:9px}
 }
+/* Phase 28 UX: compact bank dashboard and disclosure-only commitments. */
+.ppw-finance-roster-exposure{background:#10283d;border:1px solid #476b89;
+ border-radius:12px;padding:10px 12px;font-size:12px}
+.ppw-finance-roster-exposure>summary{cursor:pointer;list-style:auto;
+ color:#d2edff;font-size:12px;font-weight:800;min-height:28px}
+.ppw-finance-roster-exposure[open]>summary{margin-bottom:8px}
+.ppw-business-pulse{margin:0 0 14px;border:1px solid #3e647b;
+ background:#122b40;border-radius:13px;padding:12px}
+.ppw-business-pulse>summary{font-weight:850;color:#d7edfc;
+ font-size:14px;cursor:pointer;min-height:25px}
+.ppw-business-pulse[data-health=warning]{border-color:#c78a60}
+.ppw-business-pulse[data-health=watch]{border-color:#b4a069}
+.ppw-business-pulse-headline{display:block;margin-top:11px;
+ color:#ffe5b2;line-height:1.4;font-size:14px}
+.ppw-business-pulse .ppw-business-muted{margin:8px 0 0}
+.ppw-finance-snapshot-tile span{font-size:11px}
+@media(max-width:350px){.ppw-finance-snapshot{gap:6px}
+ .ppw-finance-snapshot-tile{padding:8px;gap:4px}
+ .ppw-finance-snapshot-tile strong{font-size:14px}}
