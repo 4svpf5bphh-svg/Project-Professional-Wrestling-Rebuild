@@ -581,7 +581,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     (!quickChips.has("POPULAR")||typeof p.popularity==="number"&&p.popularity>=75)&&
     (!quickChips.has("CHAMPIONS")||Boolean(p.championships?.length))&&
     (!quickChips.has("DATES")||(p.remainingDates===null||p.remainingDates>0))&&
-    (!quickChips.has("AVAILABLE")&&true||
+    (!quickChips.has("AVAILABLE")||
      p.medicalWeeksRemaining==null&&!(p.startsInWeeks&&p.startsInWeeks>0)&&
      (p.remainingDates===null||p.remainingDates>0))):
    view.people;
