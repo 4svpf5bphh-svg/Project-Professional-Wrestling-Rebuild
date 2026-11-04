@@ -37,7 +37,7 @@ import {previewMatchCreativeTerms} from "./card-creative-term-preview.js";
 import {forecastBookingAirtime} from "./card-airtime-preview.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
-import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
@@ -130,7 +130,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let segments=new Map<string,EditorSegment>();
  let order:string[]=[];
  let roster=new Map<string,{personId:string;contractId:string;name:string|null;
-  division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null;creativeControl?:string|null}&Partial<ConditionSnapshot>>();
+  division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null;creativeControl?:string|null;
+  workingConnections?:AdvisorPerson["workingConnections"]}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
@@ -176,7 +177,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const advisorPeople=():AdvisorPerson[]=>[...roster.values()].map(x=>({
   personId:x.personId,name:x.name??x.personId,inRingQuality:x.inRingQuality,
   matchCraft:x.matchCraft,presentation:x.presentation,stamina:x.stamina,
-  safety:x.safety,fatigue:x.fatigue,wear:x.wear
+  safety:x.safety,fatigue:x.fatigue,wear:x.wear,
+  workingConnections:x.workingConnections
  }));
  function slotNotes(slotId:string):StaffNote[]{
   const match=matches.get(slotId),segment=segments.get(slotId);
@@ -190,7 +192,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const people=advisorPeople(),staffed=team();
   const workload=showWorkloadNotes(slotId,(match??segment)!,activeMatches,
    activeSegments,people,staffed);
-  if(match)return [...workload,...matchStaffNotes(match,people,staffed)].slice(0,5);
+  if(match){
+   const all=[...workload,...matchStaffNotes(match,people,staffed),
+    ...matchPartnershipNotes(match,people,staffed)];
+   return [...all.filter(n=>n.level==="WATCH"),...all.filter(n=>n.level==="INFO")].slice(0,6);
+  }
   const cast=view?.programmes.find(p=>p.programmeId===segment!.programmeId)?.cast??[];
   return [...workload,...angleStaffNotes(segment!,people,staffed,
    cast.map(p=>p.personId))].slice(0,5);
@@ -350,7 +356,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      roster.set(member.personId,{...old,personId:member.personId,
       contractId:member.contractId,name:member.name,
       division:old?.division??null,available:true,reason:"AVAILABLE",
-      appearanceFee:member.appearanceFee,creativeControl:member.creativeControl});
+      appearanceFee:member.appearanceFee,creativeControl:member.creativeControl,
+      workingConnections:member.workingConnections??old?.workingConnections});
     }
    }
    for(const bout of view.tournamentBouts??[]){
@@ -383,7 +390,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      creativeControl:p.creativeControl,
      available:prior?.available??false,reason:prior?.reason??"BOOKED",
      inRingQuality:p.inRingQuality,matchCraft:p.matchCraft,presentation:p.presentation,
-     stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear});
+     stamina:p.stamina,safety:p.safety,fatigue:p.fatigue,wear:p.wear,
+     workingConnections:p.workingConnections??prior?.workingConnections});
    }
    expanded=null;dirty=false;needsRevisionRefresh=false;
    pendingRequestId=null;error="";success="";
