@@ -429,6 +429,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   }
   if(filter.view==="ROSTER"){
    const chips=el("div","ppw-directory-chips");
+   chips.setAttribute("role","group");
    chips.setAttribute("aria-label","Quick roster filters · this page");
    const options=[
     ["AVAILABLE","Available"],["FACE","Face"],["HEEL","Heel"],
