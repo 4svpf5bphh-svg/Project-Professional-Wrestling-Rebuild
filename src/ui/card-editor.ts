@@ -136,7 +136,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
   division:"ALL"|"MEN"|"WOMEN";showOther?:boolean;
   source?:"ALL"|"FEUDS"|"TEAMS"|"TRIOS"|"FACTIONS";
-  sourceId?:string;chips?:Set<string>}|null=null;
+  sourceId?:string;chipsBySide?:Map<number,Set<string>>;
+  divisionBySide?:Map<number,"ALL"|"MEN"|"WOMEN">}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
@@ -2445,14 +2446,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     ["PRESENTATION","Presentation"],["DATES","Dates left"],["NAME","Name"]],
     value=>{current.sort=value as typeof current.sort;render();});
    sort.setAttribute("aria-label","Sort loaded wrestlers");
-   const division=selector(current.division,[
+   // Each side remembers its own roster filters. A heel selected for Side A
+   // must not leave Side B accidentally restricted to heels too.
+   const matchDivision=Boolean(matchPicker&&!current.role);
+   const currentDivision=matchDivision?
+    current.divisionBySide?.get(current.side)??"ALL":current.division;
+   const setDivision=(value:"ALL"|"MEN"|"WOMEN")=>{
+    if(matchDivision){
+     const bySide=current.divisionBySide??new Map<number,"ALL"|"MEN"|"WOMEN">();
+     bySide.set(current.side,value);current.divisionBySide=bySide;
+    }else current.division=value;
+    render();
+   };
+   const division=selector(currentDivision,[
     ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]],
-    value=>{current.division=value as typeof current.division;render();});
+    value=>setDivision(value as "ALL"|"MEN"|"WOMEN"));
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
    tools.append(sort,division);sheet.append(tools);
    if(matchPicker&&!current.role){
     const chips=el("div","ppw-picker-chips");
-    const flags=current.chips??new Set<string>();
+    const flags=current.chipsBySide?.get(current.side)??new Set<string>();
     for(const [key,label,conflict] of [
      ["AVAILABLE","Available",""],
      ["MEN","Men","WOMEN"],["WOMEN","Women","MEN"],
@@ -2461,11 +2474,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ["POPULAR","Popular 75+",""],["DATES","Has dates",""]
     ] as const){
      const chip=button(label,()=>{
-      if(flags.has(key))flags.delete(key);
-      else{flags.add(key);if(conflict)flags.delete(conflict);}
-      current.chips=flags;render();
+      if(key==="MEN"||key==="WOMEN"){
+       setDivision(currentDivision===key?"ALL":key);
+       return;
+      }
+      const currentFlags=new Set(current.chipsBySide?.get(current.side)??[]);
+      if(currentFlags.has(key))currentFlags.delete(key);
+      else{currentFlags.add(key);if(conflict)currentFlags.delete(conflict);}
+      const bySide=current.chipsBySide??new Map<number,Set<string>>();
+      bySide.set(current.side,currentFlags);current.chipsBySide=bySide;render();
      },false,"ppw-picker-filter-chip");
-     chip.setAttribute("aria-pressed",String(flags.has(key)));chips.append(chip);
+     chip.setAttribute("aria-pressed",String(key==="MEN"||key==="WOMEN"?
+      currentDivision===key:flags.has(key)));chips.append(chip);
     }
     sheet.append(chips);
    }
@@ -2494,15 +2514,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     source==="TRIOS"?eligibleTrios().flatMap(t=>t.members.map(p=>p.personId)):
     source==="FACTIONS"?(selectedFaction?.members??stableChoices?.flatMap(x=>x.members??[])??[])
      .map(p=>p.personId):[]);
-   const flags=current.chips??new Set<string>();
+   const flags=current.chipsBySide?.get(current.side)??new Set<string>();
    const sorted=current.items
     .filter(p=>(!focusedStory||current.showOther||
      focusedStory.cast?.some(member=>member.personId===p.personId))&&
-     (current.division==="ALL"||p.division===current.division)&&
+     (currentDivision==="ALL"||p.division===currentDivision)&&
      (source==="ALL"||groupMembers.has(p.personId))&&
      (!flags.has("AVAILABLE")||p.available)&&
-     (!flags.has("MEN")||p.division==="MEN")&&
-     (!flags.has("WOMEN")||p.division==="WOMEN")&&
      (!flags.has("FACE")||p.alignment==="FACE")&&
      (!flags.has("HEEL")||p.alignment==="HEEL")&&
      (!flags.has("RESTED")||typeof p.fatigue==="number"&&p.fatigue<35)&&

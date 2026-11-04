@@ -80,9 +80,22 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-side-a-filters-320.png",animations:"disabled"});
  await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker.locator('.ppw-picker-side-tab[aria-pressed="true"]')).toContainText("Side B");
- await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
- await picker.getByRole("button",{name:"Heel",exact:true}).click();
- await picker.getByRole("button",{name:"Fatigued 65+"}).click();
+ await expect(picker.getByRole("button",{name:"Heel",exact:true}))
+  .toHaveAttribute("aria-pressed","false");
+ await expect(picker.getByRole("button",{name:"Fatigued 65+"}))
+  .toHaveAttribute("aria-pressed","false");
+ await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
+ // Switching sides restores the exact previous Side A filters, without
+ // another roster request or accidentally filtering Side B.
+ await picker.locator(".ppw-picker-side-tab").first().click();
+ await expect(picker.getByRole("button",{name:"Heel",exact:true}))
+  .toHaveAttribute("aria-pressed","true");
+ await expect(picker.getByRole("button",{name:"Fatigued 65+"}))
+  .toHaveAttribute("aria-pressed","true");
+ await picker.locator(".ppw-picker-side-tab").nth(1).click();
+ await expect(picker.getByRole("button",{name:"Heel",exact:true}))
+  .toHaveAttribute("aria-pressed","false");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-side-b-independent-filters-320.png",animations:"disabled"});
  await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker).toHaveCount(0);
  await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText("Watch cumulative wear");
