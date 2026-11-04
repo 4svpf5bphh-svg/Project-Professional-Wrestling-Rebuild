@@ -62,7 +62,7 @@ function workingPairsSql(person:"p"|"person",peers?:string){
   "FROM ppw_wrestler_relationships WHERE world_id="+person+".world_id",
   "AND person_b_id="+person+".person_id) link",
   ...(peers?["WHERE link.other_id=ANY("+peers+")"]:[]),
-  "ORDER BY link.familiarity DESC,link.other_id LIMIT "+limit+") pair)",
+  "ORDER BY link.familiarity DESC,link.other_id LIMIT "+limit+") pair),",
   "'[]'::jsonb)"
  ].join(" ");
 }
