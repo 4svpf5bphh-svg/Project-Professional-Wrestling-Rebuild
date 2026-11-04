@@ -61,6 +61,14 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  await expect(offer.getByText(/52 weeks · 40 dates/)).toBeVisible();
  await offer.getByLabel("Appearance fee ($)").fill("12500");
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$500,000");
+ // A huge full-term deal used to be described as fitting the plan.
+ await offer.getByLabel("Appearance fee ($)").fill("200000");
+ const manager=offer.locator(".ppw-directory-adviser");
+ await expect(manager).toHaveAttribute("open","");
+ await expect(manager).toHaveAttribute("data-risk","watch");
+ await expect(manager).toContainText("Unsustainable on current cash");
+ await expect(offer.locator(".ppw-directory-affordability")).toHaveAttribute("data-risk","true");
+ await offer.getByLabel("Appearance fee ($)").fill("12500");
  await expect(offer.locator(".ppw-directory-cash-only"))
   .toContainText("signed roster + this offer");
  await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$3,500,000 left");
