@@ -144,7 +144,12 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
  await page.reload();
- await expect(page.locator(".ppw-card-lineup")).toContainText("6 / 6 booked");
+ await expect(page.locator(".ppw-card-lineup")).toContainText("Trios · 3v3");
+ const matchup=page.locator(".ppw-card-matchup");
+ for(const name of ["Samoa Joe","Matt Riddle","Alex Shelley",
+  "Chris Sabin","Dax Harwood","Cash Wheeler"])
+  await expect(matchup).toContainText(name);
+ await expect(matchup.locator(".ppw-card-extra-people")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

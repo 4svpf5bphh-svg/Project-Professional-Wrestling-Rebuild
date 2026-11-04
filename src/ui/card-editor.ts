@@ -1216,9 +1216,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     if(m.teams.length<=2)for(const [sideIndex,side] of m.teams.entries()){
      if(sideIndex)matchup.append(el("span","ppw-card-versus","VS"));
      const group=el("div","ppw-card-matchup-side");
-     for(const person of side.slice(0,2))if(person)group.append(cardIdentity(person));
-     if(side.length>2)group.append(el("span","ppw-card-extra-people",
-      "+"+(side.length-2)+" more"));
+     // A trio is short enough to name all its wrestlers. Larger squads stay
+     // condensed rather than creating an endless running-order ticket.
+     for(const person of side.slice(0,3))if(person)group.append(cardIdentity(person));
+     if(side.length>3)group.append(el("span","ppw-card-extra-people",
+      "+"+(side.length-3)+" more"));
      if(!side.some(Boolean))group.append(el("span","ppw-muted","Choose wrestlers"));
      matchup.append(group);
     }else{
