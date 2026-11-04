@@ -366,3 +366,118 @@ test("390px: match and physical angle share show workload advice and are saved t
  expect(payload.matches).toHaveLength(1);
  expect(payload.segments).toHaveLength(1);
 });
+
+test("390px: referee changes dangerous match rules only on request; Road Agent then suggests legal shorter length",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const {calls,saved}=await stub(page);
+ await goToCard(page);
+ await page.getByRole("button",{name:"+ Add match"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByRole("button",{name:"Ladder Match"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"Choose wrestler"}).first().click();
+ const picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ const choice=dialog.locator(".ppw-booking-choice-panel");
+ await expect(choice).toContainText("Mark Reid");
+ await expect(choice).toContainText("Reconsider the stipulation");
+ await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await choice.getByRole("button",{name:"Use standard rules"}).click();
+ await expect(choice).toHaveCount(0);
+ await dialog.getByLabel("Minutes").fill("35");
+ await dialog.getByLabel("Minutes").press("Tab");
+ await expect(choice).toContainText("Derek James");
+ await expect(choice).toContainText("Samoa Joe");
+ await expect(choice).toContainText("35 minutes");
+ await choice.getByRole("button",{name:"Shorten to 18 min"}).click();
+ await expect(dialog.getByLabel("Minutes")).toHaveValue("18");
+ await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const review=dialog.locator(".ppw-guide-staff-review");
+ await expect(review).toContainText("Standard rules");
+ await expect(review).toContainText("Winner · Samoa Joe");
+ await expect(review).toContainText("18 min");
+ await dialog.getByRole("button",{name:"Complete match"}).click();
+ await page.getByRole("button",{name:"Save changes"}).click();
+ expect(saved).toHaveLength(1);
+ const recorded=(saved[0] as {matches:{payload:{plannedFinish:string;
+  plannedLengthMinutes:number;scriptedWinnerSide:string}}[]}).matches[0]!.payload;
+ expect(recorded.plannedFinish).toBe("CLEAN_PIN");
+ expect(recorded.plannedLengthMinutes).toBe(18);
+ expect(recorded.scriptedWinnerSide).toBe("A");
+ expect(calls.filter(x=>x==="talent")).toHaveLength(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("320px: Medical reduces an authored bloody attack only when explicitly tapped",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const {calls,saved}=await stub(page);
+ await goToCard(page);
+ await page.getByRole("button",{name:"+ Add angle"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByLabel("Creative direction").selectOption("RIVALRY");
+ await dialog.locator(".ppw-angle-type-tiles")
+  .getByRole("button",{name:"Attack",exact:true}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ let picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await dialog.getByRole("button",{name:"+ Add target"}).click();
+ picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Face",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ const choice=dialog.locator(".ppw-booking-choice-panel");
+ await expect(choice).toHaveCount(0);
+ await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
+ await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await expect(choice).toContainText("Dr Singh");
+ await expect(choice).toContainText("Samoa Joe");
+ await expect(choice).toContainText("Soften this physical scene");
+ await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
+ await choice.getByRole("button",{name:"Reduce physical intensity"}).click();
+ await expect(dialog.getByLabel("Attack intensity")).toHaveValue("WARNING");
+ await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("OFFICIALS_SEPARATE");
+ await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const review=dialog.locator(".ppw-guide-staff-review");
+ await expect(review).toContainText("Check condition before this physical scene");
+ await expect(review).not.toContainText("Coordinate the staged violence");
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
+ expect(saved).toHaveLength(0);
+ expect(calls.filter(x=>x==="talent")).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("390px: Creative can tighten a weak long promo without altering the scripted scene",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const {calls,saved}=await stub(page);
+ await goToCard(page);
+ await page.getByRole("button",{name:"+ Add angle"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ const picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByLabel("Angle duration (minutes)").selectOption("20");
+ const choice=dialog.locator(".ppw-booking-choice-panel");
+ await expect(choice).toContainText("Emma Cross");
+ await expect(choice).toContainText("Samoa Joe");
+ await choice.getByRole("button",{name:"Shorten scene to 10 min"}).click();
+ await expect(dialog.getByLabel("Angle duration (minutes)")).toHaveValue("10");
+ await expect(choice).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(dialog.locator(".ppw-guide-staff-review"))
+  .not.toContainText("Long scene, limited presentation strength");
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
+ expect(saved).toHaveLength(0);
+ expect(calls.filter(x=>x==="talent")).toHaveLength(1);
+});

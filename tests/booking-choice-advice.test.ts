@@ -24,7 +24,7 @@ function attack(){
 }
 test("referee suggests lower-risk rules and only a tap changes the scripted finish",()=>{
  const prior={...match(),stipulation:"LADDER" as const,plannedFinish:"RETRIEVAL",
-  winnerSide:1};
+  winnerSide:1,plannedLengthMinutes:35};
  const suggestion=bookingChoiceAdvice(prior,[joe,mistico],crew)!;
  assert.equal(suggestion.role,"REFEREE");
  assert.equal(suggestion.adjustment.kind,"MATCH_RULES");
