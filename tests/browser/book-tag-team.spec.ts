@@ -203,7 +203,7 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Stipulation")).toHaveCount(0);
  await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]'))
-  .toContainText("Most falls");
+  .toContainText("Most Falls");
  await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-iron-man-booking-390.png",
   animations:"disabled"});
@@ -222,5 +222,5 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]'))
-  .toContainText("Clean pin");
+  .toContainText("Clean Pin");
 });
