@@ -197,6 +197,8 @@ test("book a feud match and retaliation scene with signed participants, one save
  await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await dialog.getByRole("button",{name:"Complete angle"}).click();
+ await expect(page.locator(".ppw-angle-card .ppw-card-booked-facts"))
+  .toContainText("Samoa Joe vs Místico");
  await stories.getByRole("button",{name:"+ Book feud match"}).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();

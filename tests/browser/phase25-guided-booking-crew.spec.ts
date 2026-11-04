@@ -132,6 +132,8 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(page.locator(".ppw-card-matchup")).toContainText("Místico");
  await expect(page.locator(".ppw-card-matchup img")).toHaveCount(0);
  await expect(page.locator(".ppw-card-booked-facts")).toContainText("Planned winner");
+ await expect(page.locator(".ppw-booking-readiness")).toHaveCount(0);
+ await expect(page.locator(".ppw-card-lineup")).not.toContainText("2 / 2 booked");
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("30 / 120 min");
  await expect(page.getByText("Unsaved changes")).toBeVisible();
  await page.getByRole("button",{name:/Edit match in slot 1/}).click();
@@ -271,6 +273,11 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Victim: Místico");
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Arena car park");
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("5 / 120 min");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-completed-angle-card-320.png",animations:"disabled"});
+ await page.locator(".ppw-angle-card .ppw-card-open-zone").click();
+ await expect(page.getByRole("dialog",{name:"Edit angle"})).toBeVisible();
+ await page.getByRole("dialog",{name:"Edit angle"}).getByRole("button",
+  {name:"Close card editor"}).click();
  await expect(page.getByText("Unsaved changes")).toBeVisible();
  expect(saved).toHaveLength(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

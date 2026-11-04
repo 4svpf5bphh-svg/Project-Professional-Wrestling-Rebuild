@@ -265,9 +265,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  const matchSubtitle=(m:EditorMatch)=>{
   const fmt=FORMATS.find(x=>x.value===m.format)?.label??"Match";
-  return fmt+" · "+assignedIds(m).length+" / "+
-   m.teams.reduce((a,s)=>a+s.length,0)+" booked · "+
-   m.plannedLengthMinutes+" min · "+nice(m.plannedFinish);
+  const cast=assignedIds(m).length;
+  const needed=m.teams.reduce((a,s)=>a+s.length,0);
+  // Once the cast is complete, the readiness count adds no useful detail.
+  return fmt+(cast<needed?" · "+cast+" / "+needed+" cast":"")+
+   " · "+m.plannedLengthMinutes+" min · "+nice(m.plannedFinish);
  };
  function markDirty(){dirty=true;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(true);}
@@ -1033,7 +1035,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     segment.targets.length?
      (segment.kind==="RESCUE"?"Rescued: ":
       ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"Victim: ":
-      segment.kind==="INTERRUPTION"?"Interrupted: ":"Target: ")+
+      segment.kind==="INTERRUPTION"?"Interrupted: ":
+      segment.kind==="CHALLENGE"?"Challenged: ":
+      segment.kind==="STABLE_INVITATION"?"Invited: ":
+      segment.kind==="STABLE_RECONCILIATION"?"Reconciliation with: ":
+      segment.kind==="INTERFERENCE"?"Affected wrestler: ":"Target: ")+
       segment.targets.map(selectedName).join(", "):""
    ].filter(Boolean).join(" · "):"";
    const selectedSpectacle=segment?.specialMoment?
@@ -1061,7 +1067,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    label.append(lineup);
    const status=m?matchCastingReadiness(m):segment?angleCastingReadiness(segment):null;
-   if(status){
+   if(status&&!status.complete){
     const indicator=el("span","ppw-booking-readiness",status.label);
     indicator.dataset.complete=String(status.complete);
     indicator.title=status.hint;
@@ -1226,16 +1232,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     card.append(matchup);
    }
-   if(m&&matchCastingReadiness(m).complete){
+   if((m&&matchCastingReadiness(m).complete)||
+    (segment&&angleCastingReadiness(segment).complete&&Boolean(segment.programmeId))){
     const facts=el("div","ppw-card-booked-facts");
-    const winner=m.teams[m.winnerSide]?.filter(
-     (person):person is PersonPick=>person!==null).map(selectedName).join(" & ");
-    if(winner)facts.append(el("span","","Planned winner · "+winner));
-    if(m.championshipId){
-     const title=view.championships.find(c=>c.championshipId===m.championshipId);
-     facts.append(el("span","","Title match · "+(title?.name??"Championship")));
+    if(m){
+     const winner=m.teams[m.winnerSide]?.filter(
+      (person):person is PersonPick=>person!==null).map(selectedName).join(" & ");
+     if(winner)facts.append(el("span","","Planned winner · "+winner));
+     if(m.championshipId){
+      const title=view.championships.find(c=>c.championshipId===m.championshipId);
+      facts.append(el("span","","Title match · "+(title?.name??"Championship")));
+     }
+     if(m.tournamentId)facts.append(el("span","","Tournament bout"));
     }
-    if(m.tournamentId)facts.append(el("span","","Tournament bout"));
+    if(segment?.programmeId){
+     const feud=view.programmes.find(x=>x.programmeId===segment.programmeId);
+     if(feud)facts.append(el("span","","Storyline · "+feud.label));
+    }
     if(facts.childElementCount)card.append(facts);
    }
    // The booking list stays compact. Players may expand a real, text-only
