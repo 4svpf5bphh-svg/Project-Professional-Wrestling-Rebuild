@@ -75,8 +75,12 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  await expect(manager).toContainText("Unsustainable on current cash");
  await expect(offer.locator(".ppw-directory-affordability")).toHaveAttribute("data-risk","true");
  await offer.getByLabel("Appearance fee ($)").fill("12500");
- await expect(offer.locator(".ppw-directory-cash-only"))
+ const stress=offer.locator(".ppw-directory-cash-stress");
+ await expect(stress).not.toHaveAttribute("open","");
+ await stress.locator("summary").click();
+ await expect(stress.locator(".ppw-directory-cash-only"))
   .toContainText("signed roster + this offer");
+ await expect(stress).toContainText("not owed now");
  // A named Talent Manager now includes a weekly guarantee in the year-long
  // recommendation: $114,400 wages + $500,000 on 40 dates = $614,400.
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$614,400");
