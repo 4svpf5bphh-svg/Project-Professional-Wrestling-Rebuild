@@ -86,7 +86,8 @@ test("fictional partner catalogue has twelve distinct branded personalities and 
  assert.equal(Object.keys(COMMERCIAL_COMPANIES).length,12);
  for(const [code,brand] of Object.entries(COMMERCIAL_COMPANIES)){
   assert.ok(brand.name&&brand.voice&&brand.mark&&brand.tagline);
-  assert.ok(brand.preferredDay>=0&&brand.preferredDay<=7);
+  assert.ok(brand.preferredDay>=1&&brand.preferredDay<=7,
+   "Every broadcaster needs a valid fallback World release day");
   assert.ok(brand.airtime.match(/^\d\d:\d\d$/));
   assert.ok(brand.ratingPressure>0);
   const held=partnerResponse(code,{tier:"LOCAL",heldBy:"CWA",current:false});

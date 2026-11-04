@@ -25,7 +25,7 @@ export const COMMERCIAL_COMPANIES:Readonly<Record<string,{
  BROADCAST_INDIE:{name:"RingWave Live",tagline:"All wrestling. No waiting.",
   preference:"Lively regional events and distinctive wrestling",mark:"RW",voice:"Your wrestling, your crowd, our cameras. Keep it loud.",style:"INDIE",preferredDay:5,airtime:"21:00",ratingPressure:0.75},
  BROADCAST_ARCHIVE:{name:"VaultVision+",tagline:"Build a legacy worth replaying.",
-  preference:"Regular shows and a strong library of broadcasts",mark:"V+",voice:"Bring us episodes worth revisiting and we'll keep the lights on.",style:"PRESTIGE",preferredDay:0,airtime:"18:00",ratingPressure:0.8},
+  preference:"Regular shows and a strong library of broadcasts",mark:"V+",voice:"Bring us episodes worth revisiting and we'll keep the lights on.",style:"PRESTIGE",preferredDay:7,airtime:"18:00",ratingPressure:0.8},
  BROADCAST_GLOBAL:{name:"Titan Prime",tagline:"The whole world is watching.",
   preference:"Major events and international visibility",mark:"T★",voice:"We expect tentpole television that defines the week.",style:"PRESTIGE",preferredDay:6,airtime:"21:00",ratingPressure:1.45},
  SPONSOR_LOCAL:{name:"Jack's Crematorium",tagline:"You bring 'em, we grill 'em!",
