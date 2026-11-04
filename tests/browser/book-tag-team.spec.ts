@@ -4,14 +4,19 @@ const fallback={matchType:"SINGLES",family:"INDIVIDUAL",participants:[x,y],
  sides:[{sideId:"A",participants:[x]},{sideId:"B",participants:[y]}],
  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18};
 const roster=[
- {personId:"joe",contractId:"c-joe",name:"Samoa Joe"},
+ {personId:"joe",contractId:"c-joe",name:"Samoa Joe",
+  workingConnections:[{personId:"riddle",professionalTrust:37,
+   familiarity:22,lastChangeType:"STRAIN"}]},
  {personId:"riddle",contractId:"c-riddle",name:"Matt Riddle"},
- {personId:"alex",contractId:"c-alex",name:"Alex Shelley"},
+ {personId:"alex",contractId:"c-alex",name:"Alex Shelley",
+  workingConnections:[{personId:"chris",professionalTrust:65,
+   familiarity:28,lastChangeType:"IMPROVEMENT"}]},
  {personId:"chris",contractId:"c-chris",name:"Chris Sabin"}];
 const cardBase={showId:"weekly",year:1,week:5,canEdit:true,ready:false,
  day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
  venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",ticketStrategy:"STANDARD",
  championships:[],programmes:[],programmeLinks:[],
+ advisers:[{role:"ROAD_AGENT",name:"Derek James",staffId:"road"}],
  bookableTeams:[{teamId:"pair-a",name:"The Rivals",members:roster.slice(0,2)},
   {teamId:"pair-b",name:"Machine Guns",members:roster.slice(2)}],
  selectedPeople:[{personId:"x",name:"X",division:"MEN"},
@@ -76,6 +81,12 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await expect(dialog).toContainText("Alex Shelley");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const briefing=dialog.locator(".ppw-guide-staff-review");
+ await expect(briefing).toContainText("Derek James");
+ await expect(briefing).toContainText("Known partnership strain");
+ await expect(briefing).toContainText("Samoa Joe and Matt Riddle");
+ await expect(briefing).toContainText("Partnership developing");
+ await expect(briefing).toContainText("Alex Shelley and Chris Sabin");
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
