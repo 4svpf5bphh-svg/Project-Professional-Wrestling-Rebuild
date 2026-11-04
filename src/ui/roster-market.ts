@@ -556,7 +556,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const label=p.medicalWeeksRemaining!=null?
      "INJURED · "+p.medicalWeeksRemaining+" WEEK"+
      (p.medicalWeeksRemaining===1?"":"S")+" TO CLEARANCE":
-     p.affiliatedViaParent?"PARENT-COMPANY ROSTER":
+     p.affiliatedViaParent?"PARENT-COMPANY ROSTER · "+
+     (p.contractOwnerName??"PARENT PROMOTION"):
     p.pendingOffer?"OFFER PENDING":
     p.availability==="EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE ELSEWHERE":
     p.availability==="SIGNED_FUTURE_YOURS"?
