@@ -294,3 +294,28 @@
  .ppw-directory-manager-proposal{padding:11px}
  .ppw-directory-offer-fields{grid-template-columns:1fr}
 }
+
+/* Phase 28 — one-tap directory pills; sort/advanced scouting remain optional. */
+.ppw-directory-quick{display:flex;gap:7px;flex-wrap:wrap}
+.ppw-directory-quick>.ppw-directory-button{
+ min-height:41px;flex:1 1 auto;border:1px solid #618bb5;border-radius:999px;
+ padding:7px 15px;background:#1a344d;color:#f1f7ff;
+ text-align:center;font-weight:850}
+.ppw-directory-quick>.ppw-directory-button[aria-pressed=true],
+.ppw-directory-role-pills>.ppw-directory-button[aria-pressed=true]{
+ color:#fff;background:linear-gradient(120deg,#98347f,#5d49a5);
+ border-color:#f3b7e8}
+.ppw-directory-role-pills{display:flex;gap:7px;flex-wrap:wrap;
+ flex:0 0 100%;padding-top:3px}
+.ppw-directory-role-pills>.ppw-directory-button{
+ min-height:38px;border-radius:999px;padding:7px 10px;
+ background:#162b43;border:1px solid #4c718d;
+ color:#d7edfa;font-size:12px;font-weight:800}
+.ppw-directory-role-group>.ppw-wrestler-card{margin:8px 0}
+.ppw-directory-list>.ppw-wrestler-card{margin:8px 0}
+.ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster{
+ font-size:14px}
+@media(max-width:360px){.ppw-directory-quick>.ppw-directory-button{
+ flex:1 1 27%;padding:7px}
+ .ppw-directory-role-pills{gap:5px}
+ .ppw-directory-role-pills>.ppw-directory-button{font-size:11px;padding:7px 8px}}
