@@ -33,7 +33,6 @@ const btn=(value:string,fn:()=>void,disabled=false)=>{
  x.type="button";x.onclick=fn;x.disabled=disabled;return x;
 };
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
-const value=(n:number|null|undefined)=>n==null||!Number.isFinite(n)?"–":Math.round(n).toString();
 type TermsDraft={family:OfferTerms["family"];role:OfferTerms["roleExpectation"];
  creative:OfferTerms["creativeControl"];weeks:number;dates:number;
  weekly:number;appearance:number;bonus:number};
@@ -409,9 +408,27 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   search.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();pick({search:search.value});}};
   controls.append(search,btn("Search",()=>pick({search:search.value})));
   const quick=el("div","ppw-directory-quick");
-  quick.append(selection("Division",[
+  for(const [key,label] of [
    ["ALL","All"],["MEN","Men"],["WOMEN","Women"]
-  ] as const,filter.division??"ALL",division=>pick({division})));
+  ] as const){
+   const control=btn(label,()=>pick({division:key}));
+   control.setAttribute("aria-pressed",String(filter.division===key));
+   quick.append(control);
+  }
+  if(filter.view==="ROSTER"){
+   const roles=el("div","ppw-directory-role-pills");
+   for(const [key,label] of [
+    ["ALL","All roles"],["MAIN_EVENT","Main event"],
+    ["UPPER_CARD","Upper card"],["FEATURED","Featured"],
+    ["REGULAR","Regular"],["SPECIAL_ATTRACTION","Special attraction"],
+    ["DEVELOPMENTAL","Developmental"]
+   ] as const){
+    const control=btn(label,()=>pick({role:key}));
+    control.setAttribute("aria-pressed",String((filter.role??"ALL")===key));
+    roles.append(control);
+   }
+   quick.append(roles);
+  }
   const sortOptions=filter.view==="ROSTER"?[
    ["ROLE","By card role"],["NAME","Name"],["POPULARITY","Popularity"],
    ["RECOGNITION","Recognition"],["MOMENTUM","Momentum"],
@@ -424,9 +441,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
    ["MOMENTUM","Momentum"],["VALUE","Value: lowest"]
   ] as const;
-  quick.append(selection("Sort by",sortOptions,
-   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
-    filter.view==="ROSTER"?"ROLE":"INTEREST",sort=>pick({sort})));
   controls.append(quick);
   if(filter.view==="MARKET"){
    const shortcuts=el("div","ppw-directory-shortcuts");
@@ -464,12 +478,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   refinements.append(refineSummary);
   const fields=el("div","ppw-directory-refine-fields");
   if(filter.view==="ROSTER"){
-   fields.append(selection("Role",[
-    ["ALL","All roles"],["MAIN_EVENT","Main event"],
-    ["UPPER_CARD","Upper card"],["FEATURED","Featured"],
-    ["REGULAR","Regular"],["DEVELOPMENTAL","Developmental"],
-    ["SPECIAL_ATTRACTION","Special attraction"]
-   ] as const,filter.role??"ALL",role=>pick({role})));
    fields.append(selection("Contract",[
     ["ALL","All deals"],["EXCLUSIVE","Exclusive"],
     ["LIMITED_NON_EXCLUSIVE","Non-exclusive"]
@@ -486,6 +494,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    fields.append(el("p","ppw-directory-hint",
     "Interest is a scouting estimate, not a guarantee of acceptance."));
   }
+  fields.append(selection("Sort by",sortOptions,
+   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
+    filter.view==="ROSTER"?"ROLE":"INTEREST",sort=>pick({sort})));
   refinements.append(fields);
   const advanced=document.createElement("details");
   advanced.className="ppw-directory-advanced";
@@ -533,8 +544,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    el("span","ppw-directory-muted","Page "+(Math.floor((filter.offset??0)/(filter.limit??25))+1)));
   listing.append(heading);
   for(const p of view.people){
-   const card=document.createElement("details");card.className="ppw-directory-card";
-   const title=document.createElement("summary");
    const label=p.medicalWeeksRemaining!=null?
      "INJURED · "+p.medicalWeeksRemaining+" WEEK"+
      (p.medicalWeeksRemaining===1?"":"S")+" TO CLEARANCE":
@@ -548,21 +557,34 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?"EXCLUSIVE STARTS SOON":
     p.availability==="CONTRACTED_SOON"?"CONTRACTED SOON":
     p.availability==="FREE_AGENT"?"FREE AGENT":"NON-EXCLUSIVE";
+   if(filter.view==="ROSTER"){
+    const card=createWrestlerCard({...p,status:label},{
+     context:"ROSTER",label,onSelect:()=>port.openWrestler(p.personId,"ROSTER")
+    });
+    const role=p.roleExpectation??"UNASSIGNED";
+    if(filter.sort==="ROLE"){
+     let group=listing.querySelector<HTMLDetailsElement>(
+      '.ppw-directory-role-group[data-role="'+role+'"]');
+     if(!group){
+      group=document.createElement("details");
+      group.className="ppw-directory-role-group";group.dataset.role=role;
+      group.open=true;
+      group.append(el("summary","ppw-directory-role-heading",
+       role==="UNASSIGNED"?"Other wrestlers":role.replaceAll("_"," ").toLowerCase()));
+      listing.append(group);
+     }
+     group.append(card);
+    }else listing.append(card);
+    continue;
+   }
+   const card=document.createElement("details");card.className="ppw-directory-card";
+   const title=document.createElement("summary");
    title.append(createWrestlerCard({...p,status:label},{
     context:filter.view,label}));
    if(filter.view==="MARKET")title.append(el("span","ppw-directory-interest",
     "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()));
    card.append(title);
    const detail=el("div","ppw-directory-detail");
-   const metrics=el("div","ppw-directory-metrics");
-   for(const [name,n] of [
-    ["Recognition",p.recognition],["Match craft",p.matchCraft],
-    ["Presentation",p.presentation],["Morale",p.morale]
-   ] as const){
-    const row=el("div","ppw-directory-metric");
-    row.append(el("span","",name),el("strong","",value(n)));metrics.append(row);
-   }
-   detail.append(metrics);
    if(filter.view==="ROSTER"){
     if(p.medicalWeeksRemaining!=null)
      detail.append(el("p","ppw-directory-warning",
@@ -623,19 +645,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    }
    card.append(detail);
    if(activeOffer===p.personId)card.open=true;
-   if(filter.view==="ROSTER"&&filter.sort==="ROLE"){
-    const role=p.roleExpectation??"UNASSIGNED";
-    let group=listing.querySelector<HTMLDetailsElement>(
-     '.ppw-directory-role-group[data-role="'+role+'"]');
-    if(!group){
-     group=document.createElement("details");
-     group.className="ppw-directory-role-group";group.dataset.role=role;group.open=true;
-     const summary=el("summary","ppw-directory-role-heading",
-      role==="UNASSIGNED"?"Other wrestlers":role.replaceAll("_"," ").toLowerCase());
-     group.append(summary);listing.append(group);
-    }
-    group.append(card);
-   }else listing.append(card);
+   listing.append(card);
   }
   if(!view.people.length)listing.append(el("p","ppw-directory-empty",
    "No wrestlers match. Clear the filters or change division."));
