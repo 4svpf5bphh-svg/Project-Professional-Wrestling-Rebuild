@@ -34,7 +34,7 @@ import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,a
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
-import {forecastCardAppearanceFees} from "../domain/card-appearance-forecast.js";
+import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
@@ -2389,13 +2389,38 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            "none of the listed feud's participants is cast in this scene")));
         }
        }
-       const ids=m?assignedIds(m):
+       // Count appearance costs once per completed show, not once per
+       // booking screen. Match participants and run-ins are live; videos
+       // are pre-recorded. Other unfinished wizards aren't on the card.
+       const ids=m?[...assignedIds(m),...(m.interference?[m.interference.personId]:[])]:
+        segment!.kind==="VIDEO_PACKAGE"?[]:
         [...segment!.actors,...segment!.targets].map(p=>p.personId);
-       const fees=forecastCardAppearanceFees(ids,roster);
-       if(fees.performers)brief.append(el("p","ppw-guide-fee-note",
-        "Potential appearance fees · $"+fees.amount.toLocaleString("en-GB")+
-        (fees.complete?"":" · some fees unknown")+
-        ". Billed only if these wrestlers appear on the finished show."));
+       const existingAppearances=[
+        ...[...matches.values()].filter(other=>other.slotId!==slotId&&
+         !inProgressWizards.has(other.slotId)).flatMap(other=>
+         [...assignedIds(other),...(other.interference?[other.interference.personId]:[])]),
+        ...[...segments.values()].filter(other=>other.slotId!==slotId&&
+         !inProgressWizards.has(other.slotId)&&other.kind!=="VIDEO_PACKAGE")
+         .flatMap(other=>[...other.actors,...other.targets].map(p=>p.personId))
+       ];
+       const fees=forecastIncrementalAppearanceFees(ids,existingAppearances,roster);
+       if(segment?.kind==="VIDEO_PACKAGE")
+        brief.append(el("p","ppw-guide-fee-note",
+         "Pre-recorded video · No live appearance fees for this segment."));
+       else if(fees.performers)
+        brief.append(el("p","ppw-guide-fee-note",
+         "Additional appearance fees · $"+fees.amount.toLocaleString("en-GB")+
+         (fees.complete?"":" known, with "+fees.unknown+
+          " additional fee"+(fees.unknown===1?"":"s")+" not yet known")+
+         " · "+fees.performers+" new wrestler"+(fees.performers===1?"":"s")+
+         (fees.alreadyBooked?" · "+fees.alreadyBooked+
+          " already counted on the card":"")+
+         ". Each wrestler incurs at most one appearance fee for the show."));
+       else if(fees.alreadyBooked)
+        brief.append(el("p","ppw-guide-fee-note",
+         "No additional appearance fees · "+fees.alreadyBooked+
+         " wrestler"+(fees.alreadyBooked===1?" is":"s are")+
+         " already counted on this show's live card."));
        guide.append(brief);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Revise script",()=>{

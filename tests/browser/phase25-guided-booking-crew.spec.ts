@@ -118,7 +118,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(condition).toContainText("Fatigue 78/100");
  await expect(condition).toContainText("Wear 82/100");
  await expect(condition).toContainText("Místico");
- await expect(review).toContainText("Potential appearance fees");
+ await expect(review).toContainText("Additional appearance fees · $27,000");
  await expect(review).toContainText("does not establish whether they have good or bad chemistry");
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-review-top-320.png",animations:"disabled"});
  await condition.scrollIntoViewIfNeeded();
@@ -330,6 +330,7 @@ test("390px: match and physical angle share show workload advice and are saved t
  await expect(staff).toContainText("Multiple physical bookings on this show");
  await expect(staff).toContainText("also have a match");
  await expect(staff).toContainText("Dr Singh");
+ await expect(staff).toContainText("No additional appearance fees");
  await angle.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-match-card")).toHaveCount(1);
  await expect(page.locator(".ppw-angle-card")).toHaveCount(1);
@@ -340,6 +341,8 @@ test("390px: match and physical angle share show workload advice and are saved t
  const reopened=page.getByRole("dialog",{name:"Edit match"});
  await expect(reopened.locator(".ppw-guide-staff-review"))
   .toContainText("Multiple physical bookings on this show");
+ await expect(reopened.locator(".ppw-guide-staff-review"))
+  .toContainText("No additional appearance fees");
  await reopened.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-save .ppw-primary")).toBeEnabled();
  await page.getByRole("button",{name:"Save changes"}).click();
