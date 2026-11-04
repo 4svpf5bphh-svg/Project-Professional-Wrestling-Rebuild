@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {commercialOffers} from "../src/domain/commercial-offers.js";
+import {commercialOffers,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
+ from "../src/domain/commercial-offers.js";
 
 const settled={
  tier:"LOCAL",mediaReach:100,weeklyMediaIncome:10000,
@@ -65,4 +66,36 @@ test("long-term broadcasters saturate at 100 rather than blocking demand in late
  const overLegacy=commercialOffers({...settled,mediaReach:105});
  assert.ok(overLegacy.filter(o=>o.kind==="BROADCAST")
   .every(o=>o.reachIncrease===0));
+});
+
+test("verified TV ratings strengthen partner terms, poor ratings close premium doors",()=>{
+ const baseline=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78});
+ const great=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78,recentTvEpisodes:4,averageTvRating:2.2});
+ const bad=commercialOffers({...settled,tier:"NATIONAL",
+  completedShows:10,averageCrowd:78,recentTvEpisodes:4,averageTvRating:.5});
+ assert.ok(great.find(x=>x.code==="BROADCAST_TV")!.weeklyIncome>
+  baseline.find(x=>x.code==="BROADCAST_TV")!.weeklyIncome);
+ assert.ok(!bad.some(x=>x.code==="BROADCAST_TV"));
+ assert.equal(commercialOffers({...settled,recentTvEpisodes:1,averageTvRating:99})
+  .find(x=>x.code==="BROADCAST_STABLE")!.weeklyIncome,
+  commercialOffers(settled).find(x=>x.code==="BROADCAST_STABLE")!.weeklyIncome);
+});
+test("fictional partner catalogue has twelve distinct branded personalities and scarcity messages",()=>{
+ assert.equal(Object.keys(COMMERCIAL_COMPANIES).length,12);
+ for(const [code,brand] of Object.entries(COMMERCIAL_COMPANIES)){
+  assert.ok(brand.name&&brand.voice&&brand.mark&&brand.tagline);
+  assert.ok(brand.preferredDay>=0&&brand.preferredDay<=7);
+  assert.ok(brand.airtime.match(/^\d\d:\d\d$/));
+  assert.ok(brand.ratingPressure>0);
+  const held=partnerResponse(code,{tier:"LOCAL",heldBy:"CWA",current:false});
+  assert.ok(held.includes("CWA"));
+  if(code.startsWith("BROADCAST_")){
+   const target=broadcasterRatingTarget(code,"NATIONAL");
+   assert.ok(target>0);
+   assert.match(partnerResponse(code,{tier:"NATIONAL",
+    averageTvRating:target*1.4,current:false}),/stronger deal/);
+  }
+ }
 });

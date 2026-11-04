@@ -102,9 +102,39 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    playerId:secondOwner,promotionId:"promotion-2",requestId:"second-human-claim",
    expectedRevision:secondJoin.revision});
   assert.equal(secondClaim.status,"APPLIED");
+  // A second human also earns three real certified programmes. The World
+  // market must not duplicate the first human's broadcaster or sponsor.
+  await withWorldTransaction(db.pool,async tx=>{
+   for(let week=1;week<=3;week++){
+    const show="rival-offer-"+week;
+    await tx.query(`INSERT INTO ppw_booking_drafts
+     (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type)
+     VALUES($1,$2,'promotion-2',1,$3,'SUBMITTED',4,'Rival Weekly','REGULAR')`,
+     [world,show,week]);
+    await tx.query(`INSERT INTO ppw_completed_shows
+     (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,'promotion-2',$2,1,$3,$4,75,'{}'::jsonb,$5)`,
+     [world,show,week,"rival-certified-"+week,"b".repeat(63)+week]);
+    await tx.query(`INSERT INTO ppw_show_economics
+     (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+      total_cost,net_result,incremental_cash)
+     VALUES($1,$2,'promotion-2',1,$3,850,1000,150000,20000,30000,
+      10000,20000,80000,70000,70000)`,[world,show,week]);
+   }
+  });
   const others=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:"promotion-2",playerId:secondOwner});
   assert.deepEqual(others.commercialAgreements,[]);
+  assert.ok(!others.commercialOffers.some(x=>x.code==="BROADCAST_GROWTH"));
+  assert.ok(!others.commercialOffers.some(x=>x.code==="SPONSOR_LOCAL"));
+  assert.ok(others.commercialOffers.some(x=>x.code==="BROADCAST_STABLE"));
+  assert.ok(others.partnerInventory.some(x=>x.offerCode==="BROADCAST_GROWTH"));
+  await assert.rejects(signCommercialDeal(db.pool,{
+   worldId:world,promotionId:"promotion-2",playerId:secondOwner,
+   requestId:"rival-vibeflix",expectedRevision:secondClaim.revision,
+   offerCode:"BROADCAST_GROWTH"
+  }),/already has an exclusive agreement/);
   await assert.rejects(readPromotionRecordBook(db.pool,{
    worldId:world,promotionId:promotion,playerId:secondOwner}),/access denied/);
   await assert.rejects(readBusinessWorkspace(db.pool,{worldId:world,
