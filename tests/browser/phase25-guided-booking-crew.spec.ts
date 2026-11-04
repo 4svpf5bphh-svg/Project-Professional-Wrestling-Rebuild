@@ -1,4 +1,5 @@
 import {test,expect,type Page} from "@playwright/test";
+import {mkdir} from "node:fs/promises";
 
 const session={worldId:"world",playerId:"manager",csrfToken:"csrf",
  overview:{world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
@@ -57,6 +58,7 @@ async function goToCard(page:Page){
 }
 test("320px: a match moves through format, both sides, outcome and named crew briefing before reaching the card",async({page})=>{
  await page.setViewportSize({width:320,height:740});
+ await mkdir("test-results/presentation-screenshots",{recursive:true});
  const {calls,saved}=await stub(page);
  await goToCard(page);
  await page.getByRole("button",{name:"+ Add match"}).click();
@@ -65,6 +67,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Ladder Match"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-guided-match-setup-320.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await dialog.getByRole("button",{name:"Choose wrestler"}).first().click();
@@ -74,6 +77,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-side-a-filters-320.png",animations:"disabled"});
  await picker.locator(".ppw-wrestler-card").first().click();
  await expect(picker.locator('.ppw-picker-side-tab[aria-pressed="true"]')).toContainText("Side B");
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
@@ -102,12 +106,16 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(condition).toContainText("Místico");
  await expect(review).toContainText("Potential appearance fees");
  await expect(review).toContainText("does not establish whether they have good or bad chemistry");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-review-top-320.png",animations:"disabled"});
+ await condition.scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-condition-320.png",animations:"disabled"});
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
  expect(saved).toHaveLength(0);
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await expect(dialog).toHaveCount(0);
  await expect(page.locator(".ppw-card-matchup")).toBeVisible();
  await expect(page.getByText("Unsaved changes")).toBeVisible();
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-completed-card-320.png",animations:"disabled"});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Save changes"}).click();
