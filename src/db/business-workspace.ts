@@ -21,6 +21,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    cash:string;debt:string;weekly_media_income:string|null;
    weekly_sponsor_income:string|null;weekly_fixed_overhead:string|null;
    last_weekly_net:string|null;runway_weeks:number|null;
+   remaining_roster_potential:string;remaining_roster_guaranteed:string;
    financial_distress:string|null;guarantees:string;staff_payroll:string;
    spending_plan:{weeklyWageLimit:number;showTalentLimit:number;cashReserve:number}|null;
    standing_prestige:number|null;standing_fan:number|null;
@@ -45,6 +46,28 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,p.last_weekly_net::text,
      p.runway_weeks,p.financial_distress,
+     -- A remaining-term commitment is a scenario, not a payable liability.
+     -- The same signed contract rows already indexed for the owner are
+     -- projected in SQL; never sum past bonuses or invent future income.
+     coalesce((SELECT sum(
+      greatest(0,contract.expires_week_index-
+       greatest(contract.start_week_index,(w.year-1)*52+w.week-1)+1)
+       *contract.weekly_guarantee +
+      CASE WHEN contract.remaining_dates IS NULL THEN 0 ELSE
+       least(greatest(0,contract.remaining_dates),
+        greatest(0,contract.expires_week_index-
+         greatest(contract.start_week_index,(w.year-1)*52+w.week-1)+1))
+        *contract.appearance_fee END
+     )::text FROM ppw_contracts contract
+      WHERE contract.world_id=p.world_id AND contract.promotion_id=p.promotion_id
+       AND contract.status='SIGNED'),'0') AS remaining_roster_potential,
+     coalesce((SELECT sum(
+      greatest(0,contract.expires_week_index-
+       greatest(contract.start_week_index,(w.year-1)*52+w.week-1)+1)
+       *contract.weekly_guarantee
+     )::text FROM ppw_contracts contract
+      WHERE contract.world_id=p.world_id AND contract.promotion_id=p.promotion_id
+       AND contract.status='SIGNED'),'0') AS remaining_roster_guaranteed,
      standing.prestige AS standing_prestige,
      standing.fan_reputation AS standing_fan,
      standing.business_reputation AS standing_business,
@@ -250,6 +273,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    cash:Number(w.cash),debt:Number(w.debt),
    weeklyMediaIncome:weeklyMedia,weeklySponsorIncome:weeklySponsor,
    weeklyFixedOverhead:weeklyOverhead,weeklyGuarantees:guarantees,
+   remainingRosterPotential:Number(w.remaining_roster_potential),
+   remainingRosterGuaranteed:Number(w.remaining_roster_guaranteed),
    weeklyStaffPayroll:staffPayroll,
    recurringMargin:weeklyMedia===null||weeklySponsor===null||
     weeklyOverhead===null?null:
