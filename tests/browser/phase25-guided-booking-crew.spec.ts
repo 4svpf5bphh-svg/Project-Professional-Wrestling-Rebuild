@@ -35,7 +35,7 @@ const card={showId:"weekly",year:1,week:5,worldRevision:4,
   {role:"MEDICAL",name:"Dr Singh",staffId:"doctor"},
   {role:"REFEREE",name:"Mark Reid",staffId:"ref"},
   {role:"CREATIVE",name:"Emma Cross",staffId:"creative"}]};
-async function stub(page:Page){
+async function stub(page:Page,bookingCard:Record<string,unknown>=card){
  const calls:string[]=[];
  const saved:unknown[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -46,7 +46,7 @@ async function stub(page:Page){
    saved.push({matches:req.matches,segments:req.segments});
    return route.fulfill({json:{status:"APPLIED",result:{showId:"weekly"}}});
   }
-  const data=req.method==="planner"?planner:req.method==="load"?card:
+  const data=req.method==="planner"?planner:req.method==="load"?bookingCard:
    req.method==="talent"?{talent,cursor:null}:{};
   return route.fulfill({json:data});
  });
@@ -487,4 +487,34 @@ test("390px: Creative can tighten a weak long promo without altering the scripte
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  expect(saved).toHaveLength(0);
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
+});
+
+test("320px tournament fixture starts a guided final with named wrestlers and no extra roster read",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const {calls,saved}=await stub(page,{...card,tournamentBouts:[{
+  tournamentId:"contender",tournamentName:"#1 Contender Series",
+  boutNo:3,entrantsCount:4,championshipId:null,
+  personA:{personId:"joe",contractId:"c-joe",name:"Samoa Joe"},
+  personB:{personId:"mistico",contractId:"c-mistico",name:"Místico"}
+ }]});
+ await goToCard(page);
+ const fixture=page.locator(".ppw-card-tournament-fixture");
+ await expect(fixture).toHaveCount(1);
+ await expect(fixture).toContainText("Samoa Joe vs Místico");
+ await expect(page.locator(".ppw-tournament-booking-row")).toHaveCount(0);
+ await fixture.getByRole("button",{name:"Book bout"}).click();
+ const wizard=page.getByRole("dialog",{name:"Edit match"});
+ await expect(wizard.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(wizard).toContainText("Samoa Joe");
+ await expect(wizard).toContainText("Místico");
+ await wizard.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(wizard.locator(".ppw-guide-booking-summary")).toContainText("Samoa Joe");
+ await wizard.getByRole("button",{name:"Complete match"}).click();
+ await expect(page.locator(".ppw-card-matchup")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-card-matchup")).toContainText("Místico");
+ await expect(page.locator(".ppw-card-booked-facts")).toContainText("Tournament bout");
+ expect(saved).toHaveLength(0);
+ expect(calls.filter(x=>x==="talent")).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });
