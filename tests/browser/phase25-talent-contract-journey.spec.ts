@@ -36,13 +36,15 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  await expect(page.getByRole("heading",{name:"Talent Market"})).toBeVisible();
  await expect(page.locator(".ppw-directory-card")).toHaveCount(1);
  await expect(refinements).not.toHaveAttribute("open");
- await expect(page.getByLabel("Division")).toBeVisible();
- await expect(page.getByLabel("Sort by")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Men",exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Women",exact:true})).toBeVisible();
+ await expect(page.getByLabel("Sort by")).toBeHidden();
  await expect(page.getByLabel("Recruitment interest")).toBeHidden();
  await page.getByRole("button",{name:"Free agents"}).click();
  await expect(page.getByRole("button",{name:"Free agents"})).toHaveAttribute("aria-pressed","true");
  expect(filters.at(-1)?.availability).toBe("FREE_AGENT");
  await refinements.locator(":scope > summary").click();
+ await expect(page.getByLabel("Sort by")).toBeVisible();
  await page.getByLabel("Recruitment interest").selectOption("INTERESTED_PLUS");
  await expect(refinements).toHaveAttribute("open","");
  await expect(refinements.locator("summary").first()).toContainText("active");
@@ -133,6 +135,7 @@ test("Contract Desk compares ten genuine annual signings with cash, without anot
  expect(contractReads).toBe(1);
  cash=4_000_000;
  await page.reload();
+ await exposure.locator("summary").click();
  await expect(exposure.locator(".ppw-contract-cash-comparison")).toContainText("$1,000,000 short");
  await expect(exposure.locator(".ppw-contract-cash-comparison"))
   .toHaveAttribute("data-coverage","gap");
