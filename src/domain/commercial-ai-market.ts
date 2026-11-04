@@ -9,8 +9,8 @@ import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialEvidence,
 export type AiCommercialCandidate=CommercialEvidence&{
  promotion_id:string;active_kinds:readonly string[];
 };
-export type AiCommercialAward={
- promotion:AiCommercialCandidate;offer:CommercialOffer;
+export type AiCommercialAward<T extends AiCommercialCandidate=AiCommercialCandidate>={
+ promotion:T;offer:CommercialOffer;
 };
 const priorities:Readonly<Record<CommercialKind,readonly string[]>>={
  BROADCAST:["BROADCAST_GLOBAL","BROADCAST_TV","BROADCAST_GROWTH",
@@ -39,11 +39,11 @@ function partnerFit(p:AiCommercialCandidate,code:string):number{
  if(style==="SPORT")return crowd+shows*.5+(rating??0)*3;
  return crowd+shows*.3;
 }
-export function awardAiCommercialPartners(
- candidates:readonly AiCommercialCandidate[],occupied:ReadonlySet<string>
-):AiCommercialAward[]{
+export function awardAiCommercialPartners<T extends AiCommercialCandidate>(
+ candidates:readonly T[],occupied:ReadonlySet<string>
+):AiCommercialAward<T>[]{
  const qualified=candidates.map(p=>({promotion:p,offers:commercialOffers(p)}));
- const awards:AiCommercialAward[]=[];
+ const awards:AiCommercialAward<T>[]=[];
  for(const kind of ["BROADCAST","SPONSOR"] as const){
   for(const code of priorities[kind]){
    if(occupied.has(code))continue;
