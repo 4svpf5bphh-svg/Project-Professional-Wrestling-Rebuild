@@ -99,9 +99,11 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  const card=cards.first();
  await expect(card.locator(".ppw-wrestler-stats")).toHaveCount(0);
  await expect(card.locator(".ppw-wrestler-fans")).toBeVisible();
+ const rosterFollowing=await card.locator(".ppw-wrestler-fans").textContent();
  await card.click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
+ await expect(dialog.locator(".ppw-wrestler-fans")).toHaveText(rosterFollowing??"");
  await expect(dialog.getByRole("heading",{name:"Your next move"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Open show planner"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Talk in Backstage"})).toBeVisible();
