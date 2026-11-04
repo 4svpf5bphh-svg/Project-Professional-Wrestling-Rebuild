@@ -1,4 +1,5 @@
 import {test,expect} from "@playwright/test";
+import {mkdir} from "node:fs/promises";
 const overview={world:{revision:4,name:"Genesis",year:1,week:9,
  phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
  membership:"ACTIVE",promotion:{id:"company",name:"CWA",tier:"LOCAL",cash:800000,
@@ -88,6 +89,15 @@ test("completed feud remains a readable promotion archive instead of a forgotten
  await expect(archive.locator(".ppw-programme-archive-timeline"))
   .toContainText("Matt Riddle won");
  await expect(archive.getByRole("button",{name:"View show"})).toHaveCount(2);
+ await mkdir("test-results/presentation-screenshots",{recursive:true});
+ await page.screenshot({path:"test-results/presentation-screenshots/phase27-past-feud-390.png",
+  fullPage:true,animations:"disabled"});
+ await page.setViewportSize({width:320,height:740});
+ await expect(archive.locator(".ppw-programme-archive-duel")).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+ await page.screenshot({path:"test-results/presentation-screenshots/phase27-past-feud-320.png",
+  fullPage:true,animations:"disabled"});
  await page.getByRole("button",{name:"← Past rivalries"}).click();
  await expect(page.getByRole("heading",{name:"Past rivalries · 1"})).toBeVisible();
  await page.getByRole("button",{name:"← Active rivalries"}).click();
