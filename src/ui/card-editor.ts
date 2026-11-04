@@ -34,6 +34,7 @@ import {initialAngleScene,ANGLE_LOCATION_AREAS,ANGLE_VISUALS,ANGLE_INTENSITIES,a
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {creativeForSlot,consentRebookingAdvice} from "./card-creative-review.js";
 import {previewMatchCreativeTerms} from "./card-creative-term-preview.js";
+import {forecastBookingAirtime} from "./card-airtime-preview.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
@@ -2309,6 +2310,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            " · "+angleSceneLabel(segment!.scene.purpose):"")));
        }
        brief.append(overview);
+       const projected=forecastBookingAirtime(slotId,(m??segment)!,
+        committedMatches,committedSegments,view.bookingClass);
+       const airtime=el("p","ppw-guide-airtime-note",
+        "Show airtime with this booking · "+projected.total+
+        (projected.limit===null?" min": " / "+projected.limit+" min")+
+        (projected.overBy?
+         " · Over by "+projected.overBy+
+         " min. Shorten this or another slot before saving.":
+         projected.limit!==null&&projected.remaining!<=10?
+         " · Very little time left for entrances and breaks.":""));
+       if(projected.overBy)airtime.dataset.level="watch";
+       brief.append(airtime);
        // The review must show the *actual* selected wrestlers' condition
        // readings, not only a generic staff warning. This uses the same
        // show-week talent snapshot already loaded by the booking editor.

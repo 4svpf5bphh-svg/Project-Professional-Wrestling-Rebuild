@@ -114,6 +114,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(review).toContainText("Derek James");
  await expect(review).toContainText("Dr Singh");
  await expect(review).toContainText("Mark Reid");
+ await expect(review).toContainText("Show airtime with this booking · 30 / 120 min");
  await expect(review).toContainText("This is a demanding match");
  await expect(review).toContainText("Watch cumulative wear");
  await expect(review).toContainText("Risky stipulation and safety concerns");
@@ -343,6 +344,7 @@ test("390px: match and physical angle share show workload advice and are saved t
  await expect(staff).toContainText("also have a match");
  await expect(staff).toContainText("Dr Singh");
  await expect(staff).toContainText("No additional appearance fees");
+ await expect(staff).toContainText("Show airtime with this booking · 23 / 120 min");
  await angle.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-match-card")).toHaveCount(1);
  await expect(page.locator(".ppw-angle-card")).toHaveCount(1);

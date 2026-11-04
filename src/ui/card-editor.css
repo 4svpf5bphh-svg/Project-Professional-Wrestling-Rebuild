@@ -1119,3 +1119,12 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field s
 .ppw-guide-contract-alert>strong{font-size:13px;color:#ffdfae}
 .ppw-guide-contract-alert>p{font-size:12px;color:#f4e2d1;
  line-height:1.45;margin:0;overflow-wrap:anywhere}
+
+/* Pre-commit running-time projection: visible while the proposed slot is
+   still a wizard, never counted twice when reopening an existing ticket. */
+.ppw-guide-staff-review>.ppw-guide-airtime-note{
+ font-size:12px;line-height:1.55;padding:10px 12px;
+ background:#1b384a;border:1px solid #6385a3;border-radius:10px;
+ color:#dce9f2;overflow-wrap:anywhere}
+.ppw-guide-staff-review>.ppw-guide-airtime-note[data-level=watch]{
+ border-color:#d49a70;background:#382d32;color:#ffe9cc}
