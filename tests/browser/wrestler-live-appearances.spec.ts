@@ -188,7 +188,7 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog).toHaveCount(0);
  expect(calls.filter(x=>x==="wrestlerDirectory")).toHaveLength(before);
  // Planned show route closes the old iOS fixed overlay.
- await card.getByRole("button",{name:"Wrestler profile →"}).click();
+ await card.click();
  await dialog.getByRole("button",{name:"Open show planner"}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(dialog).toHaveCount(0);
