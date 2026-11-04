@@ -178,3 +178,83 @@ test("390px: an angle also has a meaningful Creative team review before completi
  expect(saved).toHaveLength(0);
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
 });
+
+test("320px: a new angle chooses What, casts initiator and target with independent slicers, scripts Where/Why and reviews staff risks",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ await mkdir("test-results/presentation-screenshots",{recursive:true});
+ const {calls,saved}=await stub(page);
+ await goToCard(page);
+ await page.getByRole("button",{name:"+ Add angle"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+ await dialog.getByLabel("Creative direction").selectOption("RIVALRY");
+ const choices=dialog.locator(".ppw-angle-type-tiles");
+ await expect(choices).toContainText("Attack");
+ await choices.getByRole("button",{name:"Attack",exact:true}).click();
+ await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("ATTACK");
+ await expect(choices.getByRole("button",{name:"Attack",exact:true}))
+  .toHaveAttribute("aria-pressed","true");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-what-320.png",animations:"disabled"});
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
+ await expect(dialog.getByLabel("Creative direction")).toHaveCount(0);
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
+ await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ let picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await expect(picker.locator(".ppw-picker-side-tab")).toHaveCount(2);
+ await expect(picker.locator(".ppw-picker-source-tab")).toHaveCount(5);
+ await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
+ await picker.getByRole("button",{name:"Heel",exact:true}).click();
+ await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
+ await picker.locator(".ppw-picker-side-tab").nth(1).click();
+ await expect(picker.getByRole("button",{name:"Heel",exact:true}))
+  .toHaveAttribute("aria-pressed","false");
+ await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
+ await picker.locator(".ppw-picker-side-tab").first().click();
+ await expect(picker.getByRole("button",{name:"Heel",exact:true}))
+  .toHaveAttribute("aria-pressed","true");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-initiator-filters-320.png",animations:"disabled"});
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await expect(picker).toHaveCount(0);
+ await dialog.getByRole("button",{name:"+ Add target"}).click();
+ picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await expect(picker.locator(".ppw-picker-side-tab[aria-pressed=true]"))
+  .toContainText("Target / recipient");
+ await picker.getByRole("button",{name:"Face",exact:true}).click();
+ await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
+ await picker.locator(".ppw-wrestler-card").first().click();
+ await expect(picker).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByText("Where does it happen?")).toBeVisible();
+ await expect(dialog.getByText("Why is this on the show?")).toBeVisible();
+ await expect(dialog.getByText("How does it unfold?")).toBeVisible();
+ await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
+ await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
+ await dialog.getByLabel("Exact location").selectOption("PARKING_LOT");
+ await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
+ await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-where-why-320.png",animations:"disabled"});
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const review=dialog.locator(".ppw-guide-staff-review");
+ await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
+ await expect(review).toContainText("Samoa Joe");
+ await expect(review).toContainText("Místico");
+ await expect(review).toContainText("Dr Singh");
+ await expect(review).toContainText("Mark Reid");
+ await expect(review).toContainText("Check condition before this physical scene");
+ await expect(review).toContainText("Coordinate the staged violence");
+ await expect(review).toContainText("Potential appearance fees");
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-staff-review-320.png",animations:"disabled"});
+ expect(saved).toHaveLength(0);
+ expect(calls.filter(c=>c==="talent")).toHaveLength(2);
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
+ await expect(dialog).toHaveCount(0);
+ await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Místico");
+ await expect(page.getByText("Unsaved changes")).toBeVisible();
+ expect(saved).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
