@@ -12,7 +12,17 @@ export function staffMeetingDialogue(input:{
   PATIENT:["Here's how I'd approach it. ","For now, let's keep it steady. "],
   ECCENTRIC:["Here's the part that caught my eye. ","No fire to put out here. "],
   LOYAL:["Let's look after the people involved. ","The team's in a good place here. "],
-  AMBITIOUS:["There's something we can improve here. ","One less thing holding us back. "]
+  AMBITIOUS:["Here's where I would push further. ","Good, now let's build on it. "]
  };
- return (personality?openings[personality][calm?1:0]:"My view? ")+message;
+ const ambitiousCues:Partial<Record<StaffRole,string>>={
+  CREATIVE:"The creative opportunity: ",COMMENTATOR:"For the broadcast: ",
+  SCOUT:"From the scouting desk: ",TALENT_MANAGER:"On the contracts: ",
+  ROAD_AGENT:"From Gorilla: ",PRODUCTION:"For the next show: ",
+  MEDICAL:"On wrestler fitness: ",REFEREE:"From the referee: ",
+  TRAINER:"On the training side: "
+ };
+ const intro=personality==="AMBITIOUS"?
+  ambitiousCues[input.role]??"Here's the opportunity: ":
+  personality?openings[personality][calm?1:0]:"";
+ return intro+message;
 }

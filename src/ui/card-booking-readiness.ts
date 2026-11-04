@@ -69,6 +69,41 @@ export function angleCastingReadiness(angle:EditorSegment):SlotReadiness{
   hint:"The roles are filled. Save the card to validate contracts and storyline eligibility."};
 }
 
+/** CAST checks participants before script-only decisions such as a heel
+ * turn's allegiance or a faction invitation's answer. Requiring those
+ * decisions here traps the player before their controls become visible.
+ */
+export function angleCastStageReadiness(angle:EditorSegment):SlotReadiness{
+ const rules=SEGMENT_BOOKING_RULES[angle.kind];
+ if(!rules)return {complete:false,label:"CHOOSE ANGLE",hint:"Choose an available scene."};
+ const actors=angle.actors.length,targets=angle.targets.length;
+ if(angle.kind==="POST_MATCH_ASSAULT"&&!angle.sourceMatchSlotId)
+  return {complete:false,label:"CHOOSE THE BOUT",
+   hint:"Choose the preceding match, then cast its actual wrestler as the victim."};
+ if(actors<rules.minActors)return {complete:false,label:"NEEDS PERFORMER",
+  hint:"Choose "+(rules.minActors-actors)+" more performer"+(rules.minActors-actors===1?"":"s")+"."};
+ if(targets<rules.minTargets)return {complete:false,label:"NEEDS TARGET",
+  hint:angle.kind==="POST_MATCH_ASSAULT"?
+   "Choose a wrestler who appeared in the selected match.":
+   "Choose "+(rules.minTargets-targets)+" more target"+(rules.minTargets-targets===1?"":"s")+"."};
+ if(actors>rules.maxActors||!rules.allowTargets&&targets>0)
+  return {complete:false,label:"CHECK CAST",hint:"The selected roles do not fit this scene."};
+ if(new Set([...angle.actors,...angle.targets].map(x=>x.personId)).size!==actors+targets)
+  return {complete:false,label:"DUPLICATE WRESTLER",
+   hint:"One wrestler cannot fill two parts of the same scene."};
+ if(["RESCUE","POST_MATCH_ASSAULT"].includes(angle.kind)&&
+  (targets!==1||actors!==rules.maxActors))
+  return {complete:false,label:"FINISH CAST",hint:"Choose the full attack and rescue cast."};
+ if(angle.kind==="POST_MATCH_ASSAULT"&&!angle.sourceMatchSlotId)
+  return {complete:false,label:"CHOOSE THE BOUT",
+   hint:"Choose the match this assault follows."};
+ if(["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(angle.kind)&&
+  !angle.stableId)return {complete:false,label:"CHOOSE FACTION",
+   hint:"Select the faction involved before scripting its reaction."};
+ return {complete:true,label:"CAST READY",
+  hint:"The participants are ready. Next, decide how the on-screen moment plays out."};
+}
+
 /** Booking eligibility depends on the part being cast. Wrestlers may work a
  * match AND a storyline scene; only duplicate match entries, a wrestler
  * interfering in their own bout, or double-casting within a scene are blocked.

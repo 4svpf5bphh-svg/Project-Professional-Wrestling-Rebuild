@@ -12,6 +12,7 @@ import {readWrestlerDirectory,validateDirectoryFilter}
  from "../src/db/wrestler-directory.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 import type {OfferTerms} from "../src/domain/contract-economics.js";
+import {remainingRosterExposure} from "../src/domain/remaining-contract-exposure.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Roster and talent market validate paging, offer rights and two-query directory budget",{
  skip:!url?"No disposable PostgreSQL":false
@@ -58,6 +59,22 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.equal(young.offerBudget?.weeklyOverhead,60_000);
   assert.ok((young.offerBudget?.weeklyGuarantees??0)>0);
   assert.equal(young.offerBudget?.weeklyWageLimit,null);
+  // Confirm the market's single-query cost projection against the exact
+  // remaining contract model (including already-used dates and future starts).
+  const signed=await withWorldTransaction(db.pool,tx=>tx.query<{
+   start_week_index:number;expires_week_index:number;remaining_dates:number|null;
+   weekly_guarantee:string;appearance_fee:string
+  }>(`SELECT start_week_index,expires_week_index,remaining_dates,
+    weekly_guarantee,appearance_fee FROM ppw_contracts
+    WHERE world_id=$1 AND promotion_id=$2 AND status='SIGNED'`,
+   [world,promotionId]));
+  const expected=remainingRosterExposure(signed.map(c=>({
+   weeksRemaining:Math.max(0,c.expires_week_index+1),
+   startsInWeeks:Math.max(0,c.start_week_index),
+   remainingDates:c.remaining_dates,
+   weeklyGuarantee:Number(c.weekly_guarantee),appearanceFee:Number(c.appearance_fee)
+  })));
+  assert.equal(young.offerBudget?.signedRosterExposure,expected.potentialTotal);
   const blocked=await readWrestlerDirectory(db.pool,{worldId:world,playerId:player,promotionId},
    {view:"MARKET",search:"Wrestler 5"});
   assert.equal(blocked.people[0]!.availability,"EXCLUSIVE_ELSEWHERE");

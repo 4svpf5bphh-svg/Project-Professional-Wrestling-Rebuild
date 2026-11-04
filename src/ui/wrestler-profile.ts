@@ -10,6 +10,7 @@ import {verifiedCareerForm} from "../domain/verified-career-form.js";
 import {recordedCareerHighlights} from "../domain/recorded-career-highlights.js";
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
 import {wrestlerManagementStatus} from "./wrestler-management-status.js";
+import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
 export interface WrestlerProfilePort{
@@ -21,7 +22,8 @@ export interface WrestlerProfilePort{
  openBackstage?(personId:string):void;
  openContracts?(personId:string):void;
  openPlanner?():void;
- openProgrammes?():void;
+ openBooking?(personId:string,name:string):void;
+ openProgrammes?(personId:string):void;
  openTagTeams?():void;
  openStables?():void;
 }
@@ -138,6 +140,8 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    control.classList.add("ppw-profile-manage-button");
    actions.append(control);
   };
+  if(view.onYourRoster&&view.canEdit&&status.kind==="SIGNED"&&port.openBooking)
+   action("Book on this week's show",()=>port.openBooking?.(personId,view!.name));
   if(view.onYourRoster&&port.openPlanner)
    action("Open show planner",()=>port.openPlanner?.());
   if(view.onYourRoster&&port.openBackstage)
@@ -153,7 +157,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
     const item=button(label,fn);item.classList.add("ppw-profile-manage-button");
     extra.append(item);
    };
-   if(port.openProgrammes)next("Manage programmes",()=>port.openProgrammes?.());
+   if(port.openProgrammes)next("Manage programmes",()=>port.openProgrammes?.(personId));
    if(port.openTagTeams)next("Manage tag teams",()=>port.openTagTeams?.());
    if(port.openStables)next("Manage stables",()=>port.openStables?.());
    creative.append(extra);manage.append(creative);
@@ -266,6 +270,33 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    contract.append(el("p","ppw-profile-muted",
     "Creative control · "+wrestlerLabel(c.creativeControl)+
     " · Weekly guarantee $"+Number(c.weeklyGuarantee??0).toLocaleString("en-GB")));
+   // Reuse Contracts' remaining-term envelope. This is read-only planning
+   // information, never cash already paid or a replacement booking receipt.
+   const exposure=remainingRosterExposure([{
+    weeksRemaining:Math.max(0,c.expiresWeekIndex-view.currentWeekIndex+1),
+    startsInWeeks:Math.max(0,c.startWeekIndex-view.currentWeekIndex),
+    remainingDates:c.remainingDates,
+    weeklyGuarantee:Number(c.weeklyGuarantee??0),
+    appearanceFee:Number(c.appearanceFee??0)
+   }]);
+   const budget=el("div","ppw-profile-contract-budget");
+   const money=(amount:number)=>"$"+Math.round(amount).toLocaleString("en-GB");
+   const budgetItem=(caption:string,amount:string,important=false)=>{
+    const tile=el("div","ppw-profile-contract-budget-item"+
+     (important?" ppw-profile-contract-budget-total":""));
+    tile.append(el("span","",caption),el("strong","",amount));
+    budget.append(tile);
+   };
+   const feesUnbounded=c.remainingDates===null&&Number(c.appearanceFee??0)>0;
+   budgetItem("Guaranteed wages remaining",money(exposure.guaranteedWages));
+   budgetItem(feesUnbounded?"Fee per appearance":"Optional appearance fees",
+    feesUnbounded?money(Number(c.appearanceFee??0)):money(exposure.optionalAppearanceFees));
+   budgetItem("Potential remaining cost",
+    feesUnbounded?"Depends on bookings":money(exposure.potentialTotal),true);
+   contract.append(budget,el("p","ppw-profile-muted",
+    "Guarantees cover remaining signed weeks, starting when the deal begins. "+
+    "Appearance fees are only charged when dates are used. "+
+    "Already-paid signing bonuses are excluded."));
    // Signed now does not imply eligibility on a future card.
    // Bookers need the actual last World week, especially for purchased dates.
    if(c.expiresWeekIndex-view.currentWeekIndex<=3){

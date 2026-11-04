@@ -800,3 +800,355 @@ body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-remove{justify-self:start;
 @media(max-width:360px){
  .ppw-card-rivalry-shortcuts{grid-template-columns:minmax(0,1fr)}
 }
+
+/* PHASE 25A: one intentional booking surface. Preserve existing underlying
+   slot, consent, story and World Lock controls; replace competing presentation. */
+.ppw-editor .ppw-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:8px;margin:12px 0 14px;padding:0;border:0;background:transparent}
+.ppw-editor .ppw-toolbar>select{grid-column:1!important;width:100%;min-height:42px;
+ background:#182b45;border:1px solid #577798;border-radius:10px;color:#eef5ff}
+.ppw-editor .ppw-experience-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ppw-editor .ppw-experience-actions button{min-height:49px;width:100%;min-width:0;
+ font-size:15px;font-weight:850;border-radius:11px;color:white!important;
+ border:1px solid #e58bc7;box-shadow:none!important}
+.ppw-editor .ppw-action-match{background:linear-gradient(110deg,#e12b8b,#9946c2)!important}
+.ppw-editor .ppw-action-angle{background:linear-gradient(110deg,#244f89,#6351c8)!important;
+ border-color:#8bb9fc!important}
+.ppw-editor .ppw-card-airtime{padding:10px 12px;margin:8px 0;
+ background:linear-gradient(110deg,#17314b,#242744)}
+.ppw-editor .ppw-card-airtime-heading{margin:0 0 6px}
+.ppw-editor .ppw-card-airtime>small{margin-top:6px;font-size:12px}
+.ppw-editor .ppw-card-appearance-cost{display:block;border:1px solid #456786;
+ background:#122c42;border-radius:10px;padding:0 12px;margin:8px 0}
+.ppw-editor .ppw-card-appearance-cost>summary{min-height:43px;display:flex;
+ align-items:center;font-size:13px;color:#c8e5fa;font-weight:750;cursor:pointer}
+.ppw-editor .ppw-card-appearance-cost>p{font-size:12px;line-height:1.5;
+ color:#b8cede;margin:0 0 11px}
+.ppw-editor .ppw-card-crew-strip{margin:8px 0;padding:0 10px}
+.ppw-editor .ppw-card-rivalry-ideas{margin:9px 0;padding:7px 11px}
+.ppw-editor .ppw-card-rivalry-shortcuts{gap:7px}
+.ppw-editor .ppw-card-rivalry-option{padding:7px}
+.ppw-editor .ppw-card-rivalry-option>small{font-size:11px;line-height:1.3}
+.ppw-editor .ppw-card-rivalry-shortcuts .ppw-card-rivalry-add{min-height:43px}
+.ppw-editor .ppw-card{overflow:hidden;margin:8px 0;border-radius:12px;
+ background:linear-gradient(125deg,#192a45,#292140)}
+.ppw-editor .ppw-card-bar{padding:10px 11px;gap:7px}
+.ppw-editor .ppw-card-bar strong{font-size:15px}
+.ppw-editor .ppw-card-lineup{font-size:11px;line-height:1.4}
+.ppw-editor .ppw-card-matchup{display:flex;align-items:center;justify-content:center;
+ gap:6px;padding:0 10px 10px;min-width:0}
+.ppw-editor .ppw-card-matchup-side{display:flex;justify-content:center;align-items:center;
+ gap:5px;min-width:0;flex:1;flex-wrap:wrap}
+.ppw-editor .ppw-card-person{display:flex;flex-direction:column;align-items:center;
+ gap:4px;min-width:0;max-width:82px;flex:1}
+.ppw-editor .ppw-card-person-face{display:grid;place-items:center;position:relative;
+ width:42px;height:42px;overflow:hidden;border-radius:50%;color:#ecf5ff;
+ background:#283e61;border:2px solid #6b8cbd;font-size:13px;font-weight:850}
+.ppw-editor .ppw-card-person-face img{position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover}
+.ppw-editor .ppw-card-person-name{font-size:10px;color:#f0f2ff;text-align:center;
+ line-height:1.15;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-versus{font-size:13px;font-weight:950;color:#ffd47c;
+ font-style:italic;flex:none}
+.ppw-editor .ppw-card-extra-people{color:#aaccdf;font-size:11px;font-weight:850}
+.ppw-editor .ppw-card-multi-lineup{color:#dbe7fc;font-size:12px;line-height:1.35;
+ text-align:center;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-broadcast-slot{margin:0 8px 9px}
+.ppw-editor .ppw-card-broadcast-slot>summary{font-size:11px;min-height:28px}
+.ppw-editor .ppw-save{position:static!important;bottom:auto!important;box-shadow:none;
+ border-radius:13px;padding:10px;margin:15px 0 28px!important;background:#17263d}
+body>.ppw-card-edit-shade .ppw-winner-picker{grid-column:1/-1;border:0;
+ margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-winner-picker>legend{font-weight:850;font-size:13px;
+ margin-bottom:8px;color:#a9defa}
+body>.ppw-card-edit-shade .ppw-winner-choice{min-height:60px;min-width:0;
+ padding:9px;border:2px solid #52668b;border-radius:11px;background:#202a43;
+ color:#f2f2ff;font-size:13px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-winner-selected{border-color:#58e6c5;
+ background:#1b5b58;box-shadow:inset 0 0 0 1px #82ffe4}
+body>.ppw-card-edit-shade .ppw-winner-picker>select{grid-column:1/-1;min-height:48px}
+body>.ppw-card-edit-shade .ppw-guide-context{display:none}
+body>.ppw-card-edit-shade .ppw-guide-booking{gap:10px}
+body>.ppw-card-edit-shade .ppw-guide-booking h3{font-size:19px}
+body>.ppw-card-edit-shade .ppw-guide-back{background:#203550!important;
+ border:1px solid #7094bb!important;color:#dbeeff!important}
+body>.ppw-card-edit-shade .ppw-booking-done{background:linear-gradient(115deg,#e12b8b,#9845c4)!important;
+ color:#fff!important;border:1px solid #ffa5db!important}
+body>.ppw-card-edit-shade .ppw-remove{color:#ffced5!important;
+ background:#3a263d!important;border:1px solid #a86b81!important;
+ border-radius:9px!important;min-height:36px;padding:6px 12px}
+body>.ppw-card-edit-shade .ppw-guide-extra{background:#172942;border-color:#526d8d}
+body>.ppw-card-edit-shade .ppw-stipulation-impact{font-size:12px;line-height:1.4}
+@media(max-width:350px){.ppw-editor .ppw-card-person-face{width:34px;height:34px}
+ body>.ppw-card-edit-shade .ppw-winner-picker{grid-template-columns:1fr}}
+
+/* Critical staff and consent actions are not buried in the optional script. */
+body>.ppw-card-edit-shade .ppw-guide-casting-options{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-casting-options>.ppw-field{min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-winner-reminder{margin:0;padding:8px 10px;
+ border-left:3px solid #62dacf;color:#d5eee9;background:#193a4b;
+ font-size:12px;line-height:1.4}
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-card-match-consents{
+ min-width:0;margin:2px 0}
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-card-advisor-notes{
+ min-width:0;margin:3px 0}
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-stipulation-impact{
+ display:block;min-width:0;line-height:1.45;font-size:12px}
+@media(max-width:350px){body>.ppw-card-edit-shade .ppw-guide-casting-options{
+ grid-template-columns:1fr}}
+
+/* Keep meaningful authored creative choices readable at iPhone widths. */
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Attack style"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="How the turn is shown"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="The message"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="How it ends"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Storytelling purpose"]),
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field:has(
+ [aria-label="Exact location"]){grid-column:1/-1}
+body>.ppw-card-edit-shade .ppw-guide-essentials>.ppw-field select{
+ min-width:0;width:100%;max-width:100%;font-size:14px}
+
+/* Dossier-to-show authoring: one context strip, never an alternate editor. */
+.ppw-card-wrestler-focus{display:grid;gap:9px;margin:12px 0 15px;padding:13px;
+ border:1px solid #6dacc4;border-radius:13px;
+ background:linear-gradient(120deg,#133b50,#252b4f);min-width:0}
+.ppw-card-wrestler-focus>strong{font-size:19px;color:#fff4d7}
+.ppw-card-wrestler-focus>p{margin:0;font-size:12px;color:#c4ddeb;line-height:1.45}
+.ppw-card-wrestler-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px}
+.ppw-card-wrestler-actions>button{min-width:0}
+@media(max-width:355px){.ppw-card-wrestler-actions{grid-template-columns:1fr}}
+
+/* Phase 25K: guided match/angle authoring with concrete crew review.
+   Four deliberate screens reuse exactly the old match and segment models. */
+body>.ppw-card-edit-shade .ppw-guide-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:6px;margin:0 0 5px}
+.ppw-guide-progress-dot{height:4px;border-radius:8px;background:#3a5676}
+.ppw-guide-progress-dot[data-done=true]{background:#53d8c1}
+.ppw-guide-format-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:8px}
+.ppw-guide-format-tabs button{min-width:0;min-height:46px}
+body>.ppw-card-edit-shade .ppw-guide-format-tab[aria-pressed=true],
+body>.ppw-card-edit-shade .ppw-guide-format-tile[aria-pressed=true],
+body>.ppw-card-edit-shade .ppw-guide-stipulation-tile[aria-pressed=true]{
+ border-color:#79ead8;background:#19564f;color:#fff;box-shadow:inset 0 0 0 1px #a2ffe6}
+body>.ppw-card-edit-shade .ppw-guide-section-label{display:block;color:#ffe7bc;
+ font-size:13px;padding-top:8px}
+.ppw-guide-format-grid,.ppw-guide-stipulation-grid{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body>.ppw-card-edit-shade .ppw-guide-format-tile,
+body>.ppw-card-edit-shade .ppw-guide-stipulation-tile{
+ min-width:0;min-height:53px;white-space:normal;text-align:center;
+ padding:10px 7px;font-size:13px;line-height:1.25}
+.ppw-guide-other-rules{border:1px solid #52668b;border-radius:12px;padding:10px}
+.ppw-guide-other-rules>summary{font-weight:800;color:#d2e4ff;
+ padding:8px;cursor:pointer;min-height:44px}
+.ppw-guide-other-rules>.ppw-guide-stipulation-grid{padding:8px 0}
+.ppw-guide-angle-setup{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.ppw-guide-rules-brief,.ppw-guide-crew-pulse{border:1px solid #587d98;
+ background:#152f40;color:#d9ebf5;border-radius:12px;padding:12px}
+.ppw-guide-rules-brief[data-level=watch],.ppw-guide-crew-pulse{
+ border-color:#c38d6a;background:#362d32}
+.ppw-guide-rules-brief strong,.ppw-guide-crew-pulse strong{
+ display:block;color:#fff4dd;font-size:13px}
+.ppw-guide-rules-brief p,.ppw-guide-crew-pulse p{margin:5px 0 0;
+ color:#dbe5ed;font-size:12px;line-height:1.5}
+.ppw-guide-staff-review{display:grid;gap:9px}
+.ppw-guide-staff-review>h4{font-size:14px;font-weight:900;
+ margin:14px 0 2px;color:#ffdfab}
+.ppw-guide-booking-summary{padding:13px;background:#153b4d;
+ border-radius:12px;border:1px solid #4c9db0;display:grid;gap:6px}
+.ppw-guide-booking-summary strong{font-size:17px;color:#fff}
+.ppw-guide-booking-summary p{font-size:12px;margin:0;color:#d5e5f0;
+ line-height:1.45;overflow-wrap:anywhere}
+.ppw-guide-review-note{display:grid;gap:4px;padding:11px 12px;
+ background:#1c3047;border:1px solid #698ba5;border-radius:12px}
+.ppw-guide-review-note[data-level=watch]{border-color:#d4a274;background:#342d35}
+.ppw-guide-review-note span{color:#94e9ff;font-size:10px;font-weight:900;
+ text-transform:uppercase;letter-spacing:.07em}
+.ppw-guide-review-note strong{font-size:13px;color:#fff5de}
+.ppw-guide-review-note p,.ppw-guide-staff-review>p{font-size:12px;
+ color:#d4e0ee;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.ppw-guide-reviewed-clear{padding:12px;border:1px solid #658698;
+ border-radius:10px;background:#183348}
+.ppw-guide-creative-alert{color:#ffdcad!important}
+.ppw-guide-fee-note{border-top:1px solid #617389;padding-top:12px}
+@media(max-width:350px){.ppw-guide-format-grid,.ppw-guide-stipulation-grid{
+ grid-template-columns:1fr}}
+
+/* One roster sheet, both sides: thumb-scrollable, local (zero-RPC) slicers. */
+.ppw-picker-side-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(105px,1fr);
+ overflow-x:auto;scrollbar-width:none;gap:7px;margin:12px 0;
+ -webkit-overflow-scrolling:touch}
+.ppw-picker-source-tabs,.ppw-picker-chips{display:flex;gap:7px;overflow-x:auto;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+ padding:6px 1px 10px;scroll-snap-type:x proximity}
+.ppw-picker-source-tab,.ppw-picker-filter-chip{white-space:nowrap;flex:none;
+ scroll-snap-align:start;font-size:12px;min-height:43px;padding:8px 13px}
+.ppw-picker-side-tab{white-space:nowrap;min-height:47px;font-size:12px;
+ padding:8px 5px}
+.ppw-picker-side-tab[aria-pressed=true],.ppw-picker-source-tab[aria-pressed=true],
+.ppw-picker-filter-chip[aria-pressed=true],.ppw-picker-unit[aria-pressed=true]{
+ background:#1b615e;border-color:#8cf9d8;color:#fff}
+.ppw-picker-unit-list{display:flex;flex-wrap:wrap;gap:8px;
+ margin:8px 0 12px}
+.ppw-picker-unit{font-size:12px;min-height:44px;white-space:normal;text-align:left}
+.ppw-picker-note{font-size:11px;line-height:1.4;color:#bfd9ef}
+
+/* Phase 25N: verified condition facts in the final staff review, not
+   guessed chemistry or another roster query. Long casts stay condensed. */
+.ppw-guide-condition-list{display:grid;gap:7px}
+.ppw-guide-condition-row{display:grid;gap:4px;border-radius:10px;
+ background:#1c3545;border:1px solid #587c9b;padding:10px 11px;
+ min-width:0}
+.ppw-guide-condition-row[data-level="watch"]{
+ border-color:#d3a374;background:#362d33}
+.ppw-guide-condition-row>strong{font-size:13px;color:#f4f8ff}
+.ppw-guide-condition-row>span{font-size:12px;color:#cddfed;
+ line-height:1.45;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.ppw-guide-staff-review .ppw-guide-condition-disclaimer{
+ font-size:11px;color:#a8c6d9;line-height:1.45}
+.ppw-guide-more-conditions{border:1px solid #506f88;border-radius:10px;
+ padding:7px 10px}
+.ppw-guide-more-conditions>summary{min-height:44px;display:flex;
+ align-items:center;cursor:pointer;color:#d9ecf9;font-weight:750}
+.ppw-guide-more-conditions>.ppw-guide-condition-list{padding:8px 0 3px}
+
+/* Phase 25P: angle casting gets the same role-specific, thumb-scrollable
+   discovery as matches; angle scripting is split into meaningful blocks. */
+.ppw-angle-type-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;min-width:0}
+.ppw-angle-type-tile{min-width:0;min-height:49px;text-align:center;
+ white-space:normal;line-height:1.25;font-size:13px;padding:9px}
+.ppw-angle-type-tile[aria-pressed=true]{background:#185750;
+ border-color:#80e7d3;color:#fff;box-shadow:inset 0 0 0 1px #a2ffe6}
+.ppw-guide-angle-context{display:grid;gap:3px;padding:12px 13px;
+ background:#173b4e;border:1px solid #5389a5;border-radius:11px}
+.ppw-guide-angle-context strong{color:#fff4de;font-size:16px}
+.ppw-guide-angle-context span{color:#bed8e8;font-size:12px;line-height:1.4}
+.ppw-guide-angle-section{display:grid;gap:9px;min-width:0;
+ border-top:1px solid #55748b;padding:13px 0 3px}
+.ppw-guide-angle-section>h4{font-size:17px;font-weight:850;
+ margin:0;color:#ffdfae}
+.ppw-guide-angle-section>.ppw-field{width:100%;min-width:0}
+.ppw-guide-angle-section>.ppw-field select{min-width:0;width:100%;
+ max-width:100%}
+.ppw-guide-angle-fact,.ppw-guide-angle-feud{margin:1px 0 0;
+ font-size:12px;line-height:1.5;color:#c9dfeb}
+.ppw-guide-angle-feud{padding:10px 12px;background:#202d50;
+ border-left:3px solid #b3a1f4;border-radius:7px}
+@media(max-width:350px){.ppw-angle-type-tiles{grid-template-columns:1fr}}
+
+/* Preserve legible full-width scripted direction on 320/390px iPhones.
+   The original generic control-grid has two columns at these widths. */
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid{
+ grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field{
+ grid-column:1/-1;width:100%;min-width:0}
+body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field select{
+ width:100%;min-width:0;max-width:100%;font-size:14px}
+
+/* 320px WGM-style choice density: preserve two columns and readable taps.
+   Long one-column tile stacks made the guided What screen unnecessarily tall. */
+@media(max-width:350px){
+ body>.ppw-card-edit-shade .ppw-angle-type-tiles{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+
+/* Phase 25Q: the editable running order prioritises actual names, direction,
+   timing and a visible tap target. Portraits remain on Ringside results. */
+.ppw-editor .ppw-card{border-left:3px solid #5682bb}
+.ppw-editor .ppw-angle-card{border-left-color:#b18ae4}
+.ppw-editor .ppw-main-event{border-left-color:#ffc75b}
+.ppw-editor .ppw-card-open-zone{min-width:0;flex:1;cursor:pointer;
+ border-radius:8px;padding:4px 1px;outline-offset:3px}
+.ppw-editor .ppw-card-open-zone:focus-visible{outline:2px solid #83e2f7}
+.ppw-editor .ppw-card-open-zone:hover strong{color:#c8f9ff}
+.ppw-editor .ppw-card-lineup{display:grid;gap:4px;margin-top:5px}
+.ppw-editor .ppw-card-lineup-names{display:block;color:#fff4df;
+ font-size:13px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-lineup-context{display:block;color:#b7d5e5;
+ font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-matchup{gap:8px;padding:11px 13px;
+ background:#152a40;border-top:1px solid #3c5677;
+ border-bottom:1px solid #3c5677}
+.ppw-editor .ppw-card-matchup-side{display:flex;flex:1 1 0;min-width:0;
+ flex-wrap:wrap;gap:4px 6px;justify-content:center}
+.ppw-editor .ppw-card-person{display:inline;flex:initial;min-width:0;
+ max-width:none;color:#f5f6ff;font-size:clamp(12px,3.5vw,15px);
+ font-weight:850;line-height:1.35;overflow-wrap:anywhere}
+.ppw-editor .ppw-card-person+.ppw-card-person:before{
+ content:" & ";color:#9fb8d2}
+.ppw-editor .ppw-card-versus{font-size:12px;color:#ffc97c;
+ font-weight:950;flex:none}
+.ppw-editor .ppw-card-multi-lineup{font-size:12px;line-height:1.5}
+.ppw-editor .ppw-card-booked-facts{display:flex;flex-wrap:wrap;gap:6px;
+ padding:8px 11px}
+.ppw-editor .ppw-card-booked-facts span{font-size:11px;color:#daf0fc;
+ padding:5px 8px;border:1px solid #4b7591;border-radius:7px;
+ background:#183b50;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-editor .ppw-card-matchup{padding:8px 9px}
+ .ppw-editor .ppw-card-person{font-size:12px}
+ .ppw-editor .ppw-card-booked-facts span{font-size:10px}
+}
+
+/* The server requires a real match. Explain disabled saving when the
+   running order contains angles but no completed bout. */
+.ppw-editor .ppw-card-save-hint{grid-column:1/-1;padding:8px 10px;
+ border-radius:9px;border:1px solid #b99562;background:#3c3430;
+ color:#ffe8c4;font-size:12px;line-height:1.45;font-weight:750}
+
+/* A second on-card appearance is legal for storyline casting, not a
+   duplicate contract charge. Explain it beside the selectable wrestler. */
+.ppw-picker-overlap{font-size:11px;line-height:1.45;
+ margin:6px 0 10px;padding:9px 10px;border-radius:9px;
+ background:#203b49;border:1px solid #6696a4;color:#daf0f0;
+ overflow-wrap:anywhere}
+
+/* Contract warnings are provisional, never an authoritative consent result. */
+.ppw-guide-contract-alert{border:1px solid #b8956b;border-radius:11px;
+ background:#332c35;padding:11px 12px;display:grid;gap:5px}
+.ppw-guide-contract-alert>strong{font-size:13px;color:#ffdfae}
+.ppw-guide-contract-alert>p{font-size:12px;color:#f4e2d1;
+ line-height:1.45;margin:0;overflow-wrap:anywhere}
+
+/* Pre-commit running-time projection: visible while the proposed slot is
+   still a wizard, never counted twice when reopening an existing ticket. */
+.ppw-guide-staff-review>.ppw-guide-airtime-note{
+ font-size:12px;line-height:1.55;padding:10px 12px;
+ background:#1b384a;border:1px solid #6385a3;border-radius:10px;
+ color:#dce9f2;overflow-wrap:anywhere}
+.ppw-guide-staff-review>.ppw-guide-airtime-note[data-level=watch]{
+ border-color:#d49a70;background:#382d32;color:#ffe9cc}
+
+/* Phase 25X: one contextual, optional crew adjustment per booking stage.
+   The booker retains the authored winner, scene and final Save authority. */
+body>.ppw-card-edit-shade .ppw-booking-choice-panel{
+ display:grid;gap:5px;min-width:0;padding:12px 13px;
+ border:1px solid #b59668;border-radius:12px;background:#322d35}
+body>.ppw-card-edit-shade .ppw-booking-choice-panel[data-level=info]{
+ border-color:#719cac;background:#183446}
+body>.ppw-card-edit-shade .ppw-booking-choice-role{
+ color:#9de6ef;font-size:11px;line-height:1.4;font-weight:850;
+ text-transform:uppercase;letter-spacing:.025em;overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-booking-choice-panel>strong{
+ color:#fff4df;font-size:14px;line-height:1.35}
+body>.ppw-card-edit-shade .ppw-booking-choice-panel>p{
+ margin:0;color:#dde8ed;font-size:12px;line-height:1.45;
+ overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-booking-choice-action{
+ justify-self:start;min-height:44px;max-width:100%;white-space:normal;
+ text-align:center;margin-top:5px;padding:9px 14px;font-size:13px;
+ font-weight:850;background:#235d62;color:#f5ffff;border-color:#8cd8dc}
+body>.ppw-card-edit-shade .ppw-booking-choice-action:disabled{opacity:.55}
+@media(max-width:350px){
+ body>.ppw-card-edit-shade .ppw-booking-choice-action{width:100%}
+}

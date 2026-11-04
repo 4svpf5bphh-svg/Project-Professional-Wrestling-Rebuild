@@ -49,7 +49,8 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   /champion|title (?:win|chang|loss|defen)|new titleholder/.test(text)?"TITLE":
   /heel turn|face turn|betray|turned on|walkout|stable split/.test(text)?"TURN":
   /debut|arriv|first appear|new signing/.test(text)?"DEBUT":
-  /attack|assault|ambush|brawl/.test(text)?"ATTACK":"OTHER";
+  /attack|assault|ambush|brawl/.test(text)?"ATTACK":
+  /\bvs\.?\s|\bversus\b|steals the show|\d(?:\.\d{1,2})?-star match/.test(text)?"MATCH":"OTHER";
  const reactions:Record<typeof kind,string[]>={
   RUMOUR:[
    "The 'sources' on this one are doing some seriously heavy lifting. Show receipts. 🧐",
@@ -129,6 +130,16 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "That is one way to make everyone remember your name. 😂",
    "Waiting for the inevitable 'I was provoked' speech. 🍿"
   ],
+  MATCH:[
+   "That was the kind of wrestling that makes you watch the replay. 🔥",
+   "Give those two another spotlight when they have a reason to meet. 👀",
+   "This is going straight into my best bouts of the year list. 📼",
+   "The crowd had a reason to care. Now can they follow it up? 🧐",
+   "Good match. I want to know what they do NEXT, not just see it repeated. 🍿",
+   "I could watch that sort of work all evening. Bell-to-bell quality. 🔔",
+   "All the talking stops when the wrestling is that good. 🤼",
+   "Tell me what this result means for their next programme. 💥"
+  ],
   OTHER:[
    "This week's wrestling discourse is already out of control. 😂",
    "I need the replay before I pick a side on this one. 📼",
@@ -170,13 +181,35 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "That escalated faster than a contract negotiation. 😳",
    "The next promo needs an explanation, not just threatening music. 🎤",
    "Forget the rematch. I need to see the fallout first. 🍿"],
+  MATCH:["They'd better put this one on the replay queue. 📼",
+   "That got the in-ring argument settled for tonight. 🔔",
+   "The wrestler interviews after a bout like this should be interesting. 👀",
+   "A strong match deserves a strong follow-up, not a rerun. 🍿"],
   OTHER:["The discourse entered overtime before the show even ended. 😂",
    "I'm going to need a recap, a replay and probably a flow chart. 📼",
    "My timeline has opinions. None of them agree. 👀",
    "Professional wrestling remains the strangest thing I voluntarily watch. 💀"]
  };
+ // Certified match headlines contain genuine public names and, often, a
+ // star rating. Make fan opinions about THAT bout instead of reusing three
+ // generic comments beneath every four/five-star article.
+ const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|at\s)/i):null;
+ const pairing=named?named[1]!.trim()+" vs "+named[2]!.trim():null;
+ const stars=kind==="MATCH"?
+  story.summary.match(/\b(\d(?:\.\d{1,2})?)-star match\b/i)?.[1]??null:null;
+ const specific=kind==="MATCH"&&pairing?[
+  pairing+" is the match I'd send to a friend who asks why I watch wrestling. 🔥",
+  "Everyone's debating "+pairing+". I'm looking at what happens to those two next. 👀",
+  stars?stars+" stars for "+pairing+"? I'd still watch it again before arguing ratings. 📼":
+   "I need a second watch of "+pairing+" before I pick a favourite spot. 📼",
+  "That "+pairing+" result has to matter for the next card. Don't waste it. 🧐",
+  "Please let "+pairing+" breathe before the inevitable rematch discourse starts. 😂",
+  "The real question after "+pairing+": who gets the next opportunity? 🍿",
+  story.promotionName+" has something to follow up after "+pairing+". Book it with purpose. 💥"
+ ]:[];
  const pool=story.year>1||story.week>=19?
-  [...reactions[kind],...expanded[kind]]:reactions[kind];
+  [...specific,...reactions[kind],...expanded[kind]]:
+  [...specific,...reactions[kind]];
  const used=new Set<number>();
  return [0,1,2].map(i=>{
   // Unique commenters and reactions per article, with different choices on

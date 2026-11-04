@@ -30,9 +30,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"History",exact:true}).click();
- await expect(page.getByText(/Matt Riddle won their latest recorded meeting/)).toBeVisible();
- await expect(page.getByText(/Latest chapter: an on-screen angle/)).toBeVisible();
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
+ await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("The return bout happened")).toBeVisible();
  await expect(page.getByText(/A later rivalry match was completed/)).toBeVisible();
  await expect(page.getByText(/That chapter is in the books/)).toBeVisible();
@@ -55,10 +56,11 @@ test("iPhone makes an unfulfilled retaliation direction visible without pretendi
     recentActivity:[programme.recentActivity[1]]}]}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Creative",exact:true}).click();
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText("An answer is still due")).toBeVisible();
  await expect(page.getByText(/No subsequent on-screen angle is recorded/)).toBeVisible();
- await expect(page.getByText(/Give Matt Riddle an answer/)).toBeVisible();
+ await expect(page.getByText(/Still open · 1 week since your decision/)).toBeVisible();
  await expect(page.getByText(/An answer is still due/)).toBeVisible();
  expect(calls).toEqual(["programmes"]);
 });
@@ -117,8 +119,8 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  });
  await page.goto("/#/programmes");
  await expect(page.getByText(/Not booked yet/)).toHaveCount(0);
- await expect(page.locator(".ppw-programme-now")).toContainText("booked on Armageddon");
- await page.getByRole("button",{name:/^Finale/}).click();
+ await expect(page.locator(".ppw-programme-upcoming-compact")).toContainText("Armageddon");
+ await page.getByRole("button",{name:/^Payoff/}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
@@ -154,12 +156,12 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  await page.goto("/#/programmes");
  await expect(page.locator(".ppw-programme-switch")).toHaveCount(4);
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
- await expect(page.getByRole("button",{name:"Creative",exact:true})).toHaveAttribute("aria-current","page");
+ await expect(page.getByRole("button",{name:"Story",exact:true})).toHaveAttribute("aria-current","page");
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
  await expect(page.getByRole("button",{name:"History",exact:true})).toBeVisible();
- await expect(page.getByRole("button",{name:"Finale"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Creative",exact:true})).toBeVisible();
- for(const name of ["Creative","Finale","History"]){
+ await expect(page.getByRole("button",{name:"Payoff"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Story",exact:true})).toBeVisible();
+ for(const name of ["Story","Payoff","History"]){
   const tab=page.getByRole("button",{name,exact:true});
   await expect(tab).toBeVisible();
   const clipped=await tab.evaluate(el=>el.scrollWidth>el.clientWidth+1);
@@ -168,11 +170,74 @@ test("four feuds are a compact switcher, not four 600-line creative cards",async
  const heading=page.getByRole("heading",{name:"Programmes"});
  await expect(heading).toBeVisible();
  expect(await heading.evaluate(el=>el.scrollWidth>el.clientWidth+1)).toBe(false);
+ const versus=page.locator(".ppw-programme-focused .ppw-programme-versus");
+ await expect(versus).toHaveText("VS");
+ const vsLayout=await versus.evaluate(node=>{
+  const box=node.getBoundingClientRect(),css=getComputedStyle(node);
+  return {width:box.width,height:box.height,whiteSpace:css.whiteSpace};
+ });
+ expect(vsLayout.whiteSpace).toBe("nowrap");
+ expect(vsLayout.height).toBeLessThanOrEqual(36);
+ expect(vsLayout.width).toBeLessThanOrEqual(36);
  await page.getByRole("button",{name:"Manage Booker 2 vs Rival 2"}).click();
  await expect(page.locator(".ppw-programme-broadcast")).toContainText("Booker 2");
  await expect(page.locator(".ppw-programme-broadcast")).not.toContainText("Booker 1");
- await page.screenshot({path:"test-results/presentation-screenshots/phase22-programmes-creative.png",fullPage:true,animations:"disabled"});
+ await page.screenshot({path:"test-results/presentation-screenshots/phase25-programmes-story.png",fullPage:true,animations:"disabled"});
  expect(reads).toBe(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("a wrestler dossier opens their own active feud rather than the first unrelated rivalry",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const calls:string[]=[];
+ const dossier={personId:"joe",name:"Samoa Joe",division:"MEN",status:"ACTIVE",
+  careerStage:"REGULAR",popularity:80,recognition:80,momentum:70,morale:75,
+  inRingQuality:80,matchCraft:85,presentation:80,stamina:80,safety:75,
+  fatigue:10,wear:5,alignment:"HEEL",canEdit:false,onYourRoster:true,
+  sharedHuman:false,currentWeekIndex:8,worldRevision:4,
+  persona:{personaName:"Samoa Joe",gimmickId:"AUTHENTIC",primaryStyle:"BRAWLER",
+   secondaryStyle:null,signatureMoves:[],finishingMoves:[]},
+  contracts:[{promotionId:"company",promotion:"CWA",isYours:true,
+   family:"EXCLUSIVE",role:"MAIN_EVENT",remainingDates:null,
+   startWeekIndex:0,expiresWeekIndex:51,weeklyGuarantee:1500,
+   appearanceFee:0,creativeControl:"NONE"}],
+  teams:[],stables:[],connections:[],history:[]};
+ const other={...programme,programmeId:"unrelated",sideA:[
+  {kind:"PERSON",refId:"other",name:"Other Wrestler"}],sideB:[
+  {kind:"PERSON",refId:"stranger",name:"Stranger"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);calls.push(method);
+  if(method==="wrestlerDirectory")return route.fulfill({json:{
+   view:"ROSTER",year:1,week:9,worldRevision:4,canEdit:true,hasMore:false,
+   currentWeekIndex:8,people:[{personId:"joe",name:"Samoa Joe",
+    ringName:"Samoa Joe",division:"MEN",availability:"YOUR_ROSTER",
+    family:"EXCLUSIVE",remainingDates:null,startsInWeeks:0,weeksRemaining:44,
+    weeklyGuarantee:1500,appearanceFee:0,popularity:80,recognition:80,
+    momentum:70,inRingQuality:80,matchCraft:85,presentation:80,morale:75,
+    roleExpectation:"MAIN_EVENT"}]}});
+  if(method==="wrestlerProfile")return route.fulfill({json:dossier});
+  if(method==="programmes")return route.fulfill({json:{
+   year:1,week:9,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"},
+    {kind:"PERSON",refId:"riddle",name:"Matt Riddle"}],
+   teams:[],championships:[],programmes:[other,programme]}});
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/roster");
+ const wrestler=page.locator(".ppw-directory-card").first();
+ await wrestler.locator("summary").click();
+ await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+ const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(dialog).toBeVisible();
+ await dialog.locator(".ppw-profile-manage-more > summary").click();
+ await dialog.getByRole("button",{name:"Manage programmes"}).click();
+ await expect(page).toHaveURL(/#\/programmes$/);
+ await expect(dialog).toHaveCount(0);
+ await expect(page.locator(".ppw-programme-card")).toContainText("Samoa Joe");
+ await expect(page.locator(".ppw-programme-card")).not.toContainText("Other Wrestler");
+ expect(calls).toEqual(["wrestlerDirectory","wrestlerProfile","programmes"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

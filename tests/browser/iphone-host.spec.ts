@@ -322,7 +322,10 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card").first()).toBeDisabled();
  await page.goto("/#/roster");
  await expect(page.getByRole("navigation",{name:"Roster divisions"})).toBeVisible();
- await expect(page.getByRole("button",{name:/Trios/})).toBeDisabled();
+ // The roster now presents only actionable shortcuts; actual trio formation
+ // remains available inside Tag Teams rather than a disabled placeholder.
+ await expect(page.getByRole("button",{name:/Trios/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Singles roster"})).toHaveCount(0);
  await page.getByRole("navigation",{name:"Roster divisions"})
   .getByRole("button",{name:"Tag Teams"}).click();
  await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
@@ -518,8 +521,9 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await expect(page.locator(".ppw-card-list .ppw-card-body")).toHaveCount(0);
  const finish=focused.getByLabel("Finish");
  await finish.selectOption("FOREIGN_OBJECT");
- await page.getByLabel("Who uses the foreign object?").selectOption("alice");
- await page.locator(".ppw-run-in summary").click();
+ await focused.locator(".ppw-guide-extra > summary").click();
+ await focused.getByLabel("Who uses the foreign object?").selectOption("alice");
+ await focused.locator(".ppw-run-in > summary").click();
  await page.getByRole("button",{name:"Choose run-in wrestler"}).click();
  await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
  await page.locator(".ppw-sheet .ppw-wrestler-card").first().click();
@@ -933,21 +937,26 @@ test("Post-show creative direction follows the latest completed rivalry match wi
   }:{}});
  });
  await page.goto("/#/programmes");
- await page.getByRole("button",{name:"Creative",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Where does this rivalry go next?"})).toBeVisible();
- await page.locator(".ppw-programme-booking-idea")
+ await page.getByRole("button",{name:"Story",exact:true}).click();
+ await page.locator(".ppw-programme-next > summary").click();
+ await expect(page.locator(".ppw-programme-next")).toHaveAttribute("open","");
+ await page.locator(".ppw-programme-strategy > summary").click();
+ await page.locator(".ppw-programme-strategy-choice")
   .filter({hasText:"Raise the cost of another loss"})
   .getByRole("button",{name:"Choose direction"}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText(/Last direction: Pursue a rematch/)).toBeVisible();
- await page.locator(".ppw-programme-booking-idea")
+ await page.locator(".ppw-programme-strategy > summary").click();
+ await page.locator(".ppw-programme-strategy-choice")
   .filter({hasText:"Let the result mean something"})
   .getByRole("button",{name:"Choose direction"}).click();
+ await page.locator(".ppw-programme-next > summary").click();
  await expect(page.getByText(/Last direction: Let the result stand/)).toBeVisible();
  expect(methods.filter(m=>m==="chooseProgrammeDirection")).toHaveLength(2);
  expect(methods.filter(m=>m==="programmes")).toHaveLength(3);
  expect(methods).not.toContain("save");
  expect(methods).not.toContain("results");
- await expect(page.getByText(/No bout or angle is booked for you/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Book next chapter"})).toBeVisible();
 });
 
 test("Industry featured wrestlers load only on expansion, cache through local filters and open the universal dossier",async({page})=>{
@@ -1333,12 +1342,12 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.keyboard.press("ArrowUp");
  await page.getByRole("button",{name:"Reorder match in slot 2 with Up and Down arrow keys"}).focus();
  await page.keyboard.press("ArrowUp");
- await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ await expect(page.locator(".ppw-card-matchup").first()).toContainText("Alice");
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  await expect(page.getByRole("button",{name:"Move angle in slot 2 earlier"})).toBeAttached();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
- await expect(page.locator(".ppw-card-bar").first()).toContainText("Alice");
+ await expect(page.locator(".ppw-card-matchup").first()).toContainText("Alice");
  expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const matchup=page.getByRole("dialog",{name:"Edit match"});
@@ -1349,10 +1358,10 @@ test("iPhone reorders a match together with its attached post-match angle",async
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const orphan=page.getByRole("dialog",{name:"Edit angle"});
  await expect(orphan.getByLabel("After which match?")).toHaveValue("");
+ await expect(orphan.getByText(/Choose the preceding match, then cast/)).toBeVisible();
+ await orphan.getByLabel("After which match?").selectOption("opener");
  await expect(orphan.getByText("Choose a wrestler who appeared in the selected match."))
   .toBeVisible();
- await orphan.getByLabel("After which match?").selectOption("opener");
- await expect(orphan.getByText("This angle needs a target.")).toBeVisible();
  await orphan.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-bar").nth(1)).toContainText("Follows its match");
  expect(methods.filter(m=>m!=="kpWorkspace")).toEqual(["planner","load","save","load"]);

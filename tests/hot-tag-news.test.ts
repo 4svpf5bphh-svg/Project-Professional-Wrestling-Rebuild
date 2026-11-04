@@ -72,3 +72,18 @@ test("new weekly broadcasts have more varied, still deterministic fictional fan 
  assert.ok(future.some(p=>/conspiracy board|barber|car crash|anonymous source/i.test(p.text)),
   "New stories draw from the larger fictional voice bank");
 });
+
+test("certified match news generates participant-specific comments, not generic OTHER templates",()=>{
+ const match={...rumour,id:"verified-title-main",desk:"OFFICIAL" as const,
+  promotionName:"STARDOM",
+  title:"Mei Seira vs Suzu Suzuki steals the show at Weekly show",
+  summary:"Weekly show delivered a 4.75-star match for STARDOM."};
+ const posts=projectHotTagNewsThread(match);
+ assert.equal(posts.length,3);
+ assert.deepEqual(posts,projectHotTagNewsThread(match));
+ assert.ok(posts.some(p=>p.text.includes("Mei Seira vs Suzu Suzuki")),
+  "Fan conversation names the actual certified match");
+ assert.ok(posts.every(p=>!p.text.includes("People somehow have a definitive take")),
+  "Match stories never fall back to the generic OTHER reaction bank");
+ assert.equal(new Set(posts.map(p=>p.text)).size,3);
+});

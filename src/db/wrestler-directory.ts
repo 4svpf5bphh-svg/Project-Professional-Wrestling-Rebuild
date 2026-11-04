@@ -84,18 +84,18 @@ export async function readWrestlerDirectory(
  return withSqlClient(pool,async tx=>{
   const auth=await tx.query<{year:number;week:number;revision:string|number;
    seed:string|number;can_edit:boolean;
-    cash:string;weekly_media_income:string|null;weekly_sponsor_income:string|null;
-    weekly_fixed_overhead:string|null;active_guarantees:string;staff_payroll:string;
+    cash:string;weekly_income:string|null;
+    weekly_fixed_overhead:string|null;active_guarantees:string;
+    signed_roster_exposure:string;staff_payroll:string;
     plan_wage_limit:string|null;plan_cash_reserve:string|null;
     has_talent_manager:boolean}>(`
    SELECT w.year,w.week,w.revision,w.seed,
-    owner.cash::text,owner.weekly_media_income::text,owner.weekly_sponsor_income::text,
+    owner.cash::text,
+    CASE WHEN owner.weekly_media_income IS NULL OR owner.weekly_sponsor_income IS NULL
+     THEN NULL ELSE (owner.weekly_media_income+owner.weekly_sponsor_income)::text
+     END AS weekly_income,
     owner.weekly_fixed_overhead::text,
-    (SELECT coalesce(sum(agreement.weekly_guarantee),0)::text
-     FROM ppw_contracts agreement WHERE agreement.world_id=w.world_id
-      AND agreement.promotion_id=owner.promotion_id AND agreement.status='SIGNED'
-      AND agreement.start_week_index<=(w.year-1)*52+w.week-1
-      AND agreement.expires_week_index>=(w.year-1)*52+w.week-1) AS active_guarantees,
+    costs.active_guarantees,costs.signed_roster_exposure,
     (SELECT coalesce(sum(employee.weekly_salary),0)::text
      FROM ppw_staff_employments employee WHERE employee.world_id=w.world_id
       AND employee.promotion_id=owner.promotion_id AND employee.status='ACTIVE'
@@ -118,6 +118,27 @@ export async function readWrestlerDirectory(
     AND owner.promotion_id=c.promotion_id AND owner.lifecycle='ACTIVE'
    LEFT JOIN ppw_promotion_spending_plans plan ON plan.world_id=owner.world_id
     AND plan.promotion_id=owner.promotion_id
+   -- One existing indexed payroll scan now carries outstanding signed costs.
+   -- No additional SQL round trip during market search or filtering.
+   LEFT JOIN LATERAL (
+    SELECT coalesce(sum(CASE
+      WHEN agreement.start_week_index<=(w.year-1)*52+w.week-1
+       AND agreement.expires_week_index>=(w.year-1)*52+w.week-1
+      THEN agreement.weekly_guarantee ELSE 0 END),0)::text AS active_guarantees,
+     coalesce(sum(
+      greatest(0,agreement.expires_week_index-
+       greatest(agreement.start_week_index,(w.year-1)*52+w.week-1)+1)
+        *agreement.weekly_guarantee+
+      CASE WHEN agreement.remaining_dates IS NULL THEN 0 ELSE
+       least(greatest(0,agreement.remaining_dates),
+        greatest(0,agreement.expires_week_index-
+         greatest(agreement.start_week_index,(w.year-1)*52+w.week-1)+1))
+        *agreement.appearance_fee END
+     ),0)::text AS signed_roster_exposure
+    FROM ppw_contracts agreement
+    WHERE agreement.world_id=w.world_id AND agreement.promotion_id=owner.promotion_id
+     AND agreement.status='SIGNED'
+   ) costs ON TRUE
    WHERE w.world_id=$1`,[who.worldId,who.playerId,who.promotionId]);
   if(auth.length!==1)throw new Error("Wrestler directory access denied");
   const now=(auth[0]!.year-1)*52+auth[0]!.week-1;
@@ -236,12 +257,12 @@ export async function readWrestlerDirectory(
    offerBudget:f.view==="MARKET"?{
     hasTalentManager:auth[0]!.has_talent_manager,
     cash:Number(auth[0]!.cash),
-    weeklyIncome:auth[0]!.weekly_media_income===null||
-     auth[0]!.weekly_sponsor_income===null?null:
-     Number(auth[0]!.weekly_media_income)+Number(auth[0]!.weekly_sponsor_income),
+    weeklyIncome:auth[0]!.weekly_income===null?null:
+     Number(auth[0]!.weekly_income),
     weeklyOverhead:auth[0]!.weekly_fixed_overhead===null?null:
      Number(auth[0]!.weekly_fixed_overhead),
     weeklyGuarantees:Number(auth[0]!.active_guarantees),
+    signedRosterExposure:Number(auth[0]!.signed_roster_exposure),
     weeklyStaffPayroll:Number(auth[0]!.staff_payroll),
     weeklyWageLimit:auth[0]!.plan_wage_limit===null?null:Number(auth[0]!.plan_wage_limit),
     cashReserve:auth[0]!.plan_cash_reserve===null?null:Number(auth[0]!.plan_cash_reserve)

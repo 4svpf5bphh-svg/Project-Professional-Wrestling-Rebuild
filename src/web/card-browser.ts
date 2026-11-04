@@ -47,6 +47,24 @@ import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 type Scope=CardSessionScope;
+// Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
+let pendingProgrammeFocusPersonId:string|null=null;
+// Private, one-use route from a wrestler dossier to a genuine unfinished card.
+// No show ID is guessed and no booking permission is assumed from the dossier.
+export type FocusedBookingWrestler={personId:string;name:string};
+let pendingBookingFocus:({worldId:string;promotionId:string}&FocusedBookingWrestler)|null=null;
+export function clearBookingFocus(){pendingBookingFocus=null;}
+export function consumeBookingFocus(worldId:string,promotionId:string):FocusedBookingWrestler|null{
+ const focus=pendingBookingFocus;
+ pendingBookingFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?
+  {personId:focus.personId,name:focus.name}:null;
+}
+export function consumeProgrammeFocus():string|null{
+ const focus=pendingProgrammeFocusPersonId;
+ pendingProgrammeFocusPersonId=null;
+ return focus;
+}
 /** One permanent iPhone-first entrance to every completed workspace.
  * Navigating does not advance simulation or create a new World.
  */
@@ -112,7 +130,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope,
  onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void,
- onNavigate?:(section:HostSection)=>void){
+ onNavigate?:(section:HostSection)=>void,
+ focusProgrammeId?:string,focusProgrammeIdeaKind?:string,
+ focusWrestler?:FocusedBookingWrestler){
  const call=createCardClient(scope);
  const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -126,6 +146,9 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
  }
  const port:CardEditorPort={
   onDraftChange,
+  focusProgrammeId,
+  focusProgrammeIdeaKind:focusProgrammeIdeaKind as CardEditorPort["focusProgrammeIdeaKind"],
+  focusWrestler,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
@@ -379,7 +402,20 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
   openPlanner:()=>openWorkspace("planner"),
-  openProgrammes:()=>openWorkspace("programmes"),
+  // The editor's own dossier is already on a card. Do not render a button
+  // which would appear actionable but merely return without navigating.
+  ...(scope.showId?{}:{openBooking:(personId:string,name:string)=>{
+   // Resolve the actual draft via Planner rather than guessing its identity.
+   if(root.classList.contains("ppw-profile-overlay"))onBack();
+   pendingBookingFocus={worldId:scope.worldId,promotionId:scope.promotionId,
+    personId,name};
+   window.location.hash=plannerCardHash;
+  }}),
+  openProgrammes:personId=>{
+   if(window.location.hash!==hostSectionHash("programmes"))
+    pendingProgrammeFocusPersonId=personId;
+   openWorkspace("programmes");
+  },
   openTagTeams:()=>openWorkspace("teams"),
   openStables:()=>openWorkspace("stables")
  };
@@ -392,8 +428,8 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
   load:(filter:DirectoryFilter)=>call("wrestlerDirectory",{filter}),
   offer:({personId,requestId,expectedRevision,terms})=>
    call("submitContractOffer",{personId,requestId,expectedRevision,terms}),
-  openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
-   ()=>open("ROSTER")),
+  openContracts:(personId?:string)=>mountContractDesk(root,contractPort(call,root,scope),
+   ()=>open("ROSTER"),"ATTENTION",personId),
   openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),
    ()=>open("ROSTER")),
   openChampionships:()=>void mountChampionshipsPage(root,scope,()=>open("ROSTER"),"MINE"),
@@ -534,7 +570,21 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
-  openPlanner:()=>mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope)),
+  openPlanner:(programmeId,ideaKind)=>{
+   if(!programmeId){
+    mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope));return;
+   }
+   // Programmes intentionally has no show ID. Resolve the only appropriate
+   // unfinished current-week card through the existing bounded Planner read.
+   // Never invent a draft ID or send booking commands without a real show.
+   const backToProgrammes=()=>mountProgrammePage(root,scope);
+   const openSelectedCard=(draftId:string)=>{
+    mountBookingPage(root,{...scope,showId:draftId},
+     ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
+     undefined,undefined,programmeId,ideaKind);
+   };
+   mountPlannerPage(root,scope,backToProgrammes,true,undefined,openSelectedCard);
+  },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
@@ -553,12 +603,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
     programmeId,sourceShowId:showId,sourceSlotId:slotId,choice}),
  };
 }
-export function mountProgrammePage(root:HTMLElement,scope:Scope){
+export function mountProgrammePage(root:HTMLElement,scope:Scope,
+ focusPersonId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
-  ()=>mountProgrammePage(root,scope));};
+  ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
-  ()=>{void mountResultsArchivePage(root,scope,()=>mountProgrammePage(root,scope));}));
+  ()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountProgrammePage(root,scope,focusPersonId));}),undefined,focusPersonId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,

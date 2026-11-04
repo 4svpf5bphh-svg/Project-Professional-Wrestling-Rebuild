@@ -75,29 +75,39 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await page.locator('select[aria-label="Match format"]').selectOption("TAG");
- await page.getByRole("button",{name:"Quick match"}).click();
+ await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
+ await expect(page.getByRole("button",{name:"+ Add angle"})).toHaveCount(1);
+ await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+ await dialog.getByRole("button",{name:"Teams",exact:true}).click();
+ await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await dialog.getByLabel("Choose tag team").first().selectOption("pair-a");
  await dialog.getByLabel("Choose tag team").nth(1).selectOption("pair-b");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Stipulation")).toBeVisible();
- await dialog.getByLabel("Winner").selectOption("1");
+ await expect(dialog.locator(".ppw-winner-choice")).toHaveCount(2);
+ await dialog.locator(".ppw-winner-choice").nth(1).click();
  await dialog.getByLabel("Minutes").fill("22");
  await dialog.getByLabel("Minutes").press("Tab");
  await dialog.locator(".ppw-guide-extra > summary").click();
  await dialog.getByLabel("Intent").selectOption("EPIC");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
+ await dialog.getByRole("button",{name:"Complete match"}).click();
 
- await page.getByRole("button",{name:"Quick angle"}).click();
+ await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("New alignment")).toBeVisible();
  await dialog.getByLabel("New alignment").selectOption("FACE");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
@@ -105,12 +115,11 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await page.reload();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
   .toBeVisible();
- // Old cards can switch into guided booking without changing their saved data.
+ // Saved cards reopen in the same editor, without switching booking modes.
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await dialog.getByRole("button",{name:"Quick Book"}).click();
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
- await expect(dialog.locator(".ppw-guide-context")).toContainText("Samoa Joe");
+ await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByRole("group",{name:"Booking approach"})).toHaveCount(0);
 });
 
 test("book a feud match and retaliation scene with signed participants, one save and no talent search",async({page})=>{
@@ -176,20 +185,27 @@ test("book a feud match and retaliation scene with signed participants, one save
   .toBeLessThanOrEqual(1);
  await stories.getByRole("button",{name:"Add attack for Samoa Joe vs Místico"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByText("STEP 1 OF 2 · CAST")).toBeVisible();
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
  await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Side B initiates"}).click();
  await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("SEEK_REVENGE");
  await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
+ await expect(page.locator(".ppw-angle-card .ppw-card-booked-facts"))
+  .toContainText("Samoa Joe vs Místico");
  await stories.getByRole("button",{name:"+ Book feud match"}).click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 2 OF 2 · SCRIPT")).toBeVisible();
+ await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
- await dialog.getByLabel("Winner").selectOption("1");
- await dialog.getByRole("button",{name:"Finish editing"}).click();
+ await dialog.locator(".ppw-winner-choice").nth(1).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
@@ -197,4 +213,98 @@ test("book a feud match and retaliation scene with signed participants, one save
  await page.reload();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:"Samoa Joe"}).first())
   .toBeVisible();
+});
+
+const feudPlanner={
+ worldName:"Genesis",promotionName:"Crown",year:1,week:5,canEdit:true,
+ worldRevision:4,homeMarketId:"home",venues:[],venuePressure:[],
+ weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+  scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+   eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+   marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",ready:false,
+   slots:0,bookingClass:"REGULAR",showSeriesId:null,showName:"Friday Fights"}]}]
+};
+test("Programme Desk selects the real unfinished show before opening the focussed feud",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const calls:string[]=[];
+ const story={programmeId:"joe-mistico",status:"ACTIVE",heat:68,repetition:42,
+  activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,draws:0,
+  championshipId:null,startedWeekIndex:1,endedWeekIndex:null,
+  sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+  sideB:[{kind:"PERSON",refId:"mistico",name:"Místico"}],
+  recentActivity:[],eligibleCreativePeople:[],creativeAgreements:[],
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null}};
+ const cast={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
+  heat:68,repetition:42,activityCount:2,segmentCount:1,
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null},
+  cast:[{personId:"joe",contractId:"c-joe",name:"Samoa Joe",side:"A"},
+   {personId:"mistico",contractId:"c-mistico",name:"Místico",side:"B"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const request=r.request().postDataJSON();
+  const method=String(request.method);
+  calls.push(method);
+  const data=method==="planner"?feudPlanner:method==="programmes"?{
+   year:1,week:5,worldRevision:4,canEdit:true,
+   people:[],teams:[],championships:[],programmes:[story]
+  }:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[cast],
+   programmeLinks:[],bookableTeams:[],bookableTrios:[],selectedPeople:[],slots:[]
+  }:{};
+  return r.fulfill({json:data});
+ });
+ await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Book next chapter"}).first().click();
+ await expect(page.locator(".ppw-card-rivalry-ideas")).toHaveAttribute("open","");
+ await expect(page.getByLabel("Rivalry")).toHaveValue("joe-mistico");
+ await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
+ expect(calls).toEqual(["programmes","planner","load"]);
+});
+test("an explicit programme creative choice opens an unsaved, editable matching scene",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const methods:string[]=[];
+ const story={programmeId:"joe-mistico",status:"ACTIVE",heat:68,repetition:42,
+  activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,draws:0,
+  championshipId:null,startedWeekIndex:1,endedWeekIndex:null,
+  sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+  sideB:[{kind:"PERSON",refId:"mistico",name:"Místico"}],
+  recentActivity:[],eligibleCreativePeople:[],creativeAgreements:[],
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null}};
+ const cast={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
+  heat:68,repetition:42,activityCount:2,segmentCount:1,
+  latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+   nextAngleWeekIndex:null},
+  cast:[{personId:"joe",contractId:"c-joe",name:"Samoa Joe",side:"A"},
+   {personId:"mistico",contractId:"c-mistico",name:"Místico",side:"B"}]};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=String(r.request().postDataJSON().method);
+  methods.push(method);
+  return r.fulfill({json:method==="planner"?feudPlanner:method==="programmes"?{
+   year:1,week:5,worldRevision:4,canEdit:true,people:[],teams:[],
+   championships:[],programmes:[story]
+  }:method==="load"?{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[cast],
+   programmeLinks:[],bookableTeams:[],bookableTrios:[],selectedPeople:[],slots:[]
+  }:{}});
+ });
+ await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Strike back"}).click();
+ const dialog=page.getByRole("dialog",{name:"Edit angle"});
+ await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ await expect(dialog.getByLabel("Angle type")).toHaveValue("ATTACK");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(page.getByText("Edits not saved")).toBeVisible();
+ expect(methods).toEqual(["programmes","planner","load"]); // no write before save
 });

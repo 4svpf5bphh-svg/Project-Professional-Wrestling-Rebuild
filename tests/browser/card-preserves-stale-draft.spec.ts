@@ -74,8 +74,9 @@ for(const conflicting of [false,true]){
   await page.locator(".ppw-card-broadcast-slot summary").first().click();
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
   const dialog=page.getByRole("dialog",{name:"Edit match"});
-  await dialog.getByLabel("Winner").selectOption("1");
-  await expect(dialog.getByLabel("Winner")).toHaveValue("1");
+  await dialog.locator(".ppw-winner-choice").nth(1).click();
+  await expect(dialog.locator(".ppw-winner-choice").nth(1))
+   .toHaveAttribute("aria-pressed","true");
   await dialog.getByRole("button",{name:"Close card editor"}).click();
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -84,8 +85,8 @@ for(const conflicting of [false,true]){
    await expect(page.locator(".ppw-save .ppw-save-error")).toContainText(msg);
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
-  await expect(page.getByRole("dialog",{name:"Edit match"}).getByLabel("Winner"))
-   .toHaveValue("1");
+  await expect(page.getByRole("dialog",{name:"Edit match"})
+   .locator(".ppw-winner-choice").nth(1)).toHaveAttribute("aria-pressed","true");
   await page.getByRole("dialog",{name:"Edit match"}).getByRole("button",
    {name:"Close card editor"}).click();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -96,7 +97,7 @@ for(const conflicting of [false,true]){
   expect(submissions[0]?.requestId).not.toBe(submissions[1]?.requestId);
   expect(calls.filter(x=>x==="talent")).toHaveLength(0);
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
-  await expect(page.getByRole("dialog",{name:"Edit match"}).getByLabel("Winner"))
-   .toHaveValue("1");
+  await expect(page.getByRole("dialog",{name:"Edit match"})
+   .locator(".ppw-winner-choice").nth(1)).toHaveAttribute("aria-pressed","true");
  });
 }

@@ -10,10 +10,15 @@ export type StaffNote={
  role:StaffRole|"HOUSE";level:"WATCH"|"INFO";
  title:string;message:string;
 };
+export type WorkingPairFact={
+ personId:string;professionalTrust:number;familiarity:number;
+ lastChangeType?:"IMPROVEMENT"|"STRAIN"|null;
+};
 export type AdvisorPerson={
  personId:string;name:string;
  inRingQuality?:number|null;matchCraft?:number|null;presentation?:number|null;
  stamina?:number|null;safety?:number|null;fatigue?:number|null;wear?:number|null;
+ workingConnections?:readonly WorkingPairFact[];
 };
 const valid=(n:number|null|undefined):n is number=>typeof n==="number"&&
  Number.isFinite(n)&&n>=0&&n<=100;
@@ -61,29 +66,128 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
    " has elevated fatigue or wear. Your house office recommends reviewing the stipulation."));
  return notes.slice(0,4);
 }
+/** The Road Agent comments on verified teammate trust only. Scripted
+ * rivalry and skill ratings cannot invent chemistry or hostility.
+ */
+export function matchPartnershipNotes(match:EditorMatch,
+ people:readonly AdvisorPerson[],staffed:ReadonlySet<StaffRole>):StaffNote[]{
+ if(!staffed.has("ROAD_AGENT")||
+  !["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(match.format))
+  return [];
+ const byId=new Map(people.map(p=>[p.personId,p]));
+ const notes:StaffNote[]=[];
+ for(const members of match.teams){
+  const ids=members.flatMap(p=>p?[p.personId]:[]);
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+   const a=byId.get(ids[i]!),b=byId.get(ids[j]!);
+   if(!a||!b)continue;
+   const evidence=a.workingConnections?.find(p=>p.personId===b.personId)??
+    b.workingConnections?.find(p=>p.personId===a.personId);
+   if(!evidence||!Number.isFinite(evidence.professionalTrust)||
+    evidence.professionalTrust< -100||evidence.professionalTrust>100||
+    !valid(evidence.familiarity))continue;
+   const pair=a.name+" and "+b.name;
+   if(evidence.professionalTrust<=40||
+    evidence.lastChangeType==="STRAIN"&&evidence.professionalTrust<50)
+    notes.push(note("ROAD_AGENT","WATCH","Known partnership strain",
+     pair+" have an established working connection with strained professional "+
+     "trust. Consider a simpler structure or shorter shared stretch. "+
+     "This is not evidence of personal animosity."));
+   else if(evidence.familiarity>=8)
+    notes.push(note("ROAD_AGENT","INFO",evidence.lastChangeType==="IMPROVEMENT"?
+     "Partnership developing":"Established working familiarity",
+     pair+" have documented time working as teammates"+
+     (evidence.lastChangeType==="IMPROVEMENT"?
+      " and their professional partnership has improved":"")+
+     ". A familiar pairing is not a guaranteed strong match."));
+  }
+ }
+ return notes.sort((a,b)=>Number(b.level==="WATCH")-Number(a.level==="WATCH"))
+  .slice(0,3);
+}
 export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPerson[],
  staffed:ReadonlySet<StaffRole>,programmeCast:readonly string[]=[]):StaffNote[]{
- if(!staffed.has("CREATIVE"))return [];
  const ids=[...segment.actors,...segment.targets].map(p=>p.personId);
  const cast=people.filter(p=>ids.includes(p.personId));
  const notes:StaffNote[]=[];
- if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
-  notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
-   "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
- if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
-  cast.some(p=>valid(p.presentation)&&p.presentation<50))
-  notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
-   "One or more featured wrestlers may be carrying a longer talking or character segment "+
-   "than their current presentation suggests. Consider sharing the microphone or tightening it."));
- if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
-  !segment.targets.length)
-  notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
-   "An identifiable opponent usually gives this kind of confrontation more context. "+
-   "Book the participants and motivation deliberately."));
- if(segment.kind==="VIDEO_PACKAGE")
-  notes.push(note("CREATIVE","INFO","A video can do the storytelling",
-   "Pre-recorded material can recap a feud without requiring wrestlers to appear live on this show."));
- return notes.slice(0,3);
+ // A physical angle can need a Doctor or Referee even if the manager has no
+ // Creative hire. A scripted bloody aftermath is not a certified injury.
+ const physical=["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(segment.kind);
+ const intense=physical&&(segment.scene?.intensity==="BRUTAL"||
+  segment.scene?.visual==="BLOODIED");
+ const tired=cast.filter(p=>valid(p.fatigue)&&p.fatigue>=65||
+  valid(p.wear)&&p.wear>=72);
+ if(physical&&tired.length){
+  notes.push(note(staffed.has("MEDICAL")?"MEDICAL":"HOUSE","WATCH",
+   "Check condition before this physical scene",
+   tired.map(p=>p.name).join(", ")+
+   " has elevated fatigue or wear. Rehearse the physical beat carefully or "+
+   "reduce its intensity. The on-screen aftermath does not create a medical injury."));
+ }
+ if(intense&&staffed.has("REFEREE"))
+  notes.push(note("REFEREE","INFO","Coordinate the staged violence",
+   "The referee and crew should plan the separation and timing of this intense "+
+   "physical angle. Its visual severity is storytelling, not a guaranteed injury."));
+ if(staffed.has("CREATIVE")){
+  if(segment.programmeId&&programmeCast.length&&!ids.some(id=>programmeCast.includes(id)))
+   notes.push(note("CREATIVE","WATCH","Storyline cast does not appear",
+    "No wrestler from the chosen feud is in this segment. The chapter may not advance that rivalry."));
+  if(segment.kind!=="VIDEO_PACKAGE"&&segment.durationMinutes>=15&&
+   cast.some(p=>valid(p.presentation)&&p.presentation<50))
+   notes.push(note("CREATIVE","WATCH","Long scene, limited presentation strength",
+    "One or more featured wrestlers may be carrying a longer talking or character segment "+
+    "than their current presentation suggests. Consider sharing the microphone or tightening it."));
+  if(["ATTACK","POST_MATCH_ASSAULT","INTERRUPTION","CONFRONTATION"].includes(segment.kind)&&
+   !segment.targets.length)
+   notes.push(note("CREATIVE","INFO","Give the conflict a clear target",
+    "An identifiable opponent usually gives this kind of confrontation more context. "+
+    "Book the participants and motivation deliberately."));
+  if(segment.kind==="VIDEO_PACKAGE")
+   notes.push(note("CREATIVE","INFO","A video can do the storytelling",
+    "Pre-recorded material can recap a feud without requiring wrestlers to appear live on this show."));
+ }
+ return notes.slice(0,4);
+}
+/** A performer can appear in a match and a separate angle on the same
+ * card. The existing server correctly allows that, but the staff should
+ * warn when those are two *physical* commitments. Never count promos or
+ * pre-recorded videos as extra physical workload. Card models are already
+ * in memory: this is an advisory-only projection with no database calls.
+ */
+export function showWorkloadNotes(slotId:string,current:EditorMatch|EditorSegment,
+ matches:readonly EditorMatch[],segments:readonly EditorSegment[],
+ people:readonly AdvisorPerson[],staffed:ReadonlySet<StaffRole>):StaffNote[]{
+ const physical=new Set<EditorSegment["kind"]>(["ATTACK","POST_MATCH_ASSAULT","RESCUE"]);
+ const isMatch="teams" in current;
+ if(!isMatch&&!physical.has(current.kind))return [];
+ const participants=isMatch?
+  current.teams.flat().flatMap(p=>p?[p.personId]:[]):
+  [...current.actors,...current.targets].map(p=>p.personId);
+ if(!participants.length)return [];
+ const otherMatches=new Set(matches.filter(m=>m.slotId!==slotId)
+  .flatMap(m=>m.teams.flat().flatMap(p=>p?[p.personId]:[])));
+ const otherPhysicalAngles=new Set(segments.filter(s=>
+  s.slotId!==slotId&&physical.has(s.kind))
+  .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId)));
+ const overlapping=[...new Set(participants)].filter(id=>
+  isMatch?otherPhysicalAngles.has(id):
+   otherMatches.has(id)||otherPhysicalAngles.has(id));
+ if(!overlapping.length)return [];
+ const names=new Map(people.map(p=>[p.personId,p.name]));
+ const peopleText=overlapping.map(id=>names.get(id)??id).join(", ");
+ const otherWork=isMatch?"a physical angle":
+  [otherMatches.size&&overlapping.some(id=>otherMatches.has(id))?"a match":null,
+   overlapping.some(id=>otherPhysicalAngles.has(id))?"another physical angle":null]
+   .filter(Boolean).join(" and ");
+ const elevated=people.some(p=>overlapping.includes(p.personId)&&
+  (valid(p.fatigue)&&p.fatigue>=65||valid(p.wear)&&p.wear>=72));
+ return [note(staffed.has("MEDICAL")?"MEDICAL":"HOUSE","WATCH",
+  "Multiple physical bookings on this show",
+  peopleText+" also "+(overlapping.length===1?"has":"have")+
+  " "+otherWork+" on this card. Consider reducing the length or intensity "+
+  "of one physical appearance and coordinate recovery"+
+  (elevated?", especially with the current fatigue or wear.":".")+
+  " This is a workload warning, not a predicted injury.")];
 }
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;

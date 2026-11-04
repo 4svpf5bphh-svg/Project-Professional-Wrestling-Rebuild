@@ -92,3 +92,86 @@
 .ppw-contract-request:has(.ppw-contract-offer-portrait){grid-template-columns:53px minmax(0,1fr) auto;align-items:center}
 @media(max-width:550px){.ppw-contract-request:has(.ppw-contract-offer-portrait){grid-template-columns:53px minmax(0,1fr)}
  .ppw-contract-request:has(.ppw-contract-offer-portrait)>.ppw-contract-button{grid-column:1/-1}}
+
+/* Phase 25C — actual contract commitments and actionable advice. */
+.ppw-contract-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ppw-contract-metric{padding:9px 6px;gap:3px;min-width:0}
+.ppw-contract-metric span{font-size:9px;line-height:1.25;letter-spacing:0}
+.ppw-contract-metric strong{font-size:clamp(13px,3.5vw,19px)}
+@media(max-width:365px){.ppw-contract-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ppw-contract-offer-value,.ppw-contract-current-value{font-size:13px;color:#ffdf97;line-height:1.4}
+.ppw-contract-cost-quote{padding:14px;border:1px solid #5b8fa3;border-radius:13px;
+ background:linear-gradient(125deg,#102a44,#2b2749);display:grid;gap:9px}
+.ppw-contract-quote-eyebrow{color:#9cddec;font-size:11px;font-weight:900;letter-spacing:.08em}
+.ppw-contract-quote-total{font-size:clamp(24px,7vw,34px);color:#ffe2a9;font-weight:950;
+ line-height:1.1;font-variant-numeric:tabular-nums}
+.ppw-contract-quote-breakdown{display:grid;gap:8px;padding-top:8px;
+ border-top:1px solid #4a657b}
+.ppw-contract-quote-row{display:flex;align-items:baseline;justify-content:space-between;
+ gap:9px;font-size:12px;color:#c4d9e5}
+.ppw-contract-quote-row strong{color:#f5fbff;font-variant-numeric:tabular-nums;
+ white-space:nowrap;font-size:12px}
+.ppw-contract-quote-context{font-size:11px;color:#a9bfd6;line-height:1.35}
+.ppw-contract-manager-take:empty{display:none}
+.ppw-contract-manager-take{padding:12px;border-left:3px solid #55d5c1;
+ background:#122c36;border-radius:8px;color:#dcebf4}
+.ppw-contract-manager-take[data-level=watch]{border-left-color:#f5b45b}
+.ppw-contract-manager-take strong{display:block;font-size:12px;color:#a8e8e3}
+.ppw-contract-manager-take p{font-size:12px;line-height:1.5;margin:5px 0 0}
+.ppw-contract-renegotiate{display:grid;gap:10px}
+.ppw-contract-renegotiate>summary{display:list-item}
+.ppw-contract-button{background:#244562;border-color:#6a88ae;color:#f2f6ff;
+ font-weight:750}
+.ppw-contract-button:focus-visible{outline:2px solid #8ce8ff;outline-offset:2px}
+
+/* Phase 25: preset renewals, with bespoke contracts one disclosure away. */
+.ppw-contract-term-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-contract-term-choice{display:flex;flex-direction:column;gap:4px;
+ justify-content:center;text-align:center!important;padding:9px 5px!important;
+ border-radius:12px;min-height:65px;background:#20354e!important;
+ border:1px solid #6b83a5!important;color:#f4f7ff!important}
+.ppw-contract-term-choice>small{font-size:10px;font-weight:600;line-height:1.35;color:#c0dcf0}
+.ppw-contract-term-choice[aria-pressed=true]{background:linear-gradient(135deg,#96397e,#6d42bc)!important;
+ border:2px solid #f2a8dc!important}
+.ppw-contract-term-advanced{background:#13283d;border:1px solid #456581;
+ border-radius:10px;padding:0 11px}
+.ppw-contract-term-advanced>summary{min-height:44px;display:flex;align-items:center;
+ font-size:12px;font-weight:850;color:#a3dffa;cursor:pointer}
+.ppw-contract-term-advanced>.ppw-contract-renegotiate-fields{margin-bottom:12px}
+.ppw-contract-quote-guaranteed{font-weight:750;color:#b2f0d8;font-size:12px}
+@media(max-width:350px){.ppw-contract-term-presets{grid-template-columns:1fr}
+ .ppw-contract-term-choice{min-height:46px}}
+
+/* Phase 25 financial headline: single roster envelope instead of another
+   stack of standalone financial and contract-warnings panels. */
+.ppw-contract-desk .ppw-contract-summary{display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.ppw-contract-desk .ppw-contract-exposure{padding:13px 14px;border:1px solid #537f91;
+ background:linear-gradient(115deg,#12354b,#24284b);border-radius:12px;
+ display:grid;gap:9px;margin:10px 0 16px}
+.ppw-contract-exposure-eyebrow{font-size:10px;color:#9fd8ee;
+ font-weight:850;letter-spacing:.09em}
+.ppw-contract-exposure-total{font-size:clamp(25px,7vw,36px);color:#ffe2ab;
+ font-weight:950;line-height:1.15;font-variant-numeric:tabular-nums}
+.ppw-contract-exposure-parts{display:grid;gap:5px}
+.ppw-contract-exposure-part{display:flex;justify-content:space-between;gap:10px;
+ align-items:baseline;font-size:12px;color:#c6dbe8}
+.ppw-contract-exposure-part strong{white-space:nowrap;color:#e8f7ff;
+ font-variant-numeric:tabular-nums}
+.ppw-contract-exposure-context{border-top:1px solid #49667a;
+ padding-top:8px;font-size:12px;color:#c9e6f2;line-height:1.45;margin:0}
+.ppw-contract-exposure-disclaimer{color:#acc4d3;font-size:11px;line-height:1.4}
+@media(max-width:360px){
+ .ppw-contract-desk .ppw-contract-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .ppw-contract-exposure-part{flex-wrap:wrap}
+}
+
+/* Compare signed future costs with today's cash, no new finance queries. */
+.ppw-contract-cash-comparison{display:grid;gap:5px;padding:12px;
+ background:#10283d;border:1px solid #638aa3;border-radius:10px;min-width:0}
+.ppw-contract-cash-comparison span{font-size:11px;color:#bcd9eb}
+.ppw-contract-cash-comparison strong{font-size:clamp(18px,5vw,24px);
+ line-height:1.2;color:#efffff;font-variant-numeric:tabular-nums;
+ overflow-wrap:anywhere}
+.ppw-contract-cash-comparison[data-coverage="gap"]{border-color:#c88972}
+.ppw-contract-cash-comparison[data-coverage="gap"] strong{color:#ffe0bb}

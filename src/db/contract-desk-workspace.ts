@@ -16,13 +16,19 @@ export async function readContractDesk(
     weekly_media_income:string|null;weekly_sponsor_income:string|null;
     weekly_fixed_overhead:string|null;staff_payroll:string;
     plan_weekly_wage_limit:string|null;
-    plan_show_talent_limit:string|null;plan_cash_reserve:string|null}>(`
+    plan_show_talent_limit:string|null;plan_cash_reserve:string|null;
+    has_talent_manager:boolean}>(`
    SELECT w.year,w.week,w.revision,p.cash::text,
      p.weekly_media_income::text,p.weekly_sponsor_income::text,
      p.weekly_fixed_overhead::text,
      plan.weekly_wage_limit::text AS plan_weekly_wage_limit,
      plan.show_talent_limit::text AS plan_show_talent_limit,
      plan.cash_reserve::text AS plan_cash_reserve,
+     EXISTS(SELECT 1 FROM ppw_staff_employments manager
+      WHERE manager.world_id=p.world_id AND manager.promotion_id=p.promotion_id
+       AND manager.role='TALENT_MANAGER' AND manager.status='ACTIVE'
+       AND manager.start_week_index<=(w.year-1)*52+w.week-1
+       AND manager.expires_week_index>=(w.year-1)*52+w.week-1) AS has_talent_manager,
      COALESCE((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
       WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
       AND e.start_week_index<=(w.year-1)*52+w.week-1
@@ -159,13 +165,14 @@ export async function readContractDesk(
   const renewalIds=new Set(renewals.map(q=>q.contract_id));
   return {
    currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
-    talentBudget,
+    talentBudget,hasTalentManager:auth[0]!.has_talent_manager,
     spendingPlan:auth[0]!.plan_weekly_wage_limit===null?null:{
      weeklyWageLimit:Number(auth[0]!.plan_weekly_wage_limit),
      showTalentLimit:Number(auth[0]!.plan_show_talent_limit),
      cashReserve:Number(auth[0]!.plan_cash_reserve)},
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
+    startWeekIndex:cost.start_week_index,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,

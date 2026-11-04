@@ -44,8 +44,9 @@ test("Creative's contextual angle advice appears in PPW's real mobile editor",as
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
- await dialog.locator(".ppw-card-advisor-notes > summary").click();
- await expect(dialog.getByText("Storyline cast does not appear")).toBeVisible();
+ const notes=dialog.locator(".ppw-card-advisor-notes");
+ await notes.locator(":scope > summary").click();
+ await expect(notes.getByText("Storyline cast does not appear")).toBeVisible();
  await mkdir(folder,{recursive:true});
  await page.screenshot({path:folder+"/phase23-creative-storyline-advice-390.png"});
 });
@@ -71,10 +72,13 @@ test("Talent Manager advice is part of the live contract-offer UI and uses real 
  await page.locator(".ppw-directory-card > summary").first().click();
  await page.getByRole("button",{name:"Make contract offer"}).click();
  await expect(page.locator(".ppw-directory-affordability")).toContainText("What this does to your company");
- await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("PLANNED FULL-TERM COST");
+ await expect(page.locator(".ppw-directory-contract-estimate")).toContainText("POTENTIAL FULL-TERM COST");
  const input=page.getByLabel("Weekly guarantee ($)");
  await input.fill("18000");
  await input.press("Tab");
+ // Standard offers begin on the 52-week preset; manually changing dates
+ // is deliberately an advanced action, not a missing contract capability.
+ await page.locator(".ppw-directory-advanced-terms > summary").click();
  await page.getByLabel("Weeks (1–52)").fill("10");
  await page.getByLabel("Purchased dates").fill("5");
  await page.getByLabel("Appearance fee ($)").fill("9000");

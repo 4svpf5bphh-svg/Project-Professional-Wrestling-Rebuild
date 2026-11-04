@@ -14,6 +14,8 @@ test("Quick angles include Who/What/Where/Why decisions and retain optional dept
   "Area","Exact location","Attack intensity","Visible aftermath",
   "Storytelling purpose","New alignment","Faction","After which match?"])
   assert.equal(isQuickBookField("ANGLE",field),true,field);
- assert.equal(isQuickBookField("ANGLE","The message"),false);
+ assert.equal(isQuickBookField("ANGLE","The message"),true);
+ assert.equal(isQuickBookField("ANGLE","How the turn is shown"),true);
+ assert.equal(isQuickBookField("ANGLE","Attack style"),true);
  assert.equal(isQuickBookField("ANGLE","Winner"),false);
 });

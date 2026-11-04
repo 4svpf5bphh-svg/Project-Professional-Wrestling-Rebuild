@@ -169,6 +169,21 @@ body:has(.ppw-profile-overlay){overflow:hidden}
 .ppw-wrestler-profile>[data-profile-tab][hidden]{display:none!important}
 .ppw-profile-tabs button:focus-visible{outline:2px solid #9eeafc;outline-offset:2px}
 
+/* Existing signed-contract figures made legible at iPhone widths.
+ * No new finance requests or commitment rules. */
+.ppw-profile-contract-budget{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:15px 0 11px;min-width:0}
+.ppw-profile-contract-budget-item{display:grid;gap:6px;align-content:start;
+ padding:11px 10px;min-width:0;border-radius:12px;border:1px solid #57718e;
+ background:#0c2441}
+.ppw-profile-contract-budget-item span{color:#b6d8eb;font-size:11px;
+ line-height:1.35;overflow-wrap:anywhere}
+.ppw-profile-contract-budget-item strong{font-size:clamp(16px,4.6vw,21px);
+ font-variant-numeric:tabular-nums;line-height:1.25;color:#f4f8ff;overflow-wrap:anywhere}
+.ppw-profile-contract-budget-total{grid-column:1/-1;background:#26305b;
+ border-color:#aa8acf}
+.ppw-profile-contract-budget-total strong{color:#ffe0a8}
+
 /* Phase 24: compact management cockpit, no new stats or world reads. */
 .ppw-profile-manage{padding:14px;margin:12px 0 14px;border-radius:17px;
  border:1px solid #7582d5;background:linear-gradient(135deg,#2b2555,#172d4b);

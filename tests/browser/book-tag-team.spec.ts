@@ -4,14 +4,19 @@ const fallback={matchType:"SINGLES",family:"INDIVIDUAL",participants:[x,y],
  sides:[{sideId:"A",participants:[x]},{sideId:"B",participants:[y]}],
  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18};
 const roster=[
- {personId:"joe",contractId:"c-joe",name:"Samoa Joe"},
+ {personId:"joe",contractId:"c-joe",name:"Samoa Joe",
+  workingConnections:[{personId:"riddle",professionalTrust:37,
+   familiarity:22,lastChangeType:"STRAIN"}]},
  {personId:"riddle",contractId:"c-riddle",name:"Matt Riddle"},
- {personId:"alex",contractId:"c-alex",name:"Alex Shelley"},
+ {personId:"alex",contractId:"c-alex",name:"Alex Shelley",
+  workingConnections:[{personId:"chris",professionalTrust:65,
+   familiarity:28,lastChangeType:"IMPROVEMENT"}]},
  {personId:"chris",contractId:"c-chris",name:"Chris Sabin"}];
 const cardBase={showId:"weekly",year:1,week:5,canEdit:true,ready:false,
  day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
  venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",ticketStrategy:"STANDARD",
  championships:[],programmes:[],programmeLinks:[],
+ advisers:[{role:"ROAD_AGENT",name:"Derek James",staffId:"road"}],
  bookableTeams:[{teamId:"pair-a",name:"The Rivals",members:roster.slice(0,2)},
   {teamId:"pair-b",name:"Machine Guns",members:roster.slice(2)}],
  selectedPeople:[{personId:"x",name:"X",division:"MEN"},
@@ -62,9 +67,11 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await page.locator('select[aria-label="Match format"]').selectOption("TAG");
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByRole("button",{name:"Teams",exact:true}).click();
+ await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByLabel("Choose tag team")).toHaveCount(2);
  await dialog.getByLabel("Choose tag team").first().selectOption("pair-a");
  dialog=page.getByRole("dialog",{name:"Edit match"});
@@ -72,14 +79,31 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Matt Riddle");
  await expect(dialog).toContainText("Alex Shelley");
- await dialog.getByRole("button",{name:"Close card editor"}).click();
+ // Real partnership context arrives while choosing the team, not only
+ // at the very end of the four-screen booking journey.
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
+  "Known partnership strain");
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
+  "Derek James: Partnership developing");
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const briefing=dialog.locator(".ppw-guide-staff-review");
+ await expect(briefing).toContainText("Derek James");
+ await expect(briefing).toContainText("Known partnership strain");
+ await expect(briefing).toContainText("Samoa Joe and Matt Riddle");
+ await expect(briefing).toContainText("Partnership developing");
+ await expect(briefing).toContainText("Alex Shelley and Chris Sabin");
+ await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"+ Add angle"}).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByLabel("Creative direction").selectOption("TURN");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("Turn a complete tag team").selectOption("pair-a");
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Matt Riddle");
- await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
@@ -119,21 +143,34 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await page.locator('select[aria-label="Match format"]').selectOption("TRIOS");
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
+ await dialog.getByRole("button",{name:"Teams",exact:true}).click();
+ await dialog.getByRole("button",{name:"Trios · 3v3"}).click();
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByLabel("Choose trio")).toHaveCount(2);
  await dialog.getByLabel("Choose trio").first().selectOption("first");
  dialog=page.getByRole("dialog",{name:"Edit match"});
  await dialog.getByLabel("Choose trio").nth(1).selectOption("second");
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Dax Harwood");
- await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const triosBrief=dialog.locator(".ppw-guide-staff-review");
+ await expect(triosBrief).toContainText("Known partnership strain");
+ await expect(triosBrief).toContainText("Samoa Joe and Matt Riddle");
+ await expect(triosBrief).not.toContainText("Alex Shelley and Chris Sabin");
+ await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
  await page.reload();
- await expect(page.locator(".ppw-card-lineup")).toContainText("6 / 6 booked");
+ await expect(page.locator(".ppw-card-lineup")).toContainText("Trios · 3v3");
+ const matchup=page.locator(".ppw-card-matchup");
+ for(const name of ["Samoa Joe","Matt Riddle","Alex Shelley",
+  "Chris Sabin","Dax Harwood","Cash Wheeler"])
+  await expect(matchup).toContainText(name);
+ await expect(matchup.locator(".ppw-card-extra-people")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

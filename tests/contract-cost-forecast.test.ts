@@ -9,6 +9,14 @@ test("planned offer exposure uses all purchased dates even though dates are char
   plannedAppearanceFees:45_000,oneTimeBonus:3_000,
   plannedFullTermCost:68_000,averageWeeklyCost:6_800});
 });
+test("13-week negotiated package exposes the full possible commitment",()=>{
+ const q=forecastContractCost({weeks:13,dates:5,weeklyGuarantee:1250,
+  appearanceFee:9000,signingBonus:1000});
+ assert.equal(q.guaranteedWages,16_250);
+ assert.equal(q.plannedAppearanceFees,45_000);
+ assert.equal(q.plannedFullTermCost,62_250);
+ assert.equal(Math.round(q.averageWeeklyCost),4_788);
+});
 test("one-off and exclusive deals do not invent extra fees",()=>{
  assert.equal(forecastContractCost({weeks:1,dates:1,weeklyGuarantee:0,
   appearanceFee:9_000,signingBonus:0}).plannedFullTermCost,9_000);

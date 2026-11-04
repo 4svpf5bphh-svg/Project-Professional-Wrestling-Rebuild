@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch} from "../src/ui/card-editor-model.js";
 import {newEditorSegment} from "../src/ui/card-segment-model.js";
-import {matchStaffNotes,angleStaffNotes,contractStaffNotes}
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,contractStaffNotes}
  from "../src/domain/staff-context-advice.js";
 import type {StaffRole} from "../src/domain/world-staff.js";
 
@@ -65,4 +65,108 @@ test("talent manager advice responds to actual financial terms, not predicted ac
   dates:10,signingBonus:15000,cash:30000,cashReserve:20000,
   weeklyGuarantees:25000,wageLimit:30000,recurringMargin:2000},
   new Set<StaffRole>()).length,0);
+});
+
+test("physical angle briefing gives genuine Medical and Referee feedback without asserting a real injury",()=>{
+ const scene=newEditorSegment("attack","ATTACK");
+ const attack={...scene,
+  actors:[{personId:"a",contractId:"contract-a"}],
+  targets:[{personId:"b",contractId:"contract-b"}],
+  scene:{...scene.scene!,intensity:"BRUTAL" as const,visual:"BLOODIED" as const}};
+ const professional=angleStaffNotes(attack,[opponentA,opponentB],crew);
+ assert.ok(professional.some(n=>n.role==="MEDICAL"&&n.level==="WATCH"&&
+  n.message.includes("Samoa Joe")));
+ assert.ok(professional.some(n=>n.role==="REFEREE"&&
+  n.title==="Coordinate the staged violence"));
+ assert.ok(!professional.some(n=>/confirmed injury|medical absence created/i.test(n.message)));
+ const noHires=angleStaffNotes(attack,[opponentA,opponentB],new Set<StaffRole>());
+ assert.ok(noHires.some(n=>n.role==="HOUSE"&&n.level==="WATCH"),
+  "Condition warning remains available even without a hired specialist");
+ assert.equal(attack.scene.visual,"BLOODIED",
+  "The advisory must not rewrite an authored on-screen scene");
+});
+
+test("same-show match plus physical angle is flagged for the booked performer without double-booking restrictions",()=>{
+ const match={...newEditorMatch("bout","SINGLES"),
+  teams:[[{personId:"a",contractId:"contract-a"}],
+   [{personId:"b",contractId:"contract-b"}]]};
+ const physical={...newEditorSegment("scene","ATTACK"),
+  actors:[{personId:"a",contractId:"contract-a"}],
+  targets:[{personId:"b",contractId:"contract-b"}]};
+ const onAngle=showWorkloadNotes("scene",physical,[match],[physical],
+  [opponentA,opponentB],crew);
+ assert.equal(onAngle.length,1);
+ assert.equal(onAngle[0]!.role,"MEDICAL");
+ assert.equal(onAngle[0]!.level,"WATCH");
+ assert.match(onAngle[0]!.message,/Samoa Joe/);
+ assert.match(onAngle[0]!.message,/also have a match/);
+ assert.match(onAngle[0]!.message,/current fatigue or wear/);
+ assert.doesNotMatch(onAngle[0]!.message,/confirmed injury|will be injured/i);
+ const onMatch=showWorkloadNotes("bout",match,[match],[physical],
+  [opponentA,opponentB],crew);
+ assert.equal(onMatch.length,1);
+ assert.match(onMatch[0]!.message,/physical angle/);
+ assert.equal(showWorkloadNotes("scene",physical,[match],[physical],
+  [opponentA,opponentB],new Set<StaffRole>())[0]!.role,"HOUSE");
+ assert.deepEqual(showWorkloadNotes("scene",physical,[],[physical],
+  [opponentA,opponentB],crew),[],
+  "An angle is not assumed to be a second physical appearance without another slot");
+});
+
+test("promos, pre-recorded packages and unrelated scenes do not inflate physical workload",()=>{
+ const match={...newEditorMatch("bout","SINGLES"),
+  teams:[[{personId:"a",contractId:"contract-a"}],
+   [{personId:"b",contractId:"contract-b"}]]};
+ const promo={...newEditorSegment("promo","CELEBRATION"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ const video={...newEditorSegment("video","VIDEO_PACKAGE"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ const unrelated={...newEditorSegment("unrelated","ATTACK"),
+  actors:[{personId:"c",contractId:"contract-c"}],
+  targets:[{personId:"d",contractId:"contract-d"}]};
+ assert.deepEqual(showWorkloadNotes("bout",match,[match],[promo,video,unrelated],
+  [opponentA,opponentB],crew),[]);
+ assert.deepEqual(showWorkloadNotes("promo",promo,[match],[promo],
+  [opponentA,opponentB],crew),[]);
+ const alsoPhysical={...newEditorSegment("physical","ATTACK"),
+  actors:[{personId:"a",contractId:"contract-a"}]};
+ assert.equal(showWorkloadNotes("physical",alsoPhysical,[match],[promo,alsoPhysical],
+  [opponentA,opponentB],crew).length,1,
+  "A physical scene is still recognised alongside nonphysical scenes");
+});
+
+test("Road Agent flags verified tag partnership strain and improvement without inventing animosity",()=>{
+ const match={...newEditorMatch("tag","TAG"),teams:[
+  [{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}],
+  [{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}]]};
+ const people=[
+  {...opponentA,workingConnections:[{personId:"b",professionalTrust:37,
+   familiarity:22,lastChangeType:"STRAIN" as const}]},
+  {...opponentB,workingConnections:[]},
+  {personId:"c",name:"Shelley",workingConnections:[{personId:"d",
+   professionalTrust:65,familiarity:28,lastChangeType:"IMPROVEMENT" as const}]},
+  {personId:"d",name:"Sabin",workingConnections:[]}
+ ];
+ const notes=matchPartnershipNotes(match,people,crew);
+ assert.equal(notes.length,2);
+ assert.equal(notes[0]!.role,"ROAD_AGENT");
+ assert.equal(notes[0]!.level,"WATCH");
+ assert.match(notes[0]!.message,/Samoa Joe and Mistico/);
+ assert.match(notes[0]!.message,/not evidence of personal animosity/i);
+ assert.equal(notes[1]!.level,"INFO");
+ assert.match(notes[1]!.message,/professional partnership has improved/);
+ assert.deepEqual(matchPartnershipNotes(match,people,new Set<StaffRole>()),[]);
+ assert.deepEqual(matchPartnershipNotes({...match,format:"SINGLES"},people,crew),[]);
+});
+test("opponent relationships and in-ring skills never imply teammate chemistry",()=>{
+ const match={...newEditorMatch("tag","TAG"),teams:[
+  [{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}],
+  [{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}]]};
+ const people=[
+  {personId:"a",name:"A",workingConnections:[{personId:"c",professionalTrust:20,
+   familiarity:40,lastChangeType:"STRAIN" as const}]},
+  {personId:"b",name:"B"},{personId:"c",name:"C"},{personId:"d",name:"D"}];
+ assert.deepEqual(matchPartnershipNotes(match,people,crew),[]);
+ assert.deepEqual(matchPartnershipNotes(match,[{personId:"a",name:"A",inRingQuality:99},
+  {personId:"b",name:"B",inRingQuality:100}],crew),[]);
 });

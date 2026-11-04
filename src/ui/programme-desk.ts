@@ -2,14 +2,15 @@
  * No World-wide data, auto-submission, or mandatory flow.
  */
 import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
-import {readProgrammeTrajectory} from "../domain/programme-trajectory.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {evaluateProgrammeReview} from "../domain/programme-review.js";
-import {recommendProgrammeAngles} from "../domain/programme-angle-recommendations.js";
+import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
+import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {wrestlerInitials} from "./wrestler-card.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
 export interface ProgrammeDeskPort{
  load():Promise<ProgrammeView>;
@@ -23,7 +24,7 @@ export interface ProgrammeDeskPort{
  standingConsent(input:{requestId:string;expectedRevision:number;programmeId:string;
   personId:string;matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}):Promise<unknown>;
- openPlanner?():void;
+ openPlanner?(programmeId?:string,ideaKind?:ProgrammeAngleIdea["kind"]):void;
  openResults?(showId:string):void;
  openArchive?():void;
  openWrestler?(personId:string):void;
@@ -35,14 +36,14 @@ const button=(title:string,click:()=>void,disabled=false)=>{
  x.type="button";x.disabled=disabled;x.onclick=click;return x;
 };
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
- onBack?:()=>void){
+ onBack?:()=>void,focusPersonId?:string){
  let view:ProgrammeView|null=null,working=false,error="",success="";
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
  let titleId:string|null=null;
  let selectedProgrammeId:string|null=null;
- let activeLane:"FINALE"|"HISTORY"|"CREATIVE"="CREATIVE";
- let creationOpen=false;
+ let activeLane:"PAYOFF"|"HISTORY"|"STORY"="STORY";
+ let creationOpen=false,focusResolved=false;
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
@@ -131,6 +132,15 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   },working||!view?.canEdit));
   return wrap;
  }
+ function face(name:string,personId:string|null):HTMLElement{
+  const holder=element("span","ppw-programme-portrait",wrestlerInitials(name));
+  if(personId){
+   const image=createWrestlerPortrait(name,100,personId);
+   if(image){image.alt="";image.loading="lazy";image.onerror=()=>image.remove();
+    holder.append(image);}
+  }
+  return holder;
+ }
  function render(){
   root.classList.add("ppw-editor","ppw-programme-desk");
   root.replaceChildren();
@@ -138,14 +148,36 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   if(onBack)header.append(button("← Back to card",onBack));
   if(port.openArchive)header.append(button("Past results",port.openArchive));
   header.append(element("span","ppw-eyebrow","CREATIVE / STORYLINES"),
-   element("h1","","Programmes"),
-   element("p","ppw-muted","Turn grudges into rivalries. Choose the people involved, then build their story through matches and confrontations."));
+   element("h1","","Programmes"));
   root.append(header);
   if(error)root.append(element("p","ppw-alert ppw-error",error));
   if(success)root.append(element("p","ppw-alert ppw-success",success));
   if(!view){root.append(button(working?"Loading…":"Retry",()=>{void reload();},working));return;}
   const active=view.programmes.filter(p=>p.status==="ACTIVE");
+  // A dossier route selects the wrestler's real feud, including team
+  // participation, rather than displaying the first unrelated programme.
+  if(focusPersonId&&!focusResolved){
+   focusResolved=true;
+   const teams=new Set(view.teams.filter(t=>t.memberIds.includes(focusPersonId))
+    .map(t=>t.refId));
+   const related=active.find(p=>[...p.sideA,...p.sideB].some(member=>
+    (member.kind==="PERSON"&&member.refId===focusPersonId)||
+    (member.kind==="TEAM"&&teams.has(member.refId))));
+   if(related)selectedProgrammeId=related.programmeId;
+   else if(view.canEdit&&view.people.some(p=>p.kind==="PERSON"&&
+    p.refId===focusPersonId)){
+    refsA=[{kind:"PERSON",refId:focusPersonId}];
+    refsB=[null];creationOpen=true;
+   }
+  }
   const list=element("section","ppw-programme-list");
+  if(focusPersonId){
+   const wrestler=view.people.find(p=>p.refId===focusPersonId)?.name??
+    active.flatMap(p=>[...p.sideA,...p.sideB]).find(p=>
+     p.kind==="PERSON"&&p.refId===focusPersonId)?.name;
+   if(wrestler)list.append(element("p","ppw-programme-eyebrow",
+    "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
+  }
   list.append(element("h2","","Active rivalries · "+active.length));
   if(!active.some(p=>p.programmeId===selectedProgrammeId))
    selectedProgrammeId=active[0]?.programmeId??null;
@@ -159,10 +191,17 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const note=item.finale?.resolvedWeekIndex===null?"Finale planned":
     planned?"Booked · "+planned.showName:
     item.repetition>=55?"Needs a fresh beat":"Next chapter open";
-   const pick=button(name+" · Heat "+(item.heat??"—")+" · "+note,()=>{
-    selectedProgrammeId=item.programmeId;activeLane="CREATIVE";render();
+   const pick=button("",()=>{
+    selectedProgrammeId=item.programmeId;activeLane="STORY";render();
    },working);
    pick.className="ppw-programme-switch";
+   const faces=element("span","ppw-programme-switch-faces");
+   for(const member of [item.sideA[0],item.sideB[0]])if(member){
+    faces.append(face(member.name,member.kind==="PERSON"?member.refId:null));
+   }
+   pick.append(faces,element("strong","",name),
+    element("span","ppw-programme-switch-sub",
+     "Heat "+(item.heat===null?"—":Math.round(item.heat))+" · "+note));
    pick.setAttribute("aria-pressed",String(item.programmeId===selectedProgrammeId));
    pick.setAttribute("aria-label","Manage "+name);
    overview.append(pick);
@@ -170,42 +209,35 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   list.append(overview);
   for(const p of active.filter(p=>p.programmeId===selectedProgrammeId)){
    const panel=element("article","ppw-programme-card ppw-programme-focused");
-   const nextLane=element("div","ppw-programme-lane");
    const finaleLane=element("div","ppw-programme-lane");
    const historyLane=element("div","ppw-programme-lane");
    const creativeLane=element("div","ppw-programme-lane");
    const header=element("div","ppw-programme-broadcast");
    const side=(members:typeof p.sideA)=>{
     const column=element("div","ppw-programme-broadcast-side");
-    members.forEach((member,index)=>{
-     if(index)column.append(element("span","ppw-programme-separator"," & "));
+    for(const member of members){
+     const person=element("div","ppw-programme-hero-person");
+     person.append(face(member.name,member.kind==="PERSON"?member.refId:null));
      if(member.kind==="PERSON"&&port.openWrestler){
       const open=button(member.name,()=>port.openWrestler?.(member.refId));
       open.className="ppw-programme-person-link";
       open.setAttribute("aria-label","Open "+member.name+"'s wrestler dossier");
-      column.append(open);
-     }else column.append(element("span","",member.name));
-    });
+      person.append(open);
+     }else person.append(element("span","ppw-programme-person-link",member.name));
+     column.append(person);
+    }
     return column;
    };
    header.append(side(p.sideA),element("span","ppw-programme-versus","VS"),side(p.sideB));
    const heat=p.heat===null?null:Math.max(0,Math.min(100,p.heat));
    panel.dataset.storyHeat=heat===null?"unrated":heat>=75?"hot":heat>=45?"building":"developing";
-    const pulse=element("div","ppw-programme-signals");
-   for(const [caption,value,percent] of [
-    ["HEAT",heat===null?"NOT RATED":Math.round(heat)+"/100",heat??0],
-    ["REPETITION",Math.round(p.repetition).toString(),Math.max(0,Math.min(100,p.repetition))]
-   ] as const){
-    const tile=element("div","ppw-programme-signal");
-    tile.append(element("small","",caption),element("strong","",value));
-    const track=element("span","ppw-programme-signal-track");
-    const bar=element("span","ppw-programme-signal-fill");
-    bar.style.width=percent+"%";track.append(bar);tile.append(track);pulse.append(tile);
-   }
-   panel.append(element("span","ppw-programme-eyebrow",
-    "STORIES IN MOTION · "+(heat===null?"AWAITING FIRST CROWD REACTION":
-     heat>=75?"HOT PROGRAMME":heat>=45?"BUILDING MOMENTUM":"STORY DEVELOPING")),
-    header,pulse);
+   const pulse=element("div","ppw-programme-heat");
+   pulse.append(element("span","","RIVALRY HEAT"),
+    element("strong","",heat===null?"—":Math.round(heat)+"/100"));
+   const track=element("span","ppw-programme-signal-track");
+   const fill=element("span","ppw-programme-signal-fill");
+   fill.style.width=(heat??0)+"%";track.append(fill);pulse.append(track);
+   panel.append(header,pulse);
    // An at-a-glance rivalry briefing, before choosing a management tab.
    // Everything comes from the existing certified workspace projection.
    const glance=element("section","ppw-programme-glance");
@@ -216,91 +248,33 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const sideAName=p.sideA.map(x=>x.name).join(" & ");
    const sideBName=p.sideB.map(x=>x.name).join(" & ");
    const latestLabel=latestBeat?describeProgrammeChapter(latestBeat,sideAName,sideBName):null;
-   glance.append(element("span","ppw-programme-eyebrow","AT A GLANCE"));
-   const glanceFacts=element("div","ppw-programme-glance-facts");
-   glanceFacts.append(element("span","",ageNow===null?"Rivalry age unknown":
-    ageNow===0?"Started this week":ageNow+" weeks active"),
-    element("span","",p.championshipId?"Championship stakes":"Personal rivalry"));
-   glance.append(glanceFacts);
+   glance.append(element("small","ppw-programme-glance-age",
+    (ageNow===null?"Active rivalry":ageNow+" weeks active")+
+    (p.championshipId?" · Championship stakes":"")));
    if(latestBeat&&latestLabel){
-    const latest=element("div","ppw-programme-glance-chapter");
     const y=Math.floor(latestBeat.weekIndex/52)+1,w=latestBeat.weekIndex%52+1;
-    latest.append(element("small","","LAST CERTIFIED CHAPTER · Y"+y+" W"+w),
-     element("strong","",latestLabel.headline),
-     element("span","",latestLabel.detail));
-    glance.append(latest);
-   }else glance.append(element("p","ppw-muted","No completed chapters yet."));
-   if(lastCertifiedMatch){
-    const outcome=describeProgrammeChapter(lastCertifiedMatch,sideAName,sideBName);
-    glance.append(element("small","ppw-programme-glance-lastbell",
-     "LATEST MATCH · "+outcome.headline));
-   }
+    glance.append(element("span","ppw-programme-eyebrow","PREVIOUSLY · Y"+y+" W"+w),
+     element("strong","ppw-programme-glance-headline",latestLabel.headline));
+   }else glance.append(element("strong","ppw-programme-glance-headline",
+    "Opening chapter yet to be booked"));
+   const scheduled=p.plannedActivity?.[0];
+   if(scheduled)glance.append(element("span","ppw-programme-upcoming-compact",
+    "Next · "+(scheduled.kind==="MATCH"?"Match":"Angle")+" on "+scheduled.showName+
+    " · "+(scheduled.status==="SUBMITTED"?"Confirmed":"Draft")));
    if(port.openPlanner&&view.canEdit)glance.append(button(
-    "Book the next chapter →",()=>port.openPlanner?.()));
+    scheduled?"Review booked chapter":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
    panel.append(glance);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
     [p.sideA.map(x=>x.name).join(" & ")+" WINS",p.sideAWins],
     [p.sideB.map(x=>x.name).join(" & ")+" WINS",p.sideBWins],
-    ["MATCHES",p.matchCount],["ANGLES",p.segmentCount],
-    ["DRAWS",p.draws],["BEATS",p.activityCount]
+    ["DRAWS",p.draws],["CHAPTERS",p.activityCount]
    ] as const){
     const tile=element("span","ppw-programme-record-item");
     tile.append(element("small","",caption),element("strong","",String(n)));
     record.append(tile);
    }
    historyLane.append(record);
-   const trajectory=readProgrammeTrajectory({
-    heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
-    matchCount:p.matchCount,segmentCount:p.segmentCount,
-    sideAWins:p.sideAWins,sideBWins:p.sideBWins
-   });
-   const chapter=element("section","ppw-programme-chapter");
-   chapter.dataset.kind=trajectory.kind.toLowerCase();
-   chapter.append(element("strong","",trajectory.title),
-    element("p","",trajectory.summary));
-   nextLane.append(chapter);
-   // Put the next useful booking decision BEFORE the detailed records.
-   // Only already-read programme facts contribute; no model/Neon request.
-   const ideas=recommendProgrammeAngles(p);
-   const next=element("section","ppw-programme-quick-next");
-   const bookedNow=p.plannedActivity?.[0];
-   next.append(element("span","ppw-programme-eyebrow",
-     bookedNow?"NEXT CHAPTER · ALREADY ON YOUR CARD":"NEXT CHAPTER · IDEAS"),
-    element("strong","",bookedNow?
-     (bookedNow.kind==="MATCH"?"Match":"Angle")+" booked on "+bookedNow.showName:
-     ideas[0]!.title+" · "+ideas[0]!.kind.replaceAll("_"," ").toLowerCase()));
-   if(!bookedNow)next.append(element("p","",ideas[0]!.reason));
-   const scheduled=p.plannedActivity?.[0];
-   const followThrough=element("div","ppw-programme-upcoming");
-   followThrough.append(element("strong","",
-    scheduled?"Already booked · "+scheduled.showName:
-     "Not booked yet · Your next chapter is open"));
-   if(scheduled)followThrough.append(element("span","",
-    "Y"+scheduled.year+" W"+scheduled.week+" · "+
-    (scheduled.kind==="MATCH"?"Match":"Angle")+" · "+
-    (scheduled.status==="SUBMITTED"?"Confirmed card":"Draft card")));
-   else followThrough.append(element("span","",
-    "Use the suggested angle or book your own idea. Only certified shows advance the story."));
-   next.append(followThrough);
-   if((p.plannedActivity?.length??0)>1){
-    const upcoming=document.createElement("details");
-    upcoming.className="ppw-programme-upcoming-list";
-    upcoming.append(element("summary","",
-     "Other planned chapters · "+(p.plannedActivity.length-1)));
-    for(const item of p.plannedActivity.slice(1))
-     upcoming.append(element("p","",
-      item.showName+" · Y"+item.year+" W"+item.week+
-      " · "+(item.kind==="MATCH"?"Match":"Angle")+
-      " · "+(item.status==="SUBMITTED"?"Confirmed":"Draft")));
-    next.append(upcoming);
-   }
-   if(port.openPlanner)next.append(button(
-    scheduled?"Review booked rivalry chapter →":"Choose a rivalry angle in the card →",
-    port.openPlanner));
-   next.append(element("small","ppw-muted",
-    "Draft and confirmed cards aren't completed history. The show must resolve for the rivalry to advance."));
-   nextLane.append(next);
    const payoffPanel=element("section","ppw-programme-finale");
    payoffPanel.append(element("span","ppw-programme-eyebrow","ON-SCREEN RIVALRY PAYOFF"));
    const planned=p.plannedActivity??[];
@@ -404,22 +378,11 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     sideBName:p.sideB.map(x=>x.name).join(" & "),
     recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp
    });
-   if(continuity.latestChapter){
-    const latest=element("section","ppw-programme-last-chapter");
-    latest.append(element("span","ppw-programme-eyebrow","PREVIOUSLY ON THIS RIVALRY"),
-     element("strong","",continuity.latestChapter));
-    if(continuity.lastBell)latest.append(element("p","",continuity.lastBell));
-    historyLane.append(latest);
-   }
    const weekIndex=(view.year-1)*52+view.week-1;
-   const age=p.startedWeekIndex===null?null:Math.max(0,weekIndex-p.startedWeekIndex);
-   historyLane.append(element("p","ppw-programme-age",
-    (age===null?"Origin not recorded":age===0?"Launched this week":
-      age+" week"+(age===1?"":"s")+" active")+
-    (p.championshipId?" · Championship stakes":"")));
    if(p.recentActivity.length){
     const history=document.createElement("details");
     history.className="ppw-programme-history-timeline";
+    history.open=true;
     history.append(element("summary","","Story timeline · "+p.recentActivity.length+" certified chapters"));
     const entries=element("div","ppw-programme-timeline");
     for(const activity of p.recentActivity){
@@ -445,62 +408,57 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const latestMatch=[...p.recentActivity].filter(x=>x.kind==="MATCH").sort((a,b)=>
     b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
     b.slotId.localeCompare(a.slotId))[0];
-   const advice=element("section","ppw-programme-staff");
-   // Creative is a workspace, not a separate gated request.
-   advice.append(element("span","ppw-programme-eyebrow","CREATIVE MEETING"));
-   {
-    const latest=[...p.recentActivity].sort((a,b)=>
-     b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId))[0];
-    const note=suggestProgrammeAdvice({heat:p.heat,repetition:p.repetition,
-     activityCount:p.activityCount,matchCount:p.matchCount,
-     segmentCount:p.segmentCount,sideAWins:p.sideAWins,
-     sideBWins:p.sideBWins,championshipId:p.championshipId,
-     sideAName:p.sideA.map(x=>x.name).join(" & "),
-     sideBName:p.sideB.map(x=>x.name).join(" & "),
-     direction:p.latestFollowUp?.choice??null,directionStatus:continuity.directionKind,
-     recentKind:latest?.kind==="MATCH"?"MATCH":latest?.kind==="SEGMENT"?"SEGMENT":null,
-     recentWinnerSide:latestMatch?.winnerSide??null});
-    const sheet=element("div","ppw-programme-staff-note");
-    sheet.append(element("span","ppw-programme-eyebrow","BOOKER’S NOTES"),
-     element("h3","",note.headline),
-     element("p","ppw-programme-staff-observation",note.observation));
-    const ideas=element("div","ppw-programme-booking-ideas");
-    // Independently derive the possible branches from the verified story,
-    // not the selected creative response. Saving one direction cannot mutate
-    // the other option labels or their explanations.
-    const paths=suggestProgrammeAdvice({
+   const advice=element("section","ppw-programme-story-actions");
+   advice.append(element("h3","","Next chapter"));
+   if(p.plannedActivity?.length)
+    advice.append(element("p","ppw-programme-booked-short",
+     "Already on the card · "+p.plannedActivity[0]!.showName+
+     ". You can change it in the planner."));
+   else{
+    const suggested=recommendProgrammeAngles(p).slice(0,3);
+    for(const idea of suggested){
+     const item=element("div","ppw-programme-booking-idea");
+     const action=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
+     item.append(action,element("small","",
+      idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason));
+     advice.append(item);
+    }
+   }
+   // Strategic creative direction remains available when a certified match
+   // exists, but is no longer three default paragraphs blocking actual booking.
+   if(latestMatch&&view.canEdit){
+    const note=suggestProgrammeAdvice({
      heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
      matchCount:p.matchCount,segmentCount:p.segmentCount,
      sideAWins:p.sideAWins,sideBWins:p.sideBWins,
-     championshipId:p.championshipId,
-     sideAName:p.sideA.map(x=>x.name).join(" & "),
-     sideBName:p.sideB.map(x=>x.name).join(" & "),
+     championshipId:p.championshipId,sideAName,sideBName,
      direction:null,directionStatus:"NONE",
-     recentKind:latest?.kind==="MATCH"?"MATCH":
-      latest?.kind==="SEGMENT"?"SEGMENT":null,
-     recentWinnerSide:latestMatch?.winnerSide??null
-    }).options;
-    for(const idea of paths){
-     const item=element("article","ppw-programme-booking-idea");
-     item.append(element("strong","",idea.label),element("p","",idea.plan));
-     if(latestMatch&&view.canEdit){
-      const active=p.latestFollowUp?.choice===idea.choice&&p.latestFollowUp?.showId===latestMatch.showId&&p.latestFollowUp?.slotId===latestMatch.slotId;
-      const choose=button(active?"Direction recorded":"Choose direction",()=>void saveDirection(p.programmeId,latestMatch.showId,latestMatch.slotId,idea.choice),working||active);
-      choose.setAttribute("aria-pressed",String(active));item.append(choose);
-     }
-     ideas.append(item);
+     recentKind:p.recentActivity[0]?.kind==="MATCH"?"MATCH":"SEGMENT",
+     recentWinnerSide:latestMatch.winnerSide
+    });
+    const strategy=element("details","ppw-programme-strategy") as HTMLDetailsElement;
+    strategy.append(element("summary","","Creative direction · optional"));
+    for(const idea of note.options){
+     const active=p.latestFollowUp?.choice===idea.choice&&
+      p.latestFollowUp?.showId===latestMatch.showId&&
+      p.latestFollowUp?.slotId===latestMatch.slotId;
+     const entry=element("div","ppw-programme-strategy-choice");
+     entry.append(element("strong","",idea.label),element("p","",idea.plan));
+     const choose=button(active?"Direction recorded":"Choose direction",()=>
+      void saveDirection(p.programmeId,latestMatch.showId,latestMatch.slotId,
+       idea.choice),working||active);
+     choose.setAttribute("aria-pressed",String(active));
+     entry.append(choose);strategy.append(entry);
     }
-    sheet.append(element("span","ppw-programme-eyebrow","OPTIONAL NEXT CHAPTER"),ideas);
-    sheet.append(element("small","ppw-muted","Your intention, not an automatic booking. The choices stay stable after saving."));
-    if(port.openPlanner)sheet.append(button("Book the next chapter →",port.openPlanner));
-    advice.append(sheet);
+    advice.append(strategy);
    }
    creativeLane.append(advice);
 
    if(latestMatch||p.latestFollowUp){
-    const direction=element("section","ppw-programme-next");
-    direction.append(element("span","ppw-programme-eyebrow","YOUR RESPONSE TO THE LAST MATCH"),
-     element("h3","","Where does this rivalry go next?"));
+    const direction=element("details","ppw-programme-next") as HTMLDetailsElement;
+    // Next chapter is already prominent above; keep older decisions as one
+    // optional disclosure instead of a second repeated heading.
+    direction.append(element("summary","","Creative continuity · previous decision"));
     if(p.latestFollowUp){
      if(continuity.directionHeadline){
       const status=element("div","ppw-programme-follow-through");
@@ -530,17 +488,16 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       " since your decision. "+(continuity.suggestion??"Choose a relevant next card.")));
     }else direction.append(element("p","ppw-programme-direction-note",
      "Your choice becomes a continuing creative thread; a future certified chapter records whether you followed through."));
-    // Direction choices live in Creative above. Do not repeat them here.
-    direction.append(element("small","ppw-muted",
-     "No bout or angle is booked for you. Choose and save the actual card separately."));
-    if(port.openPlanner)direction.append(button("Plan the next show →",port.openPlanner));
+    // Historic response can be inspected, not presented as another primary action.
+    if(port.openPlanner)direction.append(button("Go to card",()=>port.openPlanner?.(p.programmeId)));
     creativeLane.append(direction);
    }
    if((p.eligibleCreativePeople?.length??0)||(p.creativeAgreements?.length??0)){
-    const terms=element("section","ppw-programme-standing");
-    terms.append(element("h3","","Match agreements"),
-     element("p","ppw-muted",
-      "Agree a short run of bouts without seeking fresh permission every week. The wrestlers keep their agreed protections."));
+    const terms=element("details","ppw-programme-standing") as HTMLDetailsElement;
+    terms.open=adviceOpen.has(p.programmeId);
+    terms.ontoggle=()=>{if(terms.open)adviceOpen.add(p.programmeId);
+     else adviceOpen.delete(p.programmeId);};
+    terms.append(element("summary","","Creative agreements"));
     for(const person of p.eligibleCreativePeople??[]){
      const prior=p.creativeAgreements?.find(x=>x.personId===person.personId);
      const item=element("div","ppw-programme-standing-row");
@@ -624,19 +581,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      expectedRevision:view!.worldRevision,programmeId:p.programmeId}),
      "Rivalry concluded");
    },working||!view.canEdit));
-   historyLane.append(retire);
-   const current=element("div","ppw-programme-now");
-   const nextBooked=p.plannedActivity?.[0];
-   current.append(element("strong","",nextBooked?
-    "Next: "+(nextBooked.kind==="MATCH"?"match":"angle")+" booked on "+nextBooked.showName:
-    "Next chapter is yours to book"));
-   if(nextBooked)current.append(element("span","",
-    "Year "+nextBooked.year+" · Week "+nextBooked.week+" · "+
-     (nextBooked.status==="SUBMITTED"?"Confirmed card":"Draft card")));
-   panel.append(current);
+   finaleLane.append(retire);
    const views=[
-    {key:"CREATIVE",label:"Creative",node:creativeLane},
-    {key:"FINALE",label:p.finale?"Finale ●":"Finale",node:finaleLane},
+    {key:"STORY",label:"Story",node:creativeLane},
+    {key:"PAYOFF",label:p.finale?"Payoff ●":"Payoff",node:finaleLane},
     {key:"HISTORY",label:"History",node:historyLane}
    ] as const;
    const tabs=element("nav","ppw-programme-view-tabs");
@@ -693,8 +641,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   const concluded=view.programmes.filter(p=>p.status!=="ACTIVE").slice(0,15);
   if(concluded.length){
    const history=element("section","ppw-programme-history");
-   history.append(element("h2","","Recently concluded"),
-    element("p","ppw-muted","Completed feuds remain part of your promotion's story. Scores and chapters come from certified broadcasts."));
+   history.append(element("h2","","Recently concluded"));
    for(const p of concluded){
     const aName=p.sideA.map(x=>x.name).join(" & ");
     const bName=p.sideB.map(x=>x.name).join(" & ");

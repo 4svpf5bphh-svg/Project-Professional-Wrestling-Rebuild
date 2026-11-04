@@ -4,6 +4,11 @@
 import type {readContractDesk} from "../db/contract-desk-workspace.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
+import {forecastContractCost} from "../domain/contract-cost-forecast.js";
+import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
+import {contractStaffNotes} from "../domain/staff-context-advice.js";
+import {CONTRACT_TERM_PRESETS,applyContractTermPreset,selectedContractTermPreset}
+ from "../domain/contract-term-presets.js";
 export type ContractDeskView=Awaited<ReturnType<typeof readContractDesk>>;
 type Mutation={requestId:string;expectedRevision:number};
 export interface ContractDeskPort{
@@ -20,6 +25,40 @@ const el=(tag:string,cls="",text="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;};
 const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
 const title=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/(^|\s)\S/g,v=>v.toUpperCase());
+function packageCost(terms:{termWeeks:number;dateEntitlement:number;family:string;
+ weeklyGuarantee:number;appearanceFee:number;signingBonus:number}){
+ return forecastContractCost({weeks:terms.termWeeks,
+  dates:terms.family==="EXCLUSIVE"?0:terms.dateEntitlement,
+  weeklyGuarantee:terms.weeklyGuarantee,appearanceFee:terms.appearanceFee,
+  signingBonus:terms.signingBonus});
+}
+function packageQuote(target:HTMLElement,terms:{termWeeks:number;dateEntitlement:number;family:string;
+ weeklyGuarantee:number;appearanceFee:number;signingBonus:number}){
+ target.replaceChildren();
+ try{
+  const cost=packageCost(terms);
+  target.append(el("small","ppw-contract-quote-eyebrow","POTENTIAL FULL-TERM COST · ALL DATES USED"),
+   el("strong","ppw-contract-quote-total",money(cost.plannedFullTermCost)),
+   el("small","ppw-contract-quote-guaranteed",
+    "Guaranteed wages + bonus: "+money(cost.guaranteedWages+cost.oneTimeBonus)));
+  const parts=el("div","ppw-contract-quote-breakdown");
+  for(const [name,value] of [
+   ["Guaranteed wages",cost.guaranteedWages],
+   ["Appearance fees · "+cost.dates+" dates",cost.plannedAppearanceFees],
+   ["Signing bonus",cost.oneTimeBonus],
+   ["Average if all dates used",cost.averageWeeklyCost]
+  ] as const){
+   const row=el("div","ppw-contract-quote-row");
+   row.append(el("span","",name),el("strong","",money(value)+
+    (name.startsWith("Average")?"/week":"")));
+   parts.append(row);
+  }
+  target.append(parts,el("small","ppw-contract-quote-context",
+   "Appearance fees depend on dates actually worked. This is not an upfront charge."));
+ }catch{target.append(el("small","ppw-contract-quote-context",
+  "Enter valid term, dates and payment amounts to calculate the package."));}
+}
+
 const btn=(value:string,click:()=>void,disabled=false)=>{
  const x=el("button","ppw-contract-button",value) as HTMLButtonElement;
  x.type="button";x.disabled=disabled;x.onclick=click;return x;};
@@ -70,34 +109,58 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   if(!view){root.append(btn(working?"Loading…":"Retry",()=>void load(),working));return;}
   const sums=el("div","ppw-contract-summary");
   for(const [metric,value] of [
-   ["SIGNED",view.summary.signed],["NEED ATTENTION",view.summary.expiringSoon+view.summary.noDates],
+   ["SIGNED",view.summary.signed],
+   ["NEED ATTENTION",view.summary.expiringSoon+view.summary.noDates],
    ["PENDING",view.summary.pendingNegotiations+view.summary.pendingRenewals+
-     view.summary.pendingOffers],["WEEKLY GUARANTEES",money(view.summary.weeklyGuarantees)]
+    view.summary.pendingOffers]
   ] as const){
    const panel=el("div","ppw-contract-metric");
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
-  // A contract decision needs the owner's actual weekly wage room, not
-  // invented four-week cash scenarios or a fictitious full-roster show.
-  const plan=view.spendingPlan,actual=view.talentBudget?.currentGuarantees??
-   view.summary.weeklyGuarantees;
-  const guide=el("section","ppw-contract-budget");
-  if(plan){
-   const left=plan.weeklyWageLimit-actual;
-   guide.append(el("strong","","Weekly wage budget"),
-    el("p","ppw-muted",money(actual)+" committed of "+
-     money(plan.weeklyWageLimit)+" · "+(left>=0?
-     money(left)+" remaining":money(-left)+" above your chosen limit")),
-    el("small","ppw-muted",
-     "Appearance fees are separate event costs. Review your spending limits in Business → Finances."));
-  }else guide.append(el("p","ppw-muted",
-   "Weekly guarantees: "+money(actual)+
-   ". You can set a wage allowance in Business → Finances."));
-  root.append(guide);
-  const helper=el("p","ppw-muted",
-   "Offers and extra dates are proposals, not guarantees. Wrestlers respond after the weekly deadline.");
-  root.append(helper);
+  const exposure=remainingRosterExposure(view.roster.map(c=>({
+   ...c,startsInWeeks:Math.max(0,(c.startWeekIndex??view!.currentWeekIndex)-
+    view!.currentWeekIndex)
+  })));
+  const budget=el("section","ppw-contract-budget ppw-contract-exposure");
+  budget.append(el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
+   el("strong","ppw-contract-exposure-total",money(exposure.potentialTotal)));
+  const split=el("div","ppw-contract-exposure-parts");
+  const budgetLine=(name:string,value:number)=>{
+   const row=el("div","ppw-contract-exposure-part");
+   row.append(el("span","",name),el("strong","",money(value)));split.append(row);
+  };
+  budgetLine("Guaranteed wages to expiry",exposure.guaranteedWages);
+  budgetLine("Optional dates if all used",exposure.optionalAppearanceFees);
+  budget.append(split);
+  const plan=view.spendingPlan;
+  const actual=view.talentBudget?.currentGuarantees??view.summary.weeklyGuarantees;
+  const cash=view.talentBudget?.cash;
+  const cashSuffix=typeof cash==="number"?" · Current cash: "+money(cash):"";
+  if(typeof cash==="number"&&Number.isFinite(cash)){
+   const cashOnly=cash-exposure.potentialTotal;
+   const balance=el("div","ppw-contract-cash-comparison");
+   balance.dataset.coverage=cashOnly>=0?"covered":"gap";
+   balance.append(el("span","","Cash-only cover · all remaining dates used"),
+    el("strong","",cashOnly>=0?money(cashOnly)+" left":
+     money(-cashOnly)+" short"));
+   budget.append(balance);
+  }
+  const note=plan?
+   "Weekly guarantees: "+money(actual)+" of "+money(plan.weeklyWageLimit)+
+    " spending limit"+cashSuffix:
+   "Weekly guarantees: "+money(actual)+"/week"+cashSuffix;
+  budget.append(el("p","ppw-contract-exposure-context",note),
+   el("small","ppw-contract-exposure-disclaimer",
+    "Signed current terms only. Includes remaining guaranteed wages and up to "+
+    exposure.remainingUsableDates+" unused appearance dates. "+
+    "Cash-only cover is a planning comparison, not a debt or cash reservation. "+
+    "Costs are paid over time; already-paid bonuses, pending offers, future income "+
+    "and other expenses are excluded."));
+  root.append(budget);
+  // Offer-response timing belongs inside individual pending decisions, not an
+  // always-visible paragraph above every contract.
+
   if(!view.canEdit)root.append(el("p","ppw-alert",
    "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
@@ -141,6 +204,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      typeof t.signingBonus==="number"&&t.signingBonus>0?money(t.signingBonus)+" signing bonus":null
     ].filter(Boolean).join(" · ");
     if(terms)copy.append(el("span","ppw-contract-offer-terms",terms));
+    if([t.termWeeks,t.dateEntitlement,t.weeklyGuarantee,
+     t.appearanceFee,t.signingBonus].every(n=>typeof n==="number"&&Number.isFinite(n))&&t.family){
+     const cost=packageCost(t as OfferTerms);
+     copy.append(el("strong","ppw-contract-offer-value",
+      "Potential full-term cost · "+money(cost.plannedFullTermCost)));
+    }
     if(port.openWrestler)copy.append(btn("View wrestler dossier ↗",
      ()=>port.openWrestler?.(o.person_id)));
     row.append(copy,btn("Withdraw offer",()=>void action("offer:"+o.offer_id,m=>
@@ -257,7 +326,23 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       (c.weeksRemaining===1?"Next week's show requires a new agreement.":"Renew before booking shows beyond that week."));
      body.append(warning);
     }
-    body.append(el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
+    // The original package is known for canonical signed terms. Imported or
+    // partial records must never invent a signing bonus or crash the dossier.
+    const knownPackage=[c.startWeekIndex,c.expiresWeekIndex,c.weeklyGuarantee,
+     c.appearanceFee,c.signingBonus].every(x=>
+      typeof x==="number"&&Number.isFinite(x)&&x>=0);
+    let originalTotal:number|null=null;
+    if(knownPackage)try{
+     originalTotal=packageCost({
+      family:c.family,termWeeks:Math.max(1,c.expiresWeekIndex-c.startWeekIndex+1),
+      dateEntitlement:c.dateEntitlement??0,weeklyGuarantee:c.weeklyGuarantee,
+      appearanceFee:c.appearanceFee,signingBonus:c.signingBonus
+     }).plannedFullTermCost;
+    }catch{ /* Incomplete imported contract: show only known terms. */ }
+    body.append(el("strong","ppw-contract-current-value",
+     originalTotal===null?"Signed deal · full-term package unavailable":
+      "Signed deal · "+money(originalTotal)+" full-term potential"),
+     el("p","ppw-muted","Weekly "+money(c.weeklyGuarantee)+
      " · Appearance "+money(c.appearanceFee)),
      el("p","ppw-muted","Role: "+title(c.roleExpectation)+
      " · Creative control: "+title(c.creativeControl)));
@@ -322,51 +407,113 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const draft:OfferTerms={
       family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
-      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:13,
-      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?13:
-       Math.max(1,Math.min(13,c.dateEntitlement??5)),
+      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:52,
+      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?52:40,
       weeklyGuarantee:family==="ONE_OFF"?0:c.weeklyGuarantee,
       appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
      };
+     const quote=el("section","ppw-contract-cost-quote");
+     const managerNote=el("div","ppw-contract-manager-take");
      const panel=el("div","ppw-contract-renegotiate-fields");
-      const quote=el("p","ppw-contract-renew-hint");
-      const updateQuote=()=>{
-       const guaranteeDifference=draft.weeklyGuarantee-c.weeklyGuarantee;
-       const appearanceDifference=draft.appearanceFee-c.appearanceFee;
-       quote.textContent="Next term: "+money(draft.weeklyGuarantee)+"/week ("+
-        (guaranteeDifference>=0?"+":"")+money(guaranteeDifference)+
-        " per week versus current), "+money(draft.appearanceFee)+
-        " per appearance ("+(appearanceDifference>=0?"+":"")+
-        money(appearanceDifference)+"), "+money(draft.signingBonus)+
-        " signing bonus if agreed. This is a future replacement contract, "+
-        "not a second simultaneous wage bill.";
-      };
-      updateQuote();
+     const updateQuote=()=>{
+      packageQuote(quote,draft);
+      managerNote.replaceChildren();
+      if(!view?.hasTalentManager)return;
+      if(![draft.termWeeks,draft.dateEntitlement,draft.weeklyGuarantee,
+       draft.appearanceFee,draft.signingBonus].every(n=>Number.isSafeInteger(n)&&n>=0)||
+       draft.termWeeks<1||draft.termWeeks>52||
+       draft.dateEntitlement<1||draft.dateEntitlement>draft.termWeeks)return;
+      const replacementPayroll=Math.max(0,view.summary.weeklyGuarantees-c.weeklyGuarantee);
+      const notes=contractStaffNotes({
+       weeklyGuarantee:draft.weeklyGuarantee,weeks:draft.termWeeks,
+       appearanceFee:draft.appearanceFee,
+       dates:draft.family==="EXCLUSIVE"?0:draft.dateEntitlement,
+       signingBonus:draft.signingBonus,cash:view.talentBudget.cash,
+       cashReserve:view.spendingPlan?.cashReserve??null,
+       weeklyGuarantees:replacementPayroll,
+       wageLimit:view.spendingPlan?.weeklyWageLimit??null,
+       recurringMargin:null
+      },new Set(["TALENT_MANAGER"]));
+      const urgent=notes.find(n=>n.level==="WATCH");
+      const cost=packageCost(draft);
+      const prev=packageCost({
+       family:c.family,termWeeks:draft.termWeeks,
+       dateEntitlement:draft.family==="EXCLUSIVE"?0:
+        Math.min(draft.termWeeks,c.dateEntitlement??0),
+       weeklyGuarantee:c.weeklyGuarantee,
+       appearanceFee:c.appearanceFee,signingBonus:c.signingBonus});
+      const delta=cost.plannedFullTermCost-prev.plannedFullTermCost;
+      const assessment=urgent?.message??(delta>0?
+       "On equivalent terms this proposal adds "+money(delta)+
+       " in potential spending. Make sure the wrestler's planned role justifies it.":
+       delta<0?"This package reduces potential cost by "+money(-delta)+
+       " versus equivalent current rates. Consider whether the new terms still secure the dates you need.":
+       "The proposed package matches the current rates for an equivalent term. "+
+       "Confirm that the purchased dates fit your show plans before offering.");
+      managerNote.append(el("strong","","Talent Manager · Deal assessment"),
+       el("p","",assessment));
+      managerNote.dataset.level=urgent?"watch":"info";
+     };
+     updateQuote();
+     const presetRow=el("div","ppw-contract-term-presets");
+     const advanced=document.createElement("details");
+     advanced.className="ppw-contract-term-advanced";
+     advanced.append(el("summary","","Advanced · customise weeks & dates"));
+     const timing=el("div","ppw-contract-renegotiate-fields");
+     const buttons=new Map<string,HTMLButtonElement>();
+     const refreshPreset=()=>{
+      const selected=selectedContractTermPreset(family,draft.termWeeks,draft.dateEntitlement);
+      for(const [key,control] of buttons)
+       control.setAttribute("aria-pressed",String(key===selected));
+     };
+     for(const choice of CONTRACT_TERM_PRESETS){
+      const plan=applyContractTermPreset(family,choice.id);
+      const control=btn(choice.label,()=>{
+       draft.termWeeks=plan.weeks;draft.dateEntitlement=plan.dates;
+       const weeks=timing.querySelector<HTMLInputElement>('[data-renew-weeks="yes"]');
+       const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
+       if(weeks)weeks.value=String(draft.termWeeks);
+       if(dates)dates.value=String(draft.dateEntitlement);
+       pending.delete("negotiated:"+c.contractId);
+       updateQuote();refreshPreset();
+      },!editable());
+      control.className+=" ppw-contract-term-choice";
+      control.append(el("small","",plan.weeks+" weeks · "+
+       (family==="EXCLUSIVE"?"Unlimited dates":plan.dates+" dates")));
+      presetRow.append(control);buttons.set(choice.id,control);
+     }
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
-      min:number,max:number,disabled=false)=>{
+      min:number,max:number,disabled=false,destination=panel)=>{
       const label=el("label","",name),input=document.createElement("input");
       input.type="number";input.inputMode="numeric";input.min=String(min);input.max=String(max);
       input.value=String(draft[key]);input.disabled=disabled;
       input.setAttribute("aria-label",name+" for "+c.name);
-      input.oninput=()=>{if(input.value!==""){draft[key]=Number(input.value);updateQuote();}
+      input.oninput=()=>{
+       if(input.value==="")return;
+       draft[key]=Number(input.value);
        if(key==="termWeeks"){
         if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
         else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
-        const dates=panel.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
+        const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
         if(dates)dates.value=String(draft.dateEntitlement);
-       }};
+       }
+       pending.delete("negotiated:"+c.contractId);updateQuote();refreshPreset();
+      };
+      if(key==="termWeeks")input.dataset.renewWeeks="yes";
       if(key==="dateEntitlement")input.dataset.renewDates="yes";
-      label.append(input);panel.append(label);
+      label.append(input);destination.append(label);
      };
-     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF");
-     numeric("Purchased dates","dateEntitlement",1,52,fixed);
+     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF",timing);
+     numeric("Purchased dates","dateEntitlement",1,52,fixed,timing);
+     advanced.append(timing);refreshPreset();
+     negotiate.append(presetRow,advanced);
      numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
      numeric("Appearance fee ($)","appearanceFee",0,1000000000,family==="EXCLUSIVE");
      numeric("Signing bonus ($)","signingBonus",0,1000000000);
      const dropdown=<T extends string>(name:string,options:readonly T[],initial:T,set:(v:T)=>void)=>{
       const label=el("label","",name),select=document.createElement("select");
-      select.setAttribute("aria-label",name+" for "+c.name);select.value=initial;
+      select.setAttribute("aria-label",name+" for "+c.name);
       for(const key of options){
        const item=document.createElement("option");item.value=key;item.textContent=title(key);
        select.append(item);
@@ -380,7 +527,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(panel,quote);
+     negotiate.append(quote,managerNote,panel);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");
