@@ -30,7 +30,10 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    finance_recent:FinanceEntry[];
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
     weeklyIncome:number;baselineIncome:number;reachIncrease:number;
-    startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI"}[];
+    startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI";
+    airingDay:number|null;airingHour:number|null}[];
+   world_partner_claims:{offerCode:string;promotionId:string;promotionName:string;
+    endWeekIndex:number;kind:"BROADCAST"|"SPONSOR"}[];
   }>(`
    SELECT w.year,w.week,w.revision,w.phase,p.name,p.tier,p.cash::text,p.debt::text,
     (SELECT k.style FROM ppw_kp_promotion_styles k WHERE k.world_id=p.world_id
@@ -58,12 +61,22 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
        d.baseline_income::double precision AS "baselineIncome",
        coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",
        d.start_week_index AS "startWeekIndex",d.end_week_index AS "endWeekIndex",
-       d.source
+       d.source,d.airing_day AS "airingDay",d.airing_hour AS "airingHour"
       FROM ppw_commercial_deals d
       WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE'
       ORDER BY d.kind,d.deal_id LIMIT 2
      ) agreement),'[]'::jsonb) AS commercial_deals,
+     COALESCE((SELECT jsonb_agg(to_jsonb(claim)) FROM(
+      SELECT d.offer_code AS "offerCode",d.promotion_id AS "promotionId",
+       other.name AS "promotionName",d.end_week_index AS "endWeekIndex",
+       d.kind
+      FROM ppw_commercial_deals d
+      JOIN ppw_promotions other ON other.world_id=d.world_id
+       AND other.promotion_id=d.promotion_id
+      WHERE d.world_id=w.world_id AND d.status='ACTIVE'
+      ORDER BY d.kind,d.offer_code,d.promotion_id LIMIT 24
+     ) claim),'[]'::jsonb) AS world_partner_claims,
      COALESCE((SELECT sum(c.weekly_guarantee)
       FROM ppw_contracts c WHERE c.world_id=p.world_id
        AND c.promotion_id=p.promotion_id AND c.status='SIGNED'
@@ -174,7 +187,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      e.estimated_viewers::text AS estimated_viewers,
      (SELECT agreement.offer_code FROM ppw_commercial_deals agreement
       WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
-       AND agreement.kind='BROADCAST' AND agreement.status='ACTIVE'
+       AND agreement.kind='BROADCAST'
+       AND agreement.start_week_index <= (e.year-1)*52+e.week-1
+       AND agreement.end_week_index >= (e.year-1)*52+e.week-1
       ORDER BY agreement.start_week_index DESC LIMIT 1) AS network_offer_code
     FROM ppw_show_economics e
     JOIN ppw_promotions p ON p.world_id=e.world_id
@@ -206,12 +221,20 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   },{workrate:0,spectacle:0,stars:0,stories:0,
    knownMatches:0,completedShows:0});
   const creativeIdentity=earnedPromotionIdentity(creative);
-  const earnedOffers=commercialOffers({
+  const tvReceipts=certified.filter(show=>show.audience_format==="TV"&&
+   show.tv_household_rating!==null);
+  const averageTvRating=tvReceipts.length?tvReceipts.reduce((n,show)=>
+   n+Number(show.tv_household_rating),0)/tvReceipts.length:null;
+  const allQualified=commercialOffers({
    tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
    weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
    averageCrowd:certified.length?
-    certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null
-  }).filter(offer=>!w.commercial_deals.some(d=>d.kind===offer.kind));
+    certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null,
+   recentTvEpisodes:tvReceipts.length,averageTvRating
+  });
+  const earnedOffers=allQualified.filter(offer=>
+   !w.commercial_deals.some(d=>d.kind===offer.kind)&&
+   !w.world_partner_claims.some(held=>held.offerCode===offer.code));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
    kpBrandStyle:w.kp_style,creativeIdentity,
@@ -235,6 +258,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    financialDistress:w.financial_distress,
    spendingPlan:w.spending_plan,
    commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
+   partnerInventory:w.world_partner_claims,averageTvRating,
+   recentTvEpisodes:tvReceipts.length,commercialQualified:allQualified,
    competitorBroadcasts:competitorBroadcasts.map(e=>({
     promotionId:e.promotion_id,name:e.promotion_name,showName:e.show_name??"Weekly show",
     day:e.show_day,year:e.year,week:e.week,householdRating:Number(e.household_rating),
