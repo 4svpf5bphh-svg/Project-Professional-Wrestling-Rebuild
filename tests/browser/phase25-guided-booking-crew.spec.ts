@@ -365,7 +365,7 @@ test("390px: match and physical angle share show workload advice and are saved t
  // Reopen its original slot rather than building a second advisory surface.
  await page.getByRole("button",{name:/Edit match in slot 1/}).click();
  const reopened=page.getByRole("dialog",{name:"Edit match"});
- await reopened.getByRole("button",{name:"Next · Staff briefing"}).click();
+ // Completed wizards retain their Review step on reopening.
  await expect(reopened.locator(".ppw-guide-staff-review"))
   .toContainText("Multiple physical bookings on this show");
  await expect(reopened.locator(".ppw-guide-staff-review"))
