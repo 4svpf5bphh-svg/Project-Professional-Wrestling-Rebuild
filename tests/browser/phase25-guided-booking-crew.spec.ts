@@ -268,7 +268,7 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(review).toContainText("Mark Reid");
  await expect(review).toContainText("Check condition before this physical scene");
  await expect(review).toContainText("Coordinate the staged violence");
- await expect(review).toContainText("Potential appearance fees");
+ await expect(review).toContainText("Additional appearance fees · $27,000");
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("0 / 120 min");
  await expect(page.locator(".ppw-card-appearance-cost")).toHaveCount(0);
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-staff-review-320.png",animations:"disabled"});
