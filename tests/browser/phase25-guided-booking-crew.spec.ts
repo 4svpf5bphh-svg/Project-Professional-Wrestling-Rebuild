@@ -95,6 +95,11 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(review).toContainText("This is a demanding match");
  await expect(review).toContainText("Watch cumulative wear");
  await expect(review).toContainText("Risky stipulation and safety concerns");
+ const condition=review.locator(".ppw-guide-condition-list");
+ await expect(condition).toContainText("Samoa Joe");
+ await expect(condition).toContainText("Fatigue 78/100");
+ await expect(condition).toContainText("Wear 82/100");
+ await expect(condition).toContainText("Místico");
  await expect(review).toContainText("Potential appearance fees");
  await expect(review).toContainText("does not establish whether they have good or bad chemistry");
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
@@ -145,6 +150,8 @@ test("390px: an angle also has a meaningful Creative team review before completi
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Emma Cross");
  await expect(review).toContainText("Long scene, limited presentation strength");
+ await expect(review.locator(".ppw-guide-condition-list")).toContainText("Samoa Joe");
+ await expect(review.locator(".ppw-guide-condition-list")).toContainText("Fatigue 78/100");
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(1);
  expect(saved).toHaveLength(0);

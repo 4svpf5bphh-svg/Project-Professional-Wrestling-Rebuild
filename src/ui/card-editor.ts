@@ -2134,6 +2134,51 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            " · "+angleSceneLabel(segment!.scene.purpose):"")));
        }
        brief.append(overview);
+       // The review must show the *actual* selected wrestlers' condition
+       // readings, not only a generic staff warning. This uses the same
+       // show-week talent snapshot already loaded by the booking editor.
+       const reviewedIds=[...new Set(m?assignedIds(m):
+        [...segment!.actors,...segment!.targets].map(p=>p.personId))];
+       const conditions=reviewedIds.map(id=>roster.get(id))
+        .filter((p):p is NonNullable<typeof p>=>Boolean(p))
+        .map(p=>({
+         person:p,
+         readings:([
+          ["Fatigue",p.fatigue],["Wear",p.wear],
+          ["Stamina",p.stamina],["Safety",p.safety]
+         ] as const).filter(([,value])=>typeof value==="number"&&Number.isFinite(value)),
+         watch:typeof p.fatigue==="number"&&p.fatigue>=65||
+          typeof p.wear==="number"&&p.wear>=72
+        })).filter(item=>item.readings.length>0)
+        .sort((a,b)=>Number(b.watch)-Number(a.watch)||
+         Math.max(b.person.fatigue??0,b.person.wear??0)-
+         Math.max(a.person.fatigue??0,a.person.wear??0));
+       if(conditions.length){
+        brief.append(el("h4","","Wrestler condition"));
+        const makeCondition=(item:typeof conditions[number])=>{
+         const line=el("div","ppw-guide-condition-row");
+         line.dataset.level=item.watch?"watch":"normal";
+         line.append(el("strong","",item.person.name??item.person.personId),
+          el("span","",item.readings.map(([name,value])=>
+           name+" "+Math.round(Number(value))+"/100").join(" · ")));
+         return line;
+        };
+        const visible=el("div","ppw-guide-condition-list");
+        for(const item of conditions.slice(0,4))visible.append(makeCondition(item));
+        brief.append(visible);
+        if(conditions.length>4){
+         const more=document.createElement("details");
+         more.className="ppw-guide-more-conditions";
+         more.append(el("summary","","Show "+(conditions.length-4)+
+          " more wrestler"+(conditions.length===5?"":"s")));
+         const rest=el("div","ppw-guide-condition-list");
+         for(const item of conditions.slice(4))rest.append(makeCondition(item));
+         more.append(rest);brief.append(more);
+        }
+        brief.append(el("p","ppw-guide-condition-disclaimer",
+         "Figures are the latest available show-week booking snapshot. "+
+         "They are not a diagnosis or a guaranteed match outcome."));
+       }
        const staff=slotNotes(slotId);
        brief.append(el("h4","","Your staff's assessment"));
        if(staff.length){
@@ -2171,6 +2216,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            issue.decision==="APPROVED"?"Agreed to the saved version":
            issue.decision==="DECLINED"?"Declined this booking":
            "Creative approval requires attention")));
+       }else if(segment?.programmeId){
+        const story=view.programmes.find(p=>p.programmeId===segment.programmeId);
+        if(story){
+         brief.append(el("h4","","Storyline connection"));
+         const members=new Set((story.cast??[]).map(p=>p.personId));
+         const involved=reviewedIds.filter(id=>members.has(id));
+         brief.append(el("p","",story.label+" · "+
+          (involved.length?involved.length+" feud participant"+
+           (involved.length===1?"":"s")+" in this scene":
+           "none of the listed feud's participants is cast in this scene")));
+        }
        }
        const ids=m?assignedIds(m):
         [...segment!.actors,...segment!.targets].map(p=>p.personId);

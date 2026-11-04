@@ -1000,3 +1000,22 @@ body>.ppw-card-edit-shade .ppw-guide-stipulation-tile{
  margin:8px 0 12px}
 .ppw-picker-unit{font-size:12px;min-height:44px;white-space:normal;text-align:left}
 .ppw-picker-note{font-size:11px;line-height:1.4;color:#bfd9ef}
+
+/* Phase 25N: verified condition facts in the final staff review, not
+   guessed chemistry or another roster query. Long casts stay condensed. */
+.ppw-guide-condition-list{display:grid;gap:7px}
+.ppw-guide-condition-row{display:grid;gap:4px;border-radius:10px;
+ background:#1c3545;border:1px solid #587c9b;padding:10px 11px;
+ min-width:0}
+.ppw-guide-condition-row[data-level="watch"]{
+ border-color:#d3a374;background:#362d33}
+.ppw-guide-condition-row>strong{font-size:13px;color:#f4f8ff}
+.ppw-guide-condition-row>span{font-size:12px;color:#cddfed;
+ line-height:1.45;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.ppw-guide-staff-review .ppw-guide-condition-disclaimer{
+ font-size:11px;color:#a8c6d9;line-height:1.45}
+.ppw-guide-more-conditions{border:1px solid #506f88;border-radius:10px;
+ padding:7px 10px}
+.ppw-guide-more-conditions>summary{min-height:44px;display:flex;
+ align-items:center;cursor:pointer;color:#d9ecf9;font-weight:750}
+.ppw-guide-more-conditions>.ppw-guide-condition-list{padding:8px 0 3px}
