@@ -94,13 +94,16 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Contracts approaching expiry/}).click();
  await expect(page).toHaveURL(/#\/contracts\/expiring$/);
- await expect(page.getByLabel("Contract filter")).toHaveValue("EXPIRING");
+ await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
+  .getByRole("button",{name:/Needs action/})).toHaveAttribute("aria-current","page");
  await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Offers awaiting decisions/}).click();
  await expect(page).toHaveURL(/#\/contracts\/pending$/);
  await expect(page.getByText(/outstanding offers, renewals and date requests/)).toBeVisible();
- await expect(page.getByLabel("Contract filter")).toHaveValue("ATTENTION");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
+  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
  expect(methods).toEqual(["overview","contracts","overview","contracts"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
@@ -133,11 +136,12 @@ test("named contract alerts give the right negotiation and expiry routes without
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
  await page.getByRole("button",{name:/Ada has a negotiation pending/}).click();
   await expect(page).toHaveURL(/#\/contracts\/pending$/);
- await expect(page.getByLabel("Contract filter")).toHaveValue("ATTENTION");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
+  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
  await page.goto("/#/home");
  await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
   await expect(page).toHaveURL(/#\/contracts\/expiring$/);
- await expect(page.getByLabel("Contract filter")).toHaveValue("EXPIRING");
+ await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
  expect(calls).toEqual(["overview","contracts","overview","contracts"]);
 });
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
@@ -359,17 +363,15 @@ test("parent-company affiliates remain visible on the iPhone roster without edit
  });
  await page.goto("/#/roster");
  await expect(page.getByText("NXT Rookie")).toBeVisible();
- const cards=page.locator(".ppw-directory-card");
+ const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
  await expect(cards).toHaveCount(2);
  const child=cards.first();
- await expect(child.getByText("PARENT-COMPANY ROSTER")).toBeVisible();
- await child.locator("summary").click();
- await expect(child.getByText(/Roster appearance through WWE/)).toBeVisible();
- await expect(child.getByText(/The parent owns the contract and wages/)).toBeVisible();
+ await expect(child).toContainText("PARENT-COMPANY ROSTER · WWE");
+ await expect(child.locator(".ppw-wrestler-stats")).toHaveCount(0);
  await expect(child.getByRole("button",{name:"Manage contract →"})).toHaveCount(0);
  const direct=cards.nth(1);
- await direct.locator("summary").click();
- await expect(direct.getByRole("button",{name:"Manage contract →"})).toBeVisible();
+ await expect(direct).toContainText("4 DATES LEFT");
+ await expect(direct.locator(".ppw-wrestler-stats")).toHaveCount(0);
  expect(methods,"These details must come from the same bounded roster read")
   .toEqual(["wrestlerDirectory"]);
 });
@@ -407,19 +409,18 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  await search.fill("Alice");
  await page.getByRole("button",{name:"Search",exact:true}).click();
  await expect(page.getByText("Updating directory…")).toBeVisible();
- await expect(page.locator(".ppw-directory-card")).toHaveCount(0);
+ await expect(page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster")).toHaveCount(0);
  releaseFilteredLoad();
- const alice=page.locator(".ppw-directory-card").first();
- await alice.locator("summary").click();
- await expect(alice).toHaveAttribute("open","");
+ const alice=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+ await expect(alice).toBeVisible();
  const reads=methods.filter(x=>x==="wrestlerDirectory").length;
- await alice.getByRole("button",{name:"Wrestler profile →"}).click();
+ await alice.click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
  await dialog.getByRole("button",{name:"‹ Back"}).click();
  await expect(dialog).toHaveCount(0);
  await expect(search).toHaveValue("Alice");
- await expect(alice).toHaveAttribute("open","");
+ await expect(alice).toBeVisible();
  expect(methods.filter(x=>x==="wrestlerDirectory").length).toBe(reads);
  expect(methods.filter(x=>x==="wrestlerProfile").length).toBe(1);
 });
@@ -1001,7 +1002,8 @@ test("Industry featured wrestlers load only on expansion, cache through local fi
  await expect(restored.getByText("Cody Rhodes",{exact:true})).toBeVisible();
  await expect(restored.locator(".ppw-wrestler-badges")).toContainText("WWE");
  await expect(restored.locator(".ppw-wrestler-alignment")).toHaveText("FACE");
- await expect(restored.locator(".ppw-wrestler-stat[data-ability=outstanding]")).toHaveCount(6);
+ await expect(restored.locator(".ppw-wrestler-stats")).toHaveCount(0);
+ await expect(restored.locator(".ppw-wrestler-fans")).toBeVisible();
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  expect(requests.filter(x=>x==="industryFeatured")).toHaveLength(1);
  await restored.locator(".ppw-wrestler-card").click();
