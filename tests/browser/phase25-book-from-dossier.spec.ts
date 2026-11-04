@@ -149,7 +149,7 @@ for(const width of [320,390]){
   await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
   const dossier=page.getByRole("dialog",{name:"Wrestler dossier"});
   await dossier.getByRole("button",{name:"Talk in Backstage"}).click();
-  await expect(page).toHaveURL(/#\\/backstage$/);
+  await expect(page).toHaveURL(/#\/backstage$/);
   const leave=page.getByRole("button",{name:"‹ Leave Backstage"});
   await expect(leave).toBeVisible();
   const position=await leave.boundingBox();
@@ -161,6 +161,6 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
   expect(calls).toContain("backstage");
   await leave.click();
-  await expect(page).toHaveURL(/#\\/roster$/);
+  await expect(page).toHaveURL(/#\/roster$/);
  });
 }
