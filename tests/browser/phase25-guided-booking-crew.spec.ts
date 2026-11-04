@@ -334,6 +334,13 @@ test("390px: match and physical angle share show workload advice and are saved t
  await expect(page.locator(".ppw-match-card")).toHaveCount(1);
  await expect(page.locator(".ppw-angle-card")).toHaveCount(1);
  await expect(page.locator(".ppw-card-appearance-cost")).toContainText("$27,000");
+ // Completing the scene updates the *existing match's* staff view too.
+ // Reopen its original slot rather than building a second advisory surface.
+ await page.getByRole("button",{name:/Edit match in slot 1/}).click();
+ const reopened=page.getByRole("dialog",{name:"Edit match"});
+ await expect(reopened.locator(".ppw-guide-staff-review"))
+  .toContainText("Multiple physical bookings on this show");
+ await reopened.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-save .ppw-primary")).toBeEnabled();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
