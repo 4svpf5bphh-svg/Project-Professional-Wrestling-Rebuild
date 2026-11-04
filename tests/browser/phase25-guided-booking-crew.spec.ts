@@ -128,6 +128,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await expect(dialog).toHaveCount(0);
  await expect(page.locator(".ppw-card-matchup")).toBeVisible();
+ await expect(page.locator(".ppw-match-card")).toBeInViewport({ratio:0.8});
  await expect(page.locator(".ppw-card-matchup")).toContainText("Samoa Joe");
  await expect(page.locator(".ppw-card-matchup")).toContainText("Místico");
  await expect(page.locator(".ppw-card-matchup img")).toHaveCount(0);
@@ -269,6 +270,7 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  expect(calls.filter(c=>c==="talent")).toHaveLength(2);
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(dialog).toHaveCount(0);
+ await expect(page.locator(".ppw-angle-card")).toBeInViewport({ratio:0.8});
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Attacker: Samoa Joe");
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Victim: Místico");
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Arena car park");

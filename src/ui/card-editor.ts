@@ -280,6 +280,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  function endWizard(slotId:string){
   inProgressWizards.delete(slotId);
   expanded=null;render();
+  // On iPhone, new running-order slots usually appear below the fold.
+  // Bring the exact completed ticket into view *after* the wizard closes;
+  // never scroll a cancelled booking or change saved World state.
+  const ticket=[...root.querySelectorAll<HTMLElement>(
+   ".ppw-card[data-booking-slot-id]")].find(node=>node.dataset.bookingSlotId===slotId);
+  ticket?.scrollIntoView({block:"center",inline:"nearest",behavior:"auto"});
  }
  function closeWizard(slotId:string){
   const pending=inProgressWizards.get(slotId);
