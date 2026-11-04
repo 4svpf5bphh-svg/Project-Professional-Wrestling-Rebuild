@@ -397,8 +397,9 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
     personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
     signatureMoves,finishingMoves}),
   openBackstage:personId=>{
-   // Dossier-initiated messages use the same full-screen route as navigation.
-   // Keep the selected wrestler private and ephemeral; never put IDs in URL.
+   // Remove the dossier portal before changing the host route, otherwise
+   // the old fixed overlay would trap the full-screen Messages workspace.
+   if(root.classList.contains("ppw-profile-overlay"))onBack();
    window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId}}));
   },
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
