@@ -327,3 +327,17 @@
  display:list-item;font-size:12px;color:#b8dcf5;font-weight:850}
 .ppw-directory-cash-stress[open]>summary{margin-bottom:8px}
 .ppw-directory-cash-stress .ppw-directory-muted{margin:7px 0 0}
+
+/* The roster shares the quick-chip language of Choose a Wrestler. */
+.ppw-directory-chips{display:flex;flex:0 0 100%;gap:6px;flex-wrap:wrap}
+.ppw-directory-chips .ppw-directory-quick-chip{
+ min-width:0;min-height:39px;padding:7px 11px;border-radius:999px;
+ border:1px solid #4d718e;background:#182e45;color:#dbeefd;
+ font-size:12px;font-weight:800;line-height:1.1}
+.ppw-directory-chips .ppw-directory-quick-chip[aria-pressed=true]{
+ background:linear-gradient(120deg,#934083,#5b4a9b);
+ border-color:#efd4fb;color:#fff}
+@media(max-width:360px){
+ .ppw-directory-chips{gap:5px}
+ .ppw-directory-chips .ppw-directory-quick-chip{padding:7px 9px;font-size:11px}
+}
