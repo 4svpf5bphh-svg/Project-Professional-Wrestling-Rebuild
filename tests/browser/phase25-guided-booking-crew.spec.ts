@@ -83,18 +83,19 @@ test("320px: a match moves through format, both sides, outcome and named crew br
   .evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).borderTopLeftRadius));
  expect(pickerRadii.length).toBeGreaterThanOrEqual(10);
  expect(new Set(pickerRadii).size).toBe(1);
- const selectStyles=await picker.locator(".ppw-picker-filters select")
+ // The booking sheet may refresh while the initial roster fetch settles.
+ // Assert computed styles once the live picker nodes are attached, not against
+ // detached old selects (getComputedStyle returns empty strings for those).
+ await expect.poll(()=>picker.locator(".ppw-picker-filters select")
   .evaluateAll(nodes=>nodes.map(n=>{
+   if(!n.isConnected)return null;
    const style=getComputedStyle(n);
    return {radius:style.borderTopLeftRadius,color:style.color,
     background:style.backgroundColor,appearance:style.appearance};
-  }));
- expect(selectStyles).toHaveLength(2);
- expect(new Set(selectStyles.map(s=>s.radius))).toEqual(new Set(["12px"]));
- expect(new Set(selectStyles.map(s=>s.color))).toEqual(new Set(["rgb(238, 246, 255)"]));
- expect(new Set(selectStyles.map(s=>s.background)))
-  .toEqual(new Set(["rgb(33, 54, 80)"]));
- expect(new Set(selectStyles.map(s=>s.appearance))).toEqual(new Set(["none"]));
+  })),{timeout:10000}).toEqual(Array.from({length:2},()=>({
+   radius:"12px",color:"rgb(238, 246, 255)",
+   background:"rgb(33, 54, 80)",appearance:"none"
+  })));
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
