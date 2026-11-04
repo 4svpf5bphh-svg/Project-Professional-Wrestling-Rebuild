@@ -396,9 +396,11 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
    signatureMoves,finishingMoves})=>call("saveWrestlerRepertoire",{
     personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
     signatureMoves,finishingMoves}),
-  openBackstage:personId=>mountPersonaDesk(root,{
-   ...personaPort(call,root,scope),load:(selected?:string)=>call("backstage",
-    {personId:selected??personId})},onBack,()=>mountProgrammePage(root,scope)),
+  openBackstage:personId=>{
+   // Dossier-initiated messages use the same full-screen route as navigation.
+   // Keep the selected wrestler private and ephemeral; never put IDs in URL.
+   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId}}));
+  },
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
   openPlanner:()=>openWorkspace("planner"),

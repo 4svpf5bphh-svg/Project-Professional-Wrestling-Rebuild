@@ -374,6 +374,11 @@ window.addEventListener("beforeunload",event=>{
  if(bookingDirty){event.preventDefault();event.returnValue="";}
 });
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
+window.addEventListener("ppw:open-backstage",event=>{
+ const personId=(event as CustomEvent<{personId?:unknown}>).detail?.personId;
+ if(typeof personId==="string"&&personId.length>0&&personId.length<=128)
+  openSection("backstage",undefined,personId);
+});
 
 async function loadSession(){
  const sequence=++sessionReadSequence;

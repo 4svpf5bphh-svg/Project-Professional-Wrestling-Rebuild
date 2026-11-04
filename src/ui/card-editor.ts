@@ -1568,7 +1568,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       section.append(button("+ Add "+(role==="actors"?
        specialist?(segment.actors.length?"rescuer":"attacker"):
         segment.kind==="INTERRUPTION"?"interrupter":
-        segment.kind==="POST_MATCH_ASSAULT"?"attacker":
+        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"attacker":
         segment.kind==="INTERVIEW"?"speaker":"performer":
        specialist?"person being rescued":
         segment.kind==="INTERRUPTION"?"speaker":

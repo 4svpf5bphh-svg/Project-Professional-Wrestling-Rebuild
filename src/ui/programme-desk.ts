@@ -586,7 +586,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    finaleLane.append(retire);
    const views=[
     {key:"STORY",label:"Story",node:creativeLane},
-    {key:"PLAN",label:"Plan Next",node:planLane},
+    {key:"PLAN",label:"Plan",node:planLane},
     {key:"PAYOFF",label:p.finale?"Payoff ●":"Payoff",node:finaleLane},
     {key:"HISTORY",label:"History",node:historyLane}
    ] as const;

@@ -488,3 +488,10 @@
  .ppw-programme-desk .ppw-programme-switch{grid-template-columns:48px minmax(0,1fr)!important}
  .ppw-programme-desk .ppw-programme-view-tab{font-size:10px;padding:6px 2px}
 }
+
+/* Four short tabs retain legible touch targets on 320px devices. */
+.ppw-programme-desk .ppw-programme-view-tabs{grid-template-columns:repeat(4,minmax(0,1fr));min-width:0}
+.ppw-programme-desk .ppw-programme-view-tab{
+ box-sizing:border-box;overflow:hidden;max-width:100%;
+ word-break:normal;white-space:normal;line-height:1.25;
+ font-size:clamp(10px,2.75vw,13px)}
