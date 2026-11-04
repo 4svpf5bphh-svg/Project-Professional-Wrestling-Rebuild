@@ -79,6 +79,12 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await expect(dialog).toContainText("Samoa Joe");
  await expect(dialog).toContainText("Matt Riddle");
  await expect(dialog).toContainText("Alex Shelley");
+ // Real partnership context arrives while choosing the team, not only
+ // at the very end of the four-screen booking journey.
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
+  "Known partnership strain");
+ await expect(dialog.locator(".ppw-guide-crew-pulse")).toContainText(
+  "Derek James: Partnership developing");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const briefing=dialog.locator(".ppw-guide-staff-review");

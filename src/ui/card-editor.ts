@@ -2184,11 +2184,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        const notes=other.find(node=>node.classList.contains("ppw-card-advisor-notes"));
        if(notes instanceof HTMLElement&&notes.dataset.level==="watch")guide.append(notes);
        const warnings=slotNotes(slotId).filter(note=>note.level==="WATCH");
-       if(warnings.length){
+       // Positive earned team familiarity also belongs here, at the moment
+       // the booker chooses partners, rather than buried under final review.
+       // Only established World evidence is shown; no chemistry guessed.
+       const teamBrief=m?matchPartnershipNotes(m,advisorPeople(),team())
+        .filter(n=>n.level==="INFO").slice(0,1):[];
+       if(warnings.length||teamBrief.length){
         const pulse=el("section","ppw-guide-crew-pulse");
         pulse.append(el("strong","","A word from your crew"));
         for(const n of warnings.slice(0,2))
          pulse.append(el("p","",n.role.replaceAll("_"," ")+": "+n.title));
+        for(const n of teamBrief)
+         pulse.append(el("p","",
+          (view.advisers?.find(c=>c.role==="ROAD_AGENT")?.name??"Road Agent")+
+          ": "+n.title+" · "+n.message));
         guide.append(pulse);
        }
        guide.append(button("← Match or scene type",()=>{
