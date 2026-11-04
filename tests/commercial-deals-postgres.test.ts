@@ -194,17 +194,20 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   assert.ok(afterTour[0]!.awareness>beforeTour[0]!.awareness);
   assert.equal(firstSettlement.aiDeals,2,
    "One AI broadcaster and one AI sponsor are signed from the same earned evidence");
-  const npc=await withWorldTransaction(db.pool,tx=>tx.query<{
-   kind:string;source:string
-  }>(`SELECT kind,source FROM ppw_commercial_deals
-   WHERE world_id=$1 AND promotion_id='promotion-3' AND status='ACTIVE'
-   ORDER BY kind`,[world]));
-  assert.deepEqual(npc,[{kind:"BROADCAST",source:"AI"},{kind:"SPONSOR",source:"AI"}],
-   "The stronger certified TV audience beats the alphabetically earlier AI rival");
-  const weak=await withWorldTransaction(db.pool,tx=>tx.query<{kind:string}>(
-   `SELECT kind FROM ppw_commercial_deals
-    WHERE world_id=$1 AND promotion_id='promotion-1' AND status='ACTIVE'`,[world]));
-  assert.deepEqual(weak,[],"The weaker AI cannot claim a second copy of either slot");
+  const awarded=await withWorldTransaction(db.pool,tx=>tx.query<{
+   promotion_id:string;kind:string;source:string;offer_code:string
+  }>(`SELECT promotion_id,kind,source,offer_code FROM ppw_commercial_deals
+   WHERE world_id=$1 AND source='AI' AND status='ACTIVE'
+    AND start_week_index=16
+   ORDER BY kind,promotion_id`,[world]));
+  assert.deepEqual(awarded.map(d=>d.kind),["BROADCAST","SPONSOR"],
+   "The World awards exactly one network and one sponsor in a rollover");
+  assert.equal(awarded[0]?.promotion_id,"promotion-3",
+   "The stronger certified TV audience defeats the alphabetically earlier AI rival");
+  assert.ok(["promotion-1","promotion-3"].includes(awarded[1]!.promotion_id),
+   "The sponsor also goes only to a promotion with real recent shows");
+  assert.equal(new Set(awarded.map(d=>d.offer_code)).size,2,
+   "Each named partner has a single exclusive World contract");
   const afterSponsor=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:owner});
   assert.equal(afterSponsor.weeklySponsorIncome,25000);
