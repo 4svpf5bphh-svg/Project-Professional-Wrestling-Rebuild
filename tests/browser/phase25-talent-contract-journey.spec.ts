@@ -113,6 +113,16 @@ test("Contract Desk compares ten genuine annual signings with cash, without anot
  });
  await page.goto("/#/contracts");
  const exposure=page.locator(".ppw-contract-exposure");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"}))
+  .toContainText("Needs action");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"}))
+  .toContainText("Roster");
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"}))
+  .toContainText("Offers");
+ await expect(page.locator(".ppw-contract-card")).toHaveCount(0);
+ await page.getByRole("button",{name:/Roster · 10/}).click();
+ await expect(page.locator(".ppw-contract-card")).toHaveCount(10);
+ await exposure.locator("summary").click();
  await expect(exposure.locator(".ppw-contract-exposure-total")).toHaveText("$5,000,000");
  await expect(exposure).toContainText("Guaranteed wages to expiry");
  await expect(exposure).toContainText("$2,600,000");
