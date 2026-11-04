@@ -70,6 +70,20 @@ export function partnerResponse(code:string,input:{
   if(rating<target*.8)return "The "+rating.toFixed(1)+" rating is below "+
    "our "+target.toFixed(1)+" target. We need to see improvement.";
  }
+ // Sponsors have different standards and respond only to completed-show
+ // evidence. Public statements never disclose hidden acceptance odds.
+ const crowd=input.crowd;
+ if(code.startsWith("SPONSOR_")&&typeof crowd==="number"&&Number.isFinite(crowd)){
+  if(crowd>=79)return (partner.style==="CHAOS"?
+   "Those fans were on their feet. ":
+   partner.style==="PRESTIGE"?"That was a premium-level presentation. ":
+   partner.style==="DIGITAL"?"Those numbers are worth talking about. ":
+   "Keep performances like that coming. ")+partner.voice;
+  if(crowd<56)return (partner.style==="CHAOS"?
+   "Even chaos needs an audience. ":
+   partner.style==="PRESTIGE"?"Our board expects a stronger presentation. ":
+   "We need a more consistent crowd reaction. ")+partner.voice;
+ }
  return input.current?"Our deal runs until the final contracted week. "+
   partner.voice:partner.voice;
 }
@@ -144,11 +158,13 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
     "A principal sponsor backing athletic spectacle for a full year.",
     "Maintain a strong profile across the contracted year.");
   }
-  if(["RISING","NATIONAL","GLOBAL"].includes(e.tier)&&count>=10&&crowd>=70)
+  if(["RISING","NATIONAL","GLOBAL"].includes(e.tier)&&count>=10&&crowd>=70&&
+   (!sample||ratio>=.7))
    add("SPONSOR_TECH","SPONSOR",base,.18,0,26,
     "Digital-first sponsorship for a growing and engaged fanbase.",
     "Sustain consistent shows and a distinctive on-screen identity.");
-  if(["NATIONAL","GLOBAL"].includes(e.tier)&&count>=10&&crowd>=76)
+  if(["NATIONAL","GLOBAL"].includes(e.tier)&&count>=10&&crowd>=76&&
+   (!sample||ratio>=.8))
    add("SPONSOR_LUXURY","SPONSOR",base,.2,0,52,
     "Prestige partnership for an established, polished promotion.",
     "Present major shows with broadcast-quality consistency.");

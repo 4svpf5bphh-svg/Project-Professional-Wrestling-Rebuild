@@ -105,3 +105,72 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test(`World-exclusive partners and ratings-war coverage remain legible at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:780});
+  const calls:string[]=[];
+  await page.route("**/api/session",route=>route.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",
+   overview:{world:{revision:7,name:"World",year:1,week:6,phase:"OPEN",
+    nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+    membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"NATIONAL",
+     cash:5_000_000,debt:0}},availablePromotions:[]
+  }}));
+  await page.route("**/api/card",route=>{
+   const input=route.request().postDataJSON() as {method:string};
+   calls.push(input.method);
+   return route.fulfill({json:{
+    name:"CWA",tier:"NATIONAL",year:1,week:6,worldRevision:7,phase:"OPEN",
+    homeMarketName:"Midlands",mediaReach:85,cash:5_000_000,debt:0,
+    standing:null,weeklyMediaIncome:250_000,weeklySponsorIncome:22_000,
+    weeklyFixedOverhead:60_000,weeklyGuarantees:45_000,weeklyStaffPayroll:5_000,
+    recurringMargin:162_000,lastWeeklyNet:23_000,runwayWeeks:null,
+    financialDistress:"HEALTHY",territories:[],recentTransactions:[],
+    rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+    remainingRosterPotential:2_000_000,remainingRosterGuaranteed:1_600_000,
+    recentTvEpisodes:3,averageTvRating:2.2,recentAverageCrowd:82,
+    shows:[{year:1,week:5,name:"Ascension",audience:{
+     format:"TV",householdRating:2.7,estimatedViewers:4_200_000,ppvBuys:null}}],
+    competitorBroadcasts:[
+     {promotionId:"rival",name:"Rival Wrestling",showName:"Collision",
+      day:5,year:1,week:6,householdRating:3.1,estimatedViewers:5_000_000,
+      networkOfferCode:"BROADCAST_GROWTH",isYours:false},
+     {promotionId:"mine",name:"CWA",showName:"Ascension",
+      day:2,year:1,week:5,householdRating:2.7,estimatedViewers:4_200_000,
+      networkOfferCode:"BROADCAST_TV",isYours:true}],
+    partnerInventory:[
+     {offerCode:"BROADCAST_GROWTH",promotionId:"rival",promotionName:"Rival Wrestling",
+      endWeekIndex:27,kind:"BROADCAST"},
+     {offerCode:"SPONSOR_LOCAL",promotionId:"rival",promotionName:"Rival Wrestling",
+      endWeekIndex:20,kind:"SPONSOR"}],
+    commercialAgreements:[],
+    commercialQualified:[{code:"SPONSOR_GEAR",kind:"SPONSOR"}],
+    commercialOffers:[{code:"SPONSOR_GEAR",kind:"SPONSOR",
+     name:"Ironclad Workwear",description:"Reliable regional partner",
+     weeklyIncome:24_000,reachIncrease:0,termWeeks:26,
+     obligation:"Keep staging shows."}]
+   }});
+  });
+  await page.goto("/#/business");
+  await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
+  await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
+  await page.getByRole("button",{name:"Deals"}).click();
+  await expect(page.getByRole("heading",{name:"Ratings war"})).toBeVisible();
+  await expect(page.getByText(/Your latest TV show ranks #2 of 2/)).toBeVisible();
+  const v=page.locator('.ppw-commercial-offer[data-availability="TAKEN"]')
+   .filter({has:page.locator('.ppw-commercial-brand[data-code="BROADCAST_GROWTH"]')});
+  await expect(v.locator("svg")).toBeVisible();
+  await expect(v).toContainText("Exclusive partner of Rival Wrestling");
+  await expect(v.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Sponsors"}).click();
+  const iron=page.locator('.ppw-commercial-brand[data-code="SPONSOR_GEAR"]');
+  await expect(iron.locator("svg")).toBeVisible();
+  await expect(page.getByRole("button",{name:"Sign Ironclad Workwear"})).toBeVisible();
+  await expect(page.locator(".ppw-commercial-offer[data-availability='TAKEN']"))
+   .toContainText(["Jack's Crematorium","Rival Wrestling"]);
+  expect(calls).toEqual(["business"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

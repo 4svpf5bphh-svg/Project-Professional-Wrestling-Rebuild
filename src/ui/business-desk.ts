@@ -717,7 +717,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     const item=el("article","ppw-commercial-offer");
     item.append(commercialPartnerBrand(deal.offerCode));
     item.append(el("p","ppw-commercial-voice",partnerResponse(deal.offerCode,{
-     tier:view.tier,averageTvRating:view.averageTvRating,current:true
+     tier:view.tier,averageTvRating:view.averageTvRating,
+     crowd:view.recentAverageCrowd,current:true
     })));
     item.append(el("strong","",
      money(deal.weeklyIncome)+" weekly guarantee"));
@@ -745,7 +746,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     item.append(commercialPartnerBrand(code));
     item.append(el("p","ppw-commercial-voice",partnerResponse(code,{
      tier:view.tier,averageTvRating:view.averageTvRating,
-     current:false,heldBy:reserved?.promotionName??null
+     crowd:view.recentAverageCrowd,current:false,
+     heldBy:reserved?.promotionName??null
     })));
     if(reserved){
      item.append(el("span","ppw-commercial-status",

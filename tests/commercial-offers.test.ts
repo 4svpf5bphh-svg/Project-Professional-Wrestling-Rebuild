@@ -99,3 +99,16 @@ test("fictional partner catalogue has twelve distinct branded personalities and 
   }
  }
 });
+
+test("sponsors react in different voices to certified strong and weak crowd runs",()=>{
+ const wild=partnerResponse("SPONSOR_LOCAL",{
+  tier:"LOCAL",crowd:85,current:true});
+ const prestige=partnerResponse("SPONSOR_LUXURY",{
+  tier:"NATIONAL",crowd:85,current:true});
+ const disappointed=partnerResponse("SPONSOR_LUXURY",{
+  tier:"NATIONAL",crowd:48,current:true});
+ assert.match(wild,/Those fans were on their feet/);
+ assert.match(prestige,/premium-level presentation/);
+ assert.match(disappointed,/Our board expects a stronger presentation/);
+ assert.notEqual(wild,prestige);
+});

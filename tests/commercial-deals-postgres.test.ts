@@ -57,7 +57,8 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   const records=await readPromotionRecordBook(db.pool,
    {worldId:world,promotionId:promotion,playerId:owner});
   assert.deepEqual(records.leaders,[],"Record Book reads only verified career matches");
-  assert.equal(business.commercialOffers.length,3);
+  assert.equal(business.commercialOffers.length,4,
+   "The fallback workwear sponsor is another scarce World-wide option");
   assert.equal(business.worldRevision,2);
   assert.equal(business.commercialAgreements.length,0);
   const command={worldId:world,promotionId:promotion,playerId:owner,

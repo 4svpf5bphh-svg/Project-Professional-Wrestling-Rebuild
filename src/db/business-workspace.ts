@@ -284,7 +284,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    spendingPlan:w.spending_plan,
    commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
    partnerInventory:w.world_partner_claims,averageTvRating,
-   recentTvEpisodes:tvReceipts.length,commercialQualified:allQualified,
+   recentTvEpisodes:tvReceipts.length,
+   recentAverageCrowd:certified.length?Math.round(
+    certified.reduce((n,show)=>n+Number(show.crowd_response),0)/
+     certified.length*10)/10:null,
+   commercialQualified:allQualified,
    competitorBroadcasts:competitorBroadcasts.map(e=>({
     promotionId:e.promotion_id,name:e.promotion_name,showName:e.show_name??"Weekly show",
     day:e.show_day,year:e.year,week:e.week,householdRating:Number(e.household_rating),
