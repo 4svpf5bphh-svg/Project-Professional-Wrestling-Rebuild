@@ -105,10 +105,9 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
  await dialog.getByLabel("Minutes").fill("30");
  await dialog.getByLabel("Minutes").press("Tab");
- await expect(dialog.locator(".ppw-guide-contract-alert"))
-  .toContainText("Místico");
- await expect(dialog.locator(".ppw-guide-contract-alert"))
-  .toContainText("protects against this planned clean loss");
+ // Ladder stipulation changes the scripted finish, so it should not
+ // trigger a clean-loss protection warning.
+ await expect(dialog.locator(".ppw-guide-contract-alert")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(dialog.getByText("STEP 4 OF 4 · REVIEW")).toBeVisible();
  const review=dialog.locator(".ppw-guide-staff-review");
@@ -118,7 +117,7 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(review).toContainText("This is a demanding match");
  await expect(review).toContainText("Watch cumulative wear");
  await expect(review).toContainText("Risky stipulation and safety concerns");
- await expect(review).toContainText("Místico's contract protects");
+ await expect(review).not.toContainText("Místico's contract protects");
  const condition=review.locator(".ppw-guide-condition-list");
  await expect(condition).toContainText("Samoa Joe");
  await expect(condition).toContainText("Fatigue 78/100");
@@ -311,7 +310,11 @@ test("390px: match and physical angle share show workload advice and are saved t
   .toContainText("Side B");
  await picker.locator(".ppw-wrestler-card").first().click();
  await match.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(match.locator(".ppw-guide-contract-alert"))
+  .toContainText("Místico's contract protects against this planned clean loss");
  await match.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await expect(match.locator(".ppw-guide-staff-review"))
+  .toContainText("Místico's contract protects");
  await match.getByRole("button",{name:"Complete match"}).click();
  await expect(page.locator(".ppw-card-matchup")).toBeVisible();
  await expect(page.locator(".ppw-save .ppw-primary")).toBeEnabled();
