@@ -185,3 +185,20 @@
  content:"✓ SELECTED";color:#fff4cb;font-size:10px;letter-spacing:.08em;font-weight:900}
 .ppw-contract-manager-take[data-level="watch"]{border:2px solid #e2a16f}
 .ppw-contract-manager-take[data-level="watch"] strong{color:#ffe1ad}
+
+/* Phase 28 — renewals are a deliberate, flat negotiation, not nested menus. */
+.ppw-contract-renewal-toggle{width:100%;min-height:46px;margin:9px 0;
+ border-radius:12px!important;background:#254b68!important;
+ border:1px solid #8bb0d4!important;color:#fff!important;font-weight:850}
+.ppw-contract-renegotiate{display:grid;gap:11px;
+ padding:14px;border:1px solid #6997b3;border-radius:13px;
+ background:linear-gradient(140deg,#102d45,#1e2945);min-width:0}
+.ppw-contract-renegotiate h4{margin:0;color:#ffe5bc;font-size:17px}
+.ppw-contract-renegotiate>p{margin:0}
+.ppw-contract-term-advanced{display:grid;gap:9px;border:0;
+ padding:0;background:transparent}
+.ppw-contract-term-advanced h4{margin:8px 0 0;color:#b7e4f2;font-size:13px}
+.ppw-contract-renegotiate>.ppw-contract-manager-take:empty{display:none}
+.ppw-contract-renegotiate .ppw-contract-button{min-height:45px;
+ border-radius:12px!important;font-size:13px;color:#fff}
+.ppw-contract-term-choice{border-radius:12px!important}

@@ -70,6 +70,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   initialFocus==="EXPIRING"?"EXPIRING":"ATTENTION";
  let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
+ const expandedRenewals=new Set<string>();
  let pending=new Map<string,string>();
  const editable=()=>view?.canEdit===true&&!working;
  const request=(key:string)=>{let id=pending.get(key);if(!id){id=crypto.randomUUID();pending.set(key,id);}return id;};
@@ -396,11 +397,18 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
       "Same-terms renewal offered. Awaiting wrestler decision."),!editable()));
-     const negotiate=document.createElement("details");
-     negotiate.className="ppw-contract-renegotiate";
-     negotiate.append(el("summary","","Negotiate different terms"));
-     negotiate.append(el("p","ppw-muted",
-      "An alternative renewal, not an extra booking. If accepted, the next contract begins after this one expires."));
+     const open=expandedRenewals.has(c.contractId);
+     const toggle=btn(open?"Close renewal terms":"Negotiate a new package",()=>{
+      if(open)expandedRenewals.delete(c.contractId);
+      else expandedRenewals.add(c.contractId);
+      render();
+     },!editable());
+     toggle.className+=" ppw-contract-renewal-toggle";
+     body.append(toggle);
+     const negotiate=el("section","ppw-contract-renegotiate");
+     negotiate.append(el("h4","","New contract terms"),
+      el("p","ppw-muted",
+       "If accepted, the new package starts when the current agreement ends."));
      const family=c.family as OfferTerms["family"];
      const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
      const nextWeek=c.expiresWeekIndex+1;
@@ -465,9 +473,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      };
      updateQuote();
      const presetRow=el("div","ppw-contract-term-presets");
-     const advanced=document.createElement("details");
-     advanced.className="ppw-contract-term-advanced";
-     advanced.append(el("summary","","Advanced · customise weeks & dates"));
+     const advanced=el("section","ppw-contract-term-advanced");
+     advanced.append(el("h4","","Custom duration"));
      const timing=el("div","ppw-contract-renegotiate-fields");
      const buttons=new Map<string,HTMLButtonElement>();
      const refreshPreset=()=>{
@@ -554,7 +561,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        ...m,personId:c.personId,sourceContractId:c.contractId,terms:draft}),
        "Renewal offer sent. The wrestler will respond at the end of the week.");
      },!editable()));
-     body.append(negotiate);
+     if(open)body.append(negotiate);
     }
     card.append(body);
     list.append(card);

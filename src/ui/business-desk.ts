@@ -244,9 +244,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     el("h2","","Set your spending limits"),
     el("p","ppw-business-muted",
      "Protect working capital and decide how much to commit to talent. Limits guide your decisions; they do not move cash or cancel a booking."));
-   const bank=el("div","ppw-business-budget-bank");
-   bank.append(el("span","","Cash in the bank"),el("strong","",money(view.cash)));
-   budget.append(bank);
+   const planBank=el("div","ppw-business-budget-bank");
+   planBank.append(el("span","","Cash in the bank"),
+    el("strong","",money(view.cash)));
+   budget.append(planBank);
    const compass=el("section","ppw-business-compass");
    compass.append(el("h3","","What the company can afford"),
     el("p","ppw-business-muted","These are guaranteed weekly commitments, before uncertain ticket sales and show costs."));
