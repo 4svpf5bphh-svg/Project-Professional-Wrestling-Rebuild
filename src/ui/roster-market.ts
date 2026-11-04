@@ -43,7 +43,7 @@ const offerDefaults=():TermsDraft=>({
 export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  initialView:DirectoryView="ROSTER"){
  let filter:DirectoryFilter={view:initialView,search:"",division:"ALL",
-  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"ROLE",minPopularity:undefined,limit:25,offset:0};
+  availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"NAME",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
   sending=false,pendingKey="",activeOffer:string|null=null;
  let choices=new Map<string,TermsDraft>();
@@ -496,7 +496,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   }
   fields.append(selection("Sort by",sortOptions,
    sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
-    filter.view==="ROSTER"?"ROLE":"INTEREST",sort=>pick({sort})));
+    filter.view==="ROSTER"?"NAME":"INTEREST",sort=>pick({sort})));
   refinements.append(fields);
   const advanced=document.createElement("details");
   advanced.className="ppw-directory-advanced";
@@ -519,7 +519,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   refinements.append(advanced);
   const clear=btn("Clear filters",()=>{
    filter={...filter,search:"",division:"ALL",role:"ALL",contract:"ALL",
-    availability:"ALL",interest:"ALL",sort:filter.view==="ROSTER"?"ROLE":"INTEREST",
+    availability:"ALL",interest:"ALL",sort:filter.view==="ROSTER"?"NAME":"INTEREST",
     minPopularity:undefined,minRecognition:undefined,minMomentum:undefined,
     minInRing:undefined,minCraft:undefined,minPresentation:undefined,offset:0};
    filtersExpanded=false;attributesExpanded=false;void load();
