@@ -1,3 +1,4 @@
+@import "./commercial-partner-identity.css";
 .ppw-business{box-sizing:border-box;max-width:1060px;min-width:0;
  margin:0 auto;padding:18px 14px 84px;color:#f0f6fc}
 .ppw-business *{box-sizing:border-box}
@@ -251,3 +252,10 @@
 @media(max-width:360px){
  .ppw-business-signing-inputs{grid-template-columns:1fr}
 }
+
+.ppw-commercial-desk .ppw-commercial-offer{gap:9px}
+.ppw-commercial-desk .ppw-commercial-offer>button{
+ color:#fff!important;background:linear-gradient(115deg,#18786d,#3250a8)!important;
+ border:1px solid #95d8ed!important;border-radius:12px!important;
+ min-height:48px;font-weight:900}
+.ppw-commercial-desk .ppw-commercial-offer>small{max-width:100%}
