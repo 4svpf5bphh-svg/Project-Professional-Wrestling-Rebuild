@@ -69,6 +69,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  let view:ContractDeskView|null=null,working=false,error="",notice="";
  let filter:"ALL"|"ATTENTION"|"NO_DATES"|"EXPIRING"=
   initialFocus==="EXPIRING"?"EXPIRING":"ATTENTION";
+ let deskTab:"ATTENTION"|"ROSTER"|"OFFERS"=
+  initialFocus==="PENDING"?"OFFERS":"ATTENTION";
  let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
  const expandedRenewals=new Set<string>();
@@ -120,12 +122,32 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    panel.append(el("span","",metric),el("strong","",String(value)));sums.append(panel);
   }
   root.append(sums);
+  const tabs=el("nav","ppw-contract-tabs");
+  tabs.setAttribute("aria-label","Contract Desk sections");
+  for(const [id,caption,count] of [
+   ["ATTENTION","Needs action",view.summary.expiringSoon+view.summary.noDates],
+   ["ROSTER","Roster",view.summary.signed],
+   ["OFFERS","Offers",view.requests.length+view.renewals.length+view.offers.length]
+  ] as const){
+   const label=caption+(count?" · "+count:"");
+   const control=btn(label,()=>{
+    deskTab=id;
+    filter=id==="ROSTER"?"ALL":"ATTENTION";
+    render();
+   });
+   control.setAttribute("aria-current",deskTab===id?"page":"false");
+   tabs.append(control);
+  }
+  root.append(tabs);
   const exposure=remainingRosterExposure(view.roster.map(c=>({
    ...c,startsInWeeks:Math.max(0,(c.startWeekIndex??view!.currentWeekIndex)-
     view!.currentWeekIndex)
   })));
-  const budget=el("section","ppw-contract-budget ppw-contract-exposure");
-  budget.append(el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
+  const budget=document.createElement("details");
+  budget.className="ppw-contract-budget ppw-contract-exposure";
+  budget.append(el("summary","","Future contract costs · "+
+   money(exposure.potentialTotal)),
+   el("span","ppw-contract-exposure-eyebrow","REMAINING SIGNED ROSTER EXPOSURE"),
    el("strong","ppw-contract-exposure-total",money(exposure.potentialTotal)));
   const split=el("div","ppw-contract-exposure-parts");
   const budgetLine=(name:string,value:number)=>{
@@ -159,7 +181,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     "Cash-only cover is a planning comparison, not a debt or cash reservation. "+
     "Costs are paid over time; already-paid bonuses, pending offers, future income "+
     "and other expenses are excluded."));
-  root.append(budget);
+  if(deskTab!=="OFFERS")root.append(budget);
   // Offer-response timing belongs inside individual pending decisions, not an
   // always-visible paragraph above every contract.
 
@@ -167,7 +189,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
   const pendingTotal=view.requests.length+view.renewals.length+view.offers.length;
-  if(pendingTotal){
+  if(deskTab==="OFFERS"&&pendingTotal){
    const box=document.createElement("details");box.className="ppw-contract-pending";box.open=true;
    box.append(el("summary","",pendingTotal+" pending negotiations"));
    for(const r of view.requests){
@@ -220,10 +242,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     box.append(row);
    }
    inbox.append(box);root.append(inbox);
-  }
+  }else if(deskTab==="OFFERS")
+   root.append(el("p","ppw-muted ppw-contract-empty","No active negotiations. Accepted and declined offers remain in the decision history below."));
   // An accepted or declined contract is still visible after its Home news
   // item has been dismissed. This is the actual agreement desk, not an alert.
-  if((view.resolvedOffers??[]).length){
+  if(deskTab==="OFFERS"&&(view.resolvedOffers??[]).length){
    const recent=document.createElement("details");
    recent.className="ppw-contract-decisions";recent.open=initialFocus==="PENDING";
    recent.append(el("summary","",
@@ -251,7 +274,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    }
    recent.append(events);root.append(recent);
   }
-  if(view.dateDecisions?.length){
+  if(deskTab==="OFFERS"&&view.dateDecisions?.length){
    const history=document.createElement("details");history.className="ppw-contract-decisions";
    history.open=initialFocus==="PENDING";
    history.append(el("summary","","Additional-date decisions · "+view.dateDecisions.length));
@@ -281,16 +304,21 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   const input=document.createElement("input");
   input.type="search";input.placeholder="Search your contracted wrestlers";
   input.setAttribute("aria-label","Search roster contracts");input.value=search;
-  const mode=document.createElement("select");
-  mode.setAttribute("aria-label","Contract filter");
-  for(const [key,value] of [["ATTENTION","Needs attention"],["ALL","All contracts"],
-   ["EXPIRING","Expiring soon"],["NO_DATES","No dates left"]] as const){
-   const opt=document.createElement("option");opt.value=key;opt.textContent=value;
-   mode.append(opt);
+  filters.append(input);
+  if(deskTab==="ATTENTION"){
+   const choices=el("div","ppw-contract-filter-pills");
+   for(const [key,title] of [
+    ["ATTENTION","All issues"],["EXPIRING","Expiring soon"],["NO_DATES","No dates"]
+   ] as const){
+    const control=btn(title,()=>{filter=key;render();});
+    control.setAttribute("aria-pressed",String(filter===key));
+    choices.append(control);
+   }
+   filters.append(choices);
   }
-  mode.value=filter;filters.append(input,mode);
-  root.append(filters);
-  const list=el("div","ppw-contract-list");root.append(list);
+  if(deskTab!=="OFFERS")root.append(filters);
+  const list=el("div","ppw-contract-list");
+  if(deskTab!=="OFFERS")root.append(list);
   function paint(){
    list.replaceChildren();
    const visible=view!.roster.filter(c=>
@@ -590,11 +618,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     card.append(body);
     list.append(card);
    }
-   if(!visible.length)list.append(el("p","ppw-muted",
-    view!.roster.length?"No contracts match this filter.":"No signed contracts yet."));
+   if(!visible.length)list.append(el("p","ppw-muted ppw-contract-empty",
+    !view!.roster.length?"No signed contracts yet. Recruit wrestlers through Talent Market.":
+    filter==="ATTENTION"?"No contracts need attention. Your roster agreements are up to date.":
+    "No contracts match this view."));
   }
   input.oninput=()=>{search=input.value;paint();};
-  mode.onchange=()=>{filter=mode.value as typeof filter;paint();};
   paint();
  }
  async function load(){
@@ -603,7 +632,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    view=await port.load();error="";
    if(!focusApplied&&focusedPersonId){
     const person=view.roster.find(x=>x.personId===focusedPersonId);
-    if(person){filter="ALL";search=person.name;}
+    if(person){deskTab="ROSTER";filter="ALL";search=person.name;}
    }
    focusApplied=true;
   }
