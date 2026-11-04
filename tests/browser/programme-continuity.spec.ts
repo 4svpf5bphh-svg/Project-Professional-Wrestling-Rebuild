@@ -253,9 +253,8 @@ test("a wrestler dossier opens their own active feud rather than the first unrel
   return route.fulfill({json:{}});
  });
  await page.goto("/#/roster");
- const wrestler=page.locator(".ppw-directory-card").first();
- await wrestler.locator("summary").click();
- await wrestler.getByRole("button",{name:"Wrestler profile →"}).click();
+ const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+ await wrestler.click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
  await dialog.locator(".ppw-profile-manage-more > summary").click();
