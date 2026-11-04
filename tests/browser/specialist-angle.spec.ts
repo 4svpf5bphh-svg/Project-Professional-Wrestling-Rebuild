@@ -293,8 +293,9 @@ test("iPhone booker can add an unsaved feud-linked recommended angle without aut
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- await page.locator(".ppw-card-rivalry-ideas summary").click();
- await page.getByRole("button",{name:"Add challenge for JapanCan vs The Gunns"}).click();
+ const stories=page.locator(".ppw-card-rivalry-launch");
+ await expect(stories).toBeVisible();
+ await stories.getByRole("button",{name:"Call for the rematch"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Challenge");

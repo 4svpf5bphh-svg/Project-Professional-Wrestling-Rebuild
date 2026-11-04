@@ -43,10 +43,11 @@ test("Creative's contextual angle advice appears in PPW's real mobile editor",as
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.locator(".ppw-card-advisor-notes")).toBeVisible();
- const notes=dialog.locator(".ppw-card-advisor-notes");
- await notes.locator(":scope > summary").click();
- await expect(notes.getByText("Storyline cast does not appear")).toBeVisible();
+ await expect(dialog.locator(".ppw-card-advisor-notes")).toHaveCount(0);
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const briefing=dialog.locator(".ppw-guide-staff-review");
+ await expect(briefing).toContainText("Jamie Keane");
+ await expect(briefing).toContainText("Storyline cast does not appear");
  await mkdir(folder,{recursive:true});
  await page.screenshot({path:folder+"/phase23-creative-storyline-advice-390.png"});
 });

@@ -455,8 +455,11 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     next.append(options);planLane.append(next);
    }
    if(p.latestFollowUp&&continuity.directionHeadline){
+    const label=p.latestFollowUp.choice==="PURSUE_REMATCH"?
+     "Pursue a rematch":p.latestFollowUp.choice==="PLAN_RETALIATION"?
+     "Plan retaliation":"Let the result stand";
     const record=element("p","ppw-programme-direction-record",
-     "Previously: "+continuity.directionHeadline);
+     "Last choice: "+label+" · "+continuity.directionHeadline);
     planLane.append(record);
    }
    if((p.eligibleCreativePeople?.length??0)||(p.creativeAgreements?.length??0)){
