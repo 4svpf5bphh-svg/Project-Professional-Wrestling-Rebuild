@@ -43,7 +43,7 @@ test("320px roster quick chips follow booking-picker semantics without another N
  await page.goto("/#/roster");
  const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
  await expect(cards).toHaveCount(3);
- const chips=page.getByLabel("Quick roster filters · this page");
+ const chips=page.getByRole("group",{name:"Quick roster filters · this page"});
  await chips.getByRole("button",{name:"Heel",exact:true}).click();
  await expect(chips.getByRole("button",{name:"Heel",exact:true}))
   .toHaveAttribute("aria-pressed","true");
