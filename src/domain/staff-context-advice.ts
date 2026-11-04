@@ -104,6 +104,47 @@ export function angleStaffNotes(segment:EditorSegment,people:readonly AdvisorPer
  }
  return notes.slice(0,4);
 }
+/** A performer can appear in a match and a separate angle on the same
+ * card. The existing server correctly allows that, but the staff should
+ * warn when those are two *physical* commitments. Never count promos or
+ * pre-recorded videos as extra physical workload. Card models are already
+ * in memory: this is an advisory-only projection with no database calls.
+ */
+export function showWorkloadNotes(slotId:string,current:EditorMatch|EditorSegment,
+ matches:readonly EditorMatch[],segments:readonly EditorSegment[],
+ people:readonly AdvisorPerson[],staffed:ReadonlySet<StaffRole>):StaffNote[]{
+ const physical=new Set<EditorSegment["kind"]>(["ATTACK","POST_MATCH_ASSAULT","RESCUE"]);
+ const isMatch="teams" in current;
+ if(!isMatch&&!physical.has(current.kind))return [];
+ const participants=isMatch?
+  current.teams.flat().flatMap(p=>p?[p.personId]:[]):
+  [...current.actors,...current.targets].map(p=>p.personId);
+ if(!participants.length)return [];
+ const otherMatches=new Set(matches.filter(m=>m.slotId!==slotId)
+  .flatMap(m=>m.teams.flat().flatMap(p=>p?[p.personId]:[])));
+ const otherPhysicalAngles=new Set(segments.filter(s=>
+  s.slotId!==slotId&&physical.has(s.kind))
+  .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId)));
+ const overlapping=[...new Set(participants)].filter(id=>
+  isMatch?otherPhysicalAngles.has(id):
+   otherMatches.has(id)||otherPhysicalAngles.has(id));
+ if(!overlapping.length)return [];
+ const names=new Map(people.map(p=>[p.personId,p.name]));
+ const peopleText=overlapping.map(id=>names.get(id)??id).join(", ");
+ const otherWork=isMatch?"a physical angle":
+  [otherMatches.size&&overlapping.some(id=>otherMatches.has(id))?"a match":null,
+   overlapping.some(id=>otherPhysicalAngles.has(id))?"another physical angle":null]
+   .filter(Boolean).join(" and ");
+ const elevated=people.some(p=>overlapping.includes(p.personId)&&
+  (valid(p.fatigue)&&p.fatigue>=65||valid(p.wear)&&p.wear>=72));
+ return [note(staffed.has("MEDICAL")?"MEDICAL":"HOUSE","WATCH",
+  "Multiple physical bookings on this show",
+  peopleText+" also "+(overlapping.length===1?"has":"have")+
+  " "+otherWork+" on this card. Consider reducing the length or intensity "+
+  "of one physical appearance and coordinate recovery"+
+  (elevated?", especially with the current fatigue or wear.":".")+
+  " This is a workload warning, not a predicted injury.")];
+}
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;
  cash:number;cashReserve:number|null;weeklyGuarantees:number;
