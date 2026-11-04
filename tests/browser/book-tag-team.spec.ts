@@ -150,6 +150,10 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  await expect(dialog).toContainText("Dax Harwood");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ const triosBrief=dialog.locator(".ppw-guide-staff-review");
+ await expect(triosBrief).toContainText("Known partnership strain");
+ await expect(triosBrief).toContainText("Samoa Joe and Matt Riddle");
+ await expect(triosBrief).not.toContainText("Alex Shelley and Chris Sabin");
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
