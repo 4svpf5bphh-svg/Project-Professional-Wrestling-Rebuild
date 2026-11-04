@@ -939,13 +939,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       id===bout.personA.personId||id===bout.personB.personId))){
       error="These tournament wrestlers are already booked on the card.";render();return;
      }
-     // Tournament opponents are already server-validated for the fixture.
-     // Keep their real identities even before a separate talent search.
-     for(const performer of [bout.personA,bout.personB])
-      if(!roster.has(performer.personId))
-       roster.set(performer.personId,{personId:performer.personId,
-        contractId:performer.contractId,name:performer.name,
-        division:null,available:true,reason:"AVAILABLE"});
      const id="match-"+crypto.randomUUID();
      matches.set(id,{...newEditorMatch(id,"SINGLES"),
       teams:[[{personId:bout.personA.personId,contractId:bout.personA.contractId}],

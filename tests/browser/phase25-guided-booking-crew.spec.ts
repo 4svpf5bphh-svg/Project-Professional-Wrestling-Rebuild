@@ -78,6 +78,11 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await dialog.getByRole("button",{name:"Choose wrestler"}).first().click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-side-tabs .ppw-picker-side-tab")).toHaveCount(2);
+ // A selected state must never change the geometry of any picker slicer.
+ const pickerRadii=await picker.locator(".ppw-picker-side-tab, .ppw-picker-source-tab, .ppw-picker-filter-chip")
+  .evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).borderTopLeftRadius));
+ expect(pickerRadii.length).toBeGreaterThanOrEqual(10);
+ expect(new Set(pickerRadii).size).toBe(1);
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
