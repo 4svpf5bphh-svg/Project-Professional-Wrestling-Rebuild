@@ -6,6 +6,7 @@ import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {evaluateProgrammeReview} from "../domain/programme-review.js";
+import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
@@ -72,6 +73,21 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     throw new Error("A rivalry has changed. Review the latest details before continuing.");
    view=await port.load();success=result;refsA=[null];refsB=[null];titleId=null;
   }catch(e){error=e instanceof Error?e.message:"Programme change failed";}
+  finally{working=false;render();}
+ }
+ async function saveDirection(programmeId:string,showId:string,slotId:string,
+  choice:ProgrammeDirectionChoice){
+  if(!view||working)return;
+  working=true;error="";success="";render();
+  try{
+   const response=await port.chooseDirection({programmeId,showId,slotId,choice,
+    requestId:crypto.randomUUID(),expectedRevision:view.worldRevision});
+   if(response&&typeof response==="object"&&"status" in response&&
+    (response as {status:unknown}).status==="STALE")
+    throw new Error("The rivalry changed. Check the latest result before deciding again.");
+   view=await port.load();
+   success="Decision recorded. You can now book the next chapter.";
+  }catch(e){error=e instanceof Error?e.message:"Unable to save this decision";}
   finally{working=false;render();}
  }
  function selector(options:readonly {key:string;label:string}[],
@@ -402,6 +418,42 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     }
    }
    planLane.append(advice);
+   const latestMatch=[...p.recentActivity].filter(a=>a.kind==="MATCH").sort((a,b)=>
+    b.weekIndex-a.weekIndex||b.showId.localeCompare(a.showId)||
+    b.slotId.localeCompare(a.slotId))[0];
+   // Retain the original server-authoritative after-match decision, but
+   // surface concrete next intentions instead of a nested 'Creative direction'.
+   if(latestMatch&&view.canEdit){
+    const suggested=suggestProgrammeAdvice({
+     heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
+     matchCount:p.matchCount,segmentCount:p.segmentCount,
+     sideAWins:p.sideAWins,sideBWins:p.sideBWins,
+     championshipId:p.championshipId,sideAName,sideBName,
+     direction:p.latestFollowUp?.choice??null,
+     directionStatus:continuity.directionKind,
+     recentKind:p.recentActivity[0]?.kind==="MATCH"?"MATCH":"SEGMENT",
+     recentWinnerSide:latestMatch.winnerSide
+    });
+    const next=element("section","ppw-programme-decisions");
+    next.append(element("h3","","After the Bell"),
+     element("p","","Choose what comes next. Your card remains yours to book."));
+    const options=element("div","ppw-programme-decision-actions");
+    for(const idea of suggested.options){
+     const selected=p.latestFollowUp?.choice===idea.choice&&
+      p.latestFollowUp.showId===latestMatch.showId&&
+      p.latestFollowUp.slotId===latestMatch.slotId;
+     const choice=element("div","ppw-programme-decision");
+     const action=button(idea.label,()=>void saveDirection(p.programmeId,
+      latestMatch.showId,latestMatch.slotId,idea.choice),working||selected);
+     action.setAttribute("aria-pressed",String(selected));
+     choice.append(action);
+     if(selected)choice.append(element("small","ppw-programme-decision-current",
+      "Selected"));
+     else choice.append(element("small","",idea.plan));
+     options.append(choice);
+    }
+    next.append(options);planLane.append(next);
+   }
    if(p.latestFollowUp&&continuity.directionHeadline){
     const record=element("p","ppw-programme-direction-record",
      "Previously: "+continuity.directionHeadline);

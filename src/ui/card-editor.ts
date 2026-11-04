@@ -155,7 +155,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let initialProgrammeFocusDone=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
- const openAdvisorNotes=new Set<string>();
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
  const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
@@ -239,36 +238,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   },!mutable(),"ppw-booking-choice-action"));
   return panel;
  }
- function advicePanel(slotId:string,notes:StaffNote[]){
-  const block=el("details","ppw-card-advisor-notes") as HTMLDetailsElement;
-  block.open=openAdvisorNotes.has(slotId);
-  block.ontoggle=()=>{if(block.open)openAdvisorNotes.add(slotId);
-   else openAdvisorNotes.delete(slotId);};
-  const urgent=notes.filter(x=>x.level==="WATCH").length;
-  block.dataset.level=urgent?"watch":"info";
-  const heading=el("summary","ppw-card-advisor-head");
-  heading.append(el("span","ppw-card-advisor-eyebrow","YOUR CREW"),
-   el("strong","",urgent?
-    urgent+" thing"+(urgent===1?"":"s")+" to consider":
-    notes.length+" professional note"+(notes.length===1?"":"s")));
-  block.append(heading);
-  const list=el("div","ppw-card-advisor-list");
-  for(const n of notes){
-   // Each voice starts as a one-line recommendation, not another paragraph.
-   const item=el("details","ppw-card-advisor-item") as HTMLDetailsElement;
-   item.dataset.level=n.level;
-   const colleague=view?.advisers?.find(member=>member.role===n.role);
-   const heading=el("summary","ppw-card-advisor-item-heading");
-   heading.append(el("span","ppw-card-advisor-role",
-    n.role==="HOUSE"?"HOUSE SAFETY":
-    (colleague?.name?colleague.name+" · ":"")+n.role.replaceAll("_"," ")),
-    el("strong","",n.title));
-   item.append(heading,el("p","ppw-card-advisor-explanation",n.message));
-   list.append(item);
-  }
-  block.append(list);return block;
- }
-
  function selectTrioForMatch(match:EditorMatch,side:number,trioId:string){
   const trio=eligibleTrios().find(t=>t.trioId===trioId);
   if(!trio||match.format!=="TRIOS")return;
@@ -1495,8 +1464,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
       "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
 
-    const angleNotes=slotNotes(slotId);
-    if(angleNotes.length)body.append(advicePanel(slotId,angleNotes));
     body.append(el("h3","ppw-angle-workflow-title","1 · Who is involved?"));
     for(const role of ["actors","targets"] as const){
      if(role==="targets"&&!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)continue;
@@ -1584,8 +1551,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const body=el("div","ppw-card-body");
     const readiness=matchCastingReadiness(m);
     body.append(el("p","ppw-booking-hint",readiness.hint));
-    const matchNotes=slotNotes(slotId);
-    if(matchNotes.length)body.append(advicePanel(slotId,matchNotes));
     if(m.tournamentId){
      const bracket=view.tournamentBouts?.find(b=>
       b.tournamentId===m.tournamentId&&b.boutNo===m.tournamentBoutNo);
