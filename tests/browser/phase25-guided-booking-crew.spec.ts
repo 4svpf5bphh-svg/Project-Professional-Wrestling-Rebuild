@@ -87,13 +87,14 @@ test("320px: a match moves through format, both sides, outcome and named crew br
   .evaluateAll(nodes=>nodes.map(n=>{
    const style=getComputedStyle(n);
    return {radius:style.borderTopLeftRadius,color:style.color,
-    background:style.backgroundColor};
+    background:style.backgroundColor,appearance:style.appearance};
   }));
  expect(selectStyles).toHaveLength(2);
  expect(new Set(selectStyles.map(s=>s.radius))).toEqual(new Set(["12px"]));
  expect(new Set(selectStyles.map(s=>s.color))).toEqual(new Set(["rgb(238, 246, 255)"]));
  expect(new Set(selectStyles.map(s=>s.background)))
   .toEqual(new Set(["rgb(33, 54, 80)"]));
+ expect(new Set(selectStyles.map(s=>s.appearance))).toEqual(new Set(["none"]));
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
