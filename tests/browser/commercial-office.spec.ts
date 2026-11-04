@@ -47,7 +47,7 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.goto("/#/business");
  await page.getByRole("button",{name:"Deals"}).click();
  await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
- await expect(page.getByText("VibeFlix")).toBeVisible();
+ await expect(page.getByText("VibeFlix",{exact:true})).toBeVisible();
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
  await expect(page.getByText("+15 distribution reach")).toBeVisible();

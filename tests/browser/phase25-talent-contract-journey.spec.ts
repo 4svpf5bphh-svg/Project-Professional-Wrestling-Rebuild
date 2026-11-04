@@ -8,7 +8,9 @@ const session={worldId:"world",playerId:"owner",csrfToken:"csrf",
  availablePromotions:[]};
 const market={year:1,week:5,currentWeekIndex:4,worldRevision:4,canEdit:true,
  view:"MARKET",offset:0,hasMore:false,
- offerBudget:{hasTalentManager:true,cash:5_000_000,
+ offerBudget:{hasTalentManager:true,
+  talentManager:{staffId:"staff-001",name:"Morgan Keane",insight:88},
+  cash:5_000_000,
   weeklyIncome:90_000,weeklyOverhead:25_000,weeklyGuarantees:30_000,
   weeklyStaffPayroll:5_000,weeklyWageLimit:55_000,cashReserve:300_000,
   signedRosterExposure:1_000_000},
@@ -55,16 +57,18 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  const offer=page.locator(".ppw-directory-offer");
  await expect(offer.getByText(/Year 1 Week 6/)).toBeVisible();
  await offer.getByRole("button",{name:/One night only/}).click();
- await expect(offer.getByText(/single appearance is valid in Year 1 Week 6 only/)).toBeVisible();
- await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$9,000");
+ await expect(offer.getByText(/One-night booking available in Year 1 Week 6/)).toBeVisible();
+ await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("POTENTIAL FULL-TERM COST");
+ await expect(offer.getByRole("button",{name:"Use my recommendation"})).toBeVisible();
  await offer.getByRole("button",{name:/Long term/}).click();
  await expect(offer.getByText(/52 weeks · 40 dates/)).toBeVisible();
+ await offer.getByRole("button",{name:"Customise this offer"}).click();
  await offer.getByLabel("Appearance fee ($)").fill("12500");
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$500,000");
  // A huge full-term deal used to be described as fitting the plan.
  await offer.getByLabel("Appearance fee ($)").fill("200000");
  const manager=offer.locator(".ppw-directory-adviser");
- await expect(manager).toHaveAttribute("open","");
+ await expect(manager).toBeVisible();
  await expect(manager).toHaveAttribute("data-risk","watch");
  await expect(manager).toContainText("Unsustainable on current cash");
  await expect(offer.locator(".ppw-directory-affordability")).toHaveAttribute("data-risk","true");
