@@ -183,23 +183,37 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   baseline_income:number;agreed_income:number;baseline_reach:number|null;
   agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI"};
  const proposals:Proposal[]=[];
+ // One global finite catalogue: a network or sponsor can serve only one
+ // promotion in a World. Existing agreements, including legacy terms, hold
+ // inventory until expiry. A World lock serializes this whole rollover.
+ const occupied=await tx.query<{offer_code:string}>(`
+  SELECT DISTINCT offer_code FROM ppw_commercial_deals
+  WHERE world_id=$1 AND status='ACTIVE'
+ `,[worldId]);
+ const taken=new Set(occupied.map(row=>row.offer_code));
+ const announced=new Set<"BROADCAST"|"SPONSOR">();
  for(const p of owners){
   const offers=commercialOffers(p);
   for(const kind of ["BROADCAST","SPONSOR"] as const){
-   if(p.active_kinds.includes(kind))continue;
-   const eligible=offers.filter(o=>o.kind===kind);
-   // AI promotions pursue stronger guaranteed income after sustained
-   // high-quality shows, otherwise a conservative short term.
-   const choice:CommercialOffer|undefined=kind==="BROADCAST"?
-    (eligible.find(o=>o.code==="BROADCAST_TV")??
-     eligible.find(o=>o.code==="BROADCAST_STABLE")):
-    (eligible.find(o=>o.code==="SPONSOR_PARTNER")??
-     eligible.find(o=>o.code==="SPONSOR_LOCAL"));
+   if(p.active_kinds.includes(kind)||announced.has(kind))continue;
+   const eligible=offers.filter(o=>o.kind===kind&&!taken.has(o.code));
+   // AI companies act as real bidders for the same finite roster of brands.
+   // One broadcast and one sponsor award per World week prevents a single
+   // rollover from instantly exhausting every slot.
+   const preference=kind==="BROADCAST"?
+    ["BROADCAST_GLOBAL","BROADCAST_TV","BROADCAST_GROWTH",
+     "BROADCAST_ARCHIVE","BROADCAST_INDIE","BROADCAST_STABLE"]:
+    ["SPONSOR_LUXURY","SPONSOR_TECH","SPONSOR_PARTNER",
+     "SPONSOR_GEAR","SPONSOR_FOOD","SPONSOR_LOCAL"];
+   const choice:CommercialOffer|undefined=preference
+    .map(code=>eligible.find(o=>o.code===code)).find(Boolean);
    if(!choice)continue;
    const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
    if(baseline===null)continue;
    const originalReach=kind==="BROADCAST"&&p.mediaReach!==null?
     Math.min(100,p.mediaReach):null;
+   taken.add(choice.code);
+   announced.add(kind);
    proposals.push({deal_id:"ai-commercial-"+p.promotion_id+"-"+nextWeek+"-"+kind,
     promotion_id:p.promotion_id,kind,offer_code:choice.code,
     baseline_income:baseline,agreed_income:choice.weeklyIncome,
@@ -216,10 +230,10 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    agreed_income:string;agreed_reach:number|null}>(`
    INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,offer_code,
     status,baseline_income,agreed_income,baseline_reach,agreed_reach,
-    start_week_index,end_week_index,source)
+    start_week_index,end_week_index,source,exclusive_rights)
    SELECT $1,x.deal_id,x.promotion_id,x.kind,x.offer_code,'ACTIVE',
     x.baseline_income,x.agreed_income,x.baseline_reach,x.agreed_reach,
-    x.start_week_index,x.end_week_index,x.source
+    x.start_week_index,x.end_week_index,x.source,true
    FROM jsonb_to_recordset($2::jsonb) AS x(
     deal_id text,promotion_id text,kind text,offer_code text,
     baseline_income bigint,agreed_income bigint,baseline_reach double precision,
