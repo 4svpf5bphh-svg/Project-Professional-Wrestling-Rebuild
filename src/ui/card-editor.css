@@ -1099,3 +1099,9 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field s
  .ppw-editor .ppw-card-person{font-size:12px}
  .ppw-editor .ppw-card-booked-facts span{font-size:10px}
 }
+
+/* The server requires a real match. Explain disabled saving when the
+   running order contains angles but no completed bout. */
+.ppw-editor .ppw-card-save-hint{grid-column:1/-1;padding:8px 10px;
+ border-radius:9px;border:1px solid #b99562;background:#3c3430;
+ color:#ffe8c4;font-size:12px;line-height:1.45;font-weight:750}

@@ -275,6 +275,9 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Victim: Místico");
  await expect(page.locator(".ppw-angle-card .ppw-card-lineup")).toContainText("Arena car park");
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("5 / 120 min");
+ await expect(page.getByRole("group",{name:"Save and confirm show"})
+  .getByRole("button",{name:"Save changes"})).toBeDisabled();
+ await expect(page.getByText("Add and complete a match to enable saving.")).toBeVisible();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-completed-angle-card-320.png",animations:"disabled"});
  await page.locator(".ppw-angle-card .ppw-card-open-zone").click();
  await expect(page.getByRole("dialog",{name:"Edit angle"})).toBeVisible();

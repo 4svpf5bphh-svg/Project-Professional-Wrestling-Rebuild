@@ -2443,12 +2443,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const foot=el("div","ppw-save");
   foot.setAttribute("role","group");
   foot.setAttribute("aria-label","Save and confirm show");
+  const needsMatch=committedMatches.length===0;
   foot.append(button(saving?"Saving…":dirty?"Save changes":"Save card",()=>{void save();},
-    !mutable()||needsRevisionRefresh||matches.size===0,"ppw-primary"));
+    !mutable()||needsRevisionRefresh||needsMatch,"ppw-primary"));
   if(port.confirmReady)foot.append(button(
    view.ready?"Confirmed":"Confirm show",
    ()=>{void confirm();},
-   !mutable()||dirty||view.ready||matches.size===0,"ppw-confirm"));
+   !mutable()||dirty||view.ready||needsMatch,"ppw-confirm"));
+  if(needsMatch&&committedSegments.length){
+   const guidance=el("small","ppw-card-save-hint",
+    "Add and complete a match to enable saving. An angle-only show cannot be submitted.");
+   foot.append(guidance);
+  }
   if(error){
    const notice=el("small","ppw-save-status ppw-save-error",error);
    notice.setAttribute("role","alert");
