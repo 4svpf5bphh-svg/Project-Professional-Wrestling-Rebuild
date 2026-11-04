@@ -2421,10 +2421,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ["actors","targets"]:["actors"]) as ("actors"|"targets")[];
     for(const role of options){
      const assigned=anglePicker[role].length;
-     const tab=button((role==="actors"?"Initiator / featured":"Target / recipient")+
-      " · "+assigned+" cast",()=>{
+     // Keep the visible role short enough for the smallest iPhone. The
+     // detailed cast headings provide the angle-specific responsibilities.
+     const roleName=role==="targets"?"Target":
+      anglePicker.kind==="RESCUE"?"Actors":
+      SEGMENT_BOOKING_RULES[anglePicker.kind].allowTargets?"Initiator":"Featured";
+     const tab=button(roleName+" · "+assigned,()=>{
       current.role=role;current.side=role==="actors"?0:1;render();
      },false,"ppw-picker-side-tab");
+     tab.title=role==="targets"?"Target / recipient wrestler":
+      anglePicker.kind==="RESCUE"?"Attacker first, rescuer second":
+      "Initiator / featured wrestler";
      tab.setAttribute("aria-pressed",String(current.role===role));roles.append(tab);
     }
     sheet.append(roles);

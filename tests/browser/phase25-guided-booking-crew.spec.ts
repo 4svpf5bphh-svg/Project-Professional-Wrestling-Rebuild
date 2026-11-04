@@ -190,6 +190,8 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await dialog.getByLabel("Creative direction").selectOption("RIVALRY");
  const choices=dialog.locator(".ppw-angle-type-tiles");
  await expect(choices).toContainText("Attack");
+ expect(await choices.evaluate(element=>
+  getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(2);
  await choices.getByRole("button",{name:"Attack",exact:true}).click();
  await expect(dialog.getByLabel("Angle type",{exact:true})).toHaveValue("ATTACK");
  await expect(choices.getByRole("button",{name:"Attack",exact:true}))
@@ -202,6 +204,8 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await dialog.getByRole("button",{name:"+ Add performer"}).click();
  let picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-side-tab")).toHaveCount(2);
+ expect(await picker.locator(".ppw-picker-side-tab").evaluateAll(
+  tabs=>tabs.every(tab=>tab.scrollWidth<=tab.clientWidth+1))).toBe(true);
  await expect(picker.locator(".ppw-picker-source-tab")).toHaveCount(5);
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
@@ -219,7 +223,7 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await dialog.getByRole("button",{name:"+ Add target"}).click();
  picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await expect(picker.locator(".ppw-picker-side-tab[aria-pressed=true]"))
-  .toContainText("Target / recipient");
+  .toContainText("Target");
  await picker.getByRole("button",{name:"Face",exact:true}).click();
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
  await picker.locator(".ppw-wrestler-card").first().click();

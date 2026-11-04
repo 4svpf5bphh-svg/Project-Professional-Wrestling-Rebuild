@@ -1053,3 +1053,11 @@ body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field{
  grid-column:1/-1;width:100%;min-width:0}
 body>.ppw-card-edit-shade .ppw-guide-angle-section.ppw-control-grid>.ppw-field select{
  width:100%;min-width:0;max-width:100%;font-size:14px}
+
+/* 320px WGM-style choice density: preserve two columns and readable taps.
+   Long one-column tile stacks made the guided What screen unnecessarily tall. */
+@media(max-width:350px){
+ body>.ppw-card-edit-shade .ppw-angle-type-tiles{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
