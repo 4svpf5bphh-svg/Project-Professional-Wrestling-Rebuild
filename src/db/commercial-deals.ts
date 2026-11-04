@@ -61,6 +61,15 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
    if(!valid)throw new Error("This commercial offer is no longer available");
    if(p.existing_kinds.includes(valid.kind))
     throw new Error("A current agreement must expire before new terms are available");
+   // World revision lock serializes human claims; a partial unique index
+   // also protects future exclusive signings from non-command writers.
+   const held=await tx.query<{promotion_id:string}>(`
+    SELECT promotion_id FROM ppw_commercial_deals
+    WHERE world_id=$1 AND offer_code=$2 AND status='ACTIVE'
+    ORDER BY promotion_id LIMIT 1
+   `,[input.worldId,valid.code]);
+   if(held.length)throw new Error(
+    "This partner already has an exclusive agreement in your World");
    const baselineIncome=valid.kind==="BROADCAST"?
     p.weeklyMediaIncome!:p.weeklySponsorIncome!;
    const baselineReach=valid.kind==="BROADCAST"?
@@ -71,8 +80,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
    await tx.query(`
     INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
      offer_code,status,baseline_income,agreed_income,baseline_reach,
-     agreed_reach,start_week_index,end_week_index,source)
-    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7,$8,$9,$10,$11,'HUMAN')
+     agreed_reach,start_week_index,end_week_index,source,exclusive_rights)
+    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7,$8,$9,$10,$11,'HUMAN',true)
    `,[input.worldId,dealId,input.promotionId,valid.kind,valid.code,
     baselineIncome,valid.weeklyIncome,baselineReach,agreedReach,start,
     start+valid.termWeeks-1]);
