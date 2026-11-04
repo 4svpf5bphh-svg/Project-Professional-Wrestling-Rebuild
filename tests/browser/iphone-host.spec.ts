@@ -523,12 +523,12 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
   .filter({hasText:/Foreign object/i}).click();
  await focused.getByRole("button",{name:"Fine-tune match"}).click();
  await focused.getByLabel("Who uses the foreign object?").selectOption("alice");
- await focused.locator(".ppw-run-in > summary").click();
- await page.getByRole("button",{name:"Choose run-in wrestler"}).click();
+ await focused.getByRole("button",{name:"+ Add run-in"}).click();
+ await focused.getByRole("button",{name:"Choose run-in wrestler"}).click();
  await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
  await page.locator(".ppw-sheet .ppw-wrestler-card").first().click();
  const run=page.locator(".ppw-run-in");
- await expect(run).toHaveAttribute("open","");
+ await expect(run.getByLabel("Which side?")).toBeVisible();
  await run.getByLabel("Which side?").selectOption("B");
  await expect(run.getByLabel("What happens?")).toHaveValue("THWARTED");
  await run.getByLabel("Which side?").selectOption("A");

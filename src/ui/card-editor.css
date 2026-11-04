@@ -1287,3 +1287,16 @@ body>.ppw-card-edit-shade .ppw-guide-readiness-person small{color:#bfd9e8;font-s
  .ppw-editor .ppw-card-tournament-fixture{grid-template-columns:1fr;gap:8px}
  .ppw-editor .ppw-card-tournament-book{width:100%}
 }
+
+/* Run-in is a single optional action on Script, not nested disclosure UI. */
+body>.ppw-card-edit-shade .ppw-run-in{display:grid;gap:9px;
+ padding:12px;border:1px solid #638ca9;border-radius:12px;background:#193247}
+body>.ppw-card-edit-shade .ppw-run-in-header{display:flex;align-items:center;
+ justify-content:space-between;flex-wrap:wrap;gap:8px}
+body>.ppw-card-edit-shade .ppw-run-in-header strong{
+ color:#ffe5b9;font-size:14px}
+body>.ppw-card-edit-shade .ppw-run-in-toggle,
+body>.ppw-card-edit-shade .ppw-run-in-person{border-radius:12px!important;
+ border:1px solid #8bb1ca!important;background:#265673!important;
+ color:#f7fdff!important;min-height:44px;font-weight:750}
+body>.ppw-card-edit-shade .ppw-run-in-clear{border-radius:12px!important}

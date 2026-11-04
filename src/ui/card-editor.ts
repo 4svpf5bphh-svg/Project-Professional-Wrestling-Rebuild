@@ -1704,44 +1704,41 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      v=>edit(m,{plannedLengthMinutes:v}),!mutable())));
     if(impact)controls.append(impact);
     body.append(controls);
+    // One direct run-in choice in Script, never another nested accordion.
+    // An existing authored run-in always exposes its fields on reopening.
     if(m.format==="SINGLES"||m.format==="TAG"){
-     const run=document.createElement("details");run.className="ppw-run-in";
-     run.open=openRunIns.has(slotId);
-     run.ontoggle=()=>{
-      if(!run.isConnected)return;
-      if(run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
-     };
-     const runSummary=el("summary","","Run-in / match interference"+
-      (m.interference?" · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):" · optional"));
-     // A field change can synchronously replace this editor before the
-     // native async toggle fires. Persist the desired state on click too.
-     runSummary.onclick=()=>{
-      if(!run.isConnected)return;
-      if(!run.open)openRunIns.add(slotId);else openRunIns.delete(slotId);
-     };
-     run.append(runSummary);
-     run.append(el("p","ppw-run-in-help",
-      "Bring someone from outside the match to ringside. Choose which side they support and whether the run-in succeeds. The winner is still your decision."));
-     run.append(button(m.interference?
-      "Change wrestler · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):
-      "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
-     if(m.interference){
-      const spot=m.interference;
-      const sideChoices=m.teams.map((_,i)=>[i===0?"A":"B",
-       "Help "+(i===0?"Side A":"Side B")] as string[]);
-      run.append(field("Which side?",selector(spot.aidedSide,sideChoices,
-       v=>edit(m,{interference:{...spot,aidedSide:v as "A"|"B",
-        plannedOutcome:v===(m.winnerSide===0?"A":"B")?
-         spot.plannedOutcome:"THWARTED"}}),!mutable())));
-      run.append(field("What happens?",selector(spot.plannedOutcome,[
-       ["SUCCESS","Run-in succeeds"],["THWARTED","Run-in is thwarted"]],
-       v=>edit(m,{interference:{...spot,plannedOutcome:v as "SUCCESS"|"THWARTED",
-        aidedSide:v==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide}}),!mutable())));
-      run.append(button("Remove run-in",()=>edit(m,{interference:undefined}),
-       !mutable(),"ppw-run-in-clear"));
-      if(spot.plannedOutcome==="SUCCESS")
-       run.append(el("p","ppw-run-in-hint",
-        "A successful run-in supports the wrestler or team you've selected to win."));
+     const run=el("section","ppw-run-in");
+     const active=Boolean(m.interference)||openRunIns.has(slotId);
+     const heading=el("div","ppw-run-in-header");
+     heading.append(el("strong","","Match run-in"));
+     if(!active)heading.append(button("+ Add run-in",()=>{
+      openRunIns.add(slotId);render();
+     },!mutable(),"ppw-run-in-toggle"));
+     else if(!m.interference)heading.append(button("Cancel",()=>{
+      openRunIns.delete(slotId);render();
+     },false,"ppw-run-in-toggle"));
+     run.append(heading);
+     if(active){
+      run.append(button(m.interference?
+       "Change wrestler · "+(roster.get(m.interference.personId)?.name??"Selected wrestler"):
+       "Choose run-in wrestler",()=>chooseRunInTalent(slotId),!mutable(),"ppw-run-in-person"));
+      if(m.interference){
+       const spot=m.interference;
+       const sides=m.teams.map((_,index)=>[index===0?"A":"B",
+        "Help "+(index===0?"Side A":"Side B")] as string[]);
+       run.append(field("Which side?",selector(spot.aidedSide,sides,
+        value=>edit(m,{interference:{...spot,aidedSide:value as "A"|"B",
+         plannedOutcome:value===(m.winnerSide===0?"A":"B")?
+          spot.plannedOutcome:"THWARTED"}}),!mutable())));
+       run.append(field("What happens?",selector(spot.plannedOutcome,[
+        ["SUCCESS","Run-in succeeds"],["THWARTED","Run-in is thwarted"]],
+        value=>edit(m,{interference:{...spot,plannedOutcome:value as "SUCCESS"|"THWARTED",
+         aidedSide:value==="SUCCESS"?(m.winnerSide===0?"A":"B"):spot.aidedSide}}),
+        !mutable())));
+       run.append(button("Remove run-in",()=>{
+        openRunIns.delete(slotId);edit(m,{interference:undefined});
+       },!mutable(),"ppw-run-in-clear"));
+      }
      }
      body.append(run);
     }
