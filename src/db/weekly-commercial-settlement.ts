@@ -4,7 +4,7 @@
  * This module is never a timer or independent scheduler.
  */
 import type {SqlRows} from "./world-operations.js";
-import {commercialOffers,type CommercialEvidence,type CommercialOffer}
+import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialEvidence,type CommercialOffer}
  from "../domain/commercial-offers.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
@@ -146,7 +146,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // One bounded set of AI promotions; recent verified shows only. Separate
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
-  promotion_id:string;management_mode:string;active_kinds:string[]
+  promotion_id:string;management_mode:string;active_kinds:string[];
+  recentShowDay:number|null
  }>(`
  SELECT p.promotion_id,p.management_mode,p.tier,
   p.media_reach AS "mediaReach",
@@ -154,6 +155,13 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   p.weekly_sponsor_income::double precision AS "weeklySponsorIncome",
   coalesce(recent.completed,0)::integer AS "completedShows",
   recent.crowd::double precision AS "averageCrowd",
+  (SELECT draft.show_day FROM ppw_booking_drafts draft
+   JOIN ppw_completed_shows c ON c.world_id=draft.world_id
+    AND c.show_id=draft.draft_id AND c.promotion_id=draft.promotion_id
+   WHERE draft.world_id=p.world_id AND draft.promotion_id=p.promotion_id
+    AND draft.event_type='REGULAR' AND draft.status='SUBMITTED'
+   ORDER BY draft.year DESC,draft.week DESC,draft.draft_id DESC LIMIT 1)
+    AS "recentShowDay",
   ARRAY(SELECT d.kind FROM ppw_commercial_deals d
    WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
     AND d.status='ACTIVE') AS active_kinds
@@ -181,7 +189,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  if(owners.length>128)throw new Error("AI commercial batch bound exceeded");
  type Proposal={deal_id:string;promotion_id:string;kind:string;offer_code:string;
   baseline_income:number;agreed_income:number;baseline_reach:number|null;
-  agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI"};
+  agreed_reach:number|null;start_week_index:number;end_week_index:number;source:"AI";
+  airing_day:number|null;airing_hour:number|null};
  const proposals:Proposal[]=[];
  // One global finite catalogue: a network or sponsor can serve only one
  // promotion in a World. Existing agreements, including legacy terms, hold
@@ -220,7 +229,12 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
     baseline_reach:originalReach,
     agreed_reach:originalReach===null?null:
      Math.min(100,originalReach+choice.reachIncrease),
-    start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI"});
+    start_week_index:nextWeek,end_week_index:nextWeek+choice.termWeeks-1,source:"AI",
+    airing_day:kind==="BROADCAST"?
+     (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
+      p.recentShowDay:COMMERCIAL_COMPANIES[choice.code]?.preferredDay??6):null,
+    airing_hour:kind==="BROADCAST"?
+     Number(COMMERCIAL_COMPANIES[choice.code]?.airtime.slice(0,2)??"20"):null});
   }
  }
  if(proposals.length){
@@ -230,15 +244,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    agreed_income:string;agreed_reach:number|null}>(`
    INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,offer_code,
     status,baseline_income,agreed_income,baseline_reach,agreed_reach,
-    start_week_index,end_week_index,source,exclusive_rights)
+    start_week_index,end_week_index,source,exclusive_rights,airing_day,airing_hour)
    SELECT $1,x.deal_id,x.promotion_id,x.kind,x.offer_code,'ACTIVE',
     x.baseline_income,x.agreed_income,x.baseline_reach,x.agreed_reach,
-    x.start_week_index,x.end_week_index,x.source,true
+    x.start_week_index,x.end_week_index,x.source,true,x.airing_day,x.airing_hour
    FROM jsonb_to_recordset($2::jsonb) AS x(
     deal_id text,promotion_id text,kind text,offer_code text,
     baseline_income bigint,agreed_income bigint,baseline_reach double precision,
     agreed_reach double precision,start_week_index integer,end_week_index integer,
-    source text)
+    source text,airing_day smallint,airing_hour smallint)
    ON CONFLICT DO NOTHING
    RETURNING promotion_id,kind,agreed_income::text,agreed_reach
   `,[worldId,JSON.stringify(proposals)]);

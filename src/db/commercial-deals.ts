@@ -4,7 +4,7 @@
 import {randomUUID} from "node:crypto";
 import {applyWorldCommand} from "./world-commands.js";
 import type {TransactionPool} from "./transaction.js";
-import {commercialOffers,type CommercialKind,type CommercialEvidence}
+import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialKind,type CommercialEvidence}
  from "../domain/commercial-offers.js";
 
 export type CommercialDeal={
@@ -25,12 +25,22 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
   commandType:"SIGN_COMMERCIAL_DEAL",requiresOpenWeek:true,
   execute:async tx=>{
    const rows=await tx.query<CommercialEvidence&{year:number;week:number;
-    management_mode:string;existing_kinds:string[]}>(`
+    management_mode:string;existing_kinds:string[];recentShowDay:number|null;
+    recentTvEpisodes:number;averageTvRating:number|null}>(`
     SELECT w.year,w.week,p.management_mode,p.tier,p.media_reach AS "mediaReach",
      p.weekly_media_income::numeric::float8 AS "weeklyMediaIncome",
      p.weekly_sponsor_income::numeric::float8 AS "weeklySponsorIncome",
      coalesce(results.completed,0)::integer AS "completedShows",
      results.crowd::float8 AS "averageCrowd",
+     results.tv_episodes AS "recentTvEpisodes",
+     results.average_rating::float8 AS "averageTvRating",
+     (SELECT d.show_day FROM ppw_booking_drafts d
+      JOIN ppw_completed_shows c ON c.world_id=d.world_id
+       AND c.show_id=d.draft_id AND c.promotion_id=d.promotion_id
+      WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
+       AND d.event_type='REGULAR' AND d.status='SUBMITTED'
+      ORDER BY d.year DESC,d.week DESC,d.draft_id DESC LIMIT 1)
+       AS "recentShowDay",
      ARRAY(SELECT d.kind FROM ppw_commercial_deals d
       WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE') AS existing_kinds
@@ -41,8 +51,11 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
     JOIN ppw_promotions p ON p.world_id=w.world_id
      AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
     LEFT JOIN LATERAL (
-     SELECT count(*)::integer AS completed,avg(r.crowd_response) AS crowd
-     FROM (SELECT r.year,r.week,r.crowd_response FROM ppw_completed_shows r
+     SELECT count(*)::integer AS completed,avg(r.crowd_response) AS crowd,
+      count(r.tv_rating)::integer AS tv_episodes,avg(r.tv_rating) AS average_rating
+     FROM (SELECT r.year,r.week,r.crowd_response,
+      CASE WHEN econ.audience_format='TV' THEN econ.tv_household_rating END
+       AS tv_rating FROM ppw_completed_shows r
       JOIN ppw_show_economics econ ON econ.world_id=r.world_id
        AND econ.show_id=r.show_id AND econ.promotion_id=r.promotion_id
       JOIN ppw_booking_drafts draft ON draft.world_id=r.world_id
@@ -77,14 +90,21 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
    const agreedReach=valid.kind==="BROADCAST"?
     Math.min(100,baselineReach!+valid.reachIncrease):null;
    const dealId="commercial-"+randomUUID();
+   const time=COMMERCIAL_COMPANIES[valid.code];
+   const airingDay=valid.kind==="BROADCAST"?
+    (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
+     p.recentShowDay:time?.preferredDay??6):null;
+   const airingHour=valid.kind==="BROADCAST"?
+    Number(time?.airtime.slice(0,2)??"20"):null;
    await tx.query(`
     INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
      offer_code,status,baseline_income,agreed_income,baseline_reach,
-     agreed_reach,start_week_index,end_week_index,source,exclusive_rights)
-    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7,$8,$9,$10,$11,'HUMAN',true)
+     agreed_reach,start_week_index,end_week_index,source,exclusive_rights,
+     airing_day,airing_hour)
+    VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,$7,$8,$9,$10,$11,'HUMAN',true,$12,$13)
    `,[input.worldId,dealId,input.promotionId,valid.kind,valid.code,
     baselineIncome,valid.weeklyIncome,baselineReach,agreedReach,start,
-    start+valid.termWeeks-1]);
+    start+valid.termWeeks-1,airingDay,airingHour]);
    await tx.query(`
     UPDATE ppw_promotions SET
      weekly_media_income=CASE WHEN $3='BROADCAST' THEN $4
@@ -103,6 +123,6 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
     valid.weeklyIncome,valid.termWeeks]);
    return {accepted:true,dealId,kind:valid.kind,offerCode:valid.code,
     weeklyIncome:valid.weeklyIncome,reachIncrease:valid.reachIncrease,
-    endWeekIndex:start+valid.termWeeks-1};
+    endWeekIndex:start+valid.termWeeks-1,airingDay,airingHour};
   }});
 }
