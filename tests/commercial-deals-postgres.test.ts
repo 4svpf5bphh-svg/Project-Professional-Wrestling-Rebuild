@@ -47,11 +47,14 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
     await tx.query(`INSERT INTO ppw_show_economics
      (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
       gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
-      total_cost,net_result,incremental_cash,audience_format,tv_household_rating)
+      total_cost,net_result,incremental_cash,audience_format,tv_household_rating,
+      estimated_viewers)
      VALUES($1,$2,$3,1,$4,950,1100,160000,20000,30000,10000,20000,80000,80000,80000,
       CASE WHEN $3 IN ('promotion-1','promotion-3') THEN 'TV' ELSE NULL END,
       CASE WHEN $3='promotion-3' THEN 0.8
-       WHEN $3='promotion-1' THEN 0.11 ELSE NULL END)`,
+       WHEN $3='promotion-1' THEN 0.1 ELSE NULL END,
+      CASE WHEN $3='promotion-3' THEN 800000
+       WHEN $3='promotion-1' THEN 100000 ELSE NULL END)`,
      [world,show,company,week]);
    }
    }
