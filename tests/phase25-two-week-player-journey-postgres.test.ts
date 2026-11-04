@@ -1,0 +1,255 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {postgresPool} from "../src/db/postgres.js";
+import {withWorldTransaction} from "../src/db/transaction.js";
+import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {startProgramme,readProgrammeWorkspace,chooseProgrammeDirection,
+ chooseProgrammeFinale} from "../src/db/programme-workspace.js";
+import {showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,
+ markPreparedShowReadyAsActor} from "../src/api/world-service.js";
+import {readCompletedShowView} from "../src/db/show-results-view.js";
+import {lockWorldWeek} from "../src/db/world-lock.js";
+import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
+
+const url=process.env.PPW_NEON_TEST_URL;
+
+/** Genuine two-week manager route, not disconnected mocked endpoints:
+ * START FEUD -> CAST -> SAVE MATCH+ANGLE -> CONFIRM -> MANUAL WORLD LOCK
+ * -> CERTIFIED RESULTS -> POST-SHOW CHOICE -> NEXT WEEK MATCH -> PAYOFF
+ * -> CERTIFICATION. The fixture World is disposable; neither a live clock,
+ * production database nor automatic World Lock is accessed.
+ */
+test("player books, resolves, reviews and follows a feud into next week's decisive finale",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,4),uuid=randomUUID();
+ const worldId="phase25-journey-"+uuid,promotionId="human",playerId="booker-"+uuid;
+ const rivalId="other-player-"+uuid;
+ const firstShow="week-one",secondShow="week-two";
+ const persons=["joe","mistico"],contracts=["deal-joe","deal-mistico"];
+ const members=persons.map((personId,index)=>({
+  personId,contractId:contracts[index]!
+ }));
+ const scope={worldId,promotionId,playerId};
+ const context={pool:db.pool,actor:{playerId}};
+ const read=<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[]) =>
+  withWorldTransaction(db.pool,tx=>tx.query<T>(sql,params));
+ const revision=async()=>Number((await read<{revision:number|string}>(
+  "SELECT revision FROM ppw_worlds WHERE world_id=$1",[worldId]))[0]!.revision);
+ const match=(winner:"A"|"B")=>({
+  matchType:"SINGLES" as const,family:"INDIVIDUAL" as const,
+  sides:[{sideId:"A" as const,participants:[members[0]!]},{sideId:"B" as const,
+   participants:[members[1]!]}],
+  participants:members,scriptedWinnerSide:winner,plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18
+ });
+ const book=async(showId:string,winner:"A"|"B",withAngle:boolean,requestId:string,
+  programmeId:string)=>{
+  const scene={kind:"ATTACK",participants:members,
+   actorIds:[persons[0]!],targetIds:[persons[1]!],
+   outcome:"HAPPENS",durationMinutes:5,scene:{
+    location:"BACKSTAGE",visual:"OFFICIALS_SEPARATE",
+    purpose:"BUILD_RIVALRY",intensity:"BEATDOWN"
+   },creativeBeat:{kind:"ATTACK",presentation:"PREMEDITATED_AMBUSH",
+    objective:"ESCALATE_RIVALRY"}};
+  return saveCardEditorAsActor(context,{worldId,promotionId,showId,
+   requestId,expectedRevision:await revision(),
+   matches:[{slotId:"main",payload:match(winner)}],
+   ...(withAngle?{segments:[{slotId:"aftermath",payload:scene,programmeId}]}:
+    {segments:[]}),
+   runningOrder:withAngle?["main","aftermath"]:["main"]
+  });
+ };
+ const ready=async(showId:string,requestId:string)=>
+  markPreparedShowReadyAsActor(context,{worldId,promotionId,showId,
+   requestId,expectedRevision:await revision(),confirmReadyToRun:true});
+ const resolve=async(index:1|2)=>{
+  // Manual test-only World Lock: the user still owns real-world advancement.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second'"+
+   " WHERE world_id=$1",[worldId]));
+  assert.equal((await lockWorldWeek(db.pool,{worldId,
+   requestId:"lock-"+index,expectedRevision:await revision()})).status,"APPLIED");
+  const publication=await driveWorldResolution(db.pool,{
+   worldId,resolutionId:"manual-resolution-"+index+"-"+uuid,maxStages:16
+  });
+  assert.equal(publication.status,"PUBLISHED",
+   "A prepared manager show should certify and advance with no human rescue: "+
+   JSON.stringify(publication));
+  const clock=await read<{year:number;week:number;phase:string}>(
+   "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  assert.deepEqual(clock,[{year:1,week:index+1,phase:"OPEN"}]);
+  return publication;
+ };
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Two-week Manager Journey",
+    seed:2025,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"Chaotic Alliance",tier:"LOCAL"});
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[
+    playerId,rivalId]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status)"+
+    " VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",[worldId,playerId,rivalId]);
+   await tx.query("INSERT INTO ppw_promotion_controls("+
+    "world_id,player_id,promotion_id) VALUES($1,$2,$3)",
+    [worldId,playerId,promotionId]);
+   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0"+
+    " WHERE world_id=$1",[worldId]);
+   await tx.query("UPDATE ppw_promotions SET media_reach=70"+
+    " WHERE world_id=$1 AND promotion_id=$2",[worldId,promotionId]);
+   await tx.query("INSERT INTO ppw_markets("+
+    "world_id,market_id,name,audience_potential,wrestling_interest,spending_index)"+
+    " VALUES($1,'home','Heartland',65,75,100)",[worldId]);
+   await tx.query("INSERT INTO ppw_venues("+
+    "world_id,venue_id,name,market_id) VALUES($1,'arena','City Arena','home')",
+    [worldId]);
+   for(const [index,person] of persons.entries()){
+    await tx.query("INSERT INTO ppw_people("+
+     "world_id,person_id,name,booking_division,in_ring_quality,match_craft,"+
+     "presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,"+
+     "default_alignment)"+
+     " VALUES($1,$2,$3,'MEN',82,81,84,87,95,5,5,65,66,70,$4)",
+     [worldId,person,index===0?"Samoa Joe":"Místico",index===0?"HEEL":"FACE"]);
+    await tx.query("INSERT INTO ppw_contracts("+
+     "world_id,contract_id,person_id,promotion_id,family,status,"+
+     "remaining_dates,expires_week_index,appearance_fee)"+
+     " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52,9000)",
+     [worldId,contracts[index],person,promotionId]);
+   }
+   for(const [index,showId] of [firstShow,secondShow].entries())
+    await tx.query("INSERT INTO ppw_booking_drafts("+
+     "world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,"+
+     "market_id,show_name,booking_class)"+
+     " VALUES($1,$2,$3,1,$4,'DRAFT',3,'arena','home',$5,'REGULAR')",
+     [worldId,showId,promotionId,index+1,
+      index===0?"Ascension: Week 1":"Ascension: Week 2"]);
+  });
+  const started=await startProgramme(db.pool,{...scope,requestId:"start-feud",
+   expectedRevision:0,sideA:[{kind:"PERSON",refId:persons[0]!}],
+   sideB:[{kind:"PERSON",refId:persons[1]!}]});
+  assert.equal(started.status,"APPLIED");
+  if(started.status!=="APPLIED")throw new Error("Cannot start player programme");
+  const programmeId=started.result.programmeId;
+  const feud=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId);
+  assert.equal(feud?.status,"ACTIVE");
+  assert.equal(feud?.activityCount,0);
+  const selected=await cardTalentAsActor(context,worldId,promotionId,
+   firstShow,"",null,20);
+  assert.deepEqual(new Set(selected.talent.filter(p=>p.available)
+   .map(p=>p.personId)),new Set(persons));
+  assert.deepEqual(selected.talent.map(p=>p.contractId).sort(),[...contracts].sort());
+  await assert.rejects(showCardEditorAsActor({
+   pool:db.pool,actor:{playerId:rivalId}},worldId,promotionId,firstShow),
+   /access|controller|editable|promotion/i);
+  assert.equal((await book(firstShow,"B",true,"book-opening",programmeId)).status,
+   "APPLIED");
+  let card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
+  assert.deepEqual(card.slots.map(s=>s.slotId),["main","aftermath"]);
+  assert.deepEqual(card.programmeLinks,[{slotId:"aftermath",programmeId}]);
+  const linked=await read<{slot_id:string;kind:string}>(
+   "SELECT slot_id,kind FROM ppw_programme_match_activities"+
+   " WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3"+
+   " ORDER BY slot_id",[worldId,promotionId,programmeId]);
+  assert.deepEqual(linked.map(x=>x.slot_id),["aftermath","main"]);
+  const advanceBefore=await read<{remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts"+
+   " WHERE world_id=$1 ORDER BY person_id",[worldId]);
+  assert.deepEqual(advanceBefore.map(x=>x.remaining_dates),[5,5],
+   "Authoring and confirming must never spend appearance dates");
+  assert.equal((await ready(firstShow,"confirm-opening")).status,"APPLIED");
+  card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
+  assert.equal(card.ready,true);
+  await resolve(1);
+  const result=await readCompletedShowView(db.pool,{...scope,showId:firstShow});
+  assert.equal(result.matchCount,1);
+  assert.equal(result.angleCount,1);
+  assert.equal(result.entries.length,2);
+  const progress=await readProgrammeWorkspace(db.pool,scope);
+  let story=progress.programmes.find(p=>p.programmeId===programmeId)!;
+  assert.equal(story.status,"ACTIVE");
+  assert.equal(story.matchCount,1);
+  assert.equal(story.segmentCount,1);
+  assert.equal(story.sideBWins,1);
+  assert.deepEqual(new Set(story.recentActivity.map(x=>x.kind)),
+   new Set(["MATCH","SEGMENT"]));
+  assert.deepEqual((await read<{remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
+   [worldId])).map(x=>x.remaining_dates),[4,4],
+   "A wrestler booked in one bout plus angle owes one show appearance, not two");
+  const direction=await chooseProgrammeDirection(db.pool,{...scope,
+   programmeId,showId:firstShow,slotId:"main",
+   choice:"PURSUE_REMATCH",requestId:"demand-rematch",
+   expectedRevision:await revision()});
+  assert.equal(direction.status,"APPLIED");
+  story=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.equal(story.latestFollowUp?.choice,"PURSUE_REMATCH");
+  const weekTwo=await showCardEditorAsActor(context,worldId,promotionId,secondShow);
+  assert.equal(weekTwo.canEdit,true);
+  assert.deepEqual(weekTwo.slots,[]);
+  assert.equal((await book(secondShow,"A",false,"book-rematch",programmeId)).status,
+   "APPLIED");
+  const pending=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.ok(pending.plannedActivity.some(x=>x.showId===secondShow&&
+   x.slotId==="main"&&x.kind==="MATCH"));
+  const planned=await chooseProgrammeFinale(db.pool,{...scope,programmeId,
+   showId:secondShow,slotId:"main",payoff:"DECISIVE_MATCH",
+   requestId:"finale",expectedRevision:await revision()});
+  assert.equal(planned.status,"APPLIED");
+  story=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.equal(story.status,"ACTIVE","A planned finale is never an automatic closure");
+  assert.equal(story.finale?.resolvedWeekIndex,null);
+  assert.equal((await ready(secondShow,"confirm-rematch")).status,"APPLIED");
+  await resolve(2);
+  const finalResult=await readCompletedShowView(db.pool,{...scope,showId:secondShow});
+  assert.equal(finalResult.matchCount,1);
+  const finished=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.equal(finished.status,"COMPLETED");
+  assert.equal(finished.matchCount,2);
+  assert.equal(finished.segmentCount,1);
+  assert.equal(finished.sideAWins,1);
+  assert.equal(finished.sideBWins,1);
+  assert.equal(finished.finale?.resolvedWeekIndex,1);
+  assert.equal(finished.finale?.resolvedWinnerSide,"A");
+  assert.equal((await read<{n:number}>(
+   "SELECT count(*)::integer AS n FROM ppw_ledger_events"+
+   " WHERE world_id=$1 AND event_type='PROGRAMME_FINALE_DELIVERED'",
+   [worldId]))[0]!.n,1);
+  assert.deepEqual((await read<{remaining_dates:number}>(
+   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
+   [worldId])).map(x=>x.remaining_dates),[3,3]);
+  assert.equal((await driveWorldResolution(db.pool,{
+   worldId,resolutionId:"manual-resolution-2-"+uuid,maxStages:2})).status,"BLOCKED");
+  assert.equal((await read<{n:number}>(
+   "SELECT count(*)::integer AS n FROM ppw_completed_shows WHERE world_id=$1",
+   [worldId]))[0]!.n,2,"Retry cannot replay show results or charge wrestlers again");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of [
+    "ppw_programme_finales","ppw_programme_postshow_directions",
+    "ppw_programme_resolved_activities","ppw_wrestler_relationship_changes",
+    "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
+    "ppw_medical_absences","ppw_completed_match_evidence",
+    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_show_economics","ppw_completed_shows","ppw_show_resolutions",
+    "ppw_week_resolution_seals","ppw_week_resource_clearances",
+    "ppw_week_prepared_finalizations","ppw_week_logistics_authorizations",
+    "ppw_week_continuity_assessments","ppw_ledger_events",
+    "ppw_command_receipts","ppw_promotion_alignment_changes",
+    "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
+    "ppw_programme_creative_agreements","ppw_programme_side_refs",
+    "ppw_programme_participants","ppw_programmes",
+    "ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_markets",
+   ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",
+    [[playerId,rivalId]]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
