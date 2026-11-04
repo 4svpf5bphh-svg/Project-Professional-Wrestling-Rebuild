@@ -149,6 +149,9 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(review).toContainText("Additional appearance fees · $27,000");
  await expect(review).toContainText("No active rivalry between these opponents");
  await expect(review).toContainText("Performer readiness");
+ const headings=await review.locator("h4").allTextContents();
+ expect(headings.indexOf("Your staff's assessment"))
+  .toBeLessThan(headings.indexOf("Wrestler condition"));
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-review-top-320.png",animations:"disabled"});
  await condition.scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-staff-condition-320.png",animations:"disabled"});

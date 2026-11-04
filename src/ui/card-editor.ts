@@ -2268,6 +2268,25 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          " · Very little time left for entrances and breaks.":""));
        if(projected.overBy)airtime.dataset.level="watch";
        brief.append(airtime);
+       const staff=slotNotes(slotId);
+       brief.append(el("h4","","Your staff's assessment"));
+       if(staff.length){
+        for(const finding of staff){
+         const item=el("div","ppw-guide-review-note");
+         item.dataset.level=finding.level.toLowerCase();
+         const colleague=view.advisers?.find(x=>x.role===finding.role);
+         item.append(el("span","",finding.role==="HOUSE"?"House safety":
+          (colleague?.name?colleague.name+" · ":"")+
+           nice(finding.role)),
+          el("strong","",finding.title),
+          el("p","",finding.message));
+         brief.append(item);
+        }
+       }else brief.append(el("p","ppw-guide-reviewed-clear",
+        "No specific staff concerns on this booking."));
+       // Keep the direct fix next to its staff diagnosis, above the statistics.
+       const decision=bookingChoicePanel(slotId);
+       if(decision)brief.append(decision);
        // The review must show the *actual* selected wrestlers' condition
        // readings, not only a generic staff warning. This uses the same
        // show-week talent snapshot already loaded by the booking editor.
@@ -2335,22 +2354,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          brief.append(reports);
         }
        }
-       const staff=slotNotes(slotId);
-       brief.append(el("h4","","Your staff's assessment"));
-       if(staff.length){
-        for(const finding of staff){
-         const item=el("div","ppw-guide-review-note");
-         item.dataset.level=finding.level.toLowerCase();
-         const colleague=view.advisers?.find(x=>x.role===finding.role);
-         item.append(el("span","",finding.role==="HOUSE"?"House safety":
-          (colleague?.name?colleague.name+" · ":"")+
-           nice(finding.role)),
-          el("strong","",finding.title),
-          el("p","",finding.message));
-         brief.append(item);
-        }
-       }else brief.append(el("p","ppw-guide-reviewed-clear",
-        "No specific staff concerns on this booking."));
        if(m){
         const ids=new Set(assignedIds(m));
         const worked=view.programmes.filter(p=>{
@@ -2420,8 +2423,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          " wrestler"+(fees.alreadyBooked===1?" is":"s are")+
          " already counted on this show's live card."));
        guide.append(brief);
-       const decision=bookingChoicePanel(slotId);
-       if(decision)guide.append(decision);
        const actions=el("div","ppw-guide-actions");
        actions.append(button("← Revise script",()=>{
         slotBookingSteps.set(slotId,"OUTCOME");resetGuideScroll=true;render();
