@@ -75,7 +75,20 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    assert.equal(view.day,3);
    assert.equal(view.bookingClass,"REGULAR");
    assert.deepEqual(view.slots.map(s=>s.slotId),["angle"]);
-   const page=await cardTalentAsActor(context,world,promotion,show,"Talent",null,10);
+   // Relationship facts share the already-authenticated talent query.
+   // Keep the mobile show-week picker at two SQL round trips, not one
+   // database request for each person or tag-team connection.
+   const talentMeter=new MeasuredQuerySession("card-talent-with-connections-"+mode);
+   const talentPool:TransactionPool={async connect(){
+    const connection=await db.pool.connect();
+    return {release(){connection.release();},
+     async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+      return talentMeter.execute(()=>connection.query<T>(sql,params));
+     }};
+   }};
+   const page=await cardTalentAsActor({...context,pool:talentPool},
+    world,promotion,show,"Talent",null,10);
+   talentMeter.assertBudget({maxQueries:2,maxResultBytes:26_000});
    assert.equal(page.talent.length,Math.min(10,ids.length));
    assert.ok(page.talent.every(t=>t.available));
    assert.equal(page.talent.find(x=>x.personId==="p0")
