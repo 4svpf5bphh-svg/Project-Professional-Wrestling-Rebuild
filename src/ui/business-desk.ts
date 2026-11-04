@@ -39,7 +39,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
   commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false,
-  commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST";
+  commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
+  spendingExpanded=false;
  let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
  async function refresh(){
   loading=true;draw();
@@ -190,6 +191,46 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   }
   root.append(nav);
   if(pane==="FINANCES"){
+   const weeklyIncome=(view.weeklyMediaIncome??0)+(view.weeklySponsorIncome??0);
+   const fixedWeekly=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
+    view.weeklyStaffPayroll;
+   const bank=el("section","ppw-finance-first");
+   bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
+    el("h2","","Financial position"));
+   const balance=el("div","ppw-finance-bank");
+   balance.append(el("small","","Cash in the bank"),
+    el("strong","",money(view.cash)));
+   bank.append(balance);
+   const snapshot=el("div","ppw-finance-snapshot");
+   const item=(caption:string,figure:string,help:string)=>{
+    const tile=el("div","ppw-finance-snapshot-tile");
+    tile.append(el("span","",caption),el("strong","",figure),
+     el("small","",help));return tile;
+   };
+   snapshot.append(
+    item("Weekly income",money(weeklyIncome),"Broadcast + sponsorship"),
+    item("Weekly commitments",money(fixedWeekly),"Wrestlers, staff & operations"),
+    item("Weekly operating room",view.recurringMargin===null?"Not available":
+     money(view.recurringMargin),"Before your live shows"),
+    item("Roster future cost",typeof view.remainingRosterPotential!=="number"?
+     "Not yet reported":money(view.remainingRosterPotential),
+     "All remaining wages and possible appearances"));
+   bank.append(snapshot);
+   if(typeof view.remainingRosterPotential==="number"){
+    const split=el("p","ppw-finance-commitments",
+     "Of the roster estimate, "+money(view.remainingRosterGuaranteed)+
+      " is guaranteed wages. Appearance fees only apply to dates worked.");
+    bank.append(split);
+   }
+   if(view.debt>0)bank.append(el("p","ppw-finance-debt",
+    "Outstanding debt · "+money(view.debt)));
+   const actions=el("div","ppw-finance-first-actions");
+   if(port.openContracts)actions.append(button("Manage roster costs",
+    ()=>port.openContracts?.()));
+   actions.append(button(spendingExpanded?"Close spending limits":
+    "Manage spending limits",()=>{spendingExpanded=!spendingExpanded;draw();}));
+   bank.append(actions);
+   root.append(bank);
    // Owner budgeting is independent of actual settlement, contracts and cash.
    const regularCosts=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
     view.weeklyStaffPayroll;
@@ -317,7 +358,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
    if(port.setSpendingPlan)budget.append(save);
    refreshPreview();
-   root.append(budget);
+   if(spendingExpanded)root.append(budget);
    // Context from the existing workspace, never a projection of future
    // bookings, ticket sales or the next World settlement.
    const overview=el("section","ppw-business-pulse");
@@ -344,24 +385,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
       " weeks at the recently observed rate. This is not a deadline or a Game Over."));
    root.append(overview);
    const cards=el("section","ppw-business-grid");
-   cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated",
-     "The market where your promotion is based"),
-    metric("BROADCAST REACH",view.mediaReach==null?"Not recorded":
-     Math.round(view.mediaReach).toLocaleString("en-GB"),
-     "Current distribution strength"),
-    metric("CASH",money(view.cash)),metric("DEBT",money(view.debt)),
+   cards.append(metric("HOME TERRITORY",view.homeMarketName??"Not designated"),
+    metric("BROADCAST REACH",view.mediaReach==null?"Not reported":
+     Math.round(view.mediaReach).toLocaleString("en-GB")),
     metric("BASE WEEKLY OVERHEAD",view.weeklyFixedOverhead===null?
-     "Not configured":money(view.weeklyFixedOverhead),
-     "Premises, operations and running the company · excludes talent, staff and live shows"),
-    metric("TOTAL RECURRING SPEND",view.weeklyFixedOverhead===null?
-     "Not configured":money(view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll),
-     "Fixed overhead + signed guarantees + staff wages"),
-    metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":money(view.lastWeeklyNet),
-     "Actual result, including settled shows and contracts"),
-    metric("RUNWAY",view.runwayWeeks===null?
-     view.lastWeeklyNet===null?"Not settled":"No projected shortfall":
-      view.runwayWeeks+" weeks",
-      view.financialDistress??"Awaiting the first weekly accounts"));
+     "Not configured":money(view.weeklyFixedOverhead)),
+    metric("LAST WEEK NET",view.lastWeeklyNet===null?"Not settled":
+     money(view.lastWeeklyNet)));
    root.append(cards);
    const flow=el("section","ppw-business-panel");
    flow.append(el("h2","","Weekly commitments"),
@@ -387,27 +417,6 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    breakdown.className="ppw-business-breakdown";
    breakdown.append(el("summary","","View weekly income and commitments"),flow);
    root.append(breakdown);
-   if(view.recurringMargin!==null){
-    const resilience=el("section","ppw-business-panel");
-    resilience.append(el("h2","","Trading position"),
-     el("p","ppw-business-muted",
-      "This compares verified recurring commitments with the cash added by completed shows. It is not a forecast."));
-    const sample=view.shows.slice(0,4);
-    const average=sample.length?Math.round(sample.reduce(
-     (sum,show)=>sum+show.incrementalCash,0)/sample.length):null;
-    const gap=Math.max(0,-view.recurringMargin);
-    const summary=gap>0?
-     "Recurring commitments exceed guaranteed weekly income by "+money(gap)+
-      ". Ticket sales and other show receipts must help cover that gap.":
-     "Guaranteed weekly income currently covers recurring commitments by "+
-      money(view.recurringMargin)+" before show costs and receipts.";
-    resilience.append(el("p","",summary));
-    if(average!==null)resilience.append(el("p","ppw-business-muted",
-     "Last "+sample.length+" completed show"+(sample.length===1?"":"s")+
-      ": average incremental cash contribution "+money(average)+
-      " per event. Results vary by card, venue, tickets and competition."));
-    root.append(resilience);
-   }
    if((view.financialDistress==="DISTRESSED"||
       view.financialDistress==="CRISIS")&&port.previewRestructure){
     const panel=el("section","ppw-business-panel");

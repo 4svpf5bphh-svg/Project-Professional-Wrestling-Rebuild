@@ -259,3 +259,31 @@
  border:1px solid #95d8ed!important;border-radius:12px!important;
  min-height:48px;font-weight:900}
 .ppw-commercial-desk .ppw-commercial-offer>small{max-width:100%}
+
+/* Phase 28 — the front office starts with the bank, not a workbook. */
+.ppw-business .ppw-finance-first{padding:15px;margin:12px 0 16px;
+ display:grid;gap:13px;background:linear-gradient(145deg,#172d48,#202848);
+ border:1px solid #6b9abd;border-radius:16px;min-width:0}
+.ppw-finance-first h2{font-size:22px;color:#fff1d5;margin:0}
+.ppw-finance-bank{display:grid;gap:3px;background:#0e2741;padding:14px;
+ border-radius:12px;border:1px solid #527fa7}
+.ppw-finance-bank small{color:#9bd9e9;font-size:12px}
+.ppw-finance-bank strong{font-size:clamp(29px,8vw,44px);
+ color:#ffe0a8;line-height:1.18;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.ppw-finance-snapshot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-finance-snapshot-tile{min-width:0;display:grid;gap:6px;align-content:start;
+ padding:11px;border:1px solid #456580;border-radius:12px;background:#112b40}
+.ppw-finance-snapshot-tile span{font-size:12px;font-weight:800;color:#a2dbe9}
+.ppw-finance-snapshot-tile strong{font-size:clamp(15px,4.4vw,21px);line-height:1.25;
+ color:#fff0cb;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.ppw-finance-snapshot-tile small{font-size:11px;color:#c5d4e2;line-height:1.3}
+.ppw-finance-commitments{font-size:12px;line-height:1.45;margin:0;color:#bfdaed}
+.ppw-finance-debt{margin:0;color:#ffc3b7;font-size:13px}
+.ppw-finance-first-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ppw-finance-first-actions button{min-height:48px;padding:9px;
+ box-sizing:border-box;border-radius:12px!important;font-size:12px;
+ font-weight:850;color:#fff!important;background:#214e69;border:1px solid #80afca}
+@media(max-width:350px){
+ .ppw-finance-first-actions{grid-template-columns:1fr}
+ .ppw-finance-snapshot-tile{padding:9px}
+}

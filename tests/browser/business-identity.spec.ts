@@ -111,6 +111,9 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
   }});
  });
  await page.goto("/#/business");
+ await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Set your spending limits"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Manage spending limits"}).click();
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toBeVisible();
  await page.getByRole("spinbutton",{name:"Weekly wrestler wages"}).fill("75000");
  await page.getByRole("spinbutton",{name:"Talent per show"}).fill("150000");
