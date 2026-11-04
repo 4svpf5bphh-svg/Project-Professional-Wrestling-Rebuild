@@ -581,35 +581,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const title=document.createElement("summary");
    title.append(createWrestlerCard({...p,status:label},{
     context:filter.view,label}));
-   if(filter.view==="MARKET")title.append(el("span","ppw-directory-interest",
+   title.append(el("span","ppw-directory-interest",
     "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()));
    card.append(title);
    const detail=el("div","ppw-directory-detail");
-   if(filter.view==="ROSTER"){
-    if(p.medicalWeeksRemaining!=null)
-     detail.append(el("p","ppw-directory-warning",
-      "Medical absence · "+p.medicalWeeksRemaining+" week"+
-      (p.medicalWeeksRemaining===1?"":"s")+
-      " until cleared. This wrestler cannot be booked while injured."));
-    if(p.affiliatedViaParent){
-     detail.append(el("p","ppw-directory-muted",
-      "Roster appearance through "+(p.contractOwnerName??"parent company")+
-      ". The parent owns the contract and wages; booking uses its existing dates."));
-    }else detail.append(el("p","ppw-directory-muted",
-     (p.family??"Contract").replaceAll("_"," ")+" · "+
-     (p.startsInWeeks&&p.startsInWeeks>0?
-      "Starts in "+p.startsInWeeks+" weeks":
-      (p.weeksRemaining??0)+" weeks left")+" · Weekly "+
-     money(p.weeklyGuarantee??0)+" · Appearance "+money(p.appearanceFee??0)));
-    if(p.startsInWeeks&&p.startsInWeeks>0)
-     detail.append(el("p","ppw-directory-warning",
-      "Already signed, but not eligible for booking until the contract starts."));
-    else if(p.remainingDates===0)detail.append(el("p","ppw-directory-warning",
-     "No dates remaining — negotiate an addendum before booking."));
-    detail.append(btn("Wrestler profile →",()=>port.openWrestler(p.personId,filter.view)));
-    if(!p.affiliatedViaParent)
-     detail.append(btn("Manage contract →",()=>port.openContracts(p.personId)));
-   }else{
     detail.append(el("p","ppw-directory-interest",
      "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+
      ". Indicative only: agreed terms and acceptance are still uncertain."));
@@ -642,7 +617,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      detail.append(offerEditor(p.personId));
     if(!view.canEdit)detail.append(el("p","ppw-directory-muted",
      "The weekly deadline has passed. You can review talent, but offers are closed."));
-   }
    card.append(detail);
    if(activeOffer===p.personId)card.open=true;
    listing.append(card);
