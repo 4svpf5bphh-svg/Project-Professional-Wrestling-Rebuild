@@ -95,6 +95,14 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   if(!view){root.append(el("p","ppw-profile-muted",loading?
    "Opening wrestler dossier…":"Profile not available."));return;}
   if(success)root.append(el("p","ppw-profile-message",success));
+  const ownAgreement=view.contracts.find(c=>c.isYours);
+  const ownDates=ownAgreement?.remainingDates;
+  const identityStatus=view.status==="RETIRED"?"RETIRED":
+   view.medicalWeeksRemaining!=null?
+    "INJURED · "+view.medicalWeeksRemaining+" WEEKS TO CLEARANCE":
+   view.onYourRoster?(ownDates===null?"UNLIMITED DATES":
+    typeof ownDates==="number"?ownDates+" DATES LEFT":"SIGNED TO YOUR PROMOTION"):
+   "SCOUTING REPORT";
   root.append(createWrestlerCard({
    personId:view.personId,name:view.name,ringName:view.persona.personaName,
    division:view.division,alignment:view.alignment,championships:view.championships,
@@ -103,12 +111,9 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,
    signatureMove:view.persona.signatureMoves[0]?.name,
    finisherMove:view.persona.finishingMoves[0]?.name,
-   status:view.status==="RETIRED"?"RETIRED":
-    view.medicalWeeksRemaining!=null?
-     "INJURED · "+view.medicalWeeksRemaining+" WEEKS TO CLEARANCE":
-    view.onYourRoster?"SIGNED TO YOUR PROMOTION":"SCOUTING REPORT"
+   status:identityStatus
   },{context:view.onYourRoster?"ROSTER":"MARKET",
-   label:view.onYourRoster?"SIGNED TO YOUR PROMOTION":"NOT ON YOUR ROSTER"}));
+   label:identityStatus}));
   if(portraitCredit(view.name)){
    const credit=el("a","ppw-profile-photo-credit","Photo attribution and licence ↗") as HTMLAnchorElement;
    credit.href="/portrait-credits.html";credit.target="_blank";credit.rel="noopener noreferrer";
@@ -119,11 +124,12 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   // This uses the existing Backstage, Contracts, Planner and team workspaces.
   // Availability is only a current-week snapshot; the booking save is authoritative.
   const status=wrestlerManagementStatus(view);
-  const ownAgreement=view.contracts.find(c=>c.isYours);
   const manage=el("section","ppw-profile-manage");
   manage.dataset.status=status.kind;
   manage.append(el("span","ppw-profile-kicker","THE BOOKER / MANAGE TALENT"),
-   el("h2","","Your next move"),
+   el("h2","","Your next move"));
+  // Signed talent needs the buttons, not an explanation of the booking rules.
+  if(status.kind!=="SIGNED")manage.append(
    el("strong","ppw-profile-manage-status",status.headline),
    el("p","ppw-profile-manage-note",status.detail));
   if(ownAgreement){
@@ -189,13 +195,12 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    switches.push({key,button:pick});nav.append(pick);
   }
   root.append(nav);
-  // The wrestler card already carries headline stats. Full attributes are
-  // available on demand instead of repeating them on a huge mobile page.
-  const attrs=document.createElement("details");
-  attrs.className="ppw-profile-section ppw-profile-attributes";
-  attrs.append(el("summary","","Full scouting attributes"));
+  // The list cards have no duplicate stat bars. The profile displays the
+  // authoritative complete attributes immediately, once, in one section.
+  const attrs=section("Full scouting attributes");
+  attrs.classList.add("ppw-profile-attributes");
   if(view.medicalWeeksRemaining!=null)
-  root.append(el("p","ppw-profile-message",
+  attrs.append(el("p","ppw-profile-message",
    "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+
    " · "+view.medicalWeeksRemaining+" week"+
    (view.medicalWeeksRemaining===1?"":"s")+
