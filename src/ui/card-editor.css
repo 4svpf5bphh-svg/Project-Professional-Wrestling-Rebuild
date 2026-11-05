@@ -1338,3 +1338,22 @@ body>.ppw-card-edit-shade .ppw-run-in-option[aria-pressed=true]{
  background-repeat:no-repeat!important;background-size:18px 18px!important;
  background-position:right 11px center!important;
 }
+
+/* All progression buttons use the same clear action styling.
+   The previous guide-next was rendered as black with dark blue text by
+   earlier modal-specific overrides. Do not recolour secondary/back actions. */
+body>.ppw-card-edit-shade .ppw-guide-booking>.ppw-guide-next,
+body>.ppw-card-edit-shade .ppw-guide-actions>.ppw-booking-done,
+body>.ppw-card-edit-shade .ppw-guide-actions>.ppw-guide-next{
+ color:#fff!important;background:linear-gradient(115deg,#e12b8b,#9845c4)!important;
+ border:2px solid #f69fe1!important;border-radius:12px!important;
+ box-shadow:0 5px 15px #802a9070!important;font-weight:900!important;
+ padding:11px 13px!important;min-height:48px}
+body>.ppw-card-edit-shade :is(.ppw-guide-next,.ppw-booking-done):disabled{
+ opacity:.4!important;box-shadow:none!important}
+body>.ppw-card-edit-shade .ppw-guide-consent-response{
+ background:#123d46;color:#d9fff7;border:1px solid #6edbc7;
+ border-radius:11px;padding:12px 13px;margin:12px 0;font-size:13px;
+ line-height:1.4;overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-guide-consent-response.ppw-error{
+ background:#46252f;color:#ffdadf;border-color:#e08eac}
