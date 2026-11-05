@@ -22,7 +22,7 @@
 .ppw-talent-chip-row::-webkit-scrollbar{display:none}
 .ppw-talent-chip-row>button{flex:0 0 auto!important;white-space:nowrap;
  min-height:43px;min-width:0;border:2px solid #6284a4!important;
- border-radius:11px!important;padding:8px 12px!important;
+ border-radius:12px!important;padding:8px 12px!important;
  background:#213650!important;color:#eef6ff!important;
  font-size:12px!important;font-weight:800!important;line-height:1.15;
  scroll-snap-align:start}
