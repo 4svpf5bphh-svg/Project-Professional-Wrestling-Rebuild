@@ -6,6 +6,7 @@ const session={worldId:"world",playerId:"owner",csrfToken:"csrf",overview,availa
 for(const width of [320,390])test(`Phase 31 at ${width}px preserves wrestler motive from dossier to Backstage`,async({page})=>{
  await page.setViewportSize({width,height:760});
  const methods:string[]=[];
+ let stage:"CREATIVE"|"ACCEPTED"="CREATIVE";
  const motivation={kind:"CREATIVE",title:"Find their voice",
   reason:"They have requested microphone or angle time. You have not replied yet.",
   source:"BACKSTAGE",next:"BACKSTAGE"};
@@ -37,19 +38,32 @@ for(const width of [320,390])test(`Phase 31 at ${width}px preserves wrestler mot
   professionalTrust:null,verifiedTagShows:null,averageExecution:null,
   followThroughWeekIndex:null,followThroughKind:null,observedAbsentWeeks:null,
   observedLosses:null,relevantTitle:null,careerStageAtRequest:"PRIME"};
+ const acceptedMotivation={kind:"RIVALRY_FOLLOW_THROUGH",
+  title:"Plan the rivalry with Beau Cole",
+  reason:"You agreed to explore their verified rivalry pitch. A real programme with Beau Cole has not been recorded yet.",
+  source:"BACKSTAGE",next:"PROGRAMMES"};
+ const buddy={personId:"buddy",name:"Beau Cole",isCurrent:true,status:"ACTIVE",
+  careerStage:"PRIME",fatigue:10,morale:68,momentum:63,lastMessage:null,
+  latestIncoming:null};
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>{
   const q=r.request().postDataJSON() as {method:string;personId?:string};
   methods.push(q.method);
   if(q.method==="wrestlerDirectory")return r.fulfill({json:directory});
-  if(q.method==="wrestlerProfile")return r.fulfill({json:dossier});
+  if(q.method==="wrestlerProfile")return r.fulfill({json:
+   stage==="ACCEPTED"?{...dossier,motivation:acceptedMotivation}:dossier});
   if(q.method==="markBackstageRead")return r.fulfill({json:{readCount:1}});
   if(q.method==="backstage")return r.fulfill({json:{
-   roster:[contact],personId:q.personId==="ace"?"ace":null,
+   roster:stage==="ACCEPTED"?[contact,buddy]:[contact],
+   personId:q.personId==="ace"?"ace":null,
    personName:q.personId==="ace"?"Ace Vale":null,
    worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,persona:null,
    history:[],recentRequests:[],archetypes:[],documentedAlternates:[],
-   nextPitchWeek:0,conversations:q.personId==="ace"?[incoming]:[],
+   nextPitchWeek:0,conversations:q.personId==="ace"?[
+    stage==="ACCEPTED"?{...incoming,kind:"RIVALRY_PITCH",
+     status:"ANSWERED",decision:"EXPLORE_RIVALRY",
+     relatedPersonId:"buddy",createdWeekIndex:2,respondedWeekIndex:3,
+     verifiedSinglesShows:3,followThroughWeekIndex:null}:incoming]:[],
    memories:q.personId==="ace"?[
     {kind:"TITLE_CHALLENGE",sourceId:"title",weekIndex:2,importance:4}]:[]
   }});
@@ -73,6 +87,26 @@ for(const width of [320,390])test(`Phase 31 at ${width}px preserves wrestler mot
  await expect(thread.locator(".ppw-backstage-reply-choice")).toHaveCount(3);
  expect(methods.filter(m=>m==="wrestlerProfile")).toHaveLength(1);
  expect(methods.filter(m=>m==="backstage")).toHaveLength(1);
+ expect(methods).not.toContain("wrestlerCareer");
+ // A player accepts a verified wrestler-led feud pitch; the acknowledged
+ // idea remains visible in both workspaces without auto-booking a show.
+ stage="ACCEPTED";
+ await thread.getByRole("button",{name:/View Ace Vale wrestler dossier/}).click();
+ const reopened=page.getByRole("dialog",{name:"Wrestler dossier"});
+ await expect(reopened.locator(".ppw-profile-current-drive"))
+  .toHaveAttribute("data-motivation","RIVALRY_FOLLOW_THROUGH");
+ await expect(reopened.locator(".ppw-profile-current-drive"))
+  .toContainText("Beau Cole");
+ await reopened.getByRole("button",{name:"Talk in Backstage"}).click();
+ const continued=page.getByLabel("Conversation with Ace Vale");
+ await expect(continued.locator(".ppw-backstage-current-drive"))
+  .toHaveAttribute("data-motivation","RIVALRY_FOLLOW_THROUGH");
+ await expect(continued.locator(".ppw-backstage-current-drive"))
+  .toContainText("Beau Cole");
+ await expect(continued.locator(".ppw-backstage-reply-choice")).toHaveCount(0);
+ expect(methods.filter(m=>m==="wrestlerProfile")).toHaveLength(2);
+ expect(methods.filter(m=>m==="backstage")).toHaveLength(2);
+ expect(methods).not.toContain("saveCard");
  expect(methods).not.toContain("wrestlerCareer");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);

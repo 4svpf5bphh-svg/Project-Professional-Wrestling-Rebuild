@@ -52,6 +52,22 @@ test("one wrestler dossier uses seven bounded SQL reads, preserves rival privacy
   const motivated=await readWrestlerProfile(db.pool,scope);
   assert.equal(motivated.motivation?.kind,"CREATIVE");
   assert.equal(motivated.motivation?.next,"BACKSTAGE");
+  // A true signed same-promotion partner is available in the original
+  // genesis roster every eighth worker. An accepted wrestler-originated
+  // creative idea must retain its named, non-fictional follow-through.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_backstage_requests SET status='ANSWERED',decision='TALK',responded_week_index=0 WHERE world_id=$1 AND request_id='creative-idea'",[world]);
+   await tx.query("INSERT INTO ppw_backstage_requests (world_id,request_id,promotion_id,person_id,related_person_id,kind,created_week_index,status,decision,responded_week_index,rival_verified_matches) VALUES ($1,'accepted-rival',$2,'person-0','person-8','RIVALRY_PITCH',0,'ANSWERED','EXPLORE_RIVALRY',0,3)",[world,promotionId]);
+  });
+  const accepted=await readWrestlerProfile(db.pool,scope);
+  assert.equal(accepted.motivation?.kind,"RIVALRY_FOLLOW_THROUGH");
+  assert.equal(accepted.motivation?.next,"PROGRAMMES");
+  assert.match(accepted.motivation!.title,/Wrestler 8/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_backstage_requests SET follow_through_week_index=0,follow_through_kind='RIVALRY_PROGRAMME_STARTED' WHERE world_id=$1 AND request_id='accepted-rival'",
+   [world]));
+  assert.notEqual((await readWrestlerProfile(db.pool,scope)).motivation?.kind,
+   "RIVALRY_FOLLOW_THROUGH","Real follow-through clears the active idea");
   const outsider=await readWrestlerProfile(db.pool,{...scope,personId:"person-5"});
   assert.equal(outsider.onYourRoster,false);
   assert.equal(outsider.canEdit,false);
