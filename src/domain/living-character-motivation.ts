@@ -16,24 +16,41 @@ export interface LivingMotivationInput{
  memories?:readonly {kind:string;weekIndex:number}[]|null;
  requests?:readonly {kind:string;status:string;createdWeekIndex:number;
   decision?:string|null;dueWeekIndex?:number|null;
-  relevantTitle?:string|null}[]|null;
+  relevantTitle?:string|null;relatedName?:string|null;
+  verifiedShows?:number|null;respondedWeekIndex?:number|null;
+  followThroughWeekIndex?:number|null}[]|null;
 }
 const validWeek=(x:number)=>Number.isSafeInteger(x)&&x>=0;
 const validNumber=(x:number|null|undefined)=>typeof x==="number"&&Number.isFinite(x);
 const make=(kind:string,title:string,reason:string,source:MotivationSource,
  next:MotivationNext):LivingMotivation=>({kind,title,reason,source,next});
 const weekLabel=(index:number)=>"Y"+(Math.floor(index/52)+1)+" W"+(index%52+1);
-function requestFocus(kind:string,title:string|null|undefined){
+function requestFocus(kind:string,title:string|null|undefined,
+ relatedName?:string|null,verifiedShows?:number|null){
  switch(kind){
   case "CREATIVE":return ["Find their voice","They have requested microphone or angle time.","BOOKING"] as const;
   case "TITLE_AMBITION":return ["Chase championship gold",
    "They want another opportunity"+(title?" at "+title:" at a championship")+".","PROGRAMMES"] as const;
-  case "RIVALRY_PITCH":return ["Turn the spark into a rivalry",
-   "Their verified matches led them to suggest a programme.","PROGRAMMES"] as const;
-  case "TAG_TEAM_PITCH":return ["Make the partnership official",
-   "Strong completed tag performances led to a team proposal.","BACKSTAGE"] as const;
-  case "PARTNERSHIP":return ["Repair a partnership",
-   "Their working relationship has been strained by actual matches.","BACKSTAGE"] as const;
+  case "RIVALRY_PITCH":return [
+   relatedName?"Build a rivalry with "+relatedName:"Turn the spark into a rivalry",
+   typeof verifiedShows==="number"&&verifiedShows>=2&&relatedName?
+    "After "+verifiedShows+" completed singles matches with "+relatedName+
+    ", they have suggested a programme.":
+    "Their verified matches led them to suggest a programme.",
+   "PROGRAMMES"] as const;
+  case "TAG_TEAM_PITCH":return [
+   relatedName?"Team with "+relatedName:"Make the partnership official",
+   typeof verifiedShows==="number"&&verifiedShows>=2&&relatedName?
+    "After "+verifiedShows+" completed tag matches together, they want to"+
+    " explore a team with "+relatedName+".":
+    "Strong completed tag performances led to a team proposal.",
+   "BACKSTAGE"] as const;
+  case "PARTNERSHIP":return [
+   relatedName?"Repair the working bond with "+relatedName:"Repair a partnership",
+   relatedName?"Verified team work with "+relatedName+
+    " has put professional trust under strain.":
+    "Their working relationship has been strained by actual matches.",
+   "BACKSTAGE"] as const;
   case "LOSS_STREAK":return ["Reverse the losing run",
    "Recent certified losses have raised questions about their direction.","BOOKING"] as const;
   case "BOOKING_OMISSION":return ["Get back on the card",
@@ -72,7 +89,8 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
   .sort((a,b)=>b.createdWeekIndex-a.createdWeekIndex||a.kind.localeCompare(b.kind));
  const live=requests.find(r=>requestFocus(r.kind,r.relevantTitle)!=null);
  if(live){
-  const focus=requestFocus(live.kind,live.relevantTitle)!;
+  const focus=requestFocus(live.kind,live.relevantTitle,
+   live.relatedName,live.verifiedShows)!;
   if(live.status==="PROMISED"){
    const due=validWeek(live.dueWeekIndex??-1)?
     " by "+weekLabel(live.dueWeekIndex!):"";
@@ -86,6 +104,32 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
   return make(live.kind,focus[0],focus[1]+" You have not replied yet.",
    "BACKSTAGE","BACKSTAGE");
  }
+ // Accepted wrestler ideas stay visible for up to eight weeks until a real
+ // programme or completed tag match records follow-through.
+ const accepted=(i.requests??[]).filter(r=>
+  r.status==="ANSWERED"&&r.followThroughWeekIndex==null&&
+  ((r.kind==="RIVALRY_PITCH"&&r.decision==="EXPLORE_RIVALRY")||
+   (r.kind==="TAG_TEAM_PITCH"&&r.decision==="EXPLORE_TEAM"))&&
+  !!r.relatedName?.trim()&&validWeek(r.createdWeekIndex)&&
+  validWeek(r.respondedWeekIndex??-1)&&
+  r.respondedWeekIndex!<=i.currentWeekIndex&&
+  i.currentWeekIndex-r.respondedWeekIndex!<=8)
+  .sort((a,b)=>b.respondedWeekIndex!-a.respondedWeekIndex!||
+   b.createdWeekIndex-a.createdWeekIndex);
+ const direction=accepted[0];
+ if(direction?.kind==="RIVALRY_PITCH")
+  return make("RIVALRY_FOLLOW_THROUGH",
+   "Plan the rivalry with "+direction.relatedName,
+   "You agreed to explore their verified rivalry pitch. "+
+   "A real programme with "+direction.relatedName+" has not been recorded yet.",
+   "BACKSTAGE","PROGRAMMES");
+ if(direction?.kind==="TAG_TEAM_PITCH")
+  return make("TAG_FOLLOW_THROUGH",
+   "Build the team with "+direction.relatedName,
+   "You agreed to explore the partnership. "+
+   "A completed tag match alongside "+direction.relatedName+
+   " will record the follow-through.",
+   "BACKSTAGE","BOOKING");
  const memories=(i.memories??[]).filter(m=>validWeek(m.weekIndex)&&
   m.weekIndex<=i.currentWeekIndex&&i.currentWeekIndex-m.weekIndex<=26)
   .sort((a,b)=>b.weekIndex-a.weekIndex||a.kind.localeCompare(b.kind));

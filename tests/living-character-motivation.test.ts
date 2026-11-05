@@ -54,3 +54,56 @@ test("private directions are unavailable for non-roster or retired wrestlers",()
   "RECOVERY");
  assert.equal(livingWrestlerMotivation({...base,currentWeekIndex:-1}),null);
 });
+
+test("wrestler-led proposals name their verified counterpart and match history",()=>{
+ const rival=livingWrestlerMotivation({...base,requests:[{
+  kind:"RIVALRY_PITCH",status:"PENDING",createdWeekIndex:39,
+  relatedName:"Matt Riddle",verifiedShows:3}]});
+ assert.equal(rival?.title,"Build a rivalry with Matt Riddle");
+ assert.match(rival!.reason,/3 completed singles matches with Matt Riddle/);
+ assert.equal(rival?.next,"BACKSTAGE");
+ const tag=livingWrestlerMotivation({...base,requests:[{
+  kind:"TAG_TEAM_PITCH",status:"PENDING",createdWeekIndex:39,
+  relatedName:"Dax Harwood",verifiedShows:2}]});
+ assert.equal(tag?.title,"Team with Dax Harwood");
+ assert.match(tag!.reason,/2 completed tag matches together/);
+});
+
+test("agreed pitch stays actionable until a real completed show or programme",()=>{
+ const explore={kind:"RIVALRY_PITCH",status:"ANSWERED",decision:"EXPLORE_RIVALRY",
+  createdWeekIndex:36,respondedWeekIndex:37,
+  relatedName:"Matt Riddle",verifiedShows:3,followThroughWeekIndex:null};
+ const pending=livingWrestlerMotivation({...base,requests:[explore]});
+ assert.equal(pending?.kind,"RIVALRY_FOLLOW_THROUGH");
+ assert.equal(pending?.next,"PROGRAMMES");
+ assert.match(pending!.reason,/has not been recorded yet/);
+ assert.notEqual(livingWrestlerMotivation({...base,requests:[{
+  ...explore,followThroughWeekIndex:39}]})?.kind,"RIVALRY_FOLLOW_THROUGH");
+ assert.notEqual(livingWrestlerMotivation({...base,currentWeekIndex:47,requests:[
+  explore]})?.kind,"RIVALRY_FOLLOW_THROUGH");
+ const pair=livingWrestlerMotivation({...base,requests:[{
+  ...explore,kind:"TAG_TEAM_PITCH",decision:"EXPLORE_TEAM"}]});
+ assert.equal(pair?.kind,"TAG_FOLLOW_THROUGH");
+ assert.equal(pair?.next,"BOOKING");
+ assert.match(pair!.reason,/completed tag match/);
+});
+
+test("declined, unsafe or expired ideas cannot become fake new booker commitments",()=>{
+ const given={kind:"RIVALRY_PITCH",status:"ANSWERED",decision:"EXPLORE_RIVALRY",
+  createdWeekIndex:36,respondedWeekIndex:37,
+  relatedName:"Matt Riddle",followThroughWeekIndex:null};
+ for(const altered of [
+  {...given,status:"DECLINED"}, {...given,decision:"TALK"},
+  {...given,relatedName:null},{...given,respondedWeekIndex:null},
+  {...given,respondedWeekIndex:45}
+ ]){
+  assert.notEqual(livingWrestlerMotivation({...base,requests:[altered]})?.kind,
+   "RIVALRY_FOLLOW_THROUGH");
+ }
+ const priority=livingWrestlerMotivation({...base,requests:[given,
+  {kind:"CREATIVE",status:"PENDING",createdWeekIndex:40}]});
+ assert.equal(priority?.kind,"CREATIVE");
+ assert.equal(livingWrestlerMotivation({...base,onRoster:false,requests:[given]}),null);
+ assert.equal(livingWrestlerMotivation({...base,status:"INJURED",requests:[given]})?.kind,
+  "RECOVERY");
+});
