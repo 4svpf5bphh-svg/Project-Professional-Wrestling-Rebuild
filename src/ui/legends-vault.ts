@@ -332,6 +332,9 @@ export function drawLegendsVault(
   const scene=el("div","ppw-legend-reveal-scene ppw-ceremony-scene");
   const skip=button("Skip reveal",()=>actions.closeReveal(selected.id));
   skip.classList.add("ppw-legend-skip");
+  // Compact visual label; preserve a descriptive name for screen readers/tests.
+  skip.textContent="Skip";
+  skip.setAttribute("aria-label","Skip reveal");
   const opener=el("header","ppw-ceremony-opener");
   opener.append(el("strong","ppw-ceremony-headline",selected.tier));
   const identity=el("div","ppw-ceremony-identity");
@@ -346,12 +349,14 @@ export function drawLegendsVault(
   const finale=el("footer","ppw-ceremony-finale");
   finale.inert=!reduced;
   finale.append(el("p","ppw-legend-market-confirm",
-   "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
+   "NOW AVAILABLE TO EVERY PROMOTION"));
   const actionsRow=el("div","ppw-ceremony-actions");
   if(actions.goToMarket)
    actionsRow.append(button("Talent Market",
     ()=>actions.goToMarket?.(selected.id)));
-  actionsRow.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
+  const continueButton=button("Continue",()=>actions.closeReveal(selected.id));
+  continueButton.setAttribute("aria-label","Continue to the Vault");
+  actionsRow.append(continueButton);
   finale.append(actionsRow);
   const announcement=el("span","ppw-ceremony-announcement");
   announcement.setAttribute("role","status");

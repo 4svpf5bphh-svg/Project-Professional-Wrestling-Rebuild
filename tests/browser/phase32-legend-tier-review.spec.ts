@@ -68,6 +68,11 @@ for(const id of ids){
    // Playwright records the live, actual CSS transition to a WebM artifact.
    await expect(reveal).toHaveAttribute("data-sequence","FINALE",{timeout:8000});
    await expect(reveal.getByText(/NOW AVAILABLE TO EVERY PROMOTION/)).toBeVisible();
+   // Capture the stable, fully visible finale rather than a mid-fade frame.
+   await expect.poll(()=>reveal.locator(".ppw-ceremony-finale")
+    .evaluate(node=>getComputedStyle(node).opacity)).toBe("1");
+   await expect(reveal.getByRole("button",{name:"Skip reveal"})).toHaveText("Skip");
+   await expect(reveal.getByRole("button",{name:"Continue to the Vault"})).toHaveText("Continue");
    const sizing=await reveal.evaluate(node=>({scroll:node.scrollWidth,client:node.clientWidth,
     cardRight:node.querySelector("img")?.getBoundingClientRect().right??0}));
    expect(sizing.scroll,"Horizontal reveal overflow").toBeLessThanOrEqual(sizing.client+1);
