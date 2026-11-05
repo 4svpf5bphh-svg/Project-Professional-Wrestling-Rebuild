@@ -347,6 +347,10 @@ export function drawLegendsVault(
  if(selected){
   const veil=el("div","ppw-legend-reveal");
   veil.dataset.tier=selected.tier;
+  veil.dataset.special=selected.id==="undertaker"?"DEADMAN":"STANDARD";
+  const lighting=el("div","ppw-legend-stage-effects");
+  lighting.setAttribute("aria-hidden","true");
+  veil.append(lighting);
   veil.setAttribute("role","dialog");veil.setAttribute("aria-modal","true");
   veil.setAttribute("aria-label","Legend unlocked: "+selected.name);
   const scene=el("div","ppw-legend-reveal-scene");
