@@ -64,10 +64,12 @@
     illustrated doorway vertical without rotating any definitive cards. */
  transform:skewX(3.6deg) scale(1.04);
  transform-origin:center center;
- -webkit-mask-image:radial-gradient(ellipse 72% 67% at 50% 50%,
-  #000 42%,#000 65%,transparent 98%);
- mask-image:radial-gradient(ellipse 72% 67% at 50% 50%,
-  #000 42%,#000 65%,transparent 98%);
+ /* Feather the complete top and bottom of the sharp scene into the
+    full-bleed atmospheric copy. No rectangular edge behind headings. */
+ -webkit-mask-image:linear-gradient(to bottom,
+  transparent 0%,#000 23%,#000 84%,transparent 100%);
+ mask-image:linear-gradient(to bottom,
+  transparent 0%,#000 23%,#000 84%,transparent 100%);
 }
 .ppw-legend-ceremony .ppw-ceremony-set span{
  position:absolute;display:block;pointer-events:none;
