@@ -34,6 +34,9 @@ for(const width of [320,390]){
   // Titles remain reachable via the existing Promotion championship route,
   // without restoring a duplicate button above or inside roster slicers.
   await page.goto("/#/championships");
+  // Direct Promotion navigation starts in World scope. Switch using the
+  // existing championship controls rather than duplicating roster shortcuts.
+  await page.getByRole("button",{name:"My Champions",exact:true}).click();
   await expect(page.getByRole("heading",{name:"My Champions"})).toBeVisible();
   await expect(page.locator(".ppw-belt-card:visible")).toHaveCount(1);
   await expect(page.locator(".ppw-belt-card:visible")).toContainText("Home Heavyweight");
