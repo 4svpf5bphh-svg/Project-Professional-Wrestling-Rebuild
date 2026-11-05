@@ -220,3 +220,12 @@ body:has(.ppw-profile-overlay){overflow:hidden}
  .ppw-wrestler-profile .ppw-profile-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .ppw-wrestler-profile .ppw-profile-stat{padding:8px}
 }
+
+/* Keep licensing available without a full-width attribution notice. */
+.ppw-wrestler-profile .ppw-profile-photo-credit-icon{
+ position:absolute;top:7px;right:7px;display:grid;place-items:center;
+ width:26px;height:26px;min-height:26px;z-index:2;border-radius:50%;
+ background:#142b43dd;border:1px solid #6189a7;color:#d9f2ff;
+ text-decoration:none;font-size:16px;line-height:1}
+.ppw-wrestler-profile .ppw-profile-photo-credit-icon:focus-visible{
+ outline:2px solid #90ecff;outline-offset:2px}
