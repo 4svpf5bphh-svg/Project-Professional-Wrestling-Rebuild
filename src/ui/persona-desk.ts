@@ -478,9 +478,18 @@ export function mountPersonaDesk(root:HTMLElement,
    fatigue:currentContact?.fatigue,
    currentWeekIndex:(view.worldYear-1)*52+view.worldWeek-1,
    memories:(view.memories??[]).map(m=>({kind:m.kind,weekIndex:m.weekIndex})),
-   requests:view.conversations.map(c=>({kind:c.kind,status:c.status,
-    createdWeekIndex:c.createdWeekIndex,decision:c.decision,
-    dueWeekIndex:c.dueWeekIndex,relevantTitle:c.relevantTitle}))
+   requests:view.conversations.map(c=>{
+    const related=view!.roster.find(x=>x.personId===c.relatedPersonId&&x.isCurrent);
+    return {kind:c.kind,status:c.status,
+     createdWeekIndex:c.createdWeekIndex,decision:c.decision,
+     respondedWeekIndex:c.respondedWeekIndex,
+     followThroughWeekIndex:c.followThroughWeekIndex,
+     dueWeekIndex:c.dueWeekIndex,relevantTitle:c.relevantTitle,
+     relatedName:related?.name??null,
+     verifiedShows:c.kind==="TAG_TEAM_PITCH"?c.verifiedTagShows:
+      c.kind==="RIVALRY_PITCH"?c.verifiedSinglesShows:
+       c.workingVerifiedShows};
+   })
   });
   if(motivation){
    const drive=el("aside","ppw-backstage-current-drive");

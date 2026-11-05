@@ -97,12 +97,35 @@ const personSql=String.raw`
  LEFT JOIN LATERAL (
   SELECT jsonb_build_object('kind',r.kind,'status',r.status,
    'createdWeekIndex',r.created_week_index,'dueWeekIndex',r.due_week_index,
-   'relevantTitle',r.relevant_title) AS motivation_request
+   'relevantTitle',r.relevant_title,'decision',r.decision,
+   'respondedWeekIndex',r.responded_week_index,
+   'followThroughWeekIndex',r.follow_through_week_index,
+   'relatedName',partner.name,
+   'verifiedShows',coalesce(r.team_verified_matches,r.rival_verified_matches,
+    r.working_verified_shows)) AS motivation_request
   FROM ppw_backstage_requests r
+  LEFT JOIN ppw_people partner ON partner.world_id=r.world_id
+   AND partner.person_id=r.related_person_id AND partner.status='ACTIVE'
+   AND EXISTS(SELECT 1 FROM ppw_contracts partner_deal
+    WHERE partner_deal.world_id=r.world_id
+     AND partner_deal.promotion_id=r.promotion_id
+     AND partner_deal.person_id=r.related_person_id
+     AND partner_deal.status='SIGNED'
+     AND partner_deal.start_week_index<=$4
+     AND partner_deal.expires_week_index>=$4
+     AND (partner_deal.family='EXCLUSIVE'
+      OR partner_deal.remaining_dates IS NULL
+      OR partner_deal.remaining_dates>0))
   WHERE r.world_id=p.world_id AND r.promotion_id=$2 AND r.person_id=p.person_id
    AND r.created_week_index BETWEEN greatest(0,$4-26) AND $4
-   AND r.status IN ('PENDING','PROMISED')
-  ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 1
+   AND (r.status IN ('PENDING','PROMISED') OR
+    (r.status='ANSWERED' AND r.follow_through_week_index IS NULL
+     AND r.responded_week_index BETWEEN greatest(0,$4-8) AND $4
+     AND ((r.kind='RIVALRY_PITCH' AND r.decision='EXPLORE_RIVALRY')
+      OR (r.kind='TAG_TEAM_PITCH' AND r.decision='EXPLORE_TEAM'))
+     AND partner.person_id IS NOT NULL))
+  ORDER BY CASE WHEN r.status IN ('PENDING','PROMISED') THEN 0 ELSE 1 END,
+   r.created_week_index DESC,r.request_id DESC LIMIT 1
  ) expressed ON TRUE
  WHERE p.world_id=$1 AND p.person_id=$3`;
 function parsedPersona(p:Person):PortablePersona{
@@ -148,7 +171,10 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    typeof (value as {status?:unknown}).status==="string"&&
    typeof (value as {createdWeekIndex?:unknown}).createdWeekIndex==="number"?
    value as {kind:string;status:string;createdWeekIndex:number;
-    dueWeekIndex:number|null;relevantTitle:string|null}:null;
+    dueWeekIndex:number|null;relevantTitle:string|null;
+    relatedName:string|null;verifiedShows:number|null;
+    decision:string|null;respondedWeekIndex:number|null;
+    followThroughWeekIndex:number|null}:null;
   const motivation=livingWrestlerMotivation({
    onRoster:!!own,status:p.status,careerStage:p.career_stage,
    momentum:p.momentum,morale:p.morale,fatigue:p.fatigue,
