@@ -1357,3 +1357,25 @@ body>.ppw-card-edit-shade .ppw-guide-consent-response{
  line-height:1.4;overflow-wrap:anywhere}
 body>.ppw-card-edit-shade .ppw-guide-consent-response.ppw-error{
  background:#46252f;color:#ffdadf;border-color:#e08eac}
+
+/* Draft creative-control decisions: two consistent actions, answers attached
+   to the wrestler who actually replied. No banners behind the modal. */
+body>.ppw-card-edit-shade .ppw-card-draft-consents{display:grid;gap:10px;
+ margin:14px 0;padding:12px;border:1px solid #5f93ad;border-radius:13px;
+ background:#153248;min-width:0}
+body>.ppw-card-edit-shade .ppw-card-draft-consents>h3{
+ margin:0;color:#f4e5c4;font-size:14px}
+body>.ppw-card-edit-shade .ppw-card-consent-buttons{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;min-width:0}
+body>.ppw-card-edit-shade .ppw-card-consent-buttons>.ppw-card-creative-ask{
+ grid-column:auto;min-height:50px;min-width:0;max-width:100%;
+ padding:9px 10px;white-space:normal;font-size:12px;
+ overflow-wrap:anywhere;text-align:center;border-radius:10px}
+body>.ppw-card-edit-shade .ppw-card-consent-replies{
+ display:grid;gap:8px;margin-top:2px;min-width:0}
+body>.ppw-card-edit-shade .ppw-card-consent-response{
+ margin:0!important;padding:10px 11px;border-radius:10px;
+ background:#133c41;border:1px solid #70c4ac;
+ color:#ddfff3;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+body>.ppw-card-edit-shade .ppw-card-consent-response[data-level="error"]{
+ background:#45283b;border-color:#da91ad;color:#ffe1e7}
