@@ -64,14 +64,15 @@ for(const width of [320,390])test(`Phase 31 at ${width}px preserves wrestler mot
  // The wrestler dossier is a modal. Follow the player's actual in-app
  // management action; a raw hash navigation would leave the dialog on top.
  await dialog.getByRole("button",{name:"Talk in Backstage"}).click();
- await page.getByRole("button",{name:/Ace Vale/}).click();
+ // Dossier action opens this particular wrestler's thread directly;
+ // it does not require an extra inbox selection or person read.
  const thread=page.getByLabel("Conversation with Ace Vale");
  await expect(thread.locator(".ppw-backstage-current-drive"))
   .toHaveAttribute("data-motivation","CREATIVE");
  await expect(thread.locator(".ppw-backstage-current-drive")).toContainText("Find their voice");
  await expect(thread.locator(".ppw-backstage-reply-choice")).toHaveCount(3);
  expect(methods.filter(m=>m==="wrestlerProfile")).toHaveLength(1);
- expect(methods.filter(m=>m==="backstage")).toHaveLength(2);
+ expect(methods.filter(m=>m==="backstage")).toHaveLength(1);
  expect(methods).not.toContain("wrestlerCareer");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
