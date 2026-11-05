@@ -106,6 +106,9 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
 
  const reveal=page.getByRole("dialog",{name:"Legend unlocked: The Undertaker"});
  await expect(reveal).toBeVisible();
+ await expect(reveal).toHaveAttribute("data-tier","IMMORTAL");
+ await expect(reveal).toHaveAttribute("data-special","DEADMAN");
+ await expect(reveal.locator(".ppw-legend-stage-effects")).toHaveCount(1);
  const visual=reveal.locator("img.ppw-undertaker-card");
  await expect(visual).toHaveAttribute("src",card);
  await expect(visual).toHaveJSProperty("naturalWidth",960);
@@ -234,6 +237,8 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  const trish=page.locator('.ppw-legend-tile[data-legend-id="trish-stratus"]');
  await trish.getByRole("button",{name:"Replay the reveal"}).click();
  const reveal=page.getByRole("dialog",{name:"Legend unlocked: Trish Stratus"});
+ await expect(reveal).toHaveAttribute("data-tier","LEGEND");
+ await expect(reveal.locator(".ppw-legend-stage-effects")).toHaveCount(1);
  await expect(reveal.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
   "/assets/legends/trish-stratus-legend-card.webp");
  await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
