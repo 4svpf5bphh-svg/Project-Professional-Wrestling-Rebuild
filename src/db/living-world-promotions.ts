@@ -371,6 +371,12 @@ export async function recruitDistressedAiRosters(
   AND NOT EXISTS(SELECT 1 FROM ppw_world_legend_unlocks legend
    WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
     AND legend.ai_eligible_from_week_index>$2)
+  -- Emergency recruitment is an individual rescue offer. It must not split
+  -- an established two-person Legend team; only the strategic, bundled
+  -- recruitment pass can evaluate and fund both partners together.
+  AND NOT EXISTS(SELECT 1 FROM ppw_world_legend_unlocks legend
+   WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
+    AND cardinality(legend.person_ids)>1)
  ORDER BY ((500+p.recognition*50+p.popularity*30+
    (p.in_ring_quality+p.match_craft+p.presentation)/3*25)*
    CASE p.career_stage WHEN 'SPECIAL_ATTRACTION' THEN 1.35
