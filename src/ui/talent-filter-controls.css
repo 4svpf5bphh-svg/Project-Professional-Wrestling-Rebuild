@@ -35,3 +35,10 @@
  .ppw-talent-search>button{padding:8px 10px}
  .ppw-talent-chip-row>button{padding:8px 10px!important}
 }
+/* Modal-level legacy overrides cannot shrink the common talent card or
+   turn its availability badge into a full-width second row. */
+.ppw-sheet .ppw-wrestler-card{min-height:120px}
+.ppw-sheet .ppw-wrestler-card .ppw-wrestler-status{
+ display:inline-flex;align-self:center;width:auto;max-width:100%;
+ grid-column:auto;grid-row:auto}
+@media(max-width:360px){.ppw-sheet .ppw-wrestler-card{min-height:108px}}
