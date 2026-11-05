@@ -52,3 +52,20 @@ test("tag pitch 12-week evidence stays correctly indexed through years 1, 2 and 
   assert.equal(queries,1);
  }
 });
+
+test("mentorship uses the existing one-query verified tag publisher and deterministic senior orientation",async()=>{
+ let queries=0;
+ const tx:SqlRows={query:async(sql,params)=>{
+  queries++;
+  assert.deepEqual(params,["human-world",14,1,3,1,14]);
+  assert.match(sql,/stage_a='VETERAN' AND stage_b='PROSPECT'/);
+  assert.match(sql,/stage_b='VETERAN' AND stage_a='PROSPECT'/);
+  assert.match(sql,/THEN person_b_id ELSE person_a_id END AS pitcher_id/);
+  assert.match(sql,/MENTORSHIP_PITCH/);
+  assert.match(sql,/prior\.kind IN \('TAG_TEAM_PITCH','MENTORSHIP_PITCH'\)/);
+  assert.match(sql,/ON CONFLICT DO NOTHING/);
+  return [];
+ }};
+ assert.equal((await publishBackstageTagPitches(tx,"human-world",14)).newPitches,0);
+ assert.equal(queries,1,"No additional Neon query for mentoring");
+});
