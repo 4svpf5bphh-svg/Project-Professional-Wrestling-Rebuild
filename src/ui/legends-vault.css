@@ -178,15 +178,15 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 .ppw-album-count{font-size:.9rem;letter-spacing:.07em;color:#f7d08a}
 .ppw-album-progress-text{font-size:.72rem;color:#c7c5d1}
 .ppw-album-progress{height:7px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.12);margin-bottom:1rem}
-.ppw-album-progress-ink{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f5b44f,#b791ff)}
+.ppw-album-progress-ink{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#c08c46,#f1dba5)}
 .ppw-album-pages{display:flex;gap:.45rem;overflow-x:auto;overscroll-behavior-x:contain;padding:0 0 .75rem;margin-bottom:.3rem;scrollbar-width:thin}
 .ppw-album-page-button{white-space:nowrap;flex:none;padding:.58rem .75rem;min-height:42px;font-size:.78rem}
-.ppw-album-page-button[aria-pressed="true"]{background:#7256a8;color:white;border-color:#bfa6f1}
+.ppw-album-page-button[aria-pressed="true"]{background:#efd09c;color:#211608;border-color:#f8dda8}
 .ppw-album-book{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,128px),1fr));gap:.65rem}
 .ppw-album-slot{--album-ink:#a9bdca;background:linear-gradient(155deg,rgba(35,37,55,.95),rgba(14,16,25,.96));border:1px solid color-mix(in srgb,var(--album-ink),transparent 55%);border-radius:12px;padding:.65rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;min-width:0;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18)}
 .ppw-album-slot[data-tier="LEGEND"]{--album-ink:#ddae61}
 .ppw-album-slot[data-tier="ICON"]{--album-ink:#78bce8}
-.ppw-album-slot[data-tier="IMMORTAL"]{--album-ink:#d5a8f6}
+.ppw-album-slot[data-tier="IMMORTAL"]{--album-ink:#e4c58c}
 .ppw-album-slot[data-collected="true"]{background:linear-gradient(140deg,color-mix(in srgb,var(--album-ink),transparent 80%),rgba(18,22,35,.95))}
 .ppw-album-slot-number{align-self:flex-start;font-weight:800;font-size:.61rem;letter-spacing:.07em;color:var(--album-ink);line-height:1.4}
 .ppw-album-silhouette{display:grid;place-items:center;width:100%;min-height:145px;background:radial-gradient(ellipse,rgba(255,255,255,.045),rgba(0,0,0,.3));border:1px dashed rgba(255,255,255,.12);border-radius:7px;font-size:3.2rem;color:rgba(255,255,255,.19)}
@@ -325,4 +325,17 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 }
 @media(prefers-reduced-motion:reduce){
  .ppw-legend-card-viewer,.ppw-legend-card-viewer *{animation:none!important;transition:none!important}
+}
+
+/* Legacy is earned World history, not a second Legends-only record book. */
+.ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{
+ margin-left:.45rem;border-color:#e1c78a66;
+}
+.ppw-legend-reveal.ppw-legend-card-viewer[data-tier="IMMORTAL"]{
+ background:radial-gradient(ellipse at 50% 44%,#4b3e2c,#111821 68%,#06080c);
+}
+@media(max-width:390px){
+ .ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{
+  margin-left:0;
+ }
 }

@@ -116,7 +116,10 @@ export function drawLegendAlbum(
  const back=document.createElement("a");
  back.className="ppw-legend-button ppw-collection-back";
  back.href="#/industry/legends";back.textContent="Explore Legends Vault";
- mast.append(back);target.append(mast);
+ const history=document.createElement("a");
+ history.className="ppw-legend-button ppw-collection-back";
+ history.href="#/records";history.textContent="World Record Book";
+ mast.append(back,history);target.append(mast);
  const owned=view.entries.filter(x=>x.collected);
  const cabinet=el("section","ppw-legend-collection ppw-album");
  cabinet.append(el("h3","","My Legend Cards"));

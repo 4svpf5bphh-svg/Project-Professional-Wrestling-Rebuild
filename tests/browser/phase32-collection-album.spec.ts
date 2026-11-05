@@ -3,7 +3,7 @@ import {LEGENDS_CATALOGUE,LEGEND_TIER_PRICES} from "../../src/domain/legends-cat
 const overview={world:{revision:4,name:"PPW",year:2,week:1,phase:"OPEN",nextLockEpoch:Date.now()/1000+6000,serverEpoch:Date.now()/1000},
  membership:"ACTIVE",promotion:{id:"human",name:"Human Pro",tier:"LOCAL",cash:1000000,debt:0,lastWeeklyNet:10,financialDistress:"HEALTHY"}};
 for(const width of [320,390]){
- test("Phase 32 private 129-card cabinet browsing at "+width+"px",async({page})=>{
+ test("Phase 32 private 129-card cabinet browsing at "+width+"px",async({page},info)=>{
   test.setTimeout(60_000);
   await page.setViewportSize({width,height:width===320?568:844});
   const items=LEGENDS_CATALOGUE;
@@ -31,15 +31,19 @@ for(const width of [320,390]){
   await expect(album.locator(".ppw-album-tier-summary")).toHaveCount(4);
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);
   await expect(album.getByText("129 cards · Page 1 of 11")).toBeVisible();
+  await expect(page.getByRole("link",{name:"World Record Book"})).toHaveAttribute("href","#/records");
+  await page.screenshot({path:info.outputPath("phase32-album-"+width+"-main.png")});
   await album.getByRole("button",{name:"Next page"}).click();
   await expect(album.getByText("129 cards · Page 2 of 11")).toBeVisible();
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);
   await album.getByRole("button",{name:"Collected",exact:true}).click();
   await expect(album.locator(".ppw-album-slot")).toHaveCount(4);
   await expect(album.locator(".ppw-album-slot[data-collected='false']")).toHaveCount(0);
+  await page.screenshot({path:info.outputPath("phase32-album-"+width+"-collected.png")});
   await album.getByRole("button",{name:"View card"}).first().click();
   const viewer=page.getByRole("dialog",{name:"Collectible card: Jerry Lynn"});
   await expect(viewer).toBeVisible();
+  await page.screenshot({path:info.outputPath("phase32-album-"+width+"-viewer.png")});
   await viewer.getByRole("button",{name:"Next card"}).click();
   const next=page.getByRole("dialog",{name:"Collectible card: Trish Stratus"});
   await expect(next).toBeVisible();
