@@ -20,7 +20,9 @@ test("Talent Manager budgets use real recurring cashflow, payroll and debt witho
  assert.ok(stable.cashReserve>risky.cashReserve);
  assert.ok(tight.showTalentLimit<stable.showTalentLimit);
  assert.ok(stable.showTalentLimit<risky.showTalentLimit);
- assert.match(result.summary,/Network and sponsor income/);
+ assert.match(result.summary,/Network and sponsor income 129,005\/week/);
+ assert.match(result.summary,/wages, staff and overhead 114,588\/week/);
+ assert.match(result.summary,/Operating room 14,417\/week/);
  assert.match(result.summary,/before event costs/);
  const second=recommendPromotionBudgets(input);
  assert.deepEqual(second,result);
