@@ -351,6 +351,8 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await expect(tabs.getByRole("button",{name:"Tag Teams"})).toHaveAttribute("aria-pressed","true");
  expect(methods.filter(x=>x==="tagTeams").length).toBe(before);
  expect(methods).not.toContain("wrestlerProfile");
+ await page.getByRole("button",{name:"← Back to roster"}).click();
+ await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
 });
 test("parent-company affiliates remain visible on the iPhone roster without editable parent contracts",async({page})=>{
  const people=[{

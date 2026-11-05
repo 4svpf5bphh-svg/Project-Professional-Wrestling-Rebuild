@@ -17,7 +17,7 @@ const btn=(text:string,fn:()=>void,disabled=false)=>{
  const b=el("button","ppw-pair-button",text) as HTMLButtonElement;
  b.type="button";b.onclick=fn;b.disabled=disabled;return b;};
 export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void,
- initialWorkspace:"TEAMS"|"TRIOS"="TEAMS"){
+ initialWorkspace:"TEAMS"|"TRIOS"="TEAMS",backLabel="← Back to booking"){
  let workspace:"TEAMS"|"TRIOS"=initialWorkspace;
  let view:TagTeamView|null=null,working=false,error="",success="";
  let name="",one="",two="",rosterSearch="",teamSearch="";
@@ -81,7 +81,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
  function render(){
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
   const head=el("header","ppw-pair-hero");
-  if(onBack)head.append(btn("← Back to booking",onBack,working));
+  if(onBack)head.append(btn(backLabel,onBack,working));
   head.append(el("span","ppw-eyebrow","ROSTER / TEAMS"),
    el("h1","",workspace==="TRIOS"?"Trios":"Tag Teams"),
    el("p","ppw-muted",workspace==="TRIOS"?
