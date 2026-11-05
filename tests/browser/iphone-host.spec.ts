@@ -336,7 +336,10 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
  expect(methods).not.toContain("wrestlerProfile");
  expect(methods.filter(x=>x==="tagTeams").length).toBe(2);
- await page.goto("/#/roster");
+ // Roster → Teams is an in-shell workspace transition; the URL is not the
+ // source of truth until a full navigation. Use the actual Back action.
+ await page.getByRole("button",{name:"← Back to roster"}).click();
+ await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
  await page.locator(".ppw-directory-filters .ppw-talent-controls")
   .getByRole("button",{name:"Trios",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Trios",exact:true})).toBeVisible();

@@ -81,6 +81,8 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/teams");
+  await page.getByRole("navigation",{name:"Team workspaces"})
+   .getByRole("button",{name:"Trios",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Named Trios"})).toBeVisible();
   const submit=page.getByRole("button",{name:/Form this trio/});
   await expect(submit).toBeDisabled();
@@ -93,6 +95,10 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
   expect(requests).toBe(1);
   await page.reload();
+  // A fresh visit intentionally defaults to Tag Teams. Reopen the
+  // independent Trios workspace before asserting persisted server data.
+  await page.getByRole("navigation",{name:"Team workspaces"})
+   .getByRole("button",{name:"Trios",exact:true}).click();
   await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
