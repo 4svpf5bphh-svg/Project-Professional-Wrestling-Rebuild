@@ -46,6 +46,7 @@ import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
+import "../ui/talent-filter-controls.css";
 type Scope=CardSessionScope;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
