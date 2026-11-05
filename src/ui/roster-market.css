@@ -328,58 +328,25 @@
 .ppw-directory-cash-stress[open]>summary{margin-bottom:8px}
 .ppw-directory-cash-stress .ppw-directory-muted{margin:7px 0 0}
 
-/* The roster shares the quick-chip language of Choose a Wrestler. */
-.ppw-directory-chips{display:flex;flex:0 0 100%;gap:6px;flex-wrap:wrap}
-.ppw-directory-chips .ppw-directory-quick-chip{
- min-width:0;min-height:39px;padding:7px 11px;border-radius:999px;
- border:1px solid #4d718e;background:#182e45;color:#dbeefd;
- font-size:12px;font-weight:800;line-height:1.1}
-.ppw-directory-chips .ppw-directory-quick-chip[aria-pressed=true]{
- background:linear-gradient(120deg,#934083,#5b4a9b);
- border-color:#efd4fb;color:#fff}
+/* The directory delegates all search / filter geometry to the same talent
+   control frame used by Choose Wrestler. No roster-specific portrait widths. */
+.ppw-directory-filters>.ppw-talent-controls{grid-column:1/-1;min-width:0}
+.ppw-directory-filters{display:block}
+.ppw-directory-refinements{min-width:0}
+.ppw-directory-list .ppw-wrestler-card{margin:8px 0}
+.ppw-directory-card{background:transparent;border:0;overflow:visible;
+ margin-bottom:14px}
+.ppw-directory-card>summary{display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:9px;padding:0!important;min-height:0}
+.ppw-directory-card>summary .ppw-wrestler-card{
+ border:1px solid #59638a;background:linear-gradient(130deg,#253654,#1b2540 63%,#241d37)}
+.ppw-directory-card[open]>summary .ppw-wrestler-card{
+ border-color:#78d8ff}
+.ppw-directory-card .ppw-directory-interest{
+ margin:0 4px 2px;display:inline-flex;align-self:start;max-width:calc(100% - 8px)}
+.ppw-directory-card .ppw-directory-detail{margin-top:10px;border-radius:13px;
+ border:1px solid #4e6b87;background:#0e1e30}
 @media(max-width:360px){
- .ppw-directory-chips{gap:5px}
- .ppw-directory-chips .ppw-directory-quick-chip{padding:7px 9px;font-size:11px}
-}
-
-/* Booking picker language: one horizontally scrolling control row, not a 2x3 grid. */
-.ppw-directory-filters{grid-template-columns:minmax(0,1fr) auto}
-.ppw-directory-quick,.ppw-directory-shortcuts{grid-column:1/-1;display:flex;
- flex-wrap:nowrap;gap:7px;overflow-x:auto;scrollbar-width:none;
- -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
- max-width:100%;min-width:0;padding:5px 1px 10px}
-.ppw-directory-quick>.ppw-directory-button,
-.ppw-directory-shortcuts>.ppw-directory-button{flex:0 0 auto;min-width:auto;
- min-height:43px;border-radius:12px;padding:9px 12px;font-size:12px;
- border:2px solid #6284a4;color:#eef6ff;background:#213650;white-space:nowrap}
-.ppw-directory-chips{display:flex;flex:0 0 auto;gap:7px;flex-wrap:nowrap}
-.ppw-directory-chips .ppw-directory-quick-chip{flex:none;min-height:43px;
- border:2px solid #6284a4;border-radius:12px;background:#213650;
- padding:9px 12px;white-space:nowrap}
-.ppw-directory-quick>.ppw-directory-button[aria-pressed=true],
-.ppw-directory-shortcuts>.ppw-directory-button[aria-pressed=true],
-.ppw-directory-chips .ppw-directory-quick-chip[aria-pressed=true]{
- background:#1b615e;border-color:#8cf9d8;color:#fff}
-.ppw-directory-refinements{grid-column:1/-1;min-width:0}
-@media(min-width:700px){.ppw-directory-filters{grid-template-columns:minmax(0,1fr) auto}
- .ppw-directory-filters>.ppw-directory-field{grid-column:1/-1}}
-@media(max-width:360px){
- .ppw-directory-quick>.ppw-directory-button,
- .ppw-directory-shortcuts>.ppw-directory-button,
- .ppw-directory-chips .ppw-directory-quick-chip{flex:none;padding:8px 11px;font-size:12px}
-}
-
-/* Enforce the portrait proportions in the actual roster directory.
-   Host-level compact rules can otherwise override the shared card stylesheet. */
-.ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster{
- grid-template-columns:82px minmax(0,1fr) 13px!important;
- gap:12px;min-height:124px}
-.ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-media{
- width:82px!important;height:102px!important;min-width:82px}
-@media(max-width:360px){
- .ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster{
-  grid-template-columns:70px minmax(0,1fr) 11px!important;
-  gap:8px;min-height:112px}
- .ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-media{
-  width:70px!important;height:90px!important;min-width:70px}
+ .ppw-directory-filters{padding:10px}
+ .ppw-directory-card .ppw-directory-interest{margin-top:3px}
 }
