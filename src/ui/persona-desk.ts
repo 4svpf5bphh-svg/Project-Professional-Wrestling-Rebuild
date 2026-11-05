@@ -5,6 +5,7 @@ import type {readPortablePersonaWorkspace}
  from "../db/portable-persona-workspace.js";
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
 import {describeWrestlerRivalryMemory} from "../domain/verified-wrestler-rivalry-memory.js";
+import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
@@ -468,6 +469,28 @@ export function mountPersonaDesk(root:HTMLElement,
   details.setAttribute("aria-label","View "+view.personName+" wrestler dossier");
   chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
+  const currentContact=view.roster.find(x=>x.personId===view!.personId);
+  const motivation=livingWrestlerMotivation({
+   onRoster:currentContact?.isCurrent!==false&&!!currentContact,
+   status:currentContact?.status??null,
+   careerStage:currentContact?.careerStage??null,
+   momentum:currentContact?.momentum,morale:currentContact?.morale,
+   fatigue:currentContact?.fatigue,
+   currentWeekIndex:(view.worldYear-1)*52+view.worldWeek-1,
+   memories:(view.memories??[]).map(m=>({kind:m.kind,weekIndex:m.weekIndex})),
+   requests:view.conversations.map(c=>({kind:c.kind,status:c.status,
+    createdWeekIndex:c.createdWeekIndex,decision:c.decision,
+    dueWeekIndex:c.dueWeekIndex,relevantTitle:c.relevantTitle}))
+  });
+  if(motivation){
+   const drive=el("aside","ppw-backstage-current-drive");
+   drive.setAttribute("aria-label","Current wrestler motivation");
+   drive.dataset.motivation=motivation.kind;
+   drive.append(el("small","","CURRENT DIRECTION"),
+    el("strong","",motivation.title),
+    el("span","",motivation.reason));
+   chat.append(drive);
+  }
   const wrestlerMemories=view.memories??[];
   if(wrestlerMemories.length){
    const remembered=el("details","ppw-backstage-phone-info ppw-backstage-memories");

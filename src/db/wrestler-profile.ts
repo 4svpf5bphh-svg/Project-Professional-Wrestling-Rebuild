@@ -7,6 +7,7 @@ import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {applyWorldCommand} from "./world-commands.js";
+import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
 import {originalPersonaBaseline,validatePortablePersona,WRESTLING_STYLES}
  from "../domain/portable-persona.js";
 import type {PortablePersona,PortableIdentityMove} from "../domain/portable-identity-types.js";
@@ -32,6 +33,7 @@ type Person={
  safety:number|null;fatigue:number|null;wear:number|null;
  portable_gimmick_id:string|null;default_alignment:string|null;
  alignment:string|null;persona_record:unknown;
+ motivation_memories:unknown;motivation_request:unknown;
  shared_human:boolean;
  medical_severity:string|null;medical_clearance_week_index:number|null;
 };
@@ -60,6 +62,7 @@ const personSql=String.raw`
   coalesce(aligned.alignment,p.default_alignment) AS alignment,
   current_titles.championship_titles,
   identity.persona AS persona_record,
+  remembered.motivation_memories,expressed.motivation_request,
    medical.severity AS medical_severity,
    medical.cleared_week_index AS medical_clearance_week_index,
   EXISTS (
@@ -80,6 +83,27 @@ const personSql=String.raw`
   AND identity.person_id=p.person_id
  LEFT JOIN ppw_promotion_wrestler_alignments aligned ON aligned.world_id=p.world_id
   AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
+ -- Bounded indexed lateral reads stay inside the existing one-person SELECT.
+ -- No extra query or information from another human promotion.
+ LEFT JOIN LATERAL (
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+   'kind',recent.kind,'weekIndex',recent.occurred_week_index)
+   ORDER BY recent.occurred_week_index DESC),'[]'::jsonb) AS motivation_memories
+  FROM (SELECT kind,occurred_week_index FROM ppw_backstage_memories
+   WHERE world_id=p.world_id AND promotion_id=$2 AND person_id=p.person_id
+    AND occurred_week_index BETWEEN greatest(0,$4-26) AND $4
+   ORDER BY occurred_week_index DESC,memory_id DESC LIMIT 12) recent
+ ) remembered ON TRUE
+ LEFT JOIN LATERAL (
+  SELECT jsonb_build_object('kind',r.kind,'status',r.status,
+   'createdWeekIndex',r.created_week_index,'dueWeekIndex',r.due_week_index,
+   'relevantTitle',r.relevant_title) AS motivation_request
+  FROM ppw_backstage_requests r
+  WHERE r.world_id=p.world_id AND r.promotion_id=$2 AND r.person_id=p.person_id
+   AND r.created_week_index BETWEEN greatest(0,$4-26) AND $4
+   AND r.status IN ('PENDING','PROMISED')
+  ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 1
+ ) expressed ON TRUE
  WHERE p.world_id=$1 AND p.person_id=$3`;
 function parsedPersona(p:Person):PortablePersona{
  return p.persona_record?
@@ -111,6 +135,27 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    [s.worldId,s.personId,s.promotionId,auth.currentWeekIndex]);
   const own=contracts.find(c=>c.promotion_id===s.promotionId &&
    c.start_week_index<=auth.currentWeekIndex);
+  const isMemory=(value:unknown):value is {kind:string;weekIndex:number}=>{
+   if(!value||typeof value!=="object")return false;
+   const m=value as {kind?:unknown;weekIndex?:unknown};
+   return typeof m.kind==="string"&&typeof m.weekIndex==="number";
+  };
+  const memories=Array.isArray(p.motivation_memories)?
+   p.motivation_memories.filter(isMemory):[];
+  const value=p.motivation_request;
+  const request=value&&typeof value==="object"&&
+   typeof (value as {kind?:unknown}).kind==="string"&&
+   typeof (value as {status?:unknown}).status==="string"&&
+   typeof (value as {createdWeekIndex?:unknown}).createdWeekIndex==="number"?
+   value as {kind:string;status:string;createdWeekIndex:number;
+    dueWeekIndex:number|null;relevantTitle:string|null}:null;
+  const motivation=livingWrestlerMotivation({
+   onRoster:!!own,status:p.status,careerStage:p.career_stage,
+   momentum:p.momentum,morale:p.morale,fatigue:p.fatigue,
+   currentWeekIndex:auth.currentWeekIndex,
+   championships:normaliseCurrentTitles(p.championship_titles),
+   memories,requests:request?[request]:[]
+  });
   const teams=await tx.query<{name:string;team_id:string}>(String.raw`
    SELECT t.name,t.team_id FROM ppw_tag_team_members m
    JOIN ppw_tag_teams t ON t.world_id=m.world_id AND t.team_id=m.team_id
@@ -150,7 +195,7 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    morale:p.morale,inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
    presentation:p.presentation,stamina:p.stamina,safety:p.safety,
    fatigue:p.fatigue,wear:p.wear,alignment:effectiveWrestlerAlignment(auth.seed,p.person_id,p.default_alignment,p.alignment),
-   persona:parsedPersona(p),
+   persona:parsedPersona(p),motivation,
    contracts:contracts.map(c=>({promotionId:c.promotion_id,promotion:c.promotion_name,
     isYours:c.promotion_id===s.promotionId,family:c.family,
     role:c.role_expectation,remainingDates:c.remaining_dates,

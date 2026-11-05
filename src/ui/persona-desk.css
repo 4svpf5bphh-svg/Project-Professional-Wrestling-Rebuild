@@ -396,3 +396,13 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread .ppw-backstage-pho
  top:0;min-height:54px;scroll-margin-top:env(safe-area-inset-top)}
 html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
  padding-top:0!important}
+
+/* Private context is not a fabricated SMS. Keep the iPhone thread recognisable. */
+.ppw-backstage-current-drive{display:grid;gap:3px;min-width:0;
+ margin:8px 12px;padding:10px 12px;border:1px solid #3c5773;
+ border-radius:12px;background:#172539;color:#e9f5ff}
+.ppw-backstage-current-drive small{font-size:9px;font-weight:900;
+ letter-spacing:.09em;color:#9ac9e9}
+.ppw-backstage-current-drive strong{font-size:13px;line-height:1.3}
+.ppw-backstage-current-drive span{font-size:11px;line-height:1.45;color:#b8cfe0}
+@media(max-width:360px){.ppw-backstage-current-drive{margin:7px 8px;padding:9px 10px}}
