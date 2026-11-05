@@ -347,7 +347,11 @@ export function drawLegendsVault(
   const opener=el("header","ppw-ceremony-opener");
   opener.append(el("strong","ppw-ceremony-headline",selected.tier));
   const identity=el("div","ppw-ceremony-identity");
-  identity.append(el("h2","",taglines[selected.tier]??"Wrestling History Lives On"));
+  // The tier's dedicated vector typography is part of the illustrated
+  // background; keep the label accessible without duplicating card names.
+  identity.setAttribute("role","img");
+  identity.setAttribute("aria-label",
+   taglines[selected.tier]??"Wrestling History Lives On");
   const cardStage=el("div","ppw-ceremony-card-stage");
   const art=cardGraphic(selected);
   if(art){
@@ -355,6 +359,11 @@ export function drawLegendsVault(
    art.loading="eager";art.decoding="async";cardStage.append(art);
   }else cardStage.append(el("p","ppw-legend-reveal-artnote",
    "The definitive collectible image will appear when its artwork has been reviewed."));
+  // Low-cost, non-looping mist around the card's base. Decorative only:
+  // no extra RPCs, image fetches or continuous battery-draining particles.
+  const mist=el("span","ppw-ceremony-card-mist");
+  mist.setAttribute("aria-hidden","true");
+  cardStage.append(mist);
   const finale=el("footer","ppw-ceremony-finale");
   finale.inert=!reduced;
   const actionsRow=el("div","ppw-ceremony-actions");

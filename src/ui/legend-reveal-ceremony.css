@@ -5,7 +5,9 @@
    the artwork's painted glowing doorway on both short and tall iPhones. */
 .ppw-legend-reveal.ppw-legend-ceremony {
  --accent:#78eff5;--halo:rgba(64,235,243,.37);--dark:#04141c;
- --plate:url("/assets/legends/reveals/cult-plate.webp");
+ --plate:url("/assets/legends/reveals/cult-scene.webp");
+ --tagline-art:url("/assets/legends/reveals/cult-tagline.svg");
+ --mist-tint:rgba(132,245,248,.34);
  --stage-width:clamp(336px,65dvh,580px);
  --tier:var(--accent);
  box-sizing:border-box;overflow-y:auto;overflow-x:hidden;
@@ -16,17 +18,23 @@
 }
 .ppw-legend-reveal.ppw-legend-ceremony[data-tier="LEGEND"]{
  --accent:#f7d184;--halo:rgba(249,191,84,.42);--dark:#180d06;
- --plate:url("/assets/legends/reveals/legend-plate.webp");
+ --plate:url("/assets/legends/reveals/legend-scene.webp");
+ --tagline-art:url("/assets/legends/reveals/legend-tagline.svg");
+ --mist-tint:rgba(255,222,159,.31);
  background:radial-gradient(ellipse at 50% 42%,#4a210e,#100705 78%);
 }
 .ppw-legend-reveal.ppw-legend-ceremony[data-tier="ICON"]{
  --accent:#a8ddff;--halo:rgba(52,178,249,.47);--dark:#07162c;
- --plate:url("/assets/legends/reveals/icon-plate.webp");
+ --plate:url("/assets/legends/reveals/icon-scene.webp");
+ --tagline-art:url("/assets/legends/reveals/icon-tagline.svg");
+ --mist-tint:rgba(160,213,255,.36);
  background:radial-gradient(ellipse at 50% 42%,#10356a,#030811 79%);
 }
 .ppw-legend-reveal.ppw-legend-ceremony[data-tier="IMMORTAL"]{
  --accent:#f1e4c4;--halo:rgba(242,209,143,.42);--dark:#18212c;
- --plate:url("/assets/legends/reveals/immortal-plate.webp");
+ --plate:url("/assets/legends/reveals/immortal-scene.webp");
+ --tagline-art:url("/assets/legends/reveals/immortal-tagline.svg");
+ --mist-tint:rgba(253,232,191,.31);
  background:radial-gradient(ellipse at 50% 42%,#54432d,#090f17 80%);
 }
 /* Never inherit the earlier wrestler-specific purple supernatural treatment. */
@@ -60,9 +68,9 @@
 .ppw-legend-ceremony .ppw-ceremony-set{
  position:absolute;inset:0;pointer-events:none;
  background:var(--plate) center center / 100% 100% no-repeat;
- /* Original generated glows leaned left. The inverse shear makes the
-    illustrated doorway vertical without rotating any definitive cards. */
- transform:skewX(3.6deg) scale(1.04);
+ /* The painted diagonal frame was removed from the production artwork.
+    The only glowing frame is now attached directly to the real card. */
+ transform:none;
  transform-origin:center center;
  /* Feather the complete top and bottom of the sharp scene into the
     full-bleed atmospheric copy. No rectangular edge behind headings. */
@@ -111,11 +119,13 @@
  transform:none!important;animation:none!important;
  background:var(--dark)!important;border:1px solid var(--accent)!important;
  border-radius:6px!important;
- box-shadow:0 0 0 1px #000d,0 0 18px var(--halo),0 13px 31px #0009!important;
+ box-shadow:0 0 0 1px #05070a,0 0 10px 2px var(--accent),
+  0 0 22px 5px var(--halo),0 0 40px 8px var(--halo),0 13px 31px #000c!important;
 }
 .ppw-legend-ceremony[data-tier="CULT"] .ppw-ceremony-card-stage .ppw-legend-card-art{border-radius:2px!important}
 .ppw-legend-ceremony[data-tier="LEGEND"] .ppw-ceremony-card-stage .ppw-legend-card-art{
- box-shadow:0 0 0 2px #38230a,0 0 20px var(--halo),0 13px 31px #000a!important;
+ box-shadow:0 0 0 1px #40270b,0 0 10px 2px var(--accent),
+  0 0 22px 5px var(--halo),0 0 40px 8px var(--halo),0 13px 31px #000c!important;
 }
 .ppw-legend-ceremony[data-tier="IMMORTAL"] .ppw-ceremony-card-stage .ppw-undertaker-card{
  width:100%!important;max-height:none!important;border-color:var(--accent)!important;
@@ -166,30 +176,36 @@
  font-family:Georgia,serif;letter-spacing:.1em;font-weight:700;
  color:#fff3d6;border-bottom:1px solid #f6dfa3;
 }
+/* Printed taglines are fixed, preoutlined SVG artwork, not phone fonts.
+   This layer belongs to the scene; the wrestler card and actions remain DOM. */
 .ppw-legend-ceremony .ppw-ceremony-identity{
  box-sizing:border-box;position:fixed;z-index:7;
- bottom:clamp(139px,19dvh,185px);left:max(14px,env(safe-area-inset-left));
- right:max(14px,env(safe-area-inset-right));
- display:flex;justify-content:center;align-items:center;
- min-width:0;width:100%;margin:0;
+ bottom:clamp(129px,17dvh,175px);
+ left:max(11px,env(safe-area-inset-left));
+ right:max(11px,env(safe-area-inset-right));
+ width:auto;height:clamp(58px,10.9dvh,98px);
+ margin:0;
+ background-image:var(--tagline-art);
+ background-size:contain;background-position:center;background-repeat:no-repeat;
  opacity:0;transform:translateY(9px);
  transition:opacity .4s ease,transform .4s ease;
+ pointer-events:none;
 }
-.ppw-legend-ceremony .ppw-ceremony-identity h2{
- display:block;margin:0!important;max-width:100%;
- font-size:clamp(1.05rem,4.7vw,1.48rem)!important;
- line-height:1.2!important;overflow-wrap:break-word;text-wrap:balance;
- color:#fff;text-shadow:0 4px 16px #000,0 0 25px #000;
+.ppw-legend-ceremony .ppw-ceremony-card-mist{
+ position:absolute;z-index:4;pointer-events:none;
+ left:-22%;width:144%;top:89%;height:28%;
+ opacity:0;filter:blur(7px);
+ background:
+  radial-gradient(ellipse 41% 70% at 17% 72%,var(--mist-tint),transparent 95%),
+  radial-gradient(ellipse 37% 58% at 49% 70%,var(--mist-tint),transparent 100%),
+  radial-gradient(ellipse 45% 72% at 79% 82%,var(--mist-tint),transparent 100%);
+ transform:translate3d(0,15px,0) scaleX(.87);
+ animation:ppw-card-mist-rise 3.6s ease-out .6s 1 both;
 }
-.ppw-legend-ceremony[data-tier="CULT"] .ppw-ceremony-identity h2{
- font-family:ui-monospace,monospace;font-style:italic;letter-spacing:-.04em;
-}
-.ppw-legend-ceremony[data-tier="LEGEND"] .ppw-ceremony-identity h2,
-.ppw-legend-ceremony[data-tier="IMMORTAL"] .ppw-ceremony-identity h2{
- font-family:Georgia,serif;text-transform:none;
-}
-.ppw-legend-ceremony[data-tier="ICON"] .ppw-ceremony-identity h2{
- font-weight:950;font-style:italic;letter-spacing:-.035em;
+@keyframes ppw-card-mist-rise{
+ 0%{opacity:0;transform:translate3d(0,20px,0) scaleX(.86)}
+ 48%{opacity:.7;transform:translate3d(0,0,0) scaleX(1.08)}
+ 100%{opacity:.28;transform:translate3d(0,-9px,0) scaleX(1.14)}
 }
 .ppw-legend-ceremony .ppw-ceremony-finale{
  box-sizing:border-box;position:fixed;z-index:8;
@@ -268,9 +284,8 @@
  .ppw-legend-ceremony .ppw-ceremony-headline{font-size:clamp(1.5rem,7.6vw,1.9rem)}
  .ppw-legend-ceremony .ppw-ceremony-identity{
   bottom:calc(120px + env(safe-area-inset-bottom));
+  height:58px;
  }
- .ppw-legend-ceremony .ppw-ceremony-identity h2{
-  font-size:clamp(.93rem,4.4vw,1.28rem)!important}
  .ppw-legend-ceremony .ppw-ceremony-finale{
   bottom:calc(7px + env(safe-area-inset-bottom))}
  .ppw-legend-ceremony .ppw-ceremony-actions{gap:.3rem}
@@ -282,4 +297,5 @@
   animation:none!important;transition:none!important;
  }
  .ppw-legend-ceremony .ppw-ceremony-set span{display:none!important}
+ .ppw-legend-ceremony .ppw-ceremony-card-mist{opacity:.25!important}
 }

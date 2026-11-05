@@ -54,15 +54,22 @@ for(const id of ids){
    await expect(reveal).toHaveAttribute("data-motion","full");
    await expect(reveal.locator(".ppw-ceremony-set")).toHaveCount(1);
    await expect(reveal.locator(".ppw-ceremony-headline")).toHaveText(item.tier);
-   await expect(reveal.locator(".ppw-ceremony-identity")).toHaveText(taglines[item.tier]!);
-   await expect(reveal.locator(".ppw-ceremony-identity")).not.toContainText(item.name);
+   await expect(reveal.locator(".ppw-ceremony-identity")).toHaveAttribute("aria-label",taglines[item.tier]!);
+   await expect(reveal.locator(".ppw-ceremony-identity")).toBeVisible();
+   await expect(reveal.locator(".ppw-ceremony-identity")).toBeEmpty();
+   const taglineImage=await reveal.locator(".ppw-ceremony-identity")
+    .evaluate(node=>getComputedStyle(node).backgroundImage);
+   expect(taglineImage).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-tagline.svg");
+   const taglineResponse=await page.request.get("/assets/legends/reveals/"+item.tier.toLowerCase()+"-tagline.svg");
+   expect(taglineResponse.status()).toBe(200);
+   expect(taglineResponse.headers()["content-type"]).toMatch(/image\/svg\+xml/);
    await expect(reveal.getByRole("button",{name:"View wrestler dossier"})).toBeVisible();
    await expect(reveal.getByRole("button",{name:"Talent Market"})).toBeVisible();
    await expect(reveal.locator(".ppw-ceremony-strap,.ppw-ceremony-signal,.ppw-ceremony-achievement")).toHaveCount(0);
    await expect(reveal.locator(".ppw-legend-photo-credit,.ppw-ceremony-credit,a")).toHaveCount(0);
    const plate=await reveal.locator(".ppw-ceremony-set").evaluate(node=>getComputedStyle(node).backgroundImage);
-   expect(plate).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-plate.webp");
-   const plateResponse=await page.request.get("/assets/legends/reveals/"+item.tier.toLowerCase()+"-plate.webp");
+   expect(plate).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-scene.webp");
+   const plateResponse=await page.request.get("/assets/legends/reveals/"+item.tier.toLowerCase()+"-scene.webp");
    expect(plateResponse.status(),"The actual WebP scene plate is bundled").toBe(200);
    expect(plateResponse.headers()["content-type"]).toMatch(/image\/webp/);
    // A single common coordinate system ties the illustrated glowing opening
@@ -92,8 +99,15 @@ for(const id of ids){
       cardTransform:getComputedStyle(card).transform,
       imageBack:getComputedStyle(clip,"::before").position};
    });
-   expect(styleInfo.artShear).not.toBe("none");
+   expect(styleInfo.artShear).toBe("none");
    expect(styleInfo.cardTransform).toBe("none");
+   const framed=await reveal.locator(".ppw-ceremony-card-stage img").evaluate(node=>({
+    glow:getComputedStyle(node).boxShadow,transform:getComputedStyle(node).transform
+   }));
+   expect(framed.glow).toContain("rgb");
+   expect(framed.glow).not.toBe("none");
+   expect(framed.transform).toBe("none");
+   await expect(reveal.locator(".ppw-ceremony-card-mist")).toHaveCount(1);
    expect(styleInfo.backdrop).toContain("/assets/legends/reveals/");
    const footerBox=await reveal.locator(".ppw-ceremony-finale").boundingBox();
    const taglineBox=await reveal.locator(".ppw-ceremony-identity").boundingBox();
@@ -156,6 +170,9 @@ for(const id of ids){
    await expect(reduced).toHaveAttribute("data-motion","reduced");
    await expect(reduced).toHaveAttribute("data-sequence","FINALE");
    await expect(reduced.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
+   const reducedMist=await reduced.locator(".ppw-ceremony-card-mist")
+    .evaluate(node=>getComputedStyle(node).animationName);
+   expect(reducedMist).toBe("none");
    await page.screenshot({path:info.outputPath("phase32-"+item.tier.toLowerCase()+"-"+width+"-reduced.png")});
    await reduced.getByRole("button",{name:"Skip reveal"}).click();
    await expect(reduced).toHaveCount(0);
