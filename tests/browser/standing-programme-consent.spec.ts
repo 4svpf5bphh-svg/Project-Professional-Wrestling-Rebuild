@@ -53,7 +53,7 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  // post-match direction choices from the original Programme desk.
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await expect(page.locator(".ppw-programme-decisions")).toContainText("After the Bell");
+ await expect(page.locator(".ppw-programme-decisions")).toContainText("Result fallout");
  await expect(page.locator(".ppw-programme-decision .ppw-programme-action"))
   .toHaveCount(3);
  await page.getByRole("button",{name:"Story",exact:true}).click();
@@ -76,6 +76,6 @@ test("iPhone negotiates one limited rivalry agreement, remembers the answer and 
  await expect(page.getByText(/Agreed · Through/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
  await page.getByRole("button",{name:"Plan",exact:true}).click();
- await expect(page.locator(".ppw-programme-decisions")).toContainText("After the Bell");
+ await expect(page.locator(".ppw-programme-decisions")).toContainText("Result fallout");
  expect(methods).toEqual(["programmes","standingProgrammeConsent","programmes","programmes"]);
 });
