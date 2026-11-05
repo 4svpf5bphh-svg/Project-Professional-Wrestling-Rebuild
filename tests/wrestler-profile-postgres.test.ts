@@ -45,9 +45,17 @@ test("one wrestler dossier uses seven bounded SQL reads, preserves rival privacy
   assert.equal(owned.canEdit,true);
   assert.equal(owned.name,"Wrestler 0");
   assert.equal(owned.contracts.find(c=>c.isYours)?.weeklyGuarantee,18000);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_backstage_memories (world_id,promotion_id,person_id,memory_id,kind,occurred_week_index,importance,source_id) VALUES($1,$2,'person-0','trust-break','PROMISE_BROKEN',0,5,'recorded-breach')",[world,promotionId]);
+   await tx.query("INSERT INTO ppw_backstage_requests (world_id,request_id,promotion_id,person_id,kind,created_week_index,status) VALUES($1,'creative-idea',$2,'person-0','CREATIVE',0,'PENDING')",[world,promotionId]);
+  });
+  const motivated=await readWrestlerProfile(db.pool,scope);
+  assert.equal(motivated.motivation?.kind,"CREATIVE");
+  assert.equal(motivated.motivation?.next,"BACKSTAGE");
   const outsider=await readWrestlerProfile(db.pool,{...scope,personId:"person-5"});
   assert.equal(outsider.onYourRoster,false);
   assert.equal(outsider.canEdit,false);
+  assert.equal(outsider.motivation,null);
   assert.ok(outsider.contracts.every(c=>c.weeklyGuarantee===null&&c.appearanceFee===null),
    "Rival contract payments must never leak");
   await assert.rejects(readWrestlerProfile(db.pool,{...scope,playerId:"stranger"}),
@@ -79,6 +87,7 @@ test("one wrestler dossier uses seven bounded SQL reads, preserves rival privacy
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
+    "ppw_backstage_memories","ppw_backstage_requests",
     "ppw_portable_persona_history","ppw_portable_personas",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_contract_date_requests","ppw_ledger_events","ppw_command_receipts",
