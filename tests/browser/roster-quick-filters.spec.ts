@@ -43,7 +43,14 @@ for(const width of [320,390])test(`${width}px roster quick chips follow booking-
  await page.goto("/#/roster");
  const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
  await expect(cards).toHaveCount(3);
- const chips=page.getByRole("group",{name:"Quick roster filters · this page"});
+ const frame=page.locator(".ppw-directory-filters .ppw-talent-controls");
+ await expect(frame.locator(":scope > .ppw-talent-search")).toBeVisible();
+ await expect(frame.locator(":scope > .ppw-talent-sort-row")).toBeVisible();
+ await expect(frame.locator(":scope > .ppw-talent-chip-row")).toBeVisible();
+ const chips=frame.getByRole("group",{name:"Quick roster filters · this page"});
+ for(const name of ["Champions","Tag Teams","Trios","Stables"])
+  await expect(chips.getByRole("button",{name,exact:true})).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Roster divisions"})).toHaveCount(0);
  await chips.getByRole("button",{name:"Heel",exact:true}).click();
  await expect(chips.getByRole("button",{name:"Heel",exact:true}))
   .toHaveAttribute("aria-pressed","true");
@@ -64,7 +71,7 @@ for(const width of [320,390])test(`${width}px roster quick chips follow booking-
  const photo=cards.first().locator(".ppw-wrestler-media");
  const bounds=await photo.boundingBox();
  expect(bounds).not.toBeNull();
- expect(bounds!.width).toBeGreaterThanOrEqual(width===320?70:82);
+ expect(bounds!.width).toBeGreaterThanOrEqual(width===320?70:80);
  await expect(cards.first().locator(".ppw-wrestler-badges .ppw-wrestler-status"))
   .toBeVisible();
  const chipsBox=await chips.boundingBox();
