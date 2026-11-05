@@ -116,7 +116,21 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
   if(audience){
    const following=span("ppw-wrestler-fans",audience);
    following.title="Estimated following based on popularity, recognition and momentum; not a social-account count.";
-   copy.append(following);
+   const symbol=document.createElementNS("http://www.w3.org/2000/svg","svg");
+   symbol.setAttribute("viewBox","0 0 24 24");
+   symbol.setAttribute("aria-hidden","true");
+   symbol.setAttribute("class","ppw-wrestler-fans-icon");
+   symbol.setAttribute("fill","none");symbol.setAttribute("stroke","currentColor");
+   symbol.setAttribute("stroke-width","2");
+   symbol.setAttribute("stroke-linecap","round");symbol.setAttribute("stroke-linejoin","round");
+   for(const d of ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
+    "M9 11a4 4 0 1 0 0-8a4 4 0 0 0 0 8",
+    "M22 21v-2a4 4 0 0 0-3-3.87",
+    "M16 3.13a4 4 0 0 1 0 7.75"]){
+    const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",d);symbol.append(path);
+   }
+   following.prepend(symbol);copy.append(following);
   }
   const trait=wrestlerSpotlightTrait(p);
   if(trait)copy.append(span("ppw-wrestler-trait",trait));
@@ -140,7 +154,10 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  if(p.reason&&p.available===false)footer.title=wrestlerLabel(p.reason);
  if(options.context==="BOOKING")root.append(copy,footer);
  else{
-  copy.append(footer);
+  // On a roster dossier entry, remaining dates are one of the identity badges,
+  // not a separate line between the fan figure and alignment.
+  if(options.context==="ROSTER")badges.append(footer);
+  else copy.append(footer);
   root.append(copy);
   if(options.context==="ROSTER"&&selectable)
    root.append(span("ppw-wrestler-chevron","›"));
