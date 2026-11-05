@@ -60,7 +60,8 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     if(eligible.length!==1)
      throw new Error("Cannot promise a booking without remaining contracted dates and a future week");
    }
-   if((i.decision==="EXPLORE_TEAM"||i.decision==="EXPLORE_RIVALRY")&&
+   if((i.decision==="EXPLORE_TEAM"||i.decision==="EXPLORE_RIVALRY"||
+      i.decision==="EXPLORE_MENTORSHIP")&&
      r.related_person_id){
     const partner=await tx.query<{contract_id:string}>([
      "SELECT c.contract_id FROM ppw_contracts c",

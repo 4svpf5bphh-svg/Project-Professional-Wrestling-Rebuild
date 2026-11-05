@@ -1,8 +1,8 @@
 /** Text is presentation; request, decision and certified match evidence are gameplay. */
-export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
+export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
  "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
- "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW";
+ "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_MENTORSHIP"|"EXPLORE_RIVALRY"|"NOT_NOW";
 export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]>={
  CONTRACT:["EXPLORE_RENEWAL","TALK","DECLINE"],
  MORALE:["PROMISE_APPEARANCE","TALK","DECLINE"],
@@ -12,6 +12,7 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  ROLE_USAGE:["PROMISE_FEATURED","TALK","DECLINE"],
  GIMMICK_PITCH:["CONSIDER_REPACKAGE","KEEP_CHARACTER"],
  TAG_TEAM_PITCH:["EXPLORE_TEAM","NOT_NOW"],
+ MENTORSHIP_PITCH:["EXPLORE_MENTORSHIP","NOT_NOW"],
  RIVALRY_PITCH:["EXPLORE_RIVALRY","NOT_NOW"],
  TEAM_MOMENT:[],
  MEDICAL_SUPPORT:["TALK","DECLINE"],
@@ -28,6 +29,7 @@ export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  CONSIDER_REPACKAGE:"Explore a different character",
  KEEP_CHARACTER:"Keep the current character",
  EXPLORE_TEAM:"Explore a tag partnership",
+ EXPLORE_MENTORSHIP:"Explore a mentoring partnership",
  EXPLORE_RIVALRY:"Explore a rivalry programme",
  NOT_NOW:"Not right now",
  EXPLORE_RENEWAL:"Discuss new contract terms",MEDIATE:"Mediate backstage",
@@ -94,6 +96,10 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
   RIVALRY_PITCH:["There's something there with "+partner+". The crowd feels it. Can we build a rivalry?",
    "Every time I face "+partner+", there's an edge to it. We could make a proper story.",
    "Give me a programme with "+partner+". We've shown the spark in our matches."],
+  MENTORSHIP_PITCH:[
+   "I've been working with "+partner+". There's a lot of potential there. I could help them develop if you let us work together.",
+   partner+" has something worth nurturing. We've worked well together, and I want to help bring them through.",
+   "I've seen what "+partner+" can do in the ring. Give us a few opportunities together and I'll help them learn."],
   TEAM_MOMENT:["The tag chemistry with "+partner+" is clicking. Let's keep building.",
    "That felt good out there with "+partner+". We're understanding each other.",
    "I think "+partner+" and I have something special together."],
@@ -236,6 +242,10 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
    (evidence?.averageCrowd!==null&&evidence?.averageCrowd!==undefined?
     " (average "+evidence.averageCrowd+"/100)":"")+
    ". We trust each other to make it work. Want to build a rivalry?";
+  case "MENTORSHIP_PITCH":return "I've worked "+
+   (evidence?.verifiedTagShows??"several")+" matches alongside "+
+   (evidence?.partnerName??"a young wrestler")+
+   ". They've got real potential. I'd like to help them improve by working together.";
   case "TEAM_MOMENT":return "The tag chemistry with "+
    (evidence?.partnerName??"my partner")+
    " is clicking. Two strong shows together — the crowd and locker room can feel it.";
@@ -303,6 +313,7 @@ export function backstageManagerReply(decision:BackstageDecision,kind?:Backstage
   case "CONSIDER_REPACKAGE":return "Let's explore a character that fits you. Nothing changes without your approval.";
   case "KEEP_CHARACTER":return "We're keeping your current character. It still belongs to you.";
   case "EXPLORE_TEAM":return "There could be something here. Let's see how it develops.";
+  case "EXPLORE_MENTORSHIP":return "I like that idea. Let's plan some chances for you two to work together.";
   case "EXPLORE_RIVALRY":return "That rivalry has possibilities. Let's discuss the story.";
   case "NOT_NOW":return "Not right now. Keep at it and we'll revisit the idea.";
  }
@@ -360,6 +371,7 @@ export function backstageReply(decision:BackstageDecision,status:string,kind?:Ba
   case "CONSIDER_REPACKAGE":return "I'm open to a new direction. Pitch a specific character below; I still need to agree.";
   case "KEEP_CHARACTER":return "Fair enough. We'll keep the character for now.";
   case "EXPLORE_TEAM":return "Love it. Book us together and let's see where this goes.";
+  case "EXPLORE_MENTORSHIP":return "Thanks. Give us opportunities to work together; I'll do my part to help them grow.";
   case "EXPLORE_RIVALRY":return "Let's tell this story right. Start the programme when you're ready; you call the shots.";
   case "NOT_NOW":return "No worries. We'll keep doing our own thing.";
  }
