@@ -16,7 +16,9 @@ const el=(tag:string,cls="",text="")=>{
 const btn=(text:string,fn:()=>void,disabled=false)=>{
  const b=el("button","ppw-pair-button",text) as HTMLButtonElement;
  b.type="button";b.onclick=fn;b.disabled=disabled;return b;};
-export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void){
+export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>void,
+ initialWorkspace:"TEAMS"|"TRIOS"="TEAMS"){
+ let workspace:"TEAMS"|"TRIOS"=initialWorkspace;
  let view:TagTeamView|null=null,working=false,error="",success="";
  let name="",one="",two="",rosterSearch="",teamSearch="";
  let trioName="",trioMembers=["","",""],trioRequest:string|null=null;
@@ -80,20 +82,34 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   root.classList.add("ppw-editor","ppw-tag-desk");root.replaceChildren();
   const head=el("header","ppw-pair-hero");
   if(onBack)head.append(btn("← Back to booking",onBack,working));
-  head.append(el("span","ppw-eyebrow","ROSTER / TAG DIVISION"),
-   el("h1","","Tag Teams"),
-   el("p","ppw-muted","Build a lasting partnership, earn chemistry in the ring and chase championship gold."));
+  head.append(el("span","ppw-eyebrow","ROSTER / TEAMS"),
+   el("h1","",workspace==="TRIOS"?"Trios":"Tag Teams"),
+   el("p","ppw-muted",workspace==="TRIOS"?
+    "Form three-person units and keep your trio identities together.":
+    "Build partnerships, earn chemistry and chase championship gold."));
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
   if(!view){root.append(btn(working?"Loading…":"Retry",()=>void load(),working));return;}
+  const workspaceTabs=el("nav","ppw-team-workspace-tabs");
+  workspaceTabs.setAttribute("aria-label","Team workspaces");
+  for(const [kind,title] of [["TEAMS","Tag Teams"],["TRIOS","Trios"]] as const){
+   const tab=btn(title,()=>{workspace=kind;render();});
+   tab.setAttribute("aria-pressed",String(workspace===kind));
+   workspaceTabs.append(tab);
+  }
+  root.append(workspaceTabs);
   const overview=el("div","ppw-pair-overview");
   const titles=view.teams.reduce((total,t)=>total+t.currentTitles.length,0);
-  for(const [word,n] of [["ROSTER TEAMS",view.teams.length],["TAG BELTS",titles]] as const){
+  const stats=workspace==="TRIOS"?
+   [["NAMED TRIOS",(view.trios??[]).length],["ROSTER TALENT",view.roster.length]] as const:
+   [["ROSTER TEAMS",view.teams.length],["TAG BELTS",titles]] as const;
+  for(const [word,n] of stats){
    const tile=el("div","ppw-pair-stat");
    tile.append(el("span","",word),el("strong","",String(n)));overview.append(tile);
   }
   root.append(overview);
+  if(workspace==="TEAMS"){
   const create=el("section","ppw-pair-create");
   create.append(el("h2","","Form a team"),
    el("p","ppw-muted","Pick two wrestlers. The team name carries between promotions."));
@@ -230,6 +246,8 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   };
   search.oninput=()=>{teamSearch=search.value;paintTeams();};
   paintTeams();root.append(section);
+  }
+  if(workspace==="TRIOS"){
   const trioSection=el("section","ppw-pair-create ppw-trio-workspace");
   trioSection.append(el("span","ppw-eyebrow","THREE AS ONE"),
    el("h2","","Named Trios"),
@@ -281,6 +299,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
   if(!three.length)listOfTrios.append(el("p","ppw-muted",
    "No named three-person units yet. Create one without altering existing tag partnerships."));
   trioSection.append(listOfTrios);root.append(trioSection);
+  }
  }
  async function load(){
   working=true;render();

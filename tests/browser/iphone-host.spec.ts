@@ -336,6 +336,21 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
  expect(methods).not.toContain("wrestlerProfile");
  expect(methods.filter(x=>x==="tagTeams").length).toBe(2);
+ await page.goto("/#/roster");
+ await page.locator(".ppw-directory-filters .ppw-talent-controls")
+  .getByRole("button",{name:"Trios",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Trios",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Named Trios"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Form a team"})).toHaveCount(0);
+ const tabs=page.getByRole("navigation",{name:"Team workspaces"});
+ await expect(tabs.getByRole("button",{name:"Trios"})).toHaveAttribute("aria-pressed","true");
+ const before=methods.filter(x=>x==="tagTeams").length;
+ await tabs.getByRole("button",{name:"Tag Teams"}).click();
+ await expect(page.getByRole("heading",{name:"Form a team"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Named Trios"})).toHaveCount(0);
+ await expect(tabs.getByRole("button",{name:"Tag Teams"})).toHaveAttribute("aria-pressed","true");
+ expect(methods.filter(x=>x==="tagTeams").length).toBe(before);
+ expect(methods).not.toContain("wrestlerProfile");
 });
 test("parent-company affiliates remain visible on the iPhone roster without editable parent contracts",async({page})=>{
  const people=[{

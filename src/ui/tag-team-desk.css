@@ -81,3 +81,9 @@
 .ppw-trio-card .ppw-pair-partner-links{display:flex;flex-wrap:wrap;gap:7px}
 .ppw-trio-workspace :is(input,select,button):focus-visible{
  outline:3px solid #8acfff;outline-offset:2px}
+
+/* One team workspace at a time; switching tabs never requeries Neon. */
+.ppw-team-workspace-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:5px 0 12px;min-width:0}
+.ppw-team-workspace-tabs .ppw-pair-button{min-width:0;text-align:center;font-weight:850;border:2px solid #60809a;background:#172b46;color:#eaf6ff}
+.ppw-team-workspace-tabs .ppw-pair-button[aria-pressed="true"]{border-color:#91edff;background:#185a76;color:#fff}
+.ppw-team-workspace-tabs .ppw-pair-button:focus-visible{outline:3px solid #b6f0ff;outline-offset:2px}

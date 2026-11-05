@@ -17,7 +17,7 @@ export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
  offer(input:{personId:string;requestId:string;expectedRevision:number;
   terms:OfferTerms}):Promise<unknown>;
- openContracts(personId?:string):void;openTagTeams():void;openStables():void;
+ openContracts(personId?:string):void;openTagTeams(workspace?:"TEAMS"|"TRIOS"):void;openStables():void;
  openChampionships():void;
  openWrestler(personId:string,origin:DirectoryView):void;
  openBusiness?():void;
@@ -453,8 +453,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    },quickChips.has(key));
   }
   if(filter.view==="ROSTER"){
-   addChip("Tag Teams",port.openTagTeams);
-   addChip("Trios",port.openTagTeams); // The established Teams desk includes the Trios workspace.
+   addChip("Tag Teams",()=>port.openTagTeams("TEAMS"));
+   addChip("Trios",()=>port.openTagTeams("TRIOS"));
    addChip("Stables",port.openStables);
   }
   const sortOptions=filter.view==="ROSTER"?[
