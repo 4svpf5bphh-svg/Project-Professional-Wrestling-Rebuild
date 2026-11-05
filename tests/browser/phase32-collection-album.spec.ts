@@ -29,6 +29,16 @@ for(const width of [320,390]){
   const album=page.locator(".ppw-album");
   await expect(album.getByRole("progressbar",{name:"Legend card collection progress"})).toHaveAttribute("aria-valuenow","4");
   await expect(album.locator(".ppw-album-tier-summary")).toHaveCount(4);
+  const tierWrap=await album.locator(".ppw-album-tier-summary").evaluateAll(nodes=>
+   nodes.map(node=>{
+    const strong=node.querySelector("strong")!;
+    const style=getComputedStyle(node);
+    return {name:node.textContent??"",whiteSpace:style.whiteSpace,
+     textHeight:parseFloat(style.lineHeight),size:node.getBoundingClientRect().height,
+     count:strong.textContent??"",countWhiteSpace:getComputedStyle(strong).whiteSpace};
+   }));
+  expect(tierWrap.every(x=>x.whiteSpace==="nowrap"&&x.countWhiteSpace==="nowrap")).toBe(true);
+  expect(tierWrap.every(x=>x.size<=80)).toBe(true);
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);
   await expect(album.getByText("129 cards · Page 1 of 11")).toBeVisible();
   await expect(page.getByRole("link",{name:"World Record Book"})).toHaveAttribute("href","#/records");

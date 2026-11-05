@@ -367,3 +367,19 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  .ppw-album-tier-summary strong{font-size:.79rem}
  .ppw-album-sort-button{padding:.45rem .6rem}
 }
+
+/* Narrow iPhones: concise tier labels and exact 1/57 counters must not split
+   into unreadable syllables inside the four-card progress shelf. */
+.ppw-album-tier-summary{
+ white-space:nowrap!important;overflow:hidden;
+ font-size:11px!important;letter-spacing:-.012em!important;
+ line-height:1.15!important;min-height:59px!important;
+}
+.ppw-album-tier-summary strong{
+ white-space:nowrap!important;font-size:12px!important;
+ line-height:1.15!important;
+}
+@media(max-width:360px){
+ .ppw-album-tier-summary{font-size:10px!important;padding:.42rem .24rem!important}
+ .ppw-album-tier-summary strong{font-size:11px!important}
+}

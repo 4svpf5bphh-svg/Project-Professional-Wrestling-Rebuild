@@ -185,7 +185,7 @@ export function drawLegendAlbum(
   shortcut.classList.add("ppw-album-tier-summary");
   shortcut.dataset.tier=tier;
   shortcut.setAttribute("aria-label","Browse "+tier.toLowerCase()+" cards");
-  shortcut.append(el("strong","",collected+" / "+group.length));
+  shortcut.append(el("strong","",collected+"/"+group.length));
   const track=el("span","ppw-album-tier-track");
   const ink=el("span","ppw-album-tier-fill");
   ink.style.width=Math.round(collected/Math.max(1,group.length)*100)+"%";
