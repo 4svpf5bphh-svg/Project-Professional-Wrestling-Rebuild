@@ -102,6 +102,13 @@ for(const width of [320,390]){
   await expect(page.getByRole("combobox",{name:/Trio partner/})).toHaveCount(0);
   await expect(picks.first().locator(".ppw-wrestler-media")).toBeVisible();
   await expect(submit).toBeEnabled();
+  // Changing the name after selecting all three must update submission
+  // immediately, without another server query or losing the selected team.
+  const trioName=page.getByRole("textbox",{name:"New trio name"});
+  await trioName.fill("");
+  await expect(submit).toBeDisabled();
+  await trioName.fill("The Lightning Three");
+  await expect(submit).toBeEnabled();
   await submit.click();
   await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
   expect(requests).toBe(1);

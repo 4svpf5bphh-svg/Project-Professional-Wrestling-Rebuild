@@ -255,12 +255,18 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
    el("p","ppw-muted","A trio is a permanent three-person unit, separate from two-person tag teams and larger factions. Book all three together in a 3v3 match."));
   const three=view.trios??[];
   if(port.createTrio){
+   const canFormTrio=()=>editable()&&trioName.trim().length>=2&&
+    trioMembers.every(Boolean)&&new Set(trioMembers).size===3;
    const input=document.createElement("input");
    input.type="text";input.maxLength=70;input.value=trioName;
    input.placeholder="Name your trio";
    input.setAttribute("aria-label","New trio name");
    input.disabled=!editable();
-   input.oninput=()=>{trioName=input.value;trioRequest=null;};
+   input.oninput=()=>{
+    trioName=input.value;trioRequest=null;
+    const action=trioSection.querySelector<HTMLButtonElement>(".ppw-pair-submit");
+    if(action)action.disabled=!canFormTrio();
+   };
    trioSection.append(input);
    // The team and booking flows already use genuine talent portrait cards.
    // Select trio members the same way, not through three cramped iPhone selects.
@@ -276,9 +282,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
     selected.append(choice);
    }
    trioSection.append(selected);
-   const formButton=btn("✓ Form this trio",()=>void formTrio(),!editable()||
-    trioName.trim().length<2||trioMembers.some(x=>!x)||
-    new Set(trioMembers).size!==3);
+   const formButton=btn("✓ Form this trio",()=>void formTrio(),!canFormTrio());
    formButton.classList.add("ppw-pair-submit");
    trioSection.append(formButton);
    const hint=el("p","ppw-pair-instruction",
