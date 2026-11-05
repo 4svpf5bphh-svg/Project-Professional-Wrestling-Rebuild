@@ -27,7 +27,9 @@ for(const width of [320,390]){
    }:{}});
   });
   await page.goto("/#/roster");
-  await page.getByRole("button",{name:"My Champions"}).click();
+  const chips=page.getByRole("group",{name:"Quick roster filters · this page"});
+   await expect(page.getByRole("navigation",{name:"Roster divisions"})).toHaveCount(0);
+   await chips.getByRole("button",{name:"My Champions"}).click();
   await expect(page.getByRole("heading",{name:"My Champions"})).toBeVisible();
   await expect(page.locator(".ppw-belt-card:visible")).toHaveCount(1);
   await expect(page.locator(".ppw-belt-card:visible")).toContainText("Home Heavyweight");
