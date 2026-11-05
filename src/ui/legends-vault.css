@@ -339,3 +339,31 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
   margin-left:0;
  }
 }
+
+/* Mobile album reads like a collectible first, filters second. Keep tier
+   progress visible without placing a second tall heading or navigation shelf. */
+.ppw-collection-mast{padding:.65rem .65rem .5rem}
+.ppw-collection-mast .ppw-legend-kicker{font-size:.64rem}
+.ppw-collection-mast h2{font-size:1.85rem;margin:.25rem 0 .3rem}
+.ppw-collection-mast .ppw-collection-back{
+ box-sizing:border-box;min-height:44px;margin:.2rem .35rem .15rem 0;
+ padding:.5rem .63rem;font-size:.77rem;
+}
+.ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{margin:.2rem .2rem .15rem 0}
+.ppw-collection .ppw-album{padding:.7rem .65rem}
+.ppw-album-headline{margin:.25rem 0 .35rem}
+.ppw-album-progress{margin-bottom:.55rem}
+.ppw-album-tier-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:.35rem;margin:.1rem 0 .55rem}
+.ppw-album-tier-summary{min-height:62px;padding:.4rem .38rem;font-size:.67rem;gap:.25rem}
+.ppw-album-tier-summary strong{font-size:.85rem}
+.ppw-album-pages{margin-bottom:0;padding-bottom:.38rem}
+.ppw-album-tools{gap:.35rem;margin:0 0 .45rem}
+.ppw-album-search>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.ppw-album-results{margin:.12rem 0 .45rem}
+@media(max-width:390px){
+ .ppw-collection .ppw-album{padding:.6rem .55rem}
+ .ppw-album-tier-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem}
+ .ppw-album-tier-summary{min-height:60px;padding:.38rem .28rem;font-size:.63rem}
+ .ppw-album-tier-summary strong{font-size:.79rem}
+ .ppw-album-sort-button{padding:.45rem .6rem}
+}

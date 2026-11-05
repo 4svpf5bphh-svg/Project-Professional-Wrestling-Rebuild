@@ -115,14 +115,16 @@ export function drawLegendAlbum(
   el("h2","","My Collection"));
  const back=document.createElement("a");
  back.className="ppw-legend-button ppw-collection-back";
- back.href="#/industry/legends";back.textContent="Explore Legends Vault";
+ back.href="#/industry/legends";back.textContent="Legends Vault";
+ back.setAttribute("aria-label","Explore Legends Vault");
  const history=document.createElement("a");
  history.className="ppw-legend-button ppw-collection-back";
- history.href="#/records";history.textContent="World Record Book";
+ history.href="#/records";history.textContent="World Records";
+ history.setAttribute("aria-label","World Record Book");
  mast.append(back,history);target.append(mast);
  const owned=view.entries.filter(x=>x.collected);
  const cabinet=el("section","ppw-legend-collection ppw-album");
- cabinet.append(el("h3","","My Legend Cards"));
+ // The page title above is the heading; don't duplicate it in the cabinet.
  const headline=el("div","ppw-album-headline");
  headline.append(el("strong","ppw-album-count",
   owned.length+" / "+view.entries.length+" COLLECTED"),
@@ -178,7 +180,8 @@ export function drawLegendAlbum(
  for(const tier of order){
   const group=view.entries.filter(x=>x.tier===tier);
   const collected=group.filter(x=>x.collected).length;
-  const shortcut=button(title[tier]??tier,()=>switchPage(tier));
+  const shortcut=button(tier==="LEGEND"?"Legend":
+   tier[0]+tier.slice(1).toLowerCase(),()=>switchPage(tier));
   shortcut.classList.add("ppw-album-tier-summary");
   shortcut.dataset.tier=tier;
   shortcut.setAttribute("aria-label","Browse "+tier.toLowerCase()+" cards");

@@ -43,6 +43,8 @@ for(const width of [320,390]){
   await album.getByRole("button",{name:"View card"}).first().click();
   const viewer=page.getByRole("dialog",{name:"Collectible card: Jerry Lynn"});
   await expect(viewer).toBeVisible();
+  await expect(viewer.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
+  await expect.poll(()=>viewer.evaluate(node=>Number(getComputedStyle(node).opacity))).toBe(1);
   await page.screenshot({path:info.outputPath("phase32-album-"+width+"-viewer.png")});
   await viewer.getByRole("button",{name:"Next card"}).click();
   const next=page.getByRole("dialog",{name:"Collectible card: Trish Stratus"});
