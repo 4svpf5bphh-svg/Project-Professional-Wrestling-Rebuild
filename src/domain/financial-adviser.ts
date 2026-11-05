@@ -7,7 +7,8 @@ export interface BudgetBasis{
  cash:number;debt:number;weeklyMediaIncome:number|null;
  weeklySponsorIncome:number|null;weeklyFixedOverhead:number|null;
  weeklyGuarantees:number;weeklyStaffPayroll:number;
- recentShowAppearanceFees:number;lastWeeklyNet:number|null;
+ recentShowAppearanceFees:number;recentShowTotalCost?:number|null;
+ recentShowGateRevenue?:number|null;lastWeeklyNet:number|null;
 }
 export interface BudgetScenario{
  id:BudgetRisk;label:string;description:string;plan:PromotionSpendingPlan;
@@ -31,6 +32,9 @@ export function recommendPromotionBudgets(basis:BudgetBasis):{
  const cashBuffer=Math.max(0,cash-Math.max(weeklyCosts*8,safe(basis.debt)));
  const growth=Math.min(cashBuffer/52,Math.max(1000,weeklyCosts))*0.25;
  const lastAppearance=safe(basis.recentShowAppearanceFees);
+ const recentCost=safe(basis.recentShowTotalCost);
+ const recentGate=safe(basis.recentShowGateRevenue);
+ const eventSurplus=Math.max(0,recentGate-recentCost);
  const showBase=Math.max(1000,lastAppearance,surplus*0.35);
  const reserve=(weeks:number,ratio:number)=>round(Math.min(cash,
   Math.max(weeklyCosts*weeks,cash*ratio,safe(basis.debt))));
@@ -41,11 +45,13 @@ export function recommendPromotionBudgets(basis:BudgetBasis):{
     cashReserve:reserve(12,0.3)}},
   {id:"STABLE",label:"Stable",description:"Allow measured growth from dependable income.",
    plan:{weeklyWageLimit:round(wage+surplus*0.7),
-    showTalentLimit:round(Math.max(1000,showBase+surplus*0.15)),
+    showTalentLimit:round(Math.max(1000,showBase+surplus*0.15+
+     Math.min(eventSurplus*0.1,showBase*0.2))),
     cashReserve:reserve(8,0.2)}},
   {id:"RISKY",label:"Risky",description:"Spend ahead of returns; protect a smaller reserve.",
    plan:{weeklyWageLimit:round(wage+surplus*1.35+growth),
-    showTalentLimit:round(showBase*1.55+Math.max(0,safe(basis.lastWeeklyNet))*0.15),
+    showTalentLimit:round(showBase*1.55+
+     Math.min(eventSurplus*0.2,showBase*0.6)+Math.max(0,safe(basis.lastWeeklyNet))*0.15),
     cashReserve:reserve(4,0.1)}}
  ];
  const incomeState=basis.weeklyMediaIncome===null||basis.weeklySponsorIncome===null?
@@ -53,6 +59,10 @@ export function recommendPromotionBudgets(basis:BudgetBasis):{
  const summary="Network and sponsor income "+round(income).toLocaleString("en-GB")+
   "/week; wages, staff and overhead "+round(weeklyCosts).toLocaleString("en-GB")+
   "/week. Operating room "+(room<0?"-":"")+round(Math.abs(room)).toLocaleString("en-GB")+
-  "/week before event costs. Recent event income is not guaranteed."+incomeState;
+  "/week before event costs. "+
+  (recentCost>0?"Last show cost "+round(recentCost).toLocaleString("en-GB")+
+   " (including talent, production and venue); gate "+
+   round(recentGate).toLocaleString("en-GB")+". ":"")+
+  "Recent event income is not guaranteed."+incomeState;
  return {scenarios,summary,weeklyIncome:income,weeklyCosts,operatingRoom:room};
 }
