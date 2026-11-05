@@ -1,30 +1,5 @@
-
-/* Portraits are inside a real grid column; failures cannot overlap names. */
-#game .ppw-wrestler-card,#game .ppw-wrestler-card.ppw-wrestler-compact{
- --photo-size:68px;display:grid!important;grid-template-columns:var(--photo-size) minmax(0,1fr)!important;
- gap:10px;align-items:start;min-width:0}
-#game .ppw-wrestler-compact{--photo-size:52px!important}
-#game .ppw-wrestler-card[data-portrait="unavailable"]::after{content:none!important;display:none!important}
-#game .ppw-wrestler-media{display:block;position:relative;grid-column:1;grid-row:1;width:100%;
- aspect-ratio:3/4;isolation:isolate;overflow:hidden;border:2px solid #adc2dc;border-radius:7px 15px 7px 7px;
- background:radial-gradient(ellipse at 50% 14%,#6796ca,#2e436c 56%,#0d1730);box-shadow:0 5px 15px #080d20}
-/* Neutral premium monogram: never imply an authentic wrestler likeness without a licensed photograph. */
-#game .ppw-wrestler-media:before,#game .ppw-wrestler-media:after{content:none!important}
-#game .ppw-wrestler-media-mark{position:absolute;z-index:1;inset:0;
- display:grid;place-items:center;padding:2px;text-align:center;color:#f2d9ff;
- letter-spacing:.075em;font-size:clamp(13px,4vw,22px);font-weight:950;line-height:1;
- background:radial-gradient(circle at 55% 35%,#8c76ae44,transparent 58%),
- linear-gradient(155deg,#362447,#13264d 64%,#1b173e);
- text-shadow:0 2px 12px #050917}
-#game .ppw-wrestler-card .ppw-wrestler-media .ppw-real-wrestler-photo{position:absolute;inset:0;z-index:2;
- width:100%!important;height:100%!important;max-width:none;display:block;object-fit:cover;object-position:50% 22%;
- border:0!important;border-radius:0!important;box-shadow:none!important;filter:none}
-#game .ppw-wrestler-card .ppw-wrestler-copy{grid-column:2;grid-row:1;min-width:0}
-#game .ppw-wrestler-card .ppw-wrestler-status{grid-column:1/-1;grid-row:2;max-width:100%;min-width:0;overflow-wrap:anywhere}
-#game .ppw-wrestler-card[data-champion="true"] .ppw-wrestler-media{border-color:#ffe097;
- box-shadow:0 0 0 2px #eccc6d53,0 5px 14px #080b20}
-@media(max-width:360px){#game .ppw-wrestler-card{--photo-size:52px;gap:7px;padding:9px}
- #game .ppw-wrestler-card .ppw-wrestler-stats{gap:3px}}
+/* Portraits, names and badges are now styled by the single
+   src/ui/wrestler-card.css component. Do not override its art track here. */
 /* A private messaging experience at inbox, People, Requests and thread levels. */
 html[data-ppw-screen="backstage"] .ppw-account-banner .ppw-shell-menu,
 html[data-ppw-screen="backstage"] .ppw-navigation{display:none!important}
