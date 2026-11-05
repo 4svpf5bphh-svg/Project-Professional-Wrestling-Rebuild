@@ -1,0 +1,29 @@
+name: Phase 32 four-tier playable reveal evidence
+on:
+  push:
+    branches: [phase32-legends-four-real-reveal-proofs]
+  workflow_dispatch:
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run web:build
+      - name: Verify runner provides real Chrome without downloading Playwright browsers
+        run: google-chrome --version
+      - name: Record four real-game reveals at 320 and 390 pixels
+        run: npx playwright test --config playwright.phase32.config.ts
+      - name: Upload real screenshots and playback recordings for owner review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppw-phase32-verified-reveal-captures
+          path: test-results
+          if-no-files-found: warn
+          retention-days: 14
