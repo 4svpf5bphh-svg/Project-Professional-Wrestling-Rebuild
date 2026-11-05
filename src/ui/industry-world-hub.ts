@@ -190,7 +190,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   }catch(e){legendsError=e instanceof Error?e.message:"Legends Vault unavailable";}
   finally{legendsBusy=false;render();}
  }
- async function finishReveal(id:string,navigateMarket=false){
+ async function finishReveal(id:string,navigateMarket=false,dossierPersonId?:string){
   if(revealBusy)return;
   revealBusy=true;
   const alreadySeen=legends?.entries.find(e=>e.id===id)?.revealSeen===true;
@@ -206,7 +206,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   }finally{
    revealBusy=false;
    if(revealingLegend)retainScroll();
-   else if(navigateMarket)port.openMarket?.();
+   else if(dossierPersonId&&!legendsError)port.openWrestler?.(dossierPersonId);
+   else if(navigateMarket&&!legendsError)port.openMarket?.();
    else retainScroll();
   }
  }
@@ -325,7 +326,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      closeReveal:id=>{void finishReveal(id);},
      collect:id=>{if(!legendsBusy)void collectLegend(id);},
      openWrestler:port.openWrestler,
-     goToMarket:id=>{void finishReveal(id,true);}
+     goToMarket:id=>{void finishReveal(id,true);},
+     goToDossier:(id,personId)=>{void finishReveal(id,false,personId);}
     },revealingLegend,inspectingCard);
    }
    if(legendsBusy)section.append(el("p","ppw-industry-muted","Reading the World Legends…"));

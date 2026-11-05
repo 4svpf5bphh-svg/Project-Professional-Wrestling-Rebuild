@@ -9,6 +9,7 @@ export interface LegendsVaultActions{
  showCard(id:string):void;closeCard():void;
  collect(id:string):void;openWrestler?(personId:string):void;
  goToMarket?(id:string):void;
+ goToDossier?(id:string,personId:string):void;
 }
 const el=(tag:string,css:string,text?:string)=>{
  const n=document.createElement(tag);n.className=css;if(text!==undefined)n.textContent=text;return n;
@@ -317,6 +318,14 @@ export function drawLegendsVault(
    ICON:[500,1250,2100],IMMORTAL:[650,1500,2550]
   };
   const cue=timelines[selected.tier]??timelines.LEGEND!;
+  // Tier identity belongs outside the card. The wrestler's name is already
+  // printed on the definitive card; never repeat it in the ceremony.
+  const taglines:Record<string,string>={
+   CULT:"The Underground Never Forgets",
+   LEGEND:"A Name Etched in History",
+   ICON:"Born for the Spotlight",
+   IMMORTAL:"A Legacy That Echoes Forever"
+  };
   const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches??false;
   const veil=el("div","ppw-legend-reveal ppw-legend-ceremony");
   veil.dataset.tier=selected.tier;
@@ -338,7 +347,7 @@ export function drawLegendsVault(
   const opener=el("header","ppw-ceremony-opener");
   opener.append(el("strong","ppw-ceremony-headline",selected.tier));
   const identity=el("div","ppw-ceremony-identity");
-  identity.append(el("h2","",selected.name??"A new legend"));
+  identity.append(el("h2","",taglines[selected.tier]??"Wrestling History Lives On"));
   const cardStage=el("div","ppw-ceremony-card-stage");
   const art=cardGraphic(selected);
   if(art){
@@ -348,9 +357,16 @@ export function drawLegendsVault(
    "The definitive collectible image will appear when its artwork has been reviewed."));
   const finale=el("footer","ppw-ceremony-finale");
   finale.inert=!reduced;
-  finale.append(el("p","ppw-legend-market-confirm",
-   "NOW AVAILABLE TO EVERY PROMOTION"));
   const actionsRow=el("div","ppw-ceremony-actions");
+  // Closing via a navigation action still acknowledges the World unlock
+  // before leaving the scene; the actual dossier opens from the host.
+  if(selected.personIds.length&&actions.goToDossier){
+   actionsRow.dataset.hasDossier="true";
+   const dossier=button("Wrestler Dossier",
+    ()=>actions.goToDossier?.(selected.id,selected.personIds[0]!));
+   dossier.setAttribute("aria-label","View wrestler dossier");
+   actionsRow.append(dossier);
+  }
   if(actions.goToMarket)
    actionsRow.append(button("Talent Market",
     ()=>actions.goToMarket?.(selected.id)));
@@ -362,9 +378,8 @@ export function drawLegendsVault(
   announcement.setAttribute("role","status");
   announcement.setAttribute("aria-live","polite");
   announcement.textContent=reduced?"Legend unlocked: "+selected.name:"A wrestling legend has been discovered";
-  // The background and the actual 2:3 card share a coordinate plane.
-  // This makes the collectible sit inside the painted light frame at every
-  // supported phone size rather than drifting away as the viewport changes.
+  // The art and actual 2:3 card share one coordinate plane. Decorative
+  // background tilt is corrected by CSS; the card itself remains upright.
   const stageWrap=el("div","ppw-ceremony-stage-wrap");
   const stageClip=el("div","ppw-ceremony-stage-clip");
   stageWrap.append(set,cardStage);

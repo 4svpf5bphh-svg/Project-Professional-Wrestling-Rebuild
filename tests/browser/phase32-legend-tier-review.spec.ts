@@ -4,6 +4,12 @@ import {LEGENDS_CATALOGUE,LEGEND_TIER_PRICES} from "../../src/domain/legends-cat
 // Authenticated running-game captures, with only World unlock receipts mocked.
 // Names, tiers, milestone descriptions and 960x1440 art come from PPW itself.
 const ids=["jerry-lynn","trish-stratus","sting","undertaker"] as const;
+const taglines:Record<string,string>={
+ CULT:"The Underground Never Forgets",
+ LEGEND:"A Name Etched in History",
+ ICON:"Born for the Spotlight",
+ IMMORTAL:"A Legacy That Echoes Forever"
+};
 const overview={world:{revision:4,name:"PPW",year:2,week:1,phase:"OPEN",
  nextLockEpoch:Date.now()/1000+6000,serverEpoch:Date.now()/1000},
  membership:"ACTIVE",promotion:{id:"human",name:"Human Pro",tier:"LOCAL",
@@ -48,7 +54,10 @@ for(const id of ids){
    await expect(reveal).toHaveAttribute("data-motion","full");
    await expect(reveal.locator(".ppw-ceremony-set")).toHaveCount(1);
    await expect(reveal.locator(".ppw-ceremony-headline")).toHaveText(item.tier);
-   await expect(reveal.locator(".ppw-ceremony-identity")).toHaveText(item.name);
+   await expect(reveal.locator(".ppw-ceremony-identity")).toHaveText(taglines[item.tier]!);
+   await expect(reveal.locator(".ppw-ceremony-identity")).not.toContainText(item.name);
+   await expect(reveal.getByRole("button",{name:"View wrestler dossier"})).toBeVisible();
+   await expect(reveal.getByRole("button",{name:"Talent Market"})).toBeVisible();
    await expect(reveal.locator(".ppw-ceremony-strap,.ppw-ceremony-signal,.ppw-ceremony-achievement")).toHaveCount(0);
    await expect(reveal.locator(".ppw-legend-photo-credit,.ppw-ceremony-credit,a")).toHaveCount(0);
    const plate=await reveal.locator(".ppw-ceremony-set").evaluate(node=>getComputedStyle(node).backgroundImage);
@@ -74,6 +83,25 @@ for(const id of ids){
    expect(geometry.bottomFraction).toBeGreaterThan(.77);
    expect(geometry.bottomFraction).toBeLessThan(.85);
    if(item.tier==="IMMORTAL")expect(plate).not.toMatch(/undertaker|deadman|violet/);
+   const styleInfo=await reveal.evaluate(node=>{
+    const art=node.querySelector<HTMLElement>(".ppw-ceremony-set")!;
+    const clip=node.querySelector<HTMLElement>(".ppw-ceremony-stage-clip")!;
+    const card=node.querySelector<HTMLElement>("img.ppw-legend-card-art")!;
+    return {artShear:getComputedStyle(art).transform,
+      backdrop:getComputedStyle(clip,"::before").backgroundImage,
+      cardTransform:getComputedStyle(card).transform,
+      imageBack:getComputedStyle(clip,"::before").position};
+   });
+   expect(styleInfo.artShear).not.toBe("none");
+   expect(styleInfo.cardTransform).toBe("none");
+   expect(styleInfo.backdrop).toContain("/assets/legends/reveals/");
+   const footerBox=await reveal.locator(".ppw-ceremony-finale").boundingBox();
+   const taglineBox=await reveal.locator(".ppw-ceremony-identity").boundingBox();
+   const cardBox=await reveal.locator(".ppw-ceremony-card-stage").boundingBox();
+   expect(footerBox).not.toBeNull();expect(taglineBox).not.toBeNull();
+   expect(footerBox!.y).toBeGreaterThan(taglineBox!.y+taglineBox!.height-2);
+   expect(footerBox!.y+footerBox!.height).toBeLessThanOrEqual((width===320?568:844)+1);
+   expect(taglineBox!.y).toBeGreaterThanOrEqual(cardBox!.y+cardBox!.height-8);
    const skipBounds=await reveal.getByRole("button",{name:"Skip reveal"}).boundingBox();
    const tierBounds=await reveal.locator(".ppw-ceremony-headline").boundingBox();
    expect(skipBounds).not.toBeNull();expect(tierBounds).not.toBeNull();
@@ -87,7 +115,7 @@ for(const id of ids){
    await expect(reveal.getByRole("button",{name:"Skip reveal"})).toBeVisible();
    // Playwright records the live, actual CSS transition to a WebM artifact.
    await expect(reveal).toHaveAttribute("data-sequence","FINALE",{timeout:8000});
-   await expect(reveal.getByText(/NOW AVAILABLE TO EVERY PROMOTION/)).toBeVisible();
+   await expect(reveal.getByText(/NOW AVAILABLE TO EVERY PROMOTION/)).toHaveCount(0);
    // Capture the stable, fully visible finale rather than a mid-fade frame.
    await expect.poll(()=>reveal.locator(".ppw-ceremony-finale")
     .evaluate(node=>getComputedStyle(node).opacity)).toBe("1");
@@ -131,6 +159,13 @@ for(const id of ids){
    await page.screenshot({path:info.outputPath("phase32-"+item.tier.toLowerCase()+"-"+width+"-reduced.png")});
    await reduced.getByRole("button",{name:"Skip reveal"}).click();
    await expect(reduced).toHaveCount(0);
+   // Dossier action follows the same server-authoritative seen receipt and
+   // must dismiss the reveal before opening the real wrestler view.
+   await page.locator('.ppw-legend-tile[data-legend-id="'+item.id+'"]')
+    .getByRole("button",{name:"Replay the reveal"}).click();
+   const dossierReveal=page.getByRole("dialog",{name:"Legend unlocked: "+item.name});
+   await dossierReveal.getByRole("button",{name:"View wrestler dossier"}).click();
+   await expect(dossierReveal).toHaveCount(0);
    expect(seenWrites).toBe(1);
    expect(kpWrites).toBe(1);
    expect(methods).not.toContain("signLegend");
