@@ -26,7 +26,7 @@ import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-h
 import "../ui/industry-world-hub.css";
 import "../ui/legends-vault.css";
 import "../ui/legend-reveal-ceremony.css";
-import {drawLegendAlbum,clearLegendRevealPortal,type LegendsVaultView} from "../ui/legends-vault.js";
+import {drawLegendAlbum,clearLegendRevealPortal,type LegendsVaultView,type LegendAlbumState} from "../ui/legends-vault.js";
 import "../ui/staff-desk.css";
 import "../ui/gorilla-desk.css";
 import "../ui/business-desk.css";
@@ -289,7 +289,8 @@ export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:L
 export function mountCollectionPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  let view:LegendsVaultView|null=null,expanded:string|null=null;
- let page="ALL",error="",busy=true;
+ let albumState:LegendAlbumState={page:"ALL",query:"",sort:"CATALOGUE",sheet:0};
+ let error="",busy=true;
  const render=()=>{
   clearLegendRevealPortal();
   root.classList.add("ppw-editor","ppw-industry","ppw-collection-screen");
@@ -305,11 +306,11 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
   }
   const content=document.createElement("section");
   content.className="ppw-industry-list ppw-collection";
-  content.dataset.legendAlbumPage=page;
+  content.dataset.legendAlbumPage=albumState.page;
   drawLegendAlbum(content,view,{
    showCard:id=>{expanded=id;render();},
    closeCard:()=>{expanded=null;render();}
-  },expanded,next=>{page=next;});
+  },expanded,undefined,albumState,next=>{albumState=next;});
   root.append(content);
  };
  render();

@@ -66,92 +66,167 @@ function showLegendPortal(overlay:HTMLElement){
 function showLegendCardViewer(view:LegendsVaultView,
  actions:Pick<LegendsVaultActions,"showCard"|"closeCard">,
  expandedCard:string|null){
- const ownedCard=view.entries.find(x=>x.id===expandedCard&&x.unlocked&&x.cardAsset);
- if(ownedCard){
-  const overlay=el("div","ppw-legend-reveal ppw-legend-card-viewer");
-  overlay.dataset.tier=ownedCard.tier;
-  overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
-  overlay.setAttribute("aria-label","Collectible card: "+ownedCard.name);
-  const panel=el("div","ppw-legend-reveal-scene");
-  panel.append(button("Close card",actions.closeCard),
-   el("h2","",ownedCard.name??"Legend"));
-  const art=cardGraphic(ownedCard);if(art)panel.append(art);
-  overlay.append(panel);showLegendPortal(overlay);
+ const current=view.entries.find(x=>x.id===expandedCard&&x.unlocked&&x.cardAsset);
+ if(!current)return;
+ const owned=view.entries.filter(x=>x.collected&&x.unlocked&&x.cardAsset);
+ const index=current.collected?owned.findIndex(x=>x.id===current.id):-1;
+ const prior=index>0?owned[index-1]:null,after=index>=0?owned[index+1]:null;
+ const overlay=el("div","ppw-legend-reveal ppw-legend-card-viewer");
+ overlay.dataset.tier=current.tier;
+ overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");
+ overlay.setAttribute("aria-label","Collectible card: "+current.name);
+ const panel=el("div","ppw-legend-reveal-scene ppw-album-viewer-panel");
+ panel.append(button("Close card",actions.closeCard),
+  el("span","ppw-album-viewer-kicker",current.tier+" · "+
+   (index>=0?"COLLECTED":"PREVIEW")));
+ const art=cardGraphic(current);
+ if(art){art.loading="eager";panel.append(art);}
+ if(index>=0&&owned.length>1){
+  const nav=el("nav","ppw-album-viewer-nav");
+  nav.setAttribute("aria-label","Browse collected cards");
+  nav.append(button("Previous card",()=>{if(prior)actions.showCard(prior.id);},!prior),
+   el("span","ppw-album-viewer-index",(index+1)+" / "+owned.length),
+   button("Next card",()=>{if(after)actions.showCard(after.id);},!after));
+  panel.append(nav);
  }
+ overlay.append(panel);
+ overlay.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){e.preventDefault();actions.closeCard();}
+  else if(e.key==="ArrowLeft"&&prior){e.preventDefault();actions.showCard(prior.id);}
+  else if(e.key==="ArrowRight"&&after){e.preventDefault();actions.showCard(after.id);}
+ });
+ showLegendPortal(overlay);
 }
-
-/** Private binder, separate from the shared unlock catalogue.
- * Reuses the authenticated Legends Vault data and permanent KP receipts.
- */
+export interface LegendAlbumState {
+ page:string;query:string;sort:"CATALOGUE"|"OWNED_FIRST"|"NAME";sheet:number;
+}
+const ALBUM_PAGE_SIZE=12;
+/** Private cabinet: one Vault read, no additional reads, writes or polling.
+ * Pages, local searches and rarity browsing are entirely in-memory. */
 export function drawLegendAlbum(
  target:HTMLElement,view:LegendsVaultView,
  actions:Pick<LegendsVaultActions,"showCard"|"closeCard">,
  expandedCard:string|null=null,onPageChange?:(page:string)=>void,
+ preferences?:LegendAlbumState,onPreferences?:(state:LegendAlbumState)=>void,
 ){
- clearLegendRevealPortal();
- target.replaceChildren();
+ clearLegendRevealPortal();target.replaceChildren();
  const mast=el("header","ppw-legend-mast ppw-collection-mast");
- mast.append(el("span","ppw-legend-kicker","THE PRIVATE COLLECTOR'S CABINET"),
-  el("h2","","My Collection"),
-  el("p","ppw-industry-muted",
-   "Your personal wrestling card album. Every card is yours to keep; it never grants a wrestler contract."));
+ mast.append(el("span","ppw-legend-kicker","YOUR PERMANENT LEGENDS ALBUM"),
+  el("h2","","My Collection"));
  const back=document.createElement("a");
  back.className="ppw-legend-button ppw-collection-back";
- back.href="#/industry/legends";back.textContent="Explore the Legends Vault →";
+ back.href="#/industry/legends";back.textContent="Explore Legends Vault";
  mast.append(back);target.append(mast);
- const owned=view.entries.filter(item=>item.collected);
+ const owned=view.entries.filter(x=>x.collected);
  const cabinet=el("section","ppw-legend-collection ppw-album");
- cabinet.append(el("span","ppw-legend-kicker","PERSONAL COLLECTIBLE ALBUM"),
-  el("h3","","My Legend Cards"),
-  el("p","ppw-industry-muted",
-   "One permanent card per Legend. Collecting artwork never signs the wrestler or changes their abilities."));
+ cabinet.append(el("h3","","My Legend Cards"));
  const headline=el("div","ppw-album-headline");
  headline.append(el("strong","ppw-album-count",
-   owned.length+" / "+view.entries.length+" COLLECTED"),
+  owned.length+" / "+view.entries.length+" COLLECTED"),
   el("span","ppw-album-progress-text",
-   Math.round(owned.length/Math.max(1,view.entries.length)*100)+"% complete"));
- cabinet.append(headline);
+  Math.round(owned.length/Math.max(1,view.entries.length)*100)+"% complete"));
  const meter=el("div","ppw-album-progress");
  meter.setAttribute("role","progressbar");
  meter.setAttribute("aria-label","Legend card collection progress");
  meter.setAttribute("aria-valuenow",String(owned.length));
- meter.setAttribute("aria-valuemax",String(view.entries.length));
  meter.setAttribute("aria-valuemin","0");
- const ink=el("span","ppw-album-progress-ink");
- ink.style.width=(owned.length/Math.max(1,view.entries.length)*100)+"%";meter.append(ink);
- cabinet.append(meter);
- const pages=el("nav","ppw-album-pages");
- pages.setAttribute("aria-label","Card album pages");
- const book=el("div","ppw-album-book");
- let albumPage=target.dataset.legendAlbumPage??"ALL";
- const pageLabels:readonly [string,string][]=[
+ meter.setAttribute("aria-valuemax",String(view.entries.length));
+ const fill=el("span","ppw-album-progress-ink");
+ fill.style.width=(owned.length/Math.max(1,view.entries.length)*100)+"%";
+ meter.append(fill);cabinet.append(headline,meter);
+ const tierStrip=el("nav","ppw-album-tier-strip");
+ tierStrip.setAttribute("aria-label","Collection progress by tier");
+ const pageTabs=el("nav","ppw-album-pages");
+ pageTabs.setAttribute("aria-label","Card album pages");
+ const grid=el("div","ppw-album-book");
+ const counts=el("p","ppw-album-results");
+ counts.setAttribute("aria-live","polite");
+ const paging=el("nav","ppw-album-pagination");
+ paging.setAttribute("aria-label","Album sheet navigation");
+ const tools=el("div","ppw-album-tools");
+ const searchLabel=el("label","ppw-album-search");
+ searchLabel.append(el("span","","Search cards"));
+ const search=document.createElement("input");
+ search.type="search";search.placeholder="Search your album";
+ search.setAttribute("aria-label","Search cards");search.autocomplete="off";
+ searchLabel.append(search);
+ const sorting=el("div","ppw-album-sort");
+ sorting.setAttribute("role","group");
+ sorting.setAttribute("aria-label","Album sorting");
+ let page=preferences?.page??target.dataset.legendAlbumPage??"ALL";
+ let query=preferences?.query??"",sort=preferences?.sort??"CATALOGUE";
+ let sheet=preferences?.sheet??0;
+ const tabs:readonly [string,string][]=[
   ["ALL","All pages"],["CULT","Cult"],["LEGEND","Legends"],
-  ["ICON","Icons"],["IMMORTAL","Immortals"],["OWNED","Collected"]];
- const pageButtons=new Map<string,HTMLButtonElement>();
- for(const [tier,label] of pageLabels){
-  const tab=button(label,()=>{albumPage=tier;target.dataset.legendAlbumPage=tier;onPageChange?.(tier);renderAlbum();});
-  tab.classList.add("ppw-album-page-button");
-  pages.append(tab);pageButtons.set(tier,tab);
+  ["ICON","Icons"],["IMMORTAL","Immortals"],["OWNED","Collected"],["MISSING","Missing"]];
+ const modes:readonly [LegendAlbumState["sort"],string][]=[
+  ["CATALOGUE","Catalogue"],["OWNED_FIRST","Owned first"],["NAME","A–Z"]];
+ if(!tabs.some(([id])=>id===page))page="ALL";
+ if(!modes.some(([id])=>id===sort))sort="CATALOGUE";
+ search.value=query;
+ const position=new Map(view.entries.map((item,i)=>[item.id,i]));
+ const tabButtons=new Map<string,HTMLButtonElement>();
+ const modeButtons=new Map<string,HTMLButtonElement>();
+ const save=()=>onPreferences?.({page,query,sort,sheet});
+ const switchPage=(key:string)=>{
+  page=key;sheet=0;target.dataset.legendAlbumPage=key;onPageChange?.(key);
+  save();renderPage();
+ };
+ for(const tier of order){
+  const group=view.entries.filter(x=>x.tier===tier);
+  const collected=group.filter(x=>x.collected).length;
+  const shortcut=button(title[tier]??tier,()=>switchPage(tier));
+  shortcut.classList.add("ppw-album-tier-summary");
+  shortcut.dataset.tier=tier;
+  shortcut.setAttribute("aria-label","Browse "+tier.toLowerCase()+" cards");
+  shortcut.append(el("strong","",collected+" / "+group.length));
+  const track=el("span","ppw-album-tier-track");
+  const ink=el("span","ppw-album-tier-fill");
+  ink.style.width=Math.round(collected/Math.max(1,group.length)*100)+"%";
+  track.append(ink);shortcut.append(track);tierStrip.append(shortcut);
  }
- function renderAlbum(){
-  book.replaceChildren();
-  for(const [name,tab] of pageButtons)
-   tab.setAttribute("aria-pressed",String(name===albumPage));
-  const entries=view.entries.filter(entry=>albumPage==="ALL"||
-   albumPage==="OWNED"&&entry.collected||entry.tier===albumPage);
-  if(!entries.length){
-   book.append(el("p","ppw-legend-collection-empty",
-    "Your album is empty on this page. Collect an unlocked Legend with KP to fill a slot."));
-   return;
-  }
-  // A single stable index for the whole collection; rarity pages reuse it.
-  for(const item of entries){
+ for(const [id,label] of tabs){
+  const buttonTab=button(label,()=>switchPage(id));
+  buttonTab.classList.add("ppw-album-page-button");
+  pageTabs.append(buttonTab);tabButtons.set(id,buttonTab);
+ }
+ for(const [id,label] of modes){
+  const buttonSort=button(label,()=>{sort=id;sheet=0;save();renderPage();});
+  buttonSort.classList.add("ppw-album-sort-button");
+  sorting.append(buttonSort);modeButtons.set(id,buttonSort);
+ }
+ search.addEventListener("input",()=>{query=search.value;sheet=0;save();renderPage();});
+ tools.append(searchLabel,sorting);
+ function renderPage(){
+  grid.replaceChildren();
+  for(const [key,buttonTab] of tabButtons)
+   buttonTab.setAttribute("aria-pressed",String(key===page));
+  for(const [key,buttonSort] of modeButtons)
+   buttonSort.setAttribute("aria-pressed",String(key===sort));
+  for(const tile of tierStrip.querySelectorAll<HTMLButtonElement>("button"))
+   tile.setAttribute("aria-pressed",String(tile.dataset.tier===page));
+  const term=query.trim().toLocaleLowerCase("en-GB");
+  const found=view.entries.filter(item=>
+   (page==="ALL"||page===item.tier||
+    page==="OWNED"&&item.collected||page==="MISSING"&&!item.collected)&&
+   (!term||Boolean(item.name?.toLocaleLowerCase("en-GB").includes(term))));
+  if(sort==="OWNED_FIRST")found.sort((a,b)=>
+   Number(b.collected)-Number(a.collected)||
+   (position.get(a.id)??0)-(position.get(b.id)??0));
+  else if(sort==="NAME")found.sort((a,b)=>
+   (a.name??"~~~~").localeCompare(b.name??"~~~~","en-GB")||
+   (position.get(a.id)??0)-(position.get(b.id)??0));
+  const pageCount=Math.max(1,Math.ceil(found.length/ALBUM_PAGE_SIZE));
+  sheet=Math.max(0,Math.min(sheet,pageCount-1));
+  counts.textContent=found.length+" cards · Page "+(sheet+1)+" of "+pageCount;
+  if(!found.length)grid.append(el("p","ppw-legend-collection-empty",
+   "No cards here. Try another tier or search."));
+  for(const item of found.slice(sheet*ALBUM_PAGE_SIZE,(sheet+1)*ALBUM_PAGE_SIZE)){
    const slot=el("article","ppw-album-slot");
-   slot.dataset.tier=item.tier;
-   slot.dataset.collected=String(item.collected);
-   const ordinal=view.entries.indexOf(item)+1;
+   slot.dataset.tier=item.tier;slot.dataset.collected=String(item.collected);
+   slot.dataset.legendId=item.id;
    slot.append(el("span","ppw-album-slot-number",
-    "NO. "+String(ordinal).padStart(3,"0")+" · "+item.tier));
+    "NO. "+String((position.get(item.id)??0)+1).padStart(3,"0")+" · "+item.tier));
    if(item.collected){
     const art=cardGraphic(item);
     if(art)slot.append(art);
@@ -163,14 +238,19 @@ export function drawLegendAlbum(
     slot.append(el("strong","ppw-album-slot-name",
      item.unlocked?item.name??"Legend awaiting collection":"Undiscovered"));
     slot.append(el("small","ppw-album-slot-status",
-     item.unlocked?"UNLOCKED · CARD NOT COLLECTED":"MYSTERY CARD"));
+     item.unlocked?"UNLOCKED · NOT COLLECTED":"MYSTERY CARD"));
    }
-   book.append(slot);
+   grid.append(slot);
+  }
+  paging.replaceChildren();
+  if(pageCount>1){
+   paging.append(button("Previous page",()=>{sheet--;save();renderPage();},sheet===0),
+    el("span","ppw-album-pagination-index",(sheet+1)+" / "+pageCount),
+    button("Next page",()=>{sheet++;save();renderPage();},sheet===pageCount-1));
   }
  }
- if(!pageButtons.has(albumPage))albumPage="ALL";
- cabinet.append(pages,book);renderAlbum();
- target.append(cabinet);
+ cabinet.append(tierStrip,pageTabs,tools,counts,grid,paging);
+ renderPage();target.append(cabinet);
  showLegendCardViewer(view,actions,expandedCard);
 }
 

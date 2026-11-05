@@ -274,3 +274,55 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  .ppw-legend-stage-effects,.ppw-legend-stage-effects::before,
  .ppw-legend-stage-effects::after{animation:none!important;display:none!important}
 }
+
+
+/* Phase 32 — mobile-first client-only collector cabinet, no new backend reads */
+.ppw-album-tier-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin:.4rem 0 .95rem}
+.ppw-album-tier-summary{
+ display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-width:0;
+ min-height:76px;padding:.55rem .6rem;border-radius:10px;
+ background:linear-gradient(140deg,#25434c,#0c1b24);color:#a6edf2;
+ border:1px solid #72dce255;font-size:.73rem;font-weight:800;text-align:left
+}
+.ppw-album-tier-summary strong{font-size:1rem;font-variant-numeric:tabular-nums}
+.ppw-album-tier-summary[data-tier="LEGEND"]{background:linear-gradient(140deg,#523319,#161018);color:#f3d18e;border-color:#e5bb6955}
+.ppw-album-tier-summary[data-tier="ICON"]{background:linear-gradient(140deg,#234776,#10182b);color:#a8defe;border-color:#6fbbea55}
+.ppw-album-tier-summary[data-tier="IMMORTAL"]{background:linear-gradient(140deg,#51442d,#141a22);color:#f2dfb8;border-color:#d9bd7a55}
+.ppw-album-tier-summary[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:2px}
+.ppw-album-tier-track{width:100%;height:4px;border-radius:10px;background:#ffffff22;overflow:hidden;margin-top:auto}
+.ppw-album-tier-fill{display:block;height:100%;background:currentColor;border-radius:10px}
+.ppw-album-tools{display:grid;gap:.6rem;margin:.2rem 0 .65rem}
+.ppw-album-search{display:flex;flex-direction:column;gap:.25rem;font-size:.75rem;color:#cbd3db}
+.ppw-album-search input{
+ box-sizing:border-box;min-width:0;width:100%;min-height:44px;padding:.55rem .75rem;
+ border:1px solid #ffffff5e;border-radius:9px;background:#101b27;
+ color:#fff;font:inherit;font-size:1rem
+}
+.ppw-album-sort{display:flex;flex-wrap:wrap;gap:.4rem}
+.ppw-album-sort-button{min-height:44px;padding:.5rem .7rem;font-size:.78rem}
+.ppw-album-sort-button[aria-pressed="true"]{background:#efd09c;color:#241808;border-color:#f4e1bd}
+.ppw-album-results{margin:.1rem 0 .65rem;font-size:.73rem;color:#cbd3db}
+.ppw-album-pagination{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.9rem auto .15rem;max-width:390px}
+.ppw-album-pagination .ppw-legend-button{min-height:44px;flex:1;min-width:0;font-size:.77rem}
+.ppw-album-pagination-index{flex:none;font-variant-numeric:tabular-nums;font-size:.77rem}
+.ppw-legend-card-viewer{--tier:#e9cc95}
+.ppw-legend-reveal.ppw-legend-card-viewer::before,
+.ppw-legend-reveal.ppw-legend-card-viewer::after{display:none!important;animation:none!important}
+.ppw-legend-card-viewer .ppw-album-viewer-panel{box-sizing:border-box;gap:.6rem;max-width:550px;padding:12px 4px 20px}
+.ppw-legend-card-viewer .ppw-legend-card-art,
+.ppw-legend-card-viewer .ppw-undertaker-card{
+ width:min(80vw,390px)!important;max-width:100%!important;
+ max-height:68dvh;aspect-ratio:2/3;object-fit:contain;border-radius:8px
+}
+.ppw-album-viewer-kicker{color:#f5d8a2;letter-spacing:.09em;font-size:.7rem;font-weight:850}
+.ppw-album-viewer-nav{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:.4rem;align-items:center;width:100%}
+.ppw-album-viewer-nav .ppw-legend-button{min-height:44px;min-width:0;font-size:.75rem;padding:.55rem .35rem}
+.ppw-album-viewer-index{white-space:nowrap;font-size:.77rem;font-variant-numeric:tabular-nums}
+@media(max-width:390px){
+ .ppw-album-tier-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ppw-album-tier-summary{min-height:70px}
+ .ppw-album-page-button{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ppw-legend-card-viewer,.ppw-legend-card-viewer *{animation:none!important;transition:none!important}
+}
