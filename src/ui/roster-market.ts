@@ -453,7 +453,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    },quickChips.has(key));
   }
   if(filter.view==="ROSTER"){
-   addChip("My Champions",port.openChampionships);
    addChip("Tag Teams",port.openTagTeams);
    addChip("Trios",port.openTagTeams); // The established Teams desk includes the Trios workspace.
    addChip("Stables",port.openStables);
