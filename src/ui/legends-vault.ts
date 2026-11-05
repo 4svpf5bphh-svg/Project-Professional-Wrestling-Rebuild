@@ -399,7 +399,7 @@ export function drawLegendsVault(
   const finale=el("footer","ppw-ceremony-finale");
   finale.inert=!reduced;
   finale.append(el("p","ppw-legend-market-confirm",
-   "NOW AVAILABLE TO ALL PROMOTIONS IN THE WORLD TALENT MARKET"));
+   "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
   if(selected.year!==null&&selected.week!==null)
    finale.append(el("span","ppw-ceremony-discovered",
     "DISCOVERED · YEAR "+selected.year+" / WEEK "+selected.week));
