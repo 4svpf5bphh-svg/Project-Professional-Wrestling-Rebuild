@@ -3,7 +3,7 @@ import {defineConfig} from "@playwright/test";
 // Real PPW Vite build, real bundled cards, existing authenticated game routes.
 export default defineConfig({
  testDir:"./tests/browser",
- testMatch:"phase32-legend-tier-review.spec.ts",
+ testMatch:["phase32-legend-tier-review.spec.ts","phase32-all-legend-reveals.spec.ts"],
  timeout:45_000,
  reporter:"line",
  use:{baseURL:"http://127.0.0.1:4173",browserName:"chromium",channel:"chrome",
