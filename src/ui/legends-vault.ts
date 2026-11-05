@@ -88,7 +88,7 @@ function showLegendPortal(overlay:HTMLElement){
  overlay.scrollTop=0;
  overlay.addEventListener("keydown",event=>{
   if(event.key!=="Tab")return;
-  const buttons=Array.from(overlay.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+  const buttons=Array.from(overlay.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")).filter(b=>!b.closest("[inert]"));
   if(!buttons.length)return;
   const first=buttons[0]!,last=buttons[buttons.length-1]!;
   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
@@ -343,37 +343,101 @@ export function drawLegendsVault(
  noMatches.hidden=true;target.append(noMatches);
  if(!buttons.has(filter))filter="ALL";
  applyFilter();
+
  const selected=view.entries.find(x=>x.id===revealing&&x.unlocked);
  if(selected){
-  const veil=el("div","ppw-legend-reveal");
+  // Phase 32 review: one real card, four different CSS ceremonies.
+  // Only the World unlock record authorises this overlay; the UI grants nothing.
+  const cues:Record<string,{signal:string;headline:string;strap:string;phases:readonly [number,number,number]}>={
+   CULT:{signal:"UNDERGROUND / ARCHIVE 01",headline:"THE SCENE REMEMBERS",
+    strap:"Recovered from the independent circuit",phases:[300,800,1550]},
+   LEGEND:{signal:"HERITAGE / HALL OF LEGENDS",headline:"A NAME FOR THE AGES",
+    strap:"A place among wrestling's greats",phases:[580,1400,2450]},
+   ICON:{signal:"WORLDWIDE / LIVE EVENT",headline:"THE MAIN EVENT ARRIVES",
+    strap:"The spotlight belongs to an icon",phases:[750,1750,3050]},
+   IMMORTAL:{signal:"THE ETERNAL STAGE / IMMORTAL",headline:"BEYOND THE FINAL BELL",
+    strap:"The impossible becomes history",phases:[950,2200,3650]}
+  };
+  const cue=cues[selected.tier]??cues.LEGEND!;
+  const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches??false;
+  const veil=el("div","ppw-legend-reveal ppw-legend-ceremony");
   veil.dataset.tier=selected.tier;
   veil.dataset.special=selected.id==="undertaker"?"DEADMAN":"STANDARD";
+  veil.dataset.legendId=selected.id;
+  veil.dataset.motion=reduced?"reduced":"full";
+  veil.dataset.sequence=reduced?"FINALE":"INTRO";
   const lighting=el("div","ppw-legend-stage-effects");
   lighting.setAttribute("aria-hidden","true");
-  veil.append(lighting);
+  const set=el("div","ppw-ceremony-set");
+  set.setAttribute("aria-hidden","true");
+  set.append(el("span","ppw-ceremony-set-left"),
+   el("span","ppw-ceremony-set-right"),el("span","ppw-ceremony-set-core"));
   veil.setAttribute("role","dialog");veil.setAttribute("aria-modal","true");
   veil.setAttribute("aria-label","Legend unlocked: "+selected.name);
-  const scene=el("div","ppw-legend-reveal-scene");
-  scene.append(el("span","ppw-legend-spotlight","THE WORLD HAS CHANGED"),
-   el("span","ppw-legend-reveal-tier",title[selected.tier]??selected.tier),
-   el("h2","",selected.name??"A new legend"),
-   el("p","",selected.achievement??"Wrestling history has been made."));
-  const fullCard=cardGraphic(selected);
-  if(fullCard)scene.append(fullCard);
-  else scene.append(el("p","ppw-legend-reveal-artnote",
-   "The definitive collectible image will appear here when its photo design has been reviewed."));
+  const scene=el("div","ppw-legend-reveal-scene ppw-ceremony-scene");
   if(selected.id==="undertaker")scene.classList.add("ppw-undertaker-reveal-scene");
-  const credit=photoCredit(selected);if(credit)scene.append(credit);
-  scene.append(el("p","ppw-legend-market-confirm",
-   "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
+  const skip=button("Skip reveal",()=>actions.closeReveal(selected.id));
+  skip.classList.add("ppw-legend-skip");
+  const opener=el("header","ppw-ceremony-opener");
+  opener.append(el("span","ppw-ceremony-signal",cue.signal),
+   el("strong","ppw-ceremony-headline",cue.headline),
+   el("span","ppw-ceremony-strap",cue.strap));
+  const identity=el("div","ppw-ceremony-identity");
+  identity.append(el("span","ppw-legend-reveal-tier",title[selected.tier]??selected.tier),
+   el("h2","",selected.name??"A new legend"),
+   el("p","ppw-ceremony-achievement",
+    selected.achievement??"Wrestling history has been made."));
+  const cardStage=el("div","ppw-ceremony-card-stage");
+  const art=cardGraphic(selected);
+  if(art){
+   // Bundled real cards load eagerly during the short anticipation beat.
+   art.loading="eager";art.decoding="async";cardStage.append(art);
+  }else cardStage.append(el("p","ppw-legend-reveal-artnote",
+   "The definitive collectible image will appear when its artwork has been reviewed."));
+  const credit=photoCredit(selected);
+  if(credit){credit.classList.add("ppw-ceremony-credit");cardStage.append(credit);}
+  const finale=el("footer","ppw-ceremony-finale");
+  finale.inert=!reduced;
+  finale.append(el("p","ppw-legend-market-confirm",
+   "NOW AVAILABLE TO ALL PROMOTIONS IN THE WORLD TALENT MARKET"));
+  if(selected.year!==null&&selected.week!==null)
+   finale.append(el("span","ppw-ceremony-discovered",
+    "DISCOVERED · YEAR "+selected.year+" / WEEK "+selected.week));
+  if(selected.collectibleReady)
+   finale.append(el("span","ppw-ceremony-collection-cue",
+    selected.collected?"THIS CARD IS IN YOUR COLLECTION":"COLLECT THE CARD SEPARATELY WITH KP"));
+  const actionsRow=el("div","ppw-ceremony-actions");
   if(selected.personIds.length&&actions.openWrestler)
-   scene.append(button("View wrestler dossier",()=>actions.openWrestler?.(selected.personIds[0]!)));
-  if(actions.goToMarket)scene.append(button("Visit the talent market",
-   ()=>actions.goToMarket?.(selected.id)));
-  scene.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
-  const dismiss=button("Skip reveal",()=>actions.closeReveal(selected.id));
-  dismiss.classList.add("ppw-legend-skip");scene.prepend(dismiss);
-  veil.append(scene);showLegendPortal(veil);
+   actionsRow.append(button("View wrestler dossier",
+    ()=>actions.openWrestler?.(selected.personIds[0]!)));
+  if(actions.goToMarket)
+   actionsRow.append(button("Visit the talent market",
+    ()=>actions.goToMarket?.(selected.id)));
+  actionsRow.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
+  finale.append(actionsRow);
+  const announcement=el("span","ppw-ceremony-announcement");
+  announcement.setAttribute("role","status");
+  announcement.setAttribute("aria-live","polite");
+  announcement.textContent=reduced?"Legend unlocked: "+selected.name:"A wrestling legend has been discovered";
+  scene.append(skip,opener,identity,cardStage,finale,announcement);
+  veil.append(lighting,set,scene);
+  showLegendPortal(veil);
+  if(!reduced){
+   const [identifyAt,cardAt,finaleAt]=cue.phases;
+   for(const [phase,delay] of [
+    ["IDENTITY",identifyAt],["CARD",cardAt],["FINALE",finaleAt]
+   ] as const){
+    window.setTimeout(()=>{
+     if(!veil.isConnected)return; // closing/route change cancels visual progress
+     veil.dataset.sequence=phase;
+     if(phase==="CARD")announcement.textContent=selected.name+" — collectible card revealed";
+     if(phase==="FINALE"){
+      finale.inert=false;
+      announcement.textContent=selected.name+" is now available in the World Talent Market";
+     }
+    },delay);
+   }
+  }
  }
  showLegendCardViewer(view,actions,expandedCard);
 }

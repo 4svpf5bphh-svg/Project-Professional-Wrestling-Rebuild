@@ -50,6 +50,16 @@ jobs:
           name: ppw-presentation-screenshots
           path: test-results
           retention-days: 7
+      - name: Preserve Phase 32 real four-tier running-game capture proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppw-phase32-four-tier-review
+          path: |
+            test-results/**/phase32-*.png
+            test-results/**/*.webm
+          if-no-files-found: ignore
+          retention-days: 14
       - run: npm test
       - name: Apply foundation schema to disposable PostgreSQL
         env:
