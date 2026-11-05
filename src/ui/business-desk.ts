@@ -324,7 +324,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const risk=view.financialDistress,margin=view.recurringMargin;
    overview.dataset.health=risk==="DISTRESSED"||risk==="CRISIS"?"warning":
     risk==="WATCH"?"watch":"normal";
-   overview.append(el("summary","","Financial outlook"));
+   overview.append(el("summary","","Talent Manager · Financial outlook"));
    const headline=margin===null?
     "Recurring operating margin is not configured yet.":
     margin>=0?
