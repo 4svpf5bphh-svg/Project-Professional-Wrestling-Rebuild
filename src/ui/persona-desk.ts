@@ -486,7 +486,8 @@ export function mountPersonaDesk(root:HTMLElement,
      followThroughWeekIndex:c.followThroughWeekIndex,
      dueWeekIndex:c.dueWeekIndex,relevantTitle:c.relevantTitle,
      relatedName:related?.name??null,
-     verifiedShows:c.kind==="TAG_TEAM_PITCH"?c.verifiedTagShows:
+     verifiedShows:c.kind==="TAG_TEAM_PITCH"||
+      c.kind==="MENTORSHIP_PITCH"?c.verifiedTagShows:
       c.kind==="RIVALRY_PITCH"?c.verifiedSinglesShows:
        c.workingVerifiedShows};
    })

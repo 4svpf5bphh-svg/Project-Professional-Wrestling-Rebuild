@@ -107,3 +107,27 @@ test("declined, unsafe or expired ideas cannot become fake new booker commitment
  assert.equal(livingWrestlerMotivation({...base,status:"INJURED",requests:[given]})?.kind,
   "RECOVERY");
 });
+
+test("veteran-led mentorship remembers real tag chemistry and an actionable next step",()=>{
+ const pitch={kind:"MENTORSHIP_PITCH",status:"PENDING",createdWeekIndex:40,
+  verifiedShows:3,relatedName:"Young Prospect"};
+ const asking=livingWrestlerMotivation({...base,careerStage:"VETERAN",requests:[pitch]});
+ assert.equal(asking?.kind,"MENTORSHIP_PITCH");
+ assert.equal(asking?.title,"Help Young Prospect develop");
+ assert.match(asking!.reason,/3 completed tag matches/);
+ const accepted={...pitch,status:"ANSWERED",decision:"EXPLORE_MENTORSHIP",
+  respondedWeekIndex:40,followThroughWeekIndex:null};
+ const continuing=livingWrestlerMotivation({...base,requests:[accepted]});
+ assert.equal(continuing?.kind,"MENTORSHIP_FOLLOW_THROUGH");
+ assert.equal(continuing?.next,"BOOKING");
+ assert.match(continuing!.reason,/Only a new completed match/);
+ assert.notEqual(livingWrestlerMotivation({...base,requests:[{
+  ...accepted,followThroughWeekIndex:41}]})?.kind,"MENTORSHIP_FOLLOW_THROUGH");
+ assert.notEqual(livingWrestlerMotivation({...base,currentWeekIndex:49,
+  requests:[accepted]})?.kind,"MENTORSHIP_FOLLOW_THROUGH");
+ assert.notEqual(livingWrestlerMotivation({...base,requests:[{
+  ...accepted,decision:"NOT_NOW"}]})?.kind,"MENTORSHIP_FOLLOW_THROUGH");
+ assert.equal(livingWrestlerMotivation({...base,status:"INJURED",
+  requests:[accepted]})?.kind,"RECOVERY");
+ assert.equal(livingWrestlerMotivation({...base,onRoster:false,requests:[accepted]}),null);
+});

@@ -38,6 +38,13 @@ function requestFocus(kind:string,title:string|null|undefined,
     ", they have suggested a programme.":
     "Their verified matches led them to suggest a programme.",
    "PROGRAMMES"] as const;
+  case "MENTORSHIP_PITCH":return [
+   relatedName?"Help "+relatedName+" develop":"Help a prospect grow",
+   typeof verifiedShows==="number"&&verifiedShows>=2&&relatedName?
+    "After "+verifiedShows+" completed tag matches together, they want"+
+    " to help "+relatedName+" grow through more shared matches.":
+    "An experienced wrestler proposed guiding a prospect after real team work.",
+   "BOOKING"] as const;
   case "TAG_TEAM_PITCH":return [
    relatedName?"Team with "+relatedName:"Make the partnership official",
    typeof verifiedShows==="number"&&verifiedShows>=2&&relatedName?
@@ -109,7 +116,8 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
  const accepted=(i.requests??[]).filter(r=>
   r.status==="ANSWERED"&&r.followThroughWeekIndex==null&&
   ((r.kind==="RIVALRY_PITCH"&&r.decision==="EXPLORE_RIVALRY")||
-   (r.kind==="TAG_TEAM_PITCH"&&r.decision==="EXPLORE_TEAM"))&&
+   (r.kind==="TAG_TEAM_PITCH"&&r.decision==="EXPLORE_TEAM")||
+   (r.kind==="MENTORSHIP_PITCH"&&r.decision==="EXPLORE_MENTORSHIP"))&&
   !!r.relatedName?.trim()&&validWeek(r.createdWeekIndex)&&
   validWeek(r.respondedWeekIndex??-1)&&
   r.respondedWeekIndex!<=i.currentWeekIndex&&
@@ -123,6 +131,12 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
    "You agreed to explore their verified rivalry pitch. "+
    "A real programme with "+direction.relatedName+" has not been recorded yet.",
    "BACKSTAGE","PROGRAMMES");
+ if(direction?.kind==="MENTORSHIP_PITCH")
+  return make("MENTORSHIP_FOLLOW_THROUGH",
+   "Guide "+direction.relatedName+" in the ring",
+   "You accepted a veteran's mentoring idea. Only a new completed match"+
+   " teaming them with "+direction.relatedName+" will record that next step.",
+   "BACKSTAGE","BOOKING");
  if(direction?.kind==="TAG_TEAM_PITCH")
   return make("TAG_FOLLOW_THROUGH",
    "Build the team with "+direction.relatedName,
