@@ -27,7 +27,8 @@ const button=(title:string,action:()=>void,disabled=false)=>{
  x.type="button";x.onclick=action;x.disabled=disabled;return x;
 };
 export function mountPersonaDesk(root:HTMLElement,
- port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void,
+ port:PersonaDeskPort,onBack?:()=>void,
+ onOpenProgrammes?:(personId:string,opponentId:string)=>void,
  initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
@@ -602,9 +603,16 @@ export function mountPersonaDesk(root:HTMLElement,
       ()=>port.openPlanner?.(),loading));
     }
     if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
-     item.followThroughWeekIndex===null&&onOpenProgrammes){
-     chat.append(button("Build this rivalry →",
-      onOpenProgrammes,loading));
+     item.followThroughWeekIndex===null&&onOpenProgrammes&&view.personId){
+     const opponent=view.roster.find(p=>
+      p.personId===item.relatedPersonId&&p.isCurrent);
+     if(opponent){
+      chat.append(button("Build rivalry with "+opponent.name+" →",
+       ()=>onOpenProgrammes(view!.personId!,opponent.personId),loading));
+     }else{
+      chat.append(el("small","ppw-backstage-promise",
+       "The proposed opponent is no longer on your active roster."));
+     }
     }
     if(item.status==="BROKEN"&&item.trustDelta<0)
      chat.append(el("small","ppw-backstage-promise",

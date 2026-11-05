@@ -36,7 +36,7 @@ const button=(title:string,click:()=>void,disabled=false)=>{
  x.type="button";x.disabled=disabled;x.onclick=click;return x;
 };
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
- onBack?:()=>void,focusPersonId?:string){
+ onBack?:()=>void,focusPersonId?:string,focusOpponentId?:string){
  let view:ProgrammeView|null=null,working=false,error="",success="";
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
@@ -45,7 +45,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let activeLane:"PAYOFF"|"HISTORY"|"STORY"|"PLAN"="STORY";
  let selectedArchiveId:string|null=null;
  let archiveView=false;
- let creationOpen=false,focusResolved=false;
+ let creationOpen=false,focusResolved=false,focusWarning="";
  const adviceOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
@@ -160,16 +160,37 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   // participation, rather than displaying the first unrelated programme.
   if(focusPersonId&&!focusResolved){
    focusResolved=true;
-   const teams=new Set(view.teams.filter(t=>t.memberIds.includes(focusPersonId))
-    .map(t=>t.refId));
-   const related=active.find(p=>[...p.sideA,...p.sideB].some(member=>
-    (member.kind==="PERSON"&&member.refId===focusPersonId)||
-    (member.kind==="TEAM"&&teams.has(member.refId))));
-   if(related)selectedProgrammeId=related.programmeId;
-   else if(view.canEdit&&view.people.some(p=>p.kind==="PERSON"&&
-    p.refId===focusPersonId)){
-    refsA=[{kind:"PERSON",refId:focusPersonId}];
-    refsB=[null];creationOpen=true;
+   const available=(id:string)=>view!.people.some(p=>
+    p.kind==="PERSON"&&p.refId===id);
+   if(focusOpponentId){
+    // A wrestler's approved pitch is specific to this exact pair.
+    // Prefer a real ongoing feud over generating a duplicate form.
+    const samePair=active.find(p=>
+     (p.sideA.some(a=>a.kind==="PERSON"&&a.refId===focusPersonId)&&
+      p.sideB.some(b=>b.kind==="PERSON"&&b.refId===focusOpponentId))||
+     (p.sideB.some(b=>b.kind==="PERSON"&&b.refId===focusPersonId)&&
+      p.sideA.some(a=>a.kind==="PERSON"&&a.refId===focusOpponentId)));
+    if(samePair)selectedProgrammeId=samePair.programmeId;
+    else if(view.canEdit&&focusPersonId!==focusOpponentId&&
+     available(focusPersonId)&&available(focusOpponentId)){
+     refsA=[{kind:"PERSON",refId:focusPersonId}];
+     refsB=[{kind:"PERSON",refId:focusOpponentId}];
+     creationOpen=true;
+    }else{
+     focusWarning="A proposed wrestler is no longer available."+
+      " Review your roster before creating this rivalry.";
+    }
+   }else{
+    const teams=new Set(view.teams.filter(t=>t.memberIds.includes(focusPersonId))
+     .map(t=>t.refId));
+    const related=active.find(p=>[...p.sideA,...p.sideB].some(member=>
+     (member.kind==="PERSON"&&member.refId===focusPersonId)||
+     (member.kind==="TEAM"&&teams.has(member.refId))));
+    if(related)selectedProgrammeId=related.programmeId;
+    else if(view.canEdit&&available(focusPersonId)){
+     refsA=[{kind:"PERSON",refId:focusPersonId}];
+     refsB=[null];creationOpen=true;
+    }
    }
   }
   const list=element("section","ppw-programme-list");
@@ -178,7 +199,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     active.flatMap(p=>[...p.sideA,...p.sideB]).find(p=>
      p.kind==="PERSON"&&p.refId===focusPersonId)?.name;
    if(wrestler)list.append(element("p","ppw-programme-eyebrow",
-    "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
+    focusOpponentId?"FROM BACKSTAGE · "+wrestler.toUpperCase():
+     "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
+   if(focusWarning)list.append(element("p","ppw-alert ppw-error",focusWarning));
   }
   list.append(element("h2","","Active rivalries · "+active.length));
   if(!active.some(p=>p.programmeId===selectedProgrammeId))
@@ -607,7 +630,11 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    // original element has been detached on the first roster selection.
    title.onclick=()=>{creationOpen=!createDetails.open;};
    createDetails.append(title,creation);
-   root.append(createDetails);
+   // Approved wrestler-originated feud takes priority over a long existing
+   // programme list; the explicit Start button remains the only mutation.
+   if(focusOpponentId&&creationOpen)
+    root.insertBefore(createDetails,list);
+   else root.append(createDetails);
   }
   const concluded=view.programmes.filter(p=>p.status!=="ACTIVE");
   if(concluded.length&&!archiveView){

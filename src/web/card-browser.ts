@@ -50,6 +50,22 @@ import "../ui/talent-filter-controls.css";
 type Scope=CardSessionScope;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
+// Keep a booker-approved two-person idea private to this browser session,
+// and consume it exactly once for the same World and promotion.
+type BackstageRivalryFocus={worldId:string;promotionId:string;
+ personId:string;opponentId:string};
+let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
+export function queueBackstageRivalryFocus(focus:BackstageRivalryFocus){
+ if(!focus.worldId||!focus.promotionId||!focus.personId||!focus.opponentId||
+  focus.personId===focus.opponentId) return;
+ pendingProgrammeFocusPersonId=null;
+ pendingBackstageRivalryFocus=focus;
+}
+export function consumeBackstageRivalryFocus(worldId:string,promotionId:string){
+ const focus=pendingBackstageRivalryFocus;
+ pendingBackstageRivalryFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
+}
 // Private, one-use route from a wrestler dossier to a genuine unfinished card.
 // No show ID is guessed and no booking permission is assumed from the dossier.
 export type FocusedBookingWrestler={personId:string;name:string};
@@ -608,13 +624,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string){
+ focusPersonId?:string,focusOpponentId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   ()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountProgrammePage(root,scope,focusPersonId));}),undefined,focusPersonId);
+   ()=>mountProgrammePage(root,scope,focusPersonId));}),
+  undefined,focusPersonId,focusOpponentId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,
@@ -666,7 +683,11 @@ function personaPort(call:ReturnType<typeof createCardClient>,
 export function mountPersonaPage(root:HTMLElement,scope:Scope,
  filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,onBack?:()=>void){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
-  onBack,()=>mountProgrammePage(root,scope),filter,initialPersonId);
+  onBack,(personId,opponentId)=>{
+   queueBackstageRivalryFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,personId,opponentId});
+   window.location.hash=hostSectionHash("programmes");
+  },filter,initialPersonId);
 }
 
 /** Host-level planner entry point. The existing card editor remains the
