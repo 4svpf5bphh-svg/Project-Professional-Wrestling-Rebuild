@@ -38,7 +38,7 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  await expect(refinements).not.toHaveAttribute("open");
  await expect(page.getByRole("button",{name:"Men",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Women",exact:true})).toBeVisible();
- await expect(page.getByLabel("Sort by")).toBeHidden();
+ await expect(page.getByLabel("Sort by")).toBeVisible();
  await expect(page.getByLabel("Recruitment interest")).toBeHidden();
  await page.getByRole("button",{name:"Free agents"}).click();
  await expect(page.getByRole("button",{name:"Free agents"})).toHaveAttribute("aria-pressed","true");
