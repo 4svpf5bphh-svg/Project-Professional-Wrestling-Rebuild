@@ -97,6 +97,16 @@ test("320px: a match moves through format, both sides, outcome and named crew br
    background:"rgb(33, 54, 80)",appearance:"none"
   })));
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(2);
+ const controlFrame=picker.locator(".ppw-talent-controls");
+ await expect(controlFrame.locator(":scope > .ppw-talent-search")).toBeVisible();
+ await expect(controlFrame.locator(":scope > .ppw-talent-sort-row")).toBeVisible();
+ await expect(controlFrame.locator(":scope > .ppw-talent-chip-row")).toBeVisible();
+ await expect(picker.locator(".ppw-wrestler-stats")).toHaveCount(0);
+ await expect(picker.locator(".ppw-wrestler-finisher")).toHaveCount(0);
+ const media=await picker.locator(".ppw-wrestler-card").first()
+  .locator(".ppw-wrestler-media").boundingBox();
+ expect(media).not.toBeNull();
+ expect(media!.width).toBeGreaterThanOrEqual(70);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
