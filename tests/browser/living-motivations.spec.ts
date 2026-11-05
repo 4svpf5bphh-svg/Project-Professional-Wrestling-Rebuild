@@ -61,7 +61,9 @@ for(const width of [320,390])test(`Phase 31 at ${width}px preserves wrestler mot
  await expect(dialog.locator(".ppw-profile-current-drive"))
   .toHaveAttribute("data-motivation","CREATIVE");
  await expect(dialog.locator(".ppw-profile-current-drive")).toContainText("Find their voice");
- await page.goto("/#/backstage");
+ // The wrestler dossier is a modal. Follow the player's actual in-app
+ // management action; a raw hash navigation would leave the dialog on top.
+ await dialog.getByRole("button",{name:"Talk in Backstage"}).click();
  await page.getByRole("button",{name:/Ace Vale/}).click();
  const thread=page.getByLabel("Conversation with Ace Vale");
  await expect(thread.locator(".ppw-backstage-current-drive"))
