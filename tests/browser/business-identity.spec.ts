@@ -36,7 +36,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  });
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
- await expect(page.locator(".ppw-business-pulse>summary")).toHaveText("Financial outlook");
+ await expect(page.locator(".ppw-business-pulse>summary")).toHaveText("Talent Manager · Financial outlook");
  await page.locator(".ppw-business-pulse>summary").click();
  await expect(page.locator(".ppw-business-pulse-headline")).toContainText("US$250,000");
  await expect(page.locator(".ppw-business-pulse")).toHaveAttribute("data-health","normal");
@@ -116,7 +116,27 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toHaveCount(0);
  await page.getByRole("button",{name:"Manage spending limits"}).click();
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toBeVisible();
+ const options=page.getByRole("group",{name:"Talent Manager budget options"});
+ await expect(options.locator(".ppw-business-budget-preset")).toHaveCount(3);
+ const wages=page.getByRole("spinbutton",{name:"Weekly wrestler wages"});
+ const reserves=page.getByRole("spinbutton",{name:"Cash reserve"});
+ await options.locator('[data-risk="TIGHT"]').click();
+ const tightWages=Number(await wages.inputValue());
+ const tightReserve=Number(await reserves.inputValue());
+ await options.locator('[data-risk="STABLE"]').click();
+ const stableWages=Number(await wages.inputValue());
+ const stableReserve=Number(await reserves.inputValue());
+ await options.locator('[data-risk="RISKY"]').click();
+ const riskyWages=Number(await wages.inputValue());
+ const riskyReserve=Number(await reserves.inputValue());
+ expect(tightWages).toBeLessThan(stableWages);
+ expect(stableWages).toBeLessThan(riskyWages);
+ expect(tightReserve).toBeGreaterThan(stableReserve);
+ expect(stableReserve).toBeGreaterThan(riskyReserve);
+ await expect(page.locator(".ppw-business-budget-adviser"))
+  .toContainText("Network and sponsor income");
  await page.getByRole("spinbutton",{name:"Weekly wrestler wages"}).fill("75000");
+ await expect(options.locator('[data-risk="RISKY"]')).toHaveAttribute("aria-pressed","false");
  await page.getByRole("spinbutton",{name:"Talent per show"}).fill("150000");
  await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
  await expect(page.locator(".ppw-business-signing-check")).toHaveCount(0);

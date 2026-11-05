@@ -23,8 +23,8 @@ const people=[
   recognition:64,momentum:52,remainingDates:null,medicalWeeksRemaining:2,
   startsInWeeks:0,weeklyGuarantee:1500,appearanceFee:0}
 ];
-test("320px roster quick chips follow booking-picker semantics without another Neon read",async({page})=>{
- await page.setViewportSize({width:320,height:740});
+for(const width of [320,390])test(`${width}px roster quick chips follow booking-picker semantics without another Neon read`,async({page})=>{
+ await page.setViewportSize({width,height:740});
  const requests:Record<string,unknown>[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>{
@@ -60,6 +60,16 @@ test("320px roster quick chips follow booking-picker semantics without another N
  await expect(cards).toHaveCount(1);
  await expect(cards.first().locator(".ppw-wrestler-stats")).toHaveCount(0);
  await expect(cards.first().locator(".ppw-wrestler-fans")).toBeVisible();
+ await expect(cards.first().locator(".ppw-wrestler-fans-icon")).toBeVisible();
+ const photo=cards.first().locator(".ppw-wrestler-media");
+ const bounds=await photo.boundingBox();
+ expect(bounds).not.toBeNull();
+ expect(bounds!.width).toBeGreaterThanOrEqual(width===320?70:82);
+ await expect(cards.first().locator(".ppw-wrestler-badges .ppw-wrestler-status"))
+  .toBeVisible();
+ const chipsBox=await chips.boundingBox();
+ expect(chipsBox).not.toBeNull();
+ expect(chipsBox!.x+chipsBox!.width).toBeLessThanOrEqual(width+1);
  expect(requests).toHaveLength(1);
  await page.getByRole("button",{name:"Women",exact:true}).click();
  await expect(cards).toHaveCount(1);

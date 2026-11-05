@@ -306,3 +306,26 @@
 @media(max-width:350px){.ppw-finance-snapshot{gap:6px}
  .ppw-finance-snapshot-tile{padding:8px;gap:4px}
  .ppw-finance-snapshot-tile strong{font-size:14px}}
+
+/* Finance advice: three meaningful scenarios, no full-width walls of text. */
+.ppw-business-budget-adviser{display:grid;gap:10px;margin:12px 0 15px;
+ padding:12px;border:1px solid #64899c;border-radius:13px;background:#102b3b}
+.ppw-business-budget-adviser>strong{font-size:14px;color:#c7ffea}
+.ppw-business-budget-adviser>p{font-size:12px;line-height:1.5;color:#d3e3ee;margin:0}
+.ppw-business-budget-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ppw-business-budget-presets>.ppw-business-budget-preset{
+ display:grid;align-content:start;justify-items:start;gap:7px;min-height:99px;
+ padding:10px 7px;min-width:0;border:2px solid #537ba1;background:#203452;
+ border-radius:12px;font-size:13px;text-align:left;line-height:1.2;color:#f7f6ff;
+ font-weight:900;white-space:normal}
+.ppw-business-budget-preset>small{font-size:10px;line-height:1.35;
+ font-weight:500;color:#bfcfdf;overflow-wrap:anywhere}
+.ppw-business-budget-preset[aria-pressed=true]{
+ border-color:#fcb6ef;background:linear-gradient(140deg,#893c91,#5a489c);
+ box-shadow:0 0 0 1px #efb7fb}
+.ppw-business-budget-preset[aria-pressed=true]>small{color:#f9eaff}
+@media(max-width:350px){
+ .ppw-business-budget-adviser{padding:9px}
+ .ppw-business-budget-presets{gap:5px}
+ .ppw-business-budget-presets>.ppw-business-budget-preset{padding:9px 6px;font-size:12px}
+}

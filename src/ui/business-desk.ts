@@ -5,6 +5,7 @@ import {commercialPartnerBrand} from "./commercial-partner-identity.js";
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
+import {recommendPromotionBudgets,type BudgetRisk} from "../domain/financial-adviser.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -41,6 +42,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
   spendingExpanded=false;
  let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
+ let selectedBudget:BudgetRisk|null=null;
  async function refresh(){
   loading=true;draw();
   try{view=await port.load();error="";}
@@ -217,19 +219,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     item("Last week net",view.lastWeeklyNet===null?"Not settled":
      money(view.lastWeeklyNet),"After the last weekly settlement"));
    bank.append(snapshot);
-   if(typeof view.remainingRosterPotential==="number"){
-    const commitment=document.createElement("details");
-    commitment.className="ppw-finance-roster-exposure";
-    commitment.append(el("summary","","Remaining roster commitments · "+
-     money(view.remainingRosterPotential)));
-    commitment.append(el("p","ppw-finance-commitments",
-     money(view.remainingRosterGuaranteed)+
-      " is guaranteed wages; up to "+
-      money(Math.max(0,view.remainingRosterPotential-view.remainingRosterGuaranteed))+
-      " is appearance fees only if every remaining date is used. These amounts"+
-      " are payable over the remaining contracts, not owed today."));
-    bank.append(commitment);
-   }
+   // Full-term roster exposure remains available in Contracts, where it is actionable.
    if(view.debt>0)bank.append(el("p","ppw-finance-debt",
     "Outstanding debt · "+money(view.debt)));
    const actions=el("div","ppw-finance-first-actions");
@@ -239,22 +229,54 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     "Manage spending limits",()=>{spendingExpanded=!spendingExpanded;draw();}));
    bank.append(actions);
    root.append(bank);
-   // Owner budgeting is independent of actual settlement, contracts and cash.
-   const regularCosts=(view.weeklyFixedOverhead??0)+view.weeklyGuarantees+
-    view.weeklyStaffPayroll;
-   const suggestion:PromotionSpendingPlan={
-    weeklyWageLimit:Math.ceil(Math.max(1000,view.weeklyGuarantees*1.35)/1000)*1000,
-    showTalentLimit:Math.ceil(Math.max(1000,(view.shows[0]?.appearanceFees??0)*1.25)/1000)*1000,
-    cashReserve:Math.ceil(Math.max(regularCosts*8,view.cash*0.2)/1000)*1000};
-   const plan=spendingDraft??view.spendingPlan??suggestion;
+   const advice=recommendPromotionBudgets({
+    cash:view.cash,debt:view.debt,
+    weeklyMediaIncome:view.weeklyMediaIncome,
+    weeklySponsorIncome:view.weeklySponsorIncome,
+    weeklyFixedOverhead:view.weeklyFixedOverhead,
+    weeklyStaffPayroll:view.weeklyStaffPayroll,
+    weeklyGuarantees:view.weeklyGuarantees,
+    recentShowAppearanceFees:view.shows[0]?.appearanceFees??0,
+    recentShowTotalCost:view.shows[0]?.totalCost??null,
+    recentShowGateRevenue:view.shows[0]?.gateRevenue??null,
+    lastWeeklyNet:view.lastWeeklyNet
+   });
+   const plan=spendingDraft??view.spendingPlan??
+    advice.scenarios.find(x=>x.id==="STABLE")!.plan;
    const budget=el("section","ppw-business-budget");
-   budget.append(el("span","ppw-business-kicker","YOUR MONEY / YOUR RULES"),
+   budget.append(el("span","ppw-business-kicker","YOUR TALENT MANAGER / FINANCE"),
     el("h2","","Set your spending limits"),
     el("p","ppw-business-muted",
-     "Protect working capital and decide how much to commit to talent. Limits guide your decisions; they do not move cash or cancel a booking."));
+     "Choose a budget, then adjust any figure. Your limits guide decisions, not block bookings."));
+   const adviser=el("section","ppw-business-budget-adviser");
+   adviser.append(el("strong","","Talent Manager · Budget advice"),
+    el("p","",advice.summary));
+   const presets=el("div","ppw-business-budget-presets");
+   presets.setAttribute("role","group");
+   presets.setAttribute("aria-label","Talent Manager budget options");
+   const presetButtons=new Map<BudgetRisk,HTMLButtonElement>();
+   for(const recommendation of advice.scenarios){
+    const choice=button(recommendation.label,()=>{
+     selectedBudget=recommendation.id;
+     spendingDraft={...recommendation.plan};spendingNotice="";
+     for(const [key,input] of inputByKey)input.value=String(spendingDraft[key]);
+     for(const [id,node] of presetButtons)
+      node.setAttribute("aria-pressed",String(id===selectedBudget));
+     refreshPreview();
+    });
+    choice.className+=" ppw-business-budget-preset";
+    choice.dataset.risk=recommendation.id;
+    choice.setAttribute("aria-pressed",String(selectedBudget===recommendation.id));
+    choice.append(el("small","",recommendation.description));
+    choice.disabled=spendingBusy;
+    presetButtons.set(recommendation.id,choice);presets.append(choice);
+   }
+   adviser.append(presets);
+   budget.append(adviser);
    // Keep one authoritative money snapshot above. Budgets are optional player limits,
    // not extra accounts or funds reserved by the server.
    const fields=el("div","ppw-business-budget-fields");
+   const inputByKey=new Map<keyof PromotionSpendingPlan,HTMLInputElement>();
    const preview=el("div","ppw-business-budget-preview");
    const save=button("Save spending plan",()=>void saveSpendingPlan());
    const refreshPreview=()=>{
@@ -281,15 +303,17 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     input.inputMode="numeric";input.value=String(plan[key]);
     input.setAttribute("aria-label",label);
     input.oninput=()=>{spendingDraft={...(spendingDraft??plan),[key]:Number(input.value)};
-     spendingNotice="";refreshPreview();};
-    input.disabled=spendingBusy;field.append(input);fields.append(field);
+     selectedBudget=null;spendingNotice="";
+     for(const node of presetButtons.values())node.setAttribute("aria-pressed","false");
+     refreshPreview();};
+    input.disabled=spendingBusy;inputByKey.set(key,input);
+    field.append(input);fields.append(field);
    }
    budget.append(fields,preview);
    // Recruiting shows the same package-cost and affordability model in context.
    // A second five-field contract calculator here was duplicating that decision.
    if(port.openRoster)budget.append(button("Explore wrestler signings",()=>port.openRoster?.()));
-   if(!view.spendingPlan)budget.append(el("small","ppw-business-muted",
-    "Suggestions are based on current wages, recent shows and eight weeks of fixed commitments. Review them before saving."));
+
    if(spendingNotice)budget.append(el("p","ppw-business-budget-saved",spendingNotice));
    if(port.setSpendingPlan)budget.append(save);
    refreshPreview();
@@ -300,14 +324,15 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    const risk=view.financialDistress,margin=view.recurringMargin;
    overview.dataset.health=risk==="DISTRESSED"||risk==="CRISIS"?"warning":
     risk==="WATCH"?"watch":"normal";
-   overview.append(el("summary","","Financial outlook"));
+   overview.append(el("summary","","Talent Manager · Financial outlook"));
    const headline=margin===null?
     "Recurring operating margin is not configured yet.":
     margin>=0?
      "Recurring income covers regular commitments by "+money(margin)+" per week.":
      "Regular commitments exceed recurring income by "+money(-margin)+" per week.";
    if(risk==="DISTRESSED"||risk==="CRISIS"||risk==="WATCH")overview.open=true;
-   overview.append(el("strong","ppw-business-pulse-headline",headline));
+   overview.append(el("span","ppw-business-kicker","TALENT MANAGER / FINANCIAL REVIEW"),
+    el("strong","ppw-business-pulse-headline",headline));
    const context=risk==="CRISIS"||risk==="DISTRESSED"?
     "The company is under sustained financial pressure. Review spending and show returns before committing to new costs.":
     risk==="WATCH"?
