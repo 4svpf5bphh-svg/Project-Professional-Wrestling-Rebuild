@@ -17,6 +17,7 @@ import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {createTalentFilterFrame} from "./talent-filter-controls.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {tournamentBoutLabel} from "../domain/tournament-bracket.js";
 import {matchCastingReadiness,angleCastingReadiness,angleCastStageReadiness,reservedPickerPeople} from "./card-booking-readiness.js";
@@ -2702,7 +2703,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const submit=document.createElement("button");submit.type="submit";
    submit.textContent="Search";form.append(submit);
    form.onsubmit=e=>{e.preventDefault();void findTalent(search.value.trim());};
-   sheet.append(form);
    const tools=el("div","ppw-picker-filters");
    const sort=selector(current.sort,[
     ["POPULARITY","Popularity"],["MOMENTUM","Momentum"],["IN_RING","In-ring"],
@@ -2725,9 +2725,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]],
     value=>setDivision(value as "ALL"|"MEN"|"WOMEN"));
    division.setAttribute("aria-label","Filter loaded wrestlers by division");
-   tools.append(sort,division);sheet.append(tools);
+   tools.append(sort,division);
+   const chips=el("div","ppw-picker-chips");
    if((matchPicker&&!current.role)||anglePicker){
-    const chips=el("div","ppw-picker-chips");
     const flags=current.chipsBySide?.get(current.side)??new Set<string>();
     for(const [key,label,conflict] of [
      ["AVAILABLE","Available",""],
@@ -2750,8 +2750,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      chip.setAttribute("aria-pressed",String(key==="MEN"||key==="WOMEN"?
       currentDivision===key:flags.has(key)));chips.append(chip);
     }
-    sheet.append(chips);
    }
+   sheet.append(createTalentFilterFrame(form,tools,chips));
 
    const matchForPicker=matches.get(current.slotId);
    const chosen=current.role==="RUN_IN"?null:
