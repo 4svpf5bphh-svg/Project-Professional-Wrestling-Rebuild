@@ -17,6 +17,7 @@ export interface PersonaDeskPort{
  request(input:{personId:string;gimmickId:string;
   requestId:string;expectedRevision:number}):Promise<unknown>;
  openWrestler?(personId:string):void;
+ openPlanner?():void;
 }
 const el=(tag:string,cls="",label="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=label;return n;
@@ -570,6 +571,8 @@ export function mountPersonaDesk(root:HTMLElement,
        "Rivalry programme started":
        item.followThroughKind==="MEDIATION_MATCH_COMPLETED"?
        "Partnership back on track":
+       item.followThroughKind==="MENTORSHIP_MATCH_COMPLETED"?
+       "Mentoring match completed":
        item.followThroughKind==="CONTRACT_NEGOTIATION_STARTED"?
        "Actual contract negotiation opened":"Promise delivered")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
@@ -591,6 +594,13 @@ export function mountPersonaDesk(root:HTMLElement,
      item.followThroughWeekIndex===null)
      chat.append(el("small","ppw-backstage-promise",
       "Words will only go so far. Book a strong tag-team performance together to help repair the damage."));
+    if(item.kind==="MENTORSHIP_PITCH"&&
+     item.decision==="EXPLORE_MENTORSHIP"&&
+     item.followThroughWeekIndex===null&&port.openPlanner){
+     // Navigate to real planner; booking and results remain player-authored.
+     chat.append(button("Plan their next match →",
+      ()=>port.openPlanner?.(),loading));
+    }
     if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
      item.followThroughWeekIndex===null&&onOpenProgrammes){
      chat.append(button("Build this rivalry →",

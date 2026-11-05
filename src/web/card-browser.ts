@@ -659,6 +659,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   request:({personId,gimmickId,requestId,expectedRevision})=>
    call("requestPersona",{personId,gimmickId,requestId,expectedRevision}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
+  openPlanner:()=>{window.location.hash=hostSectionHash("planner");},
  };
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
