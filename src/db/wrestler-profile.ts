@@ -122,8 +122,8 @@ const personSql=String.raw`
     (r.status='ANSWERED' AND r.follow_through_week_index IS NULL
      AND r.responded_week_index BETWEEN greatest(0,$4-8) AND $4
      AND ((r.kind='RIVALRY_PITCH' AND r.decision='EXPLORE_RIVALRY')
-      OR (r.kind='TAG_TEAM_PITCH' AND r.decision='EXPLORE_TEAM')",
-     "OR (r.kind='MENTORSHIP_PITCH' AND r.decision='EXPLORE_MENTORSHIP'))
+      OR (r.kind='TAG_TEAM_PITCH' AND r.decision='EXPLORE_TEAM')
+      OR (r.kind='MENTORSHIP_PITCH' AND r.decision='EXPLORE_MENTORSHIP'))
      AND partner.person_id IS NOT NULL))
   ORDER BY CASE WHEN r.status IN ('PENDING','PROMISED') THEN 0 ELSE 1 END,
    r.created_week_index DESC,r.request_id DESC LIMIT 1
