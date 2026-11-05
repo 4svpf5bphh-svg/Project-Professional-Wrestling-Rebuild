@@ -369,8 +369,13 @@
  .ppw-directory-chips .ppw-directory-quick-chip{flex:none;padding:8px 11px;font-size:12px}
 }
 
-/* Enforce the art well in the roster directory at 320px. Some host-wide
-   compact-card rules load after the shared wrestler stylesheet on iOS. */
+/* Enforce the portrait proportions in the actual roster directory.
+   Host-level compact rules can otherwise override the shared card stylesheet. */
+.ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster{
+ grid-template-columns:82px minmax(0,1fr) 13px!important;
+ gap:12px;min-height:124px}
+.ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-media{
+ width:82px!important;height:102px!important;min-width:82px}
 @media(max-width:360px){
  .ppw-directory .ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster{
   grid-template-columns:70px minmax(0,1fr) 11px!important;
