@@ -42,3 +42,7 @@
  display:inline-flex;align-self:center;width:auto;max-width:100%;
  grid-column:auto;grid-row:auto}
 @media(max-width:360px){.ppw-sheet .ppw-wrestler-card{min-height:108px}}
+/* The two selectors look like the booking picker: their accessible labels
+   remain on the select, but the row never grows an extra caption line. */
+.ppw-talent-sort-row>label{gap:0;font-size:0;line-height:0}
+.ppw-talent-sort-row>label select{font-size:14px;line-height:1.3}
