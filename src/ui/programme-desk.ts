@@ -407,11 +407,11 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     history.append(entries);historyLane.append(history);
    }
    const advice=element("section","ppw-programme-story-actions");
+   advice.append(element("h3","","Next chapter"));
    if(p.plannedActivity?.length)
     advice.append(element("p","ppw-programme-booked-short",
      "Already booked · "+p.plannedActivity[0]!.showName));
    else{
-    advice.append(element("h3","","Next chapter"));
     for(const idea of recommendProgrammeAngles(p).slice(0,3)){
      const pick=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
      advice.append(pick);
@@ -435,8 +435,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      recentWinnerSide:latestMatch.winnerSide
     });
     const next=element("section","ppw-programme-decisions");
-    next.append(element("h3","","After the Bell"),
-     element("p","","Choose what comes next. Your card remains yours to book."));
+    next.append(element("h4","","Result fallout"),
+     element("p","","Choose how the last result shapes the rivalry."));
     const options=element("div","ppw-programme-decision-actions");
     for(const idea of suggested.options){
      const selected=p.latestFollowUp?.choice===idea.choice&&
@@ -452,7 +452,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      else choice.append(element("small","",idea.plan));
      options.append(choice);
     }
-    next.append(options);planLane.append(next);
+    next.append(options);advice.append(next);
    }
    if(p.latestFollowUp&&continuity.directionHeadline){
     const label=p.latestFollowUp.choice==="PURSUE_REMATCH"?
