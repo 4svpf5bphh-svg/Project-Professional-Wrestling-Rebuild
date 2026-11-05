@@ -72,6 +72,9 @@ for(const width of [320,390])test(`${width}px roster quick chips follow booking-
  const bounds=await photo.boundingBox();
  expect(bounds).not.toBeNull();
  expect(bounds!.width).toBeGreaterThanOrEqual(width===320?70:80);
+ const nameBounds=await cards.first().locator(".ppw-wrestler-name").boundingBox();
+ expect(nameBounds).not.toBeNull();
+ expect(bounds!.x+bounds!.width+4).toBeLessThanOrEqual(nameBounds!.x);
  await expect(cards.first().locator(".ppw-wrestler-badges .ppw-wrestler-status"))
   .toBeVisible();
  const chipsBox=await chips.boundingBox();
