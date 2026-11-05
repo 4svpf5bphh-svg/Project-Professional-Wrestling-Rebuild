@@ -142,6 +142,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   sourceId?:string;chipsBySide?:Map<number,Set<string>>;
   divisionBySide?:Map<number,"ALL"|"MEN"|"WOMEN">}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
+ const draftConsentFeedback=new Map<string,{name:string;text:string;failed:boolean}>();
  let talentRequestSequence=0;
  let pendingRequestId:string|null=null;
  let needsRevisionRefresh=false;
@@ -665,16 +666,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   finally{saving=false;render();}
  }
  async function requestDraftAgreement(m:EditorMatch,personId:string){
+  const feedbackKey=m.slotId+":"+personId;
+  const name=roster.get(personId)?.name??personId;
+  const record=(text:string,failed:boolean)=>{
+   draftConsentFeedback.set(feedbackKey,{name,text,failed});
+   error="";success="";render();
+  };
   if(!view||!dirty||!mutable()||view.ready||!port.requestCreativeConsent){
    error="The draft cannot be discussed now. Review the current card and try again.";
-   render();return;
+   record(error,true);return;
   }
   if(!matchCastingReadiness(m).complete){
-   error="Complete the match before requesting approval.";render();return;
+   error="Complete the match before requesting approval.";record(error,true);return;
   }
   let proposedMatch:ReturnType<typeof buildBookedMatch>;
   try{proposedMatch=buildBookedMatch(m);}
-  catch(e){error=errorText(e);render();return;}
+  catch(e){error=errorText(e);record(error,true);return;}
+  draftConsentFeedback.delete(feedbackKey);
   saving=true;error="";success="";render();
   try{
    const response=await port.requestCreativeConsent({
@@ -695,7 +703,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      "Wrestler agreed to this draft. Save the exact match to keep approval.";
    }
   }catch(e){error=errorText(e);}
-  finally{saving=false;render();}
+  finally{
+   saving=false;
+   const response=error||success||"Consent was not confirmed. Review the match.";
+   record(response,Boolean(error));
+  }
  }
  async function confirm(){
   if(!mutable()||!view||dirty||view.ready||!port.confirmReady)return;
@@ -1606,7 +1618,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     // is assumed: the server checks the contract, proposed slot and signature.
     if(dirty&&view.canEdit&&!view.ready&&port.requestCreativeConsent&&
       matchCastingReadiness(m).complete){
-     const actions=el("section","ppw-card-match-consents");
+     const actions=el("section","ppw-card-match-consents ppw-card-draft-consents");
+     actions.append(el("h3","","Creative control decisions"));
+     const buttons=el("div","ppw-card-consent-buttons");
+     const replies=el("div","ppw-card-consent-replies");
+     replies.setAttribute("aria-live","polite");
      const offered=new Set<string>();
      for(const [sideNo,side] of m.teams.entries())for(const wrestler of side){
       if(!wrestler||offered.has(wrestler.personId))continue;
@@ -1616,10 +1632,22 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        ["CLEAN_PIN","SUBMISSION"].includes(m.plannedFinish);
       if(!requires)continue;
       offered.add(wrestler.personId);
-      actions.append(button("Ask "+(person?.name??wrestler.personId)+" about this draft",
+      const name=person?.name??wrestler.personId;
+      buttons.append(button("Ask "+name+" about this draft",
        ()=>void requestDraftAgreement(m,wrestler.personId),saving,"ppw-card-creative-ask"));
+      const feedback=draftConsentFeedback.get(m.slotId+":"+wrestler.personId);
+      if(feedback){
+       const item=el("p","ppw-card-consent-response",feedback.name+" · "+feedback.text);
+       item.dataset.level=feedback.failed?"error":"confirmed";
+       item.setAttribute("role",feedback.failed?"alert":"status");
+       replies.append(item);
+      }
      }
-     if(offered.size)body.append(actions);
+     if(offered.size){
+      actions.append(buttons);
+      if(replies.childElementCount)actions.append(replies);
+      body.append(actions);
+     }
     }
      const controls=el("div","ppw-control-grid");
     const winnerPicker=el("fieldset","ppw-winner-picker");
