@@ -706,7 +706,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   finally{
    saving=false;
    const response=error||success||"Consent was not confirmed. Review the match.";
-   record(response,Boolean(error));
+   record(response,Boolean(error)||response.toLowerCase().includes("declined"));
   }
  }
  async function confirm(){
