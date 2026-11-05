@@ -208,3 +208,69 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 .ppw-collection .ppw-album{margin:0}
 @media(max-width:390px){.ppw-collection{padding-inline:0}
  .ppw-collection .ppw-album{padding:.85rem .6rem}}
+
+/* Phase 30 rarity direction — animated stage lighting, not fabricated card art.
+   All four tiers use the same reviewed collectible and remain skippable.
+   Effects finish rather than looping and draining iPhone battery. */
+.ppw-legend-reveal:not(.ppw-legend-card-viewer) .ppw-legend-reveal-scene{
+ position:relative;z-index:2;isolation:isolate}
+.ppw-legend-stage-effects{position:fixed;inset:0;z-index:0;pointer-events:none;
+ overflow:hidden;isolation:isolate}
+.ppw-legend-stage-effects::before,.ppw-legend-stage-effects::after{
+ content:"";position:absolute;inset:-30%;pointer-events:none;opacity:0;
+ transform-origin:50% 50%;will-change:transform,opacity}
+.ppw-legend-reveal[data-tier="CULT"] .ppw-legend-stage-effects::before{
+ background:linear-gradient(110deg,transparent 40%,#65daee50 48%,
+  #c4faff9e 51%,transparent 58%);
+ animation:ppw-cult-stage .65s ease-out .15s 1 both}
+.ppw-legend-reveal[data-tier="LEGEND"] .ppw-legend-stage-effects::before{
+ background:radial-gradient(ellipse at 40% 40%,#f8ca6370,transparent 36%),
+  radial-gradient(ellipse at 65% 60%,#e99d4580,transparent 44%);
+ animation:ppw-legend-gold 1.55s ease-out .1s 1 both}
+.ppw-legend-reveal[data-tier="LEGEND"] .ppw-legend-stage-effects::after{
+ background:repeating-conic-gradient(from 15deg at 50% 50%,
+ transparent 0deg 16deg,#f4c56c16 17deg 20deg,transparent 21deg 46deg);
+ animation:ppw-legend-rays 1.7s ease-out .2s 1 both}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-stage-effects::before{
+ background:conic-gradient(from 200deg at 25% -15%,
+ transparent 0deg,#62d4ff65 24deg,transparent 48deg 160deg,
+ #53baff45 182deg,transparent 207deg 360deg);
+ animation:ppw-icon-spotlight 2.2s ease-out .05s 1 both}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-stage-effects::after{
+ background:radial-gradient(ellipse at 50% 40%,#3ce9ff73,transparent 28%);
+ animation:ppw-icon-flare 1.9s ease-out .5s 1 both}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-stage-effects::before{
+ background:radial-gradient(circle at 50% 45%,#c3a2fb95 0%,#7c4ea356 24%,
+  transparent 56%);
+ animation:ppw-immortal-awaken 2.4s ease-out .45s 1 both}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-stage-effects::after{
+ background:linear-gradient(100deg,transparent 40%,#e9c8ff66 49%,
+  #ffffff7a 50%,transparent 60%);
+ animation:ppw-immortal-beam 2.1s ease-out 1.2s 1 both}
+.ppw-legend-reveal[data-special="DEADMAN"] .ppw-legend-stage-effects{
+ opacity:.4}
+@keyframes ppw-cult-stage{
+ 0%{transform:translateX(-72%);opacity:0}
+ 30%{opacity:.85}100%{transform:translateX(72%);opacity:0}}
+@keyframes ppw-legend-gold{
+ 0%{transform:scale(.65);opacity:0}42%{opacity:.7}
+ 100%{transform:scale(1.25);opacity:0}}
+@keyframes ppw-legend-rays{
+ 0%{transform:rotate(-18deg) scale(.7);opacity:0}
+ 40%{opacity:.85}100%{transform:rotate(20deg) scale(1.3);opacity:0}}
+@keyframes ppw-icon-spotlight{
+ 0%{transform:rotate(-35deg);opacity:0}35%{opacity:.9}
+ 75%{opacity:.6}100%{transform:rotate(27deg);opacity:0}}
+@keyframes ppw-icon-flare{
+ 0%{transform:scale(.4);opacity:0}48%{opacity:1}
+ 100%{transform:scale(1.9);opacity:0}}
+@keyframes ppw-immortal-awaken{
+ 0%{transform:scale(.08);opacity:0}38%{opacity:.95}
+ 100%{transform:scale(1.7);opacity:0}}
+@keyframes ppw-immortal-beam{
+ 0%{transform:translateX(-85%);opacity:0}37%{opacity:.95}
+ 100%{transform:translateX(95%);opacity:0}}
+@media(prefers-reduced-motion:reduce){
+ .ppw-legend-stage-effects,.ppw-legend-stage-effects::before,
+ .ppw-legend-stage-effects::after{animation:none!important;display:none!important}
+}
