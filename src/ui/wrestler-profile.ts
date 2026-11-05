@@ -103,7 +103,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    view.onYourRoster?(ownDates===null?"UNLIMITED DATES":
     typeof ownDates==="number"?ownDates+" DATES LEFT":"SIGNED TO YOUR PROMOTION"):
    "SCOUTING REPORT";
-  root.append(createWrestlerCard({
+  const hero=createWrestlerCard({
    personId:view.personId,name:view.name,ringName:view.persona.personaName,
    division:view.division,alignment:view.alignment,championships:view.championships,
    gimmickId:view.persona.gimmickId,primaryStyle:view.persona.primaryStyle,
@@ -113,12 +113,16 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    finisherMove:view.persona.finishingMoves[0]?.name,
    status:identityStatus
   },{context:view.onYourRoster?"ROSTER":"MARKET",
-   label:identityStatus}));
+   label:identityStatus});
   if(portraitCredit(view.name)){
-   const credit=el("a","ppw-profile-photo-credit","Photo attribution and licence ↗") as HTMLAnchorElement;
-   credit.href="/portrait-credits.html";credit.target="_blank";credit.rel="noopener noreferrer";
-   root.append(credit);
+   // Required CC attribution stays accessible without the distracting
+   // full-width credit line on every wrestler dossier.
+   const credit=el("a","ppw-profile-photo-credit-icon","ⓘ") as HTMLAnchorElement;
+   credit.href="/portrait-credits.html";credit.target="_blank";
+   credit.rel="noopener noreferrer";credit.setAttribute("aria-label","Photograph credits and licences");
+   hero.append(credit);
   }
+  root.append(hero);
 
   // Manage the wrestler from the dossier, instead of chasing a long menu.
   // This uses the existing Backstage, Contracts, Planner and team workspaces.
