@@ -149,20 +149,8 @@ background:#15132df5;backdrop-filter:blur(14px)}
 #game .ppw-save .ppw-confirm{background:#ffd15e;color:#1c1b35}
 #game .ppw-save :is(.ppw-save-status,.ppw-alert){grid-column:1/-1}
 #game .ppw-editor .ppw-save{bottom:calc(79px + env(safe-area-inset-bottom))}
-/* No imaginary portraits; text-first universal wrestler identity. */
-#game .ppw-wrestler-card{display:flex;flex-direction:column;gap:7px;
-padding:14px 15px;border:1px solid #8575a6;border-left:5px solid #39dbf5;
-border-radius:5px 16px 5px 5px;background:linear-gradient(118deg,#262441,#161a34)}
-#game .ppw-wrestler-card .ppw-wrestler-portrait{display:none}
-#game .ppw-wrestler-copy{width:100%;gap:5px}
-#game .ppw-wrestler-name{font-size:clamp(18px,4.8vw,24px);
-font-weight:950;color:#fff0d2;font-style:italic;text-transform:uppercase}
-#game .ppw-wrestler-division{color:#39dbf5;font-weight:950}
-#game .ppw-wrestler-finisher{color:#ffd98e}
-#game .ppw-wrestler-stats{width:100%}
-#game .ppw-wrestler-stat{background:#0c1129;border-radius:4px}
-#game .ppw-wrestler-track{height:5px}
-#game .ppw-wrestler-fill{background:linear-gradient(90deg,#39dbf5,#ff3679)}
+/* Wrestler portraits, identity and badges are owned by the universal
+   talent card stylesheet; no host-level geometry or typography overrides. */
 /* Prestige and financial office retain their own information architecture. */
 #game :is(.ppw-business-head,.ppw-industry-head,.ppw-staff-head,
 .ppw-directory-header,.ppw-calendar-head,.ppw-programme-head) h1{
@@ -394,19 +382,7 @@ html[data-ppw-screen=backstage] #game .ppw-messenger .ppw-gimmick-choice :is(sma
  border:1px solid #ffd15e;border-radius:5px;padding:7px}
 #game .ppw-industry-company-standing small{color:#58476b}
 #game .ppw-industry-own{outline:2px solid #ffd15e;outline-offset:1px}
-/* Restore the important alignment signals in every quick-view context. */
-#game .ppw-wrestler-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-#game .ppw-wrestler-alignment{display:inline-block;border-radius:3px;
- font-weight:950;font-size:10px;letter-spacing:.04em;padding:4px 8px}
-#game .ppw-wrestler-card[data-alignment=FACE] .ppw-wrestler-alignment{
- background:#9af1e2;color:#143d46;border:1px solid #e2fff4}
-#game .ppw-wrestler-card[data-alignment=HEEL] .ppw-wrestler-alignment{
- background:#ff3679;color:#fff;border:1px solid #ffa4ca}
-#game .ppw-wrestler-card[data-alignment=TWEENER] .ppw-wrestler-alignment{
- background:#9068f4;color:#fff;border:1px solid #c9afff}
-#game .ppw-wrestler-card[data-alignment=FACE]{border-left-color:#66eccb}
-#game .ppw-wrestler-card[data-alignment=HEEL]{border-left-color:#ff3679}
-#game .ppw-wrestler-card[data-alignment=TWEENER]{border-left-color:#9068f4}
+/* Alignment identity is part of the same universal wrestler card. */
 #game .ppw-directory-card>summary{touch-action:manipulation}
 #game .ppw-directory-advanced{border:1px dashed #8e79bf;border-radius:9px;
  background:#24233d;padding:9px}
