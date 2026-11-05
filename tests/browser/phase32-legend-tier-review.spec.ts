@@ -47,6 +47,19 @@ for(const id of ids){
    await expect(reveal).toHaveAttribute("data-tier",item.tier);
    await expect(reveal).toHaveAttribute("data-motion","full");
    await expect(reveal.locator(".ppw-ceremony-set")).toHaveCount(1);
+   await expect(reveal.locator(".ppw-ceremony-headline")).toHaveText(item.tier);
+   await expect(reveal.locator(".ppw-ceremony-identity")).toHaveText(item.name);
+   await expect(reveal.locator(".ppw-ceremony-strap,.ppw-ceremony-signal,.ppw-ceremony-achievement")).toHaveCount(0);
+   await expect(reveal.locator(".ppw-legend-photo-credit,.ppw-ceremony-credit,a")).toHaveCount(0);
+   const plate=await reveal.locator(".ppw-ceremony-set").evaluate(node=>getComputedStyle(node).backgroundImage);
+   expect(plate).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-stage.svg");
+   if(item.tier==="IMMORTAL")expect(plate).not.toMatch(/undertaker|deadman|violet/);
+   const skipBounds=await reveal.getByRole("button",{name:"Skip reveal"}).boundingBox();
+   const tierBounds=await reveal.locator(".ppw-ceremony-headline").boundingBox();
+   expect(skipBounds).not.toBeNull();expect(tierBounds).not.toBeNull();
+   expect(skipBounds!.width,"Compact Skip").toBeLessThanOrEqual(78);
+   expect(skipBounds!.y+skipBounds!.height,"Skip doesn't overlap tier").toBeLessThan(tierBounds!.y);
+
    const img=reveal.locator("img.ppw-legend-card-art");
    await expect(img).toHaveAttribute("src",art);
    await expect(img).toHaveJSProperty("naturalWidth",960);

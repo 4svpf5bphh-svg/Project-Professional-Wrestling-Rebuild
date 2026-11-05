@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="back" x2="0" y2="1"><stop stop-color="#071a22"/><stop offset=".57" stop-color="#07141e"/><stop offset="1" stop-color="#03080d"/></linearGradient>
+<radialGradient id="light"><stop stop-color="#58f4f3" stop-opacity=".48"/><stop offset=".38" stop-color="#58f4f3" stop-opacity=".14"/><stop offset="1" stop-color="#58f4f3" stop-opacity="0"/></radialGradient>
+<linearGradient id="dim" x2="0" y2="1"><stop stop-color="#000" stop-opacity=".02"/><stop offset=".6" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".64"/></linearGradient>
+<linearGradient id="rim"><stop stop-color="#58f4f3" stop-opacity=".02"/><stop offset=".4" stop-color="#58f4f3" stop-opacity=".5"/><stop offset=".6" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#58f4f3" stop-opacity=".05"/></linearGradient>
+<pattern id="brick" width="90" height="40" patternUnits="userSpaceOnUse"><path d="M0 0H90M0 20H90M45 0V20M0 20V40M90 20V40" fill="none" stroke="#64c0c5" stroke-opacity=".19" stroke-width="1.5"/></pattern>
+<pattern id="mesh" width="27" height="27" patternUnits="userSpaceOnUse"><path d="M13.5 0L27 13.5L13.5 27L0 13.5Z" fill="none" stroke="#5ec9ce" stroke-opacity=".3"/></pattern></defs>
+<rect width="720" height="1280" fill="url(#back)"/><rect width="720" height="1040" fill="url(#brick)"/>
+<path d="M0 0H180L130 1000L0 1140ZM535 0H720V1110L600 1010Z" fill="#02101a" opacity=".9"/>
+<path d="M30 160L260 70L220 570L0 660Z" fill="#2bebf1" opacity=".07"/>
+<path d="M620 140L520 80L500 580L740 670Z" fill="#2bebf1" opacity=".07"/>
+<path d="M15 148L240 80" stroke="#a7fcff" stroke-width="12"/><path d="M15 148L240 80" stroke="#6bfbff" opacity=".18" stroke-width="60"/>
+<path d="M525 158L700 202" stroke="#b4faff" stroke-width="8"/><path d="M525 158L700 202" stroke="#42faff" opacity=".13" stroke-width="48"/>
+<rect x="505" y="230" width="235" height="770" fill="url(#mesh)" transform="skewY(-9)" opacity=".7"/>
+<path d="M25 510L-155 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M39 510L-141 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M53 510L-127 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M67 510L-113 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M81 510L-99 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M95 510L-85 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M109 510L-71 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M123 510L-57 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M137 510L-43 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M151 510L-29 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M165 510L-15 1010" stroke="#285364" opacity=".15" stroke-width="2"/><path d="M179 510L-1 1010" stroke="#285364" opacity=".15" stroke-width="2"/>
+<path d="M0 1005L720 965V1280H0Z" fill="#071019"/>
+<path d="M-40 1060L740 1030" stroke="#5e737b" opacity=".22" stroke-width="6"/><path d="M-40 1086L740 1056" stroke="#5e737b" opacity=".22" stroke-width="6"/><path d="M-40 1112L740 1082" stroke="#5e737b" opacity=".22" stroke-width="6"/><path d="M-40 1138L740 1108" stroke="#5e737b" opacity=".22" stroke-width="6"/>
+<ellipse cx="360" cy="975" rx="310" ry="165" fill="url(#light)" opacity=".42"/>
+<path d="M0 1110L720 1070" stroke="#7feef0" opacity=".25" stroke-width="3"/>
+
+<rect x="0" y="0" width="720" height="1280" fill="url(#dim)"/>
+</svg>

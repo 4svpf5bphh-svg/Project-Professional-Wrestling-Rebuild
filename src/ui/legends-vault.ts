@@ -2,7 +2,6 @@
  * One reviewed image asset is used for reveal and private album at every size.
  */
 import type {readLegendsVault} from "../db/legends-vault.js";
-import {LEGEND_CARD_PHOTO_CREDITS} from "../content/legend-card-photo-credits.js";
 export type LegendsVaultView=Awaited<ReturnType<typeof readLegendsVault>>;
 export type LegendsVaultEntry=LegendsVaultView["entries"][number];
 export interface LegendsVaultActions{
@@ -41,41 +40,8 @@ function cardGraphic(item:LegendsVaultEntry){
  art.alt="Definitive collectible card of "+(item.name??"the legend");
  art.loading="lazy";return art;
 }
-// Source credits for the 47 owner-supplied originals supersede the earlier
-// Commons draft. This list mirrors the pinned archive manifest; missing ZIP,
-// unexpected portraits and changed source digests fail the production build.
-const OWNER_ORIGINAL_LEGENDS=new Set([
- "jerry-lynn","raven","eddie-guerrero","mr-perfect","trish-stratus","road-warriors",
- "sting","bruno-sammartino","sabu","steve-corino","taz","d-lo-brown",
- "dean-malenko","abdullah-butcher","new-jack","super-crazy","ultimo-dragon",
- "tajiri","konnan","ricky-steamboat","william-regal","arn-anderson",
- "dusty-rhodes","lita","bull-nakano","aja-kong","stan-hansen","bret-hart",
- "mick-foley","randy-savage","kurt-angle","booker-t","great-muta","chyna",
- "jushin-liger","vader","manami-toyota","shawn-michaels","steve-austin",
- "hulk-hogan","the-rock","ric-flair","andre-giant","antonio-inoki",
- "mitsuharu-misawa","kenta-kobashi","el-santo"
-]);
-function photoCredit(item:LegendsVaultEntry){
- if(!item.cardAsset)return null;
- if(OWNER_ORIGINAL_LEGENDS.has(item.id))
-  return el("p","ppw-legend-photo-credit",
-   "Photo: owner-supplied original · usage rights unverified");
- const credit=LEGEND_CARD_PHOTO_CREDITS[item.id];
- if(!credit)return null;
- const caption=el("p","ppw-legend-photo-credit","Photo: "+credit.author+" · ");
- // User-provided private draft photos may have no verified public source URL.
- // Do not render an empty, misleading attribution link; never claim a
- // Creative Commons licence for a different photograph.
- if(!credit.sourcePage){
-  caption.append(el("span","",credit.license+" · user-supplied draft"));
-  return caption;
- }
- const source=document.createElement("a");
- source.href=credit.sourcePage;
- source.target="_blank";source.rel="noopener noreferrer";
- source.textContent=credit.license+" · cropped for card";
- caption.append(source);return caption;
-}
+// Source photography and permissions stay recorded in the code manifest.
+// The playable reveal and card viewer do not display attribution URLs.
 /** The reveal is portalled out of animated workspace ancestors.
  * Cleanup is shared with route changes so no modal can outlive its screen. */
 export function clearLegendRevealPortal(){
@@ -109,7 +75,6 @@ function showLegendCardViewer(view:LegendsVaultView,
   panel.append(button("Close card",actions.closeCard),
    el("h2","",ownedCard.name??"Legend"));
   const art=cardGraphic(ownedCard);if(art)panel.append(art);
-  const credit=photoCredit(ownedCard);if(credit)panel.append(credit);
   overlay.append(panel);showLegendPortal(overlay);
  }
 }
@@ -295,7 +260,6 @@ export function drawLegendsVault(
      el("small","","COLLECTIBLE ART PENDING"));
    }
    n.append(visual,el("h3","",item.name??"Identity shrouded"));
-   const credit=photoCredit(item);if(credit)n.append(credit);
    n.append(el("p","ppw-legend-clue",item.unlocked?
     (item.achievement??"An extraordinary World accomplishment"):item.clue));
    if(item.nextHint&&!item.unlocked)n.append(el("p","ppw-legend-next-hint",
@@ -346,28 +310,19 @@ export function drawLegendsVault(
 
  const selected=view.entries.find(x=>x.id===revealing&&x.unlocked);
  if(selected){
-  // Phase 32 review: one real card, four different CSS ceremonies.
-  // Only the World unlock record authorises this overlay; the UI grants nothing.
-  const cues:Record<string,{signal:string;headline:string;strap:string;phases:readonly [number,number,number]}>={
-   CULT:{signal:"UNDERGROUND / ARCHIVE 01",headline:"THE SCENE REMEMBERS",
-    strap:"Recovered from the independent circuit",phases:[300,800,1550]},
-   LEGEND:{signal:"HERITAGE / HALL OF LEGENDS",headline:"A NAME FOR THE AGES",
-    strap:"A place among wrestling's greats",phases:[580,1400,2450]},
-   ICON:{signal:"WORLDWIDE / LIVE EVENT",headline:"THE MAIN EVENT ARRIVES",
-    strap:"The spotlight belongs to an icon",phases:[750,1750,3050]},
-   IMMORTAL:{signal:"THE ETERNAL STAGE / IMMORTAL",headline:"BEYOND THE FINAL BELL",
-    strap:"The impossible becomes history",phases:[950,2200,3650]}
+  // Tier-wide ceremonies, never wrestler-specific gimmick effects.
+  // These visual transitions do not write any World or wallet state.
+  const timelines:Record<string,readonly [number,number,number]>={
+   CULT:[250,850,1450],LEGEND:[450,1100,1900],
+   ICON:[500,1250,2100],IMMORTAL:[650,1500,2550]
   };
-  const cue=cues[selected.tier]??cues.LEGEND!;
+  const cue=timelines[selected.tier]??timelines.LEGEND!;
   const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches??false;
   const veil=el("div","ppw-legend-reveal ppw-legend-ceremony");
   veil.dataset.tier=selected.tier;
-  veil.dataset.special=selected.id==="undertaker"?"DEADMAN":"STANDARD";
   veil.dataset.legendId=selected.id;
   veil.dataset.motion=reduced?"reduced":"full";
   veil.dataset.sequence=reduced?"FINALE":"INTRO";
-  const lighting=el("div","ppw-legend-stage-effects");
-  lighting.setAttribute("aria-hidden","true");
   const set=el("div","ppw-ceremony-set");
   set.setAttribute("aria-hidden","true");
   set.append(el("span","ppw-ceremony-set-left"),
@@ -375,18 +330,12 @@ export function drawLegendsVault(
   veil.setAttribute("role","dialog");veil.setAttribute("aria-modal","true");
   veil.setAttribute("aria-label","Legend unlocked: "+selected.name);
   const scene=el("div","ppw-legend-reveal-scene ppw-ceremony-scene");
-  if(selected.id==="undertaker")scene.classList.add("ppw-undertaker-reveal-scene");
   const skip=button("Skip reveal",()=>actions.closeReveal(selected.id));
   skip.classList.add("ppw-legend-skip");
   const opener=el("header","ppw-ceremony-opener");
-  opener.append(el("span","ppw-ceremony-signal",cue.signal),
-   el("strong","ppw-ceremony-headline",cue.headline),
-   el("span","ppw-ceremony-strap",cue.strap));
+  opener.append(el("strong","ppw-ceremony-headline",selected.tier));
   const identity=el("div","ppw-ceremony-identity");
-  identity.append(el("span","ppw-legend-reveal-tier",title[selected.tier]??selected.tier),
-   el("h2","",selected.name??"A new legend"),
-   el("p","ppw-ceremony-achievement",
-    selected.achievement??"Wrestling history has been made."));
+  identity.append(el("h2","",selected.name??"A new legend"));
   const cardStage=el("div","ppw-ceremony-card-stage");
   const art=cardGraphic(selected);
   if(art){
@@ -394,24 +343,13 @@ export function drawLegendsVault(
    art.loading="eager";art.decoding="async";cardStage.append(art);
   }else cardStage.append(el("p","ppw-legend-reveal-artnote",
    "The definitive collectible image will appear when its artwork has been reviewed."));
-  const credit=photoCredit(selected);
-  if(credit){credit.classList.add("ppw-ceremony-credit");cardStage.append(credit);}
   const finale=el("footer","ppw-ceremony-finale");
   finale.inert=!reduced;
   finale.append(el("p","ppw-legend-market-confirm",
    "NOW AVAILABLE TO EVERY PROMOTION IN THE WORLD TALENT MARKET"));
-  if(selected.year!==null&&selected.week!==null)
-   finale.append(el("span","ppw-ceremony-discovered",
-    "DISCOVERED · YEAR "+selected.year+" / WEEK "+selected.week));
-  if(selected.collectibleReady)
-   finale.append(el("span","ppw-ceremony-collection-cue",
-    selected.collected?"THIS CARD IS IN YOUR COLLECTION":"COLLECT THE CARD SEPARATELY WITH KP"));
   const actionsRow=el("div","ppw-ceremony-actions");
-  if(selected.personIds.length&&actions.openWrestler)
-   actionsRow.append(button("View wrestler dossier",
-    ()=>actions.openWrestler?.(selected.personIds[0]!)));
   if(actions.goToMarket)
-   actionsRow.append(button("Visit the talent market",
+   actionsRow.append(button("Talent Market",
     ()=>actions.goToMarket?.(selected.id)));
   actionsRow.append(button("Continue to the Vault",()=>actions.closeReveal(selected.id)));
   finale.append(actionsRow);
@@ -419,11 +357,11 @@ export function drawLegendsVault(
   announcement.setAttribute("role","status");
   announcement.setAttribute("aria-live","polite");
   announcement.textContent=reduced?"Legend unlocked: "+selected.name:"A wrestling legend has been discovered";
-  scene.append(skip,opener,identity,cardStage,finale,announcement);
-  veil.append(lighting,set,scene);
+  scene.append(skip,opener,cardStage,identity,finale,announcement);
+  veil.append(set,scene);
   showLegendPortal(veil);
   if(!reduced){
-   const [identifyAt,cardAt,finaleAt]=cue.phases;
+   const [identifyAt,cardAt,finaleAt]=cue;
    for(const [phase,delay] of [
     ["IDENTITY",identifyAt],["CARD",cardAt],["FINALE",finaleAt]
    ] as const){
