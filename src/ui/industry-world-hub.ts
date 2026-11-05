@@ -206,7 +206,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   }finally{
    revealBusy=false;
    if(revealingLegend)retainScroll();
-   else if(dossierPersonId&&!legendsError)port.openWrestler?.(dossierPersonId);
+   else if(dossierPersonId&&!legendsError){
+    // Both dialogs portal to <body>. Remove the reveal first so the dossier
+    // is the only active modal and closing it cannot expose a stale reveal.
+    clearLegendRevealPortal();
+    port.openWrestler?.(dossierPersonId);
+   }
    else if(navigateMarket&&!legendsError)port.openMarket?.();
    else retainScroll();
   }

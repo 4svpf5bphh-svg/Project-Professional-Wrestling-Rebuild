@@ -166,6 +166,10 @@ for(const id of ids){
    const dossierReveal=page.getByRole("dialog",{name:"Legend unlocked: "+item.name});
    await dossierReveal.getByRole("button",{name:"View wrestler dossier"}).click();
    await expect(dossierReveal).toHaveCount(0);
+   const wrestlerDossier=page.getByRole("dialog",{name:"Wrestler dossier"});
+   await expect(wrestlerDossier).toBeVisible();
+   await wrestlerDossier.press("Escape");
+   await expect(wrestlerDossier).toHaveCount(0);
    expect(seenWrites).toBe(1);
    expect(kpWrites).toBe(1);
    expect(methods).not.toContain("signLegend");
