@@ -38,9 +38,12 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     "WHERE deal.world_id=r.world_id AND deal.promotion_id=r.promotion_id",
     "AND deal.person_id=r.person_id AND deal.status='SIGNED'",
     "AND deal.start_week_index<=(w.year-1)*52+w.week-1",
-    "AND deal.expires_week_index>=(w.year-1)*52+w.week-1)",
+    "AND deal.expires_week_index>=(w.year-1)*52+w.week-1",
+    "AND ($5::text <> 'EXPLORE_MENTORSHIP'",
+    "OR deal.family='EXCLUSIVE' OR deal.remaining_dates IS NULL",
+    "OR deal.remaining_dates>0))",
     "FOR UPDATE OF r"
-   ].join(" "),[i.worldId,i.conversationId,i.promotionId,i.playerId]);
+   ].join(" "),[i.worldId,i.conversationId,i.promotionId,i.playerId,i.decision]);
    if(found.length!==1)throw new Error("Wrestler request unavailable or already answered");
    const r=found[0]!,effect=backstageDecisionEffect(r.kind,i.decision);
    const weekIndex=(r.year-1)*52+r.week-1;
@@ -60,6 +63,8 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     if(eligible.length!==1)
      throw new Error("Cannot promise a booking without remaining contracted dates and a future week");
    }
+   if(i.decision==="EXPLORE_MENTORSHIP"&&!r.related_person_id)
+    throw new Error("Mentorship requires a named prospect");
    if((i.decision==="EXPLORE_TEAM"||i.decision==="EXPLORE_RIVALRY"||
       i.decision==="EXPLORE_MENTORSHIP")&&
      r.related_person_id){
@@ -68,7 +73,9 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
      "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
      "WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.person_id=$3",
      "AND c.status='SIGNED' AND p.status='ACTIVE'",
-     "AND c.start_week_index<=$4 AND c.expires_week_index>=$4 LIMIT 1"
+     "AND c.start_week_index<=$4 AND c.expires_week_index>=$4",
+     "AND (c.family='EXCLUSIVE' OR c.remaining_dates IS NULL",
+     "OR c.remaining_dates>0) LIMIT 1"
     ].join(" "),[i.worldId,i.promotionId,r.related_person_id,weekIndex]);
     if(!partner.length)throw new Error("Proposed wrestler is no longer contracted");
    }

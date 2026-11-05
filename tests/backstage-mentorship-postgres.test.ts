@@ -36,7 +36,7 @@ test("Verified veteran mentors a prospect through player-approved, certified tag
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",[worldId,playerId,outsiderId]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",[worldId,playerId,promotionId]);
    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,career_stage,morale) VALUES($1,$2,'Young Prospect','MEN','PROSPECT',50),($1,$3,'Veteran Mentor','MEN','VETERAN',50)",[worldId,a,b]);
-   await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,52),($1,$5,$6,$4,'EXCLUSIVE','SIGNED',NULL,52)",
+   await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',3,52),($1,$5,$6,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',3,52)",
     [worldId,"a-deal-"+id,a,promotionId,"b-deal-"+id,b]);
    await tx.query("INSERT INTO ppw_wrestler_relationships(world_id,person_a_id,person_b_id,professional_trust,familiarity) VALUES($1,$2,$3,70,40)",[worldId,a,b]);
   });
@@ -52,6 +52,25 @@ test("Verified veteran mentors a prospect through player-approved, certified tag
   assert.equal(before.conversations[0]!.relatedPersonId,a);
   assert.equal(before.conversations[0]!.verifiedTagShows,2);
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{...scope,playerId:outsiderId}),/denied/);
+  // Both workers must still have bookable dates when this idea is accepted.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET remaining_dates=0 WHERE world_id=$1 AND person_id=$2",[worldId,a]));
+  await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "backstageDecision",{worldId,promotionId,showId:"unused",
+    conversationId:before.conversations[0]!.conversationId,
+    requestId:"exhausted-prospect-"+id,expectedRevision:0,
+    decision:"EXPLORE_MENTORSHIP"}),/no longer contracted/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET remaining_dates=3 WHERE world_id=$1 AND person_id=$2",[worldId,a]));
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET remaining_dates=0 WHERE world_id=$1 AND person_id=$2",[worldId,b]));
+  await assert.rejects(dispatchCardRpc({pool:db.pool,actor:{playerId}},
+   "backstageDecision",{worldId,promotionId,showId:"unused",
+    conversationId:before.conversations[0]!.conversationId,
+    requestId:"exhausted-veteran-"+id,expectedRevision:0,
+    decision:"EXPLORE_MENTORSHIP"}),/unavailable or already answered/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET remaining_dates=3 WHERE world_id=$1 AND person_id=$2",[worldId,b]));
   const reply=await dispatchCardRpc({pool:db.pool,actor:{playerId}},
    "backstageDecision",{worldId,promotionId,showId:"unused",
     conversationId:before.conversations[0]!.conversationId,
