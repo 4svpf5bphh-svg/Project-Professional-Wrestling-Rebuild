@@ -664,7 +664,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   finally{saving=false;render();}
  }
  async function requestDraftAgreement(m:EditorMatch,personId:string){
-  if(!view||!dirty||!mutable()||view.ready||!port.requestCreativeConsent)return;
+  if(!view||!dirty||!mutable()||view.ready||!port.requestCreativeConsent){
+   error="The draft cannot be discussed now. Review the current card and try again.";
+   render();return;
+  }
   if(!matchCastingReadiness(m).complete){
    error="Complete the match before requesting approval.";render();return;
   }
@@ -757,8 +760,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    spotlight.append(marquee,location);top.append(spotlight);
   }
   root.append(top);
-  if(error)root.append(el("p","ppw-alert ppw-error",error));
-  if(success)root.append(el("p","ppw-alert ppw-success",success));
+  if(error&&expanded===null)root.append(el("p","ppw-alert ppw-error",error));
+  if(success&&expanded===null)root.append(el("p","ppw-alert ppw-success",success));
   if(!view){
    if(!loading)root.append(button("Retry",()=>{void load();}));
    return;
@@ -1906,6 +1909,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       dot.dataset.done=String(n<=stepIndex);progress.append(dot);
      }
      guide.append(progress);
+     if(error||success){
+      const response=el("p","ppw-guide-consent-response"+(error?" ppw-error":""),
+       error||success);
+      response.setAttribute("role",error?"alert":"status");
+      guide.append(response);
+     }
      guide.append(el("h3","",stage==="SETUP"?
       m?"What kind of match?":"What kind of scene?":
       stage==="CAST"?"Who is involved?":
