@@ -352,7 +352,7 @@
 .ppw-directory-shortcuts>.ppw-directory-button{flex:0 0 auto;min-width:auto;
  min-height:43px;border-radius:12px;padding:9px 12px;font-size:12px;
  border:2px solid #6284a4;color:#eef6ff;background:#213650;white-space:nowrap}
-.ppw-directory-chips{display:contents}
+.ppw-directory-chips{display:flex;flex:0 0 auto;gap:7px;flex-wrap:nowrap}
 .ppw-directory-chips .ppw-directory-quick-chip{flex:none;min-height:43px;
  border:2px solid #6284a4;border-radius:12px;background:#213650;
  padding:9px 12px;white-space:nowrap}
