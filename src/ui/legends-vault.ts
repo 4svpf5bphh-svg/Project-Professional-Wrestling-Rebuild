@@ -362,8 +362,15 @@ export function drawLegendsVault(
   announcement.setAttribute("role","status");
   announcement.setAttribute("aria-live","polite");
   announcement.textContent=reduced?"Legend unlocked: "+selected.name:"A wrestling legend has been discovered";
-  scene.append(skip,opener,cardStage,identity,finale,announcement);
-  veil.append(set,scene);
+  // The background and the actual 2:3 card share a coordinate plane.
+  // This makes the collectible sit inside the painted light frame at every
+  // supported phone size rather than drifting away as the viewport changes.
+  const stageWrap=el("div","ppw-ceremony-stage-wrap");
+  const stageClip=el("div","ppw-ceremony-stage-clip");
+  stageWrap.append(set,cardStage);
+  stageClip.append(stageWrap);
+  scene.append(skip,opener,identity,finale,announcement);
+  veil.append(stageClip,scene);
   showLegendPortal(veil);
   if(!reduced){
    const [identifyAt,cardAt,finaleAt]=cue;

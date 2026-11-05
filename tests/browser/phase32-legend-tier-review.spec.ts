@@ -52,7 +52,27 @@ for(const id of ids){
    await expect(reveal.locator(".ppw-ceremony-strap,.ppw-ceremony-signal,.ppw-ceremony-achievement")).toHaveCount(0);
    await expect(reveal.locator(".ppw-legend-photo-credit,.ppw-ceremony-credit,a")).toHaveCount(0);
    const plate=await reveal.locator(".ppw-ceremony-set").evaluate(node=>getComputedStyle(node).backgroundImage);
-   expect(plate).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-stage.svg");
+   expect(plate).toContain("/assets/legends/reveals/"+item.tier.toLowerCase()+"-plate.webp");
+   const plateResponse=await page.request.get("/assets/legends/reveals/"+item.tier.toLowerCase()+"-plate.webp");
+   expect(plateResponse.status(),"The actual WebP scene plate is bundled").toBe(200);
+   expect(plateResponse.headers()["content-type"]).toMatch(/image\/webp/);
+   // A single common coordinate system ties the illustrated glowing opening
+   // to the real 2:3 card. The stage can be cropped horizontally, not stretched.
+   await expect(reveal).toHaveAttribute("data-sequence","FINALE",{timeout:8000});
+   await expect.poll(()=>reveal.locator(".ppw-ceremony-card-stage")
+    .evaluate(node=>getComputedStyle(node).opacity)).toBe("1");
+   const geometry=await reveal.evaluate(node=>{
+    const stage=node.querySelector(".ppw-ceremony-stage-wrap")!.getBoundingClientRect();
+    const card=node.querySelector(".ppw-ceremony-card-stage")!.getBoundingClientRect();
+    return {centreOffset:Math.abs((card.left+card.width/2)-(stage.left+stage.width/2)),
+     topFraction:(card.top-stage.top)/stage.height,
+     bottomFraction:(card.bottom-stage.top)/stage.height};
+   });
+   expect(geometry.centreOffset).toBeLessThan(2);
+   expect(geometry.topFraction).toBeGreaterThan(.235);
+   expect(geometry.topFraction).toBeLessThan(.26);
+   expect(geometry.bottomFraction).toBeGreaterThan(.77);
+   expect(geometry.bottomFraction).toBeLessThan(.85);
    if(item.tier==="IMMORTAL")expect(plate).not.toMatch(/undertaker|deadman|violet/);
    const skipBounds=await reveal.getByRole("button",{name:"Skip reveal"}).boundingBox();
    const tierBounds=await reveal.locator(".ppw-ceremony-headline").boundingBox();
