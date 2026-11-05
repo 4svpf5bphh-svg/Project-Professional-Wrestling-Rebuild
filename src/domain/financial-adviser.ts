@@ -36,8 +36,8 @@ export function recommendPromotionBudgets(basis:BudgetBasis):{
  const recentGate=safe(basis.recentShowGateRevenue);
  const eventSurplus=Math.max(0,recentGate-recentCost);
  const showBase=Math.max(1000,lastAppearance,surplus*0.35);
- const reserve=(weeks:number,ratio:number)=>round(Math.min(cash,
-  Math.max(weeklyCosts*weeks,cash*ratio,safe(basis.debt))));
+ const reserve=(weeks:number,ratio:number)=>Math.min(Math.floor(cash),
+  round(Math.max(weeklyCosts*weeks,cash*ratio,safe(basis.debt))));
  const scenarios:BudgetScenario[]=[
   {id:"TIGHT",label:"Tight",description:"Protect cash; limit new guarantees and show fees.",
    plan:{weeklyWageLimit:round(wage+surplus*0.2),
@@ -56,13 +56,13 @@ export function recommendPromotionBudgets(basis:BudgetBasis):{
  ];
  const incomeState=basis.weeklyMediaIncome===null||basis.weeklySponsorIncome===null?
   " Some commercial income is unconfirmed.":"";
- const summary="Network and sponsor income "+round(income).toLocaleString("en-GB")+
-  "/week; wages, staff and overhead "+round(weeklyCosts).toLocaleString("en-GB")+
-  "/week. Operating room "+(room<0?"-":"")+round(Math.abs(room)).toLocaleString("en-GB")+
+ const summary="Network and sponsor income "+Math.round(income).toLocaleString("en-GB")+
+  "/week; wages, staff and overhead "+Math.round(weeklyCosts).toLocaleString("en-GB")+
+  "/week. Operating room "+(room<0?"-":"")+Math.round(Math.abs(room)).toLocaleString("en-GB")+
   "/week before event costs. "+
-  (recentCost>0?"Last show cost "+round(recentCost).toLocaleString("en-GB")+
+  (recentCost>0?"Last show cost "+Math.round(recentCost).toLocaleString("en-GB")+
    " (including talent, production and venue); gate "+
-   round(recentGate).toLocaleString("en-GB")+". ":"")+
+   Math.round(recentGate).toLocaleString("en-GB")+". ":"")+
   "Recent event income is not guaranteed."+incomeState;
  return {scenarios,summary,weeklyIncome:income,weeklyCosts,operatingRoom:room};
 }
