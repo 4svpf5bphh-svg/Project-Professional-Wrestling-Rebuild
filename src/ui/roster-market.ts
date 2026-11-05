@@ -636,10 +636,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     detail.append(el("p","ppw-directory-interest",
      "Recruitment interest · "+p.interest.replaceAll("_"," ").toLowerCase()+
      ". Indicative only: agreed terms and acceptance are still uncertain."));
-    detail.append(el("p","ppw-directory-muted",
-     "Indicative weekly market value: "+
-      (p.estimatedWeeklyValue===null?"Unavailable":money(p.estimatedWeeklyValue))+
-      ". This is not an asking price or predicted acceptance."));
+
     detail.append(el("p","ppw-directory-muted",p.availability==="EXCLUSIVE_ELSEWHERE"?
      "Exclusive contract held elsewhere. Recruitment is currently blocked.":
      p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?
