@@ -169,3 +169,31 @@
  .ppw-wrestler-card:is(.ppw-wrestler-roster,.ppw-wrestler-market) .ppw-wrestler-badges{
   gap:3px}
 }
+
+/* Roster-only polish: a larger image well and one compact badge rail below fans. */
+.ppw-wrestler-card.ppw-wrestler-roster{
+ grid-template-columns:82px minmax(0,1fr) 13px;gap:12px;min-height:124px;
+ padding:10px 9px;align-items:center}
+.ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-media{
+ width:82px;height:102px;border-radius:12px}
+.ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-copy{
+ gap:6px;justify-content:center}
+.ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-badges{
+ display:flex;align-items:center;gap:5px;order:2}
+.ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-status{
+ display:inline-flex;align-self:center;width:auto;min-height:19px;
+ grid-column:auto;grid-row:auto;padding:3px 6px;line-height:1.2;
+ font-size:9px;letter-spacing:.01em}
+.ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-name{
+ font-size:clamp(16px,4.7vw,19px);line-height:1.15}
+.ppw-wrestler-fans{display:inline-flex;align-items:center;gap:5px}
+.ppw-wrestler-fans-icon{display:block;width:15px;height:15px;
+ color:#90e4ff;flex:none}
+@media(max-width:360px){
+ .ppw-wrestler-card.ppw-wrestler-roster{grid-template-columns:70px minmax(0,1fr) 11px;
+  min-height:112px;gap:8px;padding:8px}
+ .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-media{
+  width:70px;height:90px}
+ .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-badges{gap:4px}
+ .ppw-wrestler-card.ppw-wrestler-roster .ppw-wrestler-status{font-size:8px}
+}
