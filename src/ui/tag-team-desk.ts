@@ -22,6 +22,7 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
  let view:TagTeamView|null=null,working=false,error="",success="";
  let name="",one="",two="",rosterSearch="",teamSearch="";
  let trioName="",trioMembers=["","",""],trioRequest:string|null=null;
+ let trioSearch="",trioDivision:"ALL"|"MEN"|"WOMEN"="ALL";
  let partnerDivision:"ALL"|"MEN"|"WOMEN"="ALL";
  let renaming="",renameValue="",createRequest:string|null=null,renameRequest:string|null=null;
  const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
@@ -261,27 +262,77 @@ export function mountTagTeamDesk(root:HTMLElement,port:TagTeamPort,onBack?:()=>v
    input.disabled=!editable();
    input.oninput=()=>{trioName=input.value;trioRequest=null;};
    trioSection.append(input);
+   // The team and booking flows already use genuine talent portrait cards.
+   // Select trio members the same way, not through three cramped iPhone selects.
+   const selected=el("div","ppw-trio-selected");
+   selected.setAttribute("role","group");
+   selected.setAttribute("aria-label","Chosen trio members");
    for(let index=0;index<3;index++){
-    const select=document.createElement("select");
-    select.setAttribute("aria-label","Trio partner "+(index+1));
-    select.disabled=!editable();
-    const other=trioMembers.find(id=>!!id);
-    const selectedDivision=view.roster.find(p=>p.personId===other)?.division;
-    for(const item of [{personId:"",name:"Partner "+(index+1),division:""},
-      ...view.roster.filter(p=>p.personId===trioMembers[index]||
-       (!trioMembers.includes(p.personId)&&
-        (!selectedDivision||p.division===selectedDivision)))]){
-     const option=document.createElement("option");
-     option.value=item.personId;option.textContent=item.name;
-     option.selected=item.personId===trioMembers[index];
-     select.append(option);
-    }
-    select.onchange=()=>{trioMembers[index]=select.value;trioRequest=null;render();};
-    trioSection.append(select);
+    const personId=trioMembers[index];
+    const name=personId?pickName(personId):"Member "+(index+1);
+    const choice=btn((index+1)+". "+name+(personId?" ×":""),
+     ()=>{trioMembers[index]="";trioRequest=null;render();},!editable()||!personId);
+    choice.setAttribute("aria-label",personId?"Remove "+name+" from trio":"Empty trio member "+(index+1));
+    selected.append(choice);
    }
-   trioSection.append(btn("✓ Form this trio",()=>void formTrio(),!editable()||
+   trioSection.append(selected);
+   const formButton=btn("✓ Form this trio",()=>void formTrio(),!editable()||
     trioName.trim().length<2||trioMembers.some(x=>!x)||
-    new Set(trioMembers).size!==3));
+    new Set(trioMembers).size!==3);
+   formButton.classList.add("ppw-pair-submit");
+   trioSection.append(formButton);
+   const hint=el("p","ppw-pair-instruction",
+    "Tap three wrestlers from the same division. Tap a selected card to remove them.");
+   trioSection.append(hint);
+   const find=document.createElement("input");
+   find.type="search";find.value=trioSearch;find.placeholder="Search trio wrestlers";
+   find.setAttribute("aria-label","Search trio wrestlers");
+   trioSection.append(find);
+   const divisionFilters=el("div","ppw-pair-division-filters");
+   for(const [value,title] of [["ALL","All"],["MEN","Men"],["WOMEN","Women"]] as const){
+    const tab=btn(title,()=>{trioDivision=value;render();});
+    tab.setAttribute("aria-pressed",String(trioDivision===value));
+    divisionFilters.append(tab);
+   }
+   trioSection.append(divisionFilters);
+   const picks=el("div","ppw-pair-picks ppw-trio-picks");
+   picks.setAttribute("aria-label","Choose trio members");
+   trioSection.append(picks);
+   const paintChoices=()=>{
+    picks.replaceChildren();
+    const division=trioMembers.map(id=>view!.roster.find(p=>p.personId===id)?.division)
+     .find(Boolean);
+    const all=view!.roster.filter(p=>
+     (trioDivision==="ALL"||p.division===trioDivision)&&
+     p.name.toLowerCase().includes(trioSearch.trim().toLowerCase()));
+    for(const person of all.slice(0,35)){
+     const active=trioMembers.includes(person.personId);
+     const incompatible=Boolean(division&&person.division!==division&&!active);
+     const full=trioMembers.every(Boolean)&&!active;
+     const status=active?"✓ SELECTED":incompatible?"DIFFERENT DIVISION":
+      full?"THREE SELECTED":"ADD TO TRIO";
+     const card=createWrestlerCard({...person,status,available:!incompatible&&!full},
+      {context:"BOOKING",compact:true,label:status,
+       disabled:!editable()||incompatible||full,
+       onSelect:()=>{
+        if(active){
+         trioMembers[trioMembers.indexOf(person.personId)]="";
+        }else{
+         const index=trioMembers.indexOf("");
+         if(index<0)return;
+         trioMembers[index]=person.personId;
+        }
+        trioRequest=null;render();
+       }});
+     card.setAttribute("aria-pressed",String(active));
+     picks.append(card);
+    }
+    if(!all.length)picks.append(el("p","ppw-muted","No wrestlers match this search."));
+    else if(all.length>35)picks.append(el("p","ppw-pair-limit-note",
+     "Showing 35 of "+all.length+" wrestlers. Search to find another member."));
+   };
+   find.oninput=()=>{trioSearch=find.value;paintChoices();};
+   paintChoices();
   }
   const listOfTrios=el("div","ppw-trio-list");
   for(const t of three){
