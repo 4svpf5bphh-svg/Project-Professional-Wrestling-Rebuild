@@ -237,6 +237,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     weeklyStaffPayroll:view.weeklyStaffPayroll,
     weeklyGuarantees:view.weeklyGuarantees,
     recentShowAppearanceFees:view.shows[0]?.appearanceFees??0,
+    recentShowTotalCost:view.shows[0]?.totalCost??null,
+    recentShowGateRevenue:view.shows[0]?.gateRevenue??null,
     lastWeeklyNet:view.lastWeeklyNet
    });
    const plan=spendingDraft??view.spendingPlan??
