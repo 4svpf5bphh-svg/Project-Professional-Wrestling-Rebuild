@@ -341,3 +341,30 @@
  .ppw-directory-chips{gap:5px}
  .ppw-directory-chips .ppw-directory-quick-chip{padding:7px 9px;font-size:11px}
 }
+
+/* Booking picker language: one horizontally scrolling control row, not a 2x3 grid. */
+.ppw-directory-filters{grid-template-columns:minmax(0,1fr) auto}
+.ppw-directory-quick,.ppw-directory-shortcuts{grid-column:1/-1;display:flex;
+ flex-wrap:nowrap;gap:7px;overflow-x:auto;scrollbar-width:none;
+ -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+ max-width:100%;min-width:0;padding:5px 1px 10px}
+.ppw-directory-quick>.ppw-directory-button,
+.ppw-directory-shortcuts>.ppw-directory-button{flex:0 0 auto;min-width:auto;
+ min-height:43px;border-radius:12px;padding:9px 12px;font-size:12px;
+ border:2px solid #6284a4;color:#eef6ff;background:#213650;white-space:nowrap}
+.ppw-directory-chips{display:contents}
+.ppw-directory-chips .ppw-directory-quick-chip{flex:none;min-height:43px;
+ border:2px solid #6284a4;border-radius:12px;background:#213650;
+ padding:9px 12px;white-space:nowrap}
+.ppw-directory-quick>.ppw-directory-button[aria-pressed=true],
+.ppw-directory-shortcuts>.ppw-directory-button[aria-pressed=true],
+.ppw-directory-chips .ppw-directory-quick-chip[aria-pressed=true]{
+ background:#1b615e;border-color:#8cf9d8;color:#fff}
+.ppw-directory-refinements{grid-column:1/-1;min-width:0}
+@media(min-width:700px){.ppw-directory-filters{grid-template-columns:minmax(0,1fr) auto}
+ .ppw-directory-filters>.ppw-directory-field{grid-column:1/-1}}
+@media(max-width:360px){
+ .ppw-directory-quick>.ppw-directory-button,
+ .ppw-directory-shortcuts>.ppw-directory-button,
+ .ppw-directory-chips .ppw-directory-quick-chip{flex:none;padding:8px 11px;font-size:12px}
+}
