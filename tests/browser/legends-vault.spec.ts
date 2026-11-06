@@ -40,7 +40,9 @@ test("Legends Vault lazy-loads, honours mystery hints and replays offline unlock
  await page.goto("/#/legends");
  await expect(page.getByRole("heading",{name:"Legends Vault",level:1})).toBeVisible();
  await expect(page.getByRole("dialog",{name:"Legend unlocked: Eddie Guerrero"})).toBeVisible();
- await expect(page.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
+ await expect(page.getByRole("dialog").locator(".ppw-ceremony-stage-clip")).toHaveCount(1);
+ await expect(page.getByRole("dialog").locator(".ppw-ceremony-identity"))
+  .toHaveAttribute("aria-label","A Name Etched in History");
  await page.getByRole("button",{name:"Skip reveal"}).click();
  await expect(page.getByRole("dialog")).toHaveCount(0);
  await expect.poll(()=>acknowledged).toBe(true);
@@ -106,11 +108,17 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
 
  const reveal=page.getByRole("dialog",{name:"Legend unlocked: The Undertaker"});
  await expect(reveal).toBeVisible();
+ await expect(reveal).toHaveAttribute("data-tier","IMMORTAL");
+ await expect(reveal.locator(".ppw-ceremony-stage-clip")).toHaveCount(1);
+ await expect(reveal.locator(".ppw-ceremony-identity"))
+  .toHaveAttribute("aria-label","A Legacy That Echoes Forever");
  const visual=reveal.locator("img.ppw-undertaker-card");
  await expect(visual).toHaveAttribute("src",card);
  await expect(visual).toHaveJSProperty("naturalWidth",960);
  await expect(reveal.getByRole("button",{name:"Skip reveal"})).toBeVisible();
- await expect(reveal.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
+ await expect(reveal.locator(".ppw-ceremony-card-mist")).toHaveCount(1);
+ await expect(reveal.getByRole("button",{name:"View wrestler dossier"})).toBeVisible();
+ await expect(reveal.getByRole("button",{name:"Talent Market"})).toBeVisible();
  await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
  await expect(reveal).toHaveCount(0);
  await expect.poll(()=>seen).toBe(true);
@@ -120,7 +128,7 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
- await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await expect(cabinet.locator(".ppw-album-slot img.ppw-undertaker-card")).toHaveAttribute("src",card);
  await expect(cabinet.getByRole("progressbar",{name:"Legend card collection progress"}))
   .toHaveAttribute("aria-valuenow","1");
  await expect(cabinet.locator(".ppw-album-slot")).toHaveCount(1);
@@ -129,7 +137,7 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await cabinet.getByRole("button",{name:"View card"}).click();
  const expanded=page.getByRole("dialog",{name:"Collectible card: The Undertaker"});
  await expect(expanded.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
- await expect(expanded.locator("a[href*='commons.wikimedia.org']")).toBeVisible();
+ await expect(expanded.locator("a[href*='commons.wikimedia.org']")).toHaveCount(0);
  await expanded.getByRole("button",{name:"Close card"}).click();
  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
@@ -169,7 +177,7 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expect(revealImage).toHaveAttribute("src",card);
  await expect(revealImage).toHaveJSProperty("naturalWidth",960);
  await expect(revealImage).toHaveJSProperty("naturalHeight",1440);
- await expect(reveal.getByText("NOW AVAILABLE TO EVERY PROMOTION",{exact:false})).toBeVisible();
+ await expect(reveal.locator(".ppw-ceremony-card-mist")).toHaveCount(1);
  await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
  await expect.poll(()=>seen).toBe(true);
  const tile=page.locator('.ppw-legend-tile[data-tier="LEGEND"]');
@@ -178,7 +186,7 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
- await expect(cabinet.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
+ await expect(cabinet.locator(".ppw-album-slot img.ppw-legend-card-art")).toHaveAttribute("src",card);
  await cabinet.getByRole("button",{name:"Collected"}).click();
  await expect(cabinet.getByRole("button",{name:"Collected"})).toHaveAttribute("aria-pressed","true");
  await cabinet.getByRole("button",{name:"View card"}).click();
@@ -234,6 +242,10 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  const trish=page.locator('.ppw-legend-tile[data-legend-id="trish-stratus"]');
  await trish.getByRole("button",{name:"Replay the reveal"}).click();
  const reveal=page.getByRole("dialog",{name:"Legend unlocked: Trish Stratus"});
+ await expect(reveal).toHaveAttribute("data-tier","LEGEND");
+ await expect(reveal.locator(".ppw-ceremony-stage-clip")).toHaveCount(1);
+ await expect(reveal.locator(".ppw-ceremony-identity"))
+  .toHaveAttribute("aria-label","A Name Etched in History");
  await expect(reveal.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
   "/assets/legends/trish-stratus-legend-card.webp");
  await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
@@ -244,7 +256,7 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  await page.goto("/#/collection");
  const album=page.locator(".ppw-legend-collection");
  await album.getByRole("button",{name:"Collected"}).click();
- await expect(album.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
+ await expect(album.locator(".ppw-album-slot img.ppw-legend-card-art")).toHaveAttribute("src",
   "/assets/legends/trish-stratus-legend-card.webp");
  await album.getByRole("button",{name:"View card"}).click();
  const viewer=page.getByRole("dialog",{name:"Collectible card: Trish Stratus"});

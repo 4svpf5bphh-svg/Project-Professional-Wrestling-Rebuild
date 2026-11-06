@@ -5,6 +5,7 @@ import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
+import {createTalentFilterFrame} from "./talent-filter-controls.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import {recommendTalentOffer,type TalentOfferProfile} from "../domain/talent-offer-advice.js";
@@ -16,7 +17,7 @@ export interface RosterMarketPort{
  load(filter:DirectoryFilter):Promise<WrestlerDirectoryData>;
  offer(input:{personId:string;requestId:string;expectedRevision:number;
   terms:OfferTerms}):Promise<unknown>;
- openContracts(personId?:string):void;openTagTeams():void;openStables():void;
+ openContracts(personId?:string):void;openTagTeams(workspace?:"TEAMS"|"TRIOS"):void;openStables():void;
  openChampionships():void;
  openWrestler(personId:string,origin:DirectoryView):void;
  openBusiness?():void;
@@ -402,55 +403,59 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   root.append(head);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(success)root.append(el("p","ppw-alert ppw-success",success));
-  if(filter.view==="ROSTER"){
-   const sections=el("nav","ppw-directory-nav");
-   sections.setAttribute("aria-label","Roster divisions");
-   // Every shortcut actually navigates; disabled fake tabs mislead players.
-   sections.append(btn("My Champions",port.openChampionships),
-    btn("Tag Teams",port.openTagTeams),
-    btn("Stables",port.openStables));
-   root.append(sections);
-  }
   const controls=el("section","ppw-directory-filters");
+  const searchRow=el("div","ppw-directory-search-row");
   const search=document.createElement("input");
-  search.type="search";search.placeholder="Search wrestlers by name";
+  search.type="search";search.placeholder=filter.view==="ROSTER"?
+   "Search your roster":"Search wrestlers";
   search.setAttribute("aria-label","Search wrestlers");
   search.value=filter.search??"";search.maxLength=70;
   search.oninput=()=>{filter.search=search.value;};
   search.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();pick({search:search.value});}};
-  controls.append(search,btn("Search",()=>pick({search:search.value})));
-  const quick=el("div","ppw-directory-quick");
-  for(const [key,label] of [
-   ["ALL","All"],["MEN","Men"],["WOMEN","Women"]
+  searchRow.append(search,btn("Search",()=>pick({search:search.value})));
+  const chips=el("div","ppw-directory-chips");
+  chips.setAttribute("role","group");
+  chips.setAttribute("aria-label","Quick roster filters · this page");
+  const addChip=(name:string,cb:()=>void,selected=false)=>{
+   const button=btn(name,cb);
+   button.className+=" ppw-directory-quick-chip";
+   button.setAttribute("aria-pressed",String(selected));
+   chips.append(button);
+  };
+  addChip("All",()=>{
+   quickChips.clear();pick({division:"ALL",availability:"ALL"});
+  },filter.division==="ALL"&&!quickChips.size&&
+   (filter.view==="ROSTER"||(filter.availability??"ALL")==="ALL"));
+  for(const [division,name] of [["MEN","Men"],["WOMEN","Women"]] as const)
+   addChip(name,()=>pick({division:filter.division===division?"ALL":division}),
+    filter.division===division);
+  if(filter.view==="MARKET"){
+   addChip("Free agents",()=>pick({availability:filter.availability==="FREE_AGENT"?"ALL":"FREE_AGENT"}),
+    filter.availability==="FREE_AGENT");
+   addChip("Can approach",()=>pick({availability:filter.availability==="APPROACHABLE"?"ALL":"APPROACHABLE"}),
+    filter.availability==="APPROACHABLE");
+  }
+  for(const [key,name] of [
+   ["AVAILABLE","Available"],["FACE","Face"],["HEEL","Heel"],
+   ["POPULAR","Popular 75+"],["DATES","Has dates"],
+   ["CHAMPIONS","Champions"]
   ] as const){
-   const control=btn(label,()=>pick({division:key}));
-   control.setAttribute("aria-pressed",String(filter.division===key));
-   quick.append(control);
+   // Market eligibility is server-authoritative and can include contracted people.
+   if(key==="AVAILABLE"&&filter.view==="MARKET")continue;
+   addChip(name,()=>{
+    if(quickChips.has(key))quickChips.delete(key);
+    else{
+     quickChips.add(key);
+     if(key==="FACE")quickChips.delete("HEEL");
+     if(key==="HEEL")quickChips.delete("FACE");
+    }
+    render();
+   },quickChips.has(key));
   }
   if(filter.view==="ROSTER"){
-   const chips=el("div","ppw-directory-chips");
-   chips.setAttribute("role","group");
-   chips.setAttribute("aria-label","Quick roster filters · this page");
-   const options=[
-    ["AVAILABLE","Available"],["FACE","Face"],["HEEL","Heel"],
-    ["POPULAR","Popular 75+"],["DATES","Has dates"],
-    ["CHAMPIONS","Champions"]
-   ] as const;
-   for(const [key,name] of options){
-    const chip=btn(name,()=>{
-     if(quickChips.has(key))quickChips.delete(key);
-     else{
-      quickChips.add(key);
-      if(key==="FACE")quickChips.delete("HEEL");
-      if(key==="HEEL")quickChips.delete("FACE");
-     }
-     render();
-    });
-    chip.className+=" ppw-directory-quick-chip";
-    chip.setAttribute("aria-pressed",String(quickChips.has(key)));
-    chips.append(chip);
-   }
-   quick.append(chips);
+   addChip("Tag Teams",()=>port.openTagTeams("TEAMS"));
+   addChip("Trios",()=>port.openTagTeams("TRIOS"));
+   addChip("Stables",port.openStables);
   }
   const sortOptions=filter.view==="ROSTER"?[
    ["ROLE","By card role"],["NAME","Name"],["POPULARITY","Popularity"],
@@ -464,20 +469,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
    ["MOMENTUM","Momentum"],["VALUE","Value: lowest"]
   ] as const;
-  controls.append(quick);
-  if(filter.view==="MARKET"){
-   const shortcuts=el("div","ppw-directory-shortcuts");
-   for(const [key,label] of [
-    ["ALL","All talent"],["FREE_AGENT","Free agents"],
-    ["APPROACHABLE","Can approach"]
-   ] as const){
-    const chip=btn(label,()=>pick({availability:key}));
-    chip.className+=" ppw-directory-shortcut";
-    chip.setAttribute("aria-pressed",String((filter.availability??"ALL")===key));
-    shortcuts.append(chip);
-   }
-   controls.append(shortcuts);
-  }
+  const sortRow=el("div","ppw-directory-sort-row");
+  sortRow.append(selection("Sort by",sortOptions,
+   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
+    filter.view==="ROSTER"?"NAME":"INTEREST",sort=>pick({sort})),
+   selection("Division",[
+    ["ALL","All divisions"],["MEN","Men"],["WOMEN","Women"]
+   ] as const,filter.division??"ALL",division=>pick({division})));
+  controls.append(createTalentFilterFrame(searchRow,sortRow,chips));
   const enabled=filter.view==="ROSTER"?
    Number(filter.role!=="ALL")+Number(filter.contract!=="ALL"):
    Number(filter.availability!=="ALL")+Number(filter.interest!=="ALL");
@@ -523,9 +522,6 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    fields.append(el("p","ppw-directory-hint",
     "Interest is a scouting estimate, not a guarantee of acceptance."));
   }
-  fields.append(selection("Sort by",sortOptions,
-   sortOptions.some(x=>x[0]===filter.sort)?filter.sort??"NAME":
-    filter.view==="ROSTER"?"NAME":"INTEREST",sort=>pick({sort})));
   refinements.append(fields);
   const advanced=document.createElement("details");
   advanced.className="ppw-directory-advanced";
@@ -575,8 +571,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   listing.append(heading);
   // Quick chips never imply that only the first 25 wrestlers exist.
   // Each result remains a full server-backed page; pagination is unchanged.
-  const people=filter.view==="ROSTER"?
-   view.people.filter(p=>
+  const people=view.people.filter(p=>
     (!quickChips.has("FACE")||p.alignment==="FACE")&&
     (!quickChips.has("HEEL")||p.alignment==="HEEL")&&
     (!quickChips.has("POPULAR")||typeof p.popularity==="number"&&p.popularity>=75)&&
@@ -584,9 +579,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     (!quickChips.has("DATES")||(p.remainingDates===null||p.remainingDates>0))&&
     (!quickChips.has("AVAILABLE")||
      p.medicalWeeksRemaining==null&&!(p.startsInWeeks&&p.startsInWeeks>0)&&
-     (p.remainingDates===null||p.remainingDates>0))):
-   view.people;
-  if(filter.view==="ROSTER"&&quickChips.size){
+     (p.remainingDates===null||p.remainingDates>0)));
+  if(quickChips.size){
    heading.append(el("small","ppw-directory-muted",
     people.length+" of "+view.people.length+" · this page"));
   }

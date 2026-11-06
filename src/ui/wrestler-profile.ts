@@ -203,6 +203,15 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   // authoritative complete attributes immediately, once, in one section.
   const attrs=section("Full scouting attributes");
   attrs.classList.add("ppw-profile-attributes");
+  if(view.motivation){
+   const drive=el("div","ppw-profile-current-drive");
+   drive.setAttribute("aria-label","Current wrestler motivation");
+   drive.dataset.motivation=view.motivation.kind;
+   drive.append(el("small","","CURRENT DRIVE"),
+    el("strong","",view.motivation.title),
+    el("span","",view.motivation.reason));
+   attrs.append(drive);
+  }
   if(view.medicalWeeksRemaining!=null)
   attrs.append(el("p","ppw-profile-message",
    "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+

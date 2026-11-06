@@ -1,4 +1,6 @@
 import type {WorldApiContext} from "../api/world-service.js";
+import {BACKSTAGE_LABELS,type BackstageDecision}
+ from "../domain/backstage-conversations.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
@@ -303,12 +305,13 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return withdrawContractOfferAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,offerId:id("offerId")});
  if(method==="backstageDecision"){
-  const choices=["TALK","DECLINE","PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED","CONSIDER_REPACKAGE","KEEP_CHARACTER","EXPLORE_TEAM","EXPLORE_RIVALRY","NOT_NOW","EXPLORE_RENEWAL","MEDIATE"] as const;
-  if(!choices.some(choice=>choice===p.decision))
+  // Reuse the domain's canonical reply vocabulary. Never maintain a
+  // second API-only allowlist that can silently block a new wrestler reply.
+  if(typeof p.decision!=="string"||!Object.hasOwn(BACKSTAGE_LABELS,p.decision))
    throw new Error("Invalid Backstage decision");
   return backstageDecisionAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,conversationId:id("conversationId"),
-   decision:p.decision as (typeof choices)[number]});
+   decision:p.decision as BackstageDecision});
  }
  if(method==="requestPersona")return requestPersonaAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,

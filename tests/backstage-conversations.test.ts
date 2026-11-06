@@ -137,3 +137,24 @@ test("new locker-room conversations have more voices without rewriting old messa
  assert.ok([...variations].every(line=>line.includes("Morgan")),
   "Relationship talk stays about the player's actual partner, not invented names");
 });
+
+test("a veteran's mentoring pitch is a bounded career opportunity, not an instant bonus",()=>{
+ assert.deepEqual(BACKSTAGE_CHOICES.MENTORSHIP_PITCH,
+  ["EXPLORE_MENTORSHIP","NOT_NOW"]);
+ assert.deepEqual(backstageDecisionEffect("MENTORSHIP_PITCH","EXPLORE_MENTORSHIP"),
+  {moraleDelta:0,promise:false,status:"ANSWERED"});
+ assert.equal(backstageDecisionEffect("MENTORSHIP_PITCH","NOT_NOW").status,"DECLINED");
+ assert.throws(()=>backstageDecisionEffect("MENTORSHIP_PITCH","EXPLORE_TEAM"),
+  /does not offer/);
+ const message=backstageMessage("MENTORSHIP_PITCH",{
+  partnerName:"Young Prospect",verifiedTagShows:3,careerStage:"VETERAN",
+  createdWeekIndex:65},"mentor-pitch:year2");
+ assert.match(message,/Young Prospect/);
+ assert.match(message,/help|develop|grow|learn|bring them through|nurtur/i);
+ assert.doesNotMatch(message,/auto|morale|simulat|points|outcome|rating/i);
+ assert.equal(message,backstageMessage("MENTORSHIP_PITCH",{
+  partnerName:"Young Prospect",verifiedTagShows:3,careerStage:"VETERAN",
+  createdWeekIndex:65},"mentor-pitch:year2"));
+ assert.match(backstageManagerReply("EXPLORE_MENTORSHIP"),/together/);
+ assert.match(backstageReply("EXPLORE_MENTORSHIP","ANSWERED"),/grow/);
+});

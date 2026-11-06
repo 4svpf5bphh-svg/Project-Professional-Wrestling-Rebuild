@@ -25,7 +25,8 @@ import {mountGorillaDesk} from "../ui/gorilla-desk.js";
 import {mountIndustryWorldHub,type IndustryHubPort} from "../ui/industry-world-hub.js";
 import "../ui/industry-world-hub.css";
 import "../ui/legends-vault.css";
-import {drawLegendAlbum,clearLegendRevealPortal,type LegendsVaultView} from "../ui/legends-vault.js";
+import "../ui/legend-reveal-ceremony.css";
+import {drawLegendAlbum,clearLegendRevealPortal,type LegendsVaultView,type LegendAlbumState} from "../ui/legends-vault.js";
 import "../ui/staff-desk.css";
 import "../ui/gorilla-desk.css";
 import "../ui/business-desk.css";
@@ -46,9 +47,26 @@ import "../ui/programme-desk.css";
 import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
+import "../ui/talent-filter-controls.css";
 type Scope=CardSessionScope;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
+// Keep a booker-approved two-person idea private to this browser session,
+// and consume it exactly once for the same World and promotion.
+type BackstageRivalryFocus={worldId:string;promotionId:string;
+ personId:string;opponentId:string};
+let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
+export function queueBackstageRivalryFocus(focus:BackstageRivalryFocus){
+ if(!focus.worldId||!focus.promotionId||!focus.personId||!focus.opponentId||
+  focus.personId===focus.opponentId) return;
+ pendingProgrammeFocusPersonId=null;
+ pendingBackstageRivalryFocus=focus;
+}
+export function consumeBackstageRivalryFocus(worldId:string,promotionId:string){
+ const focus=pendingBackstageRivalryFocus;
+ pendingBackstageRivalryFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
+}
 // Private, one-use route from a wrestler dossier to a genuine unfinished card.
 // No show ID is guessed and no booking permission is assumed from the dossier.
 export type FocusedBookingWrestler={personId:string;name:string};
@@ -271,7 +289,10 @@ export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:L
 export function mountCollectionPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  let view:LegendsVaultView|null=null,expanded:string|null=null;
- let page="ALL",error="",busy=true;
+ let albumState:LegendAlbumState={page:"ALL",query:"",sort:"CATALOGUE",sheet:0};
+ let returnFocusId:string|null=null;
+ let returnFocusFrom:"highlights"|"album"="album";
+ let error="",busy=true;
  const render=()=>{
   clearLegendRevealPortal();
   root.classList.add("ppw-editor","ppw-industry","ppw-collection-screen");
@@ -287,11 +308,31 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
   }
   const content=document.createElement("section");
   content.className="ppw-industry-list ppw-collection";
-  content.dataset.legendAlbumPage=page;
+  content.dataset.legendAlbumPage=albumState.page;
   drawLegendAlbum(content,view,{
-   showCard:id=>{expanded=id;render();},
-   closeCard:()=>{expanded=null;render();}
-  },expanded,next=>{page=next;});
+   showCard:id=>{
+    if(!expanded){
+     returnFocusId=id;
+     returnFocusFrom=document.activeElement?.closest(".ppw-album-highlight-card")?
+      "highlights":"album";
+    }
+    expanded=id;render();
+   },
+   closeCard:()=>{
+    expanded=null;render();
+    if(returnFocusId){
+     const area=returnFocusFrom==="highlights"?
+      ".ppw-album-highlight-card":".ppw-album-slot";
+     const item=Array.from(root.querySelectorAll<HTMLElement>(area))
+      .find(x=>x.dataset.legendId===returnFocusId);
+     const button=returnFocusFrom==="highlights"?
+      item as HTMLButtonElement|undefined:
+      item?.querySelector<HTMLButtonElement>(".ppw-album-open-card");
+     button?.focus({preventScroll:true});
+    }
+    returnFocusId=null;
+   }
+  },expanded,undefined,albumState,next=>{albumState=next;});
   root.append(content);
  };
  render();
@@ -433,8 +474,8 @@ function rosterMarketPort(root:HTMLElement,scope:Scope,
    call("submitContractOffer",{personId,requestId,expectedRevision,terms}),
   openContracts:(personId?:string)=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>open("ROSTER"),"ATTENTION",personId),
-  openTagTeams:()=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),
-   ()=>open("ROSTER")),
+  openTagTeams:(workspace="TEAMS")=>mountTagTeamDesk(root,tagTeamPort(call,root,scope),
+   ()=>open("ROSTER"),workspace,"← Back to roster"),
   openChampionships:()=>void mountChampionshipsPage(root,scope,()=>open("ROSTER"),"MINE"),
   openStables:()=>mountStableDesk(root,stablePort(call,root,scope),
    ()=>open("ROSTER")),
@@ -607,13 +648,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string){
+ focusPersonId?:string,focusOpponentId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   ()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountProgrammePage(root,scope,focusPersonId));}),undefined,focusPersonId);
+   ()=>mountProgrammePage(root,scope,focusPersonId));}),
+  undefined,focusPersonId,focusOpponentId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,
@@ -658,13 +700,18 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   request:({personId,gimmickId,requestId,expectedRevision})=>
    call("requestPersona",{personId,gimmickId,requestId,expectedRevision}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
+  openPlanner:()=>{window.location.hash=hostSectionHash("planner");},
  };
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope,
  filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,onBack?:()=>void){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
-  onBack,()=>mountProgrammePage(root,scope),filter,initialPersonId);
+  onBack,(personId,opponentId)=>{
+   queueBackstageRivalryFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,personId,opponentId});
+   window.location.hash=hostSectionHash("programmes");
+  },filter,initialPersonId);
 }
 
 /** Host-level planner entry point. The existing card editor remains the

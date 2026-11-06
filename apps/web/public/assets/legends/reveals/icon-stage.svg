@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="back" x2="0" y2="1"><stop stop-color="#061327"/><stop offset=".57" stop-color="#081b30"/><stop offset="1" stop-color="#050914"/></linearGradient>
+<radialGradient id="light"><stop stop-color="#80ceff" stop-opacity=".48"/><stop offset=".38" stop-color="#80ceff" stop-opacity=".14"/><stop offset="1" stop-color="#80ceff" stop-opacity="0"/></radialGradient>
+<linearGradient id="dim" x2="0" y2="1"><stop stop-color="#000" stop-opacity=".02"/><stop offset=".6" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".64"/></linearGradient>
+<linearGradient id="rim"><stop stop-color="#80ceff" stop-opacity=".02"/><stop offset=".4" stop-color="#80ceff" stop-opacity=".5"/><stop offset=".6" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#80ceff" stop-opacity=".05"/></linearGradient>
+<pattern id="crowd" width="17" height="19" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="2.6" fill="#92c6e9" opacity=".36"/><circle cx="11" cy="13" r="2.2" fill="#ff5773" opacity=".23"/></pattern>
+<linearGradient id="beam"><stop stop-color="#a3e8ff" stop-opacity=".45"/><stop offset="1" stop-color="#3292ec" stop-opacity="0"/></linearGradient></defs>
+<rect width="720" height="1280" fill="url(#back)"/><path d="M0 0L180 0L70 850L0 970ZM540 0H720V970L650 850Z" fill="#06101b"/>
+<path d="M25 0L110 0L390 970L0 760Z" fill="url(#beam)" opacity=".25"/>
+<path d="M695 0L610 0L330 970L720 760Z" fill="url(#beam)" opacity=".25"/>
+<path d="M105 50L280 25L360 825L0 635Z" fill="url(#beam)" opacity=".25"/>
+<path d="M615 50L440 25L360 825L720 635Z" fill="url(#beam)" opacity=".25"/>
+<path d="M10 45L140 95L260 40L360 90L460 40L580 95L710 45M10 135L140 185L260 130L360 180L460 130L580 185L710 135" fill="none" stroke="#607d9a" stroke-width="10"/>
+<path d="M10 45V135L140 95V185L260 40V130L360 90V180L460 40V130L580 95V185L710 45V135" fill="none" stroke="#3c6f95" stroke-width="6"/>
+<circle cx="30" cy="100" r="9" fill="#ef5c7a" opacity=".87"/><circle cx="85" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="140" cy="100" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="195" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="250" cy="100" r="9" fill="#ef5c7a" opacity=".87"/><circle cx="305" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="360" cy="100" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="415" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="470" cy="100" r="9" fill="#ef5c7a" opacity=".87"/><circle cx="525" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="580" cy="100" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="635" cy="143" r="9" fill="#b5e9ff" opacity=".87"/><circle cx="690" cy="100" r="9" fill="#ef5c7a" opacity=".87"/>
+<path d="M0 475L125 435L140 850L0 910Z" fill="#08203c" stroke="#317dc0" stroke-width="10"/>
+<path d="M720 475L595 435L580 850L720 910Z" fill="#08203c" stroke="#317dc0" stroke-width="10"/>
+<path d="M0 500L135 460M720 500L585 460" stroke="#4dbeec" stroke-width="8" opacity=".62"/><path d="M0 544L135 504M720 544L585 504" stroke="#af3e61" stroke-width="8" opacity=".62"/><path d="M0 588L135 548M720 588L585 548" stroke="#4dbeec" stroke-width="8" opacity=".62"/><path d="M0 632L135 592M720 632L585 592" stroke="#af3e61" stroke-width="8" opacity=".62"/><path d="M0 676L135 636M720 676L585 636" stroke="#4dbeec" stroke-width="8" opacity=".62"/><path d="M0 720L135 680M720 720L585 680" stroke="#af3e61" stroke-width="8" opacity=".62"/><path d="M0 764L135 724M720 764L585 724" stroke="#4dbeec" stroke-width="8" opacity=".62"/><path d="M0 808L135 768M720 808L585 768" stroke="#af3e61" stroke-width="8" opacity=".62"/>
+<path d="M0 780Q360 685 720 780V1100H0Z" fill="#07101d"/>
+<path d="M0 780Q360 685 720 780V1100H0Z" fill="url(#crowd)"/>
+<path d="M0 1050L720 1030V1280H0Z" fill="#07101a"/>
+<ellipse cx="360" cy="970" rx="350" ry="150" fill="url(#light)" opacity=".33"/>
+
+<rect x="0" y="0" width="720" height="1280" fill="url(#dim)"/>
+</svg>

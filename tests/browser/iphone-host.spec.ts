@@ -325,16 +325,37 @@ test("Tag partner cards and roster disciplines stay fast without person-by-perso
  await page.getByRole("button",{name:"Men",exact:true}).click();
  await expect(page.locator(".ppw-pair-picks .ppw-wrestler-card").first()).toBeDisabled();
  await page.goto("/#/roster");
- await expect(page.getByRole("navigation",{name:"Roster divisions"})).toBeVisible();
- // The roster now presents only actionable shortcuts; actual trio formation
- // remains available inside Tag Teams rather than a disabled placeholder.
- await expect(page.getByRole("button",{name:/Trios/})).toHaveCount(0);
- await expect(page.getByRole("button",{name:"Singles roster"})).toHaveCount(0);
- await page.getByRole("navigation",{name:"Roster divisions"})
-  .getByRole("button",{name:"Tag Teams"}).click();
+ const controls=page.locator(".ppw-directory-filters .ppw-talent-controls");
+ await expect(controls).toBeVisible();
+ await expect(page.getByRole("navigation",{name:"Roster divisions"})).toHaveCount(0);
+ const rosterChips=controls.getByRole("group",{name:"Quick roster filters · this page"});
+ await expect(rosterChips.getByRole("button",{name:"Trios"})).toBeVisible();
+ await expect(rosterChips.getByRole("button",{name:"Stables"})).toBeVisible();
+ await expect(rosterChips.getByRole("button",{name:"Champions"})).toBeVisible();
+ await rosterChips.getByRole("button",{name:"Tag Teams"}).click();
  await expect(page.getByRole("heading",{name:"Tag Teams"})).toBeVisible();
  expect(methods).not.toContain("wrestlerProfile");
  expect(methods.filter(x=>x==="tagTeams").length).toBe(2);
+ // Roster → Teams is an in-shell workspace transition; the URL is not the
+ // source of truth until a full navigation. Use the actual Back action.
+ await page.getByRole("button",{name:"← Back to roster"}).click();
+ await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
+ await page.locator(".ppw-directory-filters .ppw-talent-controls")
+  .getByRole("button",{name:"Trios",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Trios",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Named Trios"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Form a team"})).toHaveCount(0);
+ const tabs=page.getByRole("navigation",{name:"Team workspaces"});
+ await expect(tabs.getByRole("button",{name:"Trios"})).toHaveAttribute("aria-pressed","true");
+ const before=methods.filter(x=>x==="tagTeams").length;
+ await tabs.getByRole("button",{name:"Tag Teams"}).click();
+ await expect(page.getByRole("heading",{name:"Form a team"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Named Trios"})).toHaveCount(0);
+ await expect(tabs.getByRole("button",{name:"Tag Teams"})).toHaveAttribute("aria-pressed","true");
+ expect(methods.filter(x=>x==="tagTeams").length).toBe(before);
+ expect(methods).not.toContain("wrestlerProfile");
+ await page.getByRole("button",{name:"← Back to roster"}).click();
+ await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
 });
 test("parent-company affiliates remain visible on the iPhone roster without editable parent contracts",async({page})=>{
  const people=[{

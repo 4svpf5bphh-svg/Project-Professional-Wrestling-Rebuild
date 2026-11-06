@@ -31,23 +31,6 @@ const span=(className:string,label:string)=>{
  const node=document.createElement("span");node.className=className;node.textContent=label;
  return node;
 };
-function metric(label:string,value:number|null|undefined){
- const metricNames:Record<string,string>={
-  POP:"Popularity",REC:"Recognition",MOM:"Momentum",
-  RING:"In-ring ability",CRAFT:"Match craft",PRES:"Presentation"
- };
- const item=document.createElement("span");item.className="ppw-wrestler-stat";
- item.dataset.ability=wrestlerAbilityBand(value);
- item.setAttribute("aria-label",(metricNames[label]??label)+": "+
-  (value==null?"unrated":Math.round(value)+ " out of 100"));
- item.append(span("ppw-wrestler-stat-name",label),
-  span("ppw-wrestler-stat-value",value==null?"—":Math.round(value).toString()));
- const track=span("ppw-wrestler-track","");
- const fill=span("ppw-wrestler-fill","");
- fill.style.width=(value==null?0:Math.max(0,Math.min(100,value)))+"%";
- track.append(fill);item.append(track);
- return item;
-}
 export function createWrestlerCard(p:WrestlerCardModel,options:{
  context:"ROSTER"|"MARKET"|"BOOKING";
  label?:string;onSelect?:()=>void;disabled?:boolean;
@@ -110,7 +93,7 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
   belts.title="Current championships";
   copy.append(belts);
  }
- if(options.context!=="BOOKING"){
+ {
   const audience=compactFanEstimate(estimateWrestlerFans(
    p.popularity,p.recognition,p.momentum));
   if(audience){
@@ -135,32 +118,18 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
   const trait=wrestlerSpotlightTrait(p);
   if(trait)copy.append(span("ppw-wrestler-trait",trait));
  }
- const stats=document.createElement("span");stats.className="ppw-wrestler-stats";
- const numbers:[string,number|null|undefined][]=[
-  ["POP",p.popularity],["REC",p.recognition],["MOM",p.momentum],
-  ["RING",p.inRingQuality],["CRAFT",p.matchCraft],["PRES",p.presentation]];
- if(options.context==="BOOKING"){
-  for(const [key,n] of numbers)if(n!==undefined)stats.append(metric(key,n));
-  copy.append(stats);
- }
- if(p.signatureMove&&options.context==="BOOKING"&&!options.compact)
-  copy.append(span("ppw-wrestler-finisher","SIGNATURE  /  "+p.signatureMove));
- if(p.finisherMove&&options.context==="BOOKING")
-  copy.append(span("ppw-wrestler-finisher","FINISHER  /  "+p.finisherMove));
+ // Compact visual identity is shared across booking, roster and market.
+ // Full scouting ratings, signature and finisher live in the wrestler dossier.
  const footer=span("ppw-wrestler-status",options.label??p.status??"");
  footer.setAttribute("aria-live","off");
- if(options.context==="BOOKING"&&p.available===false)
-  footer.classList.add("ppw-wrestler-status-blocked");
  if(p.reason&&p.available===false)footer.title=wrestlerLabel(p.reason);
- if(options.context==="BOOKING")root.append(copy,footer);
- else{
-  // On a roster dossier entry, remaining dates are one of the identity badges,
-  // not a separate line between the fan figure and alignment.
-  if(options.context==="ROSTER")badges.append(footer);
-  else copy.append(footer);
-  root.append(copy);
-  if(options.context==="ROSTER"&&selectable)
-   root.append(span("ppw-wrestler-chevron","›"));
+ if((options.label??p.status)?.trim()){
+  badges.append(footer);
+  if(options.context==="BOOKING"&&p.available===false)
+   footer.classList.add("ppw-wrestler-status-blocked");
  }
+ root.append(copy);
+ if(options.context==="ROSTER"&&selectable)
+  root.append(span("ppw-wrestler-chevron","›"));
  return root;
 }

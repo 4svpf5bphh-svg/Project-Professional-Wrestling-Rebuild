@@ -5,6 +5,7 @@ import type {readPortablePersonaWorkspace}
  from "../db/portable-persona-workspace.js";
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
 import {describeWrestlerRivalryMemory} from "../domain/verified-wrestler-rivalry-memory.js";
+import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
@@ -16,6 +17,7 @@ export interface PersonaDeskPort{
  request(input:{personId:string;gimmickId:string;
   requestId:string;expectedRevision:number}):Promise<unknown>;
  openWrestler?(personId:string):void;
+ openPlanner?():void;
 }
 const el=(tag:string,cls="",label="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=label;return n;
@@ -25,7 +27,8 @@ const button=(title:string,action:()=>void,disabled=false)=>{
  x.type="button";x.onclick=action;x.disabled=disabled;return x;
 };
 export function mountPersonaDesk(root:HTMLElement,
- port:PersonaDeskPort,onBack?:()=>void,onOpenProgrammes?:()=>void,
+ port:PersonaDeskPort,onBack?:()=>void,
+ onOpenProgrammes?:(personId:string,opponentId:string)=>void,
  initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
@@ -468,6 +471,38 @@ export function mountPersonaDesk(root:HTMLElement,
   details.setAttribute("aria-label","View "+view.personName+" wrestler dossier");
   chatHead.append(returnToInbox,monogram,identity,details);
   chat.append(chatHead);
+  const currentContact=view.roster.find(x=>x.personId===view!.personId);
+  const motivation=livingWrestlerMotivation({
+   onRoster:currentContact?.isCurrent!==false&&!!currentContact,
+   status:currentContact?.status??null,
+   careerStage:currentContact?.careerStage??null,
+   momentum:currentContact?.momentum,morale:currentContact?.morale,
+   fatigue:currentContact?.fatigue,
+   currentWeekIndex:(view.worldYear-1)*52+view.worldWeek-1,
+   memories:(view.memories??[]).map(m=>({kind:m.kind,weekIndex:m.weekIndex})),
+   requests:view.conversations.map(c=>{
+    const related=view!.roster.find(x=>x.personId===c.relatedPersonId&&x.isCurrent);
+    return {kind:c.kind,status:c.status,
+     createdWeekIndex:c.createdWeekIndex,decision:c.decision,
+     respondedWeekIndex:c.respondedWeekIndex,
+     followThroughWeekIndex:c.followThroughWeekIndex,
+     dueWeekIndex:c.dueWeekIndex,relevantTitle:c.relevantTitle,
+     relatedName:related?.name??null,
+     verifiedShows:c.kind==="TAG_TEAM_PITCH"||
+      c.kind==="MENTORSHIP_PITCH"?c.verifiedTagShows:
+      c.kind==="RIVALRY_PITCH"?c.verifiedSinglesShows:
+       c.workingVerifiedShows};
+   })
+  });
+  if(motivation){
+   const drive=el("aside","ppw-backstage-current-drive");
+   drive.setAttribute("aria-label","Current wrestler motivation");
+   drive.dataset.motivation=motivation.kind;
+   drive.append(el("small","","CURRENT DIRECTION"),
+    el("strong","",motivation.title),
+    el("span","",motivation.reason));
+   chat.append(drive);
+  }
   const wrestlerMemories=view.memories??[];
   if(wrestlerMemories.length){
    const remembered=el("details","ppw-backstage-phone-info ppw-backstage-memories");
@@ -537,6 +572,8 @@ export function mountPersonaDesk(root:HTMLElement,
        "Rivalry programme started":
        item.followThroughKind==="MEDIATION_MATCH_COMPLETED"?
        "Partnership back on track":
+       item.followThroughKind==="MENTORSHIP_MATCH_COMPLETED"?
+       "Mentoring match completed":
        item.followThroughKind==="CONTRACT_NEGOTIATION_STARTED"?
        "Actual contract negotiation opened":"Promise delivered")+" · Y"+(Math.floor(item.followThroughWeekIndex/52)+1)+
      " W"+(item.followThroughWeekIndex%52+1)));
@@ -558,10 +595,24 @@ export function mountPersonaDesk(root:HTMLElement,
      item.followThroughWeekIndex===null)
      chat.append(el("small","ppw-backstage-promise",
       "Words will only go so far. Book a strong tag-team performance together to help repair the damage."));
+    if(item.kind==="MENTORSHIP_PITCH"&&
+     item.decision==="EXPLORE_MENTORSHIP"&&
+     item.followThroughWeekIndex===null&&port.openPlanner){
+     // Navigate to real planner; booking and results remain player-authored.
+     chat.append(button("Plan their next match →",
+      ()=>port.openPlanner?.(),loading));
+    }
     if(item.kind==="RIVALRY_PITCH"&&item.decision==="EXPLORE_RIVALRY"&&
-     item.followThroughWeekIndex===null&&onOpenProgrammes){
-     chat.append(button("Build this rivalry →",
-      onOpenProgrammes,loading));
+     item.followThroughWeekIndex===null&&onOpenProgrammes&&view.personId){
+     const opponent=view.roster.find(p=>
+      p.personId===item.relatedPersonId&&p.isCurrent);
+     if(opponent){
+      chat.append(button("Build rivalry with "+opponent.name+" →",
+       ()=>onOpenProgrammes(view!.personId!,opponent.personId),loading));
+     }else{
+      chat.append(el("small","ppw-backstage-promise",
+       "The proposed opponent is no longer on your active roster."));
+     }
     }
     if(item.status==="BROKEN"&&item.trustDelta<0)
      chat.append(el("small","ppw-backstage-promise",

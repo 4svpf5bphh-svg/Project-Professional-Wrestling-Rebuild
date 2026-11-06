@@ -4,6 +4,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
+ consumeBackstageRivalryFocus,
  consumeBookingFocus,clearBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
@@ -350,8 +351,13 @@ function renderSection(){
   case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"),()=>openSection("achievements"));break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":void mountResultsArchivePage(view,scope,back);break;
-  case "programmes":mountProgrammePage(view,scope,
-   consumeProgrammeFocus()??undefined);break;
+  case "programmes":{
+   const dossierFocus=consumeProgrammeFocus();
+   const pitchFocus=consumeBackstageRivalryFocus(scope.worldId,scope.promotionId);
+   mountProgrammePage(view,scope,
+    pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId);
+   break;
+  }
   case "championships":void mountChampionshipsPage(view,scope,back);break;
   case "teams":mountTagTeamsPage(view,scope);break;
   case "stables":mountStablesPage(view,scope);break;

@@ -68,8 +68,10 @@ test("mobile booker asks for one saved wrestler agreement and sees the actual an
   .filter({hasText:/Protected finish/i}).click();
  await expect(editor.getByText("Recheck needed")).toBeVisible();
  await expect(page.getByText("RECHECK AFTER SAVE")).toBeVisible();
+ await expect(editor.getByRole("heading",{name:"Creative control decisions"})).toBeVisible();
  await editor.getByRole("button",{name:"Ask Bob about this draft"}).click();
-  await expect(editor.getByRole("status")).toContainText("agreed to this draft");
+  await expect(editor.locator(".ppw-card-consent-replies [role=status]"))
+   .toContainText("agreed to this draft");
   await expect(editor.getByRole("status")).toBeVisible();
   expect(askedAboutDraft).toBe(true);
   expect(calls.filter(x=>x==="creativeConsent")).toHaveLength(2);

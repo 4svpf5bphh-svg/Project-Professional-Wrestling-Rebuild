@@ -27,7 +27,16 @@ for(const width of [320,390]){
    }:{}});
   });
   await page.goto("/#/roster");
-  await page.getByRole("button",{name:"My Champions"}).click();
+  const chips=page.getByRole("group",{name:"Quick roster filters · this page"});
+  await expect(page.getByRole("navigation",{name:"Roster divisions"})).toHaveCount(0);
+  await expect(chips.getByRole("button",{name:"Champions",exact:true})).toHaveCount(1);
+  await expect(chips.getByRole("button",{name:"My Champions",exact:true})).toHaveCount(0);
+  // Titles remain reachable via the existing Promotion championship route,
+  // without restoring a duplicate button above or inside roster slicers.
+  await page.goto("/#/championships");
+  // Direct Promotion navigation starts in World scope. Switch using the
+  // existing championship controls rather than duplicating roster shortcuts.
+  await page.getByRole("button",{name:"My Champions",exact:true}).click();
   await expect(page.getByRole("heading",{name:"My Champions"})).toBeVisible();
   await expect(page.locator(".ppw-belt-card:visible")).toHaveCount(1);
   await expect(page.locator(".ppw-belt-card:visible")).toContainText("Home Heavyweight");

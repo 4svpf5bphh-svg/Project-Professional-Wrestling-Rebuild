@@ -81,3 +81,21 @@
 .ppw-trio-card .ppw-pair-partner-links{display:flex;flex-wrap:wrap;gap:7px}
 .ppw-trio-workspace :is(input,select,button):focus-visible{
  outline:3px solid #8acfff;outline-offset:2px}
+
+/* One team workspace at a time; switching tabs never requeries Neon. */
+.ppw-team-workspace-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:5px 0 12px;min-width:0}
+.ppw-team-workspace-tabs .ppw-pair-button{min-width:0;text-align:center;font-weight:850;border:2px solid #60809a;background:#172b46;color:#eaf6ff}
+.ppw-team-workspace-tabs .ppw-pair-button[aria-pressed="true"]{border-color:#91edff;background:#185a76;color:#fff}
+.ppw-team-workspace-tabs .ppw-pair-button:focus-visible{outline:3px solid #b6f0ff;outline-offset:2px}
+
+/* Phase 30: tap-to-select portrait cards for three-person units, using the
+   same loaded team workspace and the universal wrestler identity card. */
+.ppw-trio-selected{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-width:0}
+.ppw-trio-selected .ppw-pair-button{min-width:0;overflow-wrap:anywhere;
+ text-align:center;font-size:12px;padding:8px 5px;color:#effaff}
+.ppw-trio-selected .ppw-pair-button:not(:disabled){border-color:#e8ce83;background:#3e394b}
+.ppw-trio-picks{max-height:410px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain}
+.ppw-trio-picks .ppw-wrestler-card[aria-pressed="true"]{
+ border-color:#e8ce83;box-shadow:inset 0 0 0 1px #e8ce83}
+@media(max-width:360px){.ppw-trio-selected{gap:4px}
+ .ppw-trio-selected .ppw-pair-button{font-size:11px;padding:7px 3px}}

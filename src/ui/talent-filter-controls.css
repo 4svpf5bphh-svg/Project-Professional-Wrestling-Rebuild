@@ -1,0 +1,48 @@
+/* The exact same search / two selectors / horizontal chips composition is
+   used in the booking picker, roster directory and industry talent market. */
+.ppw-talent-controls{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:9px;min-width:0;width:100%;margin:0 0 12px}
+.ppw-talent-controls *{box-sizing:border-box}
+.ppw-talent-search{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+ align-items:stretch;gap:8px;min-width:0;width:100%;margin:0!important}
+.ppw-talent-search>input{min-width:0;width:100%!important;min-height:44px;
+ font-size:16px;border-radius:11px}
+.ppw-talent-search>button{min-height:44px;min-width:0;flex:none;
+ border-radius:11px;padding:9px 12px;white-space:nowrap}
+.ppw-talent-sort-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:8px;min-width:0;width:100%;margin:0!important}
+.ppw-talent-sort-row>label{min-width:0}
+.ppw-talent-sort-row select{width:100%;min-width:0;min-height:45px;
+ font-size:14px;border-radius:11px;max-width:100%}
+.ppw-talent-chip-row{display:flex!important;align-items:center;gap:7px;
+ flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;
+ min-width:0;max-width:100%;width:100%;padding:5px 1px 9px;
+ margin:0!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+ overscroll-behavior-x:contain;scroll-snap-type:x proximity}
+.ppw-talent-chip-row::-webkit-scrollbar{display:none}
+.ppw-talent-chip-row>button{flex:0 0 auto!important;white-space:nowrap;
+ min-height:43px;min-width:0;border:2px solid #6284a4!important;
+ border-radius:12px!important;padding:8px 12px!important;
+ background:#213650!important;color:#eef6ff!important;
+ font-size:12px!important;font-weight:800!important;line-height:1.15;
+ scroll-snap-align:start}
+.ppw-talent-chip-row>button[aria-pressed="true"]{
+ background:#1b615e!important;border-color:#8cf9d8!important;color:#fff!important}
+.ppw-talent-chip-row>button:focus-visible{outline:2px solid #a8eeff;outline-offset:2px}
+@media(max-width:360px){
+ .ppw-talent-controls{gap:8px}
+ .ppw-talent-search{gap:6px}
+ .ppw-talent-search>button{padding:8px 10px}
+ .ppw-talent-chip-row>button{padding:8px 10px!important}
+}
+/* Modal-level legacy overrides cannot shrink the common talent card or
+   turn its availability badge into a full-width second row. */
+.ppw-sheet .ppw-wrestler-card{min-height:120px}
+.ppw-sheet .ppw-wrestler-card .ppw-wrestler-status{
+ display:inline-flex;align-self:center;width:auto;max-width:100%;
+ grid-column:auto;grid-row:auto}
+@media(max-width:360px){.ppw-sheet .ppw-wrestler-card{min-height:108px}}
+/* The two selectors look like the booking picker: their accessible labels
+   remain on the select, but the row never grows an extra caption line. */
+.ppw-talent-sort-row>label{gap:0;font-size:0;line-height:0}
+.ppw-talent-sort-row>label select{font-size:14px;line-height:1.3}

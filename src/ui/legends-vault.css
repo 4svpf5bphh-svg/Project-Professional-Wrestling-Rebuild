@@ -178,15 +178,15 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 .ppw-album-count{font-size:.9rem;letter-spacing:.07em;color:#f7d08a}
 .ppw-album-progress-text{font-size:.72rem;color:#c7c5d1}
 .ppw-album-progress{height:7px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.12);margin-bottom:1rem}
-.ppw-album-progress-ink{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f5b44f,#b791ff)}
+.ppw-album-progress-ink{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#c08c46,#f1dba5)}
 .ppw-album-pages{display:flex;gap:.45rem;overflow-x:auto;overscroll-behavior-x:contain;padding:0 0 .75rem;margin-bottom:.3rem;scrollbar-width:thin}
 .ppw-album-page-button{white-space:nowrap;flex:none;padding:.58rem .75rem;min-height:42px;font-size:.78rem}
-.ppw-album-page-button[aria-pressed="true"]{background:#7256a8;color:white;border-color:#bfa6f1}
+.ppw-album-page-button[aria-pressed="true"]{background:#efd09c;color:#211608;border-color:#f8dda8}
 .ppw-album-book{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,128px),1fr));gap:.65rem}
 .ppw-album-slot{--album-ink:#a9bdca;background:linear-gradient(155deg,rgba(35,37,55,.95),rgba(14,16,25,.96));border:1px solid color-mix(in srgb,var(--album-ink),transparent 55%);border-radius:12px;padding:.65rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;min-width:0;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18)}
 .ppw-album-slot[data-tier="LEGEND"]{--album-ink:#ddae61}
 .ppw-album-slot[data-tier="ICON"]{--album-ink:#78bce8}
-.ppw-album-slot[data-tier="IMMORTAL"]{--album-ink:#d5a8f6}
+.ppw-album-slot[data-tier="IMMORTAL"]{--album-ink:#e4c58c}
 .ppw-album-slot[data-collected="true"]{background:linear-gradient(140deg,color-mix(in srgb,var(--album-ink),transparent 80%),rgba(18,22,35,.95))}
 .ppw-album-slot-number{align-self:flex-start;font-weight:800;font-size:.61rem;letter-spacing:.07em;color:var(--album-ink);line-height:1.4}
 .ppw-album-silhouette{display:grid;place-items:center;width:100%;min-height:145px;background:radial-gradient(ellipse,rgba(255,255,255,.045),rgba(0,0,0,.3));border:1px dashed rgba(255,255,255,.12);border-radius:7px;font-size:3.2rem;color:rgba(255,255,255,.19)}
@@ -208,3 +208,246 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 .ppw-collection .ppw-album{margin:0}
 @media(max-width:390px){.ppw-collection{padding-inline:0}
  .ppw-collection .ppw-album{padding:.85rem .6rem}}
+
+/* Phase 30 rarity direction — animated stage lighting, not fabricated card art.
+   All four tiers use the same reviewed collectible and remain skippable.
+   Effects finish rather than looping and draining iPhone battery. */
+.ppw-legend-reveal:not(.ppw-legend-card-viewer) .ppw-legend-reveal-scene{
+ position:relative;z-index:2;isolation:isolate}
+.ppw-legend-stage-effects{position:fixed;inset:0;z-index:0;pointer-events:none;
+ overflow:hidden;isolation:isolate}
+.ppw-legend-stage-effects::before,.ppw-legend-stage-effects::after{
+ content:"";position:absolute;inset:-30%;pointer-events:none;opacity:0;
+ transform-origin:50% 50%;will-change:transform,opacity}
+.ppw-legend-reveal[data-tier="CULT"] .ppw-legend-stage-effects::before{
+ background:linear-gradient(110deg,transparent 40%,#65daee50 48%,
+  #c4faff9e 51%,transparent 58%);
+ animation:ppw-cult-stage .65s ease-out .15s 1 both}
+.ppw-legend-reveal[data-tier="LEGEND"] .ppw-legend-stage-effects::before{
+ background:radial-gradient(ellipse at 40% 40%,#f8ca6370,transparent 36%),
+  radial-gradient(ellipse at 65% 60%,#e99d4580,transparent 44%);
+ animation:ppw-legend-gold 1.55s ease-out .1s 1 both}
+.ppw-legend-reveal[data-tier="LEGEND"] .ppw-legend-stage-effects::after{
+ background:repeating-conic-gradient(from 15deg at 50% 50%,
+ transparent 0deg 16deg,#f4c56c16 17deg 20deg,transparent 21deg 46deg);
+ animation:ppw-legend-rays 1.7s ease-out .2s 1 both}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-stage-effects::before{
+ background:conic-gradient(from 200deg at 25% -15%,
+ transparent 0deg,#62d4ff65 24deg,transparent 48deg 160deg,
+ #53baff45 182deg,transparent 207deg 360deg);
+ animation:ppw-icon-spotlight 2.2s ease-out .05s 1 both}
+.ppw-legend-reveal[data-tier="ICON"] .ppw-legend-stage-effects::after{
+ background:radial-gradient(ellipse at 50% 40%,#3ce9ff73,transparent 28%);
+ animation:ppw-icon-flare 1.9s ease-out .5s 1 both}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-stage-effects::before{
+ background:radial-gradient(circle at 50% 45%,#c3a2fb95 0%,#7c4ea356 24%,
+  transparent 56%);
+ animation:ppw-immortal-awaken 2.4s ease-out .45s 1 both}
+.ppw-legend-reveal[data-tier="IMMORTAL"] .ppw-legend-stage-effects::after{
+ background:linear-gradient(100deg,transparent 40%,#e9c8ff66 49%,
+  #ffffff7a 50%,transparent 60%);
+ animation:ppw-immortal-beam 2.1s ease-out 1.2s 1 both}
+.ppw-legend-reveal[data-special="DEADMAN"] .ppw-legend-stage-effects{
+ opacity:.4}
+@keyframes ppw-cult-stage{
+ 0%{transform:translateX(-72%);opacity:0}
+ 30%{opacity:.85}100%{transform:translateX(72%);opacity:0}}
+@keyframes ppw-legend-gold{
+ 0%{transform:scale(.65);opacity:0}42%{opacity:.7}
+ 100%{transform:scale(1.25);opacity:0}}
+@keyframes ppw-legend-rays{
+ 0%{transform:rotate(-18deg) scale(.7);opacity:0}
+ 40%{opacity:.85}100%{transform:rotate(20deg) scale(1.3);opacity:0}}
+@keyframes ppw-icon-spotlight{
+ 0%{transform:rotate(-35deg);opacity:0}35%{opacity:.9}
+ 75%{opacity:.6}100%{transform:rotate(27deg);opacity:0}}
+@keyframes ppw-icon-flare{
+ 0%{transform:scale(.4);opacity:0}48%{opacity:1}
+ 100%{transform:scale(1.9);opacity:0}}
+@keyframes ppw-immortal-awaken{
+ 0%{transform:scale(.08);opacity:0}38%{opacity:.95}
+ 100%{transform:scale(1.7);opacity:0}}
+@keyframes ppw-immortal-beam{
+ 0%{transform:translateX(-85%);opacity:0}37%{opacity:.95}
+ 100%{transform:translateX(95%);opacity:0}}
+@media(prefers-reduced-motion:reduce){
+ .ppw-legend-stage-effects,.ppw-legend-stage-effects::before,
+ .ppw-legend-stage-effects::after{animation:none!important;display:none!important}
+}
+
+
+/* Phase 32 — mobile-first client-only collector cabinet, no new backend reads */
+.ppw-album-tier-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin:.4rem 0 .95rem}
+.ppw-album-tier-summary{
+ display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-width:0;
+ min-height:76px;padding:.55rem .6rem;border-radius:10px;
+ background:linear-gradient(140deg,#25434c,#0c1b24);color:#a6edf2;
+ border:1px solid #72dce255;font-size:.73rem;font-weight:800;text-align:left
+}
+.ppw-album-tier-summary strong{font-size:1rem;font-variant-numeric:tabular-nums}
+.ppw-album-tier-summary[data-tier="LEGEND"]{background:linear-gradient(140deg,#523319,#161018);color:#f3d18e;border-color:#e5bb6955}
+.ppw-album-tier-summary[data-tier="ICON"]{background:linear-gradient(140deg,#234776,#10182b);color:#a8defe;border-color:#6fbbea55}
+.ppw-album-tier-summary[data-tier="IMMORTAL"]{background:linear-gradient(140deg,#51442d,#141a22);color:#f2dfb8;border-color:#d9bd7a55}
+.ppw-album-tier-summary[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:2px}
+.ppw-album-tier-track{width:100%;height:4px;border-radius:10px;background:#ffffff22;overflow:hidden;margin-top:auto}
+.ppw-album-tier-fill{display:block;height:100%;background:currentColor;border-radius:10px}
+.ppw-album-tools{display:grid;gap:.6rem;margin:.2rem 0 .65rem}
+.ppw-album-search{display:flex;flex-direction:column;gap:.25rem;font-size:.75rem;color:#cbd3db}
+.ppw-album-search input{
+ box-sizing:border-box;min-width:0;width:100%;min-height:44px;padding:.55rem .75rem;
+ border:1px solid #ffffff5e;border-radius:9px;background:#101b27;
+ color:#fff;font:inherit;font-size:1rem
+}
+.ppw-album-sort{display:flex;flex-wrap:wrap;gap:.4rem}
+.ppw-album-sort-button{min-height:44px;padding:.5rem .7rem;font-size:.78rem}
+.ppw-album-sort-button[aria-pressed="true"]{background:#efd09c;color:#241808;border-color:#f4e1bd}
+.ppw-album-results{margin:.1rem 0 .65rem;font-size:.73rem;color:#cbd3db}
+.ppw-album-pagination{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.9rem auto .15rem;max-width:390px}
+.ppw-album-pagination .ppw-legend-button{min-height:44px;flex:1;min-width:0;font-size:.77rem}
+.ppw-album-pagination-index{flex:none;font-variant-numeric:tabular-nums;font-size:.77rem}
+.ppw-legend-card-viewer{--tier:#e9cc95}
+.ppw-legend-reveal.ppw-legend-card-viewer::before,
+.ppw-legend-reveal.ppw-legend-card-viewer::after{display:none!important;animation:none!important}
+.ppw-legend-card-viewer .ppw-album-viewer-panel{box-sizing:border-box;gap:.6rem;max-width:550px;padding:12px 4px 20px}
+.ppw-legend-card-viewer .ppw-legend-card-art,
+.ppw-legend-card-viewer .ppw-undertaker-card{
+ width:min(80vw,390px)!important;max-width:100%!important;
+ max-height:68dvh;aspect-ratio:2/3;object-fit:contain;border-radius:8px
+}
+.ppw-album-viewer-kicker{color:#f5d8a2;letter-spacing:.09em;font-size:.7rem;font-weight:850}
+.ppw-album-viewer-nav{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:.4rem;align-items:center;width:100%}
+.ppw-album-viewer-nav .ppw-legend-button{min-height:44px;min-width:0;font-size:.75rem;padding:.55rem .35rem}
+.ppw-album-viewer-index{white-space:nowrap;font-size:.77rem;font-variant-numeric:tabular-nums}
+@media(max-width:390px){
+ .ppw-album-tier-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ppw-album-tier-summary{min-height:70px}
+ .ppw-album-page-button{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ppw-legend-card-viewer,.ppw-legend-card-viewer *{animation:none!important;transition:none!important}
+}
+
+/* Legacy is earned World history, not a second Legends-only record book. */
+.ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{
+ margin-left:.45rem;border-color:#e1c78a66;
+}
+.ppw-legend-reveal.ppw-legend-card-viewer[data-tier="IMMORTAL"]{
+ background:radial-gradient(ellipse at 50% 44%,#4b3e2c,#111821 68%,#06080c);
+}
+@media(max-width:390px){
+ .ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{
+  margin-left:0;
+ }
+}
+
+/* Mobile album reads like a collectible first, filters second. Keep tier
+   progress visible without placing a second tall heading or navigation shelf. */
+.ppw-collection-mast{padding:.65rem .65rem .5rem}
+.ppw-collection-mast .ppw-legend-kicker{font-size:.64rem}
+.ppw-collection-mast h2{font-size:1.85rem;margin:.25rem 0 .3rem}
+.ppw-collection-mast .ppw-collection-back{
+ box-sizing:border-box;min-height:44px;margin:.2rem .35rem .15rem 0;
+ padding:.5rem .63rem;font-size:.77rem;
+}
+.ppw-collection-mast .ppw-collection-back+ .ppw-collection-back{margin:.2rem .2rem .15rem 0}
+.ppw-collection .ppw-album{padding:.7rem .65rem}
+.ppw-album-headline{margin:.25rem 0 .35rem}
+.ppw-album-progress{margin-bottom:.55rem}
+.ppw-album-tier-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:.35rem;margin:.1rem 0 .55rem}
+.ppw-album-tier-summary{min-height:62px;padding:.4rem .38rem;font-size:.67rem;gap:.25rem}
+.ppw-album-tier-summary strong{font-size:.85rem}
+.ppw-album-pages{margin-bottom:0;padding-bottom:.38rem}
+.ppw-album-tools{gap:.35rem;margin:0 0 .45rem}
+.ppw-album-search>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.ppw-album-results{margin:.12rem 0 .45rem}
+@media(max-width:390px){
+ .ppw-collection .ppw-album{padding:.6rem .55rem}
+ .ppw-album-tier-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem}
+ .ppw-album-tier-summary{min-height:60px;padding:.38rem .28rem;font-size:.63rem}
+ .ppw-album-tier-summary strong{font-size:.79rem}
+ .ppw-album-sort-button{padding:.45rem .6rem}
+}
+
+/* Narrow iPhones: concise tier labels and exact 1/57 counters must not split
+   into unreadable syllables inside the four-card progress shelf. */
+.ppw-album-tier-summary{
+ white-space:nowrap!important;overflow:hidden;
+ font-size:11px!important;letter-spacing:-.012em!important;
+ line-height:1.15!important;min-height:59px!important;
+}
+.ppw-album-tier-summary strong{
+ white-space:nowrap!important;font-size:12px!important;
+ line-height:1.15!important;
+}
+@media(max-width:360px){
+ .ppw-album-tier-summary{font-size:10px!important;padding:.42rem .24rem!important}
+ .ppw-album-tier-summary strong{font-size:11px!important}
+}
+
+
+/* A real, owner-only card shelf appears before album controls. Limit to
+   four canonical art assets and retain native iPhone horizontal scrolling. */
+.ppw-album-highlights{
+ margin:.3rem 0 .7rem;min-width:0;max-width:100%;overflow:hidden;
+}
+.ppw-album-highlights-title{
+ font-size:.83rem!important;letter-spacing:.06em;text-transform:uppercase;
+ color:#f3d5a2;margin:0 0 .45rem!important;
+}
+.ppw-album-highlights-rail{
+ display:flex;gap:.6rem;overflow-x:auto;overscroll-behavior-x:contain;
+ scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+ padding:.15rem .18rem .5rem;scrollbar-width:thin;
+}
+.ppw-album-highlight-card{
+ --highlight-accent:#8be3e6;
+ position:relative;display:block;flex:0 0 108px;align-self:flex-start;
+ width:108px;min-width:108px;max-width:108px;height:auto;min-height:44px;
+ padding:3px;border:1px solid var(--highlight-accent);border-radius:6px;
+ background:#07131b;scroll-snap-align:start;box-shadow:0 0 13px #48e4e21f;
+}
+.ppw-album-highlight-card[data-tier="LEGEND"]{--highlight-accent:#eac184;box-shadow:0 0 13px #e4b15a30}
+.ppw-album-highlight-card[data-tier="ICON"]{--highlight-accent:#9bd9ff;box-shadow:0 0 13px #71bcfa30}
+.ppw-album-highlight-card[data-tier="IMMORTAL"]{--highlight-accent:#e8d1a2;box-shadow:0 0 13px #e9d2ad2e}
+.ppw-album-highlight-card .ppw-legend-card-art,
+.ppw-album-highlight-card .ppw-undertaker-card{
+ display:block;width:100%!important;max-width:100%!important;
+ height:auto!important;max-height:none!important;aspect-ratio:2/3;
+ border:0!important;border-radius:3px!important;
+ background:transparent!important;box-shadow:none!important;object-fit:contain;
+}
+.ppw-album-highlight-card:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.ppw-album-highlights-empty{
+ margin:0;padding:.6rem .75rem;background:#16202ac9;
+ border:1px dashed #ffffff3d;border-radius:9px;color:#c4ced4;font-size:.8rem;
+}
+@media(max-width:390px){
+ .ppw-album-highlights{margin:.2rem 0 .6rem}
+ .ppw-album-highlight-card{flex-basis:104px;width:104px;min-width:104px;max-width:104px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ppw-album-highlights-rail{scroll-behavior:auto}
+}
+
+.ppw-legend-card-viewer .ppw-album-discovery{
+ margin:0;font-size:.74rem;color:#dcc9a6;line-height:1.4;
+ letter-spacing:.015em;font-variant-numeric:tabular-nums;text-align:center;
+}
+
+/* Short iPhones: keep Close, full artwork, authentic discovery receipt and
+   Previous/Next controls entirely inside 320×568 without obscured buttons. */
+@media(max-height:620px){
+ .ppw-legend-card-viewer .ppw-album-viewer-panel{
+  gap:.42rem;min-height:0;padding:0 4px 8px;
+ }
+ .ppw-legend-card-viewer .ppw-legend-card-art,
+ .ppw-legend-card-viewer .ppw-undertaker-card{
+  width:min(70vw,210px)!important;max-height:58dvh;
+ }
+ .ppw-legend-card-viewer .ppw-album-viewer-kicker{
+  font-size:.68rem;line-height:1.1;
+ }
+ .ppw-legend-card-viewer .ppw-album-discovery{
+  font-size:.69rem;margin:0;
+ }
+}

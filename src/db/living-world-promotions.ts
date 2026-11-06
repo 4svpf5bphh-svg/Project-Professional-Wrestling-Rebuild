@@ -307,6 +307,9 @@ type EmergencyCandidate={
   money:number;role:number;exposure:number;prestige:number;
   schedule:number;loyalty:number
  };
+ booking_division?:"MEN"|"WOMEN"|null;
+ legend_id?:string|null;
+ legend_members?:string[]|null;
 };
 export function originalEmergencyAcceptance(seed:string|number,index:number,
  promotionId:string,personId:string,priority:EmergencyCandidate["contract_priorities"]){
@@ -368,6 +371,12 @@ export async function recruitDistressedAiRosters(
   AND NOT EXISTS(SELECT 1 FROM ppw_world_legend_unlocks legend
    WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
     AND legend.ai_eligible_from_week_index>$2)
+  -- Emergency recruitment is an individual rescue offer. It must not split
+  -- an established two-person Legend team; only the strategic, bundled
+  -- recruitment pass can evaluate and fund both partners together.
+  AND NOT EXISTS(SELECT 1 FROM ppw_world_legend_unlocks legend
+   WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
+    AND cardinality(legend.person_ids)>1)
  ORDER BY ((500+p.recognition*50+p.popularity*30+
    (p.in_ring_quality+p.match_craft+p.presentation)/3*25)*
    CASE p.career_stage WHEN 'SPECIAL_ATTRACTION' THEN 1.35
@@ -448,6 +457,23 @@ export function strategicTalentFit(p:EmergencyCandidate,identity:AiPromotionIden
  // Prefer authentic potential over simply bidding most for a famous veteran.
  return base+(p.career_stage==="PROSPECT"?8:0);
 }
+/** A company recruits for gaps, not merely because an unlocked Legend exists.
+ * Existing elite divisions can pass; deep rosters never hoard indefinitely.
+ */
+export function strategicRosterNeed(
+ candidate:Pick<EmergencyCandidate,"booking_division"|"popularity">,
+ roster:{size:number;target:number;women:number;topPopularity:number},
+):number{
+ if(roster.size>=roster.target)return -100;
+ const womenFloor=Math.max(3,Math.ceil(roster.target*.18));
+ const divisionNeed=candidate.booking_division==="WOMEN"&&roster.women<womenFloor;
+ const headlineNeed=roster.topPopularity<76&&
+  candidate.popularity>=roster.topPopularity+8;
+ const depthNeed=roster.size<Math.ceil(roster.target*.80);
+ if(!divisionNeed&&!headlineNeed&&!depthNeed)return -100;
+ return (divisionNeed?20:0)+(headlineNeed?15:0)+
+  (depthNeed?Math.min(12,roster.target-roster.size):0);
+}
 export async function recruitStrategicAiRosters(
  tx:SqlRows,worldId:string,year:number,week:number
 ):Promise<{eligible:number;signed:number}>{
@@ -459,7 +485,8 @@ export async function recruitStrategicAiRosters(
   promotion_id:string;tier:PromotionTier;cash:string;
   weekly_media_income:string;weekly_sponsor_income:string;
   weekly_fixed_overhead:string;talent_guarantees:string;staff_payroll:string;
-  roster_size:number;ai_risk_tolerance:number;
+  roster_size:number;womens_roster:number;highest_popularity:number;
+  ai_risk_tolerance:number;
   ai_match_quality_preference:number;ai_star_preference:number;
  }>(`
  SELECT p.promotion_id,p.tier,p.cash::text,
@@ -474,13 +501,20 @@ export async function recruitStrategicAiRosters(
     AND e.status='ACTIVE' AND e.start_week_index<=$2+1
     AND e.expires_week_index>=$2+1),0)::text AS staff_payroll,
   p.ai_risk_tolerance,p.ai_match_quality_preference,p.ai_star_preference,
-  (SELECT count(DISTINCT c.person_id)::integer FROM ppw_contracts c
-   JOIN ppw_people person ON person.world_id=c.world_id
-    AND person.person_id=c.person_id AND person.status='ACTIVE'
-   WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
-    AND c.status='SIGNED' AND c.start_week_index<=$2+1
-    AND c.expires_week_index>=$2+1) AS roster_size
+  roster.roster_size,roster.womens_roster,roster.highest_popularity
  FROM ppw_promotions p
+ LEFT JOIN LATERAL (
+  SELECT count(DISTINCT c.person_id)::integer AS roster_size,
+   count(DISTINCT c.person_id) FILTER (
+    WHERE person.booking_division='WOMEN')::integer AS womens_roster,
+   coalesce(max(person.popularity),0)::integer AS highest_popularity
+  FROM ppw_contracts c
+  JOIN ppw_people person ON person.world_id=c.world_id
+   AND person.person_id=c.person_id AND person.status='ACTIVE'
+  WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+   AND c.status='SIGNED' AND c.start_week_index<=$2+1
+   AND c.expires_week_index>=$2+1
+ ) roster ON TRUE
  WHERE p.world_id=$1 AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
   AND p.financial_distress='HEALTHY' AND p.last_weekly_net>=0
   AND p.weekly_media_income IS NOT NULL AND p.weekly_sponsor_income IS NOT NULL
@@ -499,14 +533,21 @@ export async function recruitStrategicAiRosters(
   const surplus=Number(p.weekly_media_income)+Number(p.weekly_sponsor_income)-
    Number(p.weekly_fixed_overhead)-Number(p.talent_guarantees)-
    Number(p.staff_payroll);
-  return target!==undefined&&p.roster_size<Math.ceil(target*.75)&&
+  return target!==undefined&&p.roster_size<target&&
+   (p.roster_size<Math.ceil(target*.8)||
+    p.womens_roster<Math.max(3,Math.ceil(target*.18))||
+    p.highest_popularity<76)&&
    surplus>1000&&Number(p.cash)>Number(p.weekly_fixed_overhead)*16;
  });
  if(!under.length)return {eligible:0,signed:0};
  const people=await tx.query<EmergencyCandidate>(`
-  SELECT p.person_id,p.career_stage,p.recognition,p.popularity,
-   p.in_ring_quality,p.match_craft,p.presentation,p.contract_priorities
+  SELECT p.person_id,p.career_stage,p.booking_division,p.recognition,p.popularity,
+   p.in_ring_quality,p.match_craft,p.presentation,p.contract_priorities,
+   legend.legend_id,legend.person_ids AS legend_members
   FROM ppw_people p
+  LEFT JOIN ppw_world_legend_unlocks legend ON legend.world_id=p.world_id
+   AND p.person_id=ANY(legend.person_ids)
+   AND legend.ai_eligible_from_week_index<=$2
   WHERE p.world_id=$1 AND p.status='ACTIVE' AND p.career_stage IS NOT NULL
    AND p.recognition IS NOT NULL AND p.popularity IS NOT NULL
    AND p.in_ring_quality IS NOT NULL AND p.match_craft IS NOT NULL
@@ -517,7 +558,11 @@ export async function recruitStrategicAiRosters(
    AND NOT EXISTS (SELECT 1 FROM ppw_world_legend_unlocks legend
     WHERE legend.world_id=p.world_id AND p.person_id=ANY(legend.person_ids)
     AND legend.ai_eligible_from_week_index>$2)
-  ORDER BY p.popularity ASC,p.person_id LIMIT 256`,[worldId,index]);
+  -- Scout known available Legends first, not solely the least-popular prospects.
+  -- This affects consideration, never forces a signing or bypasses contract fit.
+  ORDER BY CASE WHEN legend.legend_id IS NOT NULL THEN 0 ELSE 1 END,
+   (p.in_ring_quality+p.match_craft+p.presentation+p.popularity+p.recognition)
+    DESC,p.person_id LIMIT 256`,[worldId,index]);
  if(people.length>256)throw new Error("AI free agent scouting batch exceeded bounds");
  const used=new Set<string>(),signings:{
   id:string;promotion:string;person:string;expiry:number;
@@ -532,28 +577,51 @@ export async function recruitStrategicAiRosters(
    Number(promotion.weekly_sponsor_income)-
    Number(promotion.weekly_fixed_overhead)-Number(promotion.talent_guarantees)-
    Number(promotion.staff_payroll);
-  const candidates=people.filter(p=>!used.has(p.person_id))
-   .sort((a,b)=>strategicTalentFit(b,identity)-
-    strategicTalentFit(a,identity)||
+  const target=ORIGINAL_ROSTER_TARGET[promotion.tier];
+  const roster={size:promotion.roster_size,target,
+   women:promotion.womens_roster,topPopularity:promotion.highest_popularity};
+  const score=(p:EmergencyCandidate)=>strategicTalentFit(p,identity)+
+   strategicRosterNeed(p,roster);
+  const candidates=people.filter(p=>!used.has(p.person_id)&&
+   strategicRosterNeed(p,roster)>=0)
+   .sort((a,b)=>score(b)-score(a)||
     originalMarketWeeklyValue(a)-originalMarketWeeklyValue(b)||
     a.person_id.localeCompare(b.person_id));
   for(const p of candidates){
-   if(!p.contract_priorities||!["money","role","prestige","schedule","loyalty","exposure"]
-     .every(k=>Number.isFinite(p.contract_priorities[k as keyof typeof p.contract_priorities])&&
-      p.contract_priorities[k as keyof typeof p.contract_priorities]>=0&&
-      p.contract_priorities[k as keyof typeof p.contract_priorities]<=100))continue;
-   const price=originalMarketWeeklyValue(p);
-   const guarantee=Math.round(price*.1),appearance=Math.round(price*.8);
-   // Cash reserves must cover roughly three potential appearances; ongoing
-   // guarantees may consume no more than 15% of actual recurring surplus.
-   if(guarantee>surplus*.15||Number(promotion.cash)<appearance*3)continue;
-   if(!originalEmergencyAcceptance(String(index),index,promotion.promotion_id,
-    p.person_id,p.contract_priorities))continue;
-   signings.push({id:"strategic:"+index+":"+promotion.promotion_id+":"+p.person_id,
-    promotion:promotion.promotion_id,person:p.person_id,expiry:index+26,
-    guarantee,appearance,
-    role:p.career_stage==="PROSPECT"?"DEVELOPMENTAL":"REGULAR"});
-   used.add(p.person_id);
+   const groupIds=p.legend_members?.length&&p.legend_members.length>1?
+    p.legend_members:[p.person_id];
+   // Existing named tag teams enter and remain together. Don't create
+   // a contract for one Road Warrior and silently leave the other behind.
+   if(groupIds.length>2)continue;
+   const bundle=groupIds.map(id=>people.find(person=>person.person_id===id));
+   if(bundle.some(member=>!member||used.has(member.person_id)))continue;
+   const members=bundle as EmergencyCandidate[];
+   if(roster.size+members.length>target)continue;
+   if(members.some(member=>!member.contract_priorities||
+    !["money","role","prestige","schedule","loyalty","exposure"].every(k=>
+     Number.isFinite(member.contract_priorities[k as keyof typeof member.contract_priorities])&&
+     member.contract_priorities[k as keyof typeof member.contract_priorities]>=0&&
+     member.contract_priorities[k as keyof typeof member.contract_priorities]<=100)))continue;
+   const offers=members.map(member=>{
+    const price=originalMarketWeeklyValue(member);
+    return {person:member,guarantee:Math.round(price*.1),
+     appearance:Math.round(price*.8)};
+   });
+   const totalGuarantee=offers.reduce((sum,x)=>sum+x.guarantee,0);
+   const totalAppearance=offers.reduce((sum,x)=>sum+x.appearance,0);
+   // Bundle costs must fit together, never each in isolation.
+   if(totalGuarantee>surplus*.15||Number(promotion.cash)<totalAppearance*3)continue;
+   if(!members.every(member=>originalEmergencyAcceptance(String(index),index,
+    promotion.promotion_id,member.person_id,member.contract_priorities)))continue;
+   for(const offer of offers){
+    const member=offer.person;
+    signings.push({id:"strategic:"+index+":"+promotion.promotion_id+":"+member.person_id,
+     promotion:promotion.promotion_id,person:member.person_id,expiry:index+26,
+     guarantee:offer.guarantee,appearance:offer.appearance,
+     role:member.career_stage==="PROSPECT"?"DEVELOPMENTAL":
+      member.popularity>=78?"UPPER_CARD":"REGULAR"});
+    used.add(member.person_id);
+   }
    break;
   }
  }

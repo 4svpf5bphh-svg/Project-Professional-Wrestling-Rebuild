@@ -28,10 +28,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   // read-only history for the latest 50 departed conversation contacts.
   const roster=await tx.query<{person_id:string;name:string;
    portable_gimmick_id:string|null;morale:number|null;
-   momentum:number|null;is_current:boolean}>([
+   momentum:number|null;career_stage:string|null;status:string;
+   fatigue:number|null;is_current:boolean}>([
    "WITH current_roster AS (",
    "SELECT DISTINCT p.person_id,p.name,p.portable_gimmick_id,p.morale,",
-   "p.momentum,true AS is_current",
+   "p.momentum,p.career_stage,p.status,p.fatigue,true AS is_current",
    "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
    "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
@@ -46,11 +47,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "GROUP BY r.person_id ORDER BY last_contact DESC,r.person_id LIMIT 51",
    "), former_roster AS (",
    "SELECT p.person_id,p.name,p.portable_gimmick_id,p.morale,p.momentum,",
-   "false AS is_current FROM former_ids old JOIN ppw_people p",
+   "p.career_stage,p.status,p.fatigue,false AS is_current FROM former_ids old JOIN ppw_people p",
    "ON p.world_id=$1 AND p.person_id=old.person_id",
    "), combined AS (SELECT * FROM current_roster UNION ALL",
    "SELECT * FROM former_roster)",
-   "SELECT person_id,name,portable_gimmick_id,morale,momentum,is_current",
+   "SELECT person_id,name,portable_gimmick_id,morale,momentum,career_stage,status,fatigue,is_current",
    "FROM combined ORDER BY is_current DESC,name,person_id LIMIT 552"
   ].join(" "),[s.worldId,s.promotionId,now]);
   if(roster.length>550)throw new Error("Too many Backstage contacts");
@@ -98,6 +99,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
      incomingById.get(x.person_id)!.archived_through_week_index,
    }:null,
    isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
+   careerStage:x.career_stage,status:x.status,fatigue:x.fatigue,
    lastMessage:latestByPerson.get(x.person_id)??null}));
   if(!selected)return {roster:listed,personId:null,
    persona:null,history:[],recentRequests:[],conversations:[],memories:[],archetypes:[],
@@ -132,9 +134,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected,s.promotionId]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
+   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
    related_person_id:string|null;status:string;
-   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
+   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_MENTORSHIP"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
    created_week_index:number;responded_week_index:number|null;
    due_week_index:number|null;promised_role:string|null;
    observed_match_shows:number|null;observed_featured_shows:number|null;

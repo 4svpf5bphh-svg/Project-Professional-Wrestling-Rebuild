@@ -50,6 +50,16 @@ jobs:
           name: ppw-presentation-screenshots
           path: test-results
           retention-days: 7
+      - name: Preserve Phase 32 real four-tier running-game capture proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppw-phase32-four-tier-review
+          path: |
+            test-results/**/phase32-*.png
+            test-results/**/*.webm
+          if-no-files-found: ignore
+          retention-days: 14
       - run: npm test
       - name: Apply foundation schema to disposable PostgreSQL
         env:
@@ -578,6 +588,10 @@ jobs:
           psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0128_certified_broadcast_audience.sql
           count="$(psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.ppw_show_economics'::regclass AND conname='ppw_audience_values_valid'")"
           test "$count" = 1
+      - name: Enable evidence-backed veteran mentorship in disposable Backstage
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0130_veteran_mentorship_pitches.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test

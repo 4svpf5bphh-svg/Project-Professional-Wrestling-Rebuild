@@ -81,18 +81,42 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/teams");
+  await page.getByRole("navigation",{name:"Team workspaces"})
+   .getByRole("button",{name:"Trios",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Named Trios"})).toBeVisible();
   const submit=page.getByRole("button",{name:/Form this trio/});
   await expect(submit).toBeDisabled();
   await page.getByRole("textbox",{name:"New trio name"}).fill("The Lightning Three");
-  await page.getByRole("combobox",{name:"Trio partner 1"}).selectOption("alpha");
-  await page.getByRole("combobox",{name:"Trio partner 2"}).selectOption("beta");
-  await page.getByRole("combobox",{name:"Trio partner 3"}).selectOption("gamma");
+  const picks=page.locator(".ppw-trio-picks .ppw-wrestler-card");
+  await expect(picks).toHaveCount(3);
+  await picks.nth(0).click();
+  await picks.nth(1).click();
+  await picks.nth(2).click();
+  const chosen=page.getByRole("group",{name:"Chosen trio members"});
+  await expect(chosen).toContainText("Alpha");
+  await expect(chosen).toContainText("Beta");
+  await expect(chosen).toContainText("Gamma");
+  await expect(picks.nth(0)).toHaveAttribute("aria-pressed","true");
+  // The wrestler picker is visually consistent with booking and roster,
+  // not three dropdowns squeezed into the 320px layout.
+  await expect(page.getByRole("combobox",{name:/Trio partner/})).toHaveCount(0);
+  await expect(picks.first().locator(".ppw-wrestler-media")).toBeVisible();
+  await expect(submit).toBeEnabled();
+  // Changing the name after selecting all three must update submission
+  // immediately, without another server query or losing the selected team.
+  const trioName=page.getByRole("textbox",{name:"New trio name"});
+  await trioName.fill("");
+  await expect(submit).toBeDisabled();
+  await trioName.fill("The Lightning Three");
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
   expect(requests).toBe(1);
   await page.reload();
+  // A fresh visit intentionally defaults to Tag Teams. Reopen the
+  // independent Trios workspace before asserting persisted server data.
+  await page.getByRole("navigation",{name:"Team workspaces"})
+   .getByRole("button",{name:"Trios",exact:true}).click();
   await expect(page.locator(".ppw-trio-list")).toContainText("The Lightning Three");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
