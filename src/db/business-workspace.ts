@@ -137,6 +137,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    net_result:string;incremental_cash:string;crowd_response:string|number;
    audience_format:string|null;tv_household_rating:string|null;
    estimated_viewers:string|null;ppv_buys:string|null;
+   ratings_war_base_rating:string|null;ratings_war_opponents:number|null;
    creative_workrate:number;creative_spectacle:number;
    creative_stars:number;creative_stories:number;
   }>(`
@@ -147,6 +148,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     e.incremental_cash::text,cs.crowd_response,
     e.audience_format,e.tv_household_rating::text,
     e.estimated_viewers::text,e.ppv_buys::text,
+    e.ratings_war_base_rating::text,e.ratings_war_opponents,
     style.workrate AS creative_workrate,style.spectacle AS creative_spectacle,
     style.stars AS creative_stars,style.stories AS creative_stories
    FROM ppw_show_economics e JOIN ppw_completed_shows cs
@@ -202,7 +204,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    promotion_id:string;promotion_name:string;show_name:string|null;
    show_day:number|null;year:number;week:number;household_rating:string;
    estimated_viewers:string|null;network_offer_code:string|null;
-   human_managed:boolean;
+   human_managed:boolean;ratings_war_base_rating:string|null;
+   ratings_war_opponents:number|null;airing_hour:number|null;
   }>(`
    SELECT recent.*,
     EXISTS(SELECT 1 FROM ppw_promotion_controls controller
@@ -213,6 +216,15 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      d.show_name,d.show_day,e.year,e.week,
      e.tv_household_rating::text AS household_rating,
      e.estimated_viewers::text AS estimated_viewers,
+     e.ratings_war_base_rating::text,e.ratings_war_opponents,
+     coalesce((SELECT agreement.airing_hour FROM ppw_commercial_deals agreement
+      WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
+       AND agreement.kind='BROADCAST'
+       AND agreement.start_week_index <= (e.year-1)*52+e.week-1
+       AND agreement.end_week_index >= (e.year-1)*52+e.week-1
+       AND (agreement.airing_day IS NULL OR agreement.airing_day=d.show_day)
+       AND agreement.airing_hour IS NOT NULL
+      ORDER BY agreement.start_week_index DESC LIMIT 1),20)::integer AS airing_hour,
      (SELECT agreement.offer_code FROM ppw_commercial_deals agreement
       WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
        AND agreement.kind='BROADCAST'
@@ -299,7 +311,10 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     day:e.show_day,year:e.year,week:e.week,householdRating:Number(e.household_rating),
     estimatedViewers:e.estimated_viewers===null?null:Number(e.estimated_viewers),
     networkOfferCode:e.network_offer_code,isYours:e.promotion_id===promotionId,
-    humanManaged:e.human_managed
+    humanManaged:e.human_managed,airingHour:e.airing_hour,
+    ratingsWarChange:e.ratings_war_base_rating===null?null:
+     Math.round((Number(e.household_rating)-Number(e.ratings_war_base_rating))*10)/10,
+    ratingsWarOpponents:e.ratings_war_opponents
    })),
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
@@ -315,6 +330,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     audience:s.audience_format==="TV"?{format:"TV" as const,
      householdRating:s.tv_household_rating===null?null:Number(s.tv_household_rating),
      estimatedViewers:s.estimated_viewers===null?null:Number(s.estimated_viewers),
+     ratingsWarChange:s.ratings_war_base_rating===null?null:
+      Math.round((Number(s.tv_household_rating)-Number(s.ratings_war_base_rating))*10)/10,
+     ratingsWarOpponents:s.ratings_war_opponents,
      ppvBuys:null}:
      s.audience_format==="PPV"?{format:"PPV" as const,
       householdRating:null,estimatedViewers:null,

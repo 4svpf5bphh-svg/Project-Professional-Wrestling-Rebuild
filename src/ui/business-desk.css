@@ -417,3 +417,8 @@
  font-size:13px;font-weight:850}
 .ppw-business-ratings-focused .ppw-ratings-war-head{padding:11px 13px}
 .ppw-business-ratings-focused .ppw-ratings-war-head h2{margin:2px 0;font-size:29px}
+
+/* A certified head-to-head audience result, not a speculative weekly score. */
+.ppw-ratings-war-impact{margin:8px 0 0;border-top:1px solid #64819a;
+ padding-top:10px;font:850 11px/1.5 system-ui;letter-spacing:.04em;color:#c8e6f2}
+.ppw-ratings-war-rival-copy small{overflow-wrap:anywhere}

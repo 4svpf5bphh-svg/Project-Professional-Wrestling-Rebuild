@@ -669,9 +669,26 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      "Latest broadcasts are level on household rating.":
      difference>0?"You're ahead by "+score+" rating points.":
       opponent.name+" leads by "+score+" rating points."));
-    if(own.year!==opponent.year||own.week!==opponent.week)
+    const sameWeek=own.year===opponent.year&&own.week===opponent.week;
+    const sameSlot=sameWeek&&own.day===opponent.day&&
+     own.airingHour!==null&&own.airingHour!==undefined&&
+     own.airingHour===opponent.airingHour&&
+     (own.ratingsWarOpponents??0)>0&&(opponent.ratingsWarOpponents??0)>0;
+    if(sameSlot)
+     compare.append(el("small","ppw-ratings-war-note",
+      "HEAD-TO-HEAD · Same night, same broadcast hour. These ratings include audience competition."));
+    else if(!sameWeek)
      compare.append(el("small","ppw-ratings-war-note",
       "Latest episodes aired in different weeks; this is not a same-slot result."));
+    else compare.append(el("small","ppw-ratings-war-note",
+      "Different broadcast slots. This is a standings comparison, not a live audience clash."));
+    if((own.ratingsWarOpponents??0)>0&&typeof own.ratingsWarChange==="number"){
+     const change=own.ratingsWarChange;
+     compare.append(el("p","ppw-ratings-war-impact",
+      change>0?"YOU GAINED "+change.toFixed(1)+" RATING POINTS IN YOUR AIRTIME BATTLE":
+      change<0?"YOU LOST "+Math.abs(change).toFixed(1)+" RATING POINTS IN YOUR AIRTIME BATTLE":
+      "YOUR LATEST AIRTIME BATTLE ENDED EVEN"));
+    }
    }else compare.append(el("p","ppw-ratings-war-result",
     "Compare audiences once you and another promotion have certified TV results."));
    section.append(compare);
@@ -732,7 +749,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     description.append(el("strong","","#"+rank+" · "+episode.name+
      (episode.isYours?" · YOU":episode.humanManaged?" · HUMAN MANAGER":"")),
      el("small","",episode.showName+" · "+(days[(episode.day??0)-1]??"Day unreported")+
-      " · Y"+episode.year+" W"+episode.week));
+      (typeof episode.airingHour==="number"?" "+String(episode.airingHour).padStart(2,"0")+":00":"")+
+      " · Y"+episode.year+" W"+episode.week+
+      (typeof episode.ratingsWarChange==="number"&&episode.ratingsWarChange!==0?
+       " · WAR "+(episode.ratingsWarChange>0?"+":"")+episode.ratingsWarChange.toFixed(1):"")));
     const numbers=el("div","ppw-ratings-war-rival-number");
     numbers.append(el("b","",episode.householdRating.toFixed(1)),
      el("small","",episode.estimatedViewers===null?

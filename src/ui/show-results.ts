@@ -198,7 +198,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   block.setAttribute("aria-label","Broadcast performance");
   const title=node("div","ppw-audience-head");
   title.append(node("span","ppw-result-audience-label","BROADCAST PERFORMANCE"),
-   node("span","ppw-audience-format",report.format==="TV"?"TELEVISION":"PAY-PER-VIEW"));
+   node("span","ppw-audience-format",report.format==="TV"?
+    typeof report.ratingsWarChange==="number"&&report.ratingsWarChange!==0?
+     "TV WAR "+(report.ratingsWarChange>0?"+":"")+report.ratingsWarChange.toFixed(1):
+     "TELEVISION":"PAY-PER-VIEW"));
   const metrics=node("div","ppw-audience-metrics");
   const metric=(caption:string,value:string)=>{
    const item=node("div","ppw-audience-metric");

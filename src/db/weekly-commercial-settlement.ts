@@ -7,11 +7,15 @@ import type {SqlRows} from "./world-operations.js";
 import {COMMERCIAL_COMPANIES,type CommercialEvidence}
  from "../domain/commercial-offers.js";
 import {awardAiCommercialPartners} from "../domain/commercial-ai-market.js";
+import {settleRatingsWarWorldWeek} from "./ratings-war-week.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  year:number,week:number){
  const weekIndex=(year-1)*52+week-1,nextWeek=weekIndex+1;
  if(!worldId||weekIndex<0||week<1||week>52)throw new Error("Invalid commercial settlement");
+ // All completed TV shows are now certified: resolve simultaneous audience
+ // battles before this week's partner performance bonuses or new AI bids.
+ await settleRatingsWarWorldWeek(tx,worldId,year,week);
  // A successful broadcast carries recognition to previously visited
  // away markets, but never fabricates an international audience in an unknown
  // region. A current certified show with real crowd response is required.
