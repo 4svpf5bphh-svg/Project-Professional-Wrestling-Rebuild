@@ -58,7 +58,7 @@ test("iPhone retries a committed show with the SAME receipt after its response i
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(keys).toHaveLength(2);
  expect(keys[0]).toBe(keys[1]);
- await expect(page.getByText(/Weekly show · Town Hall/)).toBeVisible();
+ await expect(page.getByText(/Weekly show · Fri · Town Hall/)).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
