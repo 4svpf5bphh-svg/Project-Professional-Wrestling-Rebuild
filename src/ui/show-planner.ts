@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
@@ -8,7 +9,7 @@ export interface PlannerPort {
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
  openCard(draftId:string):void;
  openCalendar?():void;
- openDeals?():void;
+ openDeals?(target?:CalendarPlanningTarget):void;
 }
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
@@ -36,7 +37,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     const draft=week?.shows.find(s=>s.draftId===target.draftId||
      (!!s.showSeriesId&&s.showSeriesId===target.seriesId));
     const scheduled=week?.scheduled.some(s=>s.seriesId===target.seriesId);
-    if(week?.canEdit&&(draft?.status==="DRAFT"||!draft&&scheduled)){
+    if(week?.canEdit&&(draft?.status==="DRAFT"||!draft&&(scheduled||!target.seriesId))){
      edit(week,draft,target.seriesId);
     }else if(!week)error="This event is outside the advance booking window.";
     else if(draft?.status==="SUBMITTED")error="This show has already been submitted.";
@@ -113,11 +114,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
  function draw(){
-  root.replaceChildren();root.classList.add("ppw-planner");
+  activateWorkspaceRoot(root,"ppw-planner");root.replaceChildren();
   const header=node("header","","ppw-planner-header");
   if(onBack)header.append(button("← Back",onBack));
   if(port.openCalendar)header.append(button("Show Calendar",()=>port.openCalendar?.()));
-  header.append(node("h1","Show Planner"),node("p","Book the current week or any of the next six weeks. Confirm a venue and build your card whenever suits you."));
+  header.append(node("h1","Show Planner"),
+   node("p","Choose a venue, set your show date and build the card. Six weeks are available."));
   root.append(header);
   if(error)root.append(node("p",error,"ppw-planner-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}
@@ -223,26 +225,38 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      "ppw-planner-market-note"));
     form.append(context);
    }
-   const days=document.createElement("select");days.setAttribute("aria-label","Show day");
-   for(let d=1;d<=7;d++){const opt=document.createElement("option");opt.value=String(d);opt.textContent=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][d-1];days.append(opt);}
    const selected=editing.scheduled.find(x=>x.seriesId===selectedSeriesId);
    const premium=selected?.eventType==="MAJOR"||
     editing.shows.find(x=>x.draftId===selectedDraft)?.bookingClass==="PREMIUM";
    const contract=data.broadcastSlot,idx=(editing.year-1)*52+editing.week-1;
    const fixed=!premium&&contract&&idx>=contract.startWeekIndex&&idx<=contract.endWeekIndex;
    if(fixed)day=contract.day;
-   days.value=String(day);days.disabled=busy||!!fixed;
-   days.onchange=()=>{day=Number(days.value);draw();};
-   form.append(node("label",fixed?"Contracted broadcast day":"Show day"),days);
+   const weekdays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+   form.append(node("label",fixed?"Contracted TV day":"Show day"));
    if(fixed){
-    form.append(node("p",contract.networkName+" airs your weekly show on "+
-     ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][contract.day-1]+
-     " at "+String(contract.hour).padStart(2,"0")+":00. This day is fixed by your agreement.",
+    const lock=node("div",weekdays[contract.day-1]+" · "+
+     String(contract.hour).padStart(2,"0")+":00","ppw-planner-day-locked");
+    lock.setAttribute("aria-label","Contracted TV day: "+weekdays[contract.day-1]+
+     " at "+String(contract.hour).padStart(2,"0")+":00");
+    form.append(lock,node("p",contract.networkName+" · Fixed by your broadcast agreement.",
      "ppw-planner-calendar-label"));
-    if(port.openDeals)form.append(button("Request another broadcast day",()=>port.openDeals?.()));
-   }else if(premium)form.append(node("p",
-    "PPVs normally run on Saturday or Sunday; other days remain available.",
-    "ppw-planner-calendar-label"));
+    if(port.openDeals)form.append(button("Request another broadcast day",()=>
+     port.openDeals?.({year:editing!.year,week:editing!.week,
+      seriesId:selectedSeriesId,...(selectedDraft?{draftId:selectedDraft}:{})})));
+   }else{
+    const choices=node("div","","ppw-planner-day-grid");
+    choices.setAttribute("role","group");choices.setAttribute("aria-label","Show day");
+    for(let d=1;d<=7;d++){
+     const pick=button(weekdays[d-1]!,()=>{day=d;draw();},busy);
+     pick.classList.add("ppw-planner-day-choice");
+     pick.setAttribute("aria-pressed",String(day===d));
+     choices.append(pick);
+    }
+    form.append(choices);
+    if(premium)form.append(node("p",
+     "PPVs normally run on Saturday or Sunday. Any day is available.",
+     "ppw-planner-calendar-label"));
+   }
    const contenders=venuePressureCount(data,editing.year,editing.week,day,venueId);
    if(contenders){
     const warning=node("section","","ppw-planner-contention");
@@ -294,6 +308,11 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    card.append(node("span",status,"ppw-planner-booking-state"));
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
+   const contracted=data.broadcastSlot,weekIndex=(week.year-1)*52+week.week-1;
+   if(contracted&&weekIndex>=contracted.startWeekIndex&&weekIndex<=contracted.endWeekIndex)
+    card.append(node("span",contracted.networkName+" · Weekly TV "+
+     ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][contracted.day-1]+" "+
+     String(contracted.hour).padStart(2,"0")+":00","ppw-planner-week-tv-slot"));
    if(week.scheduled?.length)card.append(node("p",
     "On the calendar: "+week.scheduled.map(s=>s.name+" ("+
      (s.role==="FLAGSHIP"?"A":s.role==="SECONDARY"?"B":s.role==="PREMIUM"?"PPV":s.role)+")").join(" · "),
@@ -311,7 +330,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
       style:data.broadcastPackage,kind:"OPEN",show:show.showName,
       promotion:data.promotionName,compact:true}):null;
      card.append(animated??television??posterShell);
-    card.append(node("p",show.showName+" · "+(show.venueName??"Venue not chosen")+" · "+
+    const dayName=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][(show.day??0)-1];
+    card.append(node("p",show.showName+" · "+
+     (dayName??"Day unassigned")+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.ready?" · Confirmed":" · Draft")));
     const competing=show.venueId&&show.day!==null?

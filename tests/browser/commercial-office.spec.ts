@@ -67,6 +67,10 @@ test("320px Business commercial agreements are optional, readable and consented 
  await expect(page.locator(".ppw-commercial-partner-review")).toContainText("AT RISK");
  await expect(page.locator(".ppw-commercial-partner-review")).toContainText("0.0 TV");
  await expect(page.getByText("US$312,000 weekly guarantee")).toBeVisible();
+ const catalogue=page.locator(".ppw-commercial-market-browser");
+ await expect(catalogue).not.toHaveAttribute("open","");
+ await catalogue.locator("summary").click();
+ await expect(catalogue).toHaveAttribute("open","");
  await expect(page.locator(".ppw-commercial-slot")).toContainText("Friday at 20:00");
  await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
