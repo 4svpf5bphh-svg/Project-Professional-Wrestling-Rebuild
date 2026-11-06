@@ -269,3 +269,27 @@ test("The signed TV night has an accessible route to request a broadcaster chang
  await expect(page.getByRole("button",{name:"Request a different broadcast day"})).toBeVisible();
  expect(seen).toEqual(["planner","business"]);
 });
+
+test("Saturday network television moves the PPV weekend default to Sunday",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const premium={seriesId:"summer-showdown",name:"Summer Showdown",
+  role:"PREMIUM",eventType:"MAJOR",cadenceWeeks:52,anchorWeek:0,
+  importance:88,active:true};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>r.fulfill({json:{
+  ...planner(4,false),broadcastSlot:{
+   offerCode:"BROADCAST_TV",networkName:"BBS Sports",day:6,hour:20,
+   startWeekIndex:0,endWeekIndex:25
+  },
+  weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+ }}));
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Book PPV · Summer Showdown"}).click();
+ const date=page.getByRole("combobox",{name:"Show day"});
+ await expect(date).toHaveValue("7");
+ await expect(date).toBeEnabled();
+ await date.selectOption("5");
+ await expect(date).toHaveValue("5");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

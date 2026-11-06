@@ -105,7 +105,11 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   const premium=draft?.bookingClass==="PREMIUM"||selected?.eventType==="MAJOR";
   const slot=data?.broadcastSlot,index=(week.year-1)*52+week.week-1;
   const fixed=!premium&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex;
-  day=fixed?slot.day:draft?.day??(premium?6:5);
+  // If weekly TV owns Saturday, the premium weekend opener belongs
+  // on Sunday instead. Saturday/Sunday remain changeable by the player.
+  const saturdayTv=week.shows.some(x=>x.bookingClass==="REGULAR"&&x.day===6)||
+   Boolean(slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex&&slot.day===6);
+  day=fixed?slot.day:draft?.day??(premium?(saturdayTv?7:6):5);
   strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
  function draw(){
