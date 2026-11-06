@@ -31,11 +31,14 @@ for(const width of [320,390]){
     ],
     competitorBroadcasts:[
      {promotionId:"other",name:"North Wrestling",showName:"Uprising",day:5,year:1,week:19,
-      householdRating:3.0,estimatedViewers:4300000,networkOfferCode:"BROADCAST_GROWTH",isYours:false},
+      householdRating:3.0,estimatedViewers:4300000,networkOfferCode:"BROADCAST_GROWTH",
+      isYours:false,humanManaged:false},
      {promotionId:"mine",name:"CWA",showName:"Ascension",day:2,year:1,week:19,
-      householdRating:2.4,estimatedViewers:3800000,networkOfferCode:"BROADCAST_TV",isYours:true},
+      householdRating:2.4,estimatedViewers:3800000,networkOfferCode:"BROADCAST_TV",
+      isYours:true,humanManaged:true},
      {promotionId:"rival",name:"Another Wrestling Company",showName:"Rumble",day:4,year:1,week:18,
-      householdRating:1.9,estimatedViewers:2500000,networkOfferCode:null,isYours:false}
+      householdRating:1.9,estimatedViewers:2500000,networkOfferCode:null,
+      isYours:false,humanManaged:true}
     ],
     commercialAgreements:[],commercialQualified:[],commercialOffers:[],partnerInventory:[]
    }});
@@ -45,14 +48,17 @@ for(const width of [320,390]){
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
   await expect(war.locator(".ppw-ratings-war-score").first()).toContainText("2.4");
-  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("3.0");
-  await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
+  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("1.9");
+  await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(3);
   await expect(war.getByText("3 recent broadcasts · 2.3 average TV rating")).toBeVisible();
   await page.screenshot({path:info.outputPath("phase33-ratings-war-"+width+".png")});
-  await war.getByRole("button",{name:"Compare against Another Wrestling Company"}).click();
-  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("Another Wrestling Company");
+  await expect(war.locator('.ppw-ratings-war-rival[data-human="true"]')).toContainText("HUMAN MANAGER");
+  await war.getByRole("button",{name:"Compare against North Wrestling"}).click();
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
+  await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Networks & sponsors"}).click();
   await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
   expect(methods).toEqual(["business"]);

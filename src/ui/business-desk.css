@@ -399,3 +399,11 @@
  .ppw-ratings-war-rival{grid-template-columns:minmax(0,1fr)}
  .ppw-ratings-war-rival-number{text-align:left}
 }
+
+/* A second human booker is the natural default rival in multiplayer.
+   Their management status is already publicly visible in the World hub. */
+.ppw-ratings-war-human-label{display:block;color:#bfeede!important;
+ font-size:9px!important;font-weight:950;letter-spacing:.075em}
+.ppw-ratings-war-rival[data-human="true"]{
+ border-color:#72d3b0;background:#1c3d45
+}

@@ -628,7 +628,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
    const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
-    others[0]??null;
+    others.find(episode=>episode.humanManaged)??others[0]??null;
    const ownRank=ranking.findIndex(episode=>episode.isYours);
    const compare=el("section","ppw-ratings-war-faceoff");
    compare.setAttribute("aria-label","Certified TV ratings comparison");
@@ -646,6 +646,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     el("span","ppw-ratings-war-versus","VS"),
     scoreCard(opponent?.name??"No challenger recorded",
      opponent?.householdRating??null,"RIVAL"));
+   if(opponent?.humanManaged)
+    cards.lastElementChild?.prepend(el("small","ppw-ratings-war-human-label",
+     "HUMAN MANAGER"));
    compare.append(cards);
    if(own&&opponent){
     const difference=own.householdRating-opponent.householdRating;
@@ -710,11 +713,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    for(const episode of shown){
     const row=el("article","ppw-ratings-war-rival");
     if(episode.isYours)row.dataset.own="true";
+    if(episode.humanManaged&&!episode.isYours)row.dataset.human="true";
     if(episode.promotionId===opponent?.promotionId)row.dataset.selected="true";
     const rank=ranking.indexOf(episode)+1;
     const description=el("div","ppw-ratings-war-rival-copy");
     description.append(el("strong","","#"+rank+" · "+episode.name+
-     (episode.isYours?" · YOU":"")),
+     (episode.isYours?" · YOU":episode.humanManaged?" · HUMAN MANAGER":"")),
      el("small","",episode.showName+" · "+(days[(episode.day??0)-1]??"Day unreported")+
       " · Y"+episode.year+" W"+episode.week));
     const numbers=el("div","ppw-ratings-war-rival-number");

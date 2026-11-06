@@ -202,8 +202,13 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    promotion_id:string;promotion_name:string;show_name:string|null;
    show_day:number|null;year:number;week:number;household_rating:string;
    estimated_viewers:string|null;network_offer_code:string|null;
+   human_managed:boolean;
   }>(`
-   SELECT recent.* FROM (
+   SELECT recent.*,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls controller
+     WHERE controller.world_id=$1 AND controller.promotion_id=recent.promotion_id
+      AND controller.active) AS human_managed
+   FROM (
     SELECT DISTINCT ON (e.promotion_id) e.promotion_id,p.name AS promotion_name,
      d.show_name,d.show_day,e.year,e.week,
      e.tv_household_rating::text AS household_rating,
@@ -293,7 +298,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     promotionId:e.promotion_id,name:e.promotion_name,showName:e.show_name??"Weekly show",
     day:e.show_day,year:e.year,week:e.week,householdRating:Number(e.household_rating),
     estimatedViewers:e.estimated_viewers===null?null:Number(e.estimated_viewers),
-    networkOfferCode:e.network_offer_code,isYours:e.promotion_id===promotionId
+    networkOfferCode:e.network_offer_code,isYours:e.promotion_id===promotionId,
+    humanManaged:e.human_managed
    })),
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
