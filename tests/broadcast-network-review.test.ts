@@ -9,14 +9,14 @@ const ep=(weekIndex:number,rating:number|null,showDay=5,
  audienceFormat:"TV"|"PPV"|null="TV"):CertifiedNetworkWeek=>
  ({weekIndex,showId:"show-"+weekIndex,showDay,audienceFormat,rating});
 test("certified on-slot broadcasts protect guaranteed income while reviewing only performance pay",()=>{
- const x=assessBroadcastNetwork(deal,[ep(14,1.7)],14)!;
+ const x=assessBroadcastNetwork(deal,[ep(13,1.9),ep(14,1.7)],14)!;
  assert.equal(x.target,1.69);assert.equal(x.status,"ON_TARGET");
  assert.equal(x.bonusEligible,true);assert.equal(x.missedConsecutively,0);
  assert.match(broadcasterReaction(x),/Prime time/);
  assert.equal(assessBroadcastNetwork(deal,[],9),null);
 });
 test("three consecutive below-target episodes trigger a replay-stable warning",()=>{
- const a=[ep(12,.7),ep(13,.8),ep(14,.9)];
+ const a=[ep(11,1.9),ep(12,.7),ep(13,.8),ep(14,.9)];
  const x=assessBroadcastNetwork(deal,a,14)!;
  assert.equal(x.status,"BELOW_TARGET");assert.equal(x.milestone,"WARNING");
  assert.equal(x.missedConsecutively,3);assert.equal(x.previousMisses,2);
@@ -25,13 +25,14 @@ test("three consecutive below-target episodes trigger a replay-stable warning",(
  assert.equal(assessBroadcastNetwork(deal,a.slice(0,2),13)!.milestone,null);
 });
 test("moving a show outside the signed airtime loses only the performance bonus",()=>{
- const x=assessBroadcastNetwork(deal,[ep(15,3.1,6)],15)!;
+ const a=[ep(14,2.1),ep(15,3.1,6)];
+ const x=assessBroadcastNetwork(deal,a,15)!;
  assert.equal(x.status,"OFF_SLOT");assert.equal(x.bonusEligible,false);
  assert.match(broadcasterReaction(x),/prime-time slot/);
- assert.equal(assessBroadcastNetwork({...deal,airingDay:null},[ep(15,3.1,6)],15)!.status,"ON_TARGET");
+ assert.equal(assessBroadcastNetwork({...deal,airingDay:null},a,15)!.status,"ON_TARGET");
 });
 test("recovered high-rating shows earn a positive network statement",()=>{
- const a=[ep(14,.6),ep(15,.8),ep(16,.9),ep(17,2.1)];
+ const a=[ep(13,2.1),ep(14,.6),ep(15,.8),ep(16,.9),ep(17,2.1)];
  const x=assessBroadcastNetwork(deal,a,17)!;
  assert.equal(x.milestone,"RECOVERED");assert.equal(x.previousMisses,3);
  assert.equal(x.bonusEligible,true);assert.match(broadcasterReaction(x),/prime-time result/);

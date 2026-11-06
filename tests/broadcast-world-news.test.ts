@@ -5,8 +5,9 @@ import {assessBroadcastNetwork} from "../src/domain/broadcast-network-review.js"
 import type {NetworkAudit} from "../src/db/broadcast-network-audit.js";
 const terms={dealId:"deal-77",offerCode:"BROADCAST_TV",tier:"NATIONAL",
  startWeekIndex:10,endWeekIndex:20,airingDay:5,airingHour:20};
-const weeks=[12,13,14].map(weekIndex=>({
- weekIndex,showId:"match-"+weekIndex,showDay:5,audienceFormat:"TV" as const,rating:.7}));
+const weeks=[11,12,13,14].map(weekIndex=>({
+ weekIndex,showId:"match-"+weekIndex,showDay:5,
+ audienceFormat:"TV" as const,rating:weekIndex===11?2.1:.7}));
 const review=assessBroadcastNetwork(terms,weeks,14)!;
 const audit:NetworkAudit={dealId:terms.dealId,promotionId:"human",
  promotionName:"Chaotic Wrestling Alliance",offerCode:terms.offerCode,
