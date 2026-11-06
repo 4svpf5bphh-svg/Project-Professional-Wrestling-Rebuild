@@ -155,7 +155,7 @@ for(const id of ids){
    await page.goto("/#/collection");
    const album=page.locator(".ppw-legend-collection");
    await album.getByRole("button",{name:"Collected"}).click();
-   await expect(album.locator("img.ppw-legend-card-art")).toHaveAttribute("src",art);
+   await expect(album.locator(".ppw-album-slot img.ppw-legend-card-art")).toHaveAttribute("src",art);
    await page.screenshot({path:info.outputPath("phase32-"+item.tier.toLowerCase()+"-"+width+"-album.png")});
    await album.getByRole("button",{name:"View card"}).click();
    const viewer=page.getByRole("dialog",{name:"Collectible card: "+item.name});

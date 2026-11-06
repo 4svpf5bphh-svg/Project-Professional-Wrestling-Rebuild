@@ -81,6 +81,12 @@ function showLegendCardViewer(view:LegendsVaultView,
    (index>=0?"COLLECTED":"PREVIEW")));
  const art=cardGraphic(current);
  if(art){art.loading="eager";panel.append(art);}
+ // Show only the actual recorded World unlock date. It is not a KP purchase
+ // date, contract signing, Hall induction or invented career achievement.
+ if(current.year!==null&&current.week!==null){
+  panel.append(el("p","ppw-album-discovery",
+   "World discovered · Year "+current.year+" / Week "+current.week));
+ }
  if(index>=0&&owned.length>1){
   const nav=el("nav","ppw-album-viewer-nav");
   nav.setAttribute("aria-label","Browse collected cards");
@@ -144,7 +150,7 @@ export function drawLegendAlbum(
  // Mystery entries and cards not yet owned never appear in this highlight.
  const highlights=el("section","ppw-album-highlights");
  highlights.setAttribute("aria-label","Collected card highlights");
- const highlightTitle=el("h3","ppw-album-highlights-title","Your Cards");
+ const highlightTitle=el("h3","ppw-album-highlights-title","Collection Highlights");
  const highlightRail=el("div","ppw-album-highlights-rail");
  highlightRail.setAttribute("role","group");
  highlightRail.setAttribute("aria-label","Swipe through your collected cards");

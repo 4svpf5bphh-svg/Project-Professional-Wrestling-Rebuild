@@ -428,3 +428,8 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
 @media(prefers-reduced-motion:reduce){
  .ppw-album-highlights-rail{scroll-behavior:auto}
 }
+
+.ppw-legend-card-viewer .ppw-album-discovery{
+ margin:0;font-size:.74rem;color:#dcc9a6;line-height:1.4;
+ letter-spacing:.015em;font-variant-numeric:tabular-nums;text-align:center;
+}

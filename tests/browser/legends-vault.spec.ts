@@ -128,7 +128,7 @@ test("Undertaker pilot reuses the exact bundled real-photo card in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
- await expect(cabinet.locator("img.ppw-undertaker-card")).toHaveAttribute("src",card);
+ await expect(cabinet.locator(".ppw-album-slot img.ppw-undertaker-card")).toHaveAttribute("src",card);
  await expect(cabinet.getByRole("progressbar",{name:"Legend card collection progress"}))
   .toHaveAttribute("aria-valuenow","1");
  await expect(cabinet.locator(".ppw-album-slot")).toHaveCount(1);
@@ -186,7 +186,7 @@ test("new Phase 14 Midnight Express card remains the same image in reveal, Vault
  await expect.poll(()=>collects).toBe(1);
  await page.goto("/#/collection");
  const cabinet=page.locator(".ppw-legend-collection");
- await expect(cabinet.locator("img.ppw-legend-card-art")).toHaveAttribute("src",card);
+ await expect(cabinet.locator(".ppw-album-slot img.ppw-legend-card-art")).toHaveAttribute("src",card);
  await cabinet.getByRole("button",{name:"Collected"}).click();
  await expect(cabinet.getByRole("button",{name:"Collected"})).toHaveAttribute("aria-pressed","true");
  await cabinet.getByRole("button",{name:"View card"}).click();
@@ -256,7 +256,7 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  await page.goto("/#/collection");
  const album=page.locator(".ppw-legend-collection");
  await album.getByRole("button",{name:"Collected"}).click();
- await expect(album.locator("img.ppw-legend-card-art")).toHaveAttribute("src",
+ await expect(album.locator(".ppw-album-slot img.ppw-legend-card-art")).toHaveAttribute("src",
   "/assets/legends/trish-stratus-legend-card.webp");
  await album.getByRole("button",{name:"View card"}).click();
  const viewer=page.getByRole("dialog",{name:"Collectible card: Trish Stratus"});
