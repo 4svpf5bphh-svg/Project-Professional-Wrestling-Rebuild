@@ -731,6 +731,7 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
   r.fulfill({json:{status:"unavailable"}}));
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  const wrestler=page.locator(".ppw-pop-wrestler-post");
  await expect(wrestler).toContainText("Kenny Omega");
