@@ -13,6 +13,7 @@ export interface BusinessPort{
  load():Promise<BusinessView>;
  renamePromotion?(name:string):Promise<{name:string;changed:boolean}>;
  signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
+ requestBroadcastDay?(input:{requestId:string;expectedRevision:number;dealId:string;requestedDay:number}):Promise<unknown>;
  setSpendingPlan?(input:PromotionSpendingPlan&{requestId:string;expectedRevision:number}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
  openKayfabe?():void;
@@ -25,9 +26,9 @@ export interface BusinessPort{
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
 };
-const button=(label:string,fn:()=>void)=>{
+const button=(label:string,fn:()=>void,disabled=false)=>{
  const x=el("button","ppw-business-action",label) as HTMLButtonElement;
- x.type="button";x.onclick=fn;return x;
+ x.type="button";x.disabled=disabled;x.onclick=fn;return x;
 };
 const money=(n:number)=>new Intl.NumberFormat("en-GB",{
  style:"currency",currency:"USD",maximumFractionDigits:0
@@ -35,7 +36,7 @@ const money=(n:number)=>new Intl.NumberFormat("en-GB",{
 const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
- initialPane:"FINANCES"|"RATINGS"="FINANCES"){
+ initialPane:"FINANCES"|"RATINGS"|"COMMERCIAL"="FINANCES"){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,

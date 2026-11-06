@@ -743,6 +743,7 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
+  openDeals:()=>mountBusinessDesk(root,businessPort(root,scope,call),"COMMERCIAL"),
   openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
    mountBookingPage(root,{...scope,showId:draftId}),
   openCalendar:()=>mountCalendarPage(root,scope,

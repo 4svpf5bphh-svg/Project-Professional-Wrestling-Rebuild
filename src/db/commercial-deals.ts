@@ -84,11 +84,25 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
     Math.min(100,baselineReach!+valid.reachIncrease):null;
    const dealId="commercial-"+randomUUID();
    const time=COMMERCIAL_COMPANIES[valid.code];
-   const airingDay=valid.kind==="BROADCAST"?
-    (p.recentShowDay&&p.recentShowDay>=1&&p.recentShowDay<=7?
-     p.recentShowDay:time?.preferredDay??6):null;
+   // Advertised network terms determine the recurring TV weekday.
+   const airingDay=valid.kind==="BROADCAST"?time?.preferredDay??5:null;
    const airingHour=valid.kind==="BROADCAST"?
     Number(time?.airtime.slice(0,2)??"20"):null;
+   if(airingDay!==null){
+    // Reconcile existing TV plans before signing, never quietly move a
+    // player's submitted card into an unexpected broadcast slot.
+    const conflict=await tx.query<{draft_id:string}>(`
+     SELECT draft_id FROM ppw_booking_drafts
+     WHERE world_id=$1 AND promotion_id=$2 AND booking_class='REGULAR'
+      AND status IN ('DRAFT','SUBMITTED') AND show_day IS NOT NULL
+      AND (year-1)*52+week-1 BETWEEN $3 AND $4 AND show_day<>$5
+     ORDER BY year,week LIMIT 1`,
+     [input.worldId,input.promotionId,start,start+valid.termWeeks-1,airingDay]);
+    if(conflict.length)throw new Error(
+     "Your planned weekly shows must use "+
+      ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][airingDay-1]+
+     " before signing. Change their dates in Planner.");
+   }
    await tx.query(`
     INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
      offer_code,status,baseline_income,agreed_income,baseline_reach,

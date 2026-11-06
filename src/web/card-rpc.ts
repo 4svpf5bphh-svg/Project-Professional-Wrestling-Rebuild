@@ -228,7 +228,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return signCommercialDealAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,offerCode:id("offerCode")});
  if(method==="requestBroadcastDay"){
-  if(!Number.isInteger(p.requestedDay)||p.requestedDay<1||p.requestedDay>7)
+  if(typeof p.requestedDay!=="number"||!Number.isInteger(p.requestedDay)||
+   p.requestedDay<1||p.requestedDay>7)
    throw new Error("Choose a valid weekly broadcast day");
   return requestBroadcastDayAsActor(context,{
    worldId,promotionId,requestId,expectedRevision,dealId:id("dealId"),
