@@ -433,3 +433,21 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  margin:0;font-size:.74rem;color:#dcc9a6;line-height:1.4;
  letter-spacing:.015em;font-variant-numeric:tabular-nums;text-align:center;
 }
+
+/* Short iPhones: keep Close, full artwork, authentic discovery receipt and
+   Previous/Next controls entirely inside 320×568 without obscured buttons. */
+@media(max-height:620px){
+ .ppw-legend-card-viewer .ppw-album-viewer-panel{
+  gap:.42rem;min-height:0;padding:0 4px 8px;
+ }
+ .ppw-legend-card-viewer .ppw-legend-card-art,
+ .ppw-legend-card-viewer .ppw-undertaker-card{
+  width:min(70vw,210px)!important;max-height:58dvh;
+ }
+ .ppw-legend-card-viewer .ppw-album-viewer-kicker{
+  font-size:.68rem;line-height:1.1;
+ }
+ .ppw-legend-card-viewer .ppw-album-discovery{
+  font-size:.69rem;margin:0;
+ }
+}

@@ -72,6 +72,14 @@ for(const width of [320,390]){
   const viewer=page.getByRole("dialog",{name:"Collectible card: Jerry Lynn"});
   await expect(viewer).toBeVisible();
   await expect(viewer.getByText("World discovered · Year 1 / Week 1")).toBeVisible();
+  const viewerButtons=await viewer.evaluate(node=>({
+   close:node.querySelector<HTMLButtonElement>("button.ppw-legend-button")!.getBoundingClientRect().bottom,
+   next:Array.from(node.querySelectorAll<HTMLButtonElement>("button"))
+    .find(b=>b.textContent==="Next card")!.getBoundingClientRect().bottom
+  }));
+  expect(viewerButtons.close).toBeLessThanOrEqual((width===320?568:844)+1);
+  expect(viewerButtons.next,"The next-card button must not disappear below a short iPhone")
+   .toBeLessThanOrEqual((width===320?568:844)+1);
   await expect(viewer.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
   await expect.poll(()=>viewer.evaluate(node=>Number(getComputedStyle(node).opacity))).toBe(1);
   await page.screenshot({path:info.outputPath("phase32-album-"+width+"-viewer.png")});
