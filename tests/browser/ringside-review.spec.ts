@@ -88,13 +88,19 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
-  await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-avatar")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-handle").first()).toContainText("@");
+  await expect(page.locator(".ppw-pop-wrestler-post")).toHaveCount(1);
+  await expect(page.locator(".ppw-pop-wrestler-post")).toContainText("Kenny Omega");
+  await expect(page.locator(".ppw-pop-wrestler-post .ppw-pop-wrestler-action")).toHaveCount(2);
+  await expect(page.getByRole("button",{name:"See moment"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"View dossier"})).toBeVisible();
+  const fans=page.locator(".ppw-pop-post:not(.ppw-pop-wrestler-post)");
+  await expect(fans).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-avatar")).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-metrics")).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-handle").first()).toContainText("@");
   await expect(page.locator(".ppw-pop-social")).toContainText("Fictional in-game wrestling social media.");
-   await expect(page.locator(".ppw-pop-post").first()).toHaveCSS("color","rgb(255, 243, 238)");
-   await expect(page.locator(".ppw-pop-post .ppw-pop-copy").first())
+   await expect(fans.first()).toHaveCSS("color","rgb(255, 243, 238)");
+   await expect(fans.locator(".ppw-pop-copy").first())
     .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"What needs your attention"})).toBeVisible();
@@ -159,7 +165,7 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
- const post=page.locator(".ppw-crowd-noise-card").first();
+ const post=page.locator(".ppw-crowd-noise-card:not(.ppw-pop-wrestler-post)").first();
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
  await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");

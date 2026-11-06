@@ -136,8 +136,9 @@ for(const width of [320,390]){
   const wrestler=page.locator(".ppw-pop-wrestler-post");
   await expect(wrestler).toHaveCount(1);
   await expect(wrestler).toContainText("Samoa Joe");
-  await expect(wrestler.getByRole("button",{name:"See moment"})).toHaveCount(1);
-  await expect(wrestler.getByRole("button",{name:"View dossier"})).toHaveCount(1);
+  // HOT TAG is not visible until the Post-show Brief chapter opens.
+  await expect(wrestler.locator("button.ppw-pop-wrestler-action")).toHaveText([
+   "See moment","View dossier"]);
   await expect(audience).toContainText("TV RATING");
   await expect(audience).toContainText("2.4");
   await expect(audience).toContainText("3.8M");
