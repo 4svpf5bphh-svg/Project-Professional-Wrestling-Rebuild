@@ -6,7 +6,7 @@ export const HOT_TAG_NAME="HOT TAG";
 export const HOT_TAG_TAGLINE="Tag in. Sound off.";
 export interface HotTagNewsStory{
  id:string;year:number;week:number;title:string;summary:string;
- desk:"OFFICIAL"|"DIRT";promotionName:string;
+ desk:"OFFICIAL"|"DIRT";promotionName:string;promotionId?:string;sourceKind?:string;
 }
 export interface HotTagNewsPost{
  handle:string;displayName:string;avatar:string;text:string;

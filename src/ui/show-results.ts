@@ -26,6 +26,7 @@ import {showBroadcastHighlights} from "../domain/show-broadcast-highlights.js";
 import {writeFinalBellEditorial} from "../domain/show-broadcast-editorial.js";
 import {showReactionWire} from "../domain/show-reaction-wire.js";
 import {projectPopFeed} from "../domain/pop-social.js";
+import {projectHotTagShowWrestlerPosts} from "../domain/hot-tag-wrestler-voice.js";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE} from "../domain/hot-tag-news.js";
 import "./territory-results-skin.css";
 import "./fight-night-results-skin.css";
@@ -281,8 +282,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=projectPopFeed(show,showReactionWire(show));
+ const wrestlerPosts=projectHotTagShowWrestlerPosts(show);
  const noise=node("section","ppw-crowd-noise ppw-pop-social");
- if(reactions.length){
+ if(reactions.length||wrestlerPosts.length){
   append(noise,
    node("span","ppw-pop-kicker",HOT_TAG_TAGLINE),
    node("h2","ppw-crowd-noise-title ppw-pop-title",HOT_TAG_NAME),
@@ -290,6 +292,41 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     "Fictional in-game wrestling social media. Posts, profiles and engagement are simulated; results link to certified matches and angles."));
   const wall=node("div","ppw-crowd-noise-wall ppw-pop-timeline");
   wall.setAttribute("aria-label","HOT TAG fictional wrestling social timeline");
+  for(const post of wrestlerPosts){
+   const card=node("article","ppw-crowd-noise-card ppw-pop-post ppw-pop-wrestler-post");
+   const head=node("div","ppw-pop-post-head");
+   const avatar=node("span","ppw-pop-avatar","🎤");
+   const image=createWrestlerPortrait(post.displayName,70,post.personId);
+   if(image)avatar.replaceChildren(image);
+   const who=node("div","ppw-pop-who");
+   who.append(node("strong","ppw-pop-display-name",post.displayName),
+    node("small","ppw-pop-handle",post.handle+" · Wrestler"));
+   head.append(avatar,who,node("span","ppw-pop-mood","✓"));
+   card.append(head,node("p","ppw-crowd-noise-quote ppw-pop-copy",post.text));
+   const metrics=node("div","ppw-pop-metrics");
+   metrics.append(node("span","","❤️ "+post.likes.toLocaleString("en-GB")),
+    node("span","","💬 "+post.replies.toLocaleString("en-GB")),
+    node("span","","🔁 "+post.reposts.toLocaleString("en-GB")));
+   card.append(metrics);
+   const actions=node("div","ppw-pop-wrestler-actions");
+   const moment=node("button","ppw-pop-wrestler-action","See moment") as HTMLButtonElement;
+   moment.type="button";
+   moment.onclick=()=>{
+    changePage(1);setFilter("ALL");
+    const target=storyLinks.get(post.slotId);
+    if(target instanceof HTMLDetailsElement)target.open=true;
+    target?.scrollIntoView({behavior:"smooth",block:"center"});
+   };
+   actions.append(moment);
+   if(openWrestler){
+    const dossier=node("button","ppw-pop-wrestler-action","View dossier") as HTMLButtonElement;
+    dossier.type="button";
+    dossier.onclick=()=>openWrestler(post.personId);
+    actions.append(dossier);
+   }
+   card.append(actions);
+   wall.append(card);
+  }
   for(const reaction of reactions){
    const card=document.createElement("button");card.type="button";
    card.className="ppw-crowd-noise-card ppw-pop-post ppw-reaction-"+reaction.mood.toLowerCase();

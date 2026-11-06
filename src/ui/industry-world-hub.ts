@@ -7,6 +7,7 @@ import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagNewsThread,dirtSheetByline} from "../domain/hot-tag-news.js";
+import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
@@ -757,17 +758,29 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const content=el("div","ppw-hot-tag-thread-body");
     content.append(el("div","ppw-hot-tag-brand",
      HOT_TAG_NAME+"  /  "+HOT_TAG_TAGLINE));
-    const posts=projectHotTagNewsThread(story);
+    const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
+    const posts=[...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
     for(const post of posts){
-     const card=el("div","ppw-hot-tag-news-post");
-     card.append(el("span","ppw-hot-tag-avatar",post.avatar));
+     const wrestler="personId" in post;
+     const card=el("div","ppw-hot-tag-news-post"+(wrestler?" ppw-hot-tag-wrestler":""));
+     const avatar=el("span","ppw-hot-tag-avatar",post.avatar);
+     if(wrestler){
+      const photo=createWrestlerPortrait(post.displayName,68,post.personId);
+      if(photo)avatar.replaceChildren(photo);
+     }
+     card.append(avatar);
      const copy=el("div","ppw-hot-tag-news-copy");
      copy.append(el("strong","",post.displayName),
-      el("small","",post.handle+" · Fan reaction"),
+      el("small","",post.handle+(wrestler?" · Wrestler":" · Fan reaction")),
       el("p","",post.text),
       el("span","ppw-hot-tag-news-metrics",
        "❤️ "+post.likes.toLocaleString("en-GB")+
        "  ·  💬 "+post.replies+"  ·  🔁 "+post.reposts));
+     if(wrestler&&port.openWrestler){
+      const dossier=btn("View wrestler dossier",()=>port.openWrestler?.(post.personId));
+      dossier.classList.add("ppw-hot-tag-dossier");
+      copy.append(dossier);
+     }
      card.append(copy);content.append(card);
     }
     thread.append(content);

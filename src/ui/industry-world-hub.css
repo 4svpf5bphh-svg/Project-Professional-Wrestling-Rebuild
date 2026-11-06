@@ -317,3 +317,13 @@
 .ppw-news-official>.ppw-news-story .ppw-hot-tag-thread .ppw-hot-tag-news-metrics{
  color:#d3ddec!important}
 .ppw-hot-tag-news-copy p{font-size:13px!important}
+
+/* A certified in-character wrestler account in the existing World News thread. */
+.ppw-hot-tag-wrestler{border-top:1px solid #b48e63;
+ background:linear-gradient(100deg,#3a2d3b,#242d44);
+ border-radius:9px;padding:10px 7px}
+.ppw-hot-tag-wrestler .ppw-hot-tag-avatar{overflow:hidden;border:1px solid #e2b783}
+.ppw-hot-tag-wrestler .ppw-hot-tag-avatar img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ppw-hot-tag-wrestler .ppw-hot-tag-news-copy>strong{color:#fce3ae!important}
+.ppw-hot-tag-wrestler .ppw-hot-tag-dossier{margin-top:7px;min-height:40px;
+ font-size:12px;padding:8px 10px;background:#554564;border-color:#a38bb7}
