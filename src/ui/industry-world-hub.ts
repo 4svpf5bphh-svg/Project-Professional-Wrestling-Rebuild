@@ -761,11 +761,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
     const posts=[...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
     for(const post of posts){
-     const wrestler="personId" in post && typeof post.personId==="string";
+     const personId="personId" in post && typeof post.personId==="string"?post.personId:null;
+     const wrestler=personId!==null;
      const card=el("div","ppw-hot-tag-news-post"+(wrestler?" ppw-hot-tag-wrestler":""));
      const avatar=el("span","ppw-hot-tag-avatar",post.avatar);
-     if(wrestler){
-      const photo=createWrestlerPortrait(post.displayName,68,post.personId);
+     if(personId){
+      const photo=createWrestlerPortrait(post.displayName,68,personId);
       if(photo)avatar.replaceChildren(photo);
      }
      card.append(avatar);
@@ -776,8 +777,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       el("span","ppw-hot-tag-news-metrics",
        "❤️ "+post.likes.toLocaleString("en-GB")+
        "  ·  💬 "+post.replies+"  ·  🔁 "+post.reposts));
-     if(wrestler&&port.openWrestler){
-      const dossier=btn("View wrestler dossier",()=>port.openWrestler?.(post.personId));
+     if(personId&&port.openWrestler){
+      const dossier=btn("View wrestler dossier",()=>port.openWrestler?.(personId));
       dossier.classList.add("ppw-hot-tag-dossier");
       copy.append(dossier);
      }
