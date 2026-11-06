@@ -5,7 +5,7 @@
 import type {SqlRows} from "./world-operations.js";
 import {projectRatingsWarWeek,type RatingsWarEpisode}
  from "../domain/ratings-war-settlement.js";
-interface EpisodeRow{
+interface EpisodeRow extends Record<string,unknown>{
  show_id:string;promotion_id:string;show_day:number|null;airing_hour:number|string;
  crowd_response:number|string;
  tv_household_rating:string;estimated_viewers:string;
