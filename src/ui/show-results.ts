@@ -204,8 +204,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   };
   if(report.format==="TV"&&report.householdRating!==null){
    metrics.append(metric("TV RATING",report.householdRating.toFixed(1)));
-   if(report.estimatedViewers!==null)
-    metrics.append(metric("EST. VIEWERS",report.estimatedViewers.toLocaleString("en-GB")));
+   if(report.estimatedViewers!==null){
+    const viewers=metric("EST. VIEWERS",new Intl.NumberFormat("en-GB",{
+     notation:"compact",maximumFractionDigits:1
+    }).format(report.estimatedViewers));
+    const precise=report.estimatedViewers.toLocaleString("en-GB")+" estimated viewers";
+    viewers.setAttribute("aria-label",precise);viewers.title=precise;
+    metrics.append(viewers);
+   }
   }else if(report.format==="PPV"&&report.ppvBuys!==null)
    metrics.append(metric("EST. PPV BUYS",report.ppvBuys.toLocaleString("en-GB")));
   if(metrics.childElementCount){

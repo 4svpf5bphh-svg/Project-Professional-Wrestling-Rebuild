@@ -578,3 +578,35 @@
  }
  #game .ppw-results .ppw-audience-metrics{gap:12px}
 }
+
+/* Fit rating + abbreviated viewer estimate beside the CTA, even at 320px.
+   The complete certified audience remains in the accessible aria-label. */
+#game .ppw-results .ppw-result-broadcast-audience{
+ grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;
+ padding:9px 11px;margin:8px 0 10px
+}
+#game .ppw-results .ppw-audience-head{gap:4px 9px}
+#game .ppw-results .ppw-audience-metrics{
+ display:flex;flex-wrap:nowrap;align-items:end;gap:10px
+}
+#game .ppw-results .ppw-audience-metric{min-width:0;gap:1px}
+#game .ppw-results .ppw-audience-metric small{
+ font-size:8px;letter-spacing:.02em;white-space:nowrap
+}
+#game .ppw-results .ppw-audience-metric strong{
+ font-size:21px;line-height:1.08;white-space:nowrap
+}
+#game .ppw-results .ppw-audience-ratings-link{
+ grid-column:2;grid-row:2;min-height:44px;width:auto;
+ padding:7px 9px;font-size:11px
+}
+@media(max-width:360px){
+ #game .ppw-results .ppw-result-broadcast-audience{
+  grid-template-columns:minmax(0,1fr) auto;gap:4px 6px;padding:8px 9px
+ }
+ #game .ppw-results .ppw-audience-metrics{gap:8px}
+ #game .ppw-results .ppw-audience-metric strong{font-size:19px}
+ #game .ppw-results .ppw-audience-ratings-link{
+  grid-column:2;grid-row:2;width:auto;padding:7px 6px;font-size:10px
+ }
+}

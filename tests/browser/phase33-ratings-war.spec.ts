@@ -47,6 +47,9 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/business\/ratings$/);
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
+  const vsBounds=await war.locator(".ppw-ratings-war-faceoff").boundingBox();
+  expect(vsBounds).not.toBeNull();
+  expect(vsBounds!.y).toBeLessThan(390);
   await expect(war.locator(".ppw-ratings-war-score").first()).toContainText("2.4");
   await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("1.9");
   await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
@@ -130,7 +133,12 @@ for(const width of [320,390]){
   await expect(audience).toContainText("BROADCAST PERFORMANCE");
   await expect(audience).toContainText("TV RATING");
   await expect(audience).toContainText("2.4");
-  await expect(audience).toContainText("3,800,000");
+  await expect(audience).toContainText("3.8M");
+  await expect(audience.locator(".ppw-audience-metric").last())
+   .toHaveAttribute("aria-label","3,800,000 estimated viewers");
+  const panelBounds=await audience.boundingBox();
+  expect(panelBounds).not.toBeNull();
+  expect(panelBounds!.height).toBeLessThan(130);
   await page.screenshot({path:info.outputPath("phase33-tv-results-"+width+".png")});
   await audience.getByRole("button",{name:"Compare TV ratings in Ratings War"}).click();
   await expect(page).toHaveURL(/#\/business\/ratings$/);
