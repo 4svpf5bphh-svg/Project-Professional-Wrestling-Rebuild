@@ -106,3 +106,52 @@ test("private annual and financial notices survive year boundary, dismiss indivi
   }).finally(()=>db.close());
  }
 });
+
+
+// A renewed sponsorship must not be misreported as the current agreement expiring.
+test("business wire identifies an ended historic sponsor separately from its active replacement",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const db=postgresPool(url!,3),world="commercial-news-"+randomUUID(),
+  player="booker-"+randomUUID(),promotion="promotion-0";
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,74));
+  await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId:promotion,requestId:"claim",expectedRevision:1});
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET year=1,week=21 WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_commercial_deals WHERE world_id=$1 AND promotion_id=$2",
+    [world,promotion]);
+   await tx.query(`
+    INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
+     offer_code,status,baseline_income,agreed_income,start_week_index,
+     end_week_index,source)
+    VALUES($1,'old-sponsor',$2,'SPONSOR','SPONSOR_LOCAL','EXPIRED',0,1000,0,17,'HUMAN'),
+          ($1,'current-sponsor',$2,'SPONSOR','SPONSOR_PARTNER','ACTIVE',0,1600,18,69,'HUMAN')
+    `,[world,promotion]);
+   await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    VALUES ($1,1,18,'COMMERCIAL_DEAL_EXPIRED',
+     '{"promotionId":"promotion-0","kind":"SPONSOR"}'::jsonb)`,[world]);
+  });
+  const home=await readPlayerWorldOverview(db.pool,world,player);
+  const notice=home?.promotion?.attention.businessUpdates?.find(x=>
+   x.kind==="COMMERCIAL_EXPIRED");
+  assert.ok(notice,"Historical settlement remains visible");
+  assert.equal(notice.dealKind,"SPONSOR");
+  assert.equal(notice.endedOfferCode,"SPONSOR_LOCAL");
+  assert.equal(notice.replacementOfferCode,"SPONSOR_PARTNER");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const t of ["ppw_player_attention_dismissals","ppw_ledger_events",
+    "ppw_commercial_deals","ppw_command_receipts","ppw_promotion_controls",
+    "ppw_memberships","ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_contract_date_requests","ppw_contracts","ppw_championships",
+    "ppw_people","ppw_venues","ppw_promotion_market_states",
+    "ppw_promotion_standings","ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+t+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

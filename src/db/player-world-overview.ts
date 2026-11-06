@@ -39,7 +39,8 @@ export interface PlayerWorldOverview {
     promotionName:string|null;toTier:string|null}[];
    businessUpdates?:{id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH"|"COMMERCIAL_EXPIRED";
     year:number;week:number;prestigeDelta:number|null;
-    before:string|null;after:string|null}[];};
+    before:string|null;after:string|null;
+    dealKind:string|null;endedOfferCode:string|null;replacementOfferCode:string|null}[];};
  };
 }
 
@@ -138,7 +139,25 @@ export async function readPlayerWorldOverview(
         AND c.status='SIGNED'
         AND c.start_week_index<=(w.year-1)*52+w.week-1
         AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
-         AND (w.year-1)*52+w.week+1 LIMIT 1) AS expiring_talent,
+         AND (w.year-1)*52+w.week+1
+        AND NOT EXISTS (
+         SELECT 1 FROM ppw_contracts newer
+         WHERE newer.world_id=c.world_id AND newer.promotion_id=c.promotion_id
+          AND newer.person_id=c.person_id AND newer.contract_id<>c.contract_id
+          AND newer.status='SIGNED'
+          AND newer.expires_week_index>c.expires_week_index
+          AND newer.start_week_index<=c.expires_week_index+2
+          AND (newer.remaining_dates IS NULL OR newer.remaining_dates>0))
+        AND NOT EXISTS (
+         SELECT 1 FROM ppw_contract_offers accepted
+         WHERE accepted.world_id=c.world_id
+          AND accepted.promotion_id=c.promotion_id
+          AND accepted.person_id=c.person_id
+          AND accepted.source_contract_id=c.contract_id
+          AND accepted.status='ACCEPTED'
+          AND (accepted.terms->>'startWeekIndex')::integer
+              BETWEEN (w.year-1)*52+w.week-1 AND c.expires_week_index+2)
+        LIMIT 1) AS expiring_talent,
      EXISTS (SELECT 1 FROM ppw_contract_offers o
        WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
         AND o.status='PENDING' LIMIT 1) AS pending_contract_offers,
@@ -221,7 +240,9 @@ export async function readPlayerWorldOverview(
         THEN 'COMMERCIAL_EXPIRED' ELSE 'FINANCIAL_HEALTH' END,
        'year',recent.year,'week',recent.week,
        'prestigeDelta',recent.prestige_delta,'before',recent.previous_status,
-       'after',recent.next_status) ORDER BY recent.event_id DESC),'[]'::jsonb)
+       'after',recent.next_status,
+       'dealKind',recent.deal_kind,'endedOfferCode',recent.ended_offer_code,
+       'replacementOfferCode',recent.replacement_offer_code) ORDER BY recent.event_id DESC),'[]'::jsonb)
       FROM (
        SELECT e.event_id,e.year,e.week,e.event_type,
         CASE WHEN e.event_type='PROMOTION_STANDING_UPDATED'
@@ -230,7 +251,25 @@ export async function readPlayerWorldOverview(
         CASE WHEN e.event_type='FINANCIAL_DISTRESS_CHANGED'
          THEN e.payload->>'from' ELSE NULL END AS previous_status,
         CASE WHEN e.event_type='FINANCIAL_DISTRESS_CHANGED'
-         THEN e.payload->>'to' ELSE NULL END AS next_status
+         THEN e.payload->>'to' ELSE NULL END AS next_status,
+        CASE WHEN e.event_type='COMMERCIAL_DEAL_EXPIRED'
+         THEN e.payload->>'kind' ELSE NULL END AS deal_kind,
+        CASE WHEN e.event_type='COMMERCIAL_DEAL_EXPIRED'
+         THEN coalesce(e.payload->>'offerCode',
+          (SELECT d.offer_code FROM ppw_commercial_deals d
+           WHERE d.world_id=e.world_id AND d.promotion_id=owned.promotion_id
+            AND d.kind=e.payload->>'kind'
+            AND d.end_week_index=(e.year-1)*52+e.week-1
+           ORDER BY d.deal_id DESC LIMIT 1))
+         ELSE NULL END AS ended_offer_code,
+        CASE WHEN e.event_type='COMMERCIAL_DEAL_EXPIRED'
+         THEN (SELECT d.offer_code FROM ppw_commercial_deals d
+          WHERE d.world_id=e.world_id AND d.promotion_id=owned.promotion_id
+           AND d.kind=e.payload->>'kind' AND d.status='ACTIVE'
+           AND d.start_week_index<=(w.year-1)*52+w.week-1
+           AND d.end_week_index>=(w.year-1)*52+w.week-1
+          ORDER BY d.end_week_index DESC LIMIT 1)
+         ELSE NULL END AS replacement_offer_code
        FROM ppw_ledger_events e
        WHERE e.world_id=w.world_id
         AND e.event_type IN ('PROMOTION_STANDING_UPDATED','FINANCIAL_DISTRESS_CHANGED',
@@ -283,6 +322,16 @@ export async function readPlayerWorldOverview(
         AND c.status='SIGNED' AND person.status='ACTIVE'
         AND c.start_week_index<=((w.year-1)*52+w.week-1)
         AND c.expires_week_index>=((w.year-1)*52+w.week-1)
+        -- Do not alarm on an old exhausted/expiring agreement when another
+        -- signed agreement now covers the wrestler and has bookable dates.
+        AND NOT EXISTS (
+         SELECT 1 FROM ppw_contracts newer
+         WHERE newer.world_id=c.world_id AND newer.promotion_id=c.promotion_id
+          AND newer.person_id=c.person_id AND newer.contract_id<>c.contract_id
+          AND newer.status='SIGNED'
+          AND newer.expires_week_index>c.expires_week_index
+          AND newer.start_week_index<=c.expires_week_index+2
+          AND (newer.remaining_dates IS NULL OR newer.remaining_dates>0))
         AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0)
           OR (c.expires_week_index<=((w.year-1)*52+w.week+1)
            AND NOT EXISTS(SELECT 1 FROM ppw_contract_offers accepted
@@ -659,7 +708,8 @@ export async function readPlayerWorldOverview(
       x.business_updates.filter((entry):entry is {
        id:string;kind:"ANNUAL_REVIEW"|"FINANCIAL_HEALTH"|"COMMERCIAL_EXPIRED";
        year:number;week:number;prestigeDelta:number|null;
-       before:string|null;after:string|null
+       before:string|null;after:string|null;
+       dealKind:string|null;endedOfferCode:string|null;replacementOfferCode:string|null
       }=>entry!==null&&typeof entry==="object"&&
        typeof entry.id==="string"&&/^business-update:[1-9][0-9]{0,18}$/.test(entry.id)&&
        (entry.kind==="ANNUAL_REVIEW"||entry.kind==="FINANCIAL_HEALTH"||
@@ -668,7 +718,10 @@ export async function readPlayerWorldOverview(
        (entry.prestigeDelta===null||
         typeof entry.prestigeDelta==="number"&&Number.isFinite(entry.prestigeDelta))&&
        (entry.before===null||typeof entry.before==="string")&&
-       (entry.after===null||typeof entry.after==="string")):[]}
+       (entry.after===null||typeof entry.after==="string")&&
+       (entry.dealKind===null||typeof entry.dealKind==="string")&&
+       (entry.endedOfferCode===null||typeof entry.endedOfferCode==="string")&&
+       (entry.replacementOfferCode===null||typeof entry.replacementOfferCode==="string")):[]}
    }:null
   };
  });

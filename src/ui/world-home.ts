@@ -2,6 +2,7 @@
  * never polls, advances time, or invents future show and finance outcomes.
  */
 import {promotionBrand} from "./broadcast-identity.js";
+import {commercialCompanyName} from "../domain/commercial-offers.js";
 import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
@@ -360,7 +361,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   briefHead.append(el("span","ppw-home-brand","YOUR WEEK"),
    el("h3","","What needs you"));
   brief.append(briefHead);
-  const items:{title:string;detail:string;action:()=>void;icon:string;level:string}[]=[];
+  const items:{title:string;detail:string;action:()=>void;icon:string;
+   level:string;noticeId?:string}[]=[];
   // Tolerate previously cached session projections and historical test fixtures.
   // Unavailable telemetry must never be interpreted as a confirmed alert.
   const attention=promotion.attention;
@@ -436,6 +438,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Contracts approaching expiry",detail:
     "Additional wrestler contracts approach expiry. Review all expiring agreements.",
     action:port.contractsExpiring??port.contracts,icon:"◈",level:"important"});
+  // Accepted offers are actionable NOW, not buried under the end-of-week wire.
+  for(const accepted of (attention?.offerResults??[])
+   .filter(x=>x.status==="ACCEPTED").slice(0,3)){
+   items.unshift({title:accepted.name+" has signed",
+    detail:"Agreement accepted. Check dates and booking availability in Contracts.",
+    action:port.contracts,icon:"✓",level:"priority",noticeId:accepted.id});
+  }
   if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:
     "Contract offers are pending. Check the negotiation desk for their status.",
@@ -449,11 +458,20 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   for(const item of items){
    const entry=control(item.title,item.detail,item.action,item.icon);
    entry.classList.add("ppw-home-action-"+item.level);
-   brief.append(entry);
+   if(item.noticeId&&port.dismissAttention){
+    const holder=el("div","ppw-home-action-with-dismiss");
+    const dismiss=el("button","ppw-home-wire-dismiss","Dismiss") as HTMLButtonElement;
+    dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.noticeId);
+    dismiss.onclick=()=>void dismissNews(item.noticeId!);
+    holder.append(entry,dismiss);brief.append(holder);
+   }else brief.append(entry);
   }
   // Immediate decisions are above passive links; no additional reads.
   root.insertBefore(brief,root.querySelector(".ppw-home-dashboard")??stats);
-  const results=attention?.offerResults??[];
+  // Secondary news is one compact inbox; accepted offers already have their
+  // own primary action and acknowledgement above the dashboard.
+  const inboxBody=el("div","ppw-home-inbox-body");
+  const results=(attention?.offerResults??[]).filter(x=>x.status!=="ACCEPTED");
   if(results.length){
    const wire=el("section","ppw-home-wire");
    wire.append(el("span","ppw-home-brand","THE CONTRACT WIRE"),
@@ -488,7 +506,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const dateDecisions=attention?.dateDecisions??[];
   if(dateDecisions.length){
@@ -519,7 +537,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const resolved=attention?.backstageResults??[];
   if(resolved.length){
@@ -553,7 +571,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const businessUpdates=attention?.businessUpdates??[];
   if(businessUpdates.length){
@@ -567,11 +585,18 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const commercial=item.kind==="COMMERCIAL_EXPIRED";
     const delta=item.prestigeDelta;
     const improved=commercial|| (annual?delta!==null&&delta>=0:item.after==="HEALTHY");
-    const title=commercial?"A commercial deal has ended":
+    const title=commercial?"Previous "+(item.dealKind==="SPONSOR"?"sponsorship":"broadcast")+" deal ended":
      annual?"Your annual company review is in":
      "Your financial outlook has changed";
+    const ended=item.endedOfferCode?commercialCompanyName(item.endedOfferCode):
+     item.dealKind==="SPONSOR"?"sponsorship":"broadcast";
+    const replacement=item.replacementOfferCode?
+     commercialCompanyName(item.replacementOfferCode):null;
     const detail=commercial?
-     "A broadcast or sponsorship agreement has completed its term. Open Business → Deals to consider fresh offers you've earned.":
+     (ended+" finished its contract in Year "+item.year+", Week "+item.week+". "+
+      (replacement?"Your current "+replacement+" agreement remains active.":
+       "This is a past agreement, not confirmation that a current deal has ended. "+
+       "Check Commercials for available offers.")):
      annual?(delta===null?
      "Your company reputation has been evaluated. Review the ratings in Business.":
      "Your prestige "+(delta>=0?"rose by ":"fell by ")+
@@ -589,7 +614,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      el("small","ppw-home-small","Year "+item.year+" · Week "+item.week));
     const actions=el("div","ppw-home-wire-actions");
     const open=el("button","ppw-home-wire-button",
-     commercial?"Review commercial deals":"Open Business") as HTMLButtonElement;
+     commercial?"Open Commercials":"Open Business") as HTMLButtonElement;
     open.type="button";open.onclick=port.business;actions.append(open);
     if(port.dismissAttention){
      const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
@@ -599,7 +624,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const titleNews=attention?.titleNews??[];
   if(titleNews.length){
@@ -629,7 +654,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const injuryNews=attention?.injuryNews??[];
   if(injuryNews.length){
@@ -662,7 +687,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
   const clearanceNotices=attention?.medicalClearances??[];
   if(clearanceNotices.length){
@@ -688,17 +713,25 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     }
     entry.append(actions);wire.append(entry);
    }
-   root.append(wire);
+   inboxBody.append(wire);
   }
-  const resolvedCount=results.length+dateDecisions.length+resolved.length+businessUpdates.length+
-   titleNews.length+injuryNews.length+clearanceNotices.length;
+  const resolvedCount=(attention?.offerResults??[]).length+dateDecisions.length+
+   resolved.length+businessUpdates.length+titleNews.length+injuryNews.length+clearanceNotices.length;
+  if(inboxBody.childElementCount){
+   const inbox=document.createElement("details");
+   inbox.className="ppw-home-notification-inbox";
+   inbox.append(el("summary","ppw-home-inbox-toggle",
+    resolvedCount+" recorded update"+(resolvedCount===1?"":"s")+" · Open inbox"),
+    inboxBody);
+   root.insertBefore(inbox,root.querySelector(".ppw-home-dashboard")??stats);
+  }
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
     clearing?"Clearing updates…":"Clear "+Math.min(resolvedCount,10)+" resolved updates") as HTMLButtonElement;
    clear.type="button";clear.disabled=clearing||dismissing.size>0;
    clear.setAttribute("aria-label","Clear all resolved updates");
    clear.onclick=()=>void clearResolvedUpdates();
-   root.append(clear);
+   inboxBody.append(clear);
   }
 
  }
