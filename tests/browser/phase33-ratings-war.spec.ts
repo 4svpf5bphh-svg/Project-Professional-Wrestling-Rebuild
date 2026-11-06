@@ -138,7 +138,7 @@ for(const width of [320,390]){
   await expect(wrestler).toContainText("Samoa Joe");
   // HOT TAG is not visible until the Post-show Brief chapter opens.
   await expect(wrestler.locator("button.ppw-pop-wrestler-action")).toHaveText([
-   "See moment","View dossier"]);
+   "See moment","View dossier","Develop programme"]);
   await expect(audience).toContainText("TV RATING");
   await expect(audience).toContainText("2.4");
   await expect(audience).toContainText("3.8M");

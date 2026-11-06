@@ -83,6 +83,20 @@ export function consumeProgrammeFocus():string|null{
  pendingProgrammeFocusPersonId=null;
  return focus;
 }
+/** HOT TAG's booker-directed next step uses the existing programme desk.
+ * Only a one-use local focus changes. Roster authority and any subsequent
+ * start/change booking remain on the server's ordinary workflows. */
+function openFocusedProgrammes(root:HTMLElement,scope:Scope,personId:string){
+ if(typeof personId!=="string"||!personId.trim()||personId.length>200)return;
+ const destination=hostSectionHash("programmes");
+ if(window.location.hash===destination){
+  pendingProgrammeFocusPersonId=null;
+  mountProgrammePage(root,scope,personId);
+ }else{
+  pendingProgrammeFocusPersonId=personId;
+  window.location.hash=destination;
+ }
+}
 /** One permanent iPhone-first entrance to every completed workspace.
  * Navigating does not advance simulation or create a new World.
  */
@@ -271,6 +285,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   featured:targetPromotionId=>call("industryFeatured",{targetPromotionId}),
   publicResults:(targetPromotionId,targetShowId)=>call("publicResults",{targetPromotionId,targetShowId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
+  openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
   openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
   openMarket:()=>mountTalentMarketPage(root,scope),
   openPlanner:()=>mountPlannerPage(root,scope,
@@ -556,6 +571,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
   openRatings:()=>{window.location.hash="#/business/ratings";},
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
+  openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
   mediaScrum:{
    read:()=>scrumRequest(scope,{action:"READ"}),
    answer:(questionId,answerIndex)=>scrumRequest(scope,{

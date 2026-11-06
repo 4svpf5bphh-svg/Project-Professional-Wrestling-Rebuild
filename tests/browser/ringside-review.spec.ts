@@ -90,7 +90,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
   await expect(page.locator(".ppw-pop-wrestler-post")).toHaveCount(1);
   await expect(page.locator(".ppw-pop-wrestler-post")).toContainText("Kenny Omega");
-  await expect(page.locator(".ppw-pop-wrestler-post .ppw-pop-wrestler-action")).toHaveCount(2);
+  await expect(page.locator(".ppw-pop-wrestler-post .ppw-pop-wrestler-action")).toHaveCount(3);
   await expect(page.getByRole("button",{name:"See moment"})).toBeVisible();
   await expect(page.getByRole("button",{name:"View dossier"})).toBeVisible();
   const fans=page.locator(".ppw-pop-post:not(.ppw-pop-wrestler-post)");
@@ -707,4 +707,42 @@ test("post-show direct wrestler dossier keeps the completed broadcast cached",as
   .getByRole("button",{name:"Open wrestler dossier"}).click();
  await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
  expect(resultsReads).toBe(1);expect(profileReads).toBe(1);
+});
+
+test("A certified HOT TAG wrestler post opens focused Programmes without booking or a second results read",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const methods:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const req=r.request().postDataJSON() as {method:string};
+  methods.push(req.method);
+  if(req.method==="resultsArchive")return r.fulfill({json:{
+   items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+    crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}});
+  if(req.method==="results")return r.fulfill({json:show});
+  if(req.method==="programmes")return r.fulfill({json:{
+   year:1,week:5,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"omega",name:"Kenny Omega"},
+    {kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+   teams:[],championships:[],programmes:[]}});
+  return r.fulfill({json:{}});
+ });
+ await page.route("**/api/results-commentary",r=>
+  r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+ const wrestler=page.locator(".ppw-pop-wrestler-post");
+ await expect(wrestler).toContainText("Kenny Omega");
+ await wrestler.getByRole("button",{name:"Develop programme"}).click();
+ await expect(page).toHaveURL(/#\/programmes$/);
+ await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
+ await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
+ await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
+  .toHaveValue("PERSON:omega");
+ expect(methods).toEqual(["resultsArchive","results","programmes"]);
+ expect(methods).not.toContain("startProgramme");
+ expect(methods).not.toContain("saveCard");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });

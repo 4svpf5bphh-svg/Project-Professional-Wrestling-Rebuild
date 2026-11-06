@@ -22,6 +22,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     {id:"retire-1",kind:"WRESTLER_RETIRED",year:2,week:6,
      personId:"b",personName:"Alex Rook",careerStage:null,fromStage:null,
      promotionName:null}],broadcasts:[]}});
+  if(method==="programmes")return route.fulfill({json:{
+   year:2,week:7,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"a",name:"Alice"}],
+   teams:[],championships:[],programmes:[]}});
   if(method==="industryNews")return route.fulfill({json:{
    awards:[{year:2,week:6,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"s2",showName:"Final Clash",slotId:"m2",
@@ -36,6 +40,9 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
    stories:[{year:2,week:6,id:"match:s2:m2",desk:"OFFICIAL",certainty:"CONFIRMED",
     promotionId:"ai",promotionName:"AI Elite",showId:"s2",
     title:"A certified classic",summary:"4.75 star match",sourceKind:"MATCH"},
+    {year:2,week:6,id:"angle:s1:a1",desk:"OFFICIAL",certainty:"CONFIRMED",
+    promotionId:"human",promotionName:"Human Pro",showId:"s1",
+    title:"Alice turns at Fight Night",summary:"The crowd witnessed her change of course.",sourceKind:"ANGLE"},
     {year:2,week:6,id:"s1",desk:"DIRT",certainty:"SPECULATION",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
     title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"},
@@ -108,4 +115,16 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("SECRET PRIVATE CONTRACT")).toHaveCount(0);
  await page.getByRole("button",{name:"Official News"}).click();
  expect(calls).toEqual(["industry","industryNews"]);
+ // The owned, certified angle opens the regular creative desk with the
+ // real wrestler selected. Rival-company posts never grant this action.
+ const owned=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(1);
+ await owned.locator("summary").click();
+ await expect(owned.locator(".ppw-hot-tag-wrestler")).toContainText("Alice");
+ await expect(officialThread.getByRole("button",{name:"Develop programme"})).toHaveCount(0);
+ await owned.getByRole("button",{name:"Develop programme"}).click();
+ await expect(page).toHaveURL(/#\/programmes$/);
+ await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
+ await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
+  .toHaveValue("PERSON:a");
+ expect(calls).toEqual(["industry","industryNews","programmes"]);
 });

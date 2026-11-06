@@ -48,6 +48,7 @@ export interface IndustryHubPort{
  featured?(targetPromotionId:string):Promise<IndustryFeaturedView>;
  records?():Promise<PromotionRecordView>;
  openWrestler?(personId:string):void;
+ openProgrammes?(personId:string):void;
  openOwnResults?(showId:string):void;
  publicResults?(targetPromotionId:string,showId:string):Promise<PublicCompletedShow>;
  openBusiness?():void;openPlanner?():void;openMarket?():void;back?():void;
@@ -781,6 +782,13 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       const dossier=btn("View wrestler dossier",()=>port.openWrestler?.(personId));
       dossier.classList.add("ppw-hot-tag-dossier");
       copy.append(dossier);
+     }
+     // Rival promotions have public stories but must not become editable
+     // player storylines. The programme desk rechecks owned roster members.
+     if(personId&&view?.ownPromotionId===story.promotionId&&port.openProgrammes){
+      const develop=btn("Develop programme",()=>port.openProgrammes?.(personId));
+      develop.classList.add("ppw-hot-tag-dossier");
+      copy.append(develop);
      }
      card.append(copy);content.append(card);
     }

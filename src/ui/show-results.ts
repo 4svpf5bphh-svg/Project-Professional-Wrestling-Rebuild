@@ -133,13 +133,14 @@ export async function mountShowResults(root:HTMLElement,port:{
  openNext?:(section:NextStepDestination)=>void;
  openRatings?():void;
  openWrestler?:(personId:string)=>void;
+ openProgrammes?:(personId:string)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
   renderBroadcast(root,show,port.openNext,port.mediaScrum,
-   port.openWrestler,port.openRatings);
+   port.openWrestler,port.openRatings,port.openProgrammes);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review&&
@@ -154,7 +155,8 @@ export async function mountShowResults(root:HTMLElement,port:{
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
- openWrestler?:(personId:string)=>void,openRatings?:()=>void):void{
+ openWrestler?:(personId:string)=>void,openRatings?:()=>void,
+ openProgrammes?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
  const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
  const effectiveSkin=poster?null:show.resultsSkin;
@@ -323,6 +325,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     dossier.type="button";
     dossier.onclick=()=>openWrestler(post.personId);
     actions.append(dossier);
+   }
+   if(openProgrammes){
+    const develop=node("button","ppw-pop-wrestler-action","Develop programme") as HTMLButtonElement;
+    develop.type="button";
+    develop.onclick=()=>openProgrammes(post.personId);
+    actions.append(develop);
    }
    card.append(actions);
    wall.append(card);
