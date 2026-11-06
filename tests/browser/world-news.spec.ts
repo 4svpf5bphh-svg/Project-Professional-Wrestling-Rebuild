@@ -95,8 +95,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await threads.first().locator("summary").click();
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("HOT TAG");
  await expect(threads.first().locator(".ppw-hot-tag-news-post")).toHaveCount(3);
- await expect(threads.locator(".ppw-hot-tag-wrestler")).toHaveCount(0,
-  "Unverified reports must never impersonate an official wrestler account");
+ await expect(threads.locator(".ppw-hot-tag-wrestler"),
+  "Unverified reports must never impersonate an official wrestler account").toHaveCount(0);
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("Tag in. Sound off.");
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});
