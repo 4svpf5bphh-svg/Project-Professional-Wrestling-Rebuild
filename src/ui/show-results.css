@@ -636,3 +636,73 @@
  .ppw-show-breakdown-switch{gap:6px}
  .ppw-show-breakdown-toggle{font-size:12px;padding:9px 6px}
 }
+
+/* Phase 38: the PPV poster drives the whole report, not another title hero. */
+.ppw-results-show-intro{padding:10px 4px 15px}
+.ppw-results-show-intro h1{font-size:clamp(24px,6vw,34px);margin:7px 0}
+.ppw-results-show-intro p{margin:0}
+.ppw-results .ppw-manager-snapshot-toggle{min-height:0}
+.ppw-results .ppw-manager-snapshot h3{margin:4px 0 10px}
+.ppw-results .ppw-manager-snapshot .ppw-result-score-wrap{
+ display:inline-flex;align-items:flex-start;margin:0 12px 8px 0}
+.ppw-results .ppw-manager-snapshot .ppw-result-score{font-size:36px}
+.ppw-results .ppw-manager-snapshot .ppw-result-pulse{
+ margin:0 0 14px;padding:10px;gap:6px;border-radius:11px}
+.ppw-results .ppw-manager-snapshot .ppw-result-pulse-stat strong{font-size:17px}
+.ppw-results .ppw-manager-snapshot-grid{margin-top:10px}
+.ppw-results[data-premium-poster]{
+ --ppw-ppv-accent:#8ddcf4;--ppw-ppv-deep:#071c32;--ppw-ppv-surface:#132d47;
+ --ppw-ppv-border:#5b9ab9;--ppw-ppv-warm:#f7e0b6;
+ --ring-line:var(--ppw-ppv-border);--ring-accent:var(--ppw-ppv-accent);color:#f6faff}
+.ppw-results[data-premium-poster="thunder-strike"],
+.ppw-results[data-premium-poster="tidal-force"],
+.ppw-results[data-premium-poster="frozen-crown"]{
+ --ppw-ppv-accent:#79e9ff;--ppw-ppv-deep:#06172e;
+ --ppw-ppv-surface:#103b62;--ppw-ppv-border:#5eafe2}
+.ppw-results[data-premium-poster="inferno"],
+.ppw-results[data-premium-poster="blood-moon"],
+.ppw-results[data-premium-poster="riot-signal"]{
+ --ppw-ppv-accent:#ffb065;--ppw-ppv-deep:#2b0d10;
+ --ppw-ppv-surface:#5a231c;--ppw-ppv-border:#d47848;--ppw-ppv-warm:#ffe0aa}
+.ppw-results[data-premium-poster="high-noon"],
+.ppw-results[data-premium-poster="vegas-lights"],
+.ppw-results[data-premium-poster="crown-theatre"]{
+ --ppw-ppv-accent:#ffd281;--ppw-ppv-deep:#261b1a;
+ --ppw-ppv-surface:#51402a;--ppw-ppv-border:#ca9f60}
+.ppw-results[data-premium-poster="neon-nights"],
+.ppw-results[data-premium-poster="laser-grid"],
+.ppw-results[data-premium-poster="circuit-breaker"]{
+ --ppw-ppv-accent:#7cfbd8;--ppw-ppv-deep:#111429;
+ --ppw-ppv-surface:#26385d;--ppw-ppv-border:#57aeca}
+.ppw-results[data-premium-poster="empire"],
+.ppw-results[data-premium-poster="eclipse"],
+.ppw-results[data-premium-poster="spotlight-showdown"]{
+ --ppw-ppv-accent:#e7cbff;--ppw-ppv-deep:#161225;
+ --ppw-ppv-surface:#31294d;--ppw-ppv-border:#9d80be}
+.ppw-results[data-premium-poster="steelworks"],
+.ppw-results[data-premium-poster="aftershock"],
+.ppw-results[data-premium-poster="retro-broadcast"]{
+ --ppw-ppv-accent:#e9dfb1;--ppw-ppv-deep:#17212a;
+ --ppw-ppv-surface:#37464c;--ppw-ppv-border:#a49d7e}
+#game .ppw-results[data-premium-poster] .ppw-result-hero,
+#game .ppw-results[data-premium-poster] .ppw-final-bell,
+#game .ppw-results[data-premium-poster] .ppw-result-entry,
+#game .ppw-results[data-premium-poster] .ppw-result-story,
+#game .ppw-results[data-premium-poster] .ppw-post-show-brief,
+#game .ppw-results[data-premium-poster] .ppw-manager-snapshot,
+#game .ppw-results[data-premium-poster] .ppw-crowd-flow,
+#game .ppw-results[data-premium-poster] .ppw-crowd-noise,
+#game .ppw-results[data-premium-poster] .ppw-result-broadcast-audience{
+ background:linear-gradient(135deg,var(--ppw-ppv-surface),var(--ppw-ppv-deep));
+ border-color:var(--ppw-ppv-border);color:#f6faff}
+#game .ppw-results[data-premium-poster] .ppw-result-entry .ppw-result-headline,
+#game .ppw-results[data-premium-poster] .ppw-broadcast-section-title,
+#game .ppw-results[data-premium-poster] .ppw-final-bell-headline,
+#game .ppw-results[data-premium-poster] .ppw-manager-snapshot h3{color:var(--ppw-ppv-warm)}
+#game .ppw-results[data-premium-poster] .ppw-ringside-ai-status,
+#game .ppw-results[data-premium-poster] .ppw-result-audience-label,
+#game .ppw-results[data-premium-poster] .ppw-eyebrow,
+#game .ppw-results[data-premium-poster] .ppw-result-score{color:var(--ppw-ppv-accent)}
+#game .ppw-results[data-premium-poster] .ppw-results-next,
+#game .ppw-results[data-premium-poster] .ppw-show-breakdown-toggle[aria-pressed="true"]{
+ background:var(--ppw-ppv-surface);border-color:var(--ppw-ppv-accent);color:#fff}
