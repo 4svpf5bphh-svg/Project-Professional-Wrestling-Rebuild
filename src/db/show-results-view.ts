@@ -55,7 +55,8 @@ export interface CompletedShowView {
  eventPosterStyle?:string|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
  audience?:{format:"TV"|"PPV";householdRating:number|null;
-  estimatedViewers:number|null;ppvBuys:number|null}|null;
+  estimatedViewers:number|null;ppvBuys:number|null;
+  ratingsWarChange?:number|null;ratingsWarOpponents?:number|null}|null;
  gorillaLog?:GorillaShowLog|null;
  /** Certified event P&L; appearance fees were charged separately during World resolution. */
  economics?:{attendance:number;gateRevenue:string;venueCost:string;
@@ -76,6 +77,7 @@ export async function readCompletedShowView(
     event_poster_style:string|null;
     audience_format:string|null;tv_household_rating:string|null;
     estimated_viewers:string|null;ppv_buys:string|null;
+    ratings_war_base_rating:string|null;ratings_war_opponents:number|null;
     promotion_name:string;staff_report:RoadAgentReport|null;
     gorilla_log:GorillaShowLog|null;
     attendance:number|null;gate_revenue:string|null;venue_cost:string|null;
@@ -87,6 +89,7 @@ export async function readCompletedShowView(
     bpack.style AS broadcast_package, identity.name AS promotion_name,
     economics.audience_format,economics.tv_household_rating::text,
     economics.estimated_viewers::text,economics.ppv_buys::text,
+    economics.ratings_war_base_rating::text,economics.ratings_war_opponents,
     economics.attendance,economics.gate_revenue::text,economics.venue_cost::text,
     economics.production_cost::text,economics.travel_cost::text,
     economics.appearance_fees::text,economics.total_cost::text,
@@ -385,6 +388,10 @@ export async function readCompletedShowView(
    audience:rows[0]!.audience_format==="TV"?{format:"TV",
     householdRating:rows[0]!.tv_household_rating===null?null:Number(rows[0]!.tv_household_rating),
     estimatedViewers:rows[0]!.estimated_viewers===null?null:Number(rows[0]!.estimated_viewers),
+    ratingsWarChange:rows[0]!.ratings_war_base_rating===null?null:
+     Math.round((Number(rows[0]!.tv_household_rating)-
+      Number(rows[0]!.ratings_war_base_rating))*10)/10,
+    ratingsWarOpponents:rows[0]!.ratings_war_opponents,
     ppvBuys:null}:
     rows[0]!.audience_format==="PPV"?{format:"PPV",
      householdRating:null,estimatedViewers:null,

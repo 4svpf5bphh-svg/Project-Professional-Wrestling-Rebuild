@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,dirtSheetByline,
- projectHotTagNewsThread} from "../src/domain/hot-tag-news.js";
+ projectHotTagNewsThread,projectHotTagBroadcasterPost} from "../src/domain/hot-tag-news.js";
 const rumour={
  id:"wild:s1",year:1,week:12,desk:"DIRT" as const,promotionName:"CWA",
  title:"Joe walked out?",summary:"Anonymous report with a competing denial."
@@ -86,4 +86,22 @@ test("certified match news generates participant-specific comments, not generic 
  assert.ok(posts.every(p=>!p.text.includes("People somehow have a definitive take")),
   "Match stories never fall back to the generic OTHER reaction bank");
  assert.equal(new Set(posts.map(p=>p.text)).size,3);
+});
+
+test("HOT TAG shows verified network voices only beneath a matching published statement",()=>{
+ const verified={id:"broadcast:network:BROADCAST_TV:warning:abc",
+  year:2,week:6,desk:"OFFICIAL" as const,promotionName:"CWA",
+  title:"BBS Sports issues a TV warning",
+  summary:'Three broadcast misses. BBS Sports responded: "The board expects better television."'};
+ const post=projectHotTagBroadcasterPost(verified);
+ assert.equal(post?.networkCode,"BROADCAST_TV");
+ assert.equal(post?.displayName,"BBS Sports");
+ assert.match(post?.text??"",/board expects/);
+ assert.deepEqual(projectHotTagBroadcasterPost(verified),post);
+ assert.equal(projectHotTagBroadcasterPost({...verified,desk:"DIRT"}),null);
+ assert.equal(projectHotTagBroadcasterPost({...verified,id:"broadcast:clash:abc"}),null);
+ assert.equal(projectHotTagBroadcasterPost({...verified,summary:"Unattributed speculation"}),null);
+ const comments=projectHotTagNewsThread(verified);
+ assert.equal(comments.length,3);
+ assert.ok(comments.some(c=>/ratings|viewers|network|broadcast|TV|schedule/.test(c.text)));
 });

@@ -61,7 +61,15 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-results-steps")).toHaveCount(0);
   // Editorial follows three chapters via the bottom Next actions.
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeHidden();
+  await page.getByRole("button",{name:"HOT TAG · After the Bell"}).click();
+  await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
+  await page.getByRole("button",{name:"Return to Headlines"}).click();
+  await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(0);
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(page.locator(".ppw-show-breakdown")).toBeVisible();
+  await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(1);
+  await expect(page.locator(".ppw-result-entry").first()).toBeHidden();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-show-transition")).toHaveCount(0);
   await expect(page.locator(".ppw-results")).toHaveClass(/ppw-editorial-ready/);
@@ -88,13 +96,19 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-result-competitor-name")).toHaveText(["Kenny Omega","Samoa Joe"]);
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
-  await expect(page.locator(".ppw-crowd-noise-card")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-avatar")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-metrics")).toHaveCount(2);
-  await expect(page.locator(".ppw-pop-post .ppw-pop-handle").first()).toContainText("@");
-  await expect(page.locator(".ppw-pop-social")).toContainText("Fictional in-game wrestling social media.");
-   await expect(page.locator(".ppw-pop-post").first()).toHaveCSS("color","rgb(255, 243, 238)");
-   await expect(page.locator(".ppw-pop-post .ppw-pop-copy").first())
+  await expect(page.locator(".ppw-pop-wrestler-post")).toHaveCount(1);
+  await expect(page.locator(".ppw-pop-wrestler-post")).toContainText("Kenny Omega");
+  await expect(page.locator(".ppw-pop-wrestler-post .ppw-pop-wrestler-action")).toHaveCount(3);
+  await expect(page.getByRole("button",{name:"See moment"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"View dossier"})).toBeVisible();
+  const fans=page.locator(".ppw-pop-post:not(.ppw-pop-wrestler-post)");
+  await expect(fans).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-avatar")).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-metrics")).toHaveCount(2);
+  await expect(fans.locator(".ppw-pop-handle").first()).toContainText("@");
+  await expect(page.locator(".ppw-pop-social")).toContainText("Wrestler voices and fans react");
+   await expect(fans.first()).toHaveCSS("color","rgb(255, 243, 238)");
+   await expect(fans.locator(".ppw-pop-copy").first())
     .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"What needs your attention"})).toBeVisible();
@@ -125,6 +139,7 @@ test("Ringside unavailable: canonical facts are readable with no manual generati
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
  await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
  await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
@@ -158,8 +173,9 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
- const post=page.locator(".ppw-crowd-noise-card").first();
+ const post=page.locator(".ppw-crowd-noise-card:not(.ppw-pop-wrestler-post)").first();
  await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
  await post.click();
  await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");
@@ -195,6 +211,7 @@ for(const width of [320,390]){
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
   await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
@@ -226,6 +243,7 @@ for(const width of [320,390]){
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
   await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
@@ -267,6 +285,7 @@ test("premium PPV scrum is opt-in, iPhone sized and permanently records the chos
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await expect(page.getByRole("heading",{name:"The Media Scrum"})).toBeVisible();
  expect(reads).toBe(0); // Results must not fetch the press session until requested.
@@ -304,6 +323,7 @@ test("Ringside: partial cached article falls back to canonical results",async({p
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await expect(page.locator(".ppw-ringside-dispatch")).toHaveAttribute("data-ai-status","fallback");
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
  await expect(page.locator(".ppw-show-transition")).toHaveCount(2);
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
  await expect(page.locator(".ppw-verified-finish-details")).toHaveAttribute("open","");
@@ -333,6 +353,7 @@ for(const width of [320,390]){
   await expect(themed).toBeVisible();
   await expect(themed.locator(".ppw-territory-station")).toContainText("TERRITORY TELEVISION");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(page.getByRole("heading",{name:"THE COMPLETE NIGHT"})).toBeVisible();
   const names=page.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -380,6 +401,7 @@ for(const width of [320,390]){
    "background-color","rgb(255, 255, 255)");
   await expect(report.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(report.getByRole("heading",{name:"MATCH REPORT"})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -430,6 +452,7 @@ for(const width of [320,390]){
   await expect(report.locator(".ppw-zine-station")).toContainText("UNDERGROUND REPORT");
   await expect(report.locator(".ppw-result-title-wrap h1")).toContainText("Dynamite");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(report.getByRole("heading",{name:"EVERY BELL. EVERY BRAWL."})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -482,6 +505,7 @@ for(const skin of [
    await page.getByRole("button",{name:/Read ringside report/}).click();
    const root=page.locator(`.ppw-results[data-results-skin="${skin.attribute}"]`);
    await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
    const names=root.locator(".ppw-result-lineup .ppw-result-competitor-name");
    const portraitNameColour=skin.value==="TERRITORY_TV"?"rgb(247, 242, 236)":
     skin.value==="FIGHT_NIGHT"?"rgb(26, 30, 37)":"rgb(27, 27, 27)";
@@ -543,6 +567,7 @@ for(const width of [320,390]){
   await expect(report.locator(".ppw-retro-station")).toContainText("BOOKER 2002");
   await expect(report.locator(".ppw-result-title-wrap h1")).toContainText("Dynamite");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(report.getByRole("heading",{name:"MATCH RESULTS"})).toBeVisible();
   await expect(report.locator(".ppw-result-competitor-name"))
    .toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -602,6 +627,7 @@ for(const width of [320,390]){
   await expect(opening).toBeVisible();
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-result-entry").first()).toContainText("Kenny Omega");
   expect(reads).toBe(1);
@@ -661,6 +687,7 @@ test("post-show evidence links reopen the certified match, without a second resu
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(3);
  await expect(page.locator(".ppw-road-agent-observation").first()).toContainText("Medical comes first");
@@ -696,9 +723,50 @@ test("post-show direct wrestler dossier keeps the completed broadcast cached",as
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await page.locator(".ppw-next-show-choice").first()
   .getByRole("button",{name:"Open wrestler dossier"}).click();
  await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
  expect(resultsReads).toBe(1);expect(profileReads).toBe(1);
+});
+
+test("A certified HOT TAG wrestler post opens focused Programmes without booking or a second results read",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ const methods:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const req=r.request().postDataJSON() as {method:string};
+  methods.push(req.method);
+  if(req.method==="resultsArchive")return r.fulfill({json:{
+   items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+    crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}});
+  if(req.method==="results")return r.fulfill({json:show});
+  if(req.method==="programmes")return r.fulfill({json:{
+   year:1,week:5,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"omega",name:"Kenny Omega"},
+    {kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+   teams:[],championships:[],programmes:[]}});
+  return r.fulfill({json:{}});
+ });
+ await page.route("**/api/results-commentary",r=>
+  r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
+ await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+ const wrestler=page.locator(".ppw-pop-wrestler-post");
+ await expect(wrestler).toContainText("Kenny Omega");
+ await wrestler.getByRole("button",{name:"Develop programme"}).click();
+ await expect(page).toHaveURL(/#\/programmes$/);
+ await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
+ await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
+ await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
+  .toHaveValue("PERSON:omega");
+ expect(methods).toEqual(["resultsArchive","results","programmes"]);
+ expect(methods).not.toContain("startProgramme");
+ expect(methods).not.toContain("saveCard");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });

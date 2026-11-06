@@ -54,9 +54,22 @@ for(const width of [320,390]){
   await expect(album.getByText("129 cards · Page 1 of 11")).toBeVisible();
   await expect(page.getByRole("link",{name:"World Record Book"})).toHaveAttribute("href","#/records");
   await page.screenshot({path:info.outputPath("phase32-album-"+width+"-main.png")});
-  // The featured card is an actual viewer entry, not a decorative fake.
+  // A card opening re-renders the complete Collection workspace. Unlike
+  // internal album pagination, it must clear leftover major-screen skins.
+  const injected=await page.evaluate(()=>{
+   const root=document.querySelector<HTMLElement>(".ppw-collection-screen");
+   if(!root)return false;
+   root.classList.add("ppw-results","ppw-business","ppw-directory");
+   root.dataset.resultsSkin="retro-booker-02";
+   return true;
+  });
+  expect(injected).toBe(true);
   await firstHighlight.click();
   const featuredViewer=page.getByRole("dialog",{name:"Collectible card: Jerry Lynn"});
+  await expect(page.locator(".ppw-business")).toHaveCount(0);
+  await expect(page.locator(".ppw-directory")).toHaveCount(0);
+  await expect(page.locator(".ppw-collection-screen")).toHaveCount(1);
+  await expect(page.locator(".ppw-collection-screen")).not.toHaveAttribute("data-results-skin");
   await expect(featuredViewer).toBeVisible();
   await featuredViewer.getByRole("button",{name:"Close card"}).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);

@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 /** Paginated, promotion-private Ringside back catalogue.
  * Show rows are small metadata projections; only opening a show loads its receipt.
  */
@@ -10,7 +11,7 @@ export interface ArchivePort{
 const el=(tag:string,cls:string,text="")=>{
  const node=document.createElement(tag);node.className=cls;node.textContent=text;return node;};
 export async function mountResultsArchive(root:HTMLElement,port:ArchivePort){
- root.classList.add("ppw-editor","ppw-results","ppw-results-archive");
+ activateWorkspaceRoot(root,"ppw-results");root.classList.add("ppw-results-archive");
  const heading=el("header","ppw-archive-hero");
  if(port.back){
   const back=el("button","ppw-archive-back","← Back") as HTMLButtonElement;

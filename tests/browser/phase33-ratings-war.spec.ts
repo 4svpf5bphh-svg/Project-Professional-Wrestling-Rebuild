@@ -30,10 +30,12 @@ for(const width of [320,390]){
      {year:1,week:17,name:"Ascension",audience:{format:"TV",householdRating:2.3,estimatedViewers:3650000,ppvBuys:null}}
     ],
     competitorBroadcasts:[
-     {promotionId:"other",name:"North Wrestling",showName:"Uprising",day:5,year:1,week:19,
+     {promotionId:"other",name:"North Wrestling",showName:"Uprising",day:2,year:1,week:19,
+      airingHour:20,ratingsWarOpponents:1,ratingsWarChange:-0.2,
       householdRating:3.0,estimatedViewers:4300000,networkOfferCode:"BROADCAST_GROWTH",
       isYours:false,humanManaged:false},
      {promotionId:"mine",name:"CWA",showName:"Ascension",day:2,year:1,week:19,
+      airingHour:20,ratingsWarOpponents:1,ratingsWarChange:0.2,
       householdRating:2.4,estimatedViewers:3800000,networkOfferCode:"BROADCAST_TV",
       isYours:true,humanManaged:true},
      {promotionId:"rival",name:"Another Wrestling Company",showName:"Rumble",day:4,year:1,week:18,
@@ -51,16 +53,21 @@ for(const width of [320,390]){
   expect(vsBounds).not.toBeNull();
   expect(vsBounds!.y).toBeLessThan(390);
   await expect(war.locator(".ppw-ratings-war-score").first()).toContainText("2.4");
-  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("1.9");
-  await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
-  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
+  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("3.0");
+  await expect(war.locator(".ppw-ratings-war-note")).toContainText("HEAD-TO-HEAD");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(3);
   await expect(war.getByText("3 recent broadcasts · 2.3 average TV rating")).toBeVisible();
   await page.screenshot({path:info.outputPath("phase33-ratings-war-"+width+".png")});
-  await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("Another Wrestling Company");
+  await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
+  await war.getByRole("button",{name:"Compare against Another Wrestling Company"}).click();
+  await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
   await expect(war.locator('.ppw-ratings-war-rival[data-human="true"]')).toContainText("HUMAN MANAGER");
   await war.getByRole("button",{name:"Compare against North Wrestling"}).click();
   await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
+  await expect(war.locator(".ppw-ratings-war-note")).toContainText("HEAD-TO-HEAD");
+  await expect(war.locator(".ppw-ratings-war-impact")).toContainText("YOU GAINED 0.2");
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Networks & sponsors"}).click();
   await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
@@ -83,7 +90,9 @@ const editorialShow={
   summary:"Joe won by a clean pinfall.",crowdResponse:87,outcome:"CLEAN_PIN",
   actorIds:["joe","riddle"],targetIds:[],
   matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:17,
-   sides:[["Samoa Joe"],["Matt Riddle"]],winnerNames:["Samoa Joe"],
+   sides:[["Samoa Joe"],["Matt Riddle"]],
+   sideParticipants:[[{personId:"joe",name:"Samoa Joe"}],
+    [{personId:"riddle",name:"Matt Riddle"}]],winnerNames:["Samoa Joe"],
    championshipContested:false,isMainEvent:true},
   fallout:{ratingStars:4.25,actualMinutes:18,injuries:[],eliminations:[]}
  },{
@@ -111,7 +120,7 @@ for(const width of [320,390]){
      crowdResponse:82,matchCount:1,angleCount:1}],nextCursor:null}});
    if(method==="results")return r.fulfill({json:{
     ...editorialShow,audience:{format:"TV",householdRating:2.4,
-     estimatedViewers:3_800_000,ppvBuys:null}}});
+     estimatedViewers:3_800_000,ppvBuys:null,ratingsWarChange:0.2,ratingsWarOpponents:1}}});
    if(method==="business")return r.fulfill({json:{
     name:"CWA",homeMarketName:"Midlands",year:1,week:20,
     competitorBroadcasts:[{promotionId:"mine",name:"CWA",showName:"Ascension",
@@ -131,6 +140,13 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const audience=page.getByRole("region",{name:"Broadcast performance"});
   await expect(audience).toContainText("BROADCAST PERFORMANCE");
+  await expect(audience).toContainText("TV WAR +0.2");
+  const wrestler=page.locator(".ppw-pop-wrestler-post");
+  await expect(wrestler).toHaveCount(1);
+  await expect(wrestler).toContainText("Samoa Joe");
+  // HOT TAG is not visible until the Post-show Brief chapter opens.
+  await expect(wrestler.locator("button.ppw-pop-wrestler-action")).toHaveText([
+   "See moment","View dossier","Develop programme"]);
   await expect(audience).toContainText("TV RATING");
   await expect(audience).toContainText("2.4");
   await expect(audience).toContainText("3.8M");
@@ -143,8 +159,14 @@ for(const width of [320,390]){
   await audience.getByRole("button",{name:"Compare TV ratings in Ratings War"}).click();
   await expect(page).toHaveURL(/#\/business\/ratings$/);
   await expect(page.getByRole("heading",{name:"Ratings War"})).toBeVisible();
+  await expect(page.locator(".ppw-results")).toHaveCount(0);
   await expect(page.locator(".ppw-ratings-war-score[data-side='OWNER']")).toContainText("2.4");
-  expect(methods).toEqual(["resultsArchive","results","business"]);
+  await page.getByRole("button",{name:"← Ringside Results"}).click();
+  await expect(page).toHaveURL(/#\/results$/);
+  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  await expect(page.locator(".ppw-business")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Read the Full Show"})).toBeVisible();
+  expect(methods).toEqual(["resultsArchive","results","business","results"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

@@ -84,3 +84,25 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-week-contention{border-left:3px solid #dfb16c;
  background:rgba(93,54,31,.4);border-radius:5px;padding:9px 11px!important;
  color:#f9dfba!important}
+
+/* A familiar tappable weekly day rail replaces the miniature native picker. */
+.ppw-planner-day-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:7px;margin:8px 0 10px;min-width:0}
+.ppw-planner-day-grid .ppw-planner-day-choice{
+ box-sizing:border-box;width:100%;min-width:0;margin:0;
+ padding:10px 3px;min-height:48px;border-radius:11px;
+ background:#1c4055;border:1px solid #658aa0;color:#e9f6ff;
+ font:750 12px/1.25 system-ui;text-align:center;overflow-wrap:anywhere}
+.ppw-planner-day-grid .ppw-planner-day-choice[aria-pressed="true"]{
+ border-color:#8de6eb;background:#256b7c;color:#fff;
+ box-shadow:inset 0 0 0 1px #a4eff0}
+.ppw-planner-day-locked{min-height:46px;box-sizing:border-box;
+ display:flex;align-items:center;gap:8px;padding:10px 12px;
+ border:1px solid #81c2d5;border-radius:11px;background:#22495c;
+ color:#e8f8ff;font:850 16px/1.4 system-ui}
+.ppw-planner-week-tv-slot{display:block;margin:8px 0;font:800 12px/1.4 system-ui;
+ color:#afecf4;letter-spacing:.015em;overflow-wrap:anywhere}
+.ppw-planner-day-grid button:focus-visible{outline:3px solid #e5cf93;outline-offset:2px}
+@media(max-width:380px){
+ .ppw-planner-day-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}

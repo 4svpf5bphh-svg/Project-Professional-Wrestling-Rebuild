@@ -22,6 +22,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     {id:"retire-1",kind:"WRESTLER_RETIRED",year:2,week:6,
      personId:"b",personName:"Alex Rook",careerStage:null,fromStage:null,
      promotionName:null}],broadcasts:[]}});
+  if(method==="programmes")return route.fulfill({json:{
+   year:2,week:7,worldRevision:4,canEdit:true,
+   people:[{kind:"PERSON",refId:"a",name:"Alice"}],
+   teams:[],championships:[],programmes:[]}});
   if(method==="industryNews")return route.fulfill({json:{
    awards:[{year:2,week:6,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"s2",showName:"Final Clash",slotId:"m2",
@@ -33,9 +37,18 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
    annualAwards:[{year:1,week:37,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"last-year",showName:"World Classic",
     slotId:"m1",title:"Great Match of the Year",rating:5,ratingUnit:"STARS"}],
-   stories:[{year:2,week:6,id:"m2",desk:"OFFICIAL",certainty:"CONFIRMED",
+   stories:[{year:2,week:6,id:"match:s2:m2",desk:"OFFICIAL",certainty:"CONFIRMED",
     promotionId:"ai",promotionName:"AI Elite",showId:"s2",
     title:"A certified classic",summary:"4.75 star match",sourceKind:"MATCH"},
+    {year:2,week:6,id:"angle:s1:a1",desk:"OFFICIAL",certainty:"CONFIRMED",
+    promotionId:"human",promotionName:"Human Pro",showId:"s1",
+    title:"Alice turns at Fight Night",summary:"The crowd witnessed her change of course.",sourceKind:"ANGLE"},
+    {year:2,week:6,id:"broadcast:network:BROADCAST_TV:warning:s3",
+     desk:"OFFICIAL",certainty:"CONFIRMED",
+     promotionId:"human",promotionName:"Human Pro",showId:"s1",
+     title:"BBS Sports demands better television from Human Pro",
+     summary:'Three certified broadcast misses. BBS Sports responded: "Three misses. The board expects a credible turnaround." The signed deal continues.',
+     sourceKind:"EVENT"},
     {year:2,week:6,id:"s1",desk:"DIRT",certainty:"SPECULATION",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
     title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"},
@@ -62,7 +75,19 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
  await expect(comment).toBeVisible();
  await expect(comment).toHaveCSS("color","rgb(230, 236, 248)");
- await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(3);
+ await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(4);
+ await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
+ await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
+ await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
+ const networkThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(2);
+ await networkThread.locator("summary").click();
+ const networkPost=networkThread.locator(".ppw-hot-tag-network");
+ await expect(networkPost).toHaveCount(1);
+ await expect(networkPost).toContainText("BBS Sports");
+ await expect(networkPost).toContainText("Verified network");
+ await expect(networkPost).toContainText("The board expects");
+ await expect(networkThread.locator(".ppw-hot-tag-news-post")).toHaveCount(4);
+ await expect(networkPost.getByRole("button",{name:"Develop programme"})).toHaveCount(0);
  await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
  await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
  await expect(page.getByText(/Career stage: veteran → special attraction/)).toBeVisible();
@@ -92,6 +117,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await threads.first().locator("summary").click();
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("HOT TAG");
  await expect(threads.first().locator(".ppw-hot-tag-news-post")).toHaveCount(3);
+ await expect(threads.locator(".ppw-hot-tag-wrestler"),
+  "Unverified reports must never impersonate an official wrestler account").toHaveCount(0);
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("Tag in. Sound off.");
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});
@@ -103,4 +130,16 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("SECRET PRIVATE CONTRACT")).toHaveCount(0);
  await page.getByRole("button",{name:"Official News"}).click();
  expect(calls).toEqual(["industry","industryNews"]);
+ // The owned, certified angle opens the regular creative desk with the
+ // real wrestler selected. Rival-company posts never grant this action.
+ const owned=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(1);
+ await owned.locator("summary").click();
+ await expect(owned.locator(".ppw-hot-tag-wrestler")).toContainText("Alice");
+ await expect(officialThread.getByRole("button",{name:"Develop programme"})).toHaveCount(0);
+ await owned.getByRole("button",{name:"Develop programme"}).click();
+ await expect(page).toHaveURL(/#\/programmes$/);
+ await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
+ await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
+  .toHaveValue("PERSON:a");
+ expect(calls).toEqual(["industry","industryNews","programmes"]);
 });
