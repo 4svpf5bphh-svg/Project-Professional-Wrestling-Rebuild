@@ -40,7 +40,12 @@ test("320px Business commercial agreements are optional, readable and consented 
    rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
    commercialAgreements:signed?[{dealId:"broadcast-1",kind:"BROADCAST",
     offerCode:"BROADCAST_GROWTH",weeklyIncome:312000,baselineIncome:300000,
-    reachIncrease:15,startWeekIndex:4,endWeekIndex:29,source:"HUMAN"}]:[],
+    reachIncrease:15,startWeekIndex:4,endWeekIndex:29,source:"HUMAN",
+    airingDay:5,airingHour:20,
+    networkReview:{dealId:"broadcast-1",offerCode:"BROADCAST_GROWTH",
+     reviewWeekIndex:4,target:0.11,rating:0.0,showId:"tv-4",
+     status:"BELOW_TARGET",missedConsecutively:3,previousMisses:2,
+     milestone:"WARNING",bonusEligible:false}}]:[],
    commercialOffers:signed?[]:[offer]
   }});
  });
@@ -59,6 +64,14 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
  await expect(page.getByText(/26 weeks left on this agreement/)).toBeVisible();
+ await expect(page.locator(".ppw-commercial-partner-review")).toContainText("AT RISK");
+ await expect(page.locator(".ppw-commercial-partner-review")).toContainText("0.0 TV");
+ await expect(page.getByText("US$312,000 weekly guarantee")).toBeVisible();
+ const catalogue=page.locator(".ppw-commercial-market-browser");
+ await expect(catalogue).not.toHaveAttribute("open","");
+ await catalogue.locator("summary").click();
+ await expect(catalogue).toHaveAttribute("open","");
+ await expect(page.locator(".ppw-commercial-slot")).toContainText("Friday at 20:00");
  await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
@@ -155,6 +168,15 @@ for(const width of [320,390]){
   await page.goto("/#/business");
   await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
   await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
+  await page.getByRole("button",{name:"Ratings War",exact:true}).click();
+  const war=page.locator(".ppw-ratings-war-desk");
+  await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
+  await expect(war.locator(".ppw-ratings-war-faceoff")).toContainText("CWA");
+  await expect(war.locator(".ppw-ratings-war-faceoff")).toContainText("Rival Wrestling");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText(
+   "Rival Wrestling leads by 0.4 rating points.");
+  await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
+  await page.getByRole("button",{name:"← Business"}).click();
   await page.getByRole("button",{name:"Deals"}).click();
   await expect(page.getByRole("heading",{name:"Ratings war"})).toBeVisible();
   await expect(page.getByText(/Your latest TV show ranks #2 of 2/)).toBeVisible();

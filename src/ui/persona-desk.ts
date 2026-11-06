@@ -152,6 +152,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
+  const previousDocumentScroll=window.scrollY;
   if(previous){preservedThreadScroll=previous.scrollTop;
    preservedThreadPerson=previous.dataset.personId??null;}
   root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
@@ -463,7 +464,7 @@ export function mountPersonaDesk(root:HTMLElement,
    (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private conversation"));
-  const details=button("Dossier ↗",()=>{
+  const details=button("Dossier",()=>{
    if(port.openWrestler)port.openWrestler(view!.personId!);
    else{pane="PROFILE";render();}
   });
@@ -668,10 +669,16 @@ export function mountPersonaDesk(root:HTMLElement,
    reply.setAttribute("role","status");chat.append(reply);}
   root.append(chat);
   requestAnimationFrame(()=>{
-   if(root.contains(chat)){
-    chat.scrollTop=scrollToLatest?chat.scrollHeight:previousScroll??chat.scrollHeight;
-    scrollToLatest=false;
-   }
+   if(!root.contains(chat))return;
+   // iPhone: the document owns the only vertical scroll. The old nested flex
+   // scroller could trap touch gestures before later messages were reachable.
+   // Keep the independent pane for larger screens.
+   if(getComputedStyle(chat).overflowY==="visible"){
+    if(scrollToLatest)chat.lastElementChild?.scrollIntoView({block:"end"});
+    else if(previousScroll!==null)window.scrollTo(0,previousDocumentScroll);
+   }else chat.scrollTop=scrollToLatest?chat.scrollHeight:
+    previousScroll??chat.scrollHeight;
+   scrollToLatest=false;
   });
  }
  void load(initialPersonId);

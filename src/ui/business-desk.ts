@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
 import {commercialCompanyName,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
  from "../domain/commercial-offers.js";
@@ -6,39 +7,45 @@ import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 import {recommendPromotionBudgets,type BudgetRisk} from "../domain/financial-adviser.js";
+import {broadcasterReaction} from "../domain/broadcast-network-review.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
  load():Promise<BusinessView>;
  renamePromotion?(name:string):Promise<{name:string;changed:boolean}>;
  signCommercial?(input:{requestId:string;expectedRevision:number;offerCode:string}):Promise<unknown>;
+ requestBroadcastDay?(input:{requestId:string;expectedRevision:number;dealId:string;requestedDay:number}):Promise<unknown>;
  setSpendingPlan?(input:PromotionSpendingPlan&{requestId:string;expectedRevision:number}):Promise<unknown>;
  previewRestructure?():Promise<RescueView|null>;
  openKayfabe?():void;
  restructure?(input:{requestId:string;expectedRevision:number}):
   Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
  openResults?(showId:string):void;
+ returnToResults?():void;
  openRoster?():void;openContracts?():void;
  back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
 };
-const button=(label:string,fn:()=>void)=>{
+const button=(label:string,fn:()=>void,disabled=false)=>{
  const x=el("button","ppw-business-action",label) as HTMLButtonElement;
- x.type="button";x.onclick=fn;return x;
+ x.type="button";x.disabled=disabled;x.onclick=fn;return x;
 };
 const money=(n:number)=>new Intl.NumberFormat("en-GB",{
  style:"currency",currency:"USD",maximumFractionDigits:0
 }).format(n);
 const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
-export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
+export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
+ initialPane:"FINANCES"|"RATINGS"|"COMMERCIAL"="FINANCES"){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
-  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
-  commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false,
+  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"|"RATINGS"=initialPane,
+  selectedRatingsRivalId:string|null=null,
+  commercialBusy=false,commercialNotice="",requestingDayFor:string|null=null,
+  chosenBroadcastDay=5,renaming=false,renameBusy=false,
   commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
   spendingExpanded=false;
  let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
@@ -51,7 +58,14 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
  }
  async function acceptCommercial(offerCode:string){
   if(commercialBusy||!port.signCommercial||!view)return;
-  if(!window.confirm("Sign this commercial agreement? Its weekly income and distribution apply until the term ends. The offer cannot be replaced early."))return;
+  const term=COMMERCIAL_COMPANIES[offerCode];
+  const weekday=term?.preferredDay?
+   ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][term.preferredDay-1]:null;
+  const schedule=offerCode.startsWith("BROADCAST_")&&weekday?
+   " Your weekly TV shows will be fixed to "+weekday+" at "+term.airtime+
+   ". Move conflicting existing bookings before signing.":"";
+  if(!window.confirm("Sign this commercial agreement? Its weekly income and distribution apply until the term ends."+
+   schedule+" The offer cannot be replaced early."))return;
   commercialBusy=true;error="";commercialNotice="";draw();
   try{
    const result=await port.signCommercial({offerCode,requestId:crypto.randomUUID(),
@@ -63,6 +77,29 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     await refresh();commercialNotice="Commercial agreement signed. It will settle with your normal weekly accounts.";
    }else error="The agreement was not accepted.";
   }catch(e){error=e instanceof Error?e.message:"Agreement could not be signed";}
+  finally{commercialBusy=false;draw();}
+ }
+ async function sendBroadcastDayRequest(dealId:string){
+  if(commercialBusy||!port.requestBroadcastDay||!view)return;
+  const current=view.commercialAgreements.find(x=>x.dealId===dealId);
+  if(!current||current.kind!=="BROADCAST"||current.airingDay===chosenBroadcastDay)return;
+  const dayName=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][chosenBroadcastDay-1];
+  if(!window.confirm("Request "+dayName+" from your network? The network permits one approved day change per contract."+
+   " Any unsubmitted TV cards will move with the slot and need to be marked ready again."))return;
+  commercialBusy=true;error="";commercialNotice="";draw();
+  try{
+   const response=await port.requestBroadcastDay({dealId,requestedDay:chosenBroadcastDay,
+    requestId:crypto.randomUUID(),expectedRevision:view.worldRevision}) as
+    {status?:string;result?:{networkResponse?:string}};
+   if(response.status==="STALE"){
+    error="The World changed. Review your broadcaster's terms and try again.";
+    await refresh();
+   }else if(response.status==="APPLIED"||response.status==="REPLAYED"){
+    requestingDayFor=null;await refresh();
+    commercialNotice=response.result?.networkResponse??
+     "Your broadcaster approved the new weekly TV day.";
+   }else error="Your network did not approve the day change.";
+  }catch(e){error=e instanceof Error?e.message:"The day-change request was refused.";}
   finally{commercialBusy=false;draw();}
  }
  async function reviewRescue(){
@@ -133,7 +170,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   return card;
  }
  function draw(){
-  root.classList.add("ppw-editor","ppw-business");root.replaceChildren();
+  activateWorkspaceRoot(root,"ppw-business");root.replaceChildren();
+  const ratingsFocused=pane==="RATINGS";
+  root.classList.toggle("ppw-business-ratings-focused",ratingsFocused);
   const head=el("header","ppw-business-head");
   head.append(el("span","ppw-business-kicker","THE FRONT OFFICE"),
    el("h1","","Business"),
@@ -147,8 +186,20 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   if(port.renamePromotion&&view){
    head.append(button("Rename promotion",()=>{renaming=!renaming;draw();}));
   }
-  root.append(head);
-  if(renaming&&view&&port.renamePromotion){
+  if(ratingsFocused){
+   const returnNav=el("nav","ppw-ratings-war-return");
+   returnNav.setAttribute("aria-label","Ratings War navigation");
+   if(port.returnToResults)
+    returnNav.append(button("← Ringside Results",()=>port.returnToResults?.()));
+   returnNav.append(button("← Business",()=>{
+    pane="FINANCES";
+    if(window.location.hash==="#/business/ratings")
+     window.history.replaceState(null,"","#/business");
+    draw();
+   }));
+   root.append(returnNav);
+  }else root.append(head);
+  if(!ratingsFocused&&renaming&&view&&port.renamePromotion){
    const panel=el("section","ppw-business-panel");
    panel.append(el("h2","","Promotion identity"),
     el("p","ppw-business-muted",
@@ -185,12 +236,12 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   const nav=el("nav","ppw-business-nav");
   nav.setAttribute("aria-label","Business reports");
   for(const [id,title] of [
-   ["FINANCES","Finances"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
+   ["FINANCES","Finances"],["RATINGS","Ratings War"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
   ] as const){
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
   }
-  root.append(nav);
+  if(!ratingsFocused)root.append(nav);
   if(pane==="FINANCES"){
    const weeklyIncome=view.weeklyMediaIncome!=null&&view.weeklySponsorIncome!=null?
     view.weeklyMediaIncome+view.weeklySponsorIncome:null;
@@ -610,6 +661,169 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    }
    root.append(section);
   }
+
+  if(pane==="RATINGS"){
+   // The existing bounded six-week competitor read is public certified World
+   // audience data. All filters, head-to-head choices and graphs are local.
+   const section=el("section","ppw-ratings-war-desk");
+   section.dataset.kind="certified-tv";
+   const header=el("header","ppw-ratings-war-head");
+   header.append(el("span","ppw-business-kicker","PPW / BROADCAST BATTLE"),
+    el("h2","","Ratings War"),
+    el("p","ppw-business-muted",
+     "Latest certified TV episode per promotion · past six weeks"));
+   section.append(header);
+   const ranking=view.competitorBroadcasts??[];
+   const own=ranking.find(episode=>episode.isYours)??null;
+   const others=ranking.filter(episode=>!episode.isYours);
+   const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
+    // Real same-slot competition is the default comparison over a human
+    // promotion airing in a different window.
+    others.find(episode=>own&&episode.year===own.year&&
+     episode.week===own.week&&episode.day===own.day&&
+     episode.airingHour!==null&&episode.airingHour!==undefined&&
+     episode.airingHour===own.airingHour&&
+     (own.ratingsWarOpponents??0)>0&&(episode.ratingsWarOpponents??0)>0)??
+    others.find(episode=>episode.humanManaged)??others[0]??null;
+   const ownRank=ranking.findIndex(episode=>episode.isYours);
+   const compare=el("section","ppw-ratings-war-faceoff");
+   compare.setAttribute("aria-label","Certified TV ratings comparison");
+   const cards=el("div","ppw-ratings-war-faceoff-scores");
+   const scoreCard=(name:string,rating:number|null,kind:"OWNER"|"RIVAL")=>{
+    const tile=el("div","ppw-ratings-war-score");
+    tile.dataset.side=kind;
+    tile.append(el("span","",kind==="OWNER"?"YOUR PROMOTION":"CHALLENGER"),
+     el("strong","ppw-ratings-war-promotion",name),
+     el("b","ppw-ratings-war-rating",rating===null?"—":rating.toFixed(1)),
+     el("small","",rating===null?"No recent certified TV result":"HOUSEHOLD RATING"));
+    return tile;
+   };
+   cards.append(scoreCard(own?.name??view.name,own?.householdRating??null,"OWNER"),
+    el("span","ppw-ratings-war-versus","VS"),
+    scoreCard(opponent?.name??"No challenger recorded",
+     opponent?.householdRating??null,"RIVAL"));
+   if(opponent?.humanManaged)
+    cards.lastElementChild?.prepend(el("small","ppw-ratings-war-human-label",
+     "HUMAN MANAGER"));
+   compare.append(cards);
+   if(own&&opponent){
+    const difference=own.householdRating-opponent.householdRating;
+    const score=Math.abs(difference).toFixed(1);
+    compare.append(el("p","ppw-ratings-war-result",difference===0?
+     "Latest broadcasts are level on household rating.":
+     difference>0?"You're ahead by "+score+" rating points.":
+      opponent.name+" leads by "+score+" rating points."));
+    const sameWeek=own.year===opponent.year&&own.week===opponent.week;
+    const sameSlot=sameWeek&&own.day===opponent.day&&
+     own.airingHour!==null&&own.airingHour!==undefined&&
+     own.airingHour===opponent.airingHour&&
+     (own.ratingsWarOpponents??0)>0&&(opponent.ratingsWarOpponents??0)>0;
+    if(sameSlot)
+     compare.append(el("small","ppw-ratings-war-note",
+      "HEAD-TO-HEAD · Same night, same broadcast hour. These ratings include audience competition."));
+    else if(!sameWeek)
+     compare.append(el("small","ppw-ratings-war-note",
+      "Latest episodes aired in different weeks; this is not a same-slot result."));
+    else compare.append(el("small","ppw-ratings-war-note",
+      "Different broadcast slots. This is a standings comparison, not a live audience clash."));
+    if((own.ratingsWarOpponents??0)>0&&typeof own.ratingsWarChange==="number"){
+     const change=own.ratingsWarChange;
+     compare.append(el("p","ppw-ratings-war-impact",
+      change>0?"YOU GAINED "+change.toFixed(1)+" RATING POINTS IN YOUR AIRTIME BATTLE":
+      change<0?"YOU LOST "+Math.abs(change).toFixed(1)+" RATING POINTS IN YOUR AIRTIME BATTLE":
+      "YOUR LATEST AIRTIME BATTLE ENDED EVEN"));
+    }
+   }else compare.append(el("p","ppw-ratings-war-result",
+    "Compare audiences once you and another promotion have certified TV results."));
+   section.append(compare);
+   if(ownRank>=0){
+    const position=el("p","ppw-ratings-war-standings",
+     "YOUR POSITION  ·  #"+(ownRank+1)+" OF "+ranking.length+
+     " RECENT BROADCASTERS");
+    section.append(position);
+   }
+   const episodes=view.shows.filter(show=>
+    show.audience?.format==="TV"&&typeof show.audience.householdRating==="number")
+    .slice(0,6).reverse();
+   const trend=el("section","ppw-ratings-war-trend");
+   trend.append(el("h3","","Your last six TV broadcasts"));
+   if(!episodes.length)trend.append(el("p","ppw-business-muted",
+    "Your first certified TV rating will appear after a completed broadcast."));
+   else{
+    const highest=Math.max(.1,...episodes.map(e=>e.audience!.householdRating!));
+    const bars=el("div","ppw-ratings-war-bars");
+    bars.setAttribute("role","list");
+    bars.setAttribute("aria-label","Your certified TV ratings history");
+    for(const episode of episodes){
+     const rating=episode.audience!.householdRating!;
+     const bar=el("div","ppw-ratings-war-bar");
+     bar.setAttribute("role","listitem");
+     bar.setAttribute("aria-label","Year "+episode.year+" Week "+episode.week+
+      ", household rating "+rating.toFixed(1));
+     bar.append(el("strong","",rating.toFixed(1)));
+     const track=el("div","ppw-ratings-war-track");
+     const fill=el("span","ppw-ratings-war-fill");
+     fill.style.height=Math.max(5,Math.round(rating/highest*100))+"%";
+     track.append(fill);bar.append(track,
+      el("small","","W"+episode.week));
+     bars.append(bar);
+    }
+    trend.append(bars);
+    if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
+     trend.append(el("p","ppw-ratings-war-average",
+      view.recentTvEpisodes+" recent broadcasts · "+
+      view.averageTvRating.toFixed(1)+" average TV rating"));
+   }
+   section.append(trend);
+   const board=el("section","ppw-ratings-war-leaderboard");
+   board.append(el("h3","","The field"));
+   if(!ranking.length)board.append(el("p","ppw-business-muted",
+    "No certified TV broadcasts in the last six weeks."));
+   const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+   // Display the current promotion even when outside the first seven.
+   const shown=ranking.slice(0,7);
+   if(ownRank>=7)shown.push(ranking[ownRank]!);
+   for(const episode of shown){
+    const row=el("article","ppw-ratings-war-rival");
+    if(episode.isYours)row.dataset.own="true";
+    if(episode.humanManaged&&!episode.isYours)row.dataset.human="true";
+    if(episode.promotionId===opponent?.promotionId)row.dataset.selected="true";
+    const rank=ranking.indexOf(episode)+1;
+    const description=el("div","ppw-ratings-war-rival-copy");
+    description.append(el("strong","","#"+rank+" · "+episode.name+
+     (episode.isYours?" · YOU":episode.humanManaged?" · HUMAN MANAGER":"")),
+     el("small","",episode.showName+" · "+(days[(episode.day??0)-1]??"Day unreported")+
+      (typeof episode.airingHour==="number"?" "+String(episode.airingHour).padStart(2,"0")+":00":"")+
+      " · Y"+episode.year+" W"+episode.week+
+      (typeof episode.ratingsWarChange==="number"&&episode.ratingsWarChange!==0?
+       " · WAR "+(episode.ratingsWarChange>0?"+":"")+episode.ratingsWarChange.toFixed(1):"")));
+    const numbers=el("div","ppw-ratings-war-rival-number");
+    numbers.append(el("b","",episode.householdRating.toFixed(1)),
+     el("small","",episode.estimatedViewers===null?
+      "Household rating":episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+    row.append(description,numbers);
+    if(!episode.isYours){
+     const choose=button("Compare",()=>{
+      selectedRatingsRivalId=episode.promotionId;draw();
+     });
+     choose.classList.add("ppw-ratings-war-compare");
+     choose.setAttribute("aria-label","Compare against "+episode.name);
+     choose.setAttribute("aria-pressed",
+      String(episode.promotionId===opponent?.promotionId));
+     row.append(choose);
+    }
+    board.append(row);
+   }
+   section.append(board);
+   const next=el("div","ppw-ratings-war-next");
+   next.append(el("strong","","Turn ratings into better deals"),
+    el("p","ppw-business-muted",
+     "Audience and reach influence available broadcasters. Partners are exclusive in this World."));
+   next.append(button("Networks & sponsors",()=>{
+    commercialKind="BROADCAST";pane="COMMERCIAL";draw();
+   }));
+   section.append(next);root.append(section);
+  }
   if(pane==="COMMERCIAL"){
    const section=el("section","ppw-business-panel ppw-commercial-desk");
    const day=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -684,26 +898,83 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
    for(const deal of current){
     const item=el("article","ppw-commercial-offer");
     item.append(commercialPartnerBrand(deal.offerCode));
-    item.append(el("p","ppw-commercial-voice",partnerResponse(deal.offerCode,{
-     tier:view.tier,averageTvRating:view.averageTvRating,
-     crowd:view.recentAverageCrowd,current:true
-    })));
+    item.append(el("p","ppw-commercial-voice",deal.networkReview?
+     broadcasterReaction(deal.networkReview):
+     partnerResponse(deal.offerCode,{
+      tier:view.tier,averageTvRating:view.averageTvRating,
+      crowd:view.recentAverageCrowd,current:true
+     })));
+    if(deal.networkReview){
+     const review=deal.networkReview;
+     const status=review.missedConsecutively>=3?"AT RISK":
+      review.status==="OFF_SLOT"?"OFF-SLOT BROADCAST":
+      review.status==="NO_TV"?"NO CERTIFIED TV":
+      review.status==="BELOW_TARGET"?"AUDIENCE BELOW TARGET":
+      review.status==="WATCH"?"NEAR TARGET":
+      review.status==="LEGACY"?"AUDIENCE NOT REPORTED":"ON TARGET";
+     const line=el("div","ppw-commercial-partner-review");
+     line.dataset.status=review.missedConsecutively>=3?"warning":review.status;
+     line.append(el("strong","",status),
+      el("small","",review.rating===null?"Last week · Rating not reported":
+       "Last week · "+review.rating.toFixed(1)+" TV / "+
+        review.target.toFixed(2)+" partner target"));
+     if(review.missedConsecutively>=2)
+      line.append(el("small","",
+       review.missedConsecutively+" consecutive missed network requirements"+
+       (review.missedConsecutively>=3?
+        " · Performance bonuses suspended until delivery improves":"")));
+     else if(!review.bonusEligible)
+      line.append(el("small","","Performance bonus not earned this week; guaranteed weekly income is unchanged"));
+     item.append(line);
+    }
     item.append(el("strong","",
      money(deal.weeklyIncome)+" weekly guarantee"));
     item.append(el("small","ppw-commercial-status",
      Math.max(0,deal.endWeekIndex-now+1)+" weeks left on this agreement"));
-    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number")
+    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number"){
      item.append(el("span","ppw-commercial-slot",
-      "Your broadcast slot · "+(day[deal.airingDay-1]??"Weekly")+
-       " at "+String(deal.airingHour).padStart(2,"0")+":00"));
+      "Your contracted TV night · "+(day[deal.airingDay-1]??"Weekly")+
+       " at "+String(deal.airingHour).padStart(2,"0")+":00 · Weekly shows fixed"));
+     if(port.requestBroadcastDay&&deal.source==="HUMAN"){
+      const open=requestingDayFor===deal.dealId;
+      item.append(button(open?"Cancel day request":"Request a different broadcast day",()=>{
+       requestingDayFor=open?null:deal.dealId;
+       chosenBroadcastDay=deal.airingDay===5?4:5;draw();
+      },commercialBusy));
+      if(open){
+       const selector=el("div","ppw-broadcast-day-options");
+       selector.setAttribute("role","group");
+       selector.setAttribute("aria-label","Requested broadcast day");
+       for(let next=1;next<=7;next++){
+        if(next===deal.airingDay)continue;
+        const choose=button(day[next-1]!,()=>{
+         chosenBroadcastDay=next;draw();
+        },commercialBusy);
+        choose.setAttribute("aria-pressed",String(chosenBroadcastDay===next));
+        selector.append(choose);
+       }
+       item.append(selector);
+       item.append(button(commercialBusy?"Requesting…":"Ask the network",()=>{
+        void sendBroadcastDayRequest(deal.dealId);
+       },commercialBusy));
+      }
+     }
+    }
     section.append(item);
    }
-   section.append(el("h3","","The World deal market"),
-    el("p","ppw-commercial-world-note",
-     "Each partner can back only one promotion at a time in this World. "+
-     "More viewers strengthen future offers; existing agreements are honoured until expiry."));
    const brands=Object.entries(COMMERCIAL_COMPANIES)
     .filter(([code])=>code.startsWith(commercialKind+"_"));
+   // A signed deal gets priority over a catalogue of unavailable options.
+   const market=document.createElement("details");
+   market.className="ppw-commercial-market-browser";
+   market.open=current.length===0;
+   market.append(el("summary","ppw-commercial-market-trigger",
+    current.length?"Explore other "+(commercialKind==="BROADCAST"?"networks":"sponsors")+
+     " · "+Math.max(0,brands.length-current.length):
+     "Available "+(commercialKind==="BROADCAST"?"networks":"sponsors")));
+   const marketBody=el("div","ppw-commercial-market-body");
+   marketBody.append(el("p","ppw-commercial-world-note",
+    "Partners are exclusive in this World. Stronger audiences attract better offers."));
    for(const [code,identity] of brands){
     if(current.some(d=>d.offerCode===code))continue;
     const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
@@ -730,8 +1001,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
       offer.termWeeks+" weeks"));
      if(offer.kind==="BROADCAST"){
       item.append(el("span","ppw-commercial-slot",
-       "Preferred "+(day[identity.preferredDay-1]??"weekly")+
-       " "+identity.airtime+" · Rating target "+
+       "Contracted weekly slot: "+(day[identity.preferredDay-1]??"weekly")+
+       " at "+identity.airtime+" · Rating target "+
        broadcasterRatingTarget(code,view.tier).toFixed(1)));
       item.append(el("span","ppw-commercial-slot",
        "+"+Math.round(offer.reachIncrease)+" distribution reach"));
@@ -749,8 +1020,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
       "Not approaching your promotion yet"));
      item.append(el("small","ppw-business-muted",identity.preference));
     }
-    section.append(item);
+    marketBody.append(item);
    }
+   market.append(marketBody);section.append(market);
    root.append(section);
   }
   if(pane==="TERRITORIES"){
