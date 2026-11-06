@@ -66,3 +66,100 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+/** The screenshot regression: results must be an integrated broadcast
+ * performance panel, and its CTA must open the same certified Ratings War. */
+const editorialShow={
+ showId:"ascension-week19",showName:"Ascension",bookingClass:"REGULAR",
+ year:1,week:19,crowdResponse:82,matchCount:1,angleCount:1,
+ staffReport:{reporter:"Road Agent",staffId:"agent",headline:"Strong finish",
+  praise:"The main event worked.",concern:"Keep building the next programme.",
+  recommendation:"Follow the crowd.",strongestMatchId:"bout",reviewedMatches:1},
+ entries:[{
+  slotId:"bout",position:0,type:"MATCH",headline:"Samoa Joe defeats Matt Riddle",
+  summary:"Joe won by a clean pinfall.",crowdResponse:87,outcome:"CLEAN_PIN",
+  actorIds:["joe","riddle"],targetIds:[],
+  matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:17,
+   sides:[["Samoa Joe"],["Matt Riddle"]],winnerNames:["Samoa Joe"],
+   championshipContested:false,isMainEvent:true},
+  fallout:{ratingStars:4.25,actualMinutes:18,injuries:[],eliminations:[]}
+ },{
+  slotId:"promo",position:1,type:"SEGMENT",headline:"Title challenge",
+  summary:"The challenge went out.",outcome:"HAPPENS",
+  crowdResponse:73,actorIds:["joe"],targetIds:[],segmentKind:"PROMO"
+ }]
+};
+for(const width of [320,390]){
+ test("TV Results has a compact certified audience panel and opens Ratings War at "+width+"px",async({page},info)=>{
+  await page.setViewportSize({width,height:width===320?568:844});
+  const methods:string[]=[];
+  const owner={world:{revision:44,name:"World",year:1,week:20,phase:"OPEN",
+   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"NATIONAL",
+    cash:5_000_000,debt:0}};
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"fixture",overview:owner,
+   availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const method=String((r.request().postDataJSON() as {method:string}).method);
+   methods.push(method);
+   if(method==="resultsArchive")return r.fulfill({json:{
+    items:[{showId:"ascension-week19",year:1,week:19,showName:"Ascension",
+     crowdResponse:82,matchCount:1,angleCount:1}],nextCursor:null}});
+   if(method==="results")return r.fulfill({json:{
+    ...editorialShow,audience:{format:"TV",householdRating:2.4,
+     estimatedViewers:3_800_000,ppvBuys:null}}});
+   if(method==="business")return r.fulfill({json:{
+    name:"CWA",homeMarketName:"Midlands",year:1,week:20,
+    competitorBroadcasts:[{promotionId:"mine",name:"CWA",showName:"Ascension",
+     householdRating:2.4,estimatedViewers:3_800_000,day:2,year:1,week:19,
+     isYours:true,humanManaged:true,networkOfferCode:null}],
+    shows:[{year:1,week:19,name:"Ascension",
+     audience:{format:"TV",householdRating:2.4,estimatedViewers:3_800_000,
+      ppvBuys:null}}],
+    recentTvEpisodes:1,averageTvRating:2.4,
+    commercialAgreements:[],commercialOffers:[],partnerInventory:[]
+   }});
+   return r.fulfill({json:{}});
+  });
+  await page.route("**/api/results-commentary",r=>
+   r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const audience=page.getByRole("region",{name:"Broadcast performance"});
+  await expect(audience).toContainText("BROADCAST PERFORMANCE");
+  await expect(audience).toContainText("TV RATING");
+  await expect(audience).toContainText("2.4");
+  await expect(audience).toContainText("3,800,000");
+  await page.screenshot({path:info.outputPath("phase33-tv-results-"+width+".png")});
+  await audience.getByRole("button",{name:"Compare TV ratings in Ratings War"}).click();
+  await expect(page).toHaveURL(/#\/business\/ratings$/);
+  await expect(page.getByRole("heading",{name:"Ratings War"})).toBeVisible();
+  await expect(page.locator(".ppw-ratings-war-score[data-side='OWNER']")).toContainText("2.4");
+  expect(methods).toEqual(["resultsArchive","results","business"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
+test("PPV results preserve buys and do not show misleading household ratings",async({page})=>{
+ await page.setViewportSize({width:320,height:568});
+ await page.route("**/api/session",r=>r.fulfill({json:{
+  worldId:"world",playerId:"owner",csrfToken:"fixture",
+  overview:{world:{revision:44,name:"World",year:1,week:20,phase:"OPEN"},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"NATIONAL",
+    cash:5_000_000,debt:0}},availablePromotions:[]}}));
+ await page.route("**/api/card",r=>r.fulfill({json:
+  (r.request().postDataJSON() as {method:string}).method==="resultsArchive"?
+  {items:[{showId:"ascension-week19",year:1,week:19,showName:"Armageddon",
+   crowdResponse:82,matchCount:1,angleCount:1}],nextCursor:null}:
+  {...editorialShow,showName:"Armageddon",bookingClass:"PREMIUM",
+   audience:{format:"PPV",householdRating:null,estimatedViewers:null,ppvBuys:825000}}}));
+ await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ const audience=page.getByRole("region",{name:"Broadcast performance"});
+ await expect(audience).toContainText("EST. PPV BUYS");
+ await expect(audience).toContainText("825,000");
+ await expect(audience).not.toContainText("TV RATING");
+ await expect(audience.getByRole("button",{name:"Compare TV ratings in Ratings War"})).toHaveCount(0);
+});
