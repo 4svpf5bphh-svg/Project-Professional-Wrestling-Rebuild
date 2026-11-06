@@ -165,7 +165,7 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/results$/);
   await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
   await expect(page.locator(".ppw-business")).toHaveCount(0);
-  await expect(page.getByRole("button",{name:"Read the Full Show"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(methods).toEqual(["resultsArchive","results","business","results"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

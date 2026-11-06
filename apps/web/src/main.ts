@@ -375,6 +375,18 @@ window.addEventListener("hashchange",()=>{
    "",hostSectionHash("card"));
   return;
  }
+ // The current PPV manager gets an optional press room when leaving a
+ // freshly viewed certified Results page, including drawer/hash navigation.
+ // Restore the URL without another history entry until their decision.
+ const resultView=game.firstElementChild as HTMLElement|null;
+ if(section!=="results"&&resultView?.dataset.ppwPremiumExit==="true"){
+  const target=window.location.hash;
+  window.history.replaceState(null,"","#/results");
+  resultView.dispatchEvent(new CustomEvent("ppw:results-exit",{
+   detail:{targetHash:target}
+  }));
+  return;
+ }
  drawerExpanded=false;renderSection();
 });
 window.addEventListener("beforeunload",event=>{

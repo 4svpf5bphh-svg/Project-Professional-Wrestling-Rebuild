@@ -38,6 +38,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let manualStatus="";let manualBusy=false;let claimingKP=false;
  const dismissing=new Set<string>();
  let clearing=false;
+ let inboxExpanded=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
  function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
  function startClock(node:HTMLElement,world:PlayerWorldOverview["world"],
@@ -720,6 +721,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(inboxBody.childElementCount){
    const inbox=document.createElement("details");
    inbox.className="ppw-home-notification-inbox";
+   inbox.open=inboxExpanded;
+   inbox.addEventListener("toggle",()=>{inboxExpanded=inbox.open;});
    inbox.append(el("summary","ppw-home-inbox-toggle",
     resolvedCount+" recorded update"+(resolvedCount===1?"":"s")+" · Open inbox"),
     inboxBody);

@@ -614,27 +614,34 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  async function leave(next:()=>void,replay=false){
   if(leaving)return;
   if(loadedShow?.bookingClass!=="PREMIUM"){next();return;}
+  const proceed=()=>{
+   if(!replay)delete root.dataset.ppwPremiumExit;
+   next();
+  };
   leaving=true;
   try{
    const session=await pressPort.read();
    if(!replay&&(session.dismissed||session.questions.every(q=>q.answerIndex!==null))){
-    leaving=false;next();return;
+    leaving=false;proceed();return;
    }
    if(!root.isConnected){leaving=false;return;}
    const prior=Array.from(root.childNodes);
    mountPremiumPressScrum(root,pressPort,session,()=>{
     leaving=false;
     if(replay)root.replaceChildren(...prior);
-    else next();
+    else proceed();
    });
   }catch{
-   leaving=false;next(); // An unavailable press service must not block Results.
+   leaving=false;proceed(); // An unavailable press service must not block Results.
   }
  }
  await mountShowResults(root,{
   load:async()=>{
    const view=await createCardClient(scope)("results") as CompletedShowView;
-   loadedShow=view;return view;
+   loadedShow=view;
+   if(view.bookingClass==="PREMIUM")root.dataset.ppwPremiumExit="true";
+   else delete root.dataset.ppwPremiumExit;
+   return view;
   },
   openPress:()=>void leave(()=>{},true),
   openNext:destination=>void leave(()=>{window.location.hash=hostSectionHash(destination);}),
@@ -656,6 +663,11 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
    if(!res.ok)return {status:"unavailable" as const};
    return res.json();
   }
+ });
+ root.addEventListener("ppw:results-exit",event=>{
+  const target=(event as CustomEvent<{targetHash:string}>).detail?.targetHash;
+  if(typeof target==="string"&&/^#\/[a-z/-]+$/.test(target))
+   void leave(()=>{window.location.hash=target;});
  });
  if(onBack){
   const back=document.createElement("button");
