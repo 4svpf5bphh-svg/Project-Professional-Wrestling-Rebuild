@@ -14,7 +14,7 @@ test("same-day same-hour television redistributes viewers without adding or losi
  assert.equal(out[1]!.opponents,1);
  assert.ok(out[0]!.change>0&&out[1]!.change<0);
  assert.equal(out[0]!.change,-out[1]!.change);
- assert.equal(out[0]!.householdRating+out[1]!.householdRating,5.7);
+ assert.equal(Math.round((out[0]!.householdRating+out[1]!.householdRating)*10),57);
  assert.ok(out[0]!.estimatedViewers>episodes[0]!.estimatedViewers);
  assert.ok(out[1]!.estimatedViewers<episodes[1]!.estimatedViewers);
  assert.equal(JSON.stringify(episodes),JSON.stringify([e("a","a",5,20,3.2),e("b","b",5,20,2.5)]));

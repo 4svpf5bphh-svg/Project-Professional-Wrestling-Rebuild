@@ -30,10 +30,12 @@ for(const width of [320,390]){
      {year:1,week:17,name:"Ascension",audience:{format:"TV",householdRating:2.3,estimatedViewers:3650000,ppvBuys:null}}
     ],
     competitorBroadcasts:[
-     {promotionId:"other",name:"North Wrestling",showName:"Uprising",day:5,year:1,week:19,
+     {promotionId:"other",name:"North Wrestling",showName:"Uprising",day:2,year:1,week:19,
+      airingHour:20,ratingsWarOpponents:1,ratingsWarChange:-0.2,
       householdRating:3.0,estimatedViewers:4300000,networkOfferCode:"BROADCAST_GROWTH",
       isYours:false,humanManaged:false},
      {promotionId:"mine",name:"CWA",showName:"Ascension",day:2,year:1,week:19,
+      airingHour:20,ratingsWarOpponents:1,ratingsWarChange:0.2,
       householdRating:2.4,estimatedViewers:3800000,networkOfferCode:"BROADCAST_TV",
       isYours:true,humanManaged:true},
      {promotionId:"rival",name:"Another Wrestling Company",showName:"Rumble",day:4,year:1,week:18,
@@ -61,6 +63,8 @@ for(const width of [320,390]){
   await expect(war.locator('.ppw-ratings-war-rival[data-human="true"]')).toContainText("HUMAN MANAGER");
   await war.getByRole("button",{name:"Compare against North Wrestling"}).click();
   await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
+  await expect(war.locator(".ppw-ratings-war-note")).toContainText("HEAD-TO-HEAD");
+  await expect(war.locator(".ppw-ratings-war-impact")).toContainText("YOU GAINED 0.2");
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Networks & sponsors"}).click();
   await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
@@ -113,7 +117,7 @@ for(const width of [320,390]){
      crowdResponse:82,matchCount:1,angleCount:1}],nextCursor:null}});
    if(method==="results")return r.fulfill({json:{
     ...editorialShow,audience:{format:"TV",householdRating:2.4,
-     estimatedViewers:3_800_000,ppvBuys:null}}});
+     estimatedViewers:3_800_000,ppvBuys:null,ratingsWarChange:0.2,ratingsWarOpponents:1}}});
    if(method==="business")return r.fulfill({json:{
     name:"CWA",homeMarketName:"Midlands",year:1,week:20,
     competitorBroadcasts:[{promotionId:"mine",name:"CWA",showName:"Ascension",
@@ -133,6 +137,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const audience=page.getByRole("region",{name:"Broadcast performance"});
   await expect(audience).toContainText("BROADCAST PERFORMANCE");
+  await expect(audience).toContainText("TV WAR +0.2");
   const wrestler=page.locator(".ppw-pop-wrestler-post");
   await expect(wrestler).toHaveCount(1);
   await expect(wrestler).toContainText("Samoa Joe");
