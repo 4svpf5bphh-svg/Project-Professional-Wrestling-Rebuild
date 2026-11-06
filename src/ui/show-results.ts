@@ -207,7 +207,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    if(report.estimatedViewers!==null){
     const viewers=metric("EST. VIEWERS",new Intl.NumberFormat("en-GB",{
      notation:"compact",maximumFractionDigits:1
-    }).format(report.estimatedViewers));
+    }).format(report.estimatedViewers).replace(/m$/,"M").replace(/k$/,"K"));
     const precise=report.estimatedViewers.toLocaleString("en-GB")+" estimated viewers";
     viewers.setAttribute("aria-label",precise);viewers.title=precise;
     metrics.append(viewers);
