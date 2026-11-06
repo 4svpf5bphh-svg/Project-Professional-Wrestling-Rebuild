@@ -7,17 +7,6 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
-import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
-type MediaScrumView={showId:string;showName?:string;questions:{
- id:ScrumQuestionId;journalist:string;question:string;
- answers:readonly [string,string,string];answerIndex:number|null
-}[]};
-type MediaScrumPort={
- read():Promise<MediaScrumView>;
- answer(questionId:ScrumQuestionId,answerIndex:number):Promise<{
-  questionId:ScrumQuestionId;answerIndex:number;answer:string;saved:boolean
- }>;
-};
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
 import {postShowStaffObservations} from "../domain/post-show-staff-observations.js";
 import {projectPostShowScorecard} from "./post-show-scorecard.js";
@@ -130,7 +119,7 @@ function transitionFor(entries:ShowResultEntry[],index:number,showName:string):s
 export async function mountShowResults(root:HTMLElement,port:{
  load():Promise<CompletedShowView>;
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
- mediaScrum?:MediaScrumPort;
+ openPress?:()=>void;
  openNext?:(section:NextStepDestination)=>void;
  openRatings?():void;
  openWrestler?:(personId:string)=>void;
@@ -140,7 +129,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext,port.mediaScrum,
+  renderBroadcast(root,show,port.openNext,port.openPress,
    port.openWrestler,port.openRatings,port.openProgrammes);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
@@ -155,7 +144,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
- openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
+ openNext?:(section:NextStepDestination)=>void,openPress?:()=>void,
  openWrestler?:(personId:string)=>void,openRatings?:()=>void,
  openProgrammes?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
@@ -795,64 +784,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   overview,...(flowScores.length>=2?[crowdFlow]:[]),
   ...(reactions.length||wrestlerPosts.length?[noise]:[]),management,
   ...(position?[position]:[]));
- if(show.bookingClass==="PREMIUM"&&mediaScrum){
-  const scrumPort=mediaScrum;
+ if(show.bookingClass==="PREMIUM"&&openPress){
   const press=node("section","ppw-media-scrum");
-  press.append(node("span","ppw-eyebrow","AFTER THE MAIN EVENT"),
-   node("h2","","The Media Scrum"),
-   node("p","ppw-muted",
-    "Answer the wrestling press in your own voice. The questions follow the certified show; your quotes are recorded once."));
-  const open=node("button","ppw-results-next","Meet the press") as HTMLButtonElement;
-  open.type="button";open.setAttribute("aria-expanded","false");
-  const content=node("div","ppw-media-scrum-content");
-  let loaded=false,working=false,view:MediaScrumView|null=null;
-  function draw(){
-   content.replaceChildren();
-   if(!view)return;
-   for(const q of view.questions){
-    const article=node("article","ppw-media-scrum-question");
-    article.append(node("span","ppw-eyebrow",q.journalist),
-     node("p","ppw-media-scrum-prompt",q.question));
-    if(q.answerIndex!==null){
-     article.append(node("p","ppw-media-scrum-quote",
-      "You: “"+q.answers[q.answerIndex]+"”"));
-    }else{
-     const choices=node("div","ppw-media-scrum-choices");
-     q.answers.forEach((answer,index)=>{
-      const selection=node("button","ppw-legend-button",answer) as HTMLButtonElement;
-      selection.type="button";selection.disabled=working;
-      selection.onclick=async()=>{
-       if(working||!view)return;working=true;
-       choices.querySelectorAll("button").forEach(b=>(b as HTMLButtonElement).disabled=true);
-       try{
-        const recorded=await scrumPort.answer(q.id,index);
-        q.answerIndex=recorded.answerIndex;draw();
-       }catch(e){choices.append(node("p","ppw-alert ppw-error",
-         e instanceof Error?e.message:"Could not save the answer"));working=false;}
-       finally{working=false;}
-      };
-      choices.append(selection);
-     });
-     article.append(choices);
-    }
-    content.append(article);
-   }
-  }
-  open.onclick=async()=>{
-   if(working)return;
-   if(open.getAttribute("aria-expanded")==="true"){
-    open.setAttribute("aria-expanded","false");content.hidden=true;return;
-   }
-   open.setAttribute("aria-expanded","true");content.hidden=false;
-   if(loaded){draw();return;}
-   open.disabled=true;
-   content.replaceChildren(node("p","ppw-muted","The journalists are gathering…"));
-   try{view=await scrumPort.read();loaded=true;draw();}
-   catch(e){content.replaceChildren(node("p","ppw-alert ppw-error",
-     e instanceof Error?e.message:"Press scrum unavailable"));}
-   finally{open.disabled=false;}
-  };
-  press.append(open,content);content.hidden=true;after.append(press);
+  press.append(node("span","ppw-eyebrow","FROM THE PRESS ROOM"),
+   node("h2","","Meet the Press"));
+  const action=node("button","ppw-results-next","Revisit press conference") as HTMLButtonElement;
+  action.type="button";action.onclick=openPress;
+  press.append(action);after.append(press);
  }
  const pages=[headlines,full,after];
  const goButton=(label:string,dest:0|1|2)=>{

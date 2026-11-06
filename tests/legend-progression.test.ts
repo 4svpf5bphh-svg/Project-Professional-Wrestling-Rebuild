@@ -58,7 +58,7 @@ test("World achievements are feasible within one uninterrupted five-season save"
 test("seven previously unlocked World Legends remain permanent even after target changes",()=>{
  const names=["jerry-lynn","taz","raven","sabu","d-lo-brown","steve-corino","super-crazy"];
  const legacy=names.map((id,i)=>({id,year:1,week:1+i*3}));
- const totals={CLASSICS:102,WEEKLY_CLASSICS:123,SUBMISSIONS:30};
+ const totals:Partial<Record<LegendMetric,number>>={CLASSICS:102,WEEKLY_CLASSICS:123,SUBMISSIONS:30};
  const candidates=LEGENDS_CATALOGUE.filter(x=>x.metric&&x.target&&
   Number(totals[x.metric]??0)>=x.target&&!legacy.some(d=>d.id===x.id));
  const plan=planCertifiedLegendReleases(candidates,legacy,1,21,totals);

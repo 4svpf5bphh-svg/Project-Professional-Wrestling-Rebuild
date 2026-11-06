@@ -10,6 +10,9 @@ import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
  type HomeAttentionFocus,legendsVaultHash} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
+import {mountPremiumPressScrum,type PremiumPressView} from "../ui/premium-press-screen.js";
+import "../ui/premium-press-screen.css";
+import type {CompletedShowView} from "../db/show-results-view.js";
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
@@ -600,22 +603,49 @@ async function scrumRequest(scope:Scope,fields:Record<string,unknown>){
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  backLabel="programmes"){
+ let loadedShow:CompletedShowView|null=null,leaving=false;
+ const pressPort={
+  read:()=>scrumRequest(scope,{action:"READ"}) as Promise<PremiumPressView>,
+  answer:(questionId:import("../domain/premium-media-scrum.js").ScrumQuestionId,
+   answerIndex:number)=>scrumRequest(scope,{
+    action:"ANSWER",questionId,answerIndex}) as Promise<{answerIndex:number}>,
+  dismiss:()=>scrumRequest(scope,{action:"DISMISS"}) as Promise<{dismissed:boolean}>
+ };
+ async function leave(next:()=>void,replay=false){
+  if(leaving)return;
+  if(loadedShow?.bookingClass!=="PREMIUM"){next();return;}
+  leaving=true;
+  try{
+   const session=await pressPort.read();
+   if(!replay&&(session.dismissed||session.questions.every(q=>q.answerIndex!==null))){
+    leaving=false;next();return;
+   }
+   if(!root.isConnected){leaving=false;return;}
+   const prior=Array.from(root.childNodes);
+   mountPremiumPressScrum(root,pressPort,session,()=>{
+    leaving=false;
+    if(replay)root.replaceChildren(...prior);
+    else next();
+   });
+  }catch{
+   leaving=false;next(); // An unavailable press service must not block Results.
+  }
+ }
  await mountShowResults(root,{
-  load:async()=>createCardClient(scope)("results"),
-  openNext:destination=>{window.location.hash=hostSectionHash(destination);},
-  openRatings:()=>{
+  load:async()=>{
+   const view=await createCardClient(scope)("results") as CompletedShowView;
+   loadedShow=view;return view;
+  },
+  openPress:()=>void leave(()=>{},true),
+  openNext:destination=>void leave(()=>{window.location.hash=hostSectionHash(destination);}),
+  openRatings:()=>void leave(()=>{
    if(scope.showId)pendingResultsRatingsOrigin={
     worldId:scope.worldId,promotionId:scope.promotionId,
     showId:scope.showId,onBack};
    window.location.hash="#/business/ratings";
-  },
+  }),
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
-  mediaScrum:{
-   read:()=>scrumRequest(scope,{action:"READ"}),
-   answer:(questionId,answerIndex)=>scrumRequest(scope,{
-    action:"ANSWER",questionId,answerIndex})
-  },
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",
@@ -630,10 +660,10 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  if(onBack){
   const back=document.createElement("button");
   back.type="button";back.textContent="← Back";
-  back.className="ppw-programme-action";back.onclick=onBack;
+  back.className="ppw-programme-action";
+  back.onclick=()=>void leave(onBack);
   root.prepend(back);
  }
-
 }
 
 /** A modal dossier preserves the working card, negotiation or rivalry underneath.
