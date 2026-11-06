@@ -464,7 +464,7 @@ export function mountPersonaDesk(root:HTMLElement,
    (n,ch)=>(n*31+ch.charCodeAt(0))%360,0)));
   const identity=el("span","ppw-backstage-phone-identity");
   identity.append(el("strong","",view.personName),el("small","","Private conversation"));
-  const details=button("Dossier ↗",()=>{
+  const details=button("Dossier",()=>{
    if(port.openWrestler)port.openWrestler(view!.personId!);
    else{pane="PROFILE";render();}
   });

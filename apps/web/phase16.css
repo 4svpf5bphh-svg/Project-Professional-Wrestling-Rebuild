@@ -377,3 +377,23 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread .ppw-backstage-pho
   border-radius:0!important;border:0!important;
  }
 }
+
+/* On the pale iPhone conversation header, the legacy light cyan links
+   lack contrast and clip Dossier to "Doss…". Keep both tap targets legible. */
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread
+ .ppw-backstage-phone-back,
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread
+ .ppw-backstage-phone-details{
+ color:#1555a7!important;text-shadow:none!important;
+ white-space:nowrap!important
+}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread
+ .ppw-backstage-phone-back{
+ flex:none!important;min-width:51px!important;width:auto!important;
+ font-size:13px!important;padding:0 2px!important
+}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-thread
+ .ppw-backstage-phone-details{
+ flex:none!important;width:auto!important;min-width:0!important;
+ font-size:12px!important;padding:7px 4px!important
+}

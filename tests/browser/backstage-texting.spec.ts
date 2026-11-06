@@ -117,6 +117,10 @@ for(const width of [320,390]){
   // this is a test fixture, not 24 single-message threads.
   await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in")).toHaveCount(48);
   await expect(page.locator("#account")).toBeHidden();
+  await expect(page.getByRole("button",{name:"Back to messages"}))
+   .toHaveCSS("color","rgb(21, 85, 167)");
+  await expect(page.getByRole("button",{name:"View Ada Stone wrestler dossier"}))
+   .toHaveCSS("color","rgb(21, 85, 167)");
   const geometry=await page.evaluate(()=>{
    const exit=document.querySelector(".ppw-backstage-thread-exit")!
     .getBoundingClientRect();
