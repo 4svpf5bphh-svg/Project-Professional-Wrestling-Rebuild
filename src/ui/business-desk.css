@@ -407,3 +407,13 @@
 .ppw-ratings-war-rival[data-human="true"]{
  border-color:#72d3b0;background:#1c3d45
 }
+
+/* A ratings war is its own Business destination, not a report buried below
+   the large Business title and seven tabs. All data remains in the same read. */
+.ppw-business-ratings-focused{padding-top:9px!important}
+.ppw-ratings-war-return{margin:0 0 9px;display:flex;align-items:center}
+.ppw-ratings-war-return button{min-height:44px;border-radius:11px;
+ background:#263754;border:1px solid #8096bc;color:#f0f4ff;
+ font-size:13px;font-weight:850}
+.ppw-business-ratings-focused .ppw-ratings-war-head{padding:11px 13px}
+.ppw-business-ratings-focused .ppw-ratings-war-head h2{margin:2px 0;font-size:29px}

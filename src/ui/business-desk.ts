@@ -136,6 +136,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
  }
  function draw(){
   root.classList.add("ppw-editor","ppw-business");root.replaceChildren();
+  const ratingsFocused=pane==="RATINGS";
+  root.classList.toggle("ppw-business-ratings-focused",ratingsFocused);
   const head=el("header","ppw-business-head");
   head.append(el("span","ppw-business-kicker","THE FRONT OFFICE"),
    el("h1","","Business"),
@@ -149,8 +151,18 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   if(port.renamePromotion&&view){
    head.append(button("Rename promotion",()=>{renaming=!renaming;draw();}));
   }
-  root.append(head);
-  if(renaming&&view&&port.renamePromotion){
+  if(ratingsFocused){
+   const returnNav=el("nav","ppw-ratings-war-return");
+   returnNav.setAttribute("aria-label","Ratings War navigation");
+   returnNav.append(button("← Business",()=>{
+    pane="FINANCES";
+    if(window.location.hash==="#/business/ratings")
+     window.history.replaceState(null,"","#/business");
+    draw();
+   }));
+   root.append(returnNav);
+  }else root.append(head);
+  if(!ratingsFocused&&renaming&&view&&port.renamePromotion){
    const panel=el("section","ppw-business-panel");
    panel.append(el("h2","","Promotion identity"),
     el("p","ppw-business-muted",
@@ -192,7 +204,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
   }
-  root.append(nav);
+  if(!ratingsFocused)root.append(nav);
   if(pane==="FINANCES"){
    const weeklyIncome=view.weeklyMediaIncome!=null&&view.weeklySponsorIncome!=null?
     view.weeklyMediaIncome+view.weeklySponsorIncome:null;

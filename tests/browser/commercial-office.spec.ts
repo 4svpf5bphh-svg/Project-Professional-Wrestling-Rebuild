@@ -163,6 +163,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-result")).toContainText(
    "Rival Wrestling leads by 0.4 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
+  await page.getByRole("button",{name:"← Business"}).click();
   await page.getByRole("button",{name:"Deals"}).click();
   await expect(page.getByRole("heading",{name:"Ratings war"})).toBeVisible();
   await expect(page.getByText(/Your latest TV show ranks #2 of 2/)).toBeVisible();
