@@ -67,7 +67,16 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
   await assert.rejects(requestBroadcastDay(db.pool,{...newDay,
    requestId:"network-second-day",requestedDay:3,expectedRevision:resaved.revision}),
    /already approved one day change/);
-  const premiumWeek=updated.weeks.find(w=>w.scheduled.some(x=>x.eventType==="MAJOR"));
+  // Genesis saves may have a long premium cadence with no upcoming PPV.
+  // Set up an explicit due premium series to verify weekend flexibility.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,
+    event_type,cadence_weeks,anchor_week,importance,active)
+   VALUES($1,$2,'weekday-ppv','Weekend Challenge','PREMIUM',
+    'MAJOR',4,3,80,true)
+   ON CONFLICT DO NOTHING`,[world,promotion]));
+  const ppvSchedule=await readSixWeekPlanner(db.pool,scope);
+  const premiumWeek=ppvSchedule.weeks.find(w=>w.scheduled.some(x=>x.eventType==="MAJOR"));
   assert.ok(premiumWeek,"One premium event must be available in a six-week season window");
   const premium=premiumWeek!.scheduled.find(s=>s.eventType==="MAJOR")!;
   const ppv=await planShowWeek(db.pool,{...scope,requestId:"weekend-ppv",
@@ -95,7 +104,8 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
     "ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls",
     "ppw_memberships","ppw_contracts","ppw_championships","ppw_people",
-    "ppw_venues","ppw_promotion_market_states","ppw_promotions","ppw_markets"])
+    "ppw_venues","ppw_promotion_market_states","ppw_show_series",
+    "ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);

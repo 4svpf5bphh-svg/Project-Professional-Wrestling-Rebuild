@@ -54,7 +54,12 @@ test("Ratings War settles all certified programmes atomically, keeps PPVs and re
      30000,80000,80000,'PPV',420000)`,[world]);
   });
   const once=await withWorldTransaction(db.pool,tx=>settleRatingsWarWorldWeek(tx,world,1,1));
-  assert.deepEqual(once,{broadcasts:3,contested:2,changed:2});
+  assert.equal(once.broadcasts,3);
+  assert.equal(once.contested,2);
+  assert.equal(once.changed,2);
+  assert.equal(once.highlights.length,1);
+  assert.equal(once.highlights[0]!.promotionId,"promotion-0");
+  assert.equal(once.highlights[0]!.rivalName,"Promotion 1");
   type Row={show_id:string;audience_format:string;tv_household_rating:string|null;
    ratings_war_base_rating:string|null;ratings_war_opponents:number|null;
    estimated_viewers:string|null;ratings_war_base_viewers:string|null;
