@@ -83,7 +83,9 @@ const editorialShow={
   summary:"Joe won by a clean pinfall.",crowdResponse:87,outcome:"CLEAN_PIN",
   actorIds:["joe","riddle"],targetIds:[],
   matchContext:{format:"SINGLES",intent:"COMPETITIVE",plannedMinutes:17,
-   sides:[["Samoa Joe"],["Matt Riddle"]],winnerNames:["Samoa Joe"],
+   sides:[["Samoa Joe"],["Matt Riddle"]],
+   sideParticipants:[[{personId:"joe",name:"Samoa Joe"}],
+    [{personId:"riddle",name:"Matt Riddle"}]],winnerNames:["Samoa Joe"],
    championshipContested:false,isMainEvent:true},
   fallout:{ratingStars:4.25,actualMinutes:18,injuries:[],eliminations:[]}
  },{
@@ -131,6 +133,11 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const audience=page.getByRole("region",{name:"Broadcast performance"});
   await expect(audience).toContainText("BROADCAST PERFORMANCE");
+  const wrestler=page.locator(".ppw-pop-wrestler-post");
+  await expect(wrestler).toHaveCount(1);
+  await expect(wrestler).toContainText("Samoa Joe");
+  await expect(wrestler.getByRole("button",{name:"See moment"})).toHaveCount(1);
+  await expect(wrestler.getByRole("button",{name:"View dossier"})).toHaveCount(1);
   await expect(audience).toContainText("TV RATING");
   await expect(audience).toContainText("2.4");
   await expect(audience).toContainText("3.8M");

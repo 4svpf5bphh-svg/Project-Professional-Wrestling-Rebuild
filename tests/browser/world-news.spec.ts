@@ -33,7 +33,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
    annualAwards:[{year:1,week:37,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"last-year",showName:"World Classic",
     slotId:"m1",title:"Great Match of the Year",rating:5,ratingUnit:"STARS"}],
-   stories:[{year:2,week:6,id:"m2",desk:"OFFICIAL",certainty:"CONFIRMED",
+   stories:[{year:2,week:6,id:"match:s2:m2",desk:"OFFICIAL",certainty:"CONFIRMED",
     promotionId:"ai",promotionName:"AI Elite",showId:"s2",
     title:"A certified classic",summary:"4.75 star match",sourceKind:"MATCH"},
     {year:2,week:6,id:"s1",desk:"DIRT",certainty:"SPECULATION",
@@ -62,7 +62,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
  await expect(comment).toBeVisible();
  await expect(comment).toHaveCSS("color","rgb(230, 236, 248)");
- await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(3);
+ await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(4);
+ await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
+ await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
+ await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
  await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
  await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
  await expect(page.getByText(/Career stage: veteran → special attraction/)).toBeVisible();
@@ -92,6 +95,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await threads.first().locator("summary").click();
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("HOT TAG");
  await expect(threads.first().locator(".ppw-hot-tag-news-post")).toHaveCount(3);
+ await expect(threads.locator(".ppw-hot-tag-wrestler")).toHaveCount(0,
+  "Unverified reports must never impersonate an official wrestler account");
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("Tag in. Sound off.");
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});
