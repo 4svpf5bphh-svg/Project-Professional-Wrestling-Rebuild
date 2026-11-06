@@ -254,6 +254,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      pane=id;draw();
     },id==="STAFF"&&!port.openStaff);
     choice.classList.add("ppw-business-hub-choice");
+    // Keep the brief supporting text visible while giving VoiceOver and
+    // automation a stable, concise control name on a 320px phone.
+    choice.setAttribute("aria-label",title);
     choice.append(el("small","",description));
     destinations.append(choice);
    }

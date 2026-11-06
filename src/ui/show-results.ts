@@ -42,7 +42,8 @@ function finishLabel(entry:ShowResultEntry):string{
   DISQUALIFICATION:"Disqualification",FOREIGN_OBJECT:"Controversial win",
   PROTECTED_FINISH:"Disputed decision",INJURY_STOPPAGE:"Referee stoppage",
   OVER_THE_TOP_ROPE:"Final elimination",
-  RETRIEVAL:"Prize retrieval",TABLE_BREAK:"Table break",TEN_COUNT:"Ten-count knockout"};
+  RETRIEVAL:"Prize retrieval",TABLE_BREAK:"Table break",TEN_COUNT:"Ten-count knockout",
+  VERBAL_SURRENDER:"I quit"};
  return labels[entry.outcome]??"Decision";
 }
 function node(tag:string,className:string,content=""):HTMLElement{
@@ -581,13 +582,19 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","ppw-road-agent-voice",report.praise),
    node("p","ppw-road-agent-voice",report.concern),
    node("p","ppw-road-agent-next",report.recommendation));
-  // A concrete second opinion without repeated boilerplate.
-  const observation=postShowStaffObservations(show)
-   .find(x=>x.slotId!==report.strongestMatchId);
-  if(observation){
+  // Show the concrete evidence even when it came from the show's
+  // strongest match: a real injury or nine-minute overrun still needs care.
+  // These are bounded verified notes, never fabricated staff conversations.
+  const observations=postShowStaffObservations(show);
+  if(observations.length){
    const specific=node("div","ppw-road-agent-observations");
-   specific.append(node("strong","","One thing I'd revisit"),
-    node("p","ppw-road-agent-voice",observation.note));
+   specific.append(node("strong","","On my desk tonight"));
+   for(const observation of observations){
+    const line=node("article","ppw-road-agent-observation");
+    line.append(node("h4","",observation.headline),
+     node("p","",observation.note));
+    specific.append(line);
+   }
    office.append(specific);
   }
   management.append(office);
@@ -629,9 +636,17 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(poster){
+  // A settled PPV cannot still be advertising an unannounced card.
+  // Name participants only when the locked show certified a main event.
+  const main=show.entries.find(entry=>
+   entry.type==="MATCH"&&entry.matchContext?.isMainEvent);
+  const sides=main?.matchContext?.sides.filter(side=>side.length>0)
+   .map(side=>side.join(" & "));
+  const mainEvent=sides&&sides.length>=2?sides.join(" vs "):null;
   const opening=createAnimatedEventPoster({
    style:poster.style,eventName:show.showName??"Premium event",
-   promotionName:show.promotionName??"PPW",compact:true
+   promotionName:show.promotionName??"PPW",compact:true,
+   mainEvent,completed:true
   });
   if(opening){
    const wrap=node("section","ppw-results-event-poster");

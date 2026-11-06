@@ -516,8 +516,8 @@ for(const skin of [
    await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
     "color",ink);
    await expect(agent.locator("h3")).toHaveCSS("color",accent);
-   await expect(agent.locator(".ppw-road-agent-continuity")).toHaveCSS(
-    "color",ink);
+   await expect(agent.locator(".ppw-road-agent-observation")).toBeVisible();
+   await expect(agent.locator(".ppw-road-agent-observation")).toContainText("4.50 stars");
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(1);
   });
@@ -550,7 +550,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const report=page.locator('.ppw-results[data-results-skin="retro-booker-02"]');
   await expect(report).toBeVisible();
-  await expect(report.locator(".ppw-retro-chapter-head").first()).toContainText("BOOKER 2002");
+  await expect(report.locator(".ppw-retro-chapter-head").first()).toContainText("FILE 02");
   await expect(report.locator(".ppw-results-show-intro h1")).toContainText("Dynamite");
   await expect(report.getByRole("heading",{name:"MATCH RESULTS"})).toBeVisible();
   await expect(report.locator(".ppw-result-competitor-name"))
@@ -601,14 +601,20 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
+  // Completed results now open directly in the full broadcast. The optional
+  // show branding remains available on the Headlines page.
   const opening=page.locator(".ppw-tv-opening-wrap");
+  await expect(opening).toBeHidden();
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await page.getByRole("button",{name:"Return to Headlines"}).click();
   await expect(opening).toBeVisible();
   await expect(opening.locator(".ppw-tv-frame")).toHaveAttribute("data-broadcast-package","prizefight");
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
   await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(opening.getByRole("button",{name:"Skip opening"})).toHaveCount(0);
-  await expect(opening).toBeVisible();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(opening).toBeHidden();
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-result-entry").first()).toContainText("Kenny Omega");
@@ -640,6 +646,9 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
  const artwork=page.locator(".ppw-results-event-poster .ppw-event-poster");
  await expect(artwork).toHaveAttribute("data-poster","inferno");
  await expect(artwork.locator(".ppw-ep-title")).toHaveText("Armageddon");
+ await expect(artwork.locator(".ppw-ep-main-label")).toHaveText("MAIN EVENT");
+ await expect(artwork.locator(".ppw-ep-main")).toHaveText("Kenny Omega vs Samoa Joe");
+ await expect(artwork).not.toContainText("TO BE ANNOUNCED");
  await expect(page.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
  await expect(page.locator(".ppw-retro-station")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

@@ -170,6 +170,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Finances",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
   await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
+  await page.getByRole("button",{name:"← Business"}).click();
   await page.getByRole("button",{name:"Ratings War",exact:true}).click();
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
